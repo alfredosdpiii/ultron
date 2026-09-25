@@ -54,6 +54,7 @@ import { createSessionModuleStore, type HostCaller } from "../ultron/rlm/host-mo
 import { type KernelHostHandler, RlmKernel } from "../ultron/rlm/kernel.ts";
 import { NativeRlmHost } from "../ultron/rlm/native-host.ts";
 import { createSessionTaskStore } from "../ultron/rlm/task-store.ts";
+import { createScheduleModule } from "../ultron/schedules.ts";
 import { createSkillModule } from "../ultron/skills.ts";
 import { createSessionUsageLedger } from "../ultron/usage.ts";
 import { createWorkerServices } from "../ultron/worker-services.ts";
@@ -1123,6 +1124,7 @@ async function createCodingAgentHarness(
 			modules: [
 				createFamilyModule({ store: createSessionModuleStore(session, "family") }),
 				createProgressModule({ store: createSessionModuleStore(session, "progress") }),
+				createScheduleModule({ store: createSessionModuleStore(session, "schedules") }),
 				createSkillModule({
 					store: createSessionModuleStore(session, "skills"),
 					// Re-read skill files so skills.refresh sees edits made during the session.

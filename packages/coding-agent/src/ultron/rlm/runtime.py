@@ -16,6 +16,7 @@ from memory_api import Memory, Refinements
 from family_api import AgentMessages
 from progress_api import Progress
 from skills_api import Skills
+from schedules_api import Goals, Schedules
 
 try:
     import dill as _dill
@@ -183,6 +184,8 @@ class RuntimeState:
         self.namespace["refinements"] = Refinements(self.bridge)
         self.namespace["progress"] = Progress(self.bridge)
         self.namespace["skills"] = Skills(self.bridge)
+        self.namespace["schedules"] = Schedules(self.bridge)
+        self.namespace["goals"] = Goals(self.bridge)
 
 _STATE = RuntimeState()
 
