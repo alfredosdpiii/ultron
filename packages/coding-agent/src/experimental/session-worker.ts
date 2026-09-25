@@ -1240,8 +1240,8 @@ async function createCodingAgentHarness(
 			sessionId: options.metadata.id,
 			cwd: options.metadata.cwd,
 			jev: jev ?? undefined,
-			hindsightUrl: process.env.ULTRON_HINDSIGHT_URL,
-			bankId: process.env.ULTRON_HINDSIGHT_BANK,
+			hindsightUrl: hindsightUrl(process.env.ULTRON_HINDSIGHT_URL),
+			bankId: process.env.ULTRON_HINDSIGHT_BANK || "ultron",
 			extensionCommands: {
 				list: async () => legacyExtensions?.commands ?? [],
 				run: async (name, args) => legacyExtensions?.runCommand(name, args) ?? { notifications: [] },
@@ -1341,6 +1341,15 @@ async function createCodingAgentHarness(
 		}
 		throw error;
 	}
+}
+
+/**
+ * Hindsight memory is on by default against a local server, as in the Pi Jev extension.
+ * ULTRON_HINDSIGHT_URL overrides the address; "off" (or "none"/"0") disables memory.
+ */
+export function hindsightUrl(configured: string | undefined): string | undefined {
+	if (configured === undefined || configured.trim() === "") return "http://localhost:8888";
+	return ["off", "none", "0", "false"].includes(configured.trim().toLowerCase()) ? undefined : configured.trim();
 }
 
 export function runSessionWorkerProcess(args: readonly string[]): Promise<void> {

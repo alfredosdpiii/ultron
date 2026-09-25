@@ -32,11 +32,12 @@ const prepare = Type.Object(
 		taskId: Type.String({ minLength: 1 }),
 		scope,
 		refresh: Type.Optional(Type.Boolean()),
+		explicit: Type.Optional(Type.Boolean()),
 	},
 	{ additionalProperties: false },
 );
 const propose = Type.Object(
-	{ text: Type.String({ minLength: 1 }), evidence, scope, evidenceClass },
+	{ text: Type.String({ minLength: 1 }), evidence, scope, evidenceClass, explicit: Type.Optional(Type.Boolean()) },
 	{ additionalProperties: false },
 );
 const correct = Type.Object(
@@ -67,6 +68,7 @@ export function createWorkerServices(options: {
 			? createHindsightBackend({
 					baseUrl: options.hindsightUrl,
 					bankId: options.bankId ?? "ultron",
+					ensureBank: true,
 					scopeTags: {
 						session: [`ultron:session:${options.sessionId}`],
 						project: [`ultron:project:${projectIdentity(options.cwd)}`],
@@ -83,10 +85,13 @@ export function createWorkerServices(options: {
 					write: (next) => session.setValue(memoryAddress, next, BACKGROUND_CONTEXT),
 				},
 				gate: async (request, signal) => {
+					// Deliberate recall by agent code needs no relevance judgement, even without Jev.
+					if (request.action === "recall" && request.explicit) return { retrieve: true, probability: 1 };
 					if (!jev) return request.action === "recall" ? { retrieve: false } : { action: "skip" };
-					return request.action === "recall"
-						? jev.memoryGate(request.query, signal)
-						: jev.memoryPolicy(request.text, "", signal);
+					if (request.action === "recall") return jev.memoryGate(request.query, signal);
+					const policy = await jev.memoryPolicy(request.text, "", signal);
+					// A deliberate write is kept unless Jev judges it sensitive; automatic writes follow Jev fully.
+					return request.explicit && policy.action === "skip" ? { ...policy, action: "keep" } : policy;
 				},
 			})
 		: undefined;

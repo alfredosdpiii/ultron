@@ -20,9 +20,13 @@ export type MemoryEvidenceClass = "hypothesis" | "user_statement" | "tool_eviden
 export type MemoryGateDecision =
 	| { retrieve: boolean; probability?: number }
 	| { action: "keep" | "skip" | "sensitive"; confidence?: number };
+/**
+ * `explicit` marks a deliberate call from agent code (not an automatic per-turn recall or retain):
+ * the gate should then skip relevance judgement but still refuse sensitive writes.
+ */
 export type MemoryGateRequest =
-	| { action: "recall"; query: string; scope: MemoryScope; taskId: string }
-	| { action: "retain"; text: string; evidence: MemoryEvidence[]; scope: MemoryScope };
+	| { action: "recall"; query: string; scope: MemoryScope; taskId: string; explicit?: boolean }
+	| { action: "retain"; text: string; evidence: MemoryEvidence[]; scope: MemoryScope; explicit?: boolean };
 /** Bind this required callback to Jev's recall and retention policy decisions. */
 export type MemoryGate = (request: MemoryGateRequest, signal?: AbortSignal) => Promise<MemoryGateDecision>;
 export type MemoryRecallRequest = {
@@ -659,7 +663,8 @@ export class NativeMemoryService {
 			scope = "session",
 			taskId,
 			refresh = false,
-		}: { query: string; scope?: MemoryScope; taskId: string; refresh?: boolean },
+			explicit = false,
+		}: { query: string; scope?: MemoryScope; taskId: string; refresh?: boolean; explicit?: boolean },
 		signal?: AbortSignal,
 	): Promise<MemoryPrepared> {
 		requireText(query);
@@ -679,7 +684,10 @@ export class NativeMemoryService {
 		const prepared = await this.attempt(id, signal, async () => {
 			// Resolved inside the attempt so an unconfigured scope is a recorded denial.
 			const tags = this.tags(scope);
-			const decision = gateDecision(await this.gate({ action: "recall", query, scope, taskId }, signal), true);
+			const decision = gateDecision(
+				await this.gate({ action: "recall", query, scope, taskId, ...(explicit ? { explicit } : {}) }, signal),
+				true,
+			);
 			checkAbort(signal);
 			await this.update(id, { gate: decision });
 			if (!("retrieve" in decision)) throw new MemoryError("INVALID_GATE");
@@ -775,7 +783,14 @@ export class NativeMemoryService {
 			evidence,
 			scope = "session",
 			evidenceClass,
-		}: { text: string; evidence: MemoryEvidence[]; scope?: MemoryScope; evidenceClass?: MemoryEvidenceClass },
+			explicit = false,
+		}: {
+			text: string;
+			evidence: MemoryEvidence[];
+			scope?: MemoryScope;
+			evidenceClass?: MemoryEvidenceClass;
+			explicit?: boolean;
+		},
 		signal?: AbortSignal,
 	): Promise<MemoryOperation> {
 		requireText(text);
@@ -784,7 +799,7 @@ export class NativeMemoryService {
 		const claim = evidenceClassOf(evidenceClass, "hypothesis");
 		const tags = this.tags(scope);
 		await this.load();
-		return this.retain("propose", undefined, text, refs, claim, scope, tags, signal);
+		return this.retain("propose", undefined, text, refs, claim, scope, tags, signal, explicit);
 	}
 	async correct(
 		memoryId: string,
@@ -814,6 +829,7 @@ export class NativeMemoryService {
 		scope: MemoryScope,
 		tags: string[],
 		signal?: AbortSignal,
+		explicit = false,
 	): Promise<MemoryOperation> {
 		const previous = memoryId ? this.currentClaim(memoryId) : undefined;
 		const id = await this.start(kind, {
@@ -827,7 +843,16 @@ export class NativeMemoryService {
 		return this.attempt(id, signal, async () => {
 			if (memoryId) this.editable(memoryId);
 			const decision = gateDecision(
-				await this.gate({ action: "retain", text, evidence: structuredClone(evidence), scope }, signal),
+				await this.gate(
+					{
+						action: "retain",
+						text,
+						evidence: structuredClone(evidence),
+						scope,
+						...(explicit ? { explicit } : {}),
+					},
+					signal,
+				),
 				false,
 			);
 			checkAbort(signal);
@@ -980,9 +1005,11 @@ export type HindsightBackendOptions = {
 	headers?: Record<string, string>;
 	timeoutMs?: number;
 	maxResponseBytes?: number;
+	/** Create the bank (idempotent PUT) before the first call. Off by default so tests see only their own calls. */
+	ensureBank?: boolean;
 };
 
-/** Native Hindsight 0.9.2 document endpoints. No bank creation, retries, or env defaults. */
+/** Native Hindsight 0.9.2 document endpoints. No retries or env defaults; bank creation only with ensureBank. */
 export function createHindsightBackend(options: HindsightBackendOptions): MemoryBackend {
 	const timeoutMs = options.timeoutMs ?? 10_000;
 	const maxBytes = options.maxResponseBytes ?? 1_048_576;
@@ -1105,13 +1132,25 @@ export function createHindsightBackend(options: HindsightBackendOptions): Memory
 			signal.removeEventListener("abort", rejectAbort);
 		}
 	}
+	let bankReady: Promise<unknown> | undefined;
+	// A failed creation is retried on the next call rather than cached.
+	const call = async (path: string, method: string, body: unknown, signal?: AbortSignal): Promise<unknown> => {
+		if (options.ensureBank) {
+			bankReady ??= request("", "PUT", {}, signal).catch((error: unknown) => {
+				bankReady = undefined;
+				throw error;
+			});
+			await bankReady;
+		}
+		return request(path, method, body, signal);
+	};
 	return {
 		namespace,
 		scopeTags: filters,
-		recall: (input, signal) => request("/memories/recall", "POST", input, signal),
-		retain: (input, signal) => request("/memories", "POST", input, signal),
-		get: (id, signal) => request(`/documents/${segment(id)}`, "GET", undefined, signal),
-		delete: (id, signal) => request(`/documents/${segment(id)}`, "DELETE", undefined, signal),
-		operation: (id, signal) => request(`/operations/${segment(id)}`, "GET", undefined, signal),
+		recall: (input, signal) => call("/memories/recall", "POST", input, signal),
+		retain: (input, signal) => call("/memories", "POST", input, signal),
+		get: (id, signal) => call(`/documents/${segment(id)}`, "GET", undefined, signal),
+		delete: (id, signal) => call(`/documents/${segment(id)}`, "DELETE", undefined, signal),
+		operation: (id, signal) => call(`/operations/${segment(id)}`, "GET", undefined, signal),
 	};
 }
