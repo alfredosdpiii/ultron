@@ -7,6 +7,7 @@ import { Check } from "typebox/value";
 import { type NativeJevClient, projectIdentity } from "./jev.ts";
 import { NativeLocalServices, type RefinementBranch } from "./local-services.ts";
 import { createHindsightBackend, type MemoryBackend, NativeMemoryService } from "./memory.ts";
+import { validateRefinementContent } from "./refinement-validation.ts";
 
 type SessionValues = Pick<Session, "getValue" | "setValue" | "scanValues">;
 const evidence = Type.Array(
@@ -89,15 +90,18 @@ export function createWorkerServices(options: {
 				},
 			})
 		: undefined;
-	const local = new NativeLocalServices({
-		get: async (key, context) => (await session.getValue(value<JsonValue>("ultron.local", key), context))?.value,
-		set: (key, next, context) => session.setValue(value<JsonValue>("ultron.local", key), next, context),
-		list: async (prefix, context) =>
-			(await session.scanValues(value<JsonValue>("ultron.local", prefix), context)).map((entry) => ({
-				key: entry.address.key,
-				value: entry.value,
-			})),
-	});
+	const local = new NativeLocalServices(
+		{
+			get: async (key, context) => (await session.getValue(value<JsonValue>("ultron.local", key), context))?.value,
+			set: (key, next, context) => session.setValue(value<JsonValue>("ultron.local", key), next, context),
+			list: async (prefix, context) =>
+				(await session.scanValues(value<JsonValue>("ultron.local", prefix), context)).map((entry) => ({
+					key: entry.address.key,
+					value: entry.value,
+				})),
+		},
+		{ validate: validateRefinementContent },
+	);
 	return {
 		async handle(
 			type: string,
