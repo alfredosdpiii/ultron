@@ -133,7 +133,11 @@ describe("A45 saturated nested recursion", () => {
 		expect(tasks.map((task) => task.state)).toEqual(["cancelled", "cancelled", "cancelled"]);
 		for (const task of tasks.filter((candidate) => candidate.id !== parent.id)) {
 			expect(task.parentId).toBe(parent.id);
-			expect(task.result).toMatchObject({ status: "cancelled", error: "Parent task aborted" });
+			// Spawned children outlive the parent cell; the parent-task cascade stops them.
+			expect(task.result).toMatchObject({
+				status: "cancelled",
+				error: expect.stringContaining(`Ancestor ${parent.id} cancelled`),
+			});
 		}
 		await within(waitFor(() => fixture.aborts.length === 3));
 		const status = await usage.status();

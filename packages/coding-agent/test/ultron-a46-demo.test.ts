@@ -176,6 +176,11 @@ async function start(steps: readonly string[], files: Record<string, string>): P
 		},
 	});
 	await client.start();
+	if (process.env.A46_DEBUG)
+		client.onEvent((event) => {
+			if (event.type === "tool_execution_start" || event.type === "tool_execution_end")
+				console.log("EV", event.type, JSON.stringify(event).slice(0, 400));
+		});
 	return { provider, client, root };
 }
 
@@ -295,7 +300,7 @@ describe("A46 combined demonstration", () => {
 	test("failure variants never become verified completion", async () => {
 		harness = await start(FAILURE_VARIANT_STEPS, {});
 		const { client } = harness;
-		await client.promptAndWait("DEMO: exercise failure variants", undefined, 60_000).catch(() => {});
+		await client.promptAndWait("DEMO: exercise failure variants", undefined, 180_000);
 		const variants = Object.assign({}, ...(await results(client))) as Record<string, any>;
 		// Invalid typed result: the reviewer's prose is rejected, never reported as a clean review.
 		expect(variants!.invalid_typed_result).toMatchObject({

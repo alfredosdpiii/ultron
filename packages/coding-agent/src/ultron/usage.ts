@@ -101,6 +101,9 @@ type StoredCall = {
 	reservationId: string;
 	rootId: string;
 	kind: NativeUsageKind;
+	/** Copied from the reservation so a settled call stays attributable to its task. */
+	taskId?: string;
+	parentTaskId?: string;
 	requestKey?: string;
 	admittedAt: number;
 	settledAt: number;
@@ -203,6 +206,9 @@ function validateCall(valueToCheck: unknown): asserts valueToCheck is StoredCall
 		throw new Error("Invalid usage ledger call kind");
 	if (item.requestKey !== undefined && (typeof item.requestKey !== "string" || !item.requestKey))
 		throw new Error("Invalid usage ledger call request key");
+	for (const name of ["taskId", "parentTaskId"] as const)
+		if (item[name] !== undefined && (typeof item[name] !== "string" || !item[name]))
+			throw new Error("Invalid usage ledger call task ID");
 	finiteNumber(item.admittedAt, "admittedAt");
 	finiteNumber(item.settledAt, "settledAt");
 	if (!(["succeeded", "failed", "cancelled", "unknown"] as string[]).includes(String(item.status)))
@@ -451,6 +457,8 @@ export class NativeUsageLedger implements NativeUsageLedgerLike {
 				reservationId: active.id,
 				rootId: active.rootId,
 				kind: active.kind,
+				...(active.taskId === undefined ? {} : { taskId: active.taskId }),
+				...(active.parentTaskId === undefined ? {} : { parentTaskId: active.parentTaskId }),
 				...(active.requestKey === undefined ? {} : { requestKey: active.requestKey }),
 				admittedAt: active.admittedAt,
 				settledAt: now,
@@ -501,6 +509,8 @@ export class NativeUsageLedger implements NativeUsageLedgerLike {
 						reservationId: reservation.id,
 						rootId: reservation.rootId,
 						kind: reservation.kind,
+						...(reservation.taskId === undefined ? {} : { taskId: reservation.taskId }),
+						...(reservation.parentTaskId === undefined ? {} : { parentTaskId: reservation.parentTaskId }),
 						...(reservation.requestKey === undefined ? {} : { requestKey: reservation.requestKey }),
 						admittedAt: reservation.admittedAt,
 						settledAt: now,

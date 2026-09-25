@@ -2,7 +2,12 @@ import { randomUUID } from "node:crypto";
 import { isJsonValue, type JsonValue } from "@earendil-works/chord";
 import { BACKGROUND_CONTEXT, withAbortSignal, withoutAbortSignal } from "@earendil-works/chord/context";
 import type { AgentHarness, AgentLane, Context, Entry } from "@earendil-works/pi-agent-core";
-import type { NativeUsageCallStatus, NativeUsageLedgerLike, NativeUsageReservation } from "../usage.ts";
+import type {
+	NativeUsageCallStatus,
+	NativeUsageLedgerLike,
+	NativeUsageMeasurement,
+	NativeUsageReservation,
+} from "../usage.ts";
 import {
 	type NativeDefinition,
 	type NativeDefinitionAdapter,
@@ -94,6 +99,26 @@ function textOf(entry: Entry): string {
 		.filter((part) => part.type === "text")
 		.map((part) => part.text)
 		.join("\n");
+}
+
+/** Provider-reported usage of one run's assistant messages; unknown unless every message reports it. */
+function runUsage(entries: readonly Entry[]): NativeUsageMeasurement | undefined {
+	const total = { inputTokens: 0, outputTokens: 0, totalTokens: 0, cost: 0 };
+	let messages = 0;
+	for (const entry of entries) {
+		if (entry.type !== "message" || entry.message.role !== "assistant") continue;
+		const usage = (entry.message as { usage?: unknown }).usage as
+			| { input?: unknown; output?: unknown; totalTokens?: unknown; cost?: { total?: unknown } }
+			| undefined;
+		const values = [usage?.input, usage?.output, usage?.totalTokens, usage?.cost?.total];
+		if (!values.every((item) => typeof item === "number" && Number.isFinite(item) && item >= 0)) return undefined;
+		total.inputTokens += usage!.input as number;
+		total.outputTokens += usage!.output as number;
+		total.totalTokens += usage!.totalTokens as number;
+		total.cost += usage!.cost!.total as number;
+		messages += 1;
+	}
+	return messages === 0 ? undefined : total;
 }
 
 function jsonFrom(text: string): unknown {
@@ -223,6 +248,9 @@ export class NativeRlmHost {
 			await this.registry.ready();
 			for (const stored of await this.journal.list()) this.tasks.set(stored.id, stored);
 			await this.usage?.ready?.();
+			// No task of this owner is live yet, so every open reservation belongs to an ended owner.
+			// Settle them as unknown so the ledger agrees with the interrupted journal (A21/A24).
+			await this.usage?.reconcile?.([]);
 		})();
 		await this.loading;
 		await this.journal.ready();
@@ -296,6 +324,7 @@ export class NativeRlmHost {
 		const taskContext = withAbortSignal(signal, context);
 		let modelReservation: NativeUsageReservation | undefined;
 		let modelStatus: NativeUsageCallStatus = "unknown";
+		let modelUsage: NativeUsageMeasurement | undefined;
 		try {
 			signal.throwIfAborted();
 			if (definition.strategy === "deterministic") {
@@ -402,8 +431,13 @@ export class NativeRlmHost {
 				throw new Error(`Agent run did not complete: ${response.value.status}`);
 			const tipId = response.value.tipId;
 			if (!tipId) throw new Error("Agent produced no assistant result");
-			const entries = await lane.findEntries({ start: tipId, order: "newestFirst", limit: 1 }, taskContext);
+			const fromTipId = response.value.fromTipId ?? null;
+			const entries = await lane.findEntries(
+				{ start: tipId, order: "newestFirst", ...(fromTipId === null ? {} : { stopAtId: fromTipId }) },
+				taskContext,
+			);
 			signal.throwIfAborted();
+			modelUsage = runUsage(entries.filter((candidate) => candidate.id !== fromTipId));
 			const entry = entries.find((candidate) => candidate.id === tipId);
 			const text = entry ? textOf(entry) : "";
 			if (!text.trim()) throw new Error("Agent produced no assistant result at the completed tip");
@@ -420,7 +454,11 @@ export class NativeRlmHost {
 				verification: "unverified",
 			};
 		} finally {
-			if (modelReservation) await this.usage?.settle(modelReservation, { status: modelStatus });
+			if (modelReservation)
+				await this.usage?.settle(modelReservation, {
+					status: modelStatus,
+					...(modelUsage === undefined ? {} : { usage: modelUsage }),
+				});
 		}
 	}
 
@@ -467,12 +505,20 @@ export class NativeRlmHost {
 			.catch(() => {});
 	}
 
-	private cancel(task: TaskRecord, reason: string): Promise<NativeResult> {
-		if (task.result) return Promise.resolve(task.result);
-		const pending = this.finish(task, { status: "cancelled", error: reason, verification: "unverified" });
-		task.controller?.abort(new Error(reason));
-		this.abortLane(task);
-		return pending;
+	/** Cancel a task and every unfinished descendant; siblings and other subtrees keep running. */
+	private async cancel(task: TaskRecord, reason: string): Promise<NativeResult> {
+		// Only the first party to end a task aborts its work; a parent abort and a cascade can race here.
+		const alreadyEnding = task.result !== undefined || task.finishing !== undefined;
+		const own = task.result
+			? Promise.resolve(task.result)
+			: this.finish(task, { status: "cancelled", error: reason, verification: "unverified" });
+		if (!alreadyEnding) {
+			task.controller?.abort(new Error(reason));
+			this.abortLane(task);
+		}
+		const children = [...this.tasks.values()].filter((child) => child.parentId === task.id && !child.result);
+		await Promise.allSettled(children.map((child) => this.cancel(child, `Ancestor ${task.id} cancelled: ${reason}`)));
+		return own;
 	}
 
 	private async run(task: TaskRecord, request: TaskRequest, context: Context): Promise<void> {
@@ -612,7 +658,7 @@ export class NativeRlmHost {
 		if (!Array.isArray(payload.nodes)) throw new Error("nodes must be an array");
 		const nodes: WorkflowNode[] = payload.nodes.map((value) => {
 			const node = objectInput(value);
-			fields(node, ["id", "definition", "input", "model", "timeout_ms", "dependsOn", "inputFrom", "when"]);
+			fields(node, ["id", "definition", "input", "model", "key", "timeout_ms", "dependsOn", "inputFrom", "when"]);
 			const id = nonemptyString(node.id, "Workflow node ID");
 			const definition = definitionKey(node.definition);
 			const item = this.definition(definition);
@@ -764,7 +810,8 @@ export class NativeRlmHost {
 			};
 			if (!Number.isSafeInteger(request.timeoutMs) || request.timeoutMs < 1 || request.timeoutMs > 60 * 60 * 1000)
 				throw new Error("timeout_ms must be an integer between 1 and 3600000");
-			const task = await this.spawnTask(request, context, parentId);
+			// A spawned child outlives the cell that started it; its subtree still stops with its parent task.
+			const task = await this.spawnTask(request, context, parentId, true);
 			return {
 				rlm_child_id: task.id,
 				name,
@@ -801,7 +848,9 @@ export class NativeRlmHost {
 			return { deleted: (await this.cancel(task, "RLM child deleted")).status === "cancelled" };
 		}
 		if (type === "agents.spawn" || type === "agents.invoke") {
-			const task = await this.spawnTask(this.request(payload), context, parentId);
+			// invoke waits inside the cell, so the cell's cancellation applies; spawn hands the task back to be
+			// collected later, so it must not die when the cell ends. Parent-task cancellation cascades either way.
+			const task = await this.spawnTask(this.request(payload), context, parentId, type === "agents.spawn");
 			if (type === "agents.spawn") return { id: task.id, state: task.state };
 			return structuredClone(await (task.promise ?? task.result));
 		}
@@ -813,7 +862,8 @@ export class NativeRlmHost {
 			if (type === "agents.inspect") return publicTask(stored);
 			const task = this.tasks.get(id)!;
 			if (type === "agents.cancel") {
-				const result = stored.result ?? (await this.cancel(task, "Ultron task cancelled"));
+				// Stopping a task stops its subtree, even when the task itself already finished.
+				const result = await this.cancel(task, "Ultron task cancelled");
 				return { cancelled: result.status === "cancelled" };
 			}
 			return structuredClone(await (task.promise ?? stored.result));
