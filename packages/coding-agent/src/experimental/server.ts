@@ -41,6 +41,7 @@ import {
 } from "./process.ts";
 import { RadiusRelayAuthResolver } from "./radius-auth.ts";
 import { RadiusRelayHost, type RadiusRelayHostStatus } from "./radius-relay.ts";
+import { recordServerError, serverErrorLogPath } from "./server-log.ts";
 import { createExperimentalServerServices } from "./services/server.ts";
 import type { SessionCreateOptions, SessionSummary } from "./services/sessions.ts";
 import { forkedSessionStart } from "./session-start.ts";
@@ -375,6 +376,8 @@ interface ResolvedSessionPlugins {
 interface StartServerBackendOptions {
 	readonly path: string;
 	readonly serverId: ServerId;
+	/** Where internal errors are recorded; see serverErrorLogPath. */
+	readonly errorLogPath: string;
 	readonly sessionDir?: string;
 	resolveSessionPlugins(
 		metadata: JsonlSessionMetadata,
@@ -542,9 +545,7 @@ async function startServerBackend(
 		path: socketPath,
 		mode: 0o600,
 		onConnectionCountChanged,
-		onError: (error) => {
-			if (process.env.ULTRON_DEBUG_INTERNAL === "1") console.error("[ultron server error]", error);
-		},
+		onError: (error) => recordServerError(options.errorLogPath, "[ultron server error]", error),
 	});
 	try {
 		await server.start();
@@ -719,6 +720,7 @@ export async function startServer(options: StartServerOptions = {}): Promise<Run
 			{
 				path: serverPath,
 				serverId,
+				errorLogPath: serverErrorLogPath(directory, serverId),
 				sessionDir: options.sessionDir,
 				resolveSessionPlugins,
 				removeSessionPlugins,
