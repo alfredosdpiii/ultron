@@ -53,12 +53,34 @@ type RlmChildHandle = {
 	parent_branch_anchor: string;
 };
 
+type WorkflowRoute = {
+	/** Dependency whose succeeded result decides whether this node runs. */
+	node: string;
+	/** Top-level field of that result to compare; the whole value when absent. */
+	field?: string;
+	equals: JsonValue;
+};
+
 type WorkflowNode = Omit<TaskRequest, "input"> & {
 	id: string;
 	input?: JsonValue;
 	dependsOn: string[];
-	inputFrom?: string;
+	/** One dependency (its value is the input) or several (fan-in: an object keyed by dependency ID). */
+	inputFrom?: string | string[];
+	when?: WorkflowRoute;
 };
+
+type WorkflowOutcome = NativeResult | { status: "skipped"; reason: string };
+
+function canonicalJson(value: JsonValue): string {
+	if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+	if (value !== null && typeof value === "object")
+		return `{${Object.keys(value)
+			.sort()
+			.map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`)
+			.join(",")}}`;
+	return JSON.stringify(value);
+}
 
 function objectInput(value: unknown): Record<string, unknown> {
 	if (value === null || typeof value !== "object" || Array.isArray(value))
@@ -284,7 +306,25 @@ export class NativeRlmHost {
 				let repair: Parameters<NativeDefinitionAdapter>[0]["repair"];
 				for (let attempt = 0; attempt <= definition.maxRepairs; attempt += 1) {
 					signal.throwIfAborted();
-					value = await this.registry.predictValue(definition, request.input, taskContext, signal, repair);
+					// Every model attempt, including each repair, is charged to this task.
+					const reservation = await this.usage?.reserve({
+						kind: "model",
+						parentTaskId: task.id,
+						taskId: task.id,
+						requestKey: attempt === 0 ? `${task.id}:model` : `${task.id}:model:repair-${attempt}`,
+						timeoutMs: request.timeoutMs,
+						signal,
+					});
+					let attemptStatus: NativeUsageCallStatus = "failed";
+					try {
+						value = await this.registry.predictValue(definition, request.input, taskContext, signal, repair);
+						attemptStatus = "succeeded";
+					} catch (error) {
+						attemptStatus = signal.aborted ? "cancelled" : "failed";
+						throw error;
+					} finally {
+						if (reservation) await this.usage?.settle(reservation, { status: attemptStatus });
+					}
 					if (isJsonValue(value) && this.registry.isValidOutput(definition, value))
 						return { status: "succeeded", value, verification: "unverified" };
 					repair = {
@@ -293,7 +333,12 @@ export class NativeRlmHost {
 						error: this.registry.validationError(definition, value, "output").message,
 					};
 				}
-				throw new Error(repair?.error ?? "Predict adapter returned an invalid output");
+				const error = repair?.error ?? "Predict adapter returned an invalid output";
+				throw new Error(
+					definition.maxRepairs === 0
+						? error
+						: `${error} after ${definition.maxRepairs} repair attempt${definition.maxRepairs === 1 ? "" : "s"}`,
+				);
 			}
 			const laneName = request.lane ?? `ultron.${definition.id}.${task.id}`;
 			if (request.lane !== undefined) await this.beforeLaneReuse?.(laneName, taskContext);
@@ -454,6 +499,18 @@ export class NativeRlmHost {
 				timeout_ms: request.timeoutMs,
 			});
 			const key = request.key ?? randomUUID();
+			// An idempotent retry resolves to the existing task before any budget is touched: it must
+			// neither consume a new admission slot nor settle the slot the live original still holds.
+			if (request.key !== undefined) {
+				const prior = (await this.journal.list()).find((task) => task.key === key);
+				if (prior) {
+					if (prior.fingerprint !== fingerprint) throw new Error("Idempotency key reused for a different task");
+					const existing = this.tasks.get(prior.id);
+					if (existing) return existing;
+					this.tasks.set(prior.id, prior);
+					return prior;
+				}
+			}
 			const usageReservation = await this.usage?.reserve({
 				kind: "task",
 				requestKey: key,
@@ -489,7 +546,10 @@ export class NativeRlmHost {
 				usageReservation?.deadlineAt === null || usageReservation?.deadlineAt === undefined
 					? request.timeoutMs
 					: Math.max(1, Math.min(request.timeoutMs, usageReservation.deadlineAt - Date.now()));
-			const deadlineTimeout = timeoutDelay < request.timeoutMs;
+			// Only a deadline the ledger capped below the task's own timeout is the root wall deadline.
+			const deadlineTimeout =
+				usageReservation?.deadlineAt != null &&
+				usageReservation.deadlineAt < usageReservation.admittedAt + request.timeoutMs;
 			const timer = setTimeout(() => {
 				void this.cancel(
 					task,
@@ -537,10 +597,12 @@ export class NativeRlmHost {
 		if (!Array.isArray(payload.nodes)) throw new Error("nodes must be an array");
 		const nodes: WorkflowNode[] = payload.nodes.map((value) => {
 			const node = objectInput(value);
-			fields(node, ["id", "definition", "input", "model", "timeout_ms", "dependsOn", "inputFrom"]);
+			fields(node, ["id", "definition", "input", "model", "timeout_ms", "dependsOn", "inputFrom", "when"]);
 			const id = nonemptyString(node.id, "Workflow node ID");
 			const definition = definitionKey(node.definition);
 			const item = this.definition(definition);
+			// A node that could never execute is a validation error, not a runtime failure after effects.
+			this.registry.canExecute(item);
 			const dependsOn = node.dependsOn === undefined ? [] : node.dependsOn;
 			if (
 				!Array.isArray(dependsOn) ||
@@ -548,9 +610,29 @@ export class NativeRlmHost {
 				new Set(dependsOn).size !== dependsOn.length
 			)
 				throw new Error("dependsOn must be an array of unique nonempty strings");
-			const inputFrom = node.inputFrom === undefined ? undefined : nonemptyString(node.inputFrom, "inputFrom");
+			let inputFrom: string | string[] | undefined;
+			if (Array.isArray(node.inputFrom)) {
+				inputFrom = node.inputFrom.map((source) => nonemptyString(source, "inputFrom entry"));
+				if (inputFrom.length === 0 || new Set(inputFrom).size !== inputFrom.length)
+					throw new Error("inputFrom must be a nonempty array of unique dependencies");
+			} else if (node.inputFrom !== undefined) inputFrom = nonemptyString(node.inputFrom, "inputFrom");
+			let when: WorkflowRoute | undefined;
+			if (node.when !== undefined) {
+				const route = objectInput(node.when);
+				fields(route, ["node", "field", "equals"]);
+				const routeNode = nonemptyString(route.node, "when.node");
+				if (!dependsOn.includes(routeNode)) throw new Error("when.node must name a dependency");
+				if (!Object.hasOwn(route, "equals") || !isJsonValue(route.equals))
+					throw new Error("when.equals must be a JSON value");
+				when = {
+					node: routeNode,
+					...(route.field === undefined ? {} : { field: nonemptyString(route.field, "when.field") }),
+					equals: route.equals,
+				};
+			}
 			if (inputFrom !== undefined) {
-				if (!dependsOn.includes(inputFrom)) throw new Error("inputFrom must name a dependency");
+				for (const source of Array.isArray(inputFrom) ? inputFrom : [inputFrom])
+					if (!dependsOn.includes(source)) throw new Error("inputFrom must name a dependency");
 				if (Object.hasOwn(node, "input")) throw new Error("Specify input or inputFrom, not both");
 			} else {
 				if (!isJsonValue(node.input)) throw new Error("Agent input is not JSON");
@@ -563,6 +645,7 @@ export class NativeRlmHost {
 				input: node.input as JsonValue | undefined,
 				dependsOn,
 				inputFrom,
+				...(when === undefined ? {} : { when }),
 				...taskOptions(node),
 			};
 		});
@@ -745,22 +828,72 @@ export class NativeRlmHost {
 		}
 		if (type === "workflows.run") {
 			const nodes = this.workflow(payload);
-			const output = new Map<string, NativeResult | { status: "skipped"; reason: string }>();
+			const output = new Map<string, WorkflowOutcome>();
+			// A dependency is satisfied only by its durable terminal result, never by admission.
 			while (output.size < nodes.length) {
 				const ready = nodes.filter(
 					(node) => !output.has(node.id) && node.dependsOn.every((dependency) => output.has(dependency)),
 				);
 				const results = await Promise.all(
-					ready.map(async (node) => {
-						if (node.dependsOn.some((dependency) => output.get(dependency)!.status !== "succeeded"))
-							return [node.id, { status: "skipped", reason: "Dependency did not succeed" }] as const;
+					ready.map(async (node): Promise<readonly [string, WorkflowOutcome]> => {
+						const unmet = node.dependsOn.find((dependency) => output.get(dependency)!.status !== "succeeded");
+						if (unmet !== undefined)
+							return [
+								node.id,
+								{
+									status: "skipped",
+									reason: `Dependency ${unmet} did not succeed (${output.get(unmet)!.status})`,
+								},
+							] as const;
+						const resultOf = (dependency: string) => (output.get(dependency) as NativeResult).value;
+						if (node.when) {
+							const routed = resultOf(node.when.node);
+							const actual =
+								node.when.field === undefined
+									? routed
+									: routed !== null && typeof routed === "object" && !Array.isArray(routed)
+										? routed[node.when.field]
+										: undefined;
+							if (actual === undefined || canonicalJson(actual) !== canonicalJson(node.when.equals))
+								return [
+									node.id,
+									{
+										status: "skipped",
+										reason: `Route condition on ${node.when.node}${node.when.field === undefined ? "" : `.${node.when.field}`} not met`,
+									},
+								] as const;
+						}
 						const input =
-							node.inputFrom === undefined ? node.input : (output.get(node.inputFrom) as NativeResult).value;
-						if (!isJsonValue(input)) throw new Error("Agent input is not JSON");
+							node.inputFrom === undefined
+								? node.input
+								: Array.isArray(node.inputFrom)
+									? Object.fromEntries(node.inputFrom.map((source) => [source, resultOf(source) ?? null]))
+									: resultOf(node.inputFrom);
 						const definition = this.definition(node.definition);
-						if (!this.registry.isValidInput(definition, input))
-							throw this.registry.validationError(definition, input, "input");
-						const task = await this.spawnTask({ ...node, input }, context, parentId);
+						// A bound input that does not fit fails this node explicitly; nothing is spawned for it.
+						if (!isJsonValue(input) || !this.registry.isValidInput(definition, input))
+							return [
+								node.id,
+								{
+									status: "failed",
+									error: `Bound input rejected: ${this.registry.validationError(definition, input, "input").message}`,
+									verification: "unverified",
+								},
+							] as const;
+						let task: TaskRecord;
+						try {
+							task = await this.spawnTask({ ...node, input }, context, parentId);
+						} catch (error) {
+							// Refused admission (capacity, deadline, closed host) is an explicit node failure.
+							return [
+								node.id,
+								{
+									status: "failed",
+									error: `Admission refused: ${error instanceof Error ? error.message : String(error)}`,
+									verification: "unverified",
+								},
+							] as const;
+						}
 						const result = await (task.promise ?? task.result!);
 						return [node.id, result] as const;
 					}),

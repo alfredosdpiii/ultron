@@ -409,10 +409,11 @@ export class NativeUsageLedger implements NativeUsageLedgerLike {
 					this.limits.maxAdmittedTasks
 			)
 				throw new Error(`Usage admitted-task limit exceeded for root ${rootId}`);
-			const requestedDeadline =
+			let requestedDeadline =
 				request.deadlineAt ?? (request.timeoutMs === undefined ? null : now + request.timeoutMs);
-			if (requestedDeadline !== null && root.deadlineAt !== null && requestedDeadline > root.deadlineAt)
-				throw new Error(`Usage wall deadline exceeded for root ${rootId}`);
+			// A child deadline is capped by the remaining root deadline, never extended past it.
+			if (root.deadlineAt !== null && (requestedDeadline === null || requestedDeadline > root.deadlineAt))
+				requestedDeadline = root.deadlineAt;
 			if (requestedDeadline !== null && requestedDeadline <= now)
 				throw new Error(`Usage deadline has expired for root ${rootId}`);
 			const reservation: StoredReservation = {
