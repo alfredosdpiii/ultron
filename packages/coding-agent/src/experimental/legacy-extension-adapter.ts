@@ -18,6 +18,7 @@ import type { ModelRuntime } from "../core/model-runtime.ts";
 import type { ResourceLoader } from "../core/resource-loader.ts";
 import { SessionManager } from "../core/session-manager.ts";
 import { theme } from "../modes/interactive/theme/theme.ts";
+import type { ExtensionUIBridge } from "./services/extension-ui-provider.ts";
 import type { LegacyExtensionCommandInfo, LegacyExtensionCommandResult } from "./services/legacy-extensions.ts";
 
 export interface LegacyExtensionAdapterOptions {
@@ -30,6 +31,8 @@ export interface LegacyExtensionAdapterOptions {
 	readonly model: Model<Api>;
 	readonly systemPrompt: string;
 	readonly onShutdown?: () => void;
+	/** Routes extension dialogs and notifications to an attached presentation; headless without it. */
+	readonly ui?: ExtensionUIBridge;
 }
 
 /**
@@ -68,7 +71,8 @@ export class LegacyExtensionAdapter {
 			this.#sessionManager,
 			new ModelRegistry(options.modelRuntime),
 		);
-		this.#runner.setUIContext(createHeadlessExtensionUI(), "tui");
+		const headless = createHeadlessExtensionUI();
+		this.#runner.setUIContext(options.ui === undefined ? headless : options.ui.createContext(headless), "tui");
 		this.#runner.bindCommandContext();
 	}
 
@@ -97,6 +101,8 @@ export class LegacyExtensionAdapter {
 		return this.#runner.getRegisteredCommands().map((command) => ({
 			name: command.invocationName,
 			description: command.description,
+			// Plain JSON for the service contract: Pi leaves optional fields undefined.
+			sourceInfo: JSON.parse(JSON.stringify(command.sourceInfo)),
 		}));
 	}
 

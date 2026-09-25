@@ -36,6 +36,7 @@ import { createHash } from "node:crypto";
 import { chmod, lstat, mkdir, readdir, readFile, readlink, rename, rm, symlink, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { isDeepStrictEqual } from "node:util";
+import type { Context } from "@earendil-works/chord";
 import {
 	type AgentMessage,
 	BACKGROUND_CONTEXT,
@@ -790,6 +791,72 @@ function piNameOf(entries: readonly SessionEntry[]): string | undefined {
 	return undefined;
 }
 
+/** A native Session's whole tree as Pi entries, in storage (parent-first) order. */
+export interface NativeSessionAsPi {
+	readonly entries: SessionEntry[];
+	/** The Pi id of the `main` lane tip (the entry Pi would resume at). */
+	readonly leafId: string | null;
+	readonly tipId: string | null;
+	readonly nativeEntries: Entry[];
+	readonly nativeById: Map<string, Entry>;
+	readonly produced: Map<string, SessionEntry[]>;
+	/** Native labels by target entry id (the resolved labels). */
+	readonly labels: Map<string, string>;
+}
+
+/**
+ * Convert every native entry of a Session (all branches) to the Pi entries that represent it, keeping entry ids.
+ * Entries imported from Pi that the native form cannot reproduce exactly come back as their original Pi entry.
+ */
+export async function nativeSessionEntriesToPi(
+	session: Pick<Session, "findEntries" | "scanValues" | "branch">,
+	context: Context,
+	lane = "main",
+): Promise<NativeSessionAsPi> {
+	const nativeEntries = await session.findEntries({ order: "asc" }, context);
+	const originals = new Map(
+		(await session.scanValues(piOriginalEntry(""), context)).map((stored) => [
+			stored.address.key,
+			stored.value as unknown as SessionEntry,
+		]),
+	);
+	const nativeById = new Map(nativeEntries.map((entry) => [entry.id, entry]));
+	// Copies made on import for branch-local context edits are not exported; Pi has the originals.
+	const copyOf = new Map(
+		(await session.scanValues(piCopyOf(""), context)).map((stored) => [stored.address.key, stored.value]),
+	);
+	const originalId = (nativeId: string): string => copyOf.get(nativeId) ?? nativeId;
+
+	// Storage order is parent-first, so every parent is converted before its children.
+	const produced = new Map<string, SessionEntry[]>();
+	const piIdOf = (nativeId: string | null): string | null =>
+		nativeId === null ? null : (produced.get(originalId(nativeId))?.at(-1)?.id ?? originalId(nativeId));
+	const piBranchTo = (nativeId: string | null): SessionEntry[] => {
+		const ids: string[] = [];
+		for (let id = nativeId; id !== null; id = nativeById.get(id)?.parentId ?? null) ids.push(id);
+		return ids.reverse().flatMap((id) => produced.get(originalId(id)) ?? []);
+	};
+	for (const entry of nativeEntries) {
+		if (copyOf.has(entry.id)) continue;
+		const base = { id: entry.id, parentId: piIdOf(entry.parentId), timestamp: iso(entry.timestamp) };
+		const original = originals.get(entry.id);
+		const items =
+			original !== undefined
+				? [original]
+				: entry.type === "compaction"
+					? compactionToPi(entry, base, piBranchTo(entry.parentId))
+					: [nativeToPiEntry(entry, base)];
+		produced.set(entry.id, items);
+	}
+	const entries = nativeEntries.flatMap((entry) => produced.get(entry.id) ?? []);
+	const branch = await session.branch(lane, context);
+	const tipId = (await branch?.getTipId(context)) ?? null;
+	const labels = new Map(
+		(await session.scanValues(entryLabel(""), context)).map((stored) => [stored.address.key, stored.value]),
+	);
+	return { entries, leafId: piIdOf(tipId), tipId, nativeEntries, nativeById, produced, labels };
+}
+
 /**
  * Write a native Session's whole tree as a Pi-format JSONL session (for rollback to Pi). Pi resumes at the
  * last entry, which is the native `main` tip. Labels, the session name, and the `main` lane model and thinking
@@ -805,45 +872,9 @@ export async function exportNativeSessionToPi(
 		const metadata = (await handle.repo.list(undefined, BACKGROUND_CONTEXT)).find((m) => m.path === path);
 		if (metadata === undefined) throw new Error(`Not a native session in its session directory: ${path}`);
 		session = await handle.repo.open(metadata, BACKGROUND_CONTEXT);
-		const nativeEntries = await session.findEntries({ order: "asc" }, BACKGROUND_CONTEXT);
-		const originals = new Map(
-			(await session.scanValues(piOriginalEntry(""), BACKGROUND_CONTEXT)).map((stored) => [
-				stored.address.key,
-				stored.value as unknown as SessionEntry,
-			]),
-		);
-		const nativeById = new Map(nativeEntries.map((entry) => [entry.id, entry]));
-		// Copies made on import for branch-local context edits are not exported; Pi has the originals.
-		const copyOf = new Map(
-			(await session.scanValues(piCopyOf(""), BACKGROUND_CONTEXT)).map((stored) => [
-				stored.address.key,
-				stored.value,
-			]),
-		);
-		const originalId = (nativeId: string): string => copyOf.get(nativeId) ?? nativeId;
-
-		// Storage order is parent-first, so every parent is converted before its children.
-		const produced = new Map<string, SessionEntry[]>();
-		const piIdOf = (nativeId: string | null): string | null =>
-			nativeId === null ? null : (produced.get(originalId(nativeId))?.at(-1)?.id ?? originalId(nativeId));
-		const piBranchTo = (nativeId: string | null): SessionEntry[] => {
-			const ids: string[] = [];
-			for (let id = nativeId; id !== null; id = nativeById.get(id)?.parentId ?? null) ids.push(id);
-			return ids.reverse().flatMap((id) => produced.get(originalId(id)) ?? []);
-		};
-		for (const entry of nativeEntries) {
-			if (copyOf.has(entry.id)) continue;
-			const base = { id: entry.id, parentId: piIdOf(entry.parentId), timestamp: iso(entry.timestamp) };
-			const original = originals.get(entry.id);
-			const items =
-				original !== undefined
-					? [original]
-					: entry.type === "compaction"
-						? compactionToPi(entry, base, piBranchTo(entry.parentId))
-						: [nativeToPiEntry(entry, base)];
-			produced.set(entry.id, items);
-		}
-		let entries = nativeEntries.flatMap((entry) => produced.get(entry.id) ?? []);
+		const converted = await nativeSessionEntriesToPi(session, BACKGROUND_CONTEXT);
+		const { nativeEntries, nativeById, produced, tipId, leafId: tipPiId } = converted;
+		let entries = [...converted.entries];
 		const ids = new Set(entries.map((entry) => entry.id));
 		let stamp = iso(Math.max(metadata.createdAt, ...nativeEntries.map((entry) => entry.timestamp)));
 		let leafId = entries.at(-1)?.id ?? null;
@@ -856,9 +887,6 @@ export async function exportNativeSessionToPi(
 		};
 
 		// Pi resumes at its last entry: make that the native main tip.
-		const main = await session.branch("main", BACKGROUND_CONTEXT);
-		const tipId = (await main?.getTipId(BACKGROUND_CONTEXT)) ?? null;
-		const tipPiId = piIdOf(tipId);
 		if (tipId !== null && tipPiId !== leafId) {
 			if (nativeEntries.some((entry) => entry.parentId === tipId)) {
 				leafId = tipPiId;
@@ -873,12 +901,7 @@ export async function exportNativeSessionToPi(
 
 		// Labels set natively after import (or never recorded as Pi entries).
 		const piLabels = piLabelsOf(entries);
-		const nativeLabels = new Map(
-			(await session.scanValues(entryLabel(""), BACKGROUND_CONTEXT)).map((stored) => [
-				stored.address.key,
-				stored.value,
-			]),
-		);
+		const nativeLabels = converted.labels;
 		for (const targetId of new Set([...piLabels.keys(), ...nativeLabels.keys()])) {
 			const label = nativeLabels.get(targetId);
 			if (piLabels.get(targetId) === label || !nativeById.has(targetId)) continue;

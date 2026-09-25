@@ -85,6 +85,7 @@ import {
 	isDirectInternalProcessEntry,
 	MAX_CONTROL_LINE_BYTES,
 } from "./process.ts";
+import { ExtensionUIBridge } from "./services/extension-ui-provider.ts";
 import {
 	createSessionWorkerServices,
 	type SessionWorkerRuntime,
@@ -310,6 +311,10 @@ export const SessionWorkerOptionsSchema = StrictObject({
 	noTools: Type.Optional(Type.Union([Type.Literal("all"), Type.Literal("builtin")])),
 	tools: Type.Optional(Type.Array(Type.String({ minLength: 1 }))),
 	excludeTools: Type.Optional(Type.Array(Type.String({ minLength: 1 }))),
+	/** Pi `-e` extension paths (absolute, or package sources), loaded in addition to discovered extensions. */
+	extensionPaths: Type.Optional(Type.Array(Type.String({ minLength: 1 }))),
+	/** Pi `--no-extensions`: skip extension discovery; explicit `extensionPaths` still load. */
+	noExtensions: Type.Optional(Type.Boolean()),
 	pluginManifestPaths: Type.Array(Type.String({ minLength: 1 })),
 });
 export type SessionWorkerOptions = Static<typeof SessionWorkerOptionsSchema>;
@@ -866,8 +871,11 @@ async function run(options: SessionWorkerRuntimeOptions, createHarness: CreateSe
 		services = await createSessionWorkerServices({
 			lane,
 			harness,
+			session,
 			cwd: metadata.cwd,
 			legacyExtensionCommands: runtime.legacyExtensionCommands,
+			extensionUI: runtime.extensionUI,
+			resourceSourceInfo: runtime.resourceSourceInfo,
 			inspect: runtime.inspect,
 			modelRuntime: runtime.modelRuntime,
 			settingsManager: runtime.settingsManager,
@@ -1160,6 +1168,8 @@ async function createCodingAgentHarness(
 		agentDir: getAgentDir(),
 		settingsManager,
 		systemPrompt: options.systemPrompt,
+		...(options.extensionPaths === undefined ? {} : { additionalExtensionPaths: [...options.extensionPaths] }),
+		...(options.noExtensions === true ? { noExtensions: true } : {}),
 	});
 	await resourceLoader.reload();
 	const loadedExtensions = resourceLoader.getExtensions();
@@ -1339,9 +1349,11 @@ async function createCodingAgentHarness(
 		)
 	).harness;
 	let legacyExtensions: LegacyExtensionAdapter | undefined;
+	const extensionUI = new ExtensionUIBridge();
 	try {
 		const lane = await harness.lane("main", TODO_CONTEXT);
 		legacyExtensions = new LegacyExtensionAdapter({
+			ui: extensionUI,
 			session,
 			lane,
 			harness,
@@ -1507,6 +1519,12 @@ async function createCodingAgentHarness(
 				list: async () => legacyExtensions?.commands ?? [],
 				run: async (name, args) => legacyExtensions?.runCommand(name, args) ?? { notifications: [] },
 			},
+			extensionUI,
+			resourceSourceInfo: () =>
+				new Map([
+					...resourceLoader.getPrompts().prompts.map((template) => [template.name, template.sourceInfo] as const),
+					...resourceLoader.getSkills().skills.map((skill) => [`skill:${skill.name}`, skill.sourceInfo] as const),
+				]),
 			facetLoader: createSessionPluginFacetLoader(options.pluginManifestPaths),
 		};
 	} catch (error) {

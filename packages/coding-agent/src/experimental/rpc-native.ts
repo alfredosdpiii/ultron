@@ -8,15 +8,9 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { type Context, isJsonValue } from "@earendil-works/chord";
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
-import type {
-	AgentMessage,
-	Entry,
-	LaneTranscriptSnapshot,
-	LaneWatchEvent,
-	ThinkingLevel,
-} from "@earendil-works/pi-agent-core";
-import type { ImageContent } from "@earendil-works/pi-ai";
+import { awaitWithContext, BACKGROUND_CONTEXT, withAbortSignal } from "@earendil-works/chord/context";
+import type { LaneTranscriptSnapshot, LaneWatchEvent, ThinkingLevel } from "@earendil-works/pi-agent-core";
+import type { Api, ImageContent, Model } from "@earendil-works/pi-ai";
 import { flushRawStdout, takeOverStdout, waitForRawStdoutBackpressure, writeRawStdout } from "../core/output-guard.ts";
 import { attachJsonlLineReader, serializeJsonLine } from "../modes/rpc/jsonl.ts";
 import { writeNativeSessionHtml } from "../ultron/native-export.ts";
@@ -25,7 +19,10 @@ import {
 	activateBuiltinClientServices,
 	openClientRuntime,
 } from "./client-runtime.ts";
+import { PiSessionView } from "./pi-session-view.ts";
 import { messageText, queueUpdate, RpcEventTranslator } from "./rpc-events.ts";
+import type { AgentOperationResponse } from "./services/agent-controller.ts";
+import { ExtensionUI, type ExtensionUIAnswer } from "./services/extension-ui.ts";
 import type { ModelSummary } from "./services/models.ts";
 import { SessionControl } from "./services/session-control.ts";
 
@@ -57,8 +54,13 @@ export async function runNativeRpcMode(options: NativeRpcOptions): Promise<void>
 			throw new Error("RPC mode requires exactly one discovered server");
 		}
 		const server = await activateBuiltinClientServices(runtime.servers[0]!);
-		const controlServices = server.session.open({ services: [SessionControl], assertAccess() {}, onError() {} });
+		const controlServices = server.session.open({
+			services: [SessionControl, ExtensionUI],
+			assertAccess() {},
+			onError() {},
+		});
 		const control = controlServices.use(SessionControl);
+		const extensionUI = controlServices.use(ExtensionUI);
 		await controlServices.ready(context);
 
 		let sessionId = await selectInitialSession(server, options, context, createdSessions);
@@ -92,9 +94,71 @@ export async function runNativeRpcMode(options: NativeRpcOptions): Promise<void>
 				};
 				eventWaiters.add(waiter);
 			});
+		/**
+		 * Start a lane operation and wait for its end event. The controller answers only once the operation is done,
+		 * so the end event can arrive before the response: ends are collected from before the request.
+		 */
+		const operationEnd = async (
+			start: () => Promise<AgentOperationResponse>,
+			endType: "navigation_end" | "compaction_end",
+		): Promise<LaneWatchEvent> => {
+			const ended = new Map<string, LaneWatchEvent>();
+			const waiters = new Map<string, (event: LaneWatchEvent) => void>();
+			const collect = (event: LaneWatchEvent): void => {
+				if (event.type !== endType) return;
+				ended.set(event.runId, event);
+				waiters.get(event.runId)?.(event);
+			};
+			eventWaiters.add(collect);
+			try {
+				const response = await start();
+				if (!response.accepted) throw new RpcCommandError(response.error.message);
+				return (
+					ended.get(response.operationId) ??
+					(await new Promise<LaneWatchEvent>((resolveEnd) => waiters.set(response.operationId, resolveEnd)))
+				);
+			} finally {
+				eventWaiters.delete(collect);
+			}
+		};
+		// Extension dialogs and notifications from the worker reach this client as Pi's extension_ui_request lines.
+		const uiAbort = new AbortController();
+		const uiContext = withAbortSignal(uiAbort.signal, BACKGROUND_CONTEXT);
+		let uiGeneration = 0;
+		const uiLoop = (async () => {
+			let cursor: number | null = null;
+			let generation = uiGeneration;
+			while (!uiAbort.signal.aborted) {
+				if (generation !== uiGeneration) {
+					generation = uiGeneration;
+					cursor = null;
+				}
+				try {
+					const polled = extensionUI.poll(cursor, 10_000, uiContext);
+					void polled.catch(() => {});
+					const result = await awaitWithContext(polled, uiContext);
+					if (generation !== uiGeneration) continue;
+					cursor = result.cursor;
+					for (const item of result.requests) output(item.request);
+				} catch {
+					if (uiAbort.signal.aborted) break;
+					cursor = null;
+					await new Promise((resolveDelay) => setTimeout(resolveDelay, 250));
+				}
+			}
+		})();
+		const stopExtensionUI = async (): Promise<void> => {
+			uiAbort.abort();
+			await uiLoop;
+		};
+		cleanups.unshift(stopExtensionUI);
+
+		const readView = async (): Promise<PiSessionView> =>
+			new PiSessionView(await control.readTree(context), sessionId, process.cwd());
 		const switchTo = async (nextSessionId: string): Promise<void> => {
 			await server.management.detach(context);
 			sessionId = nextSessionId;
+			uiGeneration += 1;
 			await attach(server, sessionId, context);
 		};
 		const availableModels = (): ModelSummary[] => server.models.state.value?.catalog.availableModels ?? [];
@@ -171,6 +235,7 @@ export async function runNativeRpcMode(options: NativeRpcOptions): Promise<void>
 				case "get_state": {
 					const current = snapshot();
 					const settings = await control.getSettings(context);
+					const view = await readView();
 					return ok({
 						model: currentModel() === undefined ? undefined : rpcModel(currentModel()!),
 						thinkingLevel: server.models.state.value?.configuration.thinkingLevel ?? "off",
@@ -178,10 +243,11 @@ export async function runNativeRpcMode(options: NativeRpcOptions): Promise<void>
 						isCompacting: current.operation?.kind === "compaction",
 						steeringMode: settings.steeringMode,
 						followUpMode: settings.followUpMode,
+						...(view.sessionFile === undefined ? {} : { sessionFile: view.sessionFile }),
 						sessionId,
 						...(settings.name === null ? {} : { sessionName: settings.name }),
 						autoCompactionEnabled: settings.autoCompaction,
-						messageCount: messages(current.transcript).length,
+						messageCount: view.messages().length,
 						pendingMessageCount: current.queues.length,
 					});
 				}
@@ -228,22 +294,25 @@ export async function runNativeRpcMode(options: NativeRpcOptions): Promise<void>
 				case "compact": {
 					const customInstructions =
 						typeof command.customInstructions === "string" ? command.customInstructions : null;
-					const response = await server.agent.compact({ customInstructions }, context);
-					if (!response.accepted) throw new RpcCommandError(response.error.message);
-					const end = await waitForEvent(
-						(event) => event.type === "compaction_end" && event.runId === response.operationId,
+					const end = await operationEnd(
+						() => server.agent.compact({ customInstructions }, context),
+						"compaction_end",
 					);
 					if (end.type !== "compaction_end" || end.status !== "completed") {
 						const reason =
 							end.type === "compaction_end" && end.status === "failed" ? end.error.message : undefined;
 						throw new RpcCommandError(reason ?? "Compaction did not complete");
 					}
-					const entry = snapshot().transcript.find((candidate) => candidate.id === end.entryId);
-					return ok(
-						entry?.type === "compaction"
-							? { summary: entry.summary, tokensBefore: entry.tokensBefore, entryId: entry.id }
-							: { entryId: end.entryId },
-					);
+					// Pi returns the CompactionResult its compaction entry records.
+					const entry = (await readView()).entries.find((candidate) => candidate.id === end.entryId);
+					if (entry?.type !== "compaction") throw new RpcCommandError("Compaction produced no compaction entry");
+					return ok({
+						summary: entry.summary,
+						firstKeptEntryId: entry.firstKeptEntryId,
+						tokensBefore: entry.tokensBefore,
+						...(entry.usage === undefined ? {} : { usage: entry.usage }),
+						...(entry.details === undefined ? {} : { details: entry.details }),
+					});
 				}
 				case "set_auto_compaction":
 					await control.setAutoCompaction(command.enabled === true, context);
@@ -271,7 +340,7 @@ export async function runNativeRpcMode(options: NativeRpcOptions): Promise<void>
 					await control.abortBash(context);
 					return ok();
 				case "get_session_stats":
-					return ok(snapshot().stats);
+					return ok((await readView()).stats(sessionId, currentModel()?.model));
 				case "switch_session": {
 					if (typeof command.sessionPath !== "string")
 						throw new RpcCommandError("switch_session requires sessionPath");
@@ -280,7 +349,8 @@ export async function runNativeRpcMode(options: NativeRpcOptions): Promise<void>
 				}
 				case "fork": {
 					if (typeof command.entryId !== "string") throw new RpcCommandError("fork requires entryId");
-					const entry = snapshot().transcript.find((candidate) => candidate.id === command.entryId);
+					// As in Pi, any user message in the tree can be forked from, not only the active branch.
+					const entry = (await readView()).entries.find((candidate) => candidate.id === command.entryId);
 					if (entry?.type !== "message" || entry.message.role !== "user") {
 						throw new RpcCommandError(`Entry is not a user message: ${command.entryId}`);
 					}
@@ -297,32 +367,29 @@ export async function runNativeRpcMode(options: NativeRpcOptions): Promise<void>
 				}
 				case "get_fork_messages":
 					return ok({
-						messages: snapshot().transcript.flatMap((entry) =>
-							entry.type === "message" && entry.message.role === "user"
-								? [{ entryId: entry.id, text: messageText(entry.message) }]
-								: [],
-						),
+						messages: (await readView()).entries.flatMap((entry) => {
+							if (entry.type !== "message" || entry.message.role !== "user") return [];
+							const text = messageText(entry.message);
+							return text ? [{ entryId: entry.id, text }] : [];
+						}),
 					});
 				case "get_entries": {
-					const current = snapshot();
-					let entries = current.transcript;
+					// Pi entries from every branch, in session order.
+					const view = await readView();
+					let entries = view.entries;
 					if (typeof command.since === "string") {
 						const index = entries.findIndex((entry) => entry.id === command.since);
 						if (index === -1) throw new RpcCommandError(`Entry not found: ${command.since}`);
 						entries = entries.slice(index + 1);
 					}
-					return ok({ entries, leafId: current.tipId });
+					return ok({ entries, leafId: view.leafId });
 				}
 				case "get_tree": {
-					const current = snapshot();
-					return ok({ tree: branchTree(current.transcript), leafId: current.tipId });
+					const view = await readView();
+					return ok({ tree: view.tree(), leafId: view.leafId });
 				}
-				case "get_last_assistant_text": {
-					const last = [...messages(snapshot().transcript)]
-						.reverse()
-						.find((message) => message.role === "assistant");
-					return ok({ text: last === undefined ? null : messageText(last) });
-				}
+				case "get_last_assistant_text":
+					return ok({ text: (await readView()).lastAssistantText() ?? null });
 				case "set_session_name": {
 					const name = typeof command.name === "string" ? command.name.trim() : "";
 					if (!name) throw new RpcCommandError("Session name cannot be empty");
@@ -330,7 +397,7 @@ export async function runNativeRpcMode(options: NativeRpcOptions): Promise<void>
 					return ok();
 				}
 				case "get_messages":
-					return ok({ messages: messages(snapshot().transcript) });
+					return ok({ messages: (await readView()).messages() });
 				case "get_commands": {
 					const commands = await control.listCommands(context);
 					return ok({
@@ -338,6 +405,7 @@ export async function runNativeRpcMode(options: NativeRpcOptions): Promise<void>
 							name: entry.name,
 							...(entry.description === null ? {} : { description: entry.description }),
 							source: entry.source,
+							...(entry.sourceInfo === null ? {} : { sourceInfo: entry.sourceInfo }),
 						})),
 					});
 				}
@@ -368,12 +436,11 @@ export async function runNativeRpcMode(options: NativeRpcOptions): Promise<void>
 			}
 
 			async function navigate(targetId: string | null): Promise<void> {
-				const response = await server.agent.navigate(
-					{ targetId, summarize: false, label: null, customInstructions: null },
-					context,
+				await operationEnd(
+					() =>
+						server.agent.navigate({ targetId, summarize: false, label: null, customInstructions: null }, context),
+					"navigation_end",
 				);
-				if (!response.accepted) throw new RpcCommandError(response.error.message);
-				await waitForEvent((event) => event.type === "navigation_end" && event.runId === response.operationId);
 			}
 		};
 
@@ -393,6 +460,7 @@ export async function runNativeRpcMode(options: NativeRpcOptions): Promise<void>
 		});
 		await Promise.allSettled([...inFlight]);
 		await deliveryTail;
+		await stopExtensionUI();
 
 		async function handleLine(line: string): Promise<void> {
 			let command: RpcCommand;
@@ -407,8 +475,14 @@ export async function runNativeRpcMode(options: NativeRpcOptions): Promise<void>
 				});
 				return;
 			}
-			// Native extensions run headless in the worker; there are no UI requests to answer.
-			if (command.type === "extension_ui_response") return;
+			if (command.type === "extension_ui_response") {
+				// Fire-and-forget, as in Pi: unknown ids are ignored and nothing is written back.
+				const answer = extensionUIAnswer(command);
+				if (typeof command.id === "string" && answer !== undefined) {
+					await extensionUI.respond(command.id, answer, context).catch(() => {});
+				}
+				return;
+			}
 			try {
 				const response = await handle(command);
 				if (response) output(response);
@@ -501,20 +575,16 @@ function queueMode(mode: unknown): "all" | "one-at-a-time" {
 	return mode;
 }
 
-/** Pi clients read `provider` and `id`; native models do not replicate the full provider record. */
-function rpcModel(model: ModelSummary): { provider: string; id: string; name: string; reasoning: boolean } {
-	return { provider: model.provider, id: model.modelId, name: model.name, reasoning: model.reasoning };
+/** The full Pi `Model` the worker's model runtime resolved (older workers only send the summary fields). */
+function rpcModel(
+	model: ModelSummary,
+): Model<Api> | { provider: string; id: string; name: string; reasoning: boolean } {
+	return model.model ?? { provider: model.provider, id: model.modelId, name: model.name, reasoning: model.reasoning };
 }
 
-function messages(entries: readonly Entry[]): AgentMessage[] {
-	return entries.flatMap((entry) => (entry.type === "message" ? [entry.message] : []));
-}
-
-/** The replicated transcript holds only the active branch, so the tree is that single path. */
-function branchTree(entries: readonly Entry[]): Array<{ entry: Entry; children: unknown[] }> {
-	let children: Array<{ entry: Entry; children: unknown[] }> = [];
-	for (const entry of [...entries].reverse()) {
-		children = [{ entry, children }];
-	}
-	return children;
+function extensionUIAnswer(command: RpcCommand): ExtensionUIAnswer | undefined {
+	if (command.cancelled === true) return { cancelled: true };
+	if (typeof command.confirmed === "boolean") return { confirmed: command.confirmed };
+	if (typeof command.value === "string") return { value: command.value };
+	return undefined;
 }

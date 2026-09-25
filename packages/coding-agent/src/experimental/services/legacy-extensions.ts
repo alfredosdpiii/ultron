@@ -3,6 +3,17 @@ import { type Context, defineService, type JsonValue } from "@earendil-works/cho
 export interface LegacyExtensionCommandInfo {
 	readonly name: string;
 	readonly description?: string;
+	/** Pi's `SourceInfo` for the extension that registered the command. */
+	readonly sourceInfo?: CommandSourceInfo;
+}
+
+/** Pi's `SourceInfo` (kept structural so the service contract stays plain JSON). */
+export interface CommandSourceInfo {
+	path: string;
+	source: string;
+	scope: "user" | "project" | "temporary";
+	origin: "package" | "top-level";
+	baseDir?: string;
 }
 
 export interface LegacyExtensionCommandResult {

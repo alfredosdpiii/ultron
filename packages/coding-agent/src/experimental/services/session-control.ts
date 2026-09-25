@@ -1,4 +1,5 @@
 import { type Context, defineService, type JsonValue } from "@earendil-works/chord";
+import type { CommandSourceInfo } from "./legacy-extensions.ts";
 
 export type SessionQueueMode = "all" | "one-at-a-time";
 
@@ -14,6 +15,8 @@ export interface SessionCommandInfo {
 	name: string;
 	description: string | null;
 	source: "extension" | "prompt" | "skill";
+	/** Pi's `SourceInfo` for the owning resource, when the worker knows it. */
+	sourceInfo: CommandSourceInfo | null;
 }
 
 export interface SessionBashResult {
@@ -22,6 +25,18 @@ export interface SessionBashResult {
 	cancelled: boolean;
 	truncated: boolean;
 	fullOutputPath: string | null;
+}
+
+/** The whole Session tree (every branch) in Pi's entry format, read from the worker's storage. */
+export interface SessionTreeRead {
+	/** Pi `SessionEntry` objects (typed as JSON for the service contract) in storage order, ids unchanged. */
+	entries: JsonValue[];
+	/** The entry the main lane's tip maps to. */
+	leafId: string | null;
+	/** Resolved labels by target entry id. */
+	labels: Record<string, string>;
+	/** The native Session file. */
+	sessionFile: string | null;
 }
 
 /** Session settings and user actions that act on the worker-owned harness directly. */
@@ -38,6 +53,8 @@ export interface SessionControl {
 	abortBash(context: Context): Promise<void>;
 	/** Read recorded runtime state (tasks, memory evidence, skills, experiments) without side effects. */
 	inspect(request: string, payload: JsonValue, context: Context): Promise<JsonValue>;
+	/** Read every entry of the Session (all branches) as Pi entries. Read-only. */
+	readTree(context: Context): Promise<SessionTreeRead>;
 }
 
 /** Read-only host requests the inspector may issue. None of them runs a search or starts work. */

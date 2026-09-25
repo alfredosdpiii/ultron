@@ -47,6 +47,7 @@ export function createModelsService(
 				modelId: model.id,
 				name: model.name,
 				reasoning: model.reasoning,
+				model: JSON.parse(JSON.stringify(model)) as typeof model,
 			})),
 		};
 	};

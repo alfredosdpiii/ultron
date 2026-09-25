@@ -23,6 +23,7 @@ import {
 } from "@earendil-works/pi-agent-core";
 import { ProcessTerminal, TuiMainScreen } from "@earendil-works/pi-tui";
 import { beforeAll, describe, expect, test, vi } from "vitest";
+import type { ExtensionUIContext } from "../src/core/extensions/types.ts";
 import { type ClientTuiServer, ExperimentalClientTui } from "../src/experimental/client-tui.ts";
 import { createPresentationFacetData } from "../src/experimental/plugins/bundled.ts";
 import { AgentController } from "../src/experimental/services/agent-controller.ts";
@@ -33,6 +34,8 @@ import type {
 	SessionAttachmentState,
 	SessionServiceSource,
 } from "../src/experimental/services/connection.ts";
+import { ExtensionUI } from "../src/experimental/services/extension-ui.ts";
+import { ExtensionUIBridge } from "../src/experimental/services/extension-ui-provider.ts";
 import { LegacyExtensionCommands } from "../src/experimental/services/legacy-extensions.ts";
 import { Models, type ModelsState } from "../src/experimental/services/models.ts";
 import { PresentationPlugins, SessionPlugins } from "../src/experimental/services/plugins.ts";
@@ -320,7 +323,10 @@ describe("experimental client TUI", () => {
 				Transcript,
 				LegacyExtensionCommands,
 				SessionControl,
+				ExtensionUI,
 			]);
+			const extensionUIBridge = new ExtensionUIBridge();
+			sessionProvider.provide(ExtensionUI, extensionUIBridge.service);
 			sessionProvider.provide(SessionPlugins, { reload: reloadSessionPlugins });
 			sessionProvider.provide(SessionControl, {
 				getSettings: async () => ({
@@ -339,6 +345,7 @@ describe("experimental client TUI", () => {
 				bash: async () => ({ output: "", exitCode: 0, cancelled: false, truncated: false, fullOutputPath: null }),
 				abortBash: async () => {},
 				inspect,
+				readTree: async () => ({ entries: [], leafId: null, labels: {}, sessionFile: null }),
 			});
 			sessionProvider.provide(LegacyExtensionCommands, {
 				list: async () => [],
@@ -386,7 +393,15 @@ describe("experimental client TUI", () => {
 				},
 			});
 			const sessionNamespace = createRemoteServiceBinding({
-				services: [Models, AgentController, SessionPlugins, Transcript, LegacyExtensionCommands, SessionControl],
+				services: [
+					Models,
+					AgentController,
+					SessionPlugins,
+					Transcript,
+					LegacyExtensionCommands,
+					SessionControl,
+					ExtensionUI,
+				],
 				transport: createLoopbackServiceTransport(sessionProvider),
 				bound: false,
 			});
@@ -522,6 +537,9 @@ describe("experimental client TUI", () => {
 					retryAt: null,
 				});
 				await vi.waitFor(() => expect(component.render(80).join("\n")).toContain("retrying"));
+				// Pi's Ctrl-C: the first press only clears the editor; a second press within 500 ms exits.
+				component.handleInput("\u0003");
+				expect(finished).toBe(false);
 				component.handleInput("\u0003");
 				expect(finished).toBe(true);
 				finished = false;
@@ -554,8 +572,35 @@ describe("experimental client TUI", () => {
 				await vi.waitFor(() => expect(selectThinking).toHaveBeenCalledWith("high", expect.anything()));
 				expect(modelsState.value.configuration.thinkingLevel).toBe("high");
 
+				// Extension dialogs from the worker open the TUI selector and the answer flows back.
+				const extensionContext = extensionUIBridge.createContext({} as ExtensionUIContext);
+				await vi.waitFor(() => expect(extensionUIBridge.serving).toBe(true));
+				const picked = extensionContext.select("Pick one", ["alpha", "beta"]);
+				await vi.waitFor(() => expect(component.render(80).join("\n")).toContain("Pick one"));
+				component.handleInput("\u001b[B");
+				component.handleInput("\r");
+				expect(await picked).toBe("beta");
+				const confirmed = extensionContext.confirm("Proceed", "really?");
+				await vi.waitFor(() => expect(component.render(80).join("\n")).toContain("Proceed: really?"));
+				component.handleInput("\r");
+				expect(await confirmed).toBe(true);
+				extensionContext.notify("extension says hi", "info");
+				await vi.waitFor(() => expect(component.render(80).join("\n")).toContain("extension says hi"));
+
+				// Ctrl-C clears a draft without exiting; Ctrl-D does nothing on a non-empty editor; two quick
+				// Ctrl-C presses exit.
+				component.handleInput("draft");
+				component.handleInput("\u0004");
+				expect(finished).toBe(false);
+				expect(component.render(80).join("\n")).toContain("draft");
 				component.handleInput("\u0003");
-				await vi.waitFor(() => expect(finished).toBe(true));
+				expect(finished).toBe(false);
+				expect(component.render(80).join("\n")).not.toContain("draft");
+				await new Promise((resolveWait) => setTimeout(resolveWait, 600));
+				component.handleInput("\u0003");
+				expect(finished).toBe(false);
+				component.handleInput("\u0003");
+				expect(finished).toBe(true);
 
 				await component.close();
 				const rendersAfterClose = requestRender.mock.calls.length;

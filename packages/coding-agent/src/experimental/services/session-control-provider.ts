@@ -1,17 +1,21 @@
 import type { Context, JsonValue } from "@earendil-works/chord";
-import type { AgentHarness, AgentLane, BashExecutionMessage } from "@earendil-works/pi-agent-core";
+import type { AgentHarness, AgentLane, BashExecutionMessage, Session } from "@earendil-works/pi-agent-core";
 import { executeBashWithOperations } from "../../core/bash-executor.ts";
 import type { SettingsManager } from "../../core/settings-manager.ts";
 import { createLocalBashOperations } from "../../core/tools/bash.ts";
-import type { LegacyExtensionCommands } from "./legacy-extensions.ts";
+import { nativeSessionEntriesToPi } from "../../ultron/migration.ts";
+import type { CommandSourceInfo, LegacyExtensionCommands } from "./legacy-extensions.ts";
 import { INSPECTION_REQUESTS, type SessionCommandInfo, type SessionControl } from "./session-control.ts";
 
 export function createSessionControl(options: {
 	readonly harness: AgentHarness;
 	readonly lane: AgentLane;
+	readonly session?: Session;
 	readonly cwd: string;
 	readonly settingsManager?: SettingsManager;
 	readonly extensionCommands?: LegacyExtensionCommands;
+	/** Pi `SourceInfo` of prompt templates and skills by command name (`name`, `skill:name`). */
+	readonly resourceSourceInfo?: () => ReadonlyMap<string, CommandSourceInfo>;
 	readonly inspect?: (request: string, payload: Record<string, unknown>, context: Context) => Promise<unknown>;
 }): SessionControl {
 	const { harness, lane } = options;
@@ -49,16 +53,29 @@ export function createSessionControl(options: {
 				options.extensionCommands?.list(context) ?? [],
 				harness.getResources(context),
 			]);
+			const sources = options.resourceSourceInfo?.() ?? new Map<string, CommandSourceInfo>();
 			const commands: SessionCommandInfo[] = extensionCommands.map((command) => ({
 				name: command.name,
 				description: command.description ?? null,
 				source: "extension",
+				sourceInfo: plainSourceInfo(command.sourceInfo),
 			}));
 			for (const template of resources.promptTemplates ?? []) {
-				commands.push({ name: template.name, description: template.description ?? null, source: "prompt" });
+				commands.push({
+					name: template.name,
+					description: template.description ?? null,
+					source: "prompt",
+					sourceInfo: plainSourceInfo(sources.get(template.name)),
+				});
 			}
 			for (const skill of resources.skills ?? []) {
-				commands.push({ name: `skill:${skill.name}`, description: skill.description ?? null, source: "skill" });
+				const name = `skill:${skill.name}`;
+				commands.push({
+					name,
+					description: skill.description ?? null,
+					source: "skill",
+					sourceInfo: plainSourceInfo(sources.get(name)),
+				});
 			}
 			return commands;
 		},
@@ -110,5 +127,29 @@ export function createSessionControl(options: {
 			if (typeof body !== "object" || Array.isArray(body)) throw new Error("Inspection payload must be an object");
 			return (await options.inspect(request, body, context)) as JsonValue;
 		},
+		async readTree(context) {
+			const session = options.session;
+			if (session === undefined) throw new Error("This Session worker does not expose its storage");
+			const converted = await nativeSessionEntriesToPi(session, context, lane.name);
+			const path = (session.metadata as { path?: unknown }).path;
+			return {
+				entries: converted.entries as unknown as JsonValue[],
+				leafId: converted.leafId,
+				labels: Object.fromEntries(converted.labels),
+				sessionFile: typeof path === "string" ? path : null,
+			};
+		},
+	};
+}
+
+/** Service results must be plain JSON: drop the optional fields Pi leaves `undefined`. */
+function plainSourceInfo(info: CommandSourceInfo | undefined): CommandSourceInfo | null {
+	if (info === undefined) return null;
+	return {
+		path: info.path,
+		source: info.source,
+		scope: info.scope,
+		origin: info.origin,
+		...(info.baseDir === undefined ? {} : { baseDir: info.baseDir }),
 	};
 }

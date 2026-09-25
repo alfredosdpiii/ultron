@@ -353,6 +353,10 @@ export interface StartServerOptions {
 	readonly noTools?: "all" | "builtin";
 	readonly tools?: readonly string[];
 	readonly excludeTools?: readonly string[];
+	/** Pi `-e` extension paths for new Session workers (resolved against the client's cwd). */
+	readonly extensionPaths?: readonly string[];
+	/** Pi `--no-extensions` for new Session workers. */
+	readonly noExtensions?: boolean;
 	/** Hold the server open without client or Session demand. Defaults to true for foreground servers. */
 	readonly keepAlive?: boolean;
 	/** Optional explicit Radius credential. Stored Radius auth is used when omitted. */
@@ -577,7 +581,9 @@ export async function startServer(options: StartServerOptions = {}): Promise<Run
 		options.systemPrompt === undefined &&
 		options.noTools === undefined &&
 		options.tools === undefined &&
-		options.excludeTools === undefined
+		options.excludeTools === undefined &&
+		options.extensionPaths === undefined &&
+		options.noExtensions === undefined
 			? undefined
 			: {
 					...(options.provider === undefined ? {} : { provider: options.provider }),
@@ -588,6 +594,8 @@ export async function startServer(options: StartServerOptions = {}): Promise<Run
 					...(options.noTools === undefined ? {} : { noTools: options.noTools }),
 					...(options.tools === undefined ? {} : { tools: options.tools }),
 					...(options.excludeTools === undefined ? {} : { excludeTools: options.excludeTools }),
+					...(options.extensionPaths === undefined ? {} : { extensionPaths: options.extensionPaths }),
+					...(options.noExtensions === undefined ? {} : { noExtensions: options.noExtensions }),
 				};
 	const directory = resolveServerDirectory(options.directory ?? process.env[LEGACY_ENV_SERVER_DIR]);
 	const { serverId, release } = await acquireServerProfile(

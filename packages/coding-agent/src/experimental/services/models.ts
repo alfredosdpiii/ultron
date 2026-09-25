@@ -1,5 +1,6 @@
 import { type Context, defineService, type ReplicatedState } from "@earendil-works/chord";
 import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
+import type { Api, Model } from "@earendil-works/pi-ai";
 
 export interface ModelRef {
 	provider: string;
@@ -9,6 +10,8 @@ export interface ModelRef {
 export interface ModelSummary extends ModelRef {
 	name: string;
 	reasoning: boolean;
+	/** The full Pi model record (what `ModelRuntime` resolves), as Pi's RPC `Model` objects carry it. */
+	model?: Model<Api>;
 }
 
 export interface ModelsState {

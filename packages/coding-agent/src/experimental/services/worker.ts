@@ -11,12 +11,14 @@ import {
 	type ServiceCall,
 	type ServiceProviderUpdate,
 } from "@earendil-works/chord";
-import type { AgentHarness, AgentLane } from "@earendil-works/pi-agent-core";
+import type { AgentHarness, AgentLane, Session } from "@earendil-works/pi-agent-core";
 import type { ModelRuntime } from "../../core/model-runtime.ts";
 import type { SettingsManager } from "../../core/settings-manager.ts";
 import { AgentController } from "./agent-controller.ts";
 import { createAgentController } from "./agent-controller-provider.ts";
-import { LegacyExtensionCommands } from "./legacy-extensions.ts";
+import { ExtensionUI } from "./extension-ui.ts";
+import { ExtensionUIBridge } from "./extension-ui-provider.ts";
+import { type CommandSourceInfo, LegacyExtensionCommands } from "./legacy-extensions.ts";
 import { createModelsServiceFacet } from "./models-provider.ts";
 import { SessionPlugins } from "./plugins.ts";
 import { SessionControl } from "./session-control.ts";
@@ -31,6 +33,10 @@ export interface SessionWorkerRuntime {
 	readonly settingsManager?: SettingsManager;
 	readonly facetLoader?: FacetLoader;
 	readonly legacyExtensionCommands?: LegacyExtensionCommands;
+	/** Extension dialogs and notifications, served to attached presentations through `ExtensionUI`. */
+	readonly extensionUI?: ExtensionUIBridge;
+	/** Pi `SourceInfo` of prompt templates and skills by command name, for `get_commands`. */
+	readonly resourceSourceInfo?: () => ReadonlyMap<string, CommandSourceInfo>;
 	/** Receives the worker's activity hold so detached background work keeps the worker alive. */
 	readonly bindActivity?: (hold: () => () => void) => void;
 	/** Read-only access to the RLM host, used by inspection commands. */
@@ -57,11 +63,15 @@ export async function createSessionWorkerServices(options: {
 	readonly lane: AgentLane;
 	/** Enables SessionControl; omitted by workers that do not own a harness. */
 	readonly harness?: AgentHarness;
+	/** The worker's Session, for whole-tree reads (all branches). */
+	readonly session?: Session;
 	readonly cwd?: string;
 	readonly modelRuntime: ModelRuntime | undefined;
 	readonly settingsManager?: SettingsManager;
 	readonly facetLoader?: FacetLoader;
 	readonly legacyExtensionCommands?: LegacyExtensionCommands;
+	readonly extensionUI?: ExtensionUIBridge;
+	readonly resourceSourceInfo?: SessionWorkerRuntime["resourceSourceInfo"];
 	readonly inspect?: SessionWorkerRuntime["inspect"];
 	publish(scope: WorkerServiceScope, subscriptionId: string, update: ServiceProviderUpdate): Promise<void>;
 }): Promise<SessionWorkerServices> {
@@ -83,6 +93,14 @@ export async function createSessionWorkerServices(options: {
 			);
 		},
 	});
+	const extensionUI = options.extensionUI ?? new ExtensionUIBridge();
+	const extensionUIFacet = defineFacet({
+		id: "@ultron/extension-ui",
+		setup(env) {
+			env.provide(ExtensionUI, extensionUI.service);
+			env.own(() => extensionUI.close());
+		},
+	});
 	const sessionControlFacet = defineFacet({
 		id: "@ultron/session-control",
 		setup(env) {
@@ -92,9 +110,11 @@ export async function createSessionWorkerServices(options: {
 				createSessionControl({
 					harness: options.harness,
 					lane: options.lane,
+					session: options.session,
 					cwd: options.cwd,
 					settingsManager: options.settingsManager,
 					extensionCommands: options.legacyExtensionCommands,
+					resourceSourceInfo: options.resourceSourceInfo,
 					inspect: options.inspect,
 				}),
 			);
@@ -112,6 +132,7 @@ export async function createSessionWorkerServices(options: {
 		pluginRuntimeFacet,
 		legacyExtensionFacet,
 		sessionControlFacet,
+		extensionUIFacet,
 		createModelsServiceFacet(options),
 		createTranscriptServiceFacet(options.lane),
 	]).load();
