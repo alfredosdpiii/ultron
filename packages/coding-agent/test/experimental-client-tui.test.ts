@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { resolve } from "node:path";
 import {
 	createRemoteServiceBinding,
+	type JsonValue,
 	type MutableReplicatedState,
 	RemoteServiceProvider,
 	type RemoteServiceTransport,
@@ -67,6 +68,64 @@ function createLoopbackServiceTransport(provider: RemoteServiceProvider): Remote
 
 function publishReplacement<T extends object>(state: MutableReplicatedState<T>, value: T): void {
 	state.replace(BACKGROUND_CONTEXT, value);
+}
+
+const agentsStatusFixture: JsonValue = {
+	definitions: [],
+	tasks: [
+		{ id: "ultron-task-aaaa1111", definition: "planner@1", state: "running" },
+		{
+			id: "ultron-task-bbbb2222",
+			definition: "rlm-child@1",
+			state: "completed",
+			parentId: "ultron-task-aaaa1111",
+			result: { status: "succeeded", value: "child answer", verification: "unverified" },
+		},
+		{
+			id: "ultron-task-cccc3333",
+			definition: "reviewer@1",
+			state: "failed",
+			parentId: "ultron-task-aaaa1111",
+			result: { status: "failed", error: "deadline exceeded", verification: "unverified" },
+		},
+	],
+	usage: { admittedTasks: 3, remainingWallMs: 600_000, usage: { cost: null }, reservations: [] },
+	limits: { maxAdmittedTasks: 24, maxWallMs: 1_800_000 },
+	controls: {},
+};
+
+function plain(lines: readonly string[]): string {
+	return lines.join("\n").replace(/\u001b\[[0-9;]*m/g, "");
+}
+
+function inspectFixture(request: string): JsonValue {
+	if (request === "agents.status") return agentsStatusFixture;
+	if (request === "instances.list") return [{ task_id: "ultron-task-aaaa1111", state: "open", invocations: [] }];
+	if (request === "rlm.pool") return { live: 2, maxLive: 16, lanes: [], evictions: 0 };
+	if (request === "progress.assess") return { classification: "progressing", receipts: ["r1"] };
+	if (request === "jev.decisions") {
+		return {
+			available: { jev: true, hindsight: false },
+			capacity: 200,
+			decisions: [
+				{
+					id: "jev-1",
+					at: Date.now() - 2000,
+					kind: "triage",
+					status: "ok",
+					durationMs: 40,
+					inputSha256: "abcdef012345",
+					inputChars: 5,
+					route: "powerful",
+					routeConfidence: 0.8,
+					complexity: 1,
+					urgency: "normal",
+					category: "debugging",
+				},
+			],
+		};
+	}
+	return null;
 }
 
 function laneSnapshot(): LaneSnapshot {
@@ -236,6 +295,7 @@ describe("experimental client TUI", () => {
 			const prepareSessionPlugins = vi.fn(async () => reloadData);
 			const reloadPresentationPlugins = vi.fn(async () => reloadData);
 			const reloadSessionPlugins = vi.fn(async () => {});
+			const inspect = vi.fn(async (request: string) => inspectFixture(request));
 			const serverProvider = new RemoteServiceProvider([SessionDirectory, SessionManagement, PresentationPlugins]);
 			serverProvider.provide(SessionDirectory, { state: directoryState });
 			serverProvider.provide(PresentationPlugins, {
@@ -278,7 +338,7 @@ describe("experimental client TUI", () => {
 				listCommands: async () => [],
 				bash: async () => ({ output: "", exitCode: 0, cancelled: false, truncated: false, fullOutputPath: null }),
 				abortBash: async () => {},
-				inspect: async () => null,
+				inspect,
 			});
 			sessionProvider.provide(LegacyExtensionCommands, {
 				list: async () => [],
@@ -404,6 +464,46 @@ describe("experimental client TUI", () => {
 				expect(component.render(80).join("\n")).toContain("hello");
 				expect(component.render(80).join("\n")).not.toContain("Working...");
 				expect(component.render(80).join("\n")).not.toContain("Operation run-1 completed");
+
+				// The compact RLM summary shows in the footer while the panel is hidden and a task runs.
+				await vi.waitFor(() =>
+					expect(plain(component.render(80))).toContain("RLM ▸ 1 running · 1 done · 1 failed · 3/24 tasks"),
+				);
+				component.handleInput("/rlm");
+				component.handleInput("\u001b");
+				component.handleInput("\r");
+				await vi.waitFor(() => {
+					const panel = plain(component.render(80));
+					expect(panel).toContain("planner@1 aaaa1111 running");
+					expect(panel).toContain("◆ retained");
+					expect(panel).toContain("progressing·1r");
+					expect(panel).toContain("└─ ✓ rlm-child@1 bbbb2222 completed");
+					expect(panel).toContain("✗ reviewer@1 cccc3333 failed deadline exceeded");
+					expect(panel).toContain("kernels 2/16 live");
+				});
+				expect(plain(component.render(80))).not.toContain("RLM ▸");
+				expect(inspect).toHaveBeenCalledWith("agents.status", {}, expect.anything());
+				// ctrl+r hides the panel again; the footer summary returns.
+				component.handleInput("\u0012");
+				await vi.waitFor(() => {
+					const hidden = plain(component.render(80));
+					expect(hidden).not.toContain("planner@1");
+					expect(hidden).toContain("RLM ▸");
+				});
+
+				// Jev: collapsed line while hidden, full decision panel via /jev, alt+j hides it again.
+				await vi.waitFor(() => expect(plain(component.render(80))).toContain("Jev ▸ 1 triage"));
+				component.handleInput("/jev");
+				component.handleInput("\u001b");
+				component.handleInput("\r");
+				await vi.waitFor(() => {
+					const panel = plain(component.render(100));
+					expect(panel).toContain("jev ✓ configured · hindsight ✗ not configured");
+					expect(panel).toContain("◇ triage → powerful 80% · debugging");
+				});
+				expect(plain(component.render(80))).not.toContain("Jev ▸");
+				component.handleInput("\u001bj");
+				await vi.waitFor(() => expect(plain(component.render(80))).not.toContain("jev ✓ configured"));
 
 				component.handleInput("/reload");
 				component.handleInput("\u001b");

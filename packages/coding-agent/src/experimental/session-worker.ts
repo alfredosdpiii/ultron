@@ -51,6 +51,7 @@ import { createFamilyModule } from "../ultron/family.ts";
 import { createGrantModule } from "../ultron/grants.ts";
 import { createInstanceModule } from "../ultron/instances.ts";
 import { createNativeJevClient } from "../ultron/jev.ts";
+import { JEV_DECISION_CAPACITY, JevDecisionLog, recordingJevClient } from "../ultron/jev-decisions.ts";
 import type { RefinementBranch } from "../ultron/local-services.ts";
 import { createPredictAdapter } from "../ultron/predict-adapter.ts";
 import { createProgressModule } from "../ultron/progress.ts";
@@ -147,6 +148,15 @@ export type UltronRlmTool = AgentHarnessTool<{ env: NodeExecutionEnv }> & {
 	unpin(lane: string, holder: string): void;
 	/** Pool introspection, for tests and diagnostics. */
 	readonly kernels: KernelPool<UltronRlmKernel>;
+	/** Read-only kernel pool view for inspection: live kernels, pinned lanes, and eviction count. */
+	poolStats(): RlmPoolStats;
+};
+
+export type RlmPoolStats = {
+	live: number;
+	maxLive: number;
+	lanes: { lane: string; running: number; pinnedBy: string[]; idleMs: number }[];
+	evictions: number;
 };
 
 export function createUltronRlmTool(
@@ -212,6 +222,10 @@ export function createUltronRlmTool(
 		},
 		unpin: (lane, holder) => kernels.unpin(lane, holder),
 		kernels,
+		poolStats: () => ({
+			...kernels.stats(),
+			evictions: kernels.evictions.filter((record) => record.evicted).length,
+		}),
 		name: "rlm",
 		label: "rlm",
 		description:
@@ -1142,7 +1156,23 @@ async function createCodingAgentHarness(
 						throw new Error(`Session worker received invalid thinking level: ${options.thinking}`);
 					})();
 	const registry = new ModelRegistry(modelRuntime);
-	const jev = createNativeJevClient();
+	// Every Jev decision (triage, recall gate, retention policy) is recorded without its input for `jev.decisions`.
+	const jevDecisionAddress = value<JsonValue>("ultron.jev.decisions", "root");
+	const jevDecisions = new JevDecisionLog({
+		read: async () => (await session.getValue(jevDecisionAddress, TODO_CONTEXT))?.value,
+		write: (document) => session.setValue(jevDecisionAddress, document, TODO_CONTEXT),
+	});
+	const nativeJev = createNativeJevClient();
+	const jev = nativeJev === undefined ? undefined : recordingJevClient(nativeJev, jevDecisions);
+	const recordJevUnavailable = (kind: "triage" | "recall", prompt: unknown): void => {
+		void jevDecisions.record(String(prompt ?? ""), {
+			at: jevDecisions.now(),
+			kind,
+			status: "unavailable",
+			durationMs: 0,
+			reason: "Jev is not configured",
+		});
+	};
 	let host: NativeRlmHost | undefined;
 	let holdActivity: (() => () => void) | undefined;
 	const hostHandler: RlmHostHandler = async (type, payload, signal, caller) => {
@@ -1166,11 +1196,17 @@ async function createCodingAgentHarness(
 		if (type === "rlm.find_models")
 			return registry.getAvailable().map((model) => ({ provider: model.provider, id: model.id, name: model.name }));
 		if (type === "jev.triage") {
-			if (!jev) return { available: false, reason: "Jev is not configured" };
+			if (!jev) {
+				recordJevUnavailable("triage", payload.prompt);
+				return { available: false, reason: "Jev is not configured" };
+			}
 			return { available: true, ...(await jev.triage(String(payload.prompt ?? ""), signal)) };
 		}
 		if (type === "jev.recall") {
-			if (!jev) return { available: false, gate: { retrieve: false, probability: 0 }, results: [] };
+			if (!jev) {
+				recordJevUnavailable("recall", payload.prompt);
+				return { available: false, gate: { retrieve: false, probability: 0 }, results: [] };
+			}
 			return { available: true, gate: await jev.memoryRecall(String(payload.prompt ?? ""), signal), results: [] };
 		}
 		if (!host) throw new Error("Ultron RLM host is not initialized");
@@ -1375,6 +1411,17 @@ async function createCodingAgentHarness(
 				holdActivity = hold;
 			},
 			inspect: async (request, payload, context) => {
+				if (request === "rlm.pool") return rlmTool.poolStats();
+				if (request === "jev.decisions") {
+					return {
+						available: {
+							jev: nativeJev !== undefined,
+							hindsight: Boolean(process.env.ULTRON_HINDSIGHT_URL?.trim()),
+						},
+						capacity: JEV_DECISION_CAPACITY,
+						decisions: await jevDecisions.list(),
+					};
+				}
 				if (!host) throw new Error("Ultron RLM host is not initialized");
 				return host.handle(request, payload, context);
 			},
