@@ -832,6 +832,9 @@ export class NodeExecutionEnv implements ExecutionEnv {
 					const info = fileInfoFromStats(entryPath, await lstat(entryPath));
 					if (info.ok) infos.push(info.value);
 				} catch (error) {
+					// The entry was removed after readdir returned it, e.g. a lock another process released:
+					// it is simply no longer in the directory, not a failure to list it.
+					if (isNodeError(error) && error.code === "ENOENT") continue;
 					return err(toFileError(error, entryPath));
 				}
 			}

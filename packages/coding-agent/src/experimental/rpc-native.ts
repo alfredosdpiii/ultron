@@ -6,11 +6,12 @@
  */
 
 import { readFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 import type { LaneTranscriptSnapshot, LaneWatchEvent, ThinkingLevel } from "@ultron/agent-core";
 import type { Api, ImageContent, Model } from "@ultron/ai";
 import { type Context, isJsonValue } from "@ultron/chord";
 import { awaitWithContext, BACKGROUND_CONTEXT, withAbortSignal } from "@ultron/chord/context";
+import { ServerError } from "@ultron/client";
 import { flushRawStdout, takeOverStdout, waitForRawStdoutBackpressure, writeRawStdout } from "../core/output-guard.ts";
 import { attachJsonlLineReader, serializeJsonLine } from "../modes/rpc/jsonl.ts";
 import { writeNativeSessionHtml } from "../ultron/native-export.ts";
@@ -21,6 +22,7 @@ import {
 } from "./client-runtime.ts";
 import { PiSessionView } from "./pi-session-view.ts";
 import { messageText, queueUpdate, RpcEventTranslator } from "./rpc-events.ts";
+import { serverErrorLogPath } from "./server-log.ts";
 import type { AgentOperationResponse } from "./services/agent-controller.ts";
 import { ExtensionUI, type ExtensionUIAnswer } from "./services/extension-ui.ts";
 import type { ModelSummary } from "./services/models.ts";
@@ -56,6 +58,17 @@ export async function runNativeRpcMode(options: NativeRpcOptions): Promise<void>
 			throw new Error("RPC mode requires exactly one discovered server");
 		}
 		const server = await activateBuiltinClientServices(runtime.servers[0]!);
+		// The server answers unexpected failures only with "Internal server error"; say where it recorded the cause.
+		const internalErrorLog =
+			server.route.transport === "unix"
+				? serverErrorLogPath(dirname(server.route.path), server.route.serverId)
+				: undefined;
+		const errorMessage = (error: unknown): string => {
+			const message = error instanceof Error ? error.message : String(error);
+			return error instanceof ServerError && error.code === "internal_error" && internalErrorLog !== undefined
+				? `${message} (details in ${internalErrorLog})`
+				: message;
+		};
 		const controlServices = server.session.open({
 			services: [SessionControl, ExtensionUI],
 			assertAccess() {},
@@ -504,7 +517,7 @@ export async function runNativeRpcMode(options: NativeRpcOptions): Promise<void>
 					type: "response",
 					command: command.type,
 					success: false,
-					error: error instanceof Error ? error.message : String(error),
+					error: errorMessage(error),
 				});
 			}
 			await waitForRawStdoutBackpressure();

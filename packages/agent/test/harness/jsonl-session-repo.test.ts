@@ -197,3 +197,29 @@ describe("JsonlSessionRepo cwd-scoped lifecycle", () => {
 		await repo.close(BACKGROUND_CONTEXT);
 	});
 });
+
+/** Removes a session file just before its header is read, as another client deleting a session mid-listing. */
+class RemovingBeforeReadNodeExecutionEnv extends NodeExecutionEnv {
+	removeBeforeRead: string | undefined;
+
+	override async readTextLines(path: string, options: { maxLines?: number } | undefined, context: Context) {
+		if (path === this.removeBeforeRead) getOrThrow(await super.remove(path, undefined, context));
+		return super.readTextLines(path, options, context);
+	}
+}
+
+describe("JsonlSessionRepo listing under concurrent removal", () => {
+	it("omits a session removed after the directory was listed instead of failing the listing", async () => {
+		const fileSystem = new RemovingBeforeReadNodeExecutionEnv({ cwd: createTempDir() });
+		const repo = new JsonlSessionRepo({ fileSystem, sessionsRoot: "sessions", now: () => NOW });
+		const kept = await repo.create({ id: "kept", cwd: "/workspace" }, BACKGROUND_CONTEXT);
+		const removed = await repo.create({ id: "removed", cwd: "/workspace" }, BACKGROUND_CONTEXT);
+		await Promise.all([kept.close(BACKGROUND_CONTEXT), removed.close(BACKGROUND_CONTEXT)]);
+		fileSystem.removeBeforeRead = removed.metadata.path;
+
+		expect((await repo.list({ cwd: "/workspace" }, BACKGROUND_CONTEXT)).map((metadata) => metadata.id)).toEqual([
+			"kept",
+		]);
+		await repo.close(BACKGROUND_CONTEXT);
+	});
+});
