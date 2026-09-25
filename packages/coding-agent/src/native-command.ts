@@ -165,6 +165,17 @@ export async function runNativeUltronCommand(parsed: Args, stdinContent: string 
 		...(files.images.length === 0 ? {} : { images: files.images }),
 	};
 	let server: RunningServer | undefined;
+	// An interrupted, killed, or hung-up client still releases its server: idle workers exit now and busy workers keep
+	// their detached work running instead of waiting for the coordinator's orphan grace.
+	const signalExitCodes: Partial<Record<NodeJS.Signals, number>> = { SIGINT: 130, SIGTERM: 143, SIGHUP: 129 };
+	const onSignal = (signal: NodeJS.Signals): void => {
+		for (const name of Object.keys(signalExitCodes)) process.off(name, onSignal);
+		const exitCode = signalExitCodes[signal] ?? 1;
+		void Promise.resolve(server?.close())
+			.catch(() => {})
+			.finally(() => process.exit(exitCode));
+	};
+	for (const name of Object.keys(signalExitCodes)) process.on(name, onSignal);
 	try {
 		server = await startForegroundServer({
 			model: parsed.model,
@@ -218,6 +229,7 @@ export async function runNativeUltronCommand(parsed: Args, stdinContent: string 
 			for (const session of result.sessions) process.stdout.write(`${session.serverId}\t${session.sessionId}\n`);
 		}
 	} finally {
+		for (const name of Object.keys(signalExitCodes)) process.off(name, onSignal);
 		await server?.close();
 	}
 }

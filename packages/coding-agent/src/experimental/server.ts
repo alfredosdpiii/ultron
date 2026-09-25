@@ -731,6 +731,7 @@ export async function startServer(options: StartServerOptions = {}): Promise<Run
 			close() {
 				lifetime.stop();
 				closePromise ??= (async () => {
+					if (!activeCoordinator.wasReplaced) activeWorkers.prepareShutdown();
 					try {
 						await activeRelay.close();
 						await activeBackend.close();

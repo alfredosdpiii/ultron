@@ -250,6 +250,12 @@ export type WorkerOperationResponse = Static<typeof WorkerOperationResponseSchem
 export const SessionWorkerCommandSchema = Type.Union([
 	Type.Object({ type: Type.Literal("shutdown") }),
 	Type.Object({ type: Type.Literal("discover_workers") }),
+	/** The server is going away: exit when idle, otherwise drop its demand and keep working detached. */
+	StrictObject({
+		type: Type.Literal("release"),
+		requestId: Type.String({ minLength: 1 }),
+		serverConnectionId: Type.String(),
+	}),
 	Type.Object({
 		type: Type.Literal("session_demand"),
 		serverConnectionId: Type.String(),
@@ -281,6 +287,13 @@ export const SessionWorkerEventSchema = Type.Union([
 		token: Type.String(),
 		sessionKey: Type.String(),
 		message: Type.String(),
+	}),
+	Type.Object({
+		type: Type.Literal("worker_released"),
+		token: Type.String(),
+		sessionKey: Type.String(),
+		requestId: Type.String(),
+		retained: Type.Boolean(),
 	}),
 	Type.Object({
 		type: Type.Literal("demand_applied"),
@@ -325,6 +338,7 @@ export class WorkerLifecycle {
 	#initialTimer: NodeJS.Timeout | undefined;
 	#demandInitialized: boolean;
 	#retirementHolds = 0;
+	#activitySequence = 0;
 	#retiring = false;
 
 	constructor(options: {
@@ -409,6 +423,43 @@ export class WorkerLifecycle {
 		this.#reconcile();
 	}
 
+	/** True while a lane operation or held background activity is still running. */
+	get busy(): boolean {
+		return this.#activeOperations.size !== 0;
+	}
+
+	get retiring(): boolean {
+		return this.#retiring;
+	}
+
+	/** Count detached work, such as a background task between lane runs, as an active operation. */
+	holdActivity(): () => void {
+		const key = `activity\0${++this.#activitySequence}`;
+		this.#activeOperations.add(key);
+		let released = false;
+		return () => {
+			if (released) return;
+			released = true;
+			this.#activeOperations.delete(key);
+			this.#reconcile();
+		};
+	}
+
+	/** Forget every demand owned by a departing server so the worker retires once its work is idle. */
+	releaseServer(serverConnectionId: string): void {
+		for (const [key, demand] of this.#demands) {
+			if (demand.serverConnectionId !== serverConnectionId) continue;
+			if (demand.timer) clearTimeout(demand.timer);
+			this.#demands.delete(key);
+		}
+		this.#demandInitialized = true;
+		if (this.#initialTimer) {
+			clearTimeout(this.#initialTimer);
+			this.#initialTimer = undefined;
+		}
+		this.#reconcile();
+	}
+
 	operationStarted(kind: "run" | "compaction" | "navigation", lane: string, operationId: string): void {
 		this.#activeOperations.add(`${kind}\0${lane}\0${operationId}`);
 	}
@@ -445,6 +496,8 @@ const DEFAULT_INITIAL_DEMAND_GRACE_MS = 10_000;
 const DEFAULT_ORPHAN_DEMAND_GRACE_MS = 30_000;
 export const SESSION_WORKER_INITIAL_DEMAND_GRACE_ENV = "__PI_SESSION_WORKER_INITIAL_DEMAND_GRACE_MS";
 export const SESSION_WORKER_ORPHAN_DEMAND_GRACE_ENV = "__PI_SESSION_WORKER_ORPHAN_DEMAND_GRACE_MS";
+const DEFAULT_DISCOVERY_GRACE_MS = 5_000;
+export const SESSION_WORKER_DISCOVERY_GRACE_ENV = "__PI_SESSION_WORKER_DISCOVERY_GRACE_MS";
 
 const CoordinatorInputSchema = Type.Union([
 	Type.Object({
@@ -504,6 +557,7 @@ async function readCommands(
 	handlers: {
 		onShutdown(): void;
 		onDiscovery(): void;
+		onRelease(command: Extract<SessionWorkerCommand, { type: "release" }>): Promise<void>;
 		onDemand(command: Extract<SessionWorkerCommand, { type: "session_demand" }>): Promise<void>;
 		onOperation(command: WorkerOperationRequest): void;
 		onOperationCancel(command: Extract<SessionWorkerCommand, { type: "operation_cancel" }>): void;
@@ -529,6 +583,7 @@ async function readCommands(
 		const command: SessionWorkerCommand = message.payload;
 		if (command.type === "shutdown") handlers.onShutdown();
 		else if (command.type === "discover_workers") handlers.onDiscovery();
+		else if (command.type === "release") await handlers.onRelease(command);
 		else if (command.type === "session_demand") await handlers.onDemand(command);
 		else if (command.type === "operation_cancel") handlers.onOperationCancel(command);
 		else handlers.onOperation(command);
@@ -676,11 +731,13 @@ async function run(options: SessionWorkerRuntimeOptions, createHarness: CreateSe
 	let lane: AgentLane | undefined;
 	let services: SessionWorkerServices | undefined;
 	let closeRlm: (() => Promise<void>) | undefined;
+	let bindActivity: SessionWorkerRuntime["bindActivity"];
 	try {
 		session = await repo.open(metadata, TODO_CONTEXT);
 		const runtime = await createHarness(session, options, executionEnv);
 		harness = runtime.harness;
 		closeRlm = runtime.closeRlm;
+		bindActivity = runtime.bindActivity;
 		lane = runtime.lane ?? (await harness.lane("main", TODO_CONTEXT));
 		services = await createSessionWorkerServices({
 			lane,
@@ -763,6 +820,8 @@ async function run(options: SessionWorkerRuntimeOptions, createHarness: CreateSe
 		),
 		harness.events.on("fault", closeAndExit),
 	];
+	const activeLifecycle = lifecycle;
+	bindActivity?.(() => activeLifecycle.holdActivity());
 
 	const handleOperation = async (request: WorkerOperationRequest): Promise<void> => {
 		let releaseRequest = (): void => {};
@@ -812,8 +871,12 @@ async function run(options: SessionWorkerRuntimeOptions, createHarness: CreateSe
 	};
 
 	let ready = false;
+	const discoveryGraceMs = lifecycleDelay(SESSION_WORKER_DISCOVERY_GRACE_ENV, DEFAULT_DISCOVERY_GRACE_MS);
 	const announce = (): void => {
-		if (!ready) return;
+		if (!ready || lifecycle?.retiring) return;
+		// A detached worker that a new server just discovered must not retire before that server attaches.
+		const releaseDiscovery = lifecycle?.holdRetirement();
+		if (releaseDiscovery) setTimeout(releaseDiscovery, discoveryGraceMs).unref();
 		void control
 			.send({
 				type: "worker_ready",
@@ -829,6 +892,22 @@ async function run(options: SessionWorkerRuntimeOptions, createHarness: CreateSe
 	void readCommands(control, {
 		onShutdown: closeAndExit,
 		onDiscovery: announce,
+		onRelease: async (command) => {
+			const retained = lifecycle?.busy === true && !lifecycle.retiring;
+			if (retained) {
+				// Detached work outlives the departing server: its requests stop being cancellable by
+				// that server's disconnect, and its demand no longer keeps this worker alive.
+				for (const [requestId, request] of activeRequests) {
+					if (request.scope.serverConnectionId === command.serverConnectionId) activeRequests.delete(requestId);
+				}
+				services.removeSubscriptions((scope) => scope.serverConnectionId === command.serverConnectionId);
+			}
+			await control
+				.send({ type: "worker_released", token, sessionKey, requestId: command.requestId, retained })
+				.catch(() => {});
+			if (retained) lifecycle?.releaseServer(command.serverConnectionId);
+			else closeAndExit();
+		},
 		onDemand: async (command) => {
 			const releaseRetirement = lifecycle?.holdRetirement() ?? (() => {});
 			try {
@@ -997,6 +1076,7 @@ async function createCodingAgentHarness(
 	const registry = new ModelRegistry(modelRuntime);
 	const jev = createNativeJevClient();
 	let host: NativeRlmHost | undefined;
+	let holdActivity: (() => () => void) | undefined;
 	const hostHandler: RlmHostHandler = async (type, payload, signal, caller) => {
 		if (type === "bash") {
 			const command = payload.command;
@@ -1136,6 +1216,7 @@ async function createCodingAgentHarness(
 			usage: createSessionUsageLedger(session, { limits: { maxAdmittedTasks: 24, maxWallMs: 30 * 60 * 1000 } }),
 			services: nativeServices,
 			beforeLaneReuse: (lane) => rlmTool.resetScratch(lane),
+			holdActivity: () => holdActivity?.() ?? (() => {}),
 			refinements: async (definitionId, context) => {
 				const current = (await nativeServices.handle(
 					"refinements.current",
@@ -1187,6 +1268,9 @@ async function createCodingAgentHarness(
 			lane,
 			modelRuntime,
 			settingsManager,
+			bindActivity: (hold) => {
+				holdActivity = hold;
+			},
 			inspect: async (request, payload, context) => {
 				if (!host) throw new Error("Ultron RLM host is not initialized");
 				return host.handle(request, payload, context);

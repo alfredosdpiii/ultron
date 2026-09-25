@@ -33,6 +33,28 @@ describe("Session worker lifecycle", () => {
 		lifecycle.close();
 	});
 
+	test("a released server's demand is dropped while child-lane and background activity keep the worker", () => {
+		vi.useFakeTimers();
+		const { lifecycle, retire } = createLifecycle();
+		lifecycle.setDemand(GENERATION, "attachment-1", true);
+		lifecycle.operationStarted("run", "ultron.background-job.task-1", "operation-1");
+		const releaseTask = lifecycle.holdActivity();
+		expect(lifecycle.busy).toBe(true);
+
+		lifecycle.releaseServer(GENERATION);
+		lifecycle.operationStopped("run", "ultron.background-job.task-1", "operation-1");
+		// The task is still committing its result between lane runs.
+		expect(lifecycle.busy).toBe(true);
+		expect(retire).not.toHaveBeenCalled();
+
+		releaseTask();
+		releaseTask();
+		expect(lifecycle.busy).toBe(false);
+		expect(retire).toHaveBeenCalledOnce();
+		expect(lifecycle.retiring).toBe(true);
+		lifecycle.close();
+	});
+
 	test("retains the worker until every presentation attachment is released", () => {
 		vi.useFakeTimers();
 		const { lifecycle, retire } = createLifecycle();

@@ -31,6 +31,8 @@ export interface SessionWorkerRuntime {
 	readonly settingsManager?: SettingsManager;
 	readonly facetLoader?: FacetLoader;
 	readonly legacyExtensionCommands?: LegacyExtensionCommands;
+	/** Receives the worker's activity hold so detached background work keeps the worker alive. */
+	readonly bindActivity?: (hold: () => () => void) => void;
 	/** Read-only access to the RLM host, used by inspection commands. */
 	readonly inspect?: (request: string, payload: Record<string, unknown>, context: Context) => Promise<unknown>;
 }

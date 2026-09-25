@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { isJsonValue, type JsonValue } from "@earendil-works/chord";
-import { BACKGROUND_CONTEXT, withAbortSignal } from "@earendil-works/chord/context";
+import { BACKGROUND_CONTEXT, withAbortSignal, withoutAbortSignal } from "@earendil-works/chord/context";
 import type { AgentHarness, AgentLane, Context, Entry } from "@earendil-works/pi-agent-core";
 import type { NativeUsageCallStatus, NativeUsageLedgerLike, NativeUsageReservation } from "../usage.ts";
 import {
@@ -150,6 +150,8 @@ export type NativeHostOptions = {
 	) => Promise<Array<{ id: string; version: number | null; text: string }>>;
 	/** Called before a task runs on a reused lane, so per-invocation scratch can be cleared. */
 	beforeLaneReuse?: (lane: string, context: Context) => Promise<void>;
+	/** Marks a live task as active work until it reaches a terminal state; returns the release. */
+	holdActivity?: () => () => void;
 	now?: () => number;
 };
 
@@ -169,6 +171,7 @@ export class NativeRlmHost {
 	private readonly laneTasks = new Map<string, string>();
 	private readonly now: () => number;
 	private readonly beforeLaneReuse: NativeHostOptions["beforeLaneReuse"];
+	private readonly holdActivity: NativeHostOptions["holdActivity"];
 	private readonly refinements: NativeHostOptions["refinements"];
 	private modulesStarted?: Promise<void>;
 
@@ -180,6 +183,7 @@ export class NativeRlmHost {
 		this.journal = new NativeTaskJournal(options.store);
 		this.modules = options.modules ?? [];
 		this.beforeLaneReuse = options.beforeLaneReuse;
+		this.holdActivity = options.holdActivity;
 		this.refinements = options.refinements;
 		this.now = options.now ?? Date.now;
 		this.registry = new NativeDefinitionRegistry(options.definitionStore, {
@@ -336,7 +340,10 @@ export class NativeRlmHost {
 				parentTaskId: task.id,
 				taskId: task.id,
 				requestKey: `${task.id}:model`,
-				timeoutMs: request.timeoutMs,
+				// The model call lives within its task's admitted deadline; a fresh full timeout would overrun it.
+				...(task.usageReservation?.deadlineAt == null
+					? { timeoutMs: request.timeoutMs }
+					: { deadlineAt: task.usageReservation.deadlineAt }),
 				signal,
 			});
 			const response = await lane.prompt(prompt, undefined, taskContext);
@@ -442,7 +449,12 @@ export class NativeRlmHost {
 		}
 	}
 
-	private spawnTask(request: TaskRequest, context: Context, parentId?: string): Promise<TaskRecord> {
+	/**
+	 * A detached task is admitted under the caller's cancellation but then runs independently of it: a background
+	 * job must outlive the RLM cell (and the client) that started it, stopping only on its own stop, timeout, or
+	 * host close.
+	 */
+	private spawnTask(request: TaskRequest, context: Context, parentId?: string, detached = false): Promise<TaskRecord> {
 		// Serialize through installation of the live promise, not through execution.
 		const pending = this.admissions.then(async () => {
 			if (this.closed) throw new Error("Ultron task host is closed");
@@ -482,6 +494,7 @@ export class NativeRlmHost {
 			// Spawn callers need not observe the result immediately, including store errors.
 			void task.promise.catch(() => {});
 			this.tasks.set(task.id, task);
+			const runContext = detached ? withoutAbortSignal(context) : context;
 			const onAbort = () => {
 				void this.cancel(task, "Parent task aborted").catch(() => {});
 			};
@@ -499,14 +512,16 @@ export class NativeRlmHost {
 				).catch(() => {});
 			}, timeoutDelay);
 			timer.unref();
-			context.abortSignal?.addEventListener("abort", onAbort, { once: true });
+			runContext.abortSignal?.addEventListener("abort", onAbort, { once: true });
+			const releaseActivity = this.holdActivity?.();
 			task.cleanup = () => {
 				clearTimeout(timer);
-				context.abortSignal?.removeEventListener("abort", onAbort);
+				runContext.abortSignal?.removeEventListener("abort", onAbort);
+				releaseActivity?.();
 			};
 			if (this.closed) void this.cancel(task, "Ultron task host closed").catch(() => {});
-			else if (context.abortSignal?.aborted) onAbort();
-			else void this.run(task, request, context);
+			else if (runContext.abortSignal?.aborted) onAbort();
+			else void this.run(task, request, runContext);
 			return task;
 		});
 		this.admissions = pending.then(
@@ -631,7 +646,7 @@ export class NativeRlmHost {
 				timeoutMs: typeof payload.timeout_ms === "number" ? payload.timeout_ms : 30 * 60 * 1000,
 			};
 			if (request.key !== undefined && request.key.length > 264) throw new Error("Background key is too long");
-			const task = await this.spawnTask(request, context, parentId);
+			const task = await this.spawnTask(request, context, parentId, true);
 			return publicTask(task);
 		}
 		if (type === "background.list") {
