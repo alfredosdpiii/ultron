@@ -36,6 +36,12 @@ export interface RunClientOptions {
 	readonly noSession?: boolean;
 	/** Cancels service calls, terminal-event waiting, and client shutdown waiting. */
 	readonly signal?: AbortSignal;
+	/**
+	 * Aborting this signal explicitly aborts the prompted turn (Pi's print mode stops its turn on SIGINT/SIGTERM).
+	 * Unlike `signal`, which only stops waiting and leaves the turn running in the worker, the client keeps waiting
+	 * until the aborted turn ends.
+	 */
+	readonly interrupt?: AbortSignal;
 	/** Receives snapshot-ordered main-lane events while a prompt is active. */
 	readonly onEvent?: (event: LaneWatchEvent) => void | Promise<void>;
 }
@@ -225,6 +231,15 @@ async function runClientOperation(
 	const completedText = new Map<string, string>();
 	const operationBoundaries = new Set<string>();
 	const boundaryWaiters = new Map<string, () => void>();
+	// An interrupt aborts the turn this prompt started, as soon as its operation id is known.
+	let runningOperationId: string | undefined;
+	let abortRequested: string | undefined;
+	const abortIfInterrupted = (): void => {
+		if (options.interrupt?.aborted !== true || runningOperationId === undefined) return;
+		if (abortRequested === runningOperationId) return;
+		abortRequested = runningOperationId;
+		void agent.requestAbort(runningOperationId, withoutAbortSignal(context)).catch(() => {});
+	};
 	let deliveryTail = Promise.resolve();
 	const unsubscribe = match.transcript.state.subscribe((value, _context, delivery) => {
 		if (delivery.kind !== "update" || value.event === null) return;
@@ -235,12 +250,18 @@ async function runClientOperation(
 			}
 			await options.onEvent?.(event);
 		});
+		if (event.type === "run_start") {
+			runningOperationId = event.runId;
+			abortIfInterrupted();
+		}
 		if (event.type === "run_end" || event.type === "run_suspend") {
+			if (runningOperationId === event.runId) runningOperationId = undefined;
 			operationBoundaries.add(event.runId);
 			boundaryWaiters.get(event.runId)?.();
 			boundaryWaiters.delete(event.runId);
 		}
 	});
+	options.interrupt?.addEventListener("abort", abortIfInterrupted, { once: true });
 	if (match.transcript.state.value?.snapshot === null || match.transcript.state.value?.snapshot === undefined) {
 		unsubscribe();
 		throw new Error("Transcript has no initialized snapshot");
@@ -267,6 +288,7 @@ async function runClientOperation(
 		promptFailed = true;
 		promptError = error;
 	} finally {
+		options.interrupt?.removeEventListener("abort", abortIfInterrupted);
 		unsubscribe();
 		try {
 			await awaitOperation(deliveryTail, context);

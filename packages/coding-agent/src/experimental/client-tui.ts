@@ -8,7 +8,7 @@ import {
 	type JsonValue,
 	type LoadedFacets,
 } from "@earendil-works/chord";
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
+import { awaitWithContext, BACKGROUND_CONTEXT, withAbortSignal } from "@earendil-works/chord/context";
 import {
 	CombinedAutocompleteProvider,
 	type Component,
@@ -29,6 +29,7 @@ import { CustomEditor } from "../modes/interactive/components/custom-editor.ts";
 import { getEditorTheme, setRegisteredThemes, stopThemeWatcher, theme } from "../modes/interactive/theme/theme.ts";
 import { InteractiveThemeController } from "../modes/interactive/theme/theme-controller.ts";
 import { createInteractiveTui } from "../modes/interactive/tui-renderer.ts";
+import type { RpcExtensionUIRequest } from "../modes/rpc/rpc-types.ts";
 import { ensureTool } from "../utils/tools-manager.ts";
 import { type OpenClientRuntimeOptions, openClientRuntime } from "./client-runtime.ts";
 import { ExperimentalChatView } from "./client-tui-chat.ts";
@@ -59,6 +60,7 @@ import {
 	renderRlmPanel,
 	renderRlmStatusLine,
 } from "./rlm-visualizer.ts";
+import { messageText } from "./rpc-events.ts";
 import { AgentController, type AgentOperationResponse, type AgentQueueResponse } from "./services/agent-controller.ts";
 import type {
 	ServerConnectionState,
@@ -66,6 +68,7 @@ import type {
 	SessionAttachmentState,
 	SessionServiceSource,
 } from "./services/connection.ts";
+import { ExtensionUI } from "./services/extension-ui.ts";
 import { PresentationPlugins } from "./services/plugins.ts";
 import { PresentationUI } from "./services/presentation-ui.ts";
 import { SessionControl } from "./services/session-control.ts";
@@ -99,6 +102,9 @@ interface PreparedClientSession {
 	readonly summary: SessionSummary;
 	readonly presentationPlugins: JsonValue;
 }
+
+/** Pi exits on a second Ctrl-C within this window. */
+const CTRL_C_EXIT_WINDOW_MS = 500;
 
 interface PendingSelection {
 	readonly title: string;
@@ -197,6 +203,7 @@ export class ExperimentalClientTui implements Component {
 	#sessionId: string | undefined;
 	#status = "Starting Session…";
 	#busy = false;
+	#lastCtrlCTime = 0;
 	#closed = false;
 	#closePromise: Promise<void> | undefined;
 	#recoveryTransition: Promise<void> = Promise.resolve();
@@ -219,9 +226,11 @@ export class ExperimentalClientTui implements Component {
 		setKeybindings(this.#keybindings);
 		this.#chatInput = new CustomEditor(ui, getEditorTheme(), this.#keybindings, { paddingX: 1 });
 		this.#chatInput.onSubmit = (message) => void this.#runPrompt(message);
+		// Pi's keys: Esc aborts a running turn, Ctrl-C clears the editor and exits when pressed twice within 500 ms,
+		// Ctrl-D exits on an empty editor. Exiting leaves a running turn to finish in the worker; only Esc aborts.
 		this.#chatInput.onEscape = () => this.#interrupt();
 		this.#chatInput.onCtrlD = finish;
-		this.#chatInput.onAction("app.clear", finish);
+		this.#chatInput.onAction("app.clear", () => this.#handleCtrlC());
 		this.#chatInput.onAction("app.model.select", () => void this.#executeSlashCommand("model", ""));
 		this.#chatInput.onAction("app.rlm.toggle", () => this.#toggleRlm());
 		this.#chatInput.onAction("app.jev.toggle", () => this.#toggleJev());
@@ -297,10 +306,8 @@ export class ExperimentalClientTui implements Component {
 
 	handleInput(data: string): void {
 		if (this.#busy) {
-			if (
-				this.#keybindings.matches(data, "app.clear") ||
-				(this.#chatInput.getText().length === 0 && this.#keybindings.matches(data, "app.exit"))
-			) {
+			if (this.#keybindings.matches(data, "app.clear")) this.#handleCtrlC();
+			else if (this.#chatInput.getText().length === 0 && this.#keybindings.matches(data, "app.exit")) {
 				this.#finish();
 			}
 			return;
@@ -384,6 +391,7 @@ export class ExperimentalClientTui implements Component {
 				const controller = env.use(AgentController);
 				const transcript = env.use(Transcript);
 				const control = env.use(SessionControl);
+				const extensionUI = env.use(ExtensionUI);
 				const sessionFeature: SessionFeature = {
 					serverId: server.serverId,
 					session: server.session,
@@ -397,6 +405,7 @@ export class ExperimentalClientTui implements Component {
 					this.#slashCommands = commands;
 					this.#controller = controller;
 					this.#control = control ?? undefined;
+					if (extensionUI) env.own(this.#serveExtensionUI(extensionUI));
 					env.own(() => {
 						if (this.#session === sessionFeature) this.#session = undefined;
 						if (this.#slashCommands === commands) this.#slashCommands = undefined;
@@ -734,10 +743,105 @@ export class ExperimentalClientTui implements Component {
 		this.#rebuild();
 	}
 
+	/**
+	 * Serve the worker's extension dialogs: select and confirm open the selector, notify shows in the status line,
+	 * and set_editor_text fills the editor. Text-entry dialogs (input, editor) have no TUI form here and are cancelled,
+	 * which gives the extension Pi's default.
+	 */
+	#serveExtensionUI(extensionUI: ExtensionUI): () => void {
+		const abort = new AbortController();
+		const context = withAbortSignal(abort.signal, BACKGROUND_CONTEXT);
+		let dialogs = Promise.resolve();
+		const answer = async (request: RpcExtensionUIRequest): Promise<void> => {
+			switch (request.method) {
+				case "select": {
+					const value = await this.#select(
+						request.title,
+						request.options.map((option) => ({ value: option, label: option })),
+					);
+					await extensionUI.respond(request.id, value === undefined ? { cancelled: true } : { value }, context);
+					return;
+				}
+				case "confirm": {
+					const value = await this.#select(`${request.title}${request.message ? `: ${request.message}` : ""}`, [
+						{ value: "yes", label: "Yes" },
+						{ value: "no", label: "No" },
+					]);
+					await extensionUI.respond(
+						request.id,
+						value === undefined ? { cancelled: true } : { confirmed: value === "yes" },
+						context,
+					);
+					return;
+				}
+				case "input":
+				case "editor":
+					await extensionUI.respond(request.id, { cancelled: true }, context);
+					return;
+				case "notify":
+					this.#status = request.message;
+					this.#rebuild();
+					return;
+				case "set_editor_text":
+					this.#chatInput.setText(request.text);
+					this.#requestRender();
+					return;
+				default:
+					return;
+			}
+		};
+		void (async () => {
+			let cursor: number | null = null;
+			while (!abort.signal.aborted) {
+				try {
+					const polled = extensionUI.poll(cursor, 10_000, context);
+					void polled.catch(() => {});
+					const result = await awaitWithContext(polled, context);
+					cursor = result.cursor;
+					for (const item of result.requests) {
+						// Dialogs share the one selector, so they are answered in order.
+						dialogs = dialogs.then(() => answer(item.request)).catch(() => {});
+					}
+				} catch {
+					if (abort.signal.aborted) return;
+					cursor = null;
+					await new Promise((resolveDelay) => setTimeout(resolveDelay, 1_000));
+				}
+			}
+		})();
+		return () => abort.abort();
+	}
+
+	/** Pi's Ctrl-C: the first press clears the editor, a second press within 500 ms exits. */
+	#handleCtrlC(): void {
+		const now = Date.now();
+		if (now - this.#lastCtrlCTime < CTRL_C_EXIT_WINDOW_MS) {
+			this.#lastCtrlCTime = 0;
+			this.#finish();
+			return;
+		}
+		this.#lastCtrlCTime = now;
+		this.#chatInput.setText("");
+		this.#requestRender();
+	}
+
+	/** Pi's Esc during a turn: queued messages return to the editor, then the turn is aborted. */
 	#interrupt(): void {
-		const operation = this.#laneSnapshot()?.operation;
+		const snapshot = this.#laneSnapshot();
+		const operation = snapshot?.operation;
 		const controller = this.#selectedController();
 		if (operation === null || operation === undefined || controller === undefined) return;
+		const queued = snapshot!.queues.flatMap((item) => (item.type === "message" ? [item] : []));
+		const restored = [
+			...queued.filter((item) => item.kind === "steer"),
+			...queued.filter((item) => item.kind !== "steer"),
+		];
+		if (restored.length > 0) {
+			const queuedText = restored.map((item) => messageText(item.message)).join("\n\n");
+			const combined = [queuedText, this.#chatInput.getText()].filter((text) => text.trim()).join("\n\n");
+			this.#chatInput.setText(combined);
+			for (const item of restored) void controller.cancelQueued(item.entryId, BACKGROUND_CONTEXT).catch(() => {});
+		}
 		this.#status = `Aborting ${operation.id}…`;
 		this.#rebuild();
 		void controller.requestAbort(operation.id, BACKGROUND_CONTEXT).catch((error: unknown) => {

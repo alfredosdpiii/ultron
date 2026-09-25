@@ -8,6 +8,7 @@ import { runClient } from "./experimental/client.ts";
 import { runClientTui } from "./experimental/client-tui.ts";
 import { runNativeRpcMode } from "./experimental/rpc-native.ts";
 import { type RunningServer, resolveSessionDirectory, startForegroundServer } from "./experimental/server.ts";
+import { isLocalPath, resolvePath } from "./utils/paths.ts";
 
 interface NativeSessionHeader {
 	readonly id: string;
@@ -123,6 +124,9 @@ async function selectedSessionId(parsed: Args, sessions: readonly NativeSessionH
 	return undefined;
 }
 
+/** How long a signal waits for an aborted print-mode turn to end before the process exits anyway. */
+const PROMPT_ABORT_WAIT_MS = 5_000;
+
 export async function runNativeUltronCommand(parsed: Args, stdinContent: string | undefined): Promise<void> {
 	if (parsed.diagnostics.some((diagnostic) => diagnostic.type === "error")) {
 		throw new Error(
@@ -165,13 +169,29 @@ export async function runNativeUltronCommand(parsed: Args, stdinContent: string 
 		...(files.images.length === 0 ? {} : { images: files.images }),
 	};
 	let server: RunningServer | undefined;
+	// A prompted (print or json) run is Pi's print mode: a signal aborts its turn before the process exits.
+	const interrupt = new AbortController();
+	let promptRun: Promise<unknown> | undefined;
 	// An interrupted, killed, or hung-up client still releases its server: idle workers exit now and busy workers keep
-	// their detached work running instead of waiting for the coordinator's orphan grace.
+	// their detached work running instead of waiting for the coordinator's orphan grace. Leaving the TUI or RPC mode
+	// is not an abort; only a prompted run is aborted.
 	const signalExitCodes: Partial<Record<NodeJS.Signals, number>> = { SIGINT: 130, SIGTERM: 143, SIGHUP: 129 };
 	const onSignal = (signal: NodeJS.Signals): void => {
 		for (const name of Object.keys(signalExitCodes)) process.off(name, onSignal);
 		const exitCode = signalExitCodes[signal] ?? 1;
-		void Promise.resolve(server?.close())
+		const aborted =
+			promptRun === undefined
+				? Promise.resolve()
+				: (() => {
+						interrupt.abort();
+						// Wait for the aborted turn to end, but never hang the exit on it.
+						return Promise.race([
+							promptRun.catch(() => {}),
+							new Promise((resolveWait) => setTimeout(resolveWait, PROMPT_ABORT_WAIT_MS).unref()),
+						]);
+					})();
+		void aborted
+			.then(() => server?.close())
 			.catch(() => {})
 			.finally(() => process.exit(exitCode));
 	};
@@ -191,6 +211,11 @@ export async function runNativeUltronCommand(parsed: Args, stdinContent: string 
 					: {}),
 			...(parsed.tools === undefined ? {} : { tools: parsed.tools }),
 			...(parsed.excludeTools === undefined ? {} : { excludeTools: parsed.excludeTools }),
+			// Pi's -e/--extension and --no-extensions, resolved against this client's cwd as Pi does.
+			...(parsed.extensions === undefined
+				? {}
+				: { extensionPaths: parsed.extensions.map((path) => (isLocalPath(path) ? resolvePath(path) : path)) }),
+			...(parsed.noExtensions ? { noExtensions: true } : {}),
 		});
 		if (parsed.mode === "rpc") {
 			await runNativeRpcMode({
@@ -207,10 +232,11 @@ export async function runNativeUltronCommand(parsed: Args, stdinContent: string 
 			await runClientTui(command, { sessionDir });
 			return;
 		}
-		const result = await runClient(command, {
+		const run = runClient(command, {
 			sessionDir,
 			forkFromSessionId: forkSourceId,
 			noSession: parsed.noSession,
+			...(command.prompt === undefined ? {} : { interrupt: interrupt.signal }),
 			onEvent:
 				parsed.mode === "json" || parsed.print
 					? undefined
@@ -220,6 +246,9 @@ export async function runNativeUltronCommand(parsed: Args, stdinContent: string 
 							}
 						},
 		});
+		if (command.prompt !== undefined) promptRun = run;
+		const result = await run;
+		if (interrupt.signal.aborted) return;
 		if (result.kind === "prompted") {
 			if (parsed.mode !== "json") process.stdout.write(`${parsed.print ? result.text : ""}\n`);
 			else process.stdout.write(`${JSON.stringify(result)}\n`);

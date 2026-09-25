@@ -118,6 +118,8 @@ export class SessionWorkerManager {
 				readonly noTools?: "all" | "builtin";
 				readonly tools?: readonly string[];
 				readonly excludeTools?: readonly string[];
+				readonly extensionPaths?: readonly string[];
+				readonly noExtensions?: boolean;
 		  }
 		| undefined;
 	readonly #workersBySession = new Map<string, WorkerRecord>();
@@ -150,6 +152,8 @@ export class SessionWorkerManager {
 			readonly noTools?: "all" | "builtin";
 			readonly tools?: readonly string[];
 			readonly excludeTools?: readonly string[];
+			readonly extensionPaths?: readonly string[];
+			readonly noExtensions?: boolean;
 		},
 		onWorkerCountChanged?: (count: number) => void,
 	) {
@@ -566,6 +570,8 @@ export class SessionWorkerManager {
 				...(this.#model?.noTools === undefined ? {} : { noTools: this.#model.noTools }),
 				...(this.#model?.tools === undefined ? {} : { tools: [...this.#model.tools] }),
 				...(this.#model?.excludeTools === undefined ? {} : { excludeTools: [...this.#model.excludeTools] }),
+				...(this.#model?.extensionPaths === undefined ? {} : { extensionPaths: [...this.#model.extensionPaths] }),
+				...(this.#model?.noExtensions === true ? { noExtensions: true } : {}),
 			};
 			child = spawnInternalProcess("session-worker", [JSON.stringify(options)], {
 				env: {
