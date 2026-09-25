@@ -15,7 +15,19 @@ export interface SessionCreateOptions {
 	id?: string;
 	parentSessionId?: string;
 	forkFromSessionId?: string;
+	/**
+	 * With `forkFromSessionId`: copy only the main lane's path from the root to `entryId` (default: the current tip),
+	 * as Pi's fork does (`"before"` stops at the entry's parent, Pi's fork of a user message; `"at"` includes it,
+	 * Pi's clone). Labels of copied entries are kept.
+	 * Omitted, the whole tree is copied (Pi's `--fork`).
+	 */
+	forkPath?: SessionForkPath;
 	name?: string;
+}
+
+export interface SessionForkPath {
+	entryId?: string;
+	position: "before" | "at";
 }
 
 export interface SessionDirectoryState {

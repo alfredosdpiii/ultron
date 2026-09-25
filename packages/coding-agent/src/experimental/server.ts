@@ -411,7 +411,20 @@ async function startServerBackend(
 	): Promise<JsonlSessionMetadata> => {
 		if (createOptions.forkFromSessionId !== undefined) {
 			const source = await resolveSession(createOptions.forkFromSessionId, context);
-			const session = await repo.fork(source, { scope: "tree", id: createOptions.id }, context);
+			const forkPath = createOptions.forkPath;
+			const session = await repo.fork(
+				source,
+				forkPath === undefined
+					? { scope: "tree", id: createOptions.id }
+					: {
+							scope: "branch",
+							branch: "main",
+							...(forkPath.entryId === undefined ? {} : { entryId: forkPath.entryId, anyTreeEntry: true }),
+							position: forkPath.position,
+							id: createOptions.id,
+						},
+				context,
+			);
 			try {
 				if (createOptions.name !== undefined) await session.setName(createOptions.name, context);
 				return session.metadata;

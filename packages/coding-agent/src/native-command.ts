@@ -259,7 +259,7 @@ export async function runNativeUltronCommand(parsed: Args, stdinContent: string 
 			return;
 		}
 		if (command.prompt === undefined && !parsed.print && process.stdin.isTTY && process.stdout.isTTY) {
-			await runClientTui(command, { sessionDir });
+			await runClientTui(forkSourceId === undefined ? command : { ...command, fork: forkSourceId }, { sessionDir });
 			return;
 		}
 		const run = runClient(command, {

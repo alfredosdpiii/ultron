@@ -24,6 +24,7 @@ import {
 import { ProcessTerminal, TuiMainScreen } from "@ultron/tui";
 import { beforeAll, describe, expect, test, vi } from "vitest";
 import type { ExtensionUIContext } from "../src/core/extensions/types.ts";
+import { SettingsManager } from "../src/core/settings-manager.ts";
 import { type ClientTuiServer, ExperimentalClientTui } from "../src/experimental/client-tui.ts";
 import { createPresentationFacetData } from "../src/experimental/plugins/bundled.ts";
 import { AgentController } from "../src/experimental/services/agent-controller.ts";
@@ -165,6 +166,8 @@ describe("experimental client TUI", () => {
 		["new", { command: "client" as const }, "two", 1],
 		["continued", { command: "client" as const, continue: true }, "one", 0],
 		["plugin-selected", { command: "client" as const, pluginPackages: ["./example-plugin"] }, "two", 1],
+		// Pi's --fork: a new Session copied from the source's whole tree.
+		["forked", { command: "client" as const, fork: "one" }, "three", 1],
 	] as const)(
 		"opens a %s Session directly and exercises the full lifecycle only for a new Session",
 		async (kind, command, sessionId, creates) => {
@@ -182,8 +185,8 @@ describe("experimental client TUI", () => {
 				configuration: { model: { provider: "test", modelId: "one" }, thinkingLevel: "off" },
 				refresh: { status: "idle" },
 			});
-			const create = vi.fn(async () => {
-				const created = session("two", 2);
+			const create = vi.fn(async (options?: { forkFromSessionId?: string }) => {
+				const created = options?.forkFromSessionId === undefined ? session("two", 2) : session("three", 3);
 				directoryState.change(BACKGROUND_CONTEXT, (draft) => {
 					draft.revision = 2;
 					draft.sessions.push(created);
@@ -299,6 +302,53 @@ describe("experimental client TUI", () => {
 			const reloadPresentationPlugins = vi.fn(async () => reloadData);
 			const reloadSessionPlugins = vi.fn(async () => {});
 			const inspect = vi.fn(async (request: string) => inspectFixture(request));
+			// The worker's tree after the prompt below, in Pi's entry format.
+			const readTree = vi.fn(async () => ({
+				entries: [
+					{
+						type: "message",
+						id: "entry-user",
+						parentId: null,
+						timestamp: new Date(1).toISOString(),
+						message: { role: "user", content: [{ type: "text", text: "hello" }], timestamp: 1 },
+					},
+					{
+						type: "message",
+						id: "entry-assistant",
+						parentId: "entry-user",
+						timestamp: new Date(2).toISOString(),
+						message: {
+							role: "assistant",
+							content: [{ type: "text", text: "remote answer" }],
+							provider: "test",
+							model: "one",
+							api: "test",
+							usage: laneSnapshot().stats.usage,
+							stopReason: "stop",
+							timestamp: 2,
+						},
+					},
+				] as JsonValue[],
+				leafId: "entry-assistant",
+				labels: {},
+				sessionFile: null,
+			}));
+			const setLabel = vi.fn(async () => {});
+			const navigateTree = vi.fn(async () => ({
+				ok: true as const,
+				value: {
+					navigation: {
+						operationId: "nav-1",
+						kind: "navigation" as const,
+						status: "completed" as const,
+						fromTipId: "entry-assistant",
+						tipId: null,
+						startedAt: 3,
+						endedAt: 3,
+					},
+				},
+			}));
+			const settingsManager = SettingsManager.inMemory();
 			const serverProvider = new RemoteServiceProvider([SessionDirectory, SessionManagement, PresentationPlugins]);
 			serverProvider.provide(SessionDirectory, { state: directoryState });
 			serverProvider.provide(PresentationPlugins, {
@@ -345,7 +395,8 @@ describe("experimental client TUI", () => {
 				bash: async () => ({ output: "", exitCode: 0, cancelled: false, truncated: false, fullOutputPath: null }),
 				abortBash: async () => {},
 				inspect,
-				readTree: async () => ({ entries: [], leafId: null, labels: {}, sessionFile: null }),
+				readTree,
+				setLabel,
 			});
 			sessionProvider.provide(LegacyExtensionCommands, {
 				list: async () => [],
@@ -361,7 +412,10 @@ describe("experimental client TUI", () => {
 				select,
 				selectThinking,
 			});
-			sessionProvider.provide(AgentController, createAgentController({ prompt } as unknown as AgentLane));
+			sessionProvider.provide(
+				AgentController,
+				createAgentController({ prompt, navigateTree } as unknown as AgentLane),
+			);
 			sessionProvider.provide(Transcript, { state: transcriptState });
 
 			const serverNamespace = createRemoteServiceBinding({
@@ -442,6 +496,7 @@ describe("experimental client TUI", () => {
 				command,
 				ui,
 				servers: [server],
+				settingsManager,
 				requestRender,
 				finish() {
 					finished = true;
@@ -449,6 +504,9 @@ describe("experimental client TUI", () => {
 			});
 			try {
 				expect(create).toHaveBeenCalledTimes(creates);
+				if ("fork" in command) {
+					expect(create).toHaveBeenCalledWith({ forkFromSessionId: "one" }, expect.anything());
+				}
 				expect(prepareSessionPlugins).toHaveBeenCalledWith(
 					{
 						sessionId,
@@ -586,6 +644,63 @@ describe("experimental client TUI", () => {
 				expect(await confirmed).toBe(true);
 				extensionContext.notify("extension says hi", "info");
 				await vi.waitFor(() => expect(component.render(80).join("\n")).toContain("extension says hi"));
+
+				// Text dialogs open Pi's extension input and editor components; Esc cancels with Pi's default.
+				const named = extensionContext.input("Your name", "type it");
+				await vi.waitFor(() => expect(component.render(80).join("\n")).toContain("Your name"));
+				for (const character of "Ultron") component.handleInput(character);
+				component.handleInput("\r");
+				expect(await named).toBe("Ultron");
+				const cancelled = extensionContext.input("Ignored");
+				await vi.waitFor(() => expect(component.render(80).join("\n")).toContain("Ignored"));
+				component.handleInput("\u001b");
+				expect(await cancelled).toBeUndefined();
+				const edited = extensionContext.editor("Edit notes", "first");
+				await vi.waitFor(() => expect(component.render(80).join("\n")).toContain("Edit notes"));
+				expect(component.render(80).join("\n")).toContain("first");
+				for (const character of " line") component.handleInput(character);
+				component.handleInput("\r");
+				expect(await edited).toBe("first line");
+				expect(component.render(80).join("\n")).not.toContain("Edit notes");
+
+				// Pi's double Esc on an empty idle editor opens the session tree (doubleEscapeAction "tree").
+				component.handleInput("\u001b");
+				component.handleInput("\u001b");
+				await vi.waitFor(() => expect(plain(component.render(80))).toContain("Session Tree"));
+				// Selecting the user message asks about a summary, then continues from just before it with its
+				// text back in the editor.
+				component.handleInput("\u001b[A");
+				component.handleInput("\r");
+				await vi.waitFor(() => expect(component.render(80).join("\n")).toContain("Summarize branch?"));
+				component.handleInput("\r");
+				await vi.waitFor(() =>
+					expect(navigateTree).toHaveBeenCalledWith(null, { summarize: false }, expect.anything()),
+				);
+				await vi.waitFor(() => expect(plain(component.render(80))).toContain("Navigated to selected point"));
+				// "hello" shows in the transcript and, restored, in the editor; Ctrl-C clears the editor.
+				expect(plain(component.render(80)).split("hello").length - 1).toBe(2);
+				component.handleInput("\u0003");
+				expect(plain(component.render(80)).split("hello").length - 1).toBe(1);
+				await new Promise((resolveWait) => setTimeout(resolveWait, 600));
+
+				// With doubleEscapeAction "fork", a double Esc opens Pi's fork selector; the fork is a new Session
+				// holding the path to just before the chosen message.
+				settingsManager.setDoubleEscapeAction("fork");
+				component.handleInput("\u001b");
+				component.handleInput("\u001b");
+				await vi.waitFor(() => expect(plain(component.render(80))).toContain("Fork from Message"));
+				component.handleInput("\r");
+				await vi.waitFor(() =>
+					expect(create).toHaveBeenCalledWith(
+						{ forkFromSessionId: sessionId, forkPath: { entryId: "entry-user", position: "before" } },
+						expect.anything(),
+					),
+				);
+				await vi.waitFor(() => expect(plain(component.render(80))).toContain("Forked to new session"));
+				expect(attachment.value).toEqual({ status: "attached", sessionId: "three" });
+				expect(plain(component.render(80))).toContain("Session: three");
+				component.handleInput("\u0003");
+				await new Promise((resolveWait) => setTimeout(resolveWait, 600));
 
 				// Ctrl-C clears a draft without exiting; Ctrl-D does nothing on a non-empty editor; two quick
 				// Ctrl-C presses exit.

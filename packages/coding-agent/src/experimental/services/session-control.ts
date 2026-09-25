@@ -55,6 +55,8 @@ export interface SessionControl {
 	inspect(request: string, payload: JsonValue, context: Context): Promise<JsonValue>;
 	/** Read every entry of the Session (all branches) as Pi entries. Read-only. */
 	readTree(context: Context): Promise<SessionTreeRead>;
+	/** Set or clear (`null`) an entry's label, as Pi's tree selector does. */
+	setLabel(entryId: string, label: string | null, context: Context): Promise<void>;
 }
 
 /** Read-only host requests the inspector may issue. None of them runs a search or starts work. */

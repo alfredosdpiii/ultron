@@ -571,6 +571,11 @@ export type ForkOptions =
 			/** Entry on the source Branch's current tip ancestry. Defaults to the current tip. */
 			entryId?: string;
 			/**
+			 * Accept an `entryId` anywhere in the source tree, not only on the Branch's current tip ancestry,
+			 * and copy that entry's own path from the root (Pi's fork of any message in the tree).
+			 */
+			anyTreeEntry?: boolean;
+			/**
 			 * Whether the fork includes the selected entry or stops at its parent.
 			 * Defaults to including the selected entry.
 			 */
