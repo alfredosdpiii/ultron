@@ -12,6 +12,7 @@ import { join, resolve } from "node:path";
 import { afterEach, describe, expect, test } from "vitest";
 import { RpcClient } from "../src/modes/rpc/rpc-client.ts";
 import { ScriptedProvider, type ScriptedRequest, scriptedModelsJson } from "./support/scripted-provider.ts";
+import { tempServerDir } from "./support/server-dir.ts";
 
 const cliPath = resolve(__dirname, "../src/cli.ts");
 const sourceResolverPath = resolve(__dirname, "../src/experimental/source-resolver.ts");
@@ -115,7 +116,7 @@ describe("A55 agents as Python classes", () => {
 			env: {
 				NODE_OPTIONS: `--import ${sourceResolverPath}`,
 				ULTRON_CODING_AGENT_DIR: agentDir,
-				ULTRON_SERVER_DIR: mkdtempSync(join("/tmp", "u-a55-")),
+				ULTRON_SERVER_DIR: tempServerDir("u-a55-"),
 				ULTRON_HINDSIGHT_URL: "off",
 				ULTRON_RLM_SPILL_DIR: join(root, "spill"),
 				PI_OFFLINE: "1",

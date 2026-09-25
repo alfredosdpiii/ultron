@@ -439,6 +439,12 @@ export const SessionWorkerEventSchema = Type.Union([
 		sessionKey: Type.String(),
 		message: Type.String(),
 	}),
+	/** Sent before a worker retires on its own (no demand left), so its exit is not reported as unexpected. */
+	Type.Object({
+		type: Type.Literal("worker_retiring"),
+		token: Type.String(),
+		sessionKey: Type.String(),
+	}),
 	Type.Object({
 		type: Type.Literal("worker_released"),
 		token: Type.String(),
@@ -978,7 +984,13 @@ async function run(options: SessionWorkerRuntimeOptions, createHarness: CreateSe
 		initialServerConnectionId: control.initialServerConnectionId,
 		initialDemandGraceMs: lifecycleDelay(SESSION_WORKER_INITIAL_DEMAND_GRACE_ENV, DEFAULT_INITIAL_DEMAND_GRACE_MS),
 		orphanDemandGraceMs: lifecycleDelay(SESSION_WORKER_ORPHAN_DEMAND_GRACE_ENV, DEFAULT_ORPHAN_DEMAND_GRACE_MS),
-		onRetire: closeAndExit,
+		// Announce the deliberate retirement before exiting; the coordinator delivers it before the disconnect.
+		onRetire: () => {
+			void control
+				.send({ type: "worker_retiring", token, sessionKey })
+				.catch(() => {})
+				.finally(closeAndExit);
+		},
 	});
 	removeLifecycleListeners = [
 		harness.events.on("run_start", (event) => lifecycle?.operationStarted("run", event.lane, event.runId)),

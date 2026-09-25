@@ -51,6 +51,8 @@ interface WorkerRecord {
 	resolveTerminated(error: Error | undefined): void;
 	readonly attachmentIds: Set<string>;
 	expectedStop: boolean;
+	/** The worker announced it is retiring on its own; a clean exit or disconnect is then expected. */
+	retiring: boolean;
 	stopPromise?: Promise<void>;
 	stopping: boolean;
 }
@@ -127,6 +129,8 @@ export class SessionWorkerManager {
 	readonly #pendingOperations = new Map<string, PendingWorkerOperation>();
 	readonly #serviceSubscriptions = new Map<string, WorkerServiceSubscription>();
 	readonly #pendingReleases = new Map<string, PendingRelease>();
+	/** Workers that exited cleanly, by peer, until their disconnect shows whether they announced a retirement. */
+	readonly #exitedAwaitingDisconnect = new Map<string, { readonly worker: WorkerRecord; settle(): void }>();
 	readonly #removeListener: () => void;
 	readonly #onWorkerCountChanged: ((count: number) => void) | undefined;
 	#discoveryPeers?: Set<string>;
@@ -629,11 +633,12 @@ export class SessionWorkerManager {
 		}
 		if (event.type === "peer_disconnected") {
 			this.#markDiscovered(event.peerId);
+			this.#exitedAwaitingDisconnect.get(event.peerId)?.settle();
 			const worker = this.#workersByPeer.get(event.peerId);
 			if (worker) {
 				this.#removeWorker(
 					worker,
-					worker.expectedStop
+					worker.expectedStop || worker.retiring
 						? undefined
 						: new Error(`Session worker ${worker.metadata.id} disconnected unexpectedly`),
 				);
@@ -680,6 +685,14 @@ export class SessionWorkerManager {
 			clearTimeout(pending.timer);
 			if (message.type === "demand_applied") pending.resolve();
 			else pending.reject(new Error(`Session worker rejected demand: ${message.message}`));
+			return;
+		}
+		if (message.type === "worker_retiring") {
+			// A worker retiring on its own (no demand left) is a deliberate stop, not a failure.
+			const worker = this.#workersByPeer.get(event.from) ?? this.#exitedAwaitingDisconnect.get(event.from)?.worker;
+			if (worker && worker.token === message.token && worker.metadata.path === message.sessionKey) {
+				worker.retiring = true;
+			}
 			return;
 		}
 		if (message.type === "worker_released") {
@@ -814,6 +827,7 @@ export class SessionWorkerManager {
 			resolveTerminated,
 			attachmentIds: new Set(),
 			expectedStop: false,
+			retiring: false,
 			stopping: false,
 		};
 		this.#workersBySession.set(message.sessionKey, worker);
@@ -836,14 +850,28 @@ export class SessionWorkerManager {
 			return;
 		}
 		const worker = this.#workersByPeer.get(pending.peerId);
-		if (worker) {
-			this.#removeWorker(
-				worker,
-				worker.expectedStop
-					? undefined
-					: new Error(`Session worker ${worker.metadata.id} exited unexpectedly (${signal ?? code ?? "unknown"})`),
-			);
+		if (!worker) return;
+		const unexpected = new Error(
+			`Session worker ${worker.metadata.id} exited unexpectedly (${signal ?? code ?? "unknown"})`,
+		);
+		const clean = code === 0 && signal === null;
+		if (worker.expectedStop || !clean || worker.retiring) {
+			this.#removeWorker(worker, worker.expectedStop || (clean && worker.retiring) ? undefined : unexpected);
+			return;
 		}
+		// A clean exit may be a retirement whose announcement is still in flight: the process exit is observed
+		// directly, while the announcement and then the disconnect come through the coordinator, in that order.
+		// Forget the worker now, so its Session can start again, and judge the exit once the disconnect arrives.
+		this.#forgetWorker(worker);
+		const settle = (): void => {
+			if (this.#exitedAwaitingDisconnect.get(worker.peerId)?.worker !== worker) return;
+			this.#exitedAwaitingDisconnect.delete(worker.peerId);
+			clearTimeout(timer);
+			worker.resolveTerminated(worker.expectedStop || worker.retiring ? undefined : unexpected);
+		};
+		const timer = setTimeout(settle, WORKER_SHUTDOWN_TIMEOUT_MS);
+		timer.unref();
+		this.#exitedAwaitingDisconnect.set(worker.peerId, { worker, settle });
 	}
 
 	#failPending(sessionKey: string, error: Error): void {
@@ -910,7 +938,13 @@ export class SessionWorkerManager {
 	}
 
 	#removeWorker(worker: WorkerRecord, error: Error | undefined): void {
-		if (this.#workersByPeer.get(worker.peerId) !== worker) return;
+		if (!this.#forgetWorker(worker)) return;
+		worker.resolveTerminated(error);
+	}
+
+	/** Drop a worker from routing and fail its in-flight work; false when it was already forgotten. */
+	#forgetWorker(worker: WorkerRecord): boolean {
+		if (this.#workersByPeer.get(worker.peerId) !== worker) return false;
 		this.#rejectWorkerOperations(worker, new Error("Session worker disconnected during an operation"));
 		this.#removeServiceSubscriptions((entry) => entry.worker === worker);
 		for (const pending of [...this.#pendingDemand.values()]) {
@@ -921,8 +955,8 @@ export class SessionWorkerManager {
 		this.#workersByPeer.delete(worker.peerId);
 		this.#workersBySession.delete(worker.metadata.path);
 		if (this.workerPids.get(worker.metadata.id) === worker.pid) this.workerPids.delete(worker.metadata.id);
-		worker.resolveTerminated(error);
 		this.#notifyWorkerCountChanged();
+		return true;
 	}
 
 	#removeServiceSubscriptions(matches: (entry: WorkerServiceSubscription) => boolean): void {

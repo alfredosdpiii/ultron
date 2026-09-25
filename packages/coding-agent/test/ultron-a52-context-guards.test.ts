@@ -11,6 +11,7 @@ import { join, resolve } from "node:path";
 import { describe, expect, test } from "vitest";
 import { RpcClient } from "../src/modes/rpc/rpc-client.ts";
 import { ScriptedProvider, type ScriptedRequest, scriptedModelsJson } from "./support/scripted-provider.ts";
+import { tempServerDir } from "./support/server-dir.ts";
 
 // Built by concatenation in the model's code so the code itself never carries the secret.
 const SECRET = "SECRET_ALPHA_4471";
@@ -106,7 +107,7 @@ describe("A52 context edits are guarded and observable", () => {
 			env: {
 				NODE_OPTIONS: `--import ${resolve(__dirname, "../src/experimental/source-resolver.ts")}`,
 				ULTRON_CODING_AGENT_DIR: agentDir,
-				ULTRON_SERVER_DIR: mkdtempSync(join("/tmp", "u-a52-")),
+				ULTRON_SERVER_DIR: tempServerDir("u-a52-"),
 				ULTRON_HINDSIGHT_URL: "off",
 				PI_OFFLINE: "1",
 			},

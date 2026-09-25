@@ -18,6 +18,7 @@ import { RpcClient } from "../src/modes/rpc/rpc-client.ts";
 import type { RpcExtensionUIRequest } from "../src/modes/rpc/rpc-types.ts";
 import { importPiSession } from "../src/ultron/migration.ts";
 import { ScriptedProvider, type ScriptedReply, type ScriptedRequest } from "./support/scripted-provider.ts";
+import { removeTempServerDirs, tempServerDir } from "./support/server-dir.ts";
 
 const cliPath = resolve(__dirname, "../src/cli.ts");
 const sourceResolverPath = resolve(__dirname, "../src/experimental/source-resolver.ts");
@@ -227,6 +228,7 @@ describe("Pi parity through the real CLI", () => {
 		for (const client of clients.splice(0)) await client.stop().catch(() => {});
 		await provider.stop();
 		rmSync(root, { recursive: true, force: true });
+		removeTempServerDirs();
 	});
 
 	function env(): Record<string, string> {
@@ -234,7 +236,7 @@ describe("Pi parity through the real CLI", () => {
 			NODE_OPTIONS: `--import ${sourceResolverPath}`,
 			ULTRON_CODING_AGENT_DIR: agentDir,
 			ULTRON_HINDSIGHT_URL: "off",
-			ULTRON_SERVER_DIR: mkdtempSync(join("/tmp", "u-parity-")),
+			ULTRON_SERVER_DIR: tempServerDir("u-parity-"),
 			PI_OFFLINE: "1",
 			// Pi's native tools are what this parity suite exercises; by default only the RLM REPL is active.
 			ULTRON_TOOLS: "native",

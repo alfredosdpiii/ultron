@@ -4,6 +4,7 @@ import { join, resolve } from "node:path";
 import { expect, test } from "vitest";
 import { RpcClient } from "../src/modes/rpc/rpc-client.ts";
 import { ScriptedProvider, scriptedModelsJson } from "./support/scripted-provider.ts";
+import { tempServerDir } from "./support/server-dir.ts";
 
 test("extension tools that use the theme run in the session worker", async () => {
 	const root = mkdtempSync(join(tmpdir(), "ultron-ext-theme-"));
@@ -41,7 +42,7 @@ test("extension tools that use the theme run in the session worker", async () =>
 		env: {
 			NODE_OPTIONS: `--import ${resolve(__dirname, "../src/experimental/source-resolver.ts")}`,
 			ULTRON_CODING_AGENT_DIR: agentDir,
-			ULTRON_SERVER_DIR: mkdtempSync(join("/tmp", "u-theme-")),
+			ULTRON_SERVER_DIR: tempServerDir("u-theme-"),
 		},
 	});
 	try {

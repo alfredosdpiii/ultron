@@ -10,6 +10,7 @@ import { homedir, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { describe, expect, test } from "vitest";
 import { RpcClient } from "../src/modes/rpc/rpc-client.ts";
+import { tempServerDir } from "./support/server-dir.ts";
 
 const LIVE = process.env.ULTRON_LIVE_EVAL === "1";
 const MODEL = process.env.ULTRON_LIVE_EVAL_MODEL ?? "cliproxyapi/gpt-6-sol";
@@ -59,7 +60,7 @@ describe.skipIf(!LIVE)("A46 live demonstration", () => {
 				"from calc import average\nassert average([2, 4, 6]) == 4, average([2, 4, 6])\nprint('ok')\n",
 			);
 			const split = MODEL.indexOf("/");
-			const serverDir = mkdtempSync(join("/tmp", "u-a46l-"));
+			const serverDir = tempServerDir("u-a46l-");
 			const client = (args: string[]) =>
 				new RpcClient({
 					cliPath,

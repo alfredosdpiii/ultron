@@ -18,6 +18,7 @@ import { BACKGROUND_CONTEXT } from "@ultron/chord/context";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { createUltronRlmTool } from "../src/experimental/session-worker.ts";
 import { RpcClient } from "../src/modes/rpc/rpc-client.ts";
+import { tempServerDir } from "./support/server-dir.ts";
 
 const OUTPUT_BUDGET = 20_000;
 /** The budget plus the truncation warning and marker lines. */
@@ -232,7 +233,7 @@ describe("A02 large data stays outside the model context", () => {
 					NODE_OPTIONS: `--import ${sourceResolverPath}`,
 					ULTRON_CODING_AGENT_DIR: agentDir,
 					ULTRON_HINDSIGHT_URL: "off",
-					ULTRON_SERVER_DIR: mkdtempSync(join("/tmp", "u-a02-")),
+					ULTRON_SERVER_DIR: tempServerDir("u-a02-"),
 					PI_OFFLINE: "1",
 				},
 			});

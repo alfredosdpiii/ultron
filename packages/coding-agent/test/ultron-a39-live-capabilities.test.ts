@@ -14,6 +14,7 @@ import { homedir, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { describe, expect, test } from "vitest";
 import { RpcClient } from "../src/modes/rpc/rpc-client.ts";
+import { tempServerDir } from "./support/server-dir.ts";
 
 const TRIALS = 2;
 const PASS_THRESHOLD = 2;
@@ -138,7 +139,7 @@ async function runTrial(model: string, capability: CapabilityCase, trial: number
 			NODE_OPTIONS: `--import ${sourceResolverPath}`,
 			ULTRON_CODING_AGENT_DIR: agentDir,
 			ULTRON_HINDSIGHT_URL: "off",
-			ULTRON_SERVER_DIR: mkdtempSync(join("/tmp", "u-a39-")),
+			ULTRON_SERVER_DIR: tempServerDir("u-a39-"),
 		},
 	});
 	const started = Date.now();

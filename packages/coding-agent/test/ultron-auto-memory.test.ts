@@ -17,6 +17,7 @@ import { createNativeJevClient, NativeJevClient } from "../src/ultron/jev.ts";
 import { JevDecisionLog, recordingJevClient } from "../src/ultron/jev-decisions.ts";
 import { createWorkerServices } from "../src/ultron/worker-services.ts";
 import { ScriptedProvider, scriptedModelsJson } from "./support/scripted-provider.ts";
+import { tempServerDir } from "./support/server-dir.ts";
 import { FakeHindsight, scopes } from "./ultron-fake-hindsight.ts";
 
 function session() {
@@ -369,7 +370,7 @@ async function runCli(options: { excludeLegacy: boolean; autoMemory?: string }) 
 		env: {
 			NODE_OPTIONS: `--import ${resolve(__dirname, "../src/experimental/source-resolver.ts")}`,
 			ULTRON_CODING_AGENT_DIR: agentDir,
-			ULTRON_SERVER_DIR: mkdtempSync(join("/tmp", "u-automem-")),
+			ULTRON_SERVER_DIR: tempServerDir("u-automem-"),
 			ULTRON_HINDSIGHT_URL: memory.url,
 			TYPESAFE_API_KEY: "test-key",
 			TYPESAFE_BASE_URL: memory.url,

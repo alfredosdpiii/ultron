@@ -7,6 +7,7 @@ import { SettingsManager } from "../src/core/settings-manager.ts";
 import { RpcClient } from "../src/modes/rpc/rpc-client.ts";
 import { NativeUsageLedger, nativeUsageLimitsFromEnv } from "../src/ultron/usage.ts";
 import { ScriptedProvider, scriptedModelsJson } from "./support/scripted-provider.ts";
+import { tempServerDir } from "./support/server-dir.ts";
 import { deferred, hostFixture, waitFor } from "./ultron-host-fixtures.ts";
 
 const fixtures: Array<ReturnType<typeof hostFixture>> = [];
@@ -165,7 +166,7 @@ describe("per-root max_total_turns / max_total_tokens", () => {
 			env: {
 				NODE_OPTIONS: `--import ${resolve(__dirname, "../src/experimental/source-resolver.ts")}`,
 				ULTRON_CODING_AGENT_DIR: agentDir,
-				ULTRON_SERVER_DIR: mkdtempSync(join("/tmp", "u-budget-")),
+				ULTRON_SERVER_DIR: tempServerDir("u-budget-"),
 				ULTRON_TOOL_ROUNDS_NUDGE: "0",
 				ULTRON_MAX_TOTAL_TURNS: "3",
 			},

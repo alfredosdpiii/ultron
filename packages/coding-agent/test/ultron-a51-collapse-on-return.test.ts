@@ -10,6 +10,7 @@ import { join, resolve } from "node:path";
 import { describe, expect, test } from "vitest";
 import { RpcClient } from "../src/modes/rpc/rpc-client.ts";
 import { ScriptedProvider, scriptedModelsJson } from "./support/scripted-provider.ts";
+import { tempServerDir } from "./support/server-dir.ts";
 
 const TASKS = 20;
 const VALUE_BYTES = 4000;
@@ -65,7 +66,7 @@ describe("A51 collapse on return keeps the root's requests bounded", () => {
 			env: {
 				NODE_OPTIONS: `--import ${resolve(__dirname, "../src/experimental/source-resolver.ts")}`,
 				ULTRON_CODING_AGENT_DIR: agentDir,
-				ULTRON_SERVER_DIR: mkdtempSync(join("/tmp", "u-a51-")),
+				ULTRON_SERVER_DIR: tempServerDir("u-a51-"),
 				ULTRON_HINDSIGHT_URL: "off",
 				ULTRON_TOOL_ROUNDS_NUDGE: "0",
 				PI_OFFLINE: "1",

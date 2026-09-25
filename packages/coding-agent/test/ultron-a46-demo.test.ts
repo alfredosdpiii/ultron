@@ -17,6 +17,7 @@ import {
 	type ScriptedRequest,
 	scriptedModelsJson,
 } from "./support/scripted-provider.ts";
+import { tempServerDir } from "./support/server-dir.ts";
 
 const cliPath = resolve(__dirname, "../src/cli.ts");
 const sourceResolverPath = resolve(__dirname, "../src/experimental/source-resolver.ts");
@@ -177,7 +178,7 @@ async function start(steps: readonly string[], files: Record<string, string>): P
 		env: {
 			NODE_OPTIONS: `--import ${sourceResolverPath}`,
 			ULTRON_CODING_AGENT_DIR: agentDir,
-			ULTRON_SERVER_DIR: mkdtempSync(join("/tmp", "u-a46-")),
+			ULTRON_SERVER_DIR: tempServerDir("u-a46-"),
 			// Never touch the user's memory server; an unreachable one models a Hindsight outage.
 			ULTRON_HINDSIGHT_URL: "http://127.0.0.1:9",
 			PI_OFFLINE: "1",

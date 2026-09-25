@@ -4,6 +4,7 @@ import { join, resolve } from "node:path";
 import { afterEach, describe, expect, test } from "vitest";
 import { RpcClient } from "../src/modes/rpc/rpc-client.ts";
 import { ScriptedProvider, type ScriptedRequest, scriptedModelsJson } from "./support/scripted-provider.ts";
+import { tempServerDir } from "./support/server-dir.ts";
 
 const cliPath = resolve(__dirname, "../src/cli.ts");
 const sourceResolverPath = resolve(__dirname, "../src/experimental/source-resolver.ts");
@@ -76,7 +77,7 @@ async function runTask(provider: ScriptedProvider, agentDir: string, projectDir:
 			NODE_OPTIONS: `--import ${sourceResolverPath}`,
 			ULTRON_CODING_AGENT_DIR: agentDir,
 			// A fresh server and worker for every run: nothing but the profile carries over.
-			ULTRON_SERVER_DIR: mkdtempSync(join("/tmp", "u-a54-")),
+			ULTRON_SERVER_DIR: tempServerDir("u-a54-"),
 			ULTRON_HINDSIGHT_URL: "off",
 			TYPESAFE_API_KEY: "",
 			ULTRON_CODE_SKILLS_DIR: "",

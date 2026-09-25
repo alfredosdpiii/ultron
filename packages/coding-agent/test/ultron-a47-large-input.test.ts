@@ -10,6 +10,7 @@ import { join, resolve } from "node:path";
 import { afterEach, describe, expect, test } from "vitest";
 import { RpcClient } from "../src/modes/rpc/rpc-client.ts";
 import { ScriptedProvider, type ScriptedReply, type ScriptedRequest } from "./support/scripted-provider.ts";
+import { tempServerDir } from "./support/server-dir.ts";
 
 const cliPath = resolve(__dirname, "../src/cli.ts");
 const sourceResolverPath = resolve(__dirname, "../src/experimental/source-resolver.ts");
@@ -113,7 +114,7 @@ async function start(): Promise<Harness> {
 		env: {
 			NODE_OPTIONS: `--import ${sourceResolverPath}`,
 			ULTRON_CODING_AGENT_DIR: agentDir,
-			ULTRON_SERVER_DIR: mkdtempSync(join("/tmp", "u-a47-")),
+			ULTRON_SERVER_DIR: tempServerDir("u-a47-"),
 			ULTRON_HINDSIGHT_URL: "off",
 			PI_OFFLINE: "1",
 		},

@@ -30,6 +30,7 @@ import {
 	type ScriptedRequest,
 	scriptedModelsJson,
 } from "./support/scripted-provider.ts";
+import { tempServerDir } from "./support/server-dir.ts";
 
 const runtimePath = fileURLToPath(new URL("../src/ultron/rlm/runtime.py", import.meta.url));
 
@@ -339,7 +340,7 @@ describe("CLI with the RLM-only tool set", () => {
 				ULTRON_CODING_AGENT_DIR: agentDir,
 				ULTRON_HINDSIGHT_URL: "off",
 				// Short on purpose: the server socket name is long and Unix socket paths are capped at 108 bytes.
-				ULTRON_SERVER_DIR: mkdtempSync(join("/tmp", "u-rlm-")),
+				ULTRON_SERVER_DIR: tempServerDir("u-rlm-"),
 				PI_OFFLINE: "1",
 				...env,
 			},

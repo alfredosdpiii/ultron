@@ -5,6 +5,7 @@ import { describe, expect, test } from "vitest";
 import { RpcClient } from "../src/modes/rpc/rpc-client.ts";
 import { ToolRoundNudger, toolRoundsNudgeFromEnv } from "../src/ultron/tool-round-nudge.ts";
 import { ScriptedProvider, scriptedModelsJson } from "./support/scripted-provider.ts";
+import { tempServerDir } from "./support/server-dir.ts";
 
 describe("tool round nudge", () => {
 	test("steers once at the threshold, again at twice it, and resets when the model answers", () => {
@@ -46,7 +47,7 @@ describe("tool round nudge", () => {
 			env: {
 				NODE_OPTIONS: `--import ${resolve(__dirname, "../src/experimental/source-resolver.ts")}`,
 				ULTRON_CODING_AGENT_DIR: agentDir,
-				ULTRON_SERVER_DIR: mkdtempSync(join("/tmp", "u-nudge-")),
+				ULTRON_SERVER_DIR: tempServerDir("u-nudge-"),
 				ULTRON_TOOL_ROUNDS_NUDGE: "3",
 				// The script calls Pi's native bash tool, which only the opt-out makes active.
 				ULTRON_TOOLS: "native",

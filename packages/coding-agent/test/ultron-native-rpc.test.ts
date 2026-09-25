@@ -5,6 +5,7 @@ import { join, resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { RpcEventTranslator } from "../src/experimental/rpc-events.ts";
 import { RpcClient } from "../src/modes/rpc/rpc-client.ts";
+import { tempServerDir } from "./support/server-dir.ts";
 
 const cliPath = resolve(__dirname, "../src/cli.ts");
 const sourceResolverPath = resolve(__dirname, "../src/experimental/source-resolver.ts");
@@ -138,7 +139,7 @@ describe("native RPC mode", () => {
 				NODE_OPTIONS: `--import ${sourceResolverPath}`,
 				ULTRON_CODING_AGENT_DIR: agentDir,
 				ULTRON_HINDSIGHT_URL: "off",
-				ULTRON_SERVER_DIR: mkdtempSync(join("/tmp", "u-rpc-")),
+				ULTRON_SERVER_DIR: tempServerDir("u-rpc-"),
 				PI_OFFLINE: "1",
 			},
 		});
