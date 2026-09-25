@@ -117,14 +117,14 @@ describe.skipIf(process.platform !== "linux")("RLM kernel resource limits", () =
 		const probe = await instance.execute(
 			[
 				"import subprocess, sys",
-				"code = 'import resource; print(resource.getrlimit(resource.RLIMIT_DATA)[0], resource.getrlimit(resource.RLIMIT_CPU)[0]); bytearray(512 * 1024 * 1024)'",
+				"code = 'import resource; print(resource.getrlimit(resource.RLIMIT_DATA)[0], resource.getrlimit(resource.RLIMIT_CPU)[0], resource.getrlimit(resource.RLIMIT_CORE)[1]); bytearray(512 * 1024 * 1024)'",
 				"child = subprocess.run([sys.executable, '-c', code], capture_output=True, text=True)",
-				"burner = subprocess.run([sys.executable, '-c', 'while True: pass'])",
-				"data, cpu = map(int, child.stdout.split())",
-				"(data, 0 < cpu < 60, child.returncode != 0, 'MemoryError' in child.stderr, burner.returncode)",
+				"data, cpu, core = map(int, child.stdout.split())",
+				"(data, 0 < cpu < 60, child.returncode != 0, 'MemoryError' in child.stderr, core)",
 			].join("\n"),
 		);
-		// SIGXCPU (24) terminates the CPU-burning child; the kernel's own budget is unaffected.
-		expect(probe).toMatchObject({ status: "ok", result: `(${256 * MiB}, True, True, True, -24)` });
+		// The child inherits the CPU limit (checked above without burning CPU: a real SIGXCPU kill would
+		// show up in desktop crash reporters) and has core dumps disabled.
+		expect(probe).toMatchObject({ status: "ok", result: `(${256 * MiB}, True, True, True, 0)` });
 	}, 30_000);
 });

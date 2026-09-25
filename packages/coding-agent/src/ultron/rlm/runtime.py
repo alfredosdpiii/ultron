@@ -227,6 +227,14 @@ def _apply_resource_limits() -> None:
         import resource
     except ImportError:
         return
+    # A limit kill (SIGXCPU, or an out-of-memory abort) would otherwise write a core dump for the kernel
+    # or any subprocess a cell starts, and desktop crash reporters announce every one. Limit hits are
+    # expected, reported outcomes, so no process in the kernel's tree dumps core.
+    if hasattr(resource, "RLIMIT_CORE"):
+        try:
+            resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
+        except (ValueError, OSError):
+            pass
     if _MAX_MEMORY_MB > 0 and hasattr(resource, "RLIMIT_DATA"):
         limit = _MAX_MEMORY_MB * 1024 * 1024
         _soft, hard = resource.getrlimit(resource.RLIMIT_DATA)
