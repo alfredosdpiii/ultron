@@ -48,6 +48,8 @@ const taskSchema = Type.Object(
 			Type.Literal("interrupted"),
 		]),
 		result: Type.Optional(resultSchema),
+		/** Spawning task, absent for tasks started by the root lane. */
+		parentId: Type.Optional(Type.String({ minLength: 1 })),
 	},
 	{ additionalProperties: false },
 );
@@ -70,6 +72,7 @@ export type NativeTask = {
 	definition: string;
 	state: NativeTaskState;
 	result?: NativeResult;
+	parentId?: string;
 };
 
 type NativeDocument = { version: 1; tasks: NativeTask[] };
@@ -237,6 +240,7 @@ export class NativeTaskJournal {
 		fingerprint: string,
 		key: string,
 		signal?: AbortSignal,
+		parentId?: string,
 	): Promise<{ task: NativeTask; created: boolean }> {
 		return this.enqueue(async () => {
 			signal?.throwIfAborted();
@@ -252,6 +256,7 @@ export class NativeTaskJournal {
 				fingerprint,
 				key,
 				state: "admitted",
+				...(parentId === undefined ? {} : { parentId }),
 			};
 			await this.write([...this.records, task]);
 			return { task: structuredClone(task), created: true };

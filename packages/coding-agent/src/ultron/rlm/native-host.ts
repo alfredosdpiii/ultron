@@ -9,6 +9,7 @@ import {
 	NativeDefinitionRegistry,
 	type NativeDefinitionStore,
 } from "./definition-registry.ts";
+import { type HostCaller, type NativeHostApi, type NativeHostModule, ROOT_CALLER } from "./host-module.ts";
 import {
 	type NativeHostStore,
 	type NativeTask,
@@ -81,11 +82,24 @@ function definitionKey(value: unknown): string {
 	return value;
 }
 
+function publicRecord(task: TaskRecord): NativeTask {
+	return {
+		id: task.id,
+		key: task.key,
+		fingerprint: task.fingerprint,
+		definition: task.definition,
+		state: task.state,
+		...(task.result === undefined ? {} : { result: structuredClone(task.result) }),
+		...(task.parentId === undefined ? {} : { parentId: task.parentId }),
+	};
+}
+
 function publicTask(task: TaskRecord): Record<string, unknown> {
 	return {
 		id: task.id,
 		definition: task.definition,
 		state: task.state,
+		...(task.parentId === undefined ? {} : { parentId: task.parentId }),
 		...(task.result === undefined ? {} : { result: task.result }),
 	};
 }
@@ -125,6 +139,8 @@ export type NativeHostOptions = {
 	usage?: NativeUsageLedgerLike;
 	deterministic?: NativeDefinitionAdapter;
 	predict?: NativeDefinitionAdapter;
+	modules?: readonly NativeHostModule[];
+	now?: () => number;
 };
 
 export class NativeRlmHost {
@@ -138,6 +154,11 @@ export class NativeRlmHost {
 	private readonly usage: NativeUsageLedgerLike | undefined;
 	private readonly journal: NativeTaskJournal;
 	private readonly registry: NativeDefinitionRegistry;
+	private readonly modules: readonly NativeHostModule[];
+	/** Lane name -> owning task, so host requests from a child kernel carry the child's identity. */
+	private readonly laneTasks = new Map<string, string>();
+	private readonly now: () => number;
+	private modulesStarted?: Promise<void>;
 
 	constructor(harness: AgentHarness, _rootLane: AgentLane, options: NativeHostOptions) {
 		if (!options?.store) throw new Error("NativeRlmHost requires options.store");
@@ -145,6 +166,8 @@ export class NativeRlmHost {
 		this.services = options.services;
 		this.usage = options.usage;
 		this.journal = new NativeTaskJournal(options.store);
+		this.modules = options.modules ?? [];
+		this.now = options.now ?? Date.now;
 		this.registry = new NativeDefinitionRegistry(options.definitionStore, {
 			deterministic: options.deterministic,
 			predict: options.predict,
@@ -163,7 +186,52 @@ export class NativeRlmHost {
 		})();
 		await this.loading;
 		await this.journal.ready();
+		this.modulesStarted ??= (async () => {
+			for (const module of this.modules) await module.start?.(this.api);
+		})();
+		await this.modulesStarted;
 	}
+
+	/** Operations exposed to host modules. */
+	readonly api: NativeHostApi = {
+		callerTaskId: (caller) => this.laneTasks.get(caller.lane) ?? null,
+		tasks: () => this.journal.list(),
+		spawn: async (request, parentTaskId, context) => {
+			const definition = definitionKey(request.definition);
+			const item = this.definition(definition);
+			if (!isJsonValue(request.input) || !this.registry.isValidInput(item, request.input))
+				throw this.registry.validationError(item, request.input, "input");
+			const task = await this.spawnTask(
+				{
+					definition,
+					input: request.input,
+					model: request.model,
+					key: request.key,
+					timeoutMs: request.timeoutMs ?? 30 * 60 * 1000,
+				},
+				context,
+				parentTaskId ?? undefined,
+			);
+			return publicRecord(task);
+		},
+		result: async (taskId) => {
+			const task = this.tasks.get(taskId);
+			if (!task) throw new Error("Unknown Ultron task");
+			return structuredClone(await (task.promise ?? task.result!));
+		},
+		cancel: async (taskId, reason) => {
+			const task = this.tasks.get(taskId);
+			if (!task) throw new Error("Unknown Ultron task");
+			return this.cancel(task, reason);
+		},
+		steer: async (taskId, message, context) => {
+			const task = this.tasks.get(taskId);
+			if (!task?.lane || task.result) return false;
+			return (await task.lane.steer(message, undefined, context)).ok;
+		},
+		usage: async () => (this.usage ? ((await this.usage.status()) as unknown as JsonValue) : null),
+		now: () => this.now(),
+	};
 
 	list(): ReturnType<NativeDefinitionRegistry["list"]> {
 		return this.registry.list();
@@ -213,6 +281,7 @@ export class NativeRlmHost {
 			const laneName = `ultron.${definition.id}.${task.id}`;
 			const lane = await this.harness.lane(laneName, taskContext);
 			task.lane = lane;
+			this.laneTasks.set(laneName, task.id);
 			if (signal.aborted) this.abortLane(task);
 			signal.throwIfAborted();
 			await lane.getActiveTools(taskContext);
@@ -340,7 +409,7 @@ export class NativeRlmHost {
 		}
 	}
 
-	private spawnTask(request: TaskRequest, context: Context): Promise<TaskRecord> {
+	private spawnTask(request: TaskRequest, context: Context, parentId?: string): Promise<TaskRecord> {
 		// Serialize through installation of the live promise, not through execution.
 		const pending = this.admissions.then(async () => {
 			if (this.closed) throw new Error("Ultron task host is closed");
@@ -360,7 +429,7 @@ export class NativeRlmHost {
 			});
 			let admitted: Awaited<ReturnType<NativeTaskJournal["admit"]>>;
 			try {
-				admitted = await this.journal.admit(request.definition, fingerprint, key, context.abortSignal);
+				admitted = await this.journal.admit(request.definition, fingerprint, key, context.abortSignal, parentId);
 			} catch (error) {
 				if (usageReservation) await this.usage?.settle(usageReservation, { status: "unknown" }).catch(() => {});
 				throw error;
@@ -418,6 +487,7 @@ export class NativeRlmHost {
 		this.closed = true;
 		this.closing ??= (async () => {
 			await this.admissions;
+			for (const module of this.modules) await module.close?.();
 			const results = await Promise.allSettled(
 				[...this.tasks.values()]
 					.filter((task) => !task.result)
@@ -479,13 +549,16 @@ export class NativeRlmHost {
 		return nodes;
 	}
 
-	async handle(type: string, payload: Payload, context: Context): Promise<unknown> {
+	async handle(type: string, payload: Payload, context: Context, caller: HostCaller = ROOT_CALLER): Promise<unknown> {
 		if (this.closed) throw new Error("Ultron task host is closed");
 		if (!isJsonValue(payload) || payload === null || Array.isArray(payload) || typeof payload !== "object")
 			throw new Error("Host payload must be a JSON object");
 		payload = structuredClone(payload);
 		await this.loadTasks();
 		if (this.closed) throw new Error("Ultron task host is closed");
+		const parentId = this.laneTasks.get(caller.lane);
+		const module = this.modules.find((candidate) => candidate.prefixes.some((prefix) => type.startsWith(prefix)));
+		if (module) return module.handle({ type, payload, caller, context }, this.api);
 		if (["ping", "agents.list", "agents.status", "agents.tasks"].includes(type)) fields(payload, []);
 		if (type === "ping") return { ok: true };
 		if (type === "agents.list") return this.list();
@@ -525,7 +598,7 @@ export class NativeRlmHost {
 				timeoutMs: typeof payload.timeout_ms === "number" ? payload.timeout_ms : 30 * 60 * 1000,
 			};
 			if (request.key !== undefined && request.key.length > 264) throw new Error("Background key is too long");
-			const task = await this.spawnTask(request, context);
+			const task = await this.spawnTask(request, context, parentId);
 			return publicTask(task);
 		}
 		if (type === "background.list") {
@@ -560,7 +633,7 @@ export class NativeRlmHost {
 			};
 			if (!Number.isSafeInteger(request.timeoutMs) || request.timeoutMs < 1 || request.timeoutMs > 60 * 60 * 1000)
 				throw new Error("timeout_ms must be an integer between 1 and 3600000");
-			const task = await this.spawnTask(request, context);
+			const task = await this.spawnTask(request, context, parentId);
 			return {
 				rlm_child_id: task.id,
 				name,
@@ -597,7 +670,7 @@ export class NativeRlmHost {
 			return { deleted: (await this.cancel(task, "RLM child deleted")).status === "cancelled" };
 		}
 		if (type === "agents.spawn" || type === "agents.invoke") {
-			const task = await this.spawnTask(this.request(payload), context);
+			const task = await this.spawnTask(this.request(payload), context, parentId);
 			if (type === "agents.spawn") return { id: task.id, state: task.state };
 			return structuredClone(await (task.promise ?? task.result));
 		}
@@ -654,7 +727,7 @@ export class NativeRlmHost {
 						const definition = this.definition(node.definition);
 						if (!this.registry.isValidInput(definition, input))
 							throw this.registry.validationError(definition, input, "input");
-						const task = await this.spawnTask({ ...node, input }, context);
+						const task = await this.spawnTask({ ...node, input }, context, parentId);
 						const result = await (task.promise ?? task.result!);
 						return [node.id, result] as const;
 					}),

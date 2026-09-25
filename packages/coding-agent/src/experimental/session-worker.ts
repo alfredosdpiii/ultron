@@ -38,14 +38,17 @@ import Type, { type Static } from "typebox";
 import { Check } from "typebox/value";
 import { isValidThinkingLevel } from "../cli/args.ts";
 import { getAgentDir, getRlmRuntimePath } from "../config.ts";
+import { executeBashWithOperations } from "../core/bash-executor.ts";
 import { ModelRegistry } from "../core/model-registry.ts";
 import { findInitialModel, resolveCliModel } from "../core/model-resolver.ts";
 import { ModelRuntime } from "../core/model-runtime.ts";
 import { DefaultResourceLoader } from "../core/resource-loader.ts";
 import { SettingsManager } from "../core/settings-manager.ts";
 import { buildSystemPrompt } from "../core/system-prompt.ts";
+import { createLocalBashOperations } from "../core/tools/bash.ts";
 import { createNativeJevClient } from "../ultron/jev.ts";
 import { createSessionDefinitionStore } from "../ultron/rlm/definition-registry.ts";
+import type { HostCaller } from "../ultron/rlm/host-module.ts";
 import { type KernelHostHandler, RlmKernel } from "../ultron/rlm/kernel.ts";
 import { NativeRlmHost } from "../ultron/rlm/native-host.ts";
 import { createSessionTaskStore } from "../ultron/rlm/task-store.ts";
@@ -69,13 +72,19 @@ import {
 
 export type { SessionWorkerRuntime } from "./services/worker.ts";
 
-type RlmHostHandler = KernelHostHandler;
+/** Host request handler that also receives the lane whose kernel issued the request. */
+type RlmHostHandler = (
+	type: string,
+	payload: Record<string, unknown>,
+	signal: AbortSignal | undefined,
+	caller: HostCaller,
+) => Promise<unknown> | unknown;
 
 /** Worker adapter around the shared, bounded Python protocol implementation. */
 export class UltronRlmKernel {
 	private readonly kernel: RlmKernel;
 
-	constructor(cwd: string, hostHandler: RlmHostHandler) {
+	constructor(cwd: string, hostHandler: KernelHostHandler) {
 		this.kernel = new RlmKernel({ cwd, runtimePath: getRlmRuntimePath() }, hostHandler);
 	}
 
@@ -131,7 +140,7 @@ export function createUltronRlmTool(
 			if (closed) throw new Error("Ultron RLM tool is closed");
 			let kernel = kernels.get(lane);
 			if (!kernel) {
-				kernel = new UltronRlmKernel(cwd, hostHandler);
+				kernel = new UltronRlmKernel(cwd, (type, payload, signal) => hostHandler(type, payload, signal, { lane }));
 				kernels.set(lane, kernel);
 			}
 			const result = await kernel.execute(params.code, context);
@@ -969,7 +978,24 @@ async function createCodingAgentHarness(
 	const registry = new ModelRegistry(modelRuntime);
 	const jev = createNativeJevClient();
 	let host: NativeRlmHost | undefined;
-	const hostHandler: RlmHostHandler = async (type, payload, signal) => {
+	const hostHandler: RlmHostHandler = async (type, payload, signal, caller) => {
+		if (type === "bash") {
+			const command = payload.command;
+			if (typeof command !== "string" || !command.trim()) throw new Error("bash command must be a non-empty string");
+			const result = await executeBashWithOperations(
+				command,
+				options.metadata.cwd,
+				createLocalBashOperations({ shellPath: settingsManager.getShellPath() }),
+				{ signal },
+			);
+			return {
+				output: result.output,
+				exit_code: result.exitCode ?? null,
+				cancelled: result.cancelled,
+				truncated: result.truncated,
+				full_output_path: result.fullOutputPath ?? null,
+			};
+		}
 		if (type === "rlm.find_models")
 			return registry.getAvailable().map((model) => ({ provider: model.provider, id: model.id, name: model.name }));
 		if (type === "jev.triage") {
@@ -981,7 +1007,7 @@ async function createCodingAgentHarness(
 			return { available: true, gate: await jev.memoryRecall(String(payload.prompt ?? ""), signal), results: [] };
 		}
 		if (!host) throw new Error("Ultron RLM host is not initialized");
-		return host.handle(type, payload, signal ? withAbortSignal(signal, TODO_CONTEXT) : TODO_CONTEXT);
+		return host.handle(type, payload, signal ? withAbortSignal(signal, TODO_CONTEXT) : TODO_CONTEXT, caller);
 	};
 	const rlmTool = createUltronRlmTool(options.metadata.cwd, hostHandler, async (invocation, context) => {
 		const meta = await session.getValue(value<{ lane: string }>("pi.op.meta", invocation.operationId), context);
@@ -1008,9 +1034,6 @@ async function createCodingAgentHarness(
 	};
 	const selectedToolNames = ["read", "edit", "write", "bash", "rlm"];
 	const contextFiles = resourceLoader.getAgentsFiles().agentsFiles;
-	const contextPrompt = contextFiles
-		.map((file) => `<project_instructions path="${file.path}">\\n${file.content}\\n</project_instructions>`)
-		.join("\\n\\n");
 	const systemPrompt =
 		options.systemPrompt ??
 		buildSystemPrompt({
@@ -1025,10 +1048,7 @@ async function createCodingAgentHarness(
 			},
 			contextFiles,
 			skills: resourceLoader.getSkills().skills,
-			appendSystemPrompt: [
-				...resourceLoader.getAppendSystemPrompt(),
-				...(contextPrompt.length === 0 ? [] : [contextPrompt]),
-			].join("\n\n"),
+			appendSystemPrompt: resourceLoader.getAppendSystemPrompt().join("\n\n"),
 		});
 	const toolNames = tools.map((tool) => tool.name);
 	const activeToolNames =
