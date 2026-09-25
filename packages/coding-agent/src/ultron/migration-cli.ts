@@ -22,8 +22,8 @@ function usage(): string {
 		`Usage: ${APP_NAME} migrate <command>`,
 		"",
 		"Commands:",
-		"  import-pi <pi-session.jsonl> [--sessions-root <dir>]   Import a Pi session's active branch as a native session",
-		"  export-pi <native-session.jsonl> <out.jsonl>          Write a native session's main branch as a Pi session",
+		"  import-pi <pi-session.jsonl> [--sessions-root <dir>]   Import a whole Pi session tree as a native session",
+		"  export-pi <native-session.jsonl> <out.jsonl>          Write a native session tree as a Pi session",
 		"  backup [dir] [--agent-dir <dir>]                      Back up the config profile (not sessions)",
 		"  restore <backup-dir> [--agent-dir <dir>]              Verify and restore a profile backup",
 	].join("\n");
@@ -82,8 +82,14 @@ export async function runMigrationCommand(args: string[], io: MigrationCommandIo
 				});
 				io.stdout(`Imported ${result.imported} entries as native session ${result.sessionId}`);
 				io.stdout(`  ${result.path}`);
-				for (const { type, count } of result.skipped)
-					io.stdout(`  skipped ${count} ${type} entr${count === 1 ? "y" : "ies"}`);
+				const entries = (count: number): string => `entr${count === 1 ? "y" : "ies"}`;
+				for (const { type, count } of result.skipped) io.stdout(`  skipped ${count} ${type} ${entries(count)}`);
+				for (const { type, count } of result.preserved) {
+					io.stdout(`  preserved ${count} unknown ${type} ${entries(count)} as custom entries`);
+				}
+				for (const id of result.unappliedContextEdits) {
+					io.stdout(`  context edit ${id} is branch-local; kept as an entry, not applied to its target`);
+				}
 				return true;
 			}
 			case "export-pi": {
