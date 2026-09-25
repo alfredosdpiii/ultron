@@ -627,11 +627,12 @@ export function createCodeSkills(options: CodeSkillOptions = {}): CodeSkills {
 	return new CodeSkills(options);
 }
 
-/** The rlm tool description's code-skills section: the prompt fragment plus the bounded active listing. */
+/** The rlm tool description's code-skills section: the bounded listing of active skills. */
 export function codeSkillsToolSection(skills: Pick<CodeSkills, "describe"> = new CodeSkills()): string {
 	let listing = "";
 	try {
 		listing = skills.describe();
 	} catch {}
-	return `\n${CODE_SKILLS_PROMPT}${listing ? `\n${listing}` : ""}`;
+	// The how-to lives in the system prompt's runtime guide; the tool description carries only the live listing.
+	return listing ? `\n${listing}` : "";
 }

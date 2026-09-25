@@ -8,6 +8,7 @@ import { CODE_SKILLS_PROMPT, CodeSkills, codeSkillsToolSection } from "../src/ul
 import type { JevMemoryPolicy } from "../src/ultron/jev.ts";
 import { createMemoryModuleStore, type NativeHostApi, ROOT_CALLER } from "../src/ultron/rlm/host-module.ts";
 import { RlmKernel } from "../src/ultron/rlm/kernel.ts";
+import { rlmRuntimePrompt } from "../src/ultron/rlm/prompt.ts";
 import { createSkillModule } from "../src/ultron/skills.ts";
 
 const SLUG_V1 = `"""Turn free text into URL slugs."""
@@ -186,7 +187,8 @@ describe("A53: code skills are tested before activation, versioned, and roll bac
 			},
 		]);
 		const description = codeSkillsToolSection(restarted);
-		expect(description).toContain(CODE_SKILLS_PROMPT);
+		// The how-to is in the system prompt's runtime guide; the tool description lists the active skills.
+		expect(rlmRuntimePrompt(["rlm"])).toContain(CODE_SKILLS_PROMPT);
 		expect(description).toContain("- slug v1: Turn free text into URL slugs. [slugify(text: str) -> str]");
 		for (const statement of [
 			"from code_skills import slug\nprint(slug.slugify('A  B'))",

@@ -114,6 +114,12 @@ async function prepareGeneration<TContext extends object | undefined>(
 		drive.gate,
 		drive.context,
 	);
+	if (beforeRequest?.block !== undefined) {
+		return {
+			kind: "configuration_failure",
+			error: { code: "request_blocked", message: beforeRequest.block.reason },
+		};
+	}
 	const streamOptions =
 		beforeRequest?.streamOptions === undefined
 			? generation.generationContext.streamOptions

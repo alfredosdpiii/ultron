@@ -26,6 +26,15 @@ export class RpcEventTranslator {
 				return [{ type: "agent_start" }];
 			case "run_end": {
 				const events: RpcWireEvent[] = this.#closeTurn();
+				// A run that failed before any response (a refused request, an unavailable model) has no assistant
+				// error message; Pi clients learn of a failed run from one, so it is shown as one.
+				const last = this.#runMessages.at(-1);
+				const answeredWithError = last?.role === "assistant" && last.stopReason === "error";
+				if (event.status === "failed" && event.error !== undefined && !answeredWithError) {
+					const message = runFailureMessage(event.error.message, event.endedAt);
+					this.#runMessages.push(message);
+					events.push({ type: "message_start", message }, { type: "message_end", message });
+				}
 				const messages = this.#runMessages;
 				this.#runMessages = [];
 				events.push({ type: "agent_end", messages, willRetry: false }, { type: "agent_settled" });
@@ -195,4 +204,25 @@ export function messageText(message: AgentMessage): string {
 		.filter((part): part is { type: "text"; text: string } => part.type === "text")
 		.map((part) => part.text)
 		.join("");
+}
+
+function runFailureMessage(errorMessage: string, timestamp: number): AgentMessage {
+	return {
+		role: "assistant",
+		content: [],
+		api: "openai-completions",
+		provider: "ultron",
+		model: "ultron",
+		usage: {
+			input: 0,
+			output: 0,
+			cacheRead: 0,
+			cacheWrite: 0,
+			totalTokens: 0,
+			cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+		},
+		stopReason: "error",
+		errorMessage,
+		timestamp,
+	} as AgentMessage;
 }

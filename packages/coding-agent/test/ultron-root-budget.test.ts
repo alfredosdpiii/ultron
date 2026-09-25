@@ -172,9 +172,11 @@ describe("per-root max_total_turns / max_total_tokens", () => {
 		});
 		try {
 			await client.start();
-			await client.promptAndWait("loop forever", undefined, 120_000);
+			// The scripted model calls `bash`, which is not a tool in REPL-only mode: the harness rejects those calls
+			// before `before_tool`, so this also proves the request-level check stops the loop.
+			const events = await client.promptAndWait("loop forever", undefined, 120_000);
 			expect(provider.requests.length).toBe(3);
-			const messages = JSON.stringify(await client.getMessages());
+			const messages = JSON.stringify(events);
 			expect(messages).toContain("Usage turn limit reached for root turn:");
 			expect(messages).toContain("3 of 3 model turns used (max_total_turns");
 			await client.promptAndWait("again", undefined, 120_000);

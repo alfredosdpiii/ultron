@@ -451,7 +451,12 @@ export interface HookMap {
 			attempt: number;
 			streamOptions: AgentHarnessStreamOptions;
 		};
-		result: { streamOptions?: AgentHarnessStreamOptionsPatch } | undefined;
+		/**
+		 * `block` refuses the request before anything is sent: the run ends as failed with code `request_blocked`
+		 * and the reason as its message (for budgets that must hold whatever the model does, e.g. per-root turn
+		 * limits). The first blocking hook wins.
+		 */
+		result: { streamOptions?: AgentHarnessStreamOptionsPatch; block?: { reason: string } } | undefined;
 	};
 	before_payload: {
 		event: { model: Model<Api>; payload: unknown };

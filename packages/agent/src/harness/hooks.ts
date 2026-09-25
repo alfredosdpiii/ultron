@@ -227,6 +227,7 @@ export class HookRegistry implements Hooks {
 					{ ...event, streamOptions },
 					context,
 				)) as HookMap["before_request"]["result"];
+				if (result?.block !== undefined) return { block: result.block };
 				if (result?.streamOptions !== undefined) {
 					streamOptions = applyStreamOptionsPatch(streamOptions, result.streamOptions);
 					changed = true;

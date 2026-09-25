@@ -61,12 +61,7 @@ import {
 	legacyBankFromEnv,
 } from "../ultron/auto-memory.ts";
 import { CodeSkills, codeSkillsDir, codeSkillsToolSection } from "../ultron/code-skills.ts";
-import {
-	CONTEXT_EDIT_EVENT,
-	CONTEXT_ENTRY_PROJECTORS,
-	CONTEXT_PROMPT,
-	ContextControl,
-} from "../ultron/context-control.ts";
+import { CONTEXT_EDIT_EVENT, CONTEXT_ENTRY_PROJECTORS, ContextControl } from "../ultron/context-control.ts";
 import { createFamilyModule } from "../ultron/family.ts";
 import { assertSessionFormatsReadable } from "../ultron/format-version.ts";
 import { createGrantModule } from "../ultron/grants.ts";
@@ -1593,14 +1588,26 @@ async function createCodingAgentHarness(
 		const removeAutoMemory = autoMemory?.install(harness) ?? (() => {});
 		// Per-root turn and token limits: every model response on any lane counts against its root, and once a root
 		// is spent its tool calls are refused with the limit error and the run stops (no-ops without a limit).
+		// A turn is recorded asynchronously; the request check waits for records still in flight.
+		const pendingTurnRecords = pendingSet();
 		const removeBudgetTurnListener = harness.events.on("message_end", (event) => {
 			if (event.message.role !== "assistant" || event.runId === undefined || "recovery" in event) return;
 			const totalTokens = (event.message as { usage?: { totalTokens?: number } }).usage?.totalTokens ?? null;
-			void usage.recordTurn(host?.usageRootForLane(event.lane, event.runId), { totalTokens }).catch(() => {});
+			pendingTurnRecords.track(
+				usage.recordTurn(host?.usageRootForLane(event.lane, event.runId), { totalTokens }).catch(() => {}),
+			);
 		});
 		const removeBudgetToolHook = harness.hooks.on("before_tool", async (event) => {
 			const reason = await usage.turnBudgetExhausted(host?.usageRootForLane(event.lane, event.runId));
 			return reason === undefined ? undefined : { block: { reason, terminate: true } };
+		});
+		// Tool calls the harness rejects before `before_tool` (an unknown tool, invalid arguments) would otherwise
+		// loop past the limit, so a spent root's next model request is refused as well.
+		const removeBudgetRequestHook = harness.hooks.on("before_request", async (event) => {
+			if (event.step !== "assistant") return undefined;
+			await pendingTurnRecords.settled();
+			const reason = await usage.turnBudgetExhausted(host?.usageRootForLane(event.lane, event.runId));
+			return reason === undefined ? undefined : { block: { reason } };
 		});
 		// Brake for open-ended research loops on the root agent (ULTRON_TOOL_ROUNDS_NUDGE, 0 disables).
 		const nudger = new ToolRoundNudger(toolRoundsNudgeFromEnv(process.env.ULTRON_TOOL_ROUNDS_NUDGE), (message) =>
@@ -1639,6 +1646,7 @@ async function createCodingAgentHarness(
 				removeNudgeTurnListener();
 				removeBudgetTurnListener();
 				removeBudgetToolHook();
+				removeBudgetRequestHook();
 				removeNudgeRunListener();
 				await legacyExtensions?.close();
 				await rlmTool.close();
@@ -1702,6 +1710,20 @@ function legacyRecallOption(): { legacyRecall?: ReturnType<typeof createLegacyRe
 	const url = hindsightUrl(process.env.ULTRON_HINDSIGHT_URL);
 	const bank = legacyBankFromEnv(process.env.ULTRON_HINDSIGHT_LEGACY_BANK);
 	return url && bank ? { legacyRecall: createLegacyRecall(url, bank) } : {};
+}
+
+/** Promises still running, awaitable as a group (for records a later check must see). */
+function pendingSet(): { track(promise: Promise<unknown>): void; settled(): Promise<void> } {
+	const pending = new Set<Promise<unknown>>();
+	return {
+		track(promise) {
+			pending.add(promise);
+			void promise.finally(() => pending.delete(promise));
+		},
+		async settled() {
+			await Promise.all([...pending]);
+		},
+	};
 }
 
 export function hindsightUrl(configured: string | undefined): string | undefined {
