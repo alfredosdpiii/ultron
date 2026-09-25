@@ -59,7 +59,14 @@ export interface NativeLocalServicesOptions {
 	 * call handle. Built-in JSON, evidence and version checks are always active.
 	 */
 	validate?: (kind: RefinementKind, content: JsonValue) => unknown;
+	/** Largest single artifact in UTF-8 bytes. Defaults to the canary per-task quota, 256 MiB. */
+	maxArtifactBytes?: number;
+	/** Total bytes across all stored artifacts. Defaults to the canary per-root quota, 1 GiB. */
+	maxArtifactStorageBytes?: number;
 }
+
+const DEFAULT_MAX_ARTIFACT_BYTES = 256 * 1024 * 1024;
+const DEFAULT_MAX_ARTIFACT_STORAGE_BYTES = 1024 * 1024 * 1024;
 
 type JsonObject = { [key: string]: JsonValue };
 const refinementKey = "ultron.refinements";
@@ -265,11 +272,14 @@ function artifact(value: JsonValue, id: string): { record: ArtifactRecord; bytes
  * instance unusable: reopen with a reconciled adapter before continuing, since
  * a rejected commit can have an ambiguous durability outcome. Callbacks must
  * be supplied again after restart. No automatic retries or effect replay.
- * Documents are versioned but unbounded; retention and size limits are external.
+ * Documents are versioned. Artifacts are bounded per item and in total
+ * (maxArtifactBytes, maxArtifactStorageBytes); other retention limits are external.
  */
 export class NativeLocalServices {
 	private readonly documents: DurableDocumentStorage;
 	private readonly validate: NativeLocalServicesOptions["validate"];
+	private readonly maxArtifactBytes: number;
+	private readonly maxArtifactStorageBytes: number;
 	private tail: Promise<void> = Promise.resolve();
 	private validating = false;
 	private uncertain = false;
@@ -279,6 +289,12 @@ export class NativeLocalServices {
 			throw new TypeError("validate must be a function");
 		this.documents = documents;
 		this.validate = options.validate;
+		this.maxArtifactBytes = options.maxArtifactBytes ?? DEFAULT_MAX_ARTIFACT_BYTES;
+		this.maxArtifactStorageBytes = options.maxArtifactStorageBytes ?? DEFAULT_MAX_ARTIFACT_STORAGE_BYTES;
+		for (const limit of [this.maxArtifactBytes, this.maxArtifactStorageBytes]) {
+			if (!Number.isSafeInteger(limit) || limit < 1)
+				throw new TypeError("Artifact limits must be positive integers");
+		}
 	}
 
 	handle(type: string, payload: unknown, context: Context): Promise<JsonValue> {
@@ -388,11 +404,25 @@ export class NativeLocalServices {
 			const { mediaType = "text/plain", label = "" } = options;
 			if (typeof mediaType !== "string" || typeof label !== "string")
 				throw new TypeError("Invalid artifact metadata");
+			const size = Buffer.byteLength(payload.text);
+			if (size > this.maxArtifactBytes)
+				throw new Error(`Artifact of ${size} bytes exceeds the ${this.maxArtifactBytes}-byte artifact limit`);
 			const bytes = Buffer.from(payload.text);
 			const id = createHash("sha256").update(bytes).digest("hex");
 			const key = artifactPrefix + id;
 			const previous = await this.documents.get(key, context);
 			if (previous !== undefined) artifact(jsonCopy(previous), id);
+			else {
+				let stored = 0;
+				for (const document of await this.documents.list(artifactPrefix, context)) {
+					const recorded = (document.value as { bytes?: unknown } | null)?.bytes;
+					stored += typeof recorded === "number" && recorded >= 0 ? recorded : 0;
+				}
+				if (stored + size > this.maxArtifactStorageBytes)
+					throw new Error(
+						`Artifact storage quota of ${this.maxArtifactStorageBytes} bytes exceeded (${stored} stored, ${size} requested)`,
+					);
+			}
 			const record: ArtifactRecord = { id, bytes: bytes.length, mediaType, label };
 			await this.persist(key, { formatVersion: 1, ...record, text: bytes.toString("utf8") }, context);
 			return { ...record, preview: bytes.subarray(0, 2048).toString("utf8") };
