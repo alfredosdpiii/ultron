@@ -11,7 +11,7 @@ import {
 	secretToolKeyring,
 } from "../src/ultron/rlm/snapshot-auth.ts";
 
-// The snapshot signing key moves out of the profile directory into the OS keyring when one is reachable.
+// The snapshot signing key stays in the profile file unless the OS keyring is opted into.
 const directories: string[] = [];
 afterEach(() => {
 	for (const directory of directories.splice(0)) rmSync(directory, { recursive: true, force: true });
@@ -39,6 +39,22 @@ function fakeKeyring(initial?: string, options: { reachable?: boolean; storeWork
 }
 
 describe("snapshot key store", () => {
+	test("without a setting the key stays in the profile file and the keyring is never touched", () => {
+		const agentDir = scratch();
+		const { keyring, state } = fakeKeyring();
+		const previous = process.env.ULTRON_RLM_SNAPSHOT_KEY_STORE;
+		delete process.env.ULTRON_RLM_SNAPSHOT_KEY_STORE;
+		try {
+			const loaded = loadSnapshotKey(agentDir, { keyring });
+			expect(loaded.source).toBe("file");
+			expect(loaded.key.equals(loadOrCreateSnapshotKey(agentDir))).toBe(true);
+			expect(state.stores).toBe(0);
+			expect(existsSync(join(agentDir, SNAPSHOT_KEYRING_MARKER))).toBe(false);
+		} finally {
+			if (previous !== undefined) process.env.ULTRON_RLM_SNAPSHOT_KEY_STORE = previous;
+		}
+	});
+
 	test("a reachable keyring takes over an existing file key: same key, file removed, marker left", () => {
 		const agentDir = scratch();
 		const fileKey = loadOrCreateSnapshotKey(agentDir);

@@ -120,7 +120,7 @@ export type LoadedSnapshotKey = {
 
 /**
  * Loads the per-profile snapshot key from the OS keyring when one is reachable, else from `<agentDir>/rlm-snapshot.key`.
- * `ULTRON_RLM_SNAPSHOT_KEY_STORE` (auto|keyring|file, default auto) selects the store.
+ * `ULTRON_RLM_SNAPSHOT_KEY_STORE` (auto|keyring|file, default file) selects the store.
  *
  * In auto mode a reachable keyring takes over the key: an existing key file is copied into the keyring, read back,
  * and deleted, and a marker file records that the keyring holds the key. Later, if the keyring cannot be reached
@@ -142,7 +142,9 @@ export function loadSnapshotKey(
 	)
 		?.trim()
 		.toLowerCase();
-	const store: SnapshotKeyStore = requested === "file" || requested === "keyring" ? requested : "auto";
+	// File by default: a keyring that is locked or unreachable (SSH) would cost restorable snapshots, and it hides
+	// the key only from casual reads, not from model code running as the same user.
+	const store: SnapshotKeyStore = requested === "auto" || requested === "keyring" ? requested : "file";
 	if (store === "file") return { key: loadOrCreateSnapshotKey(agentDir), source: "file" };
 	const path = join(agentDir, SNAPSHOT_KEY_FILE);
 	const marker = join(agentDir, SNAPSHOT_KEYRING_MARKER);
