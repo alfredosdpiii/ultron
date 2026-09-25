@@ -5,7 +5,7 @@ import { type Session, value } from "@earendil-works/pi-agent-core";
 import Type from "typebox";
 import { Check } from "typebox/value";
 import { type NativeJevClient, projectIdentity } from "./jev.ts";
-import { NativeLocalServices } from "./local-services.ts";
+import { NativeLocalServices, type RefinementBranch } from "./local-services.ts";
 import { createHindsightBackend, type MemoryBackend, NativeMemoryService } from "./memory.ts";
 
 type SessionValues = Pick<Session, "getValue" | "setValue" | "scanValues">;
@@ -99,7 +99,12 @@ export function createWorkerServices(options: {
 			})),
 	});
 	return {
-		async handle(type: string, payload: Record<string, unknown>, context: Context): Promise<unknown> {
+		async handle(
+			type: string,
+			payload: Record<string, unknown>,
+			context: Context,
+			branch?: RefinementBranch,
+		): Promise<unknown> {
 			context.abortSignal?.throwIfAborted();
 			if (type === "extensions.list") return options.extensionCommands?.list() ?? [];
 			if (type === "extensions.run") {
@@ -117,7 +122,7 @@ export function createWorkerServices(options: {
 				const recalled = await memory.prepare({ query: payload.prompt, taskId: "jev.recall" }, context.abortSignal);
 				return { available: true, gate: recalled.operation.gate, ...recalled };
 			}
-			if (!type.startsWith("memory.")) return local.handle(type, payload, context);
+			if (!type.startsWith("memory.")) return local.handle(type, payload, context, branch);
 			if (!memory) throw new Error("Hindsight is not configured. Set ULTRON_HINDSIGHT_URL.");
 			if (type === "memory.prepare" && Check(prepare, payload)) return memory.prepare(payload, context.abortSignal);
 			if (type === "memory.propose" && Check(propose, payload)) return memory.propose(payload, context.abortSignal);

@@ -50,6 +50,7 @@ import { createFamilyModule } from "../ultron/family.ts";
 import { createGrantModule } from "../ultron/grants.ts";
 import { createInstanceModule } from "../ultron/instances.ts";
 import { createNativeJevClient } from "../ultron/jev.ts";
+import type { RefinementBranch } from "../ultron/local-services.ts";
 import { createPredictAdapter } from "../ultron/predict-adapter.ts";
 import { createProgressModule } from "../ultron/progress.ts";
 import { createReleaseGateModule } from "../ultron/release-gate.ts";
@@ -1211,16 +1212,29 @@ async function createCodingAgentHarness(
 				run: async (name, args) => legacyExtensions?.runCommand(name, args) ?? { notifications: [] },
 			},
 		});
+		// Refinements follow the conversation branch: changes are anchored at the main lane's tip and read
+		// back only when that anchor is on the branch now in use (A07).
+		const mainBranch = async (context: Context): Promise<RefinementBranch> => {
+			const [tip, entries] = await Promise.all([lane.getTipId(context), lane.findEntries(undefined, context)]);
+			const onPath = new Set(entries.map((entry) => entry.id));
+			return { anchor: tip, onBranch: (anchor) => onPath.has(anchor) };
+		};
+		const branchedServices = {
+			handle: async (type: string, payload: Record<string, unknown>, context: Context) =>
+				type.startsWith("refinements.")
+					? nativeServices.handle(type, payload, context, await mainBranch(context))
+					: nativeServices.handle(type, payload, context),
+		};
 		host = new NativeRlmHost(harness, lane, {
 			store: createSessionTaskStore(session),
 			definitionStore: createSessionDefinitionStore(session),
 			usage: createSessionUsageLedger(session, { limits: { maxAdmittedTasks: 24, maxWallMs: 30 * 60 * 1000 } }),
-			services: nativeServices,
+			services: branchedServices,
 			beforeLaneReuse: (lane) => rlmTool.resetScratch(lane),
 			predict: createPredictAdapter({ models: modelRuntime, model: () => lane.getModel(TODO_CONTEXT) }),
 			holdActivity: () => holdActivity?.() ?? (() => {}),
 			refinements: async (definitionId, context) => {
-				const current = (await nativeServices.handle(
+				const current = (await branchedServices.handle(
 					"refinements.current",
 					{ kind: "instruction", target: `instruction:${definitionId}` },
 					context,

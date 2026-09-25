@@ -284,6 +284,18 @@ function lookup(records: RefinementRecord[], id: JsonValue): RefinementRecord {
 	return record;
 }
 
+export interface RefinementBranch {
+	/** Conversation entry the change is made at; null or absent for an empty conversation. */
+	readonly anchor?: string | null;
+	/** Whether an anchor lies on the conversation branch currently in use. */
+	readonly onBranch?: (anchor: string) => boolean;
+}
+
+function onBranch(event: JsonValue, branch: RefinementBranch | undefined): boolean {
+	if (!branch?.onBranch || event === null || typeof event !== "object" || Array.isArray(event)) return true;
+	return typeof event.anchor !== "string" || branch.onBranch(event.anchor);
+}
+
 function active(records: RefinementRecord[], kind: JsonValue, target: JsonValue): RefinementRecord | null {
 	return (
 		records.find((record) => record.kind === kind && record.target === target && record.state === "active") ?? null
@@ -296,7 +308,13 @@ function apply(records: RefinementRecord[], event: JsonValue): RefinementRecord 
 	fields(
 		event,
 		["action", "id", "at"],
-		event.action === "propose" ? ["proposal"] : event.action === "activate" ? ["approval"] : [],
+		event.action === "propose"
+			? ["proposal"]
+			: event.action === "activate"
+				? ["approval", "anchor"]
+				: event.action === "rollback"
+					? ["anchor"]
+					: [],
 	);
 	const { id, at } = event;
 	if (typeof id !== "string" || !id || typeof at !== "string" || !Number.isFinite(Date.parse(at))) {
@@ -510,7 +528,12 @@ export class NativeLocalServices {
 		this.artifactQuotaBytes = quota;
 	}
 
-	handle(type: string, payload: unknown, context: Context): Promise<JsonValue> {
+	/**
+	 * `branch.anchor` tags activations and rollbacks with the conversation position they were made at;
+	 * `branch.onBranch` makes refinement reads replay only events anchored on the current branch, so a
+	 * lesson from an abandoned branch or a later fork point never applies here (A07).
+	 */
+	handle(type: string, payload: unknown, context: Context, branch?: RefinementBranch): Promise<JsonValue> {
 		// Synchronous rejection lets a validator's nested call reject its activation.
 		if (this.validating) throw new Error("Reentrant local service request is not supported");
 		let data: JsonValue;
@@ -522,7 +545,7 @@ export class NativeLocalServices {
 		const result = this.tail.then(async () => {
 			if (this.uncertain) throw new Error("Document durability is uncertain; reopen the service before use");
 			context.abortSignal?.throwIfAborted();
-			return jsonCopy(await this.dispatch(type, data, context));
+			return jsonCopy(await this.dispatch(type, data, context, branch));
 		});
 		this.tail = result.then(
 			() => {},
@@ -542,7 +565,12 @@ export class NativeLocalServices {
 		}
 	}
 
-	private async refinements(type: string, payload: JsonValue, context: Context): Promise<JsonValue> {
+	private async refinements(
+		type: string,
+		payload: JsonValue,
+		context: Context,
+		branch?: RefinementBranch,
+	): Promise<JsonValue> {
 		const stored = await this.documents.get(refinementKey, context);
 		const records: RefinementRecord[] = [];
 		let events: JsonValue[] = [];
@@ -553,7 +581,7 @@ export class NativeLocalServices {
 				if (document.formatVersion !== 1 || !Array.isArray(document.events))
 					throw new Error("Unsupported document format");
 				events = document.events;
-				for (const event of events) apply(records, event);
+				for (const event of events) if (onBranch(event, branch)) apply(records, event);
 			} catch (error) {
 				throw new Error("Invalid refinement document", { cause: error });
 			}
@@ -590,6 +618,8 @@ export class NativeLocalServices {
 			fields(payload, ["id"]);
 			if (type === "refinements.get") return lookup(records, payload.id);
 			event = { action: type.slice("refinements.".length), id: payload.id, at: new Date().toISOString() };
+			if ((event.action === "activate" || event.action === "rollback") && typeof branch?.anchor === "string")
+				event.anchor = branch.anchor;
 			if (event.action === "activate") {
 				const pending = lookup(records, payload.id);
 				const key = escalation(pending.content);
@@ -809,7 +839,7 @@ export class NativeLocalServices {
 		return { baseline, candidate, claim: "Observed runs only; no statistical superiority established" };
 	}
 
-	private dispatch(type: string, payload: JsonValue, context: Context): Promise<JsonValue> {
+	private dispatch(type: string, payload: JsonValue, context: Context, branch?: RefinementBranch): Promise<JsonValue> {
 		if (
 			[
 				"refinements.propose",
@@ -822,7 +852,7 @@ export class NativeLocalServices {
 				"refinements.rollback",
 			].includes(type)
 		) {
-			return this.refinements(type, payload, context);
+			return this.refinements(type, payload, context, branch);
 		}
 		if (
 			[
