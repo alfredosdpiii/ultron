@@ -25,7 +25,43 @@ model program over handles.**
 
 ---
 
-## Current state (2026-09-26)
+## Status (2026-09-26): all six phases built
+
+All phases are merged on `ultron` with acceptance rows A47–A55 passing (A01–A55: 55/55; mutation
+slice 10/10). Integration fixes made while merging:
+
+- The phase prompt fragments are sections of the REPL runtime guide in the system prompt
+  (`src/ultron/rlm/prompt.ts`): Runtime, Bounded inference, Skills, Delegation, Your context, Code
+  skills, Agents as classes, Memory. The rlm tool description stays short and lists active code skills.
+- `before_request` hooks may now block a request (the run fails with `request_blocked`). Per-root turn
+  limits use it, because unknown tool calls skip `before_tool` and looped past the limit; inference
+  frames use it to refuse an over-budget retry or tool round instead of aborting mid-request.
+- RPC shows a run that failed before any response as an assistant error message, as Pi clients expect.
+- The release gate requires every manifest row (it accepted 46 of 55); report labels follow the manifest.
+- A race in listing the sessions directory (a worker's lock file vanishing between `readdir` and
+  `lstat`) made RPC fork and clone fail under load; fixed, with internal errors logged to
+  `<serverDir>/server-<id>.log`.
+
+**Measured (hard set, glm-5.3-flash, `--thinking max`, 2 trials, same proxy session):**
+
+| | Pi | Ultron (REPL-only) |
+|---|---|---|
+| Pass rate | 27/30 (90%) | 29/30 (97%) |
+| Median time per task | 112 s | 114 s (1.02x) |
+| Tool calls | 303 (bash 176, read 50, write 43, edit 34) | 203, all `rlm` |
+| Runs using `rlm` | — | 29/30 (the other timed out) |
+| Inference frames | — | 0 |
+
+Phase 1's goal is met: `rlm` uptake went from 0/16 to 29/30, Ultron passes more tasks with a third fewer
+tool calls, at equal latency. The earlier tie (29/30 each, native tools) became a lead.
+
+Not yet shown: Phase 2's frames were never used. Every hard task has an exact answer that plain Python
+in the kernel computes, and the runtime guide says to use Python for exact numbers and frames to read
+and judge text. A task set where the input exceeds the window, or where judgement over many text
+slices is needed, is what would exercise `rlm.infer`/`rlm.map`; that is the next measurement (Phase 5's
+judged set is a start). gpt-6-sol comparisons are blocked by the proxy's cooldown (every run 429).
+
+## Current state before the plan (2026-09-26)
 
 - Branch `ultron` = local `main` at `f87c8e31a`. Acceptance A01–A46: 46/46. Mutation slice 10/10.
   Full `./test.sh` green.

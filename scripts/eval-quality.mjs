@@ -617,6 +617,13 @@ async function selfCheck(taskSet, selected, concurrency, liveJudge) {
 	return passed ? 0 : 1;
 }
 
+/** `path`, or `path` with "-2", "-3", ... before the extension, whichever does not exist yet. */
+export function freePath(path) {
+	if (!existsSync(path)) return path;
+	const base = path.replace(/\.json$/, "");
+	for (let n = 2; ; n++) if (!existsSync(`${base}-${n}.json`)) return `${base}-${n}.json`;
+}
+
 let FROZEN_AT;
 
 async function main() {
@@ -654,13 +661,16 @@ async function main() {
 		pi: VARIANTS.pi.command,
 		ultron: ultronCommand ? ultronCommand.trim().split(/\s+/) : VARIANTS.ultron.command,
 	};
-	const out = resolve(
-		root,
-		arg(
-			"out",
-			`acceptance/quality/${new Date().toISOString().slice(0, 10)}-${taskSet}-${model.replace(/[^a-z0-9.-]+/gi, "_")}${thinking ? `-thinking-${thinking}` : ""}.json`,
-		),
-	);
+	// A default name never overwrites an earlier recorded comparison: the second run of a day gets "-2", and so on.
+	const explicitOut = arg("out", "");
+	const out = explicitOut
+		? resolve(root, explicitOut)
+		: freePath(
+				resolve(
+					root,
+					`acceptance/quality/${new Date().toISOString().slice(0, 10)}-${taskSet}-${model.replace(/[^a-z0-9.-]+/gi, "_")}${thinking ? `-thinking-${thinking}` : ""}.json`,
+				),
+			);
 	const judge = process.argv.includes("--no-judge") ? undefined : makeJudge(keepDir);
 	const jobs = selected.flatMap((task) =>
 		variants.flatMap((variant) =>
