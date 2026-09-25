@@ -1,0 +1,1052 @@
+{
+  "taskSet": "hard",
+  "frozenAt": "2026-09-25-hard",
+  "thresholds": {
+    "maxPassRateDropPoints": 10,
+    "maxMedianLatencyRatio": 2,
+    "maxCostRatio": 2
+  },
+  "model": "cliproxyapi/glm-5.3-flash",
+  "thinking": "max",
+  "trials": 2,
+  "summary": {
+    "byVariant": {
+      "pi": {
+        "runs": 30,
+        "infrastructure": 0,
+        "passRate": 0.9666666666666667,
+        "categories": {
+          "multi-bug": {
+            "passed": 6,
+            "runs": 6
+          },
+          "refactor": {
+            "passed": 5,
+            "runs": 6
+          },
+          "large-data": {
+            "passed": 8,
+            "runs": 8
+          },
+          "log-forensics": {
+            "passed": 6,
+            "runs": 6
+          },
+          "huge-file": {
+            "passed": 4,
+            "runs": 4
+          }
+        },
+        "medianDurationMs": 108408.5,
+        "totalCost": null
+      },
+      "ultron": {
+        "runs": 30,
+        "infrastructure": 0,
+        "passRate": 0.9666666666666667,
+        "categories": {
+          "multi-bug": {
+            "passed": 6,
+            "runs": 6
+          },
+          "refactor": {
+            "passed": 6,
+            "runs": 6
+          },
+          "large-data": {
+            "passed": 8,
+            "runs": 8
+          },
+          "log-forensics": {
+            "passed": 5,
+            "runs": 6
+          },
+          "huge-file": {
+            "passed": 4,
+            "runs": 4
+          }
+        },
+        "medianDurationMs": 97772.5,
+        "totalCost": 0
+      }
+    },
+    "gate": [
+      {
+        "check": "pass rate",
+        "ok": true,
+        "detail": "0.0 points below baseline"
+      },
+      {
+        "check": "median latency",
+        "ok": true,
+        "detail": "0.90x baseline"
+      },
+      {
+        "check": "cost",
+        "ok": null,
+        "detail": "cost not reported by both variants"
+      }
+    ],
+    "passed": true
+  },
+  "records": [
+    {
+      "task": "bugs-invoicing",
+      "category": "multi-bug",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 28,
+      "cost": 0,
+      "tokens": 226440,
+      "durationMs": 366084,
+      "verify": {
+        "status": 0,
+        "output": "----------------------------------------------------------------------\nRan 7 tests in 0.019s\n\nOK\n"
+      }
+    },
+    {
+      "task": "bugs-invoicing",
+      "category": "multi-bug",
+      "variant": "pi",
+      "trial": 2,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 32,
+      "cost": 0,
+      "tokens": 330311,
+      "durationMs": 406408,
+      "verify": {
+        "status": 0,
+        "output": "----------------------------------------------------------------------\nRan 7 tests in 0.017s\n\nOK\n"
+      }
+    },
+    {
+      "task": "bugs-invoicing",
+      "category": "multi-bug",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 29,
+      "cost": 0,
+      "tokens": 301614,
+      "durationMs": 462018,
+      "verify": {
+        "status": 0,
+        "output": "----------------------------------------------------------------------\nRan 7 tests in 0.018s\n\nOK\n"
+      }
+    },
+    {
+      "task": "bugs-invoicing",
+      "category": "multi-bug",
+      "variant": "ultron",
+      "trial": 2,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 21,
+      "cost": 0,
+      "tokens": 87552,
+      "durationMs": 268766,
+      "verify": {
+        "status": 0,
+        "output": "----------------------------------------------------------------------\nRan 7 tests in 0.029s\n\nOK\n"
+      }
+    },
+    {
+      "task": "bugs-scheduler",
+      "category": "multi-bug",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 26,
+      "cost": 0,
+      "tokens": 301176,
+      "durationMs": 410639,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "bugs-scheduler",
+      "category": "multi-bug",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 22,
+      "cost": 0,
+      "tokens": 149353,
+      "durationMs": 196883,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "bugs-scheduler",
+      "category": "multi-bug",
+      "variant": "pi",
+      "trial": 2,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 26,
+      "cost": 0,
+      "tokens": 291328,
+      "durationMs": 406123,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "bugs-ttl-cache",
+      "category": "multi-bug",
+      "variant": "pi",
+      "trial": 2,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 9,
+      "cost": 0,
+      "tokens": 72982,
+      "durationMs": 111369,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "bugs-scheduler",
+      "category": "multi-bug",
+      "variant": "ultron",
+      "trial": 2,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 26,
+      "cost": 0,
+      "tokens": 258228,
+      "durationMs": 349608,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "bugs-ttl-cache",
+      "category": "multi-bug",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 15,
+      "cost": 0,
+      "tokens": 163397,
+      "durationMs": 357097,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "bugs-ttl-cache",
+      "category": "multi-bug",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 10,
+      "cost": 0,
+      "tokens": 79872,
+      "durationMs": 216620,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "bugs-ttl-cache",
+      "category": "multi-bug",
+      "variant": "ultron",
+      "trial": 2,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 7,
+      "cost": 0,
+      "tokens": 46406,
+      "durationMs": 97357,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "refactor-intervals-fast",
+      "category": "refactor",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 15,
+      "cost": 0,
+      "tokens": 261783,
+      "durationMs": 426311,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "refactor-intervals-fast",
+      "category": "refactor",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 11,
+      "cost": 0,
+      "tokens": 228697,
+      "durationMs": 728924,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "refactor-shop-package",
+      "category": "refactor",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 11,
+      "cost": 0,
+      "tokens": 45778,
+      "durationMs": 120937,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "refactor-intervals-fast",
+      "category": "refactor",
+      "variant": "ultron",
+      "trial": 2,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 14,
+      "cost": 0,
+      "tokens": 295152,
+      "durationMs": 550940,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "refactor-shop-package",
+      "category": "refactor",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 15,
+      "cost": 0,
+      "tokens": 90321,
+      "durationMs": 162107,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "refactor-intervals-fast",
+      "category": "refactor",
+      "variant": "pi",
+      "trial": 2,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": false,
+      "error": "turn timed out after 1200000 ms",
+      "durationMs": 1200004,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "refactor-shop-package",
+      "category": "refactor",
+      "variant": "pi",
+      "trial": 2,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 14,
+      "cost": 0,
+      "tokens": 175800,
+      "durationMs": 425665,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "refactor-shop-package",
+      "category": "refactor",
+      "variant": "ultron",
+      "trial": 2,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 14,
+      "cost": 0,
+      "tokens": 138618,
+      "durationMs": 386652,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "refactor-streaming-records",
+      "category": "refactor",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 15,
+      "cost": 0,
+      "tokens": 215394,
+      "durationMs": 394277,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "refactor-streaming-records",
+      "category": "refactor",
+      "variant": "pi",
+      "trial": 2,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 15,
+      "cost": 0,
+      "tokens": 187055,
+      "durationMs": 316778,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "data-sessions",
+      "category": "large-data",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 4,
+      "cost": 0,
+      "tokens": 23848,
+      "durationMs": 54764,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "data-sessions",
+      "category": "large-data",
+      "variant": "pi",
+      "trial": 2,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 6,
+      "cost": 0,
+      "tokens": 32349,
+      "durationMs": 74277,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "refactor-streaming-records",
+      "category": "refactor",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 12,
+      "cost": 0,
+      "tokens": 149373,
+      "durationMs": 360237,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "data-sessions",
+      "category": "large-data",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 6,
+      "cost": 0,
+      "tokens": 39410,
+      "durationMs": 98188,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "data-ledger-reconcile",
+      "category": "large-data",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 4,
+      "cost": 0,
+      "tokens": 19851,
+      "durationMs": 45099,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "data-sessions",
+      "category": "large-data",
+      "variant": "ultron",
+      "trial": 2,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 4,
+      "cost": 0,
+      "tokens": 26024,
+      "durationMs": 90975,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "data-ledger-reconcile",
+      "category": "large-data",
+      "variant": "pi",
+      "trial": 2,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 7,
+      "cost": 0,
+      "tokens": 40402,
+      "durationMs": 86259,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "data-ledger-reconcile",
+      "category": "large-data",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 3,
+      "cost": 0,
+      "tokens": 17345,
+      "durationMs": 47784,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "refactor-streaming-records",
+      "category": "refactor",
+      "variant": "ultron",
+      "trial": 2,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 12,
+      "cost": 0,
+      "tokens": 156392,
+      "durationMs": 442798,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "data-ledger-reconcile",
+      "category": "large-data",
+      "variant": "ultron",
+      "trial": 2,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 5,
+      "cost": 0,
+      "tokens": 27160,
+      "durationMs": 71498,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "data-sensors",
+      "category": "large-data",
+      "variant": "pi",
+      "trial": 2,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 6,
+      "cost": 0,
+      "tokens": 61444,
+      "durationMs": 78517,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "data-sensors",
+      "category": "large-data",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 10,
+      "cost": 0,
+      "tokens": 51921,
+      "durationMs": 110983,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "data-sensors",
+      "category": "large-data",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 4,
+      "cost": 0,
+      "tokens": 20181,
+      "durationMs": 59386,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "data-sensors",
+      "category": "large-data",
+      "variant": "ultron",
+      "trial": 2,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 5,
+      "cost": 0,
+      "tokens": 27114,
+      "durationMs": 45431,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "data-dependencies",
+      "category": "large-data",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 5,
+      "cost": 0,
+      "tokens": 27550,
+      "durationMs": 77368,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "data-dependencies",
+      "category": "large-data",
+      "variant": "pi",
+      "trial": 2,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 7,
+      "cost": 0,
+      "tokens": 35426,
+      "durationMs": 73288,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "logs-revoked-tokens",
+      "category": "log-forensics",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 7,
+      "cost": 0,
+      "tokens": 200795,
+      "durationMs": 119961,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "data-dependencies",
+      "category": "large-data",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 11,
+      "cost": 0,
+      "tokens": 89968,
+      "durationMs": 233526,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "logs-revoked-tokens",
+      "category": "log-forensics",
+      "variant": "pi",
+      "trial": 2,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 6,
+      "cost": 0,
+      "tokens": 34747,
+      "durationMs": 105834,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "logs-revoked-tokens",
+      "category": "log-forensics",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 4,
+      "cost": 0,
+      "tokens": 25427,
+      "durationMs": 75875,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "logs-revoked-tokens",
+      "category": "log-forensics",
+      "variant": "ultron",
+      "trial": 2,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 5,
+      "cost": 0,
+      "tokens": 26870,
+      "durationMs": 76860,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "logs-deploy-asof",
+      "category": "log-forensics",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 6,
+      "cost": 0,
+      "tokens": 31410,
+      "durationMs": 62929,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "logs-deploy-asof",
+      "category": "log-forensics",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": false,
+      "toolCalls": 3,
+      "cost": 0,
+      "tokens": 15027,
+      "durationMs": 34964,
+      "verify": {
+        "status": 1,
+        "output": "total_5xx: wrong value\n"
+      }
+    },
+    {
+      "task": "logs-deploy-asof",
+      "category": "log-forensics",
+      "variant": "ultron",
+      "trial": 2,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 5,
+      "cost": 0,
+      "tokens": 26722,
+      "durationMs": 52037,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "logs-deploy-asof",
+      "category": "log-forensics",
+      "variant": "pi",
+      "trial": 2,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 6,
+      "cost": 0,
+      "tokens": 40787,
+      "durationMs": 104238,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "data-dependencies",
+      "category": "large-data",
+      "variant": "ultron",
+      "trial": 2,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 5,
+      "cost": 0,
+      "tokens": 28842,
+      "durationMs": 476234,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "logs-bruteforce",
+      "category": "log-forensics",
+      "variant": "pi",
+      "trial": 2,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 7,
+      "cost": 0,
+      "tokens": 37477,
+      "durationMs": 59071,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "logs-bruteforce",
+      "category": "log-forensics",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 8,
+      "cost": 0,
+      "tokens": 38252,
+      "durationMs": 62330,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "huge-customer-dedupe",
+      "category": "huge-file",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 4,
+      "cost": 0,
+      "tokens": 18138,
+      "durationMs": 59162,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "logs-bruteforce",
+      "category": "log-forensics",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 7,
+      "cost": 0,
+      "tokens": 41706,
+      "durationMs": 86505,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "logs-bruteforce",
+      "category": "log-forensics",
+      "variant": "ultron",
+      "trial": 2,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 10,
+      "cost": 0,
+      "tokens": 61893,
+      "durationMs": 113419,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "huge-customer-dedupe",
+      "category": "huge-file",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 6,
+      "cost": 0,
+      "tokens": 31417,
+      "durationMs": 80668,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "huge-customer-dedupe",
+      "category": "huge-file",
+      "variant": "pi",
+      "trial": 2,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 8,
+      "cost": 0,
+      "tokens": 53576,
+      "durationMs": 124101,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "huge-catalog-diff",
+      "category": "huge-file",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 4,
+      "cost": 0,
+      "tokens": 17342,
+      "durationMs": 40790,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "huge-customer-dedupe",
+      "category": "huge-file",
+      "variant": "ultron",
+      "trial": 2,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 7,
+      "cost": 0,
+      "tokens": 37751,
+      "durationMs": 90243,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "huge-catalog-diff",
+      "category": "huge-file",
+      "variant": "pi",
+      "trial": 2,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 3,
+      "cost": 0,
+      "tokens": 14233,
+      "durationMs": 42474,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "huge-catalog-diff",
+      "category": "huge-file",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 3,
+      "cost": 0,
+      "tokens": 14340,
+      "durationMs": 28940,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "huge-catalog-diff",
+      "category": "huge-file",
+      "variant": "ultron",
+      "trial": 2,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolCalls": 4,
+      "cost": 0,
+      "tokens": 20549,
+      "durationMs": 46990,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    }
+  ]
+}

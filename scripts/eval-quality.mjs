@@ -5,7 +5,7 @@
  *
  *   node scripts/eval-quality.mjs [--tasks default|hard] [--model cliproxyapi/gpt-6-sol] [--trials 2]
  *                                 [--concurrency 3] [--only id,id] [--variants pi,ultron] [--out path]
- *                                 [--baseline recorded.json]
+ *                                 [--baseline recorded.json] [--thinking off|low|medium|high|xhigh|max]
  *   node scripts/eval-quality.mjs --tasks hard --self-check [--only id,id] [--concurrency 4]
  *
  * `--tasks` picks the frozen set: default is evals/quality/tasks.mjs, `hard` is tasks-hard.mjs.
@@ -183,7 +183,7 @@ function rpcSession({ command, args, cwd, env }) {
 	};
 }
 
-async function runOne({ task, variant, trial, model }) {
+async function runOne({ task, variant, trial, model, thinking }) {
 	const work = mkdtempSync(join(tmpdir(), `ultron-quality-${task.id}-${variant}-`));
 	const project = join(work, "project");
 	const agentDir = join(work, "agent");
@@ -207,7 +207,17 @@ async function runOne({ task, variant, trial, model }) {
 	const started = Date.now();
 	const session = rpcSession({
 		command,
-		args: ["--mode", "rpc", "--provider", model.slice(0, split), "--model", model.slice(split + 1), "--no-session"],
+		args: [
+			"--mode",
+			"rpc",
+			"--provider",
+			model.slice(0, split),
+			"--model",
+			model.slice(split + 1),
+			"--no-session",
+			// Both variants get the same explicit level; without it each picks its own default.
+			...(thinking ? ["--thinking", thinking] : []),
+		],
 		cwd: project,
 		env,
 	});
@@ -392,14 +402,18 @@ async function main() {
 	const trials = Number(arg("trials", "2"));
 	const concurrency = Number(arg("concurrency", "3"));
 	const variants = arg("variants", "pi,ultron").split(",");
+	const thinking = arg("thinking", "") || undefined;
 	const out = resolve(
 		root,
-		arg("out", `acceptance/quality/${new Date().toISOString().slice(0, 10)}-${taskSet}-${model.replace(/[^a-z0-9.-]+/gi, "_")}.json`),
+		arg(
+			"out",
+			`acceptance/quality/${new Date().toISOString().slice(0, 10)}-${taskSet}-${model.replace(/[^a-z0-9.-]+/gi, "_")}${thinking ? `-thinking-${thinking}` : ""}.json`,
+		),
 	);
 	const jobs = selected.flatMap((task) =>
-		variants.flatMap((variant) => Array.from({ length: trials }, (_, index) => ({ task, variant, trial: index + 1, model }))),
+		variants.flatMap((variant) => Array.from({ length: trials }, (_, index) => ({ task, variant, trial: index + 1, model, thinking }))),
 	);
-	console.log(`Quality comparison (${taskSet} set): ${selected.length} tasks x ${variants.join("/")} x ${trials} trials = ${jobs.length} runs (${model})`);
+	console.log(`Quality comparison (${taskSet} set): ${selected.length} tasks x ${variants.join("/")} x ${trials} trials = ${jobs.length} runs (${model}${thinking ? `, thinking ${thinking}` : ""})`);
 	const records = [];
 	let cursor = 0;
 	await Promise.all(
@@ -418,7 +432,13 @@ async function main() {
 	const baselinePath = arg("baseline", "");
 	if (baselinePath) {
 		const baseline = JSON.parse(readFileSync(resolve(root, baselinePath), "utf8"));
-		if ((baseline.taskSet ?? "default") !== taskSet || baseline.frozenAt !== FROZEN_AT || baseline.model !== model || baseline.trials !== trials)
+		if (
+			(baseline.taskSet ?? "default") !== taskSet ||
+			baseline.frozenAt !== FROZEN_AT ||
+			baseline.model !== model ||
+			baseline.trials !== trials ||
+			baseline.thinking !== thinking
+		)
 			throw new Error("Baseline was recorded with a different task set, model, or trial count");
 		records.push(...baseline.records.filter((record) => !variants.includes(record.variant)));
 		for (const variant of new Set(baseline.records.map((record) => record.variant)))
@@ -426,7 +446,7 @@ async function main() {
 	}
 	const summary = summarize(records, variants);
 	mkdirSync(dirname(out), { recursive: true });
-	writeFileSync(out, `${JSON.stringify({ taskSet, frozenAt: FROZEN_AT, thresholds: THRESHOLDS, model, trials, summary, records }, null, 2)}\n`);
+	writeFileSync(out, `${JSON.stringify({ taskSet, frozenAt: FROZEN_AT, thresholds: THRESHOLDS, model, thinking, trials, summary, records }, null, 2)}\n`);
 	console.log(JSON.stringify(summary, null, 2));
 	console.log(`Wrote ${out}`);
 	return summary.passed ? 0 : 1;
