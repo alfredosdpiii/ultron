@@ -61,7 +61,7 @@ export function spawnInternalProcess(
 				...options.env,
 				[INTERNAL_PROCESS_ENV]: role,
 			},
-			stdio: "ignore",
+			stdio: process.env.ULTRON_DEBUG_INTERNAL === "1" ? ["ignore", "inherit", "inherit"] : "ignore",
 			windowsHide: true,
 		},
 	);
@@ -83,7 +83,12 @@ export async function terminateInternalProcess(child: ChildProcess): Promise<voi
 function defaultEntryUrl(role: InternalProcessRole, override: URL | undefined): URL {
 	if (override) return override;
 	if (isBundledNode) {
-		const entry = role === "coordinator" ? "coordinator.js" : "cli.js";
+		const entry =
+			role === "coordinator"
+				? "coordinator-entry.js"
+				: role === "server"
+					? "server-entry.js"
+					: "session-worker-entry.js";
 		return pathToFileURL(join(getPackageDir(), "dist", "bundle", entry));
 	}
 	const javaScript = import.meta.url.endsWith(".js");

@@ -1,5 +1,7 @@
+import { readFile } from "node:fs/promises";
 import { createConnection, type Socket } from "node:net";
 import { isAbsolute } from "node:path";
+import type { Context } from "@earendil-works/chord";
 import {
 	isJsonValue,
 	type JsonValue,
@@ -10,28 +12,47 @@ import {
 	type ServiceCall,
 	type ServiceProviderUpdate,
 } from "@earendil-works/chord";
+import { withAbortSignal } from "@earendil-works/chord/context";
+import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
 import {
 	AgentHarness,
 	type AgentHarness as AgentHarnessInstance,
+	type AgentHarnessTool,
+	type AgentHarnessToolInvocation,
 	type AgentLane,
 	BACKGROUND_CONTEXT,
 	createBashTool,
+	createEditTool,
 	createReadTool,
 	createWriteTool,
 	type JsonlSessionMetadata,
 	JsonlSessionRepo,
 	type Session,
 	TODO_CONTEXT,
+	value,
 	withCancel,
 } from "@earendil-works/pi-agent-core";
 import { NodeExecutionEnv } from "@earendil-works/pi-agent-core/node";
 import lockfile from "proper-lockfile";
 import Type, { type Static } from "typebox";
 import { Check } from "typebox/value";
+import { isValidThinkingLevel } from "../cli/args.ts";
+import { getAgentDir, getRlmRuntimePath } from "../config.ts";
+import { ModelRegistry } from "../core/model-registry.ts";
 import { findInitialModel, resolveCliModel } from "../core/model-resolver.ts";
 import { ModelRuntime } from "../core/model-runtime.ts";
+import { DefaultResourceLoader } from "../core/resource-loader.ts";
 import { SettingsManager } from "../core/settings-manager.ts";
+import { buildSystemPrompt } from "../core/system-prompt.ts";
+import { createNativeJevClient } from "../ultron/jev.ts";
+import { createSessionDefinitionStore } from "../ultron/rlm/definition-registry.ts";
+import { type KernelHostHandler, RlmKernel } from "../ultron/rlm/kernel.ts";
+import { NativeRlmHost } from "../ultron/rlm/native-host.ts";
+import { createSessionTaskStore } from "../ultron/rlm/task-store.ts";
+import { createSessionUsageLedger } from "../ultron/usage.ts";
+import { createWorkerServices } from "../ultron/worker-services.ts";
 import { COORDINATOR_PROTOCOL_VERSION } from "./coordinator.ts";
+import { LegacyExtensionAdapter } from "./legacy-extension-adapter.ts";
 import { createSessionPluginFacetLoader } from "./plugins/bundled.ts";
 import {
 	consumeInternalProcessRole,
@@ -47,6 +68,77 @@ import {
 } from "./services/worker.ts";
 
 export type { SessionWorkerRuntime } from "./services/worker.ts";
+
+type RlmHostHandler = KernelHostHandler;
+
+/** Worker adapter around the shared, bounded Python protocol implementation. */
+export class UltronRlmKernel {
+	private readonly kernel: RlmKernel;
+
+	constructor(cwd: string, hostHandler: RlmHostHandler) {
+		this.kernel = new RlmKernel({ cwd, runtimePath: getRlmRuntimePath() }, hostHandler);
+	}
+
+	async execute(code: string, context: Context): Promise<string> {
+		const result = await this.kernel.execute(code, context.abortSignal);
+		if (result.status === "error") {
+			throw new Error(`${result.error?.ename ?? "PythonError"}: ${result.error?.evalue ?? "Execution failed"}`);
+		}
+		return [result.stdout, result.stderr, result.result].filter(Boolean).join("\n");
+	}
+
+	close(): Promise<void> {
+		return this.kernel.shutdown();
+	}
+}
+
+export type UltronRlmTool = AgentHarnessTool<{ env: NodeExecutionEnv }> & { close(): Promise<void> };
+
+export function createUltronRlmTool(
+	cwd: string,
+	hostHandler: RlmHostHandler,
+	resolveLane: (invocation: AgentHarnessToolInvocation, context: Context) => Promise<string> = async () => "main",
+): UltronRlmTool {
+	const kernels = new Map<string, UltronRlmKernel>();
+	let closed = false;
+	const schema = Type.Object({
+		code: Type.String({
+			description: "Python code for persistent RLM computation, typed agents, and data processing",
+		}),
+	});
+	return {
+		close: async () => {
+			closed = true;
+			await Promise.all([...kernels.values()].map((kernel) => kernel.close()));
+			kernels.clear();
+		},
+		name: "rlm",
+		label: "rlm",
+		description:
+			"Execute Python in Ultron's persistent RLM environment. Use ordinary Python to inspect data, retain intermediate values, invoke typed specialists, and compose optional workflows.",
+		parameters: schema,
+		async execute(
+			_toolCallId,
+			params: { code: string },
+			_onUpdate,
+			_toolContext,
+			invocation: AgentHarnessToolInvocation,
+			context,
+		) {
+			if (closed) throw new Error("Ultron RLM tool is closed");
+			const lane = await resolveLane(invocation, context);
+			context.abortSignal?.throwIfAborted();
+			if (closed) throw new Error("Ultron RLM tool is closed");
+			let kernel = kernels.get(lane);
+			if (!kernel) {
+				kernel = new UltronRlmKernel(cwd, hostHandler);
+				kernels.set(lane, kernel);
+			}
+			const result = await kernel.execute(params.code, context);
+			return { content: [{ type: "text", text: result || "(no result)" }], details: {} };
+		},
+	};
+}
 
 const StrictObject = <const T extends Parameters<typeof Type.Object>[0]>(properties: T) =>
 	Type.Object(properties, { additionalProperties: false });
@@ -69,6 +161,7 @@ export const SESSION_WORKER_CONTROL_ADDRESS_ENV = "PI_SESSION_WORKER_CONTROL_ADD
 export const SESSION_WORKER_CONTROL_TOKEN_ENV = "PI_SESSION_WORKER_CONTROL_TOKEN";
 export const SESSION_WORKER_SESSION_KEY_ENV = "PI_SESSION_WORKER_SESSION_KEY_BASE64";
 export const SESSION_WORKER_PEER_ID_ENV = "PI_SESSION_WORKER_PEER_ID";
+export const SESSION_WORKER_API_KEY_ENV = "PI_SESSION_WORKER_API_KEY";
 
 export const SessionWorkerMetadataSchema = StrictObject({
 	id: Type.String({ minLength: 1 }),
@@ -85,9 +178,16 @@ export const SessionWorkerOptionsSchema = StrictObject({
 	metadata: SessionWorkerMetadataSchema,
 	provider: Type.Optional(Type.String({ minLength: 1 })),
 	model: Type.Optional(Type.String({ minLength: 1 })),
+	thinking: Type.Optional(Type.String({ minLength: 1 })),
+	systemPrompt: Type.Optional(Type.String()),
+	noTools: Type.Optional(Type.Union([Type.Literal("all"), Type.Literal("builtin")])),
+	tools: Type.Optional(Type.Array(Type.String({ minLength: 1 }))),
+	excludeTools: Type.Optional(Type.Array(Type.String({ minLength: 1 }))),
 	pluginManifestPaths: Type.Array(Type.String({ minLength: 1 })),
 });
 export type SessionWorkerOptions = Static<typeof SessionWorkerOptionsSchema>;
+
+type SessionWorkerRuntimeOptions = SessionWorkerOptions & { readonly apiKey?: string };
 
 export const WorkerOperationScopeSchema = StrictObject({
 	serverConnectionId: Type.String(),
@@ -484,8 +584,14 @@ async function closeResources(resources: {
 	repo: JsonlSessionRepo;
 	executionEnv: NodeExecutionEnv;
 	releaseOwnership: () => Promise<void>;
+	closeRlm?: () => Promise<void>;
 }): Promise<void> {
 	const errors: unknown[] = [];
+	try {
+		await resources.closeRlm?.();
+	} catch (error) {
+		errors.push(error);
+	}
 	try {
 		await resources.services?.dispose();
 	} catch (error) {
@@ -518,11 +624,11 @@ async function closeResources(resources: {
 
 export type CreateSessionWorkerHarness = (
 	session: Session<JsonlSessionMetadata>,
-	options: SessionWorkerOptions,
+	options: SessionWorkerRuntimeOptions,
 	executionEnv: NodeExecutionEnv,
 ) => Promise<SessionWorkerRuntime>;
 
-async function run(options: SessionWorkerOptions, createHarness: CreateSessionWorkerHarness): Promise<void> {
+async function run(options: SessionWorkerRuntimeOptions, createHarness: CreateSessionWorkerHarness): Promise<void> {
 	const { sessionDir, metadata } = options;
 	const sessionId = metadata.id;
 	const control = await connectControl();
@@ -542,13 +648,18 @@ async function run(options: SessionWorkerOptions, createHarness: CreateSessionWo
 	let harness: AgentHarnessInstance | undefined;
 	let lane: AgentLane | undefined;
 	let services: SessionWorkerServices | undefined;
+	let closeRlm: (() => Promise<void>) | undefined;
 	try {
 		session = await repo.open(metadata, TODO_CONTEXT);
 		const runtime = await createHarness(session, options, executionEnv);
 		harness = runtime.harness;
+		closeRlm = runtime.closeRlm;
 		lane = runtime.lane ?? (await harness.lane("main", TODO_CONTEXT));
 		services = await createSessionWorkerServices({
 			lane,
+			harness,
+			cwd: metadata.cwd,
+			legacyExtensionCommands: runtime.legacyExtensionCommands,
 			modelRuntime: runtime.modelRuntime,
 			settingsManager: runtime.settingsManager,
 			facetLoader: runtime.facetLoader,
@@ -564,7 +675,7 @@ async function run(options: SessionWorkerOptions, createHarness: CreateSessionWo
 		});
 	} catch (error) {
 		try {
-			await closeResources({ harness, services, session, repo, executionEnv, releaseOwnership });
+			await closeResources({ harness, services, session, repo, executionEnv, releaseOwnership, closeRlm });
 		} catch (cleanupError) {
 			throw new AggregateError([error, cleanupError], "Session worker startup and cleanup failed");
 		}
@@ -586,7 +697,7 @@ async function run(options: SessionWorkerOptions, createHarness: CreateSessionWo
 		activeRequests.clear();
 		for (const remove of removeLifecycleListeners) remove();
 		removeLifecycleListeners = [];
-		closing = closeResources({ harness, services, repo, executionEnv, releaseOwnership });
+		closing = closeResources({ harness, services, repo, executionEnv, releaseOwnership, closeRlm });
 		return closing;
 	};
 	const closeAndExit = (): void => {
@@ -789,7 +900,8 @@ export async function runSessionWorkerWithHarness(
 		) {
 			throw new Error("Session worker received invalid options");
 		}
-		await run(options, createHarness);
+		const apiKey = process.env[SESSION_WORKER_API_KEY_ENV];
+		await run(apiKey === undefined ? options : { ...options, apiKey }, createHarness);
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
 		const token = process.env[SESSION_WORKER_CONTROL_TOKEN_ENV];
@@ -804,11 +916,28 @@ export async function runSessionWorkerWithHarness(
 
 async function createCodingAgentHarness(
 	session: Session<JsonlSessionMetadata>,
-	options: SessionWorkerOptions,
+	options: SessionWorkerRuntimeOptions,
 	executionEnv: NodeExecutionEnv,
 ): Promise<SessionWorkerRuntime> {
-	const modelRuntime = await ModelRuntime.create();
+	const modelRuntime = await ModelRuntime.create({ refreshOnCreate: false, allowModelNetwork: false });
 	const settingsManager = SettingsManager.create(session.metadata.cwd);
+	const resourceLoader = new DefaultResourceLoader({
+		cwd: session.metadata.cwd,
+		agentDir: getAgentDir(),
+		settingsManager,
+		systemPrompt: options.systemPrompt,
+	});
+	await resourceLoader.reload();
+	const loadedExtensions = resourceLoader.getExtensions();
+	for (const registration of loadedExtensions.runtime.pendingProviderRegistrations) {
+		modelRuntime.registerProvider(registration.name, registration.config);
+	}
+	for (const registration of loadedExtensions.runtime.pendingNativeProviderRegistrations) {
+		modelRuntime.registerNativeProvider(registration.provider);
+	}
+	loadedExtensions.runtime.pendingProviderRegistrations = [];
+	loadedExtensions.runtime.pendingNativeProviderRegistrations = [];
+	await modelRuntime.refresh({ allowNetwork: false });
 	let resolved: Awaited<ReturnType<typeof findInitialModel>> | ReturnType<typeof resolveCliModel>;
 	if (options.model === undefined) {
 		resolved = await findInitialModel({
@@ -828,41 +957,172 @@ async function createCodingAgentHarness(
 		if (resolved.error) throw new Error(`Session worker could not resolve model: ${resolved.error}`);
 	}
 	if (!resolved.model) throw new Error("Session worker could not resolve a model");
-	const tools = [createReadTool(), createWriteTool(), createBashTool()];
-	const activeToolNames = tools.map((tool) => tool.name);
+	if (options.apiKey !== undefined) await modelRuntime.setRuntimeApiKey(resolved.model.provider, options.apiKey);
+	const thinkingLevel: ThinkingLevel =
+		options.thinking === undefined
+			? (resolved.thinkingLevel ?? "medium")
+			: isValidThinkingLevel(options.thinking)
+				? options.thinking
+				: (() => {
+						throw new Error(`Session worker received invalid thinking level: ${options.thinking}`);
+					})();
+	const registry = new ModelRegistry(modelRuntime);
+	const jev = createNativeJevClient();
+	let host: NativeRlmHost | undefined;
+	const hostHandler: RlmHostHandler = async (type, payload, signal) => {
+		if (type === "rlm.find_models")
+			return registry.getAvailable().map((model) => ({ provider: model.provider, id: model.id, name: model.name }));
+		if (type === "jev.triage") {
+			if (!jev) return { available: false, reason: "Jev is not configured" };
+			return { available: true, ...(await jev.triage(String(payload.prompt ?? ""), signal)) };
+		}
+		if (type === "jev.recall") {
+			if (!jev) return { available: false, gate: { retrieve: false, probability: 0 }, results: [] };
+			return { available: true, gate: await jev.memoryRecall(String(payload.prompt ?? ""), signal), results: [] };
+		}
+		if (!host) throw new Error("Ultron RLM host is not initialized");
+		return host.handle(type, payload, signal ? withAbortSignal(signal, TODO_CONTEXT) : TODO_CONTEXT);
+	};
+	const rlmTool = createUltronRlmTool(options.metadata.cwd, hostHandler, async (invocation, context) => {
+		const meta = await session.getValue(value<{ lane: string }>("pi.op.meta", invocation.operationId), context);
+		if (!meta || typeof meta.value.lane !== "string") throw new Error("RLM invocation has no owning lane");
+		return meta.value.lane;
+	});
+	const tools = [createReadTool(), createEditTool(), createWriteTool(), createBashTool(), rlmTool];
+	const loadedSkills = await Promise.all(
+		resourceLoader.getSkills().skills.map(async (skill) => ({
+			name: skill.name,
+			description: skill.description,
+			filePath: skill.filePath,
+			disableModelInvocation: skill.disableModelInvocation,
+			content: await readFile(skill.filePath, "utf8"),
+		})),
+	);
+	const resources = {
+		skills: loadedSkills,
+		promptTemplates: resourceLoader.getPrompts().prompts.map((template) => ({
+			name: template.name,
+			description: template.description,
+			content: template.content,
+		})),
+	};
+	const selectedToolNames = ["read", "edit", "write", "bash", "rlm"];
+	const contextFiles = resourceLoader.getAgentsFiles().agentsFiles;
+	const contextPrompt = contextFiles
+		.map((file) => `<project_instructions path="${file.path}">\\n${file.content}\\n</project_instructions>`)
+		.join("\\n\\n");
+	const systemPrompt =
+		options.systemPrompt ??
+		buildSystemPrompt({
+			cwd: options.metadata.cwd,
+			selectedTools: selectedToolNames,
+			toolSnippets: {
+				read: "Read file contents",
+				edit: "Edit files with find/replace",
+				write: "Write files",
+				bash: "Execute shell commands",
+				rlm: "Run Python RLM code and recursive agents",
+			},
+			contextFiles,
+			skills: resourceLoader.getSkills().skills,
+			appendSystemPrompt: [
+				...resourceLoader.getAppendSystemPrompt(),
+				...(contextPrompt.length === 0 ? [] : [contextPrompt]),
+			].join("\n\n"),
+		});
+	const toolNames = tools.map((tool) => tool.name);
+	const activeToolNames =
+		options.noTools === "all"
+			? []
+			: (options.tools === undefined ? toolNames : toolNames.filter((name) => options.tools?.includes(name))).filter(
+					(name) => options.excludeTools?.includes(name) !== true,
+				);
+	const effectiveActiveToolNames =
+		options.noTools === "builtin" ? activeToolNames.filter((name) => name === "rlm") : activeToolNames;
 	const harness = (
 		await AgentHarness.create(
 			{
 				session,
 				models: modelRuntime,
 				model: resolved.model,
-				thinkingLevel: resolved.thinkingLevel,
+				thinkingLevel,
 				tools,
-				activeToolNames,
+				activeToolNames: effectiveActiveToolNames,
 				toolContext: { env: executionEnv },
-				resources: {},
+				resources,
+				systemPrompt,
 			},
 			TODO_CONTEXT,
 		)
 	).harness;
+	let legacyExtensions: LegacyExtensionAdapter | undefined;
 	try {
 		const lane = await harness.lane("main", TODO_CONTEXT);
+		legacyExtensions = new LegacyExtensionAdapter({
+			session,
+			lane,
+			harness,
+			modelRuntime,
+			resourceLoader,
+			cwd: options.metadata.cwd,
+			model: resolved.model,
+			systemPrompt,
+		});
+		legacyExtensions.bind();
+		const extensionTools = legacyExtensions.tools;
+		await harness.setTools([...tools, ...extensionTools], TODO_CONTEXT);
+		const extensionToolNames = extensionTools.map((tool) => tool.name);
+		const extensionActiveToolNames =
+			options.noTools === "all"
+				? []
+				: (options.tools === undefined
+						? [...effectiveActiveToolNames, ...extensionToolNames]
+						: [...effectiveActiveToolNames, ...extensionToolNames].filter((name) => options.tools?.includes(name))
+					).filter((name) => options.excludeTools?.includes(name) !== true);
+		const nativeServices = createWorkerServices({
+			session,
+			sessionId: options.metadata.id,
+			cwd: options.metadata.cwd,
+			jev: jev ?? undefined,
+			hindsightUrl: process.env.ULTRON_HINDSIGHT_URL,
+			bankId: process.env.ULTRON_HINDSIGHT_BANK,
+			extensionCommands: {
+				list: async () => legacyExtensions?.commands ?? [],
+				run: async (name, args) => legacyExtensions?.runCommand(name, args) ?? { notifications: [] },
+			},
+		});
+		host = new NativeRlmHost(harness, lane, {
+			store: createSessionTaskStore(session),
+			definitionStore: createSessionDefinitionStore(session),
+			usage: createSessionUsageLedger(session, { limits: { maxAdmittedTasks: 24, maxWallMs: 30 * 60 * 1000 } }),
+			services: nativeServices,
+		});
 		const currentActiveToolNames = await lane.getActiveTools(TODO_CONTEXT);
 		if (
-			currentActiveToolNames.length !== activeToolNames.length ||
-			currentActiveToolNames.some((name, index) => name !== activeToolNames[index])
+			currentActiveToolNames.length !== extensionActiveToolNames.length ||
+			currentActiveToolNames.some((name, index) => name !== extensionActiveToolNames[index])
 		) {
-			await lane.setActiveTools(activeToolNames, TODO_CONTEXT);
+			await lane.setActiveTools(extensionActiveToolNames, TODO_CONTEXT);
 		}
 		return {
 			harness,
+			closeRlm: async () => {
+				await legacyExtensions?.close();
+				await rlmTool.close();
+				await host?.close();
+			},
 			lane,
 			modelRuntime,
 			settingsManager,
+			legacyExtensionCommands: {
+				list: async () => legacyExtensions?.commands ?? [],
+				run: async (name, args) => legacyExtensions?.runCommand(name, args) ?? { notifications: [] },
+			},
 			facetLoader: createSessionPluginFacetLoader(options.pluginManifestPaths),
 		};
 	} catch (error) {
 		try {
+			await legacyExtensions?.close();
 			await harness.close(TODO_CONTEXT);
 		} catch (cleanupError) {
 			throw new AggregateError([error, cleanupError], "Session worker model selection and cleanup failed");

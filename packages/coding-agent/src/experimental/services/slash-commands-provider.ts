@@ -1,6 +1,7 @@
 import { defineFacet, type Facet, type JsonValue } from "@earendil-works/chord";
 import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
 import { AgentController } from "./agent-controller.ts";
+import { LegacyExtensionCommands } from "./legacy-extensions.ts";
 import { type ModelSummary, Models, type Models as ModelsService } from "./models.ts";
 import { PresentationPlugins, SessionPlugins } from "./plugins.ts";
 import { PresentationUI } from "./presentation-ui.ts";
@@ -95,8 +96,12 @@ export function createBuiltInSlashCommandsFacet(options: {
 			const ui = env.use(PresentationUI);
 			const presentationPlugins = env.use(PresentationPlugins);
 			const sessionPlugins = env.use(SessionPlugins);
+			const legacyExtensions = env.use(LegacyExtensionCommands);
 			env.onActivate(() => {
 				env.own(commands.replace(modelCommand(models, ui)));
+				if (legacyExtensions) {
+					env.own(commands.replace(legacyExtensionCommand(legacyExtensions, ui)));
+				}
 				env.own(commands.replace(thinkingCommand(models, ui)));
 				env.own(commands.replace(compactCommand(controller, ui)));
 				env.own(
@@ -116,6 +121,23 @@ export function createBuiltInSlashCommandsFacet(options: {
 			});
 		},
 	});
+}
+
+function legacyExtensionCommand(service: LegacyExtensionCommands, ui: PresentationUI): SlashCommandContribution {
+	return {
+		name: "extension",
+		description: "Run a loaded Pi extension command",
+		argumentHint: "<name> [args]",
+		async run(args, context) {
+			const separator = args.indexOf(" ");
+			const name = separator === -1 ? args : args.slice(0, separator);
+			const commandArgs = separator === -1 ? "" : args.slice(separator + 1);
+			if (!name) throw new Error("Usage: /extension <name> [args]");
+			const result = await service.run(name, commandArgs, context);
+			for (const notification of result.notifications) ui.showStatus(notification, context);
+			return undefined;
+		},
+	};
 }
 
 function modelCommand(models: ModelsService, ui: PresentationUI): SlashCommandContribution {

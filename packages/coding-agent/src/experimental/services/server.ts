@@ -26,6 +26,7 @@ export async function createExperimentalServerServices(options: {
 	list(context: Context): Promise<SessionSummary[]>;
 	create(createOptions: SessionCreateOptions, context: Context): Promise<SessionSummary>;
 	remove(sessionId: string, context: Context): Promise<void>;
+	rename(sessionId: string, name: string, context: Context): Promise<void>;
 	prepareSessionPlugins(
 		sessionId: string,
 		packagePaths: readonly string[] | undefined,
@@ -98,6 +99,11 @@ export async function createExperimentalServerServices(options: {
 						serialize(async () => {
 							await presentation.prepareSessionRemoval(sessionId, context);
 							await options.remove(sessionId, context);
+							await refreshNow(context);
+						}),
+					rename: (sessionId, name, context) =>
+						serialize(async () => {
+							await options.rename(sessionId, name, context);
 							await refreshNow(context);
 						}),
 					attach: (sessionId, context) =>

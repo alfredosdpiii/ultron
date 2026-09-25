@@ -14,12 +14,21 @@ export interface ClientCommand {
 	readonly auth?: AuthInput;
 	readonly connect?: TransportAddress;
 	readonly sessionId?: string;
+	readonly name?: string;
+	readonly fork?: string;
 	readonly continue?: boolean;
 	readonly resume?: boolean;
 	readonly provider?: string;
 	readonly model?: string;
+	readonly apiKey?: string;
+	readonly thinking?: string;
+	readonly systemPrompt?: string;
+	readonly noTools?: "all" | "builtin";
+	readonly tools?: readonly string[];
+	readonly excludeTools?: readonly string[];
 	readonly pluginPackages?: readonly string[];
 	readonly prompt?: string;
+	readonly images?: { readonly type: "image"; readonly data: string; readonly mimeType: string }[];
 }
 
 export interface ClientCommandContext {

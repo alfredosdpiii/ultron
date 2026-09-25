@@ -66,7 +66,9 @@ import { runMigrations, showDeprecationWarnings } from "./migrations.ts";
 import { InteractiveMode, runPrintMode, runRpcMode } from "./modes/index.ts";
 import { initTheme, setThemeJsonValidator, stopThemeWatcher } from "./modes/interactive/theme/theme.ts";
 import { validateThemeJson } from "./modes/interactive/theme/theme-json.ts";
+import { runNativeUltronCommand } from "./native-command.ts";
 import { cleanupManagedInstall, handleConfigCommand, handlePackageCommand } from "./package-manager-cli.ts";
+import { exportNativeSessionFile, isNativeSessionFile } from "./ultron/native-export.ts";
 import { isLocalPath, normalizePath, resolvePath } from "./utils/paths.ts";
 import { cleanupWindowsSelfUpdateQuarantine } from "./utils/windows-self-update.ts";
 
@@ -123,6 +125,14 @@ function resolveAppMode(parsed: Args, stdinIsTTY: boolean, stdoutIsTTY: boolean)
 
 function toPrintOutputMode(appMode: AppMode): Exclude<Mode, "rpc"> {
 	return appMode === "json" ? "json" : "text";
+}
+
+/**
+ * Ultron has one execution runtime: the native RLM worker. Help, model listing,
+ * and export never run the agent, so they keep Pi's handlers.
+ */
+function shouldRunUltronWorker(parsed: Args): boolean {
+	return APP_NAME === "ultron" && !parsed.help && parsed.listModels === undefined && !parsed.export;
 }
 
 function isPlainRuntimeMetadataCommand(parsed: Args): boolean {
@@ -621,11 +631,30 @@ export async function main(args: string[], options?: MainOptions) {
 		process.exit(0);
 	}
 
+	if (shouldRunUltronWorker(parsed)) {
+		if (parsed.mode === "rpc" && parsed.fileArgs.length > 0) {
+			console.error(chalk.red("Error: @file arguments are not supported in RPC mode"));
+			process.exit(1);
+		}
+		// RPC reads its commands from stdin, so it must not be consumed as a prompt.
+		const nativeStdin = process.stdin.isTTY || parsed.mode === "rpc" ? undefined : await readPipedStdin();
+		try {
+			await runNativeUltronCommand(parsed, nativeStdin);
+		} catch (error: unknown) {
+			const message = error instanceof Error ? error.message : String(error);
+			console.error(chalk.red(`Error: ${message}`));
+			process.exitCode = 1;
+		}
+		return;
+	}
+
 	if (parsed.export) {
 		let result: string;
 		try {
 			const outputPath = parsed.messages.length > 0 ? parsed.messages[0] : undefined;
-			result = await exportFromFile(parsed.export, outputPath);
+			result = (await isNativeSessionFile(resolvePath(parsed.export)))
+				? await exportNativeSessionFile(parsed.export, outputPath)
+				: await exportFromFile(parsed.export, outputPath);
 		} catch (error: unknown) {
 			const message = error instanceof Error ? error.message : "Failed to export session";
 			console.error(chalk.red(`Error: ${message}`));

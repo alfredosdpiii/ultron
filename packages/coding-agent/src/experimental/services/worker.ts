@@ -16,16 +16,21 @@ import type { ModelRuntime } from "../../core/model-runtime.ts";
 import type { SettingsManager } from "../../core/settings-manager.ts";
 import { AgentController } from "./agent-controller.ts";
 import { createAgentController } from "./agent-controller-provider.ts";
+import { LegacyExtensionCommands } from "./legacy-extensions.ts";
 import { createModelsServiceFacet } from "./models-provider.ts";
 import { SessionPlugins } from "./plugins.ts";
+import { SessionControl } from "./session-control.ts";
+import { createSessionControl } from "./session-control-provider.ts";
 import { createTranscriptServiceFacet } from "./transcript-provider.ts";
 
 export interface SessionWorkerRuntime {
 	readonly harness: AgentHarness;
+	readonly closeRlm?: () => Promise<void>;
 	readonly lane?: AgentLane;
 	readonly modelRuntime?: ModelRuntime;
 	readonly settingsManager?: SettingsManager;
 	readonly facetLoader?: FacetLoader;
+	readonly legacyExtensionCommands?: LegacyExtensionCommands;
 }
 
 export interface WorkerServiceScope {
@@ -46,15 +51,47 @@ export interface SessionWorkerServices {
 
 export async function createSessionWorkerServices(options: {
 	readonly lane: AgentLane;
+	/** Enables SessionControl; omitted by workers that do not own a harness. */
+	readonly harness?: AgentHarness;
+	readonly cwd?: string;
 	readonly modelRuntime: ModelRuntime | undefined;
 	readonly settingsManager?: SettingsManager;
 	readonly facetLoader?: FacetLoader;
+	readonly legacyExtensionCommands?: LegacyExtensionCommands;
 	publish(scope: WorkerServiceScope, subscriptionId: string, update: ServiceProviderUpdate): Promise<void>;
 }): Promise<SessionWorkerServices> {
 	const agentControllerRuntimeFacet = defineFacet({
 		id: "@pi/agent-controller-runtime",
 		setup(env) {
 			env.provide(AgentController, createAgentController(options.lane));
+		},
+	});
+	const legacyExtensionFacet = defineFacet({
+		id: "@pi/legacy-extension-commands",
+		setup(env) {
+			env.provide(
+				LegacyExtensionCommands,
+				options.legacyExtensionCommands ?? {
+					list: async () => [],
+					run: async () => ({ notifications: [] }),
+				},
+			);
+		},
+	});
+	const sessionControlFacet = defineFacet({
+		id: "@ultron/session-control",
+		setup(env) {
+			if (options.harness === undefined || options.cwd === undefined) return;
+			env.provide(
+				SessionControl,
+				createSessionControl({
+					harness: options.harness,
+					lane: options.lane,
+					cwd: options.cwd,
+					settingsManager: options.settingsManager,
+					extensionCommands: options.legacyExtensionCommands,
+				}),
+			);
 		},
 	});
 	let reloadPlugins = (): Promise<void> => Promise.reject(new Error("Session plugins are not ready"));
@@ -67,6 +104,8 @@ export async function createSessionWorkerServices(options: {
 	const builtins = await createStaticFacetLoader([
 		agentControllerRuntimeFacet,
 		pluginRuntimeFacet,
+		legacyExtensionFacet,
+		sessionControlFacet,
 		createModelsServiceFacet(options),
 		createTranscriptServiceFacet(options.lane),
 	]).load();

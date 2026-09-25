@@ -8,10 +8,14 @@ export interface SessionAddress {
 
 export interface SessionSummary extends SessionAddress {
 	createdAt: number;
+	modifiedAt: number;
 }
 
 export interface SessionCreateOptions {
 	id?: string;
+	parentSessionId?: string;
+	forkFromSessionId?: string;
+	name?: string;
 }
 
 export interface SessionDirectoryState {
@@ -28,6 +32,7 @@ export const SessionDirectory = defineService<SessionDirectory>("pi.session-dire
 export interface SessionManagement {
 	create(options: SessionCreateOptions, context: Context): Promise<SessionSummary>;
 	remove(sessionId: string, context: Context): Promise<void>;
+	rename(sessionId: string, name: string, context: Context): Promise<void>;
 	attach(sessionId: string, context: Context): Promise<void>;
 	detach(context: Context): Promise<void>;
 }

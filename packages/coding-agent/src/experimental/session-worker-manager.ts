@@ -20,6 +20,7 @@ import { Check } from "typebox/value";
 import type { CoordinatorConnection, CoordinatorConnectionEvent } from "./coordinator.ts";
 import { spawnInternalProcess } from "./process.ts";
 import {
+	SESSION_WORKER_API_KEY_ENV,
 	SESSION_WORKER_CONTROL_ADDRESS_ENV,
 	SESSION_WORKER_CONTROL_TOKEN_ENV,
 	SESSION_WORKER_PEER_ID_ENV,
@@ -102,7 +103,18 @@ export class SessionWorkerManager {
 		"controlPath" | "serverConnectionId" | "wasReplaced" | "onEvent" | "send" | "broadcast"
 	>;
 	readonly #sessionDir: string;
-	readonly #model: { readonly provider?: string; readonly model: string } | undefined;
+	readonly #model:
+		| {
+				readonly provider?: string;
+				readonly model?: string;
+				readonly apiKey?: string;
+				readonly thinking?: string;
+				readonly systemPrompt?: string;
+				readonly noTools?: "all" | "builtin";
+				readonly tools?: readonly string[];
+				readonly excludeTools?: readonly string[];
+		  }
+		| undefined;
 	readonly #workersBySession = new Map<string, WorkerRecord>();
 	readonly #workersByPeer = new Map<string, WorkerRecord>();
 	readonly #pending = new Map<string, PendingLaunch>();
@@ -122,7 +134,16 @@ export class SessionWorkerManager {
 			"controlPath" | "serverConnectionId" | "wasReplaced" | "onEvent" | "send" | "broadcast"
 		>,
 		sessionDir: string,
-		model?: { readonly provider?: string; readonly model: string },
+		model?: {
+			readonly provider?: string;
+			readonly model?: string;
+			readonly apiKey?: string;
+			readonly thinking?: string;
+			readonly systemPrompt?: string;
+			readonly noTools?: "all" | "builtin";
+			readonly tools?: readonly string[];
+			readonly excludeTools?: readonly string[];
+		},
 		onWorkerCountChanged?: (count: number) => void,
 	) {
 		this.#coordinator = coordinator;
@@ -471,7 +492,12 @@ export class SessionWorkerManager {
 					...(metadata.parentSessionId === undefined ? {} : { parentSessionId: metadata.parentSessionId }),
 				},
 				pluginManifestPaths: [...pluginManifestPaths],
-				...(this.#model ?? {}),
+				...(this.#model === undefined ? {} : { provider: this.#model.provider, model: this.#model.model }),
+				...(this.#model?.thinking === undefined ? {} : { thinking: this.#model.thinking }),
+				...(this.#model?.systemPrompt === undefined ? {} : { systemPrompt: this.#model.systemPrompt }),
+				...(this.#model?.noTools === undefined ? {} : { noTools: this.#model.noTools }),
+				...(this.#model?.tools === undefined ? {} : { tools: [...this.#model.tools] }),
+				...(this.#model?.excludeTools === undefined ? {} : { excludeTools: [...this.#model.excludeTools] }),
 			};
 			child = spawnInternalProcess("session-worker", [JSON.stringify(options)], {
 				env: {
@@ -479,6 +505,7 @@ export class SessionWorkerManager {
 					[SESSION_WORKER_CONTROL_TOKEN_ENV]: token,
 					[SESSION_WORKER_SESSION_KEY_ENV]: Buffer.from(sessionKey).toString("base64url"),
 					[SESSION_WORKER_PEER_ID_ENV]: peerId,
+					...(this.#model?.apiKey === undefined ? {} : { [SESSION_WORKER_API_KEY_ENV]: this.#model.apiKey }),
 				},
 			});
 		} catch (error) {
@@ -515,6 +542,16 @@ export class SessionWorkerManager {
 
 	#handleCoordinatorEvent(event: CoordinatorConnectionEvent): void {
 		if (this.#detached) return;
+		if (
+			event.type === "message" &&
+			event.payload !== undefined &&
+			typeof event.payload === "object" &&
+			event.payload !== null &&
+			"type" in event.payload &&
+			event.payload.type === "worker_failed"
+		) {
+			if (process.env.ULTRON_DEBUG_INTERNAL === "1") console.error("[ultron worker failed]", event.payload);
+		}
 		if (event.type === "peer_disconnected") {
 			this.#markDiscovered(event.peerId);
 			const worker = this.#workersByPeer.get(event.peerId);

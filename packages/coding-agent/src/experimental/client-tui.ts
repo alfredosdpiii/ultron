@@ -29,6 +29,7 @@ import { CustomEditor } from "../modes/interactive/components/custom-editor.ts";
 import { getEditorTheme, setRegisteredThemes, stopThemeWatcher, theme } from "../modes/interactive/theme/theme.ts";
 import { InteractiveThemeController } from "../modes/interactive/theme/theme-controller.ts";
 import { createInteractiveTui } from "../modes/interactive/tui-renderer.ts";
+import { ensureTool } from "../utils/tools-manager.ts";
 import { type OpenClientRuntimeOptions, openClientRuntime } from "./client-runtime.ts";
 import { ExperimentalChatView } from "./client-tui-chat.ts";
 import { createPresentationFacetLoaders } from "./plugins/bundled.ts";
@@ -120,8 +121,16 @@ export class ExperimentalClientTui implements Component {
 	#recoveryTransition: Promise<void> = Promise.resolve();
 	#laneUnsubscribe: (() => void) | undefined;
 	#chatView: ExperimentalChatView | undefined;
+	readonly #fdPath: string | null;
 
-	private constructor(ui: TUI, requestRender: () => void, finish: () => void, loadedFacets: LoadedFacets) {
+	private constructor(
+		ui: TUI,
+		requestRender: () => void,
+		finish: () => void,
+		loadedFacets: LoadedFacets,
+		fdPath: string | null,
+	) {
+		this.#fdPath = fdPath;
 		this.#ui = ui;
 		this.#requestRender = requestRender;
 		this.#finish = finish;
@@ -157,6 +166,7 @@ export class ExperimentalClientTui implements Component {
 		readonly ui: TUI;
 		readonly servers: readonly ClientTuiServer[];
 		readonly facetLoader?: FacetLoader;
+		readonly fdPath?: string | null;
 		requestRender(): void;
 		finish(): void;
 	}): Promise<ExperimentalClientTui> {
@@ -164,7 +174,13 @@ export class ExperimentalClientTui implements Component {
 		const loadedFacets = await combineFacetLoaders(
 			options.facetLoader === undefined ? [] : [options.facetLoader],
 		).load();
-		const component = new ExperimentalClientTui(options.ui, options.requestRender, options.finish, loadedFacets);
+		const component = new ExperimentalClientTui(
+			options.ui,
+			options.requestRender,
+			options.finish,
+			loadedFacets,
+			options.fdPath ?? null,
+		);
 		try {
 			await component.#start(prepared);
 			await component.#openPreparedSession(prepared);
@@ -435,6 +451,7 @@ export class ExperimentalClientTui implements Component {
 							}),
 				})),
 				process.cwd(),
+				this.#fdPath,
 			),
 		);
 		this.#requestRender();
@@ -646,6 +663,8 @@ async function prepareClientSession(
 			plugins: services.use(PresentationPlugins),
 		}));
 		await Promise.all(opened.map(({ services }) => services.ready(BACKGROUND_CONTEXT)));
+		const name = command.name === undefined ? {} : { name: command.name };
+		let existing = false;
 		let selected:
 			| {
 					readonly server: ClientTuiServer;
@@ -667,6 +686,7 @@ async function prepareClientSession(
 			);
 			if (matches.length > 1) throw new Error(`Session ${command.sessionId} is available from more than one server`);
 			selected = matches[0];
+			existing = selected !== undefined;
 			if (selected === undefined) {
 				if (command.connect?.transport === "radius") {
 					throw new Error(`Remote server does not contain Session ${command.sessionId}`);
@@ -676,7 +696,7 @@ async function prepareClientSession(
 					server: feature.server,
 					management: feature.management,
 					plugins: feature.plugins,
-					summary: await feature.management.create({ id: command.sessionId }, BACKGROUND_CONTEXT),
+					summary: await feature.management.create({ id: command.sessionId, ...name }, BACKGROUND_CONTEXT),
 				};
 			}
 		} else if (command.continue === true || command.resume === true) {
@@ -691,10 +711,14 @@ async function prepareClientSession(
 				)
 				.sort(
 					(left, right) =>
-						right.summary.createdAt - left.summary.createdAt ||
+						right.summary.modifiedAt - left.summary.modifiedAt ||
 						left.summary.serverId.localeCompare(right.summary.serverId) ||
 						left.summary.sessionId.localeCompare(right.summary.sessionId),
 				)[0];
+			existing = selected !== undefined;
+		}
+		if (existing && selected !== undefined && command.name !== undefined) {
+			await selected.management.rename(selected.summary.sessionId, command.name, BACKGROUND_CONTEXT);
 		}
 		if (selected === undefined) {
 			const feature = requireSingleServer(features);
@@ -702,7 +726,7 @@ async function prepareClientSession(
 				server: feature.server,
 				management: feature.management,
 				plugins: feature.plugins,
-				summary: await feature.management.create({}, BACKGROUND_CONTEXT),
+				summary: await feature.management.create({ ...name }, BACKGROUND_CONTEXT),
 			};
 		}
 		const presentationPlugins = await selected.plugins.prepareSession(
@@ -728,17 +752,10 @@ export async function runClientTui(command: ClientCommand, options: RunClientTui
 	const cwd = process.cwd();
 	const agentDir = getAgentDir();
 	const settingsManager = SettingsManager.create(cwd, agentDir);
-	const resourceLoader = new DefaultResourceLoader({
-		cwd,
-		agentDir,
-		settingsManager,
-		noExtensions: true,
-		noSkills: true,
-		noPromptTemplates: true,
-		noContextFiles: true,
-	});
+	const resourceLoader = new DefaultResourceLoader({ cwd, agentDir, settingsManager });
 	await resourceLoader.reload();
 	setRegisteredThemes(resourceLoader.getThemes().themes);
+	const fdPath = await ensureTool("fd");
 	const runtime = await openClientRuntime(command, options);
 	const tui = createInteractiveTui({
 		tuiMode: "fullscreen",
@@ -775,6 +792,7 @@ export async function runClientTui(command: ClientCommand, options: RunClientTui
 				session: server.session,
 			})),
 			facetLoader: options.facetLoader,
+			fdPath,
 			requestRender: () => tui.requestRender(),
 			finish,
 		});

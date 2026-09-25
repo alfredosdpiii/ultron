@@ -32,6 +32,7 @@ import type {
 	SessionAttachmentState,
 	SessionServiceSource,
 } from "../src/experimental/services/connection.ts";
+import { LegacyExtensionCommands } from "../src/experimental/services/legacy-extensions.ts";
 import { Models, type ModelsState } from "../src/experimental/services/models.ts";
 import { PresentationPlugins, SessionPlugins } from "../src/experimental/services/plugins.ts";
 import {
@@ -46,7 +47,7 @@ import { initTheme } from "../src/modes/interactive/theme/theme.ts";
 const serverId = "00000000-0000-4000-8000-000000000001";
 
 function session(sessionId: string, createdAt: number): SessionSummary {
-	return { serverId, sessionId, createdAt };
+	return { serverId, sessionId, createdAt, modifiedAt: createdAt };
 }
 
 function createLoopbackServiceTransport(provider: RemoteServiceProvider): RemoteServiceTransport {
@@ -243,6 +244,7 @@ describe("experimental client TUI", () => {
 			serverProvider.provide(SessionManagement, {
 				create,
 				async remove() {},
+				async rename() {},
 				async attach(sessionId) {
 					publishReplacement(attachment, { status: "attaching", sessionId });
 				},
@@ -250,8 +252,18 @@ describe("experimental client TUI", () => {
 					publishReplacement(attachment, { status: "detached" });
 				},
 			});
-			const sessionProvider = new RemoteServiceProvider([Models, AgentController, SessionPlugins, Transcript]);
+			const sessionProvider = new RemoteServiceProvider([
+				Models,
+				AgentController,
+				SessionPlugins,
+				Transcript,
+				LegacyExtensionCommands,
+			]);
 			sessionProvider.provide(SessionPlugins, { reload: reloadSessionPlugins });
+			sessionProvider.provide(LegacyExtensionCommands, {
+				list: async () => [],
+				run: async () => ({ notifications: [] }),
+			});
 			sessionProvider.provide(Models, {
 				state: modelsState,
 				async cycleThinking() {},
@@ -294,7 +306,7 @@ describe("experimental client TUI", () => {
 				},
 			});
 			const sessionNamespace = createRemoteServiceBinding({
-				services: [Models, AgentController, SessionPlugins, Transcript],
+				services: [Models, AgentController, SessionPlugins, Transcript, LegacyExtensionCommands],
 				transport: createLoopbackServiceTransport(sessionProvider),
 				bound: false,
 			});

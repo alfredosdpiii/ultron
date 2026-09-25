@@ -108,7 +108,7 @@ function setup(): CliDirs {
 }
 
 describe("startup session name", () => {
-	it("sets --name on the selected session before runtime model validation", async () => {
+	it("rejects a Pi session file instead of naming it", async () => {
 		const dirs = setup();
 		const result = await runCli(
 			["--session", dirs.sessionFile, "--name", "  CLI Named Session  ", "--model", "missing-model", "-p", "hi"],
@@ -117,6 +117,15 @@ describe("startup session name", () => {
 
 		expect(result.code).toBe(1);
 		expect(result.signal).toBeNull();
-		expect(readSessionInfoNames(dirs.sessionFile)).toEqual(["CLI Named Session"]);
+		expect(result.stderr).toContain("Session file is not a valid ultron session");
+		expect(readSessionInfoNames(dirs.sessionFile)).toEqual([]);
+	});
+
+	it("rejects an empty --name", async () => {
+		const dirs = setup();
+		const result = await runCli(["--name", "   ", "-p", "hi"], dirs);
+
+		expect(result.code).toBe(1);
+		expect(result.stderr).toContain("--name requires a non-empty value");
 	});
 });

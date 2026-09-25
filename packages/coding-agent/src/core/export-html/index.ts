@@ -127,7 +127,7 @@ function generateThemeVars(themeName?: string): string {
 	return lines.join("\n      ");
 }
 
-interface SessionData {
+export interface SessionData {
 	header: ReturnType<SessionManager["getHeader"]>;
 	entries: ReturnType<SessionManager["getEntries"]>;
 	leafId: string | null;
@@ -140,7 +140,7 @@ interface SessionData {
 /**
  * Core HTML generation logic shared by both export functions.
  */
-function generateHtml(sessionData: SessionData, themeName?: string): string {
+export function generateHtml(sessionData: SessionData, themeName?: string): string {
 	const templateDir = getExportTemplateDir();
 	const template = readFileSync(join(templateDir, "template.html"), "utf-8");
 	const templateCss = readFileSync(join(templateDir, "template.css"), "utf-8");

@@ -45,8 +45,10 @@ export interface ClientRuntime {
 }
 
 export interface OpenClientRuntimeOptions {
-	/** Directory searched when --connect is omitted. Defaults to PI_SERVER_DIR or ~/.pi/server. */
+	/** Directory searched when --connect is omitted. Defaults to ULTRON_SERVER_DIR or ~/.ultron/server. */
 	readonly directory?: string;
+	/** Session storage directory used when a server is automatically activated. */
+	readonly sessionDir?: string;
 }
 
 /** Open live server/session service namespaces for one experimental presentation. */
@@ -84,7 +86,7 @@ export async function openClientRuntime(
 			const activated = await activateServer({
 				directory,
 				requestedServerId: process.env[ENV_SERVER_ID],
-				sessionDir: resolveSessionDirectory(),
+				sessionDir: resolveSessionDirectory(options.sessionDir),
 				provider: command.provider,
 				model: command.model,
 			});
@@ -144,7 +146,7 @@ export async function openClientRuntime(
 						await activateServer({
 							directory,
 							requestedServerId: route.serverId,
-							sessionDir: resolveSessionDirectory(),
+							sessionDir: resolveSessionDirectory(options.sessionDir),
 						})
 					).client;
 				}
@@ -205,6 +207,7 @@ export async function activateBuiltinClientServices(
 			await remoteManagement.remove(sessionId, context);
 			if (removesCurrentAttachment) await server.session.whenDetached(context);
 		},
+		rename: (sessionId, name, context) => remoteManagement.rename(sessionId, name, context),
 		async attach(sessionId, context) {
 			await remoteManagement.attach(sessionId, context);
 			await server.session.whenAttached(sessionId, context);

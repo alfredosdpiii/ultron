@@ -24,7 +24,7 @@ import {
 import { createUnixServer, getUnixSocketPath } from "@earendil-works/pi-server/unix";
 import lockfile from "proper-lockfile";
 import type { AuthInput } from "../cli/experimental/command-options.ts";
-import { getAgentDir } from "../config.ts";
+import { ENV_SESSION_DIR, getAgentDir } from "../config.ts";
 import { resolvePath } from "../utils/paths.ts";
 import { CoordinatorConnection, type CoordinatorStartupLease, ensureCoordinator } from "./coordinator.ts";
 import { createPresentationFacetData } from "./plugins/bundled.ts";
@@ -48,11 +48,13 @@ import { createExperimentalServerServices } from "./services/server.ts";
 import type { SessionCreateOptions, SessionSummary } from "./services/sessions.ts";
 import { SessionPluginSelectionConflictError, SessionWorkerManager } from "./session-worker-manager.ts";
 
-export const ENV_SERVER_DIR = "PI_SERVER_DIR";
-export const ENV_SERVER_ID = "PI_SERVER_ID";
+export const ENV_SERVER_DIR = "ULTRON_SERVER_DIR";
+export const ENV_SERVER_ID = "ULTRON_SERVER_ID";
+const LEGACY_ENV_SERVER_DIR = "PI_SERVER_DIR";
+const LEGACY_ENV_SERVER_ID = "PI_SERVER_ID";
 
 export function resolveServerDirectory(directory?: string): string {
-	return resolvePath(directory ?? process.env[ENV_SERVER_DIR] ?? join(homedir(), ".pi", "server"));
+	return resolvePath(directory ?? process.env[ENV_SERVER_DIR] ?? join(homedir(), ".ultron", "server"));
 }
 
 export async function ensurePrivateServerDirectory(directory: string): Promise<void> {
@@ -67,7 +69,7 @@ export async function ensurePrivateServerDirectory(directory: string): Promise<v
 }
 
 export function resolveSessionDirectory(sessionDir?: string): string {
-	return resolvePath(sessionDir ?? join(getAgentDir(), "experimental", "sessions"));
+	return resolvePath(sessionDir ?? process.env[ENV_SESSION_DIR] ?? join(getAgentDir(), "experimental", "sessions"));
 }
 
 const LOCK_STALE_MS = 30_000;
@@ -331,7 +333,7 @@ export interface RunningServer {
 }
 
 export interface StartServerOptions {
-	/** Server profile and socket directory. Defaults to PI_SERVER_DIR or ~/.pi/server. */
+	/** Server profile and socket directory. Defaults to ULTRON_SERVER_DIR or ~/.ultron/server. */
 	readonly directory?: string;
 	/** Logical service ID. Defaults to PI_SERVER_ID or the directory's default-server-id. */
 	readonly serverId?: ServerId;
@@ -341,6 +343,15 @@ export interface StartServerOptions {
 	readonly provider?: string;
 	/** Optional model override for newly started Session workers. */
 	readonly model?: string;
+	/** Runtime API key override for the selected model. */
+	readonly apiKey?: string;
+	/** Runtime thinking level override. */
+	readonly thinking?: string;
+	/** Runtime system prompt override. */
+	readonly systemPrompt?: string;
+	readonly noTools?: "all" | "builtin";
+	readonly tools?: readonly string[];
+	readonly excludeTools?: readonly string[];
 	/** Hold the server open without client or Session demand. Defaults to true for foreground servers. */
 	readonly keepAlive?: boolean;
 	/** Optional explicit Radius credential. Stored Radius auth is used when omitted. */
@@ -397,7 +408,25 @@ async function startServerBackend(
 		createOptions: SessionCreateOptions,
 		context: Context,
 	): Promise<JsonlSessionMetadata> => {
-		const session = await repo.create({ ...createOptions, cwd: process.cwd() }, context);
+		if (createOptions.forkFromSessionId !== undefined) {
+			const source = await resolveSession(createOptions.forkFromSessionId, context);
+			const session = await repo.fork(source, { scope: "tree", id: createOptions.id }, context);
+			try {
+				if (createOptions.name !== undefined) await session.setName(createOptions.name, context);
+				return session.metadata;
+			} finally {
+				await session.close(context);
+			}
+		}
+		const session = await repo.create(
+			{
+				cwd: process.cwd(),
+				id: createOptions.id,
+				parentSessionId: createOptions.parentSessionId,
+			},
+			context,
+		);
+		if (createOptions.name !== undefined) await session.setName(createOptions.name, context);
 		try {
 			return session.metadata;
 		} finally {
@@ -408,6 +437,7 @@ async function startServerBackend(
 		serverId,
 		sessionId: metadata.id,
 		createdAt: metadata.createdAt,
+		modifiedAt: metadata.modifiedAt,
 	});
 	const closeStorage = async (): Promise<void> => {
 		const cleanup = await Promise.allSettled([repo.close(TODO_CONTEXT), executionEnv.cleanup(TODO_CONTEXT)]);
@@ -426,6 +456,19 @@ async function startServerBackend(
 			await workers.closeSession(metadata, context);
 			await repo.delete(metadata, context);
 			await options.removeSessionPlugins(metadata);
+		},
+		rename: async (sessionId, name, context) => {
+			const metadata = await resolveSession(sessionId, context);
+			// A running worker owns the session file; a second writer would interleave entries.
+			if (workers.workerPids.has(metadata.id)) {
+				throw new RoutedServerError("service_invalid_value", `Session ${sessionId} is open in a worker`);
+			}
+			const session = await repo.open(metadata, context);
+			try {
+				await session.setName(name, context);
+			} finally {
+				await session.close(context);
+			}
 		},
 		async prepareSessionPlugins(sessionId, packagePaths, context) {
 			const metadata = await resolveSession(sessionId, context);
@@ -475,6 +518,9 @@ async function startServerBackend(
 		path: socketPath,
 		mode: 0o600,
 		onConnectionCountChanged,
+		onError: (error) => {
+			if (process.env.ULTRON_DEBUG_INTERNAL === "1") console.error("[ultron server error]", error);
+		},
 	});
 	try {
 		await server.start();
@@ -523,11 +569,30 @@ export async function startServer(options: StartServerOptions = {}): Promise<Run
 		throw new Error("Server model provider requires a model");
 	}
 	const workerModel =
-		options.model === undefined
+		options.model === undefined &&
+		options.provider === undefined &&
+		options.apiKey === undefined &&
+		options.thinking === undefined &&
+		options.systemPrompt === undefined &&
+		options.noTools === undefined &&
+		options.tools === undefined &&
+		options.excludeTools === undefined
 			? undefined
-			: { ...(options.provider === undefined ? {} : { provider: options.provider }), model: options.model };
-	const directory = resolveServerDirectory(options.directory);
-	const { serverId, release } = await acquireServerProfile(directory, options.serverId ?? process.env[ENV_SERVER_ID]);
+			: {
+					...(options.provider === undefined ? {} : { provider: options.provider }),
+					...(options.model === undefined ? {} : { model: options.model }),
+					...(options.apiKey === undefined ? {} : { apiKey: options.apiKey }),
+					...(options.thinking === undefined ? {} : { thinking: options.thinking }),
+					...(options.systemPrompt === undefined ? {} : { systemPrompt: options.systemPrompt }),
+					...(options.noTools === undefined ? {} : { noTools: options.noTools }),
+					...(options.tools === undefined ? {} : { tools: options.tools }),
+					...(options.excludeTools === undefined ? {} : { excludeTools: options.excludeTools }),
+				};
+	const directory = resolveServerDirectory(options.directory ?? process.env[LEGACY_ENV_SERVER_DIR]);
+	const { serverId, release } = await acquireServerProfile(
+		directory,
+		options.serverId ?? process.env[ENV_SERVER_ID] ?? process.env[LEGACY_ENV_SERVER_ID],
+	);
 	const lifetime = new ServerLifetime(options.keepAlive ?? true);
 	let backend: RunningServerBackend | undefined;
 	let coordinator: CoordinatorConnection | undefined;

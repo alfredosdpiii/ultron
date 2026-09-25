@@ -65,3 +65,19 @@ export async function readExperimentalSessionState(
 		await fileSystem.cleanup(BACKGROUND_CONTEXT);
 	}
 }
+
+export async function readSessionName(sessionsRoot: string, sessionId: string): Promise<string | undefined> {
+	const fileSystem = new NodeExecutionEnv({ cwd: process.cwd() });
+	const repo = new JsonlSessionRepo({ fileSystem, sessionsRoot });
+	let session: Awaited<ReturnType<JsonlSessionRepo["open"]>> | undefined;
+	try {
+		const metadata = (await repo.list(undefined, BACKGROUND_CONTEXT)).find((candidate) => candidate.id === sessionId);
+		if (metadata === undefined) throw new Error(`Expected Session ${sessionId}`);
+		session = await repo.open(metadata, BACKGROUND_CONTEXT);
+		return await session.getName(BACKGROUND_CONTEXT);
+	} finally {
+		await session?.close(BACKGROUND_CONTEXT);
+		await repo.close(BACKGROUND_CONTEXT);
+		await fileSystem.cleanup(BACKGROUND_CONTEXT);
+	}
+}

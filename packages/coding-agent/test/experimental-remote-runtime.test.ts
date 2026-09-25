@@ -23,6 +23,7 @@ import {
 	configureExperimentalWorkerModel,
 	createExperimentalSessions,
 	readExperimentalSessionState,
+	readSessionName,
 } from "./experimental-session-support.ts";
 import { KeyedProbe } from "./fixtures/keyed-service.ts";
 
@@ -32,6 +33,8 @@ const directories = new Set<string>();
 const fauxWorkerEntryUrl = new URL("fixtures/faux-session-worker.ts", import.meta.url);
 const realSpawnInternalProcess = processRuntime.spawnInternalProcess;
 const sessionWorkerModel = { provider: "anthropic", model: "claude-sonnet-4-5" } as const;
+// Retirement includes the idle grace plus worker shutdown; allow headroom for loaded parallel runs.
+const RETIREMENT_TIMEOUT_MS = 15_000;
 const SecondPluginService = defineService<{ read(context: Context): Promise<string> }>("test.second-plugin");
 let agentDir: string;
 
@@ -39,7 +42,7 @@ beforeEach(async () => {
 	agentDir = await mkdtemp(join("/tmp", "pi-experimental-agent-"));
 	directories.add(agentDir);
 	await configureExperimentalWorkerModel(agentDir);
-	vi.stubEnv("PI_CODING_AGENT_DIR", agentDir);
+	vi.stubEnv("ULTRON_CODING_AGENT_DIR", agentDir);
 	await createExperimentalSessions(join(agentDir, "experimental", "sessions"), ["demo-1", "demo-2"]);
 });
 
@@ -82,12 +85,12 @@ afterEach(async () => {
 });
 
 describe("experimental durable server composition", () => {
-	test("uses PI_SERVER_DIR and PI_SERVER_ID", async () => {
+	test("uses ULTRON_SERVER_DIR and ULTRON_SERVER_ID", async () => {
 		const directory = await mkdtemp(join("/tmp", "pi-server-dir-"));
 		directories.add(directory);
 		const serverId = "00000000-0000-4000-8000-000000000001";
-		vi.stubEnv("PI_SERVER_DIR", directory);
-		vi.stubEnv("PI_SERVER_ID", serverId);
+		vi.stubEnv("ULTRON_SERVER_DIR", directory);
+		vi.stubEnv("ULTRON_SERVER_ID", serverId);
 		const runtime = await startServer();
 		servers.add(runtime);
 
@@ -168,8 +171,8 @@ describe("experimental durable server composition", () => {
 		const directory = await mkdtemp(join("/tmp", "pi-auto-server-"));
 		directories.add(directory);
 		const serverId = "00000000-0000-4000-8000-000000000001";
-		vi.stubEnv("PI_SERVER_DIR", directory);
-		vi.stubEnv("PI_SERVER_ID", serverId);
+		vi.stubEnv("ULTRON_SERVER_DIR", directory);
+		vi.stubEnv("ULTRON_SERVER_ID", serverId);
 
 		const results = await Promise.all([runClient({ command: "client" }), runClient({ command: "client" })]);
 		expect(results).toEqual([
@@ -189,8 +192,12 @@ describe("experimental durable server composition", () => {
 			},
 		]);
 		expect(await pathExists(join(directory, `${serverId}.sock`))).toBe(true);
-		await expect.poll(() => pathExists(join(directory, `${serverId}.sock`)), { timeout: 5_000 }).toBe(false);
-		await expect.poll(() => pathExists(join(directory, `control-${serverId}.sock`)), { timeout: 5_000 }).toBe(false);
+		await expect
+			.poll(() => pathExists(join(directory, `${serverId}.sock`)), { timeout: RETIREMENT_TIMEOUT_MS })
+			.toBe(false);
+		await expect
+			.poll(() => pathExists(join(directory, `control-${serverId}.sock`)), { timeout: RETIREMENT_TIMEOUT_MS })
+			.toBe(false);
 	});
 
 	test("passes client plugin packages to a cold server and restores them for its next generation", async () => {
@@ -198,8 +205,8 @@ describe("experimental durable server composition", () => {
 		directories.add(directory);
 		const serverId = "00000000-0000-4000-8000-000000000001";
 		const packagePath = fileURLToPath(new URL("../examples/plugins/pi-example-plugin", import.meta.url));
-		vi.stubEnv("PI_SERVER_DIR", directory);
-		vi.stubEnv("PI_SERVER_ID", serverId);
+		vi.stubEnv("ULTRON_SERVER_DIR", directory);
+		vi.stubEnv("ULTRON_SERVER_ID", serverId);
 
 		const first = await openClientRuntime({ command: "client", ...sessionWorkerModel });
 		try {
@@ -215,7 +222,9 @@ describe("experimental durable server composition", () => {
 		} finally {
 			await first.dispose();
 		}
-		await expect.poll(() => pathExists(join(directory, `${serverId}.sock`)), { timeout: 5_000 }).toBe(false);
+		await expect
+			.poll(() => pathExists(join(directory, `${serverId}.sock`)), { timeout: RETIREMENT_TIMEOUT_MS })
+			.toBe(false);
 
 		const second = await openClientRuntime({ command: "client", ...sessionWorkerModel });
 		try {
@@ -235,16 +244,37 @@ describe("experimental durable server composition", () => {
 		const directory = await mkdtemp(join("/tmp", "pi-auto-session-"));
 		directories.add(directory);
 		const serverId = "00000000-0000-4000-8000-000000000001";
-		vi.stubEnv("PI_SERVER_DIR", directory);
-		vi.stubEnv("PI_SERVER_ID", serverId);
+		vi.stubEnv("ULTRON_SERVER_DIR", directory);
+		vi.stubEnv("ULTRON_SERVER_ID", serverId);
 
 		await expect(runClient({ command: "client", sessionId: "demo-1", ...sessionWorkerModel })).resolves.toEqual({
 			kind: "attached",
 			serverId,
 			sessionId: "demo-1",
 		});
-		await expect.poll(() => pathExists(join(directory, `${serverId}.sock`)), { timeout: 5_000 }).toBe(false);
-		await expect.poll(() => pathExists(join(directory, `control-${serverId}.sock`)), { timeout: 5_000 }).toBe(false);
+		await expect
+			.poll(() => pathExists(join(directory, `${serverId}.sock`)), { timeout: RETIREMENT_TIMEOUT_MS })
+			.toBe(false);
+		await expect
+			.poll(() => pathExists(join(directory, `control-${serverId}.sock`)), { timeout: RETIREMENT_TIMEOUT_MS })
+			.toBe(false);
+	});
+
+	test("renames an existing Session selected with a name", async () => {
+		const directory = await mkdtemp(join("/tmp", "pi-auto-rename-"));
+		directories.add(directory);
+		const serverId = "00000000-0000-4000-8000-000000000001";
+		vi.stubEnv("ULTRON_SERVER_DIR", directory);
+		vi.stubEnv("ULTRON_SERVER_ID", serverId);
+
+		await expect(
+			runClient({ command: "client", sessionId: "demo-1", name: "Renamed Session", ...sessionWorkerModel }),
+		).resolves.toMatchObject({ kind: "attached", sessionId: "demo-1" });
+		// Read only after the worker has released the Session file.
+		await expect
+			.poll(() => pathExists(join(directory, `${serverId}.sock`)), { timeout: RETIREMENT_TIMEOUT_MS })
+			.toBe(false);
+		expect(await readSessionName(join(agentDir, "experimental", "sessions"), "demo-1")).toBe("Renamed Session");
 	});
 
 	test("runs and discovers multiple logical servers from one directory", async () => {
@@ -750,7 +780,7 @@ describe("experimental durable server composition", () => {
 		await first.closed;
 		expect(replacement.workerPids.get("demo-1")).toBe(workerPid);
 
-		await expect.poll(() => replacement.workerPids.has("demo-1"), { timeout: 5_000 }).toBe(false);
+		await expect.poll(() => replacement.workerPids.has("demo-1"), { timeout: RETIREMENT_TIMEOUT_MS }).toBe(false);
 		expect(processExists(workerPid!)).toBe(false);
 	});
 
