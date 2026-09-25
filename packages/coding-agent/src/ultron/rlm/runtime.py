@@ -17,6 +17,7 @@ from family_api import AgentMessages
 from progress_api import Progress
 from skills_api import Skills
 from schedules_api import Goals, Schedules
+from instances_api import Instances
 
 try:
     import dill as _dill
@@ -186,6 +187,16 @@ class RuntimeState:
         self.namespace["skills"] = Skills(self.bridge)
         self.namespace["schedules"] = Schedules(self.bridge)
         self.namespace["goals"] = Goals(self.bridge)
+        self.namespace["instances"] = Instances(self.bridge)
+        # Declared instance state survives reset_scratch; every other name is invocation scratch.
+        self.namespace["state"] = {}
+        self.bindings = {name: value for name, value in self.namespace.items() if name != "state"}
+
+    def reset_scratch(self) -> None:
+        state = self.namespace.get("state", {})
+        self.namespace.clear()
+        self.namespace.update(self.bindings)
+        self.namespace["state"] = state
 
 _STATE = RuntimeState()
 
@@ -532,6 +543,10 @@ async def handle_request(frame: dict[str, Any]) -> None:
             emit("done", id=request_id, status="ok", restore=result)
         except Exception as error:
             emit("done", id=request_id, status="error", error=_exception_message(error))
+    elif request_type == "reset_scratch":
+        async with _STATE.execution_lock:
+            _STATE.reset_scratch()
+        emit("done", id=request_id, status="ok")
     elif request_type == "list_names":
         emit("done", id=request_id, status="ok", names=sorted(name for name in _STATE.namespace if not name.startswith("__")))
     elif request_type == "shutdown":

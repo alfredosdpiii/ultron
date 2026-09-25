@@ -17,6 +17,8 @@ export interface HostTaskRequest {
 	readonly model?: string;
 	readonly key?: string;
 	readonly timeoutMs?: number;
+	/** Existing lane to run on (a retained instance). Only host modules may set this. */
+	readonly lane?: string;
 }
 
 /**
@@ -26,6 +28,10 @@ export interface HostTaskRequest {
 export interface NativeHostApi {
 	/** Task that owns the calling lane, or null for the root lane. */
 	callerTaskId(caller: HostCaller): string | null;
+	/** Lane a live task ran on in this owner process, or null (deterministic/predict tasks have none). */
+	taskLane(taskId: string): string | null;
+	/** Execution strategy of a registered definition; throws for unknown definitions. */
+	strategy(definition: string): "deterministic" | "predict" | "rlm";
 	tasks(): Promise<NativeTask[]>;
 	/** Admit a task as a child of `parentTaskId` (null for root). Budget and idempotency rules apply. */
 	spawn(request: HostTaskRequest, parentTaskId: string | null, context: Context): Promise<NativeTask>;

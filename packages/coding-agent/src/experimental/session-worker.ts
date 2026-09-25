@@ -47,6 +47,7 @@ import { SettingsManager } from "../core/settings-manager.ts";
 import { buildSystemPrompt } from "../core/system-prompt.ts";
 import { createLocalBashOperations } from "../core/tools/bash.ts";
 import { createFamilyModule } from "../ultron/family.ts";
+import { createInstanceModule } from "../ultron/instances.ts";
 import { createNativeJevClient } from "../ultron/jev.ts";
 import { createProgressModule } from "../ultron/progress.ts";
 import { createSessionDefinitionStore } from "../ultron/rlm/definition-registry.ts";
@@ -100,12 +101,21 @@ export class UltronRlmKernel {
 		return [result.stdout, result.stderr, result.result].filter(Boolean).join("\n");
 	}
 
+	async resetScratch(): Promise<void> {
+		const result = await this.kernel.resetScratch();
+		if (result.status === "error") throw new Error("RLM scratch reset failed");
+	}
+
 	close(): Promise<void> {
 		return this.kernel.shutdown();
 	}
 }
 
-export type UltronRlmTool = AgentHarnessTool<{ env: NodeExecutionEnv }> & { close(): Promise<void> };
+export type UltronRlmTool = AgentHarnessTool<{ env: NodeExecutionEnv }> & {
+	close(): Promise<void>;
+	/** Clear a lane's Python scratch before a new invocation of a retained instance. */
+	resetScratch(lane: string): Promise<void>;
+};
 
 export function createUltronRlmTool(
 	cwd: string,
@@ -125,6 +135,8 @@ export function createUltronRlmTool(
 			await Promise.all([...kernels.values()].map((kernel) => kernel.close()));
 			kernels.clear();
 		},
+		// A lane that has not run Python yet has no scratch to clear.
+		resetScratch: async (lane) => kernels.get(lane)?.resetScratch(),
 		name: "rlm",
 		label: "rlm",
 		description:
@@ -1121,10 +1133,12 @@ async function createCodingAgentHarness(
 			definitionStore: createSessionDefinitionStore(session),
 			usage: createSessionUsageLedger(session, { limits: { maxAdmittedTasks: 24, maxWallMs: 30 * 60 * 1000 } }),
 			services: nativeServices,
+			beforeLaneReuse: (lane) => rlmTool.resetScratch(lane),
 			modules: [
 				createFamilyModule({ store: createSessionModuleStore(session, "family") }),
 				createProgressModule({ store: createSessionModuleStore(session, "progress") }),
 				createScheduleModule({ store: createSessionModuleStore(session, "schedules") }),
+				createInstanceModule({ store: createSessionModuleStore(session, "instances") }),
 				createSkillModule({
 					store: createSessionModuleStore(session, "skills"),
 					// Re-read skill files so skills.refresh sees edits made during the session.

@@ -629,6 +629,11 @@ export class RlmKernel {
 		return this.enqueue({ request: "execute", code }, signal);
 	}
 
+	/** Clear invocation scratch while keeping the API bindings and the declared `state` dict. */
+	resetScratch(): Promise<KernelExecutionResult> {
+		return this.enqueue({ request: "reset_scratch" });
+	}
+
 	snapshot(path = this.options.snapshotPath): Promise<KernelExecutionResult> {
 		if (!path) return Promise.reject(new Error("RLM snapshot path is not configured"));
 		return this.enqueue({ request: "snapshot", path });

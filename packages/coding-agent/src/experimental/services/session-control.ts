@@ -56,6 +56,8 @@ export const INSPECTION_REQUESTS: readonly string[] = [
 	"schedules.list",
 	"goals.list",
 	"goals.get",
+	"instances.list",
+	"instances.get",
 ];
 
 export const SessionControl = defineService<SessionControl>("ultron.session-control");

@@ -27,6 +27,7 @@ type TaskRecord = NativeTask & {
 	reject?: (error: unknown) => void;
 	finishing?: Promise<NativeResult>;
 	lane?: AgentLane;
+	laneName?: string;
 	controller?: AbortController;
 	cleanup?: () => void;
 	usageReservation?: NativeUsageReservation;
@@ -39,6 +40,8 @@ type TaskRequest = {
 	model?: string;
 	key?: string;
 	timeoutMs: number;
+	/** Run on this existing lane (a retained instance) instead of a fresh task lane. */
+	lane?: string;
 };
 
 type RlmChildHandle = {
@@ -140,6 +143,8 @@ export type NativeHostOptions = {
 	deterministic?: NativeDefinitionAdapter;
 	predict?: NativeDefinitionAdapter;
 	modules?: readonly NativeHostModule[];
+	/** Called before a task runs on a reused lane, so per-invocation scratch can be cleared. */
+	beforeLaneReuse?: (lane: string, context: Context) => Promise<void>;
 	now?: () => number;
 };
 
@@ -158,6 +163,7 @@ export class NativeRlmHost {
 	/** Lane name -> owning task, so host requests from a child kernel carry the child's identity. */
 	private readonly laneTasks = new Map<string, string>();
 	private readonly now: () => number;
+	private readonly beforeLaneReuse: NativeHostOptions["beforeLaneReuse"];
 	private modulesStarted?: Promise<void>;
 
 	constructor(harness: AgentHarness, _rootLane: AgentLane, options: NativeHostOptions) {
@@ -167,6 +173,7 @@ export class NativeRlmHost {
 		this.usage = options.usage;
 		this.journal = new NativeTaskJournal(options.store);
 		this.modules = options.modules ?? [];
+		this.beforeLaneReuse = options.beforeLaneReuse;
 		this.now = options.now ?? Date.now;
 		this.registry = new NativeDefinitionRegistry(options.definitionStore, {
 			deterministic: options.deterministic,
@@ -195,6 +202,8 @@ export class NativeRlmHost {
 	/** Operations exposed to host modules. */
 	readonly api: NativeHostApi = {
 		callerTaskId: (caller) => this.laneTasks.get(caller.lane) ?? null,
+		taskLane: (taskId) => this.tasks.get(taskId)?.laneName ?? null,
+		strategy: (definition) => this.definition(definitionKey(definition)).strategy,
 		tasks: () => this.journal.list(),
 		spawn: async (request, parentTaskId, context) => {
 			const definition = definitionKey(request.definition);
@@ -208,6 +217,7 @@ export class NativeRlmHost {
 					model: request.model,
 					key: request.key,
 					timeoutMs: request.timeoutMs ?? 30 * 60 * 1000,
+					...(request.lane === undefined ? {} : { lane: request.lane }),
 				},
 				context,
 				parentTaskId ?? undefined,
@@ -278,9 +288,12 @@ export class NativeRlmHost {
 				}
 				throw new Error(repair?.error ?? "Predict adapter returned an invalid output");
 			}
-			const laneName = `ultron.${definition.id}.${task.id}`;
+			const laneName = request.lane ?? `ultron.${definition.id}.${task.id}`;
+			if (request.lane !== undefined) await this.beforeLaneReuse?.(laneName, taskContext);
 			const lane = await this.harness.lane(laneName, taskContext);
 			task.lane = lane;
+			task.laneName = laneName;
+			// A reused lane now acts for its newest invocation.
 			this.laneTasks.set(laneName, task.id);
 			if (signal.aborted) this.abortLane(task);
 			signal.throwIfAborted();

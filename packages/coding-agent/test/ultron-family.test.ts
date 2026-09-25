@@ -25,6 +25,8 @@ function fakeHost(specs: TaskSpec[], live: string[] = []) {
 	}));
 	const steered: Array<{ taskId: string; message: string }> = [];
 	const host: NativeHostApi = {
+		taskLane: () => null,
+		strategy: () => "rlm",
 		callerTaskId: (caller) => {
 			if (caller.lane === "main") return null;
 			return tasks.find((task) => caller.lane === `ultron.${task.definition.split("@")[0]}.${task.id}`)?.id ?? null;
