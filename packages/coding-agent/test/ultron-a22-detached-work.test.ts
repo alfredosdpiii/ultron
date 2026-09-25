@@ -5,6 +5,10 @@
  * background job and leaves while the child lane's model request is still in flight; the child must finish, and a
  * second client must reattach to the same Session and read the durable result. Afterwards, and in the idle case,
  * no Ultron process may remain.
+ *
+ * Leaving the app is not an abort: a root turn in flight when its client quits (SIGTERM or RPC stdin close) runs to
+ * completion, tool calls included, and a later client sees it; an explicit abort still stops it. A hard-killed client
+ * sends no release, yet idle work exits within seconds while busy work finishes as if it had been released.
  */
 import type { ChildProcess } from "node:child_process";
 import { randomUUID } from "node:crypto";
@@ -20,6 +24,9 @@ const sourceResolverPath = resolve(__dirname, "../src/experimental/source-resolv
 const ROOT_PROMPT = "start the slow job";
 const CHILD_PROMPT = "slow child work";
 const CHILD_RESULT = "CHILD_RESULT_A22";
+const LONG_PROMPT = "a long root turn";
+const LONG_TOOL_OUTPUT = "LONG_TOOL_RAN";
+const LONG_RESULT = "LONG_TURN_DONE";
 
 interface ChatMessage {
 	readonly role: string;
@@ -151,6 +158,13 @@ describe.skipIf(process.platform !== "linux")("A22 detached work survives UI los
 	let resolveChildRequested!: () => void;
 	let releaseChild!: () => void;
 	let childGate!: Promise<void>;
+	let longRequests = 0;
+	let longToolResults = 0;
+	let longCompleted = false;
+	let longRequested!: Promise<void>;
+	let resolveLongRequested!: () => void;
+	let releaseLong!: () => void;
+	let longGate!: Promise<void>;
 	const clients: RpcClient[] = [];
 
 	beforeEach(async () => {
@@ -166,6 +180,15 @@ describe.skipIf(process.platform !== "linux")("A22 detached work survives UI los
 		childGate = new Promise((resolveGate) => {
 			releaseChild = resolveGate;
 		});
+		longRequests = 0;
+		longToolResults = 0;
+		longCompleted = false;
+		longRequested = new Promise((resolveRequested) => {
+			resolveLongRequested = resolveRequested;
+		});
+		longGate = new Promise((resolveGate) => {
+			releaseLong = resolveGate;
+		});
 		provider = createServer((request: IncomingMessage, response: ServerResponse) => {
 			void (async () => {
 				let body = "";
@@ -173,7 +196,20 @@ describe.skipIf(process.platform !== "linux")("A22 detached work survives UI los
 				const messages = (JSON.parse(body) as { messages: ChatMessage[] }).messages;
 				const last = messages.at(-1);
 				const lastText = textOf(last?.content);
-				if (last?.role === "tool") {
+				const longTurn = messages.some(
+					(message) => message.role === "user" && textOf(message.content) === LONG_PROMPT,
+				);
+				if (longTurn && last?.role === "tool") {
+					longToolResults += 1;
+					respondText(response, `${LONG_RESULT}: ${textOf(last.content).trim()}`);
+					longCompleted = true;
+				} else if (longTurn && lastText === LONG_PROMPT) {
+					// The root turn's model reply is held while its client goes away.
+					longRequests += 1;
+					resolveLongRequested();
+					await longGate;
+					respondRlm(response, `print(${JSON.stringify(LONG_TOOL_OUTPUT)})`);
+				} else if (last?.role === "tool") {
 					respondText(response, "turn done");
 				} else if (lastText.includes(CHILD_PROMPT) && !lastText.includes(ROOT_PROMPT)) {
 					childRequests += 1;
@@ -200,6 +236,7 @@ describe.skipIf(process.platform !== "linux")("A22 detached work survives UI los
 
 	afterEach(async () => {
 		releaseChild();
+		releaseLong();
 		for (const client of clients.splice(0)) await client.stop().catch(() => {});
 		for (const { pid } of ownedProcesses(root)) {
 			try {
@@ -212,7 +249,7 @@ describe.skipIf(process.platform !== "linux")("A22 detached work survives UI los
 		rmSync(root, { recursive: true, force: true });
 	});
 
-	function startClient(sessionId: string): RpcClient {
+	function writeModels(): { agentDir: string; projectDir: string } {
 		const address = provider.address();
 		if (address === null || typeof address === "string") throw new Error("Provider is not listening");
 		const agentDir = join(root, "agent");
@@ -241,19 +278,28 @@ describe.skipIf(process.platform !== "linux")("A22 detached work survives UI los
 				},
 			}),
 		);
+		return { agentDir, projectDir };
+	}
+
+	function cliEnv(agentDir: string, extra: Record<string, string> = {}): Record<string, string> {
+		return {
+			NODE_OPTIONS: `--import ${sourceResolverPath}`,
+			ULTRON_CODING_AGENT_DIR: agentDir,
+			ULTRON_SERVER_DIR: serverDir,
+			PI_OFFLINE: "1",
+			...extra,
+		};
+	}
+
+	function startClient(sessionId: string, env: Record<string, string> = {}): RpcClient {
+		const { agentDir, projectDir } = writeModels();
 		const client = new RpcClient({
 			cliPath,
 			cwd: projectDir,
 			provider: "mock",
 			model: "mock",
 			args: ["--session-id", sessionId],
-			env: {
-				NODE_OPTIONS: `--import ${sourceResolverPath}`,
-				ULTRON_CODING_AGENT_DIR: agentDir,
-				ULTRON_HINDSIGHT_URL: "off",
-				ULTRON_SERVER_DIR: serverDir,
-				PI_OFFLINE: "1",
-			},
+			env: cliEnv(agentDir, env),
 		});
 		clients.push(client);
 		return client;
@@ -266,7 +312,10 @@ describe.skipIf(process.platform !== "linux")("A22 detached work survives UI los
 	}
 
 	/** Start a background job from a real rlm tool call, then lose the UI while the child request is in flight. */
-	async function startJobAndLoseClient(sessionId: string): Promise<{ job: StartedJob; workerPid: number }> {
+	async function startJobAndLoseClient(
+		sessionId: string,
+		signal: "SIGTERM" | "SIGKILL" = "SIGTERM",
+	): Promise<{ job: StartedJob; workerPid: number }> {
 		const first = startClient(sessionId);
 		await first.start();
 		await first.promptAndWait(ROOT_PROMPT, undefined, 60_000);
@@ -281,11 +330,13 @@ describe.skipIf(process.platform !== "linux")("A22 detached work survives UI los
 		const [workerPid] = workerPids(root);
 		expect(workerPid).toBeDefined();
 
-		// The UI goes away (SIGTERM, as from a closed terminal or a supervisor) while the child is in flight.
+		// The UI goes away while the child is in flight: SIGTERM, as from a closed terminal or a supervisor, releases
+		// the worker; SIGKILL, as from a crash or the OOM killer, sends nothing.
 		const firstProcess = childProcessOf(first);
-		firstProcess.kill("SIGTERM");
+		firstProcess.kill(signal);
 		const firstExit = await awaitExit(firstProcess, 10_000);
-		expect(firstExit.code).toBe(143);
+		if (signal === "SIGTERM") expect(firstExit.code).toBe(143);
+		else expect(firstProcess.signalCode).toBe("SIGKILL");
 		expect(firstExit.elapsedMs).toBeLessThan(5_000);
 		clients.splice(clients.indexOf(first), 1);
 
@@ -408,5 +459,196 @@ describe.skipIf(process.platform !== "linux")("A22 detached work survives UI los
 		expect(workerPids(root)).toHaveLength(1);
 		// Idle cleanup is prompt: no worker waits out the orphan grace.
 		await quitAndExpectClean(client, 3_000);
+	}, 60_000);
+
+	function messageTexts(messages: readonly unknown[], role: string): string[] {
+		return messages.flatMap((message) =>
+			typeof message === "object" && message !== null && "role" in message && message.role === role
+				? [textOf((message as { content?: unknown }).content)]
+				: [],
+		);
+	}
+
+	/** The long turn ran exactly once, its tool call included, and its final answer is in the Session. */
+	function expectLongTurnCompleted(messages: readonly unknown[]): void {
+		expect(messageTexts(messages, "user").filter((text) => text === LONG_PROMPT)).toHaveLength(1);
+		expect(toolResultTexts(messages).filter((text) => text.includes(LONG_TOOL_OUTPUT))).toHaveLength(1);
+		// The final answer was produced after the tool call, from its result.
+		expect(messageTexts(messages, "assistant").find((text) => text.startsWith(LONG_RESULT))).toContain(
+			LONG_TOOL_OUTPUT,
+		);
+		expect(longRequests).toBe(1);
+		expect(longToolResults).toBe(1);
+	}
+
+	async function messagesWhen(
+		client: RpcClient,
+		done: (messages: readonly unknown[]) => boolean,
+		timeoutMs: number,
+	): Promise<unknown[]> {
+		const deadline = Date.now() + timeoutMs;
+		while (true) {
+			const messages = await client.getMessages();
+			if (done(messages) || Date.now() >= deadline) return messages;
+			await new Promise((resolveWait) => setTimeout(resolveWait, 100));
+		}
+	}
+
+	function kill(client: RpcClient, signal: NodeJS.Signals): Promise<{ elapsedMs: number; code: number | null }> {
+		const child = childProcessOf(client);
+		child.kill(signal);
+		clients.splice(clients.indexOf(client), 1);
+		return awaitExit(child, 10_000);
+	}
+
+	test.each(["SIGTERM", "stdin close", "SIGKILL"] as const)(
+		"a root turn in flight when its client quits (%s) completes and a later client sees it",
+		async (quit) => {
+			const sessionId = randomUUID();
+			const first = startClient(sessionId);
+			await first.start();
+			await first.prompt(LONG_PROMPT);
+			await longRequested;
+			const [workerPid] = workerPids(root);
+			expect(workerPid).toBeDefined();
+
+			// Leaving the app is not an abort.
+			const firstProcess = childProcessOf(first);
+			if (quit === "stdin close") firstProcess.stdin?.end();
+			else firstProcess.kill(quit);
+			const exit = await awaitExit(firstProcess, 10_000);
+			expect(exit.code).toBe({ SIGTERM: 143, "stdin close": 0, SIGKILL: null }[quit]);
+			clients.splice(clients.indexOf(first), 1);
+			await new Promise((resolveWait) => setTimeout(resolveWait, 500));
+			expect(workerPids(root)).toEqual([workerPid]);
+			expect(longCompleted).toBe(false);
+
+			if (quit !== "stdin close") {
+				// Reattach while the turn is still in flight, then watch it finish in the same worker.
+				const second = startClient(sessionId);
+				await second.start();
+				expect(workerPids(root)).toEqual([workerPid]);
+				releaseLong();
+				const messages = await messagesWhen(
+					second,
+					(current) => messageTexts(current, "assistant").some((text) => text.startsWith(LONG_RESULT)),
+					20_000,
+				);
+				expectLongTurnCompleted(messages);
+				await quitAndExpectClean(second, 15_000);
+				return;
+			}
+
+			// Nobody is attached: the turn finishes, its worker retires, and a later client reads the durable result.
+			releaseLong();
+			expect(
+				await poll(
+					() => longCompleted,
+					(done) => done,
+					20_000,
+				),
+			).toBe(true);
+			expect(
+				await poll(
+					() => ownedProcesses(root),
+					(processes) => processes.length === 0,
+					15_000,
+				),
+			).toEqual([]);
+			const later = startClient(sessionId);
+			await later.start();
+			expectLongTurnCompleted(await later.getMessages());
+			await quitAndExpectClean(later, 15_000);
+		},
+		120_000,
+	);
+
+	test("an explicit abort still stops the root turn", async () => {
+		const client = startClient(randomUUID());
+		await client.start();
+		await client.prompt(LONG_PROMPT);
+		await longRequested;
+		await client.abort();
+		await client.waitForIdle(10_000);
+		releaseLong();
+		await new Promise((resolveWait) => setTimeout(resolveWait, 1_000));
+		expect(longToolResults).toBe(0);
+		expect(messageTexts(await client.getMessages(), "assistant").join("\n")).not.toContain(LONG_RESULT);
+		await quitAndExpectClean(client, 5_000);
+	}, 60_000);
+
+	test("a hard-killed idle client leaves no process behind within seconds", async () => {
+		const client = startClient(randomUUID());
+		await client.start();
+		await client.promptAndWait("say hello", undefined, 60_000);
+		expect(workerPids(root)).toHaveLength(1);
+		await kill(client, "SIGKILL");
+		const killedAt = Date.now();
+		expect(
+			await poll(
+				() => ownedProcesses(root),
+				(processes) => processes.length === 0,
+				10_000,
+			),
+		).toEqual([]);
+		expect(Date.now() - killedAt).toBeLessThan(3_000);
+	}, 60_000);
+
+	test("a hard-killed client's background job completes, stays durable, and then everything exits", async () => {
+		const sessionId = randomUUID();
+		const { job } = await startJobAndLoseClient(sessionId, "SIGKILL");
+		releaseChild();
+		expect(
+			await poll(
+				() => childCompleted,
+				(done) => done,
+				10_000,
+			),
+		).toBe(true);
+		expect(
+			await poll(
+				() => ownedProcesses(root),
+				(processes) => processes.length === 0,
+				10_000,
+			),
+		).toEqual([]);
+		const later = startClient(sessionId);
+		await later.start();
+		await collect(later, job);
+		await quitAndExpectClean(later, 15_000);
+	}, 120_000);
+
+	test("a client restarted right after a hard kill reattaches to the busy worker", async () => {
+		const sessionId = randomUUID();
+		const { job, workerPid } = await startJobAndLoseClient(sessionId, "SIGKILL");
+		const second = startClient(sessionId);
+		await second.start();
+		expect(workerPids(root)).toEqual([workerPid]);
+		releaseChild();
+		expect(
+			await poll(
+				() => childCompleted,
+				(done) => done,
+				10_000,
+			),
+		).toBe(true);
+		await collect(second, job);
+		await quitAndExpectClean(second, 15_000);
+	}, 120_000);
+
+	test("a client restarted within the orphan grace reattaches to the idle worker", async () => {
+		const sessionId = randomUUID();
+		// A grace longer than CLI startup makes the restart land inside it deterministically.
+		const env = { __PI_SESSION_WORKER_ORPHAN_DEMAND_GRACE_MS: "20000" };
+		const first = startClient(sessionId, env);
+		await first.start();
+		await first.promptAndWait("say hello", undefined, 60_000);
+		const [workerPid] = workerPids(root);
+		await kill(first, "SIGKILL");
+		const second = startClient(sessionId, env);
+		await second.start();
+		expect(workerPids(root)).toEqual([workerPid]);
+		expect(await second.getLastAssistantText()).toBe("IDLE_OK");
+		await quitAndExpectClean(second, 5_000);
 	}, 60_000);
 });

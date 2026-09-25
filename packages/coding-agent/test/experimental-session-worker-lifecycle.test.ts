@@ -142,6 +142,19 @@ describe("Session worker lifecycle", () => {
 		lifecycle.close();
 	});
 
+	test("a server lost before demanding lapses after the orphan grace, not the initial grace", async () => {
+		vi.useFakeTimers();
+		const { lifecycle, retire } = createLifecycle({ initialDemandGraceMs: 10_000, orphanDemandGraceMs: 200 });
+		lifecycle.serverDisconnected(GENERATION);
+
+		vi.advanceTimersByTime(199);
+		expect(retire).not.toHaveBeenCalled();
+		vi.advanceTimersByTime(1);
+		await vi.runAllTicks();
+		expect(retire).toHaveBeenCalledOnce();
+		lifecycle.close();
+	});
+
 	test("allows a replacement generation to retain the worker", async () => {
 		vi.useFakeTimers();
 		const { lifecycle, retire } = createLifecycle();

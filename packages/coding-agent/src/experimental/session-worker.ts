@@ -451,8 +451,25 @@ export class WorkerLifecycle {
 		}
 	}
 
+	/**
+	 * The server's coordinator connection dropped without a release (it crashed or was killed). Its demand lapses
+	 * after the short orphan grace, so an idle worker retires promptly while busy work keeps running, exactly as
+	 * after a release. A server that never got to demand this worker lapses the same way instead of waiting out
+	 * the initial demand grace.
+	 */
 	serverDisconnected(serverConnectionId: string): void {
-		if (this.#currentServerConnectionId === serverConnectionId) this.#currentServerConnectionId = undefined;
+		if (this.#currentServerConnectionId === serverConnectionId) {
+			this.#currentServerConnectionId = undefined;
+			if (this.#initialTimer) {
+				clearTimeout(this.#initialTimer);
+				this.#initialTimer = setTimeout(() => {
+					this.#initialTimer = undefined;
+					this.#demandInitialized = true;
+					this.#reconcile();
+				}, this.#orphanDemandGraceMs);
+				this.#initialTimer.unref();
+			}
+		}
 		for (const [key, demand] of this.#demands) {
 			if (demand.serverConnectionId !== serverConnectionId || demand.timer) continue;
 			demand.timer = setTimeout(() => {
@@ -575,7 +592,14 @@ export class WorkerLifecycle {
 }
 
 const DEFAULT_INITIAL_DEMAND_GRACE_MS = 10_000;
-const DEFAULT_ORPHAN_DEMAND_GRACE_MS = 30_000;
+/**
+ * How long a crashed server's demand outlives it. Reattachment does not depend on it: a busy worker is kept by its
+ * own activity, and a server that discovers a worker holds it for the discovery grace while it attaches. It only
+ * needs to cover the coordinator's replacement handshake (disconnect, connect, discover), which takes milliseconds,
+ * so one second retires an abandoned idle worker promptly after a hard kill. An idle worker holds nothing that is not
+ * durable, so a later restart simply starts a fresh one, as after a clean quit.
+ */
+const DEFAULT_ORPHAN_DEMAND_GRACE_MS = 1_000;
 export const SESSION_WORKER_INITIAL_DEMAND_GRACE_ENV = "__PI_SESSION_WORKER_INITIAL_DEMAND_GRACE_MS";
 export const SESSION_WORKER_ORPHAN_DEMAND_GRACE_ENV = "__PI_SESSION_WORKER_ORPHAN_DEMAND_GRACE_MS";
 const DEFAULT_DISCOVERY_GRACE_MS = 5_000;
@@ -1034,6 +1058,7 @@ async function run(options: SessionWorkerRuntimeOptions, createHarness: CreateSe
 		},
 		onServerConnected: (serverConnectionId) => lifecycle?.serverConnected(serverConnectionId),
 		onServerDisconnected: (serverConnectionId) => {
+			// A crashed server's calls stop waiting; lane operations they started are not aborted (see AgentController).
 			const matches = (scope: WorkerOperationScope): boolean => scope.serverConnectionId === serverConnectionId;
 			services.removeSubscriptions(matches);
 			for (const request of activeRequests.values()) {
