@@ -46,12 +46,15 @@ import { DefaultResourceLoader } from "../core/resource-loader.ts";
 import { SettingsManager } from "../core/settings-manager.ts";
 import { buildSystemPrompt } from "../core/system-prompt.ts";
 import { createLocalBashOperations } from "../core/tools/bash.ts";
+import { createFamilyModule } from "../ultron/family.ts";
 import { createNativeJevClient } from "../ultron/jev.ts";
+import { createProgressModule } from "../ultron/progress.ts";
 import { createSessionDefinitionStore } from "../ultron/rlm/definition-registry.ts";
-import type { HostCaller } from "../ultron/rlm/host-module.ts";
+import { createSessionModuleStore, type HostCaller } from "../ultron/rlm/host-module.ts";
 import { type KernelHostHandler, RlmKernel } from "../ultron/rlm/kernel.ts";
 import { NativeRlmHost } from "../ultron/rlm/native-host.ts";
 import { createSessionTaskStore } from "../ultron/rlm/task-store.ts";
+import { createSkillModule } from "../ultron/skills.ts";
 import { createSessionUsageLedger } from "../ultron/usage.ts";
 import { createWorkerServices } from "../ultron/worker-services.ts";
 import { COORDINATOR_PROTOCOL_VERSION } from "./coordinator.ts";
@@ -1117,6 +1120,24 @@ async function createCodingAgentHarness(
 			definitionStore: createSessionDefinitionStore(session),
 			usage: createSessionUsageLedger(session, { limits: { maxAdmittedTasks: 24, maxWallMs: 30 * 60 * 1000 } }),
 			services: nativeServices,
+			modules: [
+				createFamilyModule({ store: createSessionModuleStore(session, "family") }),
+				createProgressModule({ store: createSessionModuleStore(session, "progress") }),
+				createSkillModule({
+					store: createSessionModuleStore(session, "skills"),
+					// Re-read skill files so skills.refresh sees edits made during the session.
+					loadSkills: () =>
+						Promise.all(
+							resourceLoader.getSkills().skills.map(async (skill) => ({
+								name: skill.name,
+								description: skill.description,
+								filePath: skill.filePath,
+								disableModelInvocation: skill.disableModelInvocation,
+								content: await readFile(skill.filePath, "utf8"),
+							})),
+						),
+				}),
+			],
 		});
 		const currentActiveToolNames = await lane.getActiveTools(TODO_CONTEXT);
 		if (

@@ -13,6 +13,9 @@ from pathlib import Path
 from typing import Any
 from agents_api import Agents, Workflows
 from memory_api import Memory, Refinements
+from family_api import AgentMessages
+from progress_api import Progress
+from skills_api import Skills
 
 try:
     import dill as _dill
@@ -112,29 +115,6 @@ class RLMNamespace:
     async def host_request(self, request_type: str, payload: dict[str, Any] | None = None) -> Any:
         return await self._bridge.request(request_type, payload)
 
-class AgentMessageNamespace:
-    def __init__(self, bridge: HostBridge) -> None:
-        self._bridge = bridge
-
-    async def send(
-        self,
-        message: str,
-        *,
-        receiver_role: str = "parent",
-        receiver_name: str | None = None,
-    ) -> dict[str, Any]:
-        if not isinstance(message, str) or not message.strip():
-            raise ValueError("agent_message.send message must be non-empty")
-        if receiver_role not in {"parent", "child"}:
-            raise ValueError("receiver_role must be parent or child")
-        result = await self._bridge.request("agent_message.send", {
-            "message": message,
-            "receiver_role": receiver_role,
-            "receiver_name": receiver_name,
-        })
-        return result if isinstance(result, dict) else {"result": result}
-
-
 class BackgroundNamespace:
     def __init__(self, bridge: HostBridge) -> None:
         self._bridge = bridge
@@ -192,7 +172,7 @@ class RuntimeState:
         self.snapshot_path: Path | None = None
         self.namespace: dict[str, Any] = {"__name__": "__main__"}
         self.namespace["rlm"] = RLMNamespace(self.bridge)
-        self.namespace["agent_message"] = AgentMessageNamespace(self.bridge)
+        self.namespace["agent_message"] = AgentMessages(self.bridge)
         self.namespace["jev"] = JevNamespace(self.bridge)
         self.namespace["background"] = BackgroundNamespace(self.bridge)
         self.namespace["bash"] = bash
@@ -201,6 +181,8 @@ class RuntimeState:
         self.namespace["workflows"] = Workflows(self.bridge)
         self.namespace["memory"] = Memory(self.bridge)
         self.namespace["refinements"] = Refinements(self.bridge)
+        self.namespace["progress"] = Progress(self.bridge)
+        self.namespace["skills"] = Skills(self.bridge)
 
 _STATE = RuntimeState()
 
