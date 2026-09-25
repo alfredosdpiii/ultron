@@ -34,11 +34,17 @@ export type RefinementProposal = {
 	evidence: JsonValue;
 	scope: string;
 };
+/**
+ * null until activation or approval. "not_required" records that activation happened with
+ * the approval control disabled (the no-friction default), never that someone approved it.
+ */
+export type RefinementApproval = null | "approved" | "not_required";
 export type RefinementRecord = RefinementProposal & {
 	id: string;
 	version: number | null;
 	previousId: string | null;
 	state: RefinementState;
+	approval: RefinementApproval;
 	history: { state: RefinementState; at: string; cause: string }[];
 };
 export type ArtifactRecord = { id: string; bytes: number; mediaType: string; label: string };
@@ -63,6 +69,8 @@ export interface NativeLocalServicesOptions {
 	maxArtifactBytes?: number;
 	/** Total bytes across all stored artifacts. Defaults to the canary per-root quota, 1 GiB. */
 	maxArtifactStorageBytes?: number;
+	/** Opt-in control: activation requires a prior refinements.approve. Off by default. */
+	requireApproval?: boolean;
 }
 
 const DEFAULT_MAX_ARTIFACT_BYTES = 256 * 1024 * 1024;
@@ -74,6 +82,85 @@ const experimentKey = "ultron.experiments";
 const artifactPrefix = "ultron.artifacts/";
 const kinds: readonly string[] = ["observation", "instruction", "skill", "agent"];
 const protectedNames = new Set(["agents.md", "security", "policy"]);
+/**
+ * Name segments of human-owned authority: trusted instructions, security policy, grants,
+ * the acceptance instrument, judge thresholds and approval. Compared case- and
+ * separator-insensitively against every dotted/hyphenated segment of a target name.
+ */
+const protectedTokens = new Set([
+	"agents",
+	"agentsmd",
+	"security",
+	"policy",
+	"policies",
+	"grant",
+	"grants",
+	"permission",
+	"permissions",
+	"capability",
+	"capabilities",
+	"acceptance",
+	"instrument",
+	"judge",
+	"threshold",
+	"thresholds",
+	"approval",
+	"approvals",
+	"sandbox",
+]);
+/** Content keys that would grant tools, models, budgets or permissions if a consumer honored them. */
+const capabilityKeys = new Set([
+	"allowedtools",
+	"tools",
+	"tool",
+	"grant",
+	"grants",
+	"permission",
+	"permissions",
+	"capability",
+	"capabilities",
+	"model",
+	"budget",
+	"timeout",
+	"policy",
+	"approval",
+	"sandbox",
+	"env",
+]);
+const normalize = (value: string): string => value.toLowerCase().replace(/[-_\s]/g, "");
+
+/** Capability non-escalation: refuse structured or frontmatter keys that would claim authority. */
+function escalation(value: JsonValue): string | undefined {
+	if (typeof value === "string") {
+		const frontmatter = /^---\r?\n([\s\S]*?)\r?\n---/.exec(value.trimStart());
+		if (!frontmatter) return undefined;
+		for (const line of frontmatter[1].split(/\r?\n/)) {
+			const key = /^\s*([A-Za-z][\w-]*)\s*:/.exec(line)?.[1];
+			if (key && capabilityKeys.has(normalize(key))) return key;
+		}
+		return undefined;
+	}
+	if (value === null || typeof value !== "object") return undefined;
+	for (const [key, item] of Object.entries(value)) {
+		if (!Array.isArray(value) && capabilityKeys.has(normalize(key))) return key;
+		const nested = escalation(item);
+		if (nested) return nested;
+	}
+	return undefined;
+}
+
+function sameJson(left: JsonValue, right: JsonValue): boolean {
+	if (left === right) return true;
+	if (left === null || right === null || typeof left !== "object" || typeof right !== "object") return false;
+	if (Array.isArray(left) !== Array.isArray(right)) return false;
+	const keys = Object.keys(left);
+	if (keys.length !== Object.keys(right).length) return false;
+	return keys.every(
+		(key) =>
+			Object.hasOwn(right, key) &&
+			sameJson((left as JsonObject)[key] as JsonValue, (right as JsonObject)[key] as JsonValue),
+	);
+}
 
 // Copy descriptors rather than stringify user objects: getters and toJSON must
 // never run, and undefined, sparse arrays, cycles and nonfinite numbers must fail.
@@ -132,7 +219,13 @@ function identity(kind: JsonValue, target: JsonValue): asserts kind is Refinemen
 		throw new TypeError("Target must be an explicit namespace:name ID, not a path");
 	}
 	const [namespace, name] = target.split(":");
-	if (namespace !== kind || protectedNames.has(name.toLowerCase())) throw new Error("Forbidden refinement target");
+	if (
+		namespace !== kind ||
+		protectedNames.has(name.toLowerCase()) ||
+		protectedTokens.has(normalize(name)) ||
+		name.split(/[.\-_]/).some((segment) => protectedTokens.has(normalize(segment)))
+	)
+		throw new Error("Forbidden refinement target");
 }
 
 function nonempty(value: JsonValue): boolean {
@@ -175,7 +268,11 @@ function active(records: RefinementRecord[], kind: JsonValue, target: JsonValue)
 function apply(records: RefinementRecord[], event: JsonValue): RefinementRecord {
 	if (event === null || typeof event !== "object" || Array.isArray(event))
 		throw new TypeError("Malformed refinement event");
-	fields(event, ["action", "id", "at"], event.action === "propose" ? ["proposal"] : []);
+	fields(
+		event,
+		["action", "id", "at"],
+		event.action === "propose" ? ["proposal"] : event.action === "activate" ? ["approval"] : [],
+	);
 	const { id, at } = event;
 	if (typeof id !== "string" || !id || typeof at !== "string" || !Number.isFinite(Date.parse(at))) {
 		throw new TypeError("Malformed refinement event");
@@ -187,7 +284,15 @@ function apply(records: RefinementRecord[], event: JsonValue): RefinementRecord 
 	if (event.action === "propose") {
 		const data = proposal(event.proposal);
 		if (records.some((record) => record.id === id)) throw new Error("Duplicate refinement ID");
-		const record: RefinementRecord = { id, ...data, version: null, previousId: null, state: "proposed", history: [] };
+		const record: RefinementRecord = {
+			id,
+			...data,
+			version: null,
+			previousId: null,
+			state: "proposed",
+			approval: null,
+			history: [],
+		};
 		transition(record, "proposed");
 		records.push(record);
 		return record;
@@ -204,10 +309,19 @@ function apply(records: RefinementRecord[], event: JsonValue): RefinementRecord 
 			if (item.kind === record.kind && item.target === record.target) version = Math.max(version, item.version ?? 0);
 		}
 		if (!Number.isSafeInteger(version + 1)) throw new Error("Version exhausted");
+		if (event.approval !== undefined && event.approval !== "approved" && event.approval !== "not_required")
+			throw new TypeError("Malformed refinement approval");
+		if (event.approval === "approved" && record.approval !== "approved")
+			throw new Error("Activation claims an approval that was not recorded");
 		record.version = version + 1;
 		record.previousId = previous?.id ?? null;
+		if (record.approval !== "approved") record.approval = event.approval === "not_required" ? "not_required" : null;
 		if (previous) transition(previous, "superseded");
 		transition(record, "active");
+	} else if (event.action === "approve") {
+		// Approval never overrides validation: activation still runs every check.
+		if (record.state !== "proposed") throw new Error("Only a proposed refinement can be approved");
+		record.approval = "approved";
 	} else if (event.action === "reject") {
 		if (record.state !== "proposed") throw new Error("Only a proposed refinement can be rejected");
 		transition(record, "rejected");
@@ -234,6 +348,20 @@ function experiment(value: JsonValue): asserts value is ExperimentRecord {
 		!Number.isFinite(Date.parse(value.recordedAt))
 	)
 		throw new TypeError("Experiment requires variant, fixtureHash, outcome and valid record metadata");
+	// Usage is optional, but when present its parts must reconcile with its declared total.
+	const usage = value.usage;
+	if (usage !== undefined) {
+		if (usage === null || typeof usage !== "object" || Array.isArray(usage))
+			throw new TypeError("Experiment usage must be an object");
+		let sum = 0;
+		for (const [key, amount] of Object.entries(usage)) {
+			if (typeof amount !== "number" || !Number.isFinite(amount) || amount < 0)
+				throw new TypeError("Experiment usage amounts must be finite and nonnegative");
+			if (key !== "total") sum += amount;
+		}
+		if (typeof usage.total !== "number" || Math.abs(usage.total - sum) > 1e-9 * Math.max(1, sum))
+			throw new TypeError("Experiment usage total does not reconcile with its parts");
+	}
 }
 
 function artifact(value: JsonValue, id: string): { record: ArtifactRecord; bytes: Buffer } {
@@ -280,6 +408,7 @@ export class NativeLocalServices {
 	private readonly validate: NativeLocalServicesOptions["validate"];
 	private readonly maxArtifactBytes: number;
 	private readonly maxArtifactStorageBytes: number;
+	private readonly requireApproval: boolean;
 	private tail: Promise<void> = Promise.resolve();
 	private validating = false;
 	private uncertain = false;
@@ -295,6 +424,7 @@ export class NativeLocalServices {
 			if (!Number.isSafeInteger(limit) || limit < 1)
 				throw new TypeError("Artifact limits must be positive integers");
 		}
+		this.requireApproval = options.requireApproval === true;
 	}
 
 	handle(type: string, payload: unknown, context: Context): Promise<JsonValue> {
@@ -356,11 +486,35 @@ export class NativeLocalServices {
 		}
 		let event: JsonObject;
 		if (type === "refinements.propose") {
-			event = { action: "propose", id: randomUUID(), proposal: proposal(payload), at: new Date().toISOString() };
+			const data = proposal(payload);
+			const key = escalation(data.content);
+			if (key !== undefined) throw new Error(`Refinement content cannot request capabilities (${key})`);
+			// An equivalent pending or active proposal, or a rejected one resubmitted without new
+			// evidence, is a duplicate rather than a new proposal.
+			const duplicate = records.find(
+				(record) =>
+					record.kind === data.kind &&
+					record.target === data.target &&
+					record.scope === data.scope &&
+					sameJson(record.content, data.content) &&
+					(record.state === "proposed" ||
+						record.state === "active" ||
+						(record.state === "rejected" && sameJson(record.evidence, data.evidence))),
+			);
+			if (duplicate) throw new Error(`Duplicate refinement proposal: ${duplicate.id} (${duplicate.state})`);
+			event = { action: "propose", id: randomUUID(), proposal: data, at: new Date().toISOString() };
 		} else {
 			fields(payload, ["id"]);
 			if (type === "refinements.get") return lookup(records, payload.id);
 			event = { action: type.slice("refinements.".length), id: payload.id, at: new Date().toISOString() };
+			if (event.action === "activate") {
+				const pending = lookup(records, payload.id);
+				const key = escalation(pending.content);
+				if (key !== undefined) throw new Error(`Refinement content cannot request capabilities (${key})`);
+				if (this.requireApproval && pending.approval !== "approved")
+					throw new Error("Activation requires approval");
+				event.approval = pending.approval === "approved" ? "approved" : "not_required";
+			}
 		}
 		const result = apply(records, event);
 		if (event.action === "activate" && this.validate) {
@@ -496,6 +650,7 @@ export class NativeLocalServices {
 				"refinements.get",
 				"refinements.current",
 				"refinements.activate",
+				"refinements.approve",
 				"refinements.reject",
 				"refinements.rollback",
 			].includes(type)
