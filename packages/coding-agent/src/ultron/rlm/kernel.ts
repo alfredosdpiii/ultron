@@ -2,6 +2,7 @@ import { type ChildProcessWithoutNullStreams, spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { existsSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
+import { rlmOutputBudget } from "./output-truncation.ts";
 import { processSnapshotKey, sha256Hex, signSnapshot, verifySnapshot } from "./snapshot-auth.ts";
 import {
 	cgroupOomKills,
@@ -387,6 +388,8 @@ export class RlmKernel {
 					PYTHONDONTWRITEBYTECODE: "1",
 					ULTRON_RLM_MAX_MEMORY_MB: String(this.limits.maxMemoryMb),
 					ULTRON_RLM_MAX_CPU_SECONDS: String(this.limits.maxCpuSeconds),
+					// Each captured stdout/stderr keeps its head and tail within the tool-output budget.
+					ULTRON_RLM_OUTPUT_BYTES: String(rlmOutputBudget()),
 				},
 				stdio: ["pipe", "pipe", "pipe"],
 				detached: ownsProcessGroup,

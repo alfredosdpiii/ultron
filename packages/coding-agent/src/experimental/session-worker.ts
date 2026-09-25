@@ -40,7 +40,6 @@ import Type, { type Static } from "typebox";
 import { Check } from "typebox/value";
 import { isValidThinkingLevel } from "../cli/args.ts";
 import { getAgentDir, getRlmRuntimePath } from "../config.ts";
-import { executeBashWithOperations } from "../core/bash-executor.ts";
 import { configureHttpDispatcher } from "../core/http-dispatcher.ts";
 import { ModelRegistry } from "../core/model-registry.ts";
 import { findInitialModel, resolveCliModel } from "../core/model-resolver.ts";
@@ -70,10 +69,19 @@ import { createPredictAdapter } from "../ultron/predict-adapter.ts";
 import { createProgressModule } from "../ultron/progress.ts";
 import { createReleaseGateModule } from "../ultron/release-gate.ts";
 import { createSessionDefinitionStore } from "../ultron/rlm/definition-registry.ts";
+import { runHostBash } from "../ultron/rlm/host-bash.ts";
 import { createSessionModuleStore, type HostCaller } from "../ultron/rlm/host-module.ts";
 import { type KernelExecutionResult, type KernelHostHandler, RlmKernel } from "../ultron/rlm/kernel.ts";
 import { KernelPool, KernelPoolCapacityError } from "../ultron/rlm/kernel-pool.ts";
 import { NativeRlmHost } from "../ultron/rlm/native-host.ts";
+import { truncateToolOutput } from "../ultron/rlm/output-truncation.ts";
+import {
+	defaultBuiltinToolNames,
+	RLM_TOOL_DESCRIPTION,
+	RLM_TOOL_SNIPPET,
+	rlmRuntimePrompt,
+	rlmToolGuidelines,
+} from "../ultron/rlm/prompt.ts";
 import { loadSnapshotKey } from "../ultron/rlm/snapshot-auth.ts";
 import { createSessionTaskStore } from "../ultron/rlm/task-store.ts";
 import { createScheduleModule } from "../ultron/schedules.ts";
@@ -136,10 +144,17 @@ export class UltronRlmKernel {
 
 	async execute(code: string, context: Context): Promise<string> {
 		const result = await this.kernel.execute(code, context.abortSignal);
+		// The streams end with print()'s newline; the parts are joined by one, so drop it to avoid blank lines.
+		const stdout = result.stdout.replace(/\n$/, "");
+		const stderr = result.stderr.replace(/\n$/, "");
 		if (result.status === "error") {
-			throw new Error(`${result.error?.ename ?? "PythonError"}: ${result.error?.evalue ?? "Execution failed"}`);
+			// Show what the cell printed before it failed, then the traceback (its last line is `ename: evalue`).
+			const summary = `${result.error?.ename ?? "PythonError"}: ${result.error?.evalue ?? "Execution failed"}`;
+			const traceback = (result.error?.traceback ?? []).join("\n");
+			const failure = !traceback ? summary : traceback.endsWith(summary) ? traceback : `${traceback}\n${summary}`;
+			throw new Error(truncateToolOutput([stdout, stderr, failure].filter(Boolean).join("\n")));
 		}
-		return [result.stdout, result.stderr, result.result].filter(Boolean).join("\n");
+		return truncateToolOutput([stdout, stderr, result.result].filter(Boolean).join("\n"));
 	}
 
 	async resetScratch(): Promise<void> {
@@ -176,15 +191,11 @@ export type RlmPoolStats = {
 	evictions: number;
 };
 
-/** Names the preloaded globals so models call them instead of guessing imports. */
-export const RLM_TOOL_DESCRIPTION = [
-	"Execute Python in Ultron's persistent RLM environment. Use ordinary Python to inspect data, retain intermediate values, invoke typed specialists, and compose optional workflows.",
-	"Globals are preloaded (nothing to import) and their methods are async, so use top-level `await`:",
-	'- `await rlm.spawn(prompt, name="short-name")` starts a recursive subagent and returns a handle; `await rlm.collect()` waits for and returns subagent results; `await rlm.list_subagents()`.',
-	'- `await agents.invoke(definition, input)` runs a typed agent and returns its result (`await agents.list()` shows definitions, e.g. "rlm-child" with input {"prompt": ...}); `agents.spawn(...)` starts one in the background and returns a handle with `await handle.result()`.',
-	"- `await workflows.run(nodes)` runs a validated agent graph; `await memory.prepare(query)` / `await memory.propose(text, evidence)` recall and retain long-term memory; `await bash(cmd)` runs a shell command.",
-	"- `state` is a dict that survives between calls; other variables persist within the session until the kernel is reset.",
-].join("\n");
+export { RLM_TOOL_DESCRIPTION } from "../ultron/rlm/prompt.ts";
+
+function sectionIfPresent(name: string, content: string | undefined): Record<string, string> {
+	return content === undefined ? {} : { [name]: content };
+}
 
 export function createUltronRlmTool(
 	cwd: string,
@@ -1268,21 +1279,12 @@ async function createCodingAgentHarness(
 	let holdActivity: (() => () => void) | undefined;
 	const hostHandler: RlmHostHandler = async (type, payload, signal, caller) => {
 		if (type === "bash") {
-			const command = payload.command;
-			if (typeof command !== "string" || !command.trim()) throw new Error("bash command must be a non-empty string");
-			const result = await executeBashWithOperations(
-				command,
+			return runHostBash(
+				payload,
 				options.metadata.cwd,
 				createLocalBashOperations({ shellPath: settingsManager.getShellPath() }),
-				{ signal },
+				signal,
 			);
-			return {
-				output: result.output,
-				exit_code: result.exitCode ?? null,
-				cancelled: result.cancelled,
-				truncated: result.truncated,
-				full_output_path: result.fullOutputPath ?? null,
-			};
 		}
 		if (type === "rlm.find_models")
 			return registry.getAvailable().map((model) => ({ provider: model.provider, id: model.id, name: model.name }));
@@ -1342,12 +1344,16 @@ async function createCodingAgentHarness(
 		})),
 	};
 	const toolNames = tools.map((tool) => tool.name);
+	// Every built-in stays registered so `--tools read,bash` can pick it, but by default the model gets only the
+	// RLM REPL, whose kernel has shell and edits as Python skills (ULTRON_TOOLS=native restores Pi's set).
+	const defaultToolNames = defaultBuiltinToolNames();
 	const activeToolNames =
 		options.noTools === "all"
 			? []
-			: (options.tools === undefined ? toolNames : toolNames.filter((name) => options.tools?.includes(name))).filter(
-					(name) => options.excludeTools?.includes(name) !== true,
-				);
+			: (options.tools === undefined
+					? toolNames.filter((name) => defaultToolNames.includes(name))
+					: toolNames.filter((name) => options.tools?.includes(name))
+				).filter((name) => options.excludeTools?.includes(name) !== true);
 	const effectiveActiveToolNames =
 		options.noTools === "builtin" ? activeToolNames.filter((name) => name === "rlm") : activeToolNames;
 	const contextFiles = resourceLoader.getAgentsFiles().agentsFiles;
@@ -1364,13 +1370,16 @@ async function createCodingAgentHarness(
 				edit: editToolSystemPromptContribution.snippet,
 				write: writeToolSystemPromptContribution.snippet,
 				bash: bashToolSystemPromptContribution.snippet,
-				rlm: "Run Python RLM code and recursive agents",
+				rlm: RLM_TOOL_SNIPPET,
 			},
 			toolGuidelines: {
 				read: [...readToolSystemPromptContribution.guidelines],
 				edit: [...editToolSystemPromptContribution.guidelines],
 				write: [...writeToolSystemPromptContribution.guidelines],
+				rlm: rlmToolGuidelines(effectiveActiveToolNames),
 			},
+			// The REPL runtime guide (kernel, skills, delegation) as its own section after Pi's tool list and rules.
+			sections: sectionIfPresent("runtime", rlmRuntimePrompt(effectiveActiveToolNames)),
 			contextFiles,
 			skills: resourceLoader.getSkills().skills,
 			appendSystemPrompt: resourceLoader.getAppendSystemPrompt().join("\n\n"),

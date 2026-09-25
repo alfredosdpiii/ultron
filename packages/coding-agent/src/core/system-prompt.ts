@@ -162,7 +162,8 @@ export function buildSystemPromptSections(input: BuildSystemPromptOptions): Syst
 
 	if (appendSystemPrompt) promptSections.addendum = appendSystemPrompt;
 	if (contextFiles.length > 0) promptSections.project_context = renderProjectContext(contextFiles);
-	const skillFileReadTool = (["read", "bash"] as const).find((tool) => selectedTools.includes(tool));
+	// Ultron: the RLM REPL reads skill files with Python when it is the only file-capable tool.
+	const skillFileReadTool = (["read", "bash", "rlm"] as const).find((tool) => selectedTools.includes(tool));
 	if (skillFileReadTool && skills.length > 0) {
 		const skillsPrompt = formatSkillsForPrompt(skills, skillFileReadTool).trim();
 		if (skillsPrompt) promptSections.skills = skillsPrompt;

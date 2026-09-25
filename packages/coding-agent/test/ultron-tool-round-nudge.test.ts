@@ -48,6 +48,8 @@ describe("tool round nudge", () => {
 				ULTRON_CODING_AGENT_DIR: agentDir,
 				ULTRON_SERVER_DIR: mkdtempSync(join("/tmp", "u-nudge-")),
 				ULTRON_TOOL_ROUNDS_NUDGE: "3",
+				// The script calls Pi's native bash tool, which only the opt-out makes active.
+				ULTRON_TOOLS: "native",
 			},
 		});
 		try {
