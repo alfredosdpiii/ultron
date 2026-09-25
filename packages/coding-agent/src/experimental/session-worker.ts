@@ -1134,6 +1134,16 @@ async function createCodingAgentHarness(
 			usage: createSessionUsageLedger(session, { limits: { maxAdmittedTasks: 24, maxWallMs: 30 * 60 * 1000 } }),
 			services: nativeServices,
 			beforeLaneReuse: (lane) => rlmTool.resetScratch(lane),
+			refinements: async (definitionId, context) => {
+				const current = (await nativeServices.handle(
+					"refinements.current",
+					{ kind: "instruction", target: `instruction:${definitionId}` },
+					context,
+				)) as { id: string; version: number | null; content: unknown } | null;
+				if (!current) return [];
+				const text = typeof current.content === "string" ? current.content : JSON.stringify(current.content);
+				return [{ id: current.id, version: current.version, text }];
+			},
 			modules: [
 				createFamilyModule({ store: createSessionModuleStore(session, "family") }),
 				createProgressModule({ store: createSessionModuleStore(session, "progress") }),

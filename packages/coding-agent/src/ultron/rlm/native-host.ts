@@ -143,6 +143,11 @@ export type NativeHostOptions = {
 	deterministic?: NativeDefinitionAdapter;
 	predict?: NativeDefinitionAdapter;
 	modules?: readonly NativeHostModule[];
+	/** Active instruction refinements targeting a definition id, applied to its model prompt. */
+	refinements?: (
+		definitionId: string,
+		context: Context,
+	) => Promise<Array<{ id: string; version: number | null; text: string }>>;
 	/** Called before a task runs on a reused lane, so per-invocation scratch can be cleared. */
 	beforeLaneReuse?: (lane: string, context: Context) => Promise<void>;
 	now?: () => number;
@@ -164,6 +169,7 @@ export class NativeRlmHost {
 	private readonly laneTasks = new Map<string, string>();
 	private readonly now: () => number;
 	private readonly beforeLaneReuse: NativeHostOptions["beforeLaneReuse"];
+	private readonly refinements: NativeHostOptions["refinements"];
 	private modulesStarted?: Promise<void>;
 
 	constructor(harness: AgentHarness, _rootLane: AgentLane, options: NativeHostOptions) {
@@ -174,6 +180,7 @@ export class NativeRlmHost {
 		this.journal = new NativeTaskJournal(options.store);
 		this.modules = options.modules ?? [];
 		this.beforeLaneReuse = options.beforeLaneReuse;
+		this.refinements = options.refinements;
 		this.now = options.now ?? Date.now;
 		this.registry = new NativeDefinitionRegistry(options.definitionStore, {
 			deterministic: options.deterministic,
@@ -307,10 +314,23 @@ export class NativeRlmHost {
 				await lane.setModel({ provider: model.slice(0, split), modelId: model.slice(split + 1) }, taskContext);
 				signal.throwIfAborted();
 			}
-			const prompt =
+			const basePrompt =
 				definition.id === "rlm-child"
 					? String(objectInput(request.input).prompt)
 					: `${definition.instructions}\n\nInput data:\n${JSON.stringify(request.input)}\n\nOutput contract:\n${definition.outputDescription}`;
+			// Active refinements for this definition apply to every later run; a rollback removes them.
+			// Refinements are optional; an unavailable refinement service must not fail the task (A34).
+			const refinements = (await this.refinements?.(definition.id, taskContext).catch(() => [])) ?? [];
+			signal.throwIfAborted();
+			const prompt =
+				refinements.length === 0
+					? basePrompt
+					: `${basePrompt}\n\n${refinements
+							.map(
+								(refinement) =>
+									`Active refinement ${refinement.id} (version ${refinement.version ?? "unversioned"}):\n${refinement.text}`,
+							)
+							.join("\n\n")}`;
 			modelReservation = await this.usage?.reserve({
 				kind: "model",
 				parentTaskId: task.id,
