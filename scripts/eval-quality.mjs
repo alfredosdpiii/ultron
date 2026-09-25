@@ -34,6 +34,13 @@ export const THRESHOLDS = {
 	maxCostRatio: 2,
 };
 
+/**
+ * A comparison is only evidence when both variants actually reached the model: at most this share of either
+ * variant's runs may be infrastructure outcomes (provider 429s, dead agent processes). Added after a run where
+ * a proxy cooldown turned 49 of 60 runs into infrastructure and the remaining 11 still "passed" the gate.
+ */
+export const MAX_INFRASTRUCTURE_SHARE = 0.2;
+
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const RUN_TIMEOUT_MS = 20 * 60 * 1000;
 const VERIFY_TIMEOUT_MS = 60_000;
@@ -277,6 +284,15 @@ export function summarize(records, variants) {
 			const cost = candidate.totalCost / baseline.totalCost;
 			gate.push({ check: "cost", ok: cost <= THRESHOLDS.maxCostRatio, detail: `${cost.toFixed(2)}x baseline` });
 		} else gate.push({ check: "cost", ok: null, detail: "cost not reported by both variants" });
+	}
+	for (const [variant, summary] of Object.entries(byVariant)) {
+		const share = summary.runs ? summary.infrastructure / summary.runs : 1;
+		if (share > MAX_INFRASTRUCTURE_SHARE)
+			gate.push({
+				check: "coverage",
+				ok: false,
+				detail: `${variant}: ${summary.infrastructure} of ${summary.runs} runs were infrastructure outcomes; rerun when the provider is healthy`,
+			});
 	}
 	return { byVariant, gate, passed: gate.length > 0 && gate.every((entry) => entry.ok !== false) };
 }

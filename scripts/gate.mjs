@@ -4,7 +4,7 @@
  *
  * 1. `npm run check` (lint, types, dependency checks).
  * 2. `npm run test:acceptance` must report every A01-A46 row passed.
- * 3. The newest quality comparison in acceptance/quality/ must exist, use the current frozen task set,
+ * 3. The newest full quality comparison of the default task set in acceptance/quality/ must exist, use the current frozen task set,
  *    and meet the thresholds it was frozen with. Quality runs are metered, so the gate reads the recorded
  *    result instead of re-running it; run `npm run eval:quality` to refresh it.
  */
@@ -36,6 +36,12 @@ const qualityDir = join(root, "acceptance/quality");
 const latest = existsSync(qualityDir)
 	? readdirSync(qualityDir)
 			.filter((file) => file.endsWith(".json"))
+			// The release gate reads the default frozen set; hard-set runs and self-checks are separate evidence.
+			.filter((file) => {
+				const recorded = JSON.parse(readFileSync(join(qualityDir, file), "utf8"));
+				// Partial reruns of one variant carry no gate entries; they supplement a full comparison.
+				return (recorded.taskSet ?? "default") === "default" && (recorded.summary?.gate?.length ?? 0) > 0;
+			})
 			.map((file) => join(qualityDir, file))
 			.sort((a, b) => statSync(b).mtimeMs - statSync(a).mtimeMs)[0]
 	: undefined;

@@ -1,0 +1,982 @@
+{
+  "taskSet": "hard",
+  "frozenAt": "2026-09-25-hard",
+  "thresholds": {
+    "maxPassRateDropPoints": 10,
+    "maxMedianLatencyRatio": 2,
+    "maxCostRatio": 2
+  },
+  "model": "cliproxyapi/gpt-6-sol",
+  "trials": 2,
+  "summary": {
+    "byVariant": {
+      "pi": {
+        "runs": 30,
+        "infrastructure": 24,
+        "passRate": 0.6666666666666666,
+        "categories": {
+          "multi-bug": {
+            "passed": 4,
+            "runs": 6
+          }
+        },
+        "medianDurationMs": 84124.5,
+        "totalCost": 0.49121600000000004
+      },
+      "ultron": {
+        "runs": 30,
+        "infrastructure": 25,
+        "passRate": 0.6,
+        "categories": {
+          "multi-bug": {
+            "passed": 3,
+            "runs": 5
+          }
+        },
+        "medianDurationMs": 87424,
+        "totalCost": 0.40669839999999996
+      }
+    },
+    "gate": [
+      {
+        "check": "pass rate",
+        "ok": true,
+        "detail": "6.7 points below baseline"
+      },
+      {
+        "check": "median latency",
+        "ok": true,
+        "detail": "1.04x baseline"
+      },
+      {
+        "check": "cost",
+        "ok": true,
+        "detail": "0.83x baseline"
+      },
+      {
+        "check": "coverage",
+        "ok": false,
+        "detail": "pi: 24 of 30 runs were infrastructure outcomes; rerun when the provider is healthy"
+      },
+      {
+        "check": "coverage",
+        "ok": false,
+        "detail": "ultron: 25 of 30 runs were infrastructure outcomes; rerun when the provider is healthy"
+      }
+    ],
+    "passed": false
+  },
+  "records": [
+    {
+      "task": "bugs-invoicing",
+      "category": "multi-bug",
+      "variant": "pi",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "toolCalls": 12,
+      "cost": 0.0675428,
+      "tokens": 40981,
+      "durationMs": 72241,
+      "verify": {
+        "status": 0,
+        "output": "----------------------------------------------------------------------\nRan 7 tests in 0.015s\n\nOK\n"
+      }
+    },
+    {
+      "task": "bugs-invoicing",
+      "category": "multi-bug",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "toolCalls": 20,
+      "cost": 0.0731748,
+      "tokens": 75881,
+      "durationMs": 84706,
+      "verify": {
+        "status": 0,
+        "output": "----------------------------------------------------------------------\nRan 7 tests in 0.015s\n\nOK\n"
+      }
+    },
+    {
+      "task": "bugs-invoicing",
+      "category": "multi-bug",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "toolCalls": 22,
+      "cost": 0.0792124,
+      "tokens": 86351,
+      "durationMs": 96008,
+      "verify": {
+        "status": 0,
+        "output": "----------------------------------------------------------------------\nRan 7 tests in 0.016s\n\nOK\n"
+      }
+    },
+    {
+      "task": "bugs-invoicing",
+      "category": "multi-bug",
+      "variant": "ultron",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "toolCalls": 19,
+      "cost": 0.09873520000000001,
+      "tokens": 56562,
+      "durationMs": 87424,
+      "verify": {
+        "status": 0,
+        "output": "----------------------------------------------------------------------\nRan 7 tests in 0.015s\n\nOK\n"
+      }
+    },
+    {
+      "task": "bugs-scheduler",
+      "category": "multi-bug",
+      "variant": "pi",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "toolCalls": 21,
+      "cost": 0.1100156,
+      "tokens": 99351,
+      "durationMs": 156380,
+      "verify": {
+        "status": 1,
+        "output": ")\n    at Module.load (node:internal/modules/cjs/loader:1656:32)\n    at Module._load (node:internal/modules/cjs/loader:1448:12)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)\n    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)\n    at node:internal/main/run_main_module:33:47 {\n  generatedMessage: false,\n  code: 'ERR_ASSERTION',\n  actual: null,\n  expected: '2026-01-08T19:30:00.000Z',\n  operator: 'strictEqual',\n  diff: 'simple'\n}\n\nNode.js v26.8.1\n"
+      }
+    },
+    {
+      "task": "bugs-scheduler",
+      "category": "multi-bug",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "toolCalls": 30,
+      "cost": 0.1360628,
+      "tokens": 111581,
+      "durationMs": 186258,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "bugs-scheduler",
+      "category": "multi-bug",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "toolCalls": 18,
+      "cost": 0.08524319999999999,
+      "tokens": 76148,
+      "durationMs": 122790,
+      "verify": {
+        "status": 1,
+        "output": ")\n    at Module.load (node:internal/modules/cjs/loader:1656:32)\n    at Module._load (node:internal/modules/cjs/loader:1448:12)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)\n    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)\n    at node:internal/main/run_main_module:33:47 {\n  generatedMessage: false,\n  code: 'ERR_ASSERTION',\n  actual: null,\n  expected: '2026-01-08T19:30:00.000Z',\n  operator: 'strictEqual',\n  diff: 'simple'\n}\n\nNode.js v26.8.1\n"
+      }
+    },
+    {
+      "task": "bugs-ttl-cache",
+      "category": "multi-bug",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "toolCalls": 7,
+      "cost": 0.056964400000000005,
+      "tokens": 33171,
+      "durationMs": 44712,
+      "verify": {
+        "status": 1,
+        "output": "mismatch (capacity=3, ttl=5) after [(2, 'get', 7), (2, 'contains', 4), (5, 'get', 1), (8, 'contains', 4), (9, 'delete', 6), (9, 'delete', 7), (9, 'contains', 1), (9, 'put', 3), (9, 'len', 3), (10, 'get', 7), (10, 'len', 7), (12, 'put', 4), (13, 'len', 4), (14, 'put', 6), (14, 'put', 1), (14, 'put', 3)]: got None, stats {'hits': 0, 'misses': 3, 'evictions': 0, 'expirations': 1}\n"
+      }
+    },
+    {
+      "task": "bugs-ttl-cache",
+      "category": "multi-bug",
+      "variant": "pi",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "toolCalls": 6,
+      "cost": 0.04141800000000001,
+      "tokens": 21517,
+      "durationMs": 52739,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "bugs-scheduler",
+      "category": "multi-bug",
+      "variant": "ultron",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "toolCalls": 19,
+      "cost": 0.09191599999999998,
+      "tokens": 77102,
+      "durationMs": 114774,
+      "verify": {
+        "status": 1,
+        "output": ")\n    at Module.load (node:internal/modules/cjs/loader:1656:32)\n    at Module._load (node:internal/modules/cjs/loader:1448:12)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)\n    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)\n    at node:internal/main/run_main_module:33:47 {\n  generatedMessage: false,\n  code: 'ERR_ASSERTION',\n  actual: null,\n  expected: '2026-01-08T19:30:00.000Z',\n  operator: 'strictEqual',\n  diff: 'simple'\n}\n\nNode.js v26.8.1\n"
+      }
+    },
+    {
+      "task": "bugs-ttl-cache",
+      "category": "multi-bug",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "toolCalls": 8,
+      "cost": 0.0576292,
+      "tokens": 39965,
+      "durationMs": 53590,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "bugs-ttl-cache",
+      "category": "multi-bug",
+      "variant": "ultron",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "infrastructure": true,
+      "error": "provider error: 429: {\"type\":\"usage_limit_reached\",\"message\":\"The usage limit has been reached\",\"plan_type\":\"pro\",\"resets_at\":1790681765,\"eligible_promo\":null,\"resets_in_seconds\":350310}",
+      "durationMs": 54592,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      }
+    },
+    {
+      "task": "refactor-intervals-fast",
+      "category": "refactor",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "infrastructure": true,
+      "error": "provider error: 429: {\"code\":\"model_cooldown\",\"message\":\"All credentials for model gpt-6-sol are cooling down\",\"model\":\"gpt-6-sol\",\"reset_seconds\":7,\"reset_time\":\"6s\"}",
+      "durationMs": 19992,
+      "verify": {
+        "status": null,
+        "output": ""
+      }
+    },
+    {
+      "task": "refactor-intervals-fast",
+      "category": "refactor",
+      "variant": "pi",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "infrastructure": true,
+      "error": "provider error: 429: {\"type\":\"usage_limit_reached\",\"message\":\"The usage limit has been reached\",\"plan_type\":\"pro\",\"resets_at\":1790681765,\"eligible_promo\":null,\"resets_in_seconds\":350299}",
+      "durationMs": 24464,
+      "verify": {
+        "status": null,
+        "output": ""
+      }
+    },
+    {
+      "task": "refactor-intervals-fast",
+      "category": "refactor",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "infrastructure": true,
+      "error": "provider error: 429: {\"code\":\"model_cooldown\",\"message\":\"All credentials for model gpt-6-sol are cooling down\",\"model\":\"gpt-6-sol\",\"reset_seconds\":160032,\"reset_time\":\"44h27m11s\"}",
+      "durationMs": 7516,
+      "verify": {
+        "status": null,
+        "output": ""
+      }
+    },
+    {
+      "task": "refactor-shop-package",
+      "category": "refactor",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "infrastructure": true,
+      "error": "provider error: 429: {\"code\":\"model_cooldown\",\"message\":\"All credentials for model gpt-6-sol are cooling down\",\"model\":\"gpt-6-sol\",\"reset_seconds\":159998,\"reset_time\":\"44h26m37s\"}",
+      "durationMs": 10408,
+      "verify": {
+        "status": 1,
+        "output": "Traceback (most recent call last):\n  File \"/tmp/ultron-quality-refactor-shop-package-pi-ZG4otd/project/test_shop_hidden.py\", line 10, in <module>\n    assert not os.path.exists(\"shop.py\"), \"shop.py must be replaced by the shop/ package\"\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: shop.py must be replaced by the shop/ package\n"
+      }
+    },
+    {
+      "task": "refactor-shop-package",
+      "category": "refactor",
+      "variant": "pi",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "infrastructure": true,
+      "error": "provider error: 429: {\"code\":\"model_cooldown\",\"message\":\"All credentials for model gpt-6-sol are cooling down\",\"model\":\"gpt-6-sol\",\"reset_seconds\":159994,\"reset_time\":\"44h26m34s\"}",
+      "durationMs": 10467,
+      "verify": {
+        "status": 1,
+        "output": "Traceback (most recent call last):\n  File \"/tmp/ultron-quality-refactor-shop-package-pi-xNLOkE/project/test_shop_hidden.py\", line 10, in <module>\n    assert not os.path.exists(\"shop.py\"), \"shop.py must be replaced by the shop/ package\"\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: shop.py must be replaced by the shop/ package\n"
+      }
+    },
+    {
+      "task": "refactor-shop-package",
+      "category": "refactor",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "infrastructure": true,
+      "error": "provider error: 429: {\"code\":\"model_cooldown\",\"message\":\"All credentials for model gpt-6-sol are cooling down\",\"model\":\"gpt-6-sol\",\"reset_seconds\":159987,\"reset_time\":\"44h26m27s\"}",
+      "durationMs": 7545,
+      "verify": {
+        "status": 1,
+        "output": "Traceback (most recent call last):\n  File \"/tmp/ultron-quality-refactor-shop-package-ultron-GnPOAK/project/test_shop_hidden.py\", line 10, in <module>\n    assert not os.path.exists(\"shop.py\"), \"shop.py must be replaced by the shop/ package\"\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: shop.py must be replaced by the shop/ package\n"
+      }
+    },
+    {
+      "task": "refactor-shop-package",
+      "category": "refactor",
+      "variant": "ultron",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "infrastructure": true,
+      "error": "provider error: 429: {\"code\":\"model_cooldown\",\"message\":\"All credentials for model gpt-6-sol are cooling down\",\"model\":\"gpt-6-sol\",\"reset_seconds\":159984,\"reset_time\":\"44h26m23s\"}",
+      "durationMs": 7513,
+      "verify": {
+        "status": 1,
+        "output": "Traceback (most recent call last):\n  File \"/tmp/ultron-quality-refactor-shop-package-ultron-DztJh5/project/test_shop_hidden.py\", line 10, in <module>\n    assert not os.path.exists(\"shop.py\"), \"shop.py must be replaced by the shop/ package\"\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: shop.py must be replaced by the shop/ package\n"
+      }
+    },
+    {
+      "task": "refactor-streaming-records",
+      "category": "refactor",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "infrastructure": true,
+      "error": "provider error: 429: {\"code\":\"model_cooldown\",\"message\":\"All credentials for model gpt-6-sol are cooling down\",\"model\":\"gpt-6-sol\",\"reset_seconds\":159980,\"reset_time\":\"44h26m19s\"}",
+      "durationMs": 10468,
+      "verify": {
+        "status": 1,
+        "output": "Traceback (most recent call last):\n  File \"/tmp/ultron-quality-refactor-streaming-records-pi-y0SlRA/project/test_records_hidden.py\", line 10, in <module>\n    assert inspect.isgeneratorfunction(records.iter_records) or hasattr(records.iter_records(__file__), \"__next__\")\n                                       ^^^^^^^^^^^^^^^^^^^^\nAttributeError: module 'records' has no attribute 'iter_records'\n"
+      }
+    },
+    {
+      "task": "refactor-intervals-fast",
+      "category": "refactor",
+      "variant": "ultron",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "infrastructure": true,
+      "error": "provider error: 429: {\"code\":\"model_cooldown\",\"message\":\"All credentials for model gpt-6-sol are cooling down\",\"model\":\"gpt-6-sol\",\"reset_seconds\":160005,\"reset_time\":\"44h26m44s\"}",
+      "durationMs": 7547,
+      "verify": {
+        "status": null,
+        "output": ""
+      }
+    },
+    {
+      "task": "refactor-streaming-records",
+      "category": "refactor",
+      "variant": "pi",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "infrastructure": true,
+      "error": "provider error: 429: {\"code\":\"model_cooldown\",\"message\":\"All credentials for model gpt-6-sol are cooling down\",\"model\":\"gpt-6-sol\",\"reset_seconds\":159976,\"reset_time\":\"44h26m16s\"}",
+      "durationMs": 10414,
+      "verify": {
+        "status": 1,
+        "output": "Traceback (most recent call last):\n  File \"/tmp/ultron-quality-refactor-streaming-records-pi-lqYYK6/project/test_records_hidden.py\", line 10, in <module>\n    assert inspect.isgeneratorfunction(records.iter_records) or hasattr(records.iter_records(__file__), \"__next__\")\n                                       ^^^^^^^^^^^^^^^^^^^^\nAttributeError: module 'records' has no attribute 'iter_records'\n"
+      }
+    },
+    {
+      "task": "refactor-streaming-records",
+      "category": "refactor",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "infrastructure": true,
+      "error": "provider error: 429: {\"code\":\"model_cooldown\",\"message\":\"All credentials for model gpt-6-sol are cooling down\",\"model\":\"gpt-6-sol\",\"reset_seconds\":159969,\"reset_time\":\"44h26m9s\"}",
+      "durationMs": 7535,
+      "verify": {
+        "status": 1,
+        "output": "Traceback (most recent call last):\n  File \"/tmp/ultron-quality-refactor-streaming-records-ultron-YktP08/project/test_records_hidden.py\", line 10, in <module>\n    assert inspect.isgeneratorfunction(records.iter_records) or hasattr(records.iter_records(__file__), \"__next__\")\n                                       ^^^^^^^^^^^^^^^^^^^^\nAttributeError: module 'records' has no attribute 'iter_records'\n"
+      }
+    },
+    {
+      "task": "refactor-streaming-records",
+      "category": "refactor",
+      "variant": "ultron",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "infrastructure": true,
+      "error": "provider error: 429: {\"code\":\"model_cooldown\",\"message\":\"All credentials for model gpt-6-sol are cooling down\",\"model\":\"gpt-6-sol\",\"reset_seconds\":159967,\"reset_time\":\"44h26m6s\"}",
+      "durationMs": 7521,
+      "verify": {
+        "status": 1,
+        "output": "Traceback (most recent call last):\n  File \"/tmp/ultron-quality-refactor-streaming-records-ultron-SrGnbj/project/test_records_hidden.py\", line 10, in <module>\n    assert inspect.isgeneratorfunction(records.iter_records) or hasattr(records.iter_records(__file__), \"__next__\")\n                                       ^^^^^^^^^^^^^^^^^^^^\nAttributeError: module 'records' has no attribute 'iter_records'\n"
+      }
+    },
+    {
+      "task": "data-sessions",
+      "category": "large-data",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "infrastructure": true,
+      "error": "provider error: 429: {\"code\":\"model_cooldown\",\"message\":\"All credentials for model gpt-6-sol are cooling down\",\"model\":\"gpt-6-sol\",\"reset_seconds\":159965,\"reset_time\":\"44h26m4s\"}",
+      "durationMs": 11649,
+      "verify": {
+        "status": 1,
+        "output": "answer.json missing or not JSON: [Errno 2] No such file or directory: 'answer.json'\n"
+      }
+    },
+    {
+      "task": "data-sessions",
+      "category": "large-data",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "infrastructure": true,
+      "error": "provider error: 429: {\"code\":\"model_cooldown\",\"message\":\"All credentials for model gpt-6-sol are cooling down\",\"model\":\"gpt-6-sol\",\"reset_seconds\":159958,\"reset_time\":\"44h25m58s\"}",
+      "durationMs": 7613,
+      "verify": {
+        "status": 1,
+        "output": "answer.json missing or not JSON: [Errno 2] No such file or directory: 'answer.json'\n"
+      }
+    },
+    {
+      "task": "data-sessions",
+      "category": "large-data",
+      "variant": "pi",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "infrastructure": true,
+      "error": "provider error: 429: {\"code\":\"model_cooldown\",\"message\":\"All credentials for model gpt-6-sol are cooling down\",\"model\":\"gpt-6-sol\",\"reset_seconds\":159961,\"reset_time\":\"44h26m0s\"}",
+      "durationMs": 12230,
+      "verify": {
+        "status": 1,
+        "output": "answer.json missing or not JSON: [Errno 2] No such file or directory: 'answer.json'\n"
+      }
+    },
+    {
+      "task": "data-sessions",
+      "category": "large-data",
+      "variant": "ultron",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "infrastructure": true,
+      "error": "provider error: 429: {\"code\":\"model_cooldown\",\"message\":\"All credentials for model gpt-6-sol are cooling down\",\"model\":\"gpt-6-sol\",\"reset_seconds\":159952,\"reset_time\":\"44h25m52s\"}",
+      "durationMs": 7684,
+      "verify": {
+        "status": 1,
+        "output": "answer.json missing or not JSON: [Errno 2] No such file or directory: 'answer.json'\n"
+      }
+    },
+    {
+      "task": "data-ledger-reconcile",
+      "category": "large-data",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "infrastructure": true,
+      "error": "provider error: 429: {\"code\":\"model_cooldown\",\"message\":\"All credentials for model gpt-6-sol are cooling down\",\"model\":\"gpt-6-sol\",\"reset_seconds\":159951,\"reset_time\":\"44h25m50s\"}",
+      "durationMs": 11011,
+      "verify": {
+        "status": 1,
+        "output": "answer.json missing or not JSON: [Errno 2] No such file or directory: 'answer.json'\n"
+      }
+    },
+    {
+      "task": "data-ledger-reconcile",
+      "category": "large-data",
+      "variant": "pi",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "infrastructure": true,
+      "error": "provider error: 429: {\"code\":\"model_cooldown\",\"message\":\"All credentials for model gpt-6-sol are cooling down\",\"model\":\"gpt-6-sol\",\"reset_seconds\":159948,\"reset_time\":\"44h25m48s\"}",
+      "durationMs": 10865,
+      "verify": {
+        "status": 1,
+        "output": "answer.json missing or not JSON: [Errno 2] No such file or directory: 'answer.json'\n"
+      }
+    },
+    {
+      "task": "data-ledger-reconcile",
+      "category": "large-data",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "infrastructure": true,
+      "error": "provider error: 429: {\"code\":\"model_cooldown\",\"message\":\"All credentials for model gpt-6-sol are cooling down\",\"model\":\"gpt-6-sol\",\"reset_seconds\":159944,\"reset_time\":\"44h25m44s\"}",
+      "durationMs": 7536,
+      "verify": {
+        "status": 1,
+        "output": "answer.json missing or not JSON: [Errno 2] No such file or directory: 'answer.json'\n"
+      }
+    },
+    {
+      "task": "data-ledger-reconcile",
+      "category": "large-data",
+      "variant": "ultron",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "infrastructure": true,
+      "error": "provider error: 429: {\"code\":\"model_cooldown\",\"message\":\"All credentials for model gpt-6-sol are cooling down\",\"model\":\"gpt-6-sol\",\"reset_seconds\":159939,\"reset_time\":\"44h25m38s\"}",
+      "durationMs": 7772,
+      "verify": {
+        "status": 1,
+        "output": "answer.json missing or not JSON: [Errno 2] No such file or directory: 'answer.json'\n"
+      }
+    },
+    {
+      "task": "data-sensors",
+      "category": "large-data",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "infrastructure": true,
+      "error": "provider error: 429: {\"code\":\"model_cooldown\",\"message\":\"All credentials for model gpt-6-sol are cooling down\",\"model\":\"gpt-6-sol\",\"reset_seconds\":159937,\"reset_time\":\"44h25m36s\"}",
+      "durationMs": 11316,
+      "verify": {
+        "status": 1,
+        "output": "answer.json missing or not JSON: [Errno 2] No such file or directory: 'answer.json'\n"
+      }
+    },
+    {
+      "task": "data-sensors",
+      "category": "large-data",
+      "variant": "pi",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "infrastructure": true,
+      "error": "provider error: 429: {\"code\":\"model_cooldown\",\"message\":\"All credentials for model gpt-6-sol are cooling down\",\"model\":\"gpt-6-sol\",\"reset_seconds\":159936,\"reset_time\":\"44h25m35s\"}",
+      "durationMs": 11492,
+      "verify": {
+        "status": 1,
+        "output": "answer.json missing or not JSON: [Errno 2] No such file or directory: 'answer.json'\n"
+      }
+    },
+    {
+      "task": "data-sensors",
+      "category": "large-data",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "infrastructure": true,
+      "error": "provider error: 429: {\"code\":\"model_cooldown\",\"message\":\"All credentials for model gpt-6-sol are cooling down\",\"model\":\"gpt-6-sol\",\"reset_seconds\":159931,\"reset_time\":\"44h25m30s\"}",
+      "durationMs": 7607,
+      "verify": {
+        "status": 1,
+        "output": "answer.json missing or not JSON: [Errno 2] No such file or directory: 'answer.json'\n"
+      }
+    },
+    {
+      "task": "data-sensors",
+      "category": "large-data",
+      "variant": "ultron",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "infrastructure": true,
+      "error": "provider error: 429: {\"code\":\"model_cooldown\",\"message\":\"All credentials for model gpt-6-sol are cooling down\",\"model\":\"gpt-6-sol\",\"reset_seconds\":159924,\"reset_time\":\"44h25m24s\"}",
+      "durationMs": 7857,
+      "verify": {
+        "status": 1,
+        "output": "answer.json missing or not JSON: [Errno 2] No such file or directory: 'answer.json'\n"
+      }
+    },
+    {
+      "task": "data-dependencies",
+      "category": "large-data",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "infrastructure": true,
+      "error": "provider error: 429: {\"code\":\"model_cooldown\",\"message\":\"All credentials for model gpt-6-sol are cooling down\",\"model\":\"gpt-6-sol\",\"reset_seconds\":159923,\"reset_time\":\"44h25m23s\"}",
+      "durationMs": 11876,
+      "verify": {
+        "status": 1,
+        "output": "answer.json missing or not JSON: [Errno 2] No such file or directory: 'answer.json'\n"
+      }
+    },
+    {
+      "task": "data-dependencies",
+      "category": "large-data",
+      "variant": "pi",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "infrastructure": true,
+      "error": "provider error: 429: {\"code\":\"model_cooldown\",\"message\":\"All credentials for model gpt-6-sol are cooling down\",\"model\":\"gpt-6-sol\",\"reset_seconds\":159922,\"reset_time\":\"44h25m22s\"}",
+      "durationMs": 11572,
+      "verify": {
+        "status": 1,
+        "output": "answer.json missing or not JSON: [Errno 2] No such file or directory: 'answer.json'\n"
+      }
+    },
+    {
+      "task": "data-dependencies",
+      "category": "large-data",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "infrastructure": true,
+      "error": "provider error: 429: {\"code\":\"model_cooldown\",\"message\":\"All credentials for model gpt-6-sol are cooling down\",\"model\":\"gpt-6-sol\",\"reset_seconds\":159916,\"reset_time\":\"44h25m15s\"}",
+      "durationMs": 7546,
+      "verify": {
+        "status": 1,
+        "output": "answer.json missing or not JSON: [Errno 2] No such file or directory: 'answer.json'\n"
+      }
+    },
+    {
+      "task": "data-dependencies",
+      "category": "large-data",
+      "variant": "ultron",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "infrastructure": true,
+      "error": "provider error: 429: {\"code\":\"model_cooldown\",\"message\":\"All credentials for model gpt-6-sol are cooling down\",\"model\":\"gpt-6-sol\",\"reset_seconds\":159911,\"reset_time\":\"44h25m10s\"}",
+      "durationMs": 7560,
+      "verify": {
+        "status": 1,
+        "output": "answer.json missing or not JSON: [Errno 2] No such file or directory: 'answer.json'\n"
+      }
+    },
+    {
+      "task": "logs-revoked-tokens",
+      "category": "log-forensics",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "infrastructure": true,
+      "error": "provider error: 429: {\"code\":\"model_cooldown\",\"message\":\"All credentials for model gpt-6-sol are cooling down\",\"model\":\"gpt-6-sol\",\"reset_seconds\":159910,\"reset_time\":\"44h25m10s\"}",
+      "durationMs": 10989,
+      "verify": {
+        "status": 1,
+        "output": "answer.json missing or not JSON: [Errno 2] No such file or directory: 'answer.json'\n"
+      }
+    },
+    {
+      "task": "logs-revoked-tokens",
+      "category": "log-forensics",
+      "variant": "pi",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "infrastructure": true,
+      "error": "provider error: 429: {\"code\":\"model_cooldown\",\"message\":\"All credentials for model gpt-6-sol are cooling down\",\"model\":\"gpt-6-sol\",\"reset_seconds\":159908,\"reset_time\":\"44h25m8s\"}",
+      "durationMs": 10865,
+      "verify": {
+        "status": 1,
+        "output": "answer.json missing or not JSON: [Errno 2] No such file or directory: 'answer.json'\n"
+      }
+    },
+    {
+      "task": "logs-revoked-tokens",
+      "category": "log-forensics",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "infrastructure": true,
+      "error": "provider error: 429: {\"code\":\"model_cooldown\",\"message\":\"All credentials for model gpt-6-sol are cooling down\",\"model\":\"gpt-6-sol\",\"reset_seconds\":159903,\"reset_time\":\"44h25m2s\"}",
+      "durationMs": 7525,
+      "verify": {
+        "status": 1,
+        "output": "answer.json missing or not JSON: [Errno 2] No such file or directory: 'answer.json'\n"
+      }
+    },
+    {
+      "task": "logs-revoked-tokens",
+      "category": "log-forensics",
+      "variant": "ultron",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "infrastructure": true,
+      "error": "provider error: 429: {\"code\":\"model_cooldown\",\"message\":\"All credentials for model gpt-6-sol are cooling down\",\"model\":\"gpt-6-sol\",\"reset_seconds\":159899,\"reset_time\":\"44h24m58s\"}",
+      "durationMs": 7495,
+      "verify": {
+        "status": 1,
+        "output": "answer.json missing or not JSON: [Errno 2] No such file or directory: 'answer.json'\n"
+      }
+    },
+    {
+      "task": "logs-deploy-asof",
+      "category": "log-forensics",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "infrastructure": true,
+      "error": "provider error: 429: {\"code\":\"model_cooldown\",\"message\":\"All credentials for model gpt-6-sol are cooling down\",\"model\":\"gpt-6-sol\",\"reset_seconds\":159897,\"reset_time\":\"44h24m56s\"}",
+      "durationMs": 11280,
+      "verify": {
+        "status": 1,
+        "output": "answer.json missing or not JSON: [Errno 2] No such file or directory: 'answer.json'\n"
+      }
+    },
+    {
+      "task": "logs-deploy-asof",
+      "category": "log-forensics",
+      "variant": "pi",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "infrastructure": true,
+      "error": "provider error: 429: {\"code\":\"model_cooldown\",\"message\":\"All credentials for model gpt-6-sol are cooling down\",\"model\":\"gpt-6-sol\",\"reset_seconds\":159895,\"reset_time\":\"44h24m55s\"}",
+      "durationMs": 11224,
+      "verify": {
+        "status": 1,
+        "output": "answer.json missing or not JSON: [Errno 2] No such file or directory: 'answer.json'\n"
+      }
+    },
+    {
+      "task": "logs-deploy-asof",
+      "category": "log-forensics",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "infrastructure": true,
+      "error": "provider error: 429: {\"code\":\"model_cooldown\",\"message\":\"All credentials for model gpt-6-sol are cooling down\",\"model\":\"gpt-6-sol\",\"reset_seconds\":159891,\"reset_time\":\"44h24m50s\"}",
+      "durationMs": 8120,
+      "verify": {
+        "status": 1,
+        "output": "answer.json missing or not JSON: [Errno 2] No such file or directory: 'answer.json'\n"
+      }
+    },
+    {
+      "task": "logs-deploy-asof",
+      "category": "log-forensics",
+      "variant": "ultron",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "infrastructure": true,
+      "error": "provider error: 429: {\"code\":\"model_cooldown\",\"message\":\"All credentials for model gpt-6-sol are cooling down\",\"model\":\"gpt-6-sol\",\"reset_seconds\":159885,\"reset_time\":\"44h24m44s\"}",
+      "durationMs": 7577,
+      "verify": {
+        "status": 1,
+        "output": "answer.json missing or not JSON: [Errno 2] No such file or directory: 'answer.json'\n"
+      }
+    },
+    {
+      "task": "logs-bruteforce",
+      "category": "log-forensics",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "infrastructure": true,
+      "error": "provider error: 429: {\"code\":\"model_cooldown\",\"message\":\"All credentials for model gpt-6-sol are cooling down\",\"model\":\"gpt-6-sol\",\"reset_seconds\":159883,\"reset_time\":\"44h24m42s\"}",
+      "durationMs": 12185,
+      "verify": {
+        "status": 1,
+        "output": "answer.json missing or not JSON: [Errno 2] No such file or directory: 'answer.json'\n"
+      }
+    },
+    {
+      "task": "logs-bruteforce",
+      "category": "log-forensics",
+      "variant": "pi",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "infrastructure": true,
+      "error": "provider error: 429: {\"code\":\"model_cooldown\",\"message\":\"All credentials for model gpt-6-sol are cooling down\",\"model\":\"gpt-6-sol\",\"reset_seconds\":159882,\"reset_time\":\"44h24m41s\"}",
+      "durationMs": 12303,
+      "verify": {
+        "status": 1,
+        "output": "answer.json missing or not JSON: [Errno 2] No such file or directory: 'answer.json'\n"
+      }
+    },
+    {
+      "task": "logs-bruteforce",
+      "category": "log-forensics",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "infrastructure": true,
+      "error": "provider error: 429: {\"code\":\"model_cooldown\",\"message\":\"All credentials for model gpt-6-sol are cooling down\",\"model\":\"gpt-6-sol\",\"reset_seconds\":159876,\"reset_time\":\"44h24m35s\"}",
+      "durationMs": 8192,
+      "verify": {
+        "status": 1,
+        "output": "answer.json missing or not JSON: [Errno 2] No such file or directory: 'answer.json'\n"
+      }
+    },
+    {
+      "task": "logs-bruteforce",
+      "category": "log-forensics",
+      "variant": "ultron",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "infrastructure": true,
+      "error": "provider error: 429: {\"code\":\"model_cooldown\",\"message\":\"All credentials for model gpt-6-sol are cooling down\",\"model\":\"gpt-6-sol\",\"reset_seconds\":159869,\"reset_time\":\"44h24m29s\"}",
+      "durationMs": 7543,
+      "verify": {
+        "status": 1,
+        "output": "answer.json missing or not JSON: [Errno 2] No such file or directory: 'answer.json'\n"
+      }
+    },
+    {
+      "task": "huge-customer-dedupe",
+      "category": "huge-file",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "infrastructure": true,
+      "error": "provider error: 429: {\"code\":\"model_cooldown\",\"message\":\"All credentials for model gpt-6-sol are cooling down\",\"model\":\"gpt-6-sol\",\"reset_seconds\":159868,\"reset_time\":\"44h24m27s\"}",
+      "durationMs": 13163,
+      "verify": {
+        "status": 1,
+        "output": "dedup.csv missing\n"
+      }
+    },
+    {
+      "task": "huge-customer-dedupe",
+      "category": "huge-file",
+      "variant": "pi",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "infrastructure": true,
+      "error": "provider error: 429: {\"code\":\"model_cooldown\",\"message\":\"All credentials for model gpt-6-sol are cooling down\",\"model\":\"gpt-6-sol\",\"reset_seconds\":159866,\"reset_time\":\"44h24m26s\"}",
+      "durationMs": 12872,
+      "verify": {
+        "status": 1,
+        "output": "dedup.csv missing\n"
+      }
+    },
+    {
+      "task": "huge-customer-dedupe",
+      "category": "huge-file",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "infrastructure": true,
+      "error": "provider error: 429: {\"code\":\"model_cooldown\",\"message\":\"All credentials for model gpt-6-sol are cooling down\",\"model\":\"gpt-6-sol\",\"reset_seconds\":159860,\"reset_time\":\"44h24m20s\"}",
+      "durationMs": 7833,
+      "verify": {
+        "status": 1,
+        "output": "dedup.csv missing\n"
+      }
+    },
+    {
+      "task": "huge-customer-dedupe",
+      "category": "huge-file",
+      "variant": "ultron",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "infrastructure": true,
+      "error": "provider error: 429: {\"code\":\"model_cooldown\",\"message\":\"All credentials for model gpt-6-sol are cooling down\",\"model\":\"gpt-6-sol\",\"reset_seconds\":159853,\"reset_time\":\"44h24m13s\"}",
+      "durationMs": 7544,
+      "verify": {
+        "status": 1,
+        "output": "dedup.csv missing\n"
+      }
+    },
+    {
+      "task": "huge-catalog-diff",
+      "category": "huge-file",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "infrastructure": true,
+      "error": "provider error: 429: {\"code\":\"model_cooldown\",\"message\":\"All credentials for model gpt-6-sol are cooling down\",\"model\":\"gpt-6-sol\",\"reset_seconds\":159853,\"reset_time\":\"44h24m12s\"}",
+      "durationMs": 10936,
+      "verify": {
+        "status": 1,
+        "output": "diff.json missing or not JSON: [Errno 2] No such file or directory: 'diff.json'\n"
+      }
+    },
+    {
+      "task": "huge-catalog-diff",
+      "category": "huge-file",
+      "variant": "pi",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "infrastructure": true,
+      "error": "provider error: 429: {\"code\":\"model_cooldown\",\"message\":\"All credentials for model gpt-6-sol are cooling down\",\"model\":\"gpt-6-sol\",\"reset_seconds\":159852,\"reset_time\":\"44h24m12s\"}",
+      "durationMs": 11083,
+      "verify": {
+        "status": 1,
+        "output": "diff.json missing or not JSON: [Errno 2] No such file or directory: 'diff.json'\n"
+      }
+    },
+    {
+      "task": "huge-catalog-diff",
+      "category": "huge-file",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "infrastructure": true,
+      "error": "provider error: 429: {\"code\":\"model_cooldown\",\"message\":\"All credentials for model gpt-6-sol are cooling down\",\"model\":\"gpt-6-sol\",\"reset_seconds\":159845,\"reset_time\":\"44h24m5s\"}",
+      "durationMs": 7489,
+      "verify": {
+        "status": 1,
+        "output": "diff.json missing or not JSON: [Errno 2] No such file or directory: 'diff.json'\n"
+      }
+    },
+    {
+      "task": "huge-catalog-diff",
+      "category": "huge-file",
+      "variant": "ultron",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "infrastructure": true,
+      "error": "provider error: 429: {\"code\":\"model_cooldown\",\"message\":\"All credentials for model gpt-6-sol are cooling down\",\"model\":\"gpt-6-sol\",\"reset_seconds\":159841,\"reset_time\":\"44h24m1s\"}",
+      "durationMs": 7493,
+      "verify": {
+        "status": 1,
+        "output": "diff.json missing or not JSON: [Errno 2] No such file or directory: 'diff.json'\n"
+      }
+    }
+  ]
+}
