@@ -58,12 +58,12 @@ import { createReleaseGateModule } from "../ultron/release-gate.ts";
 import { createSessionDefinitionStore } from "../ultron/rlm/definition-registry.ts";
 import { createSessionModuleStore, type HostCaller } from "../ultron/rlm/host-module.ts";
 import { type KernelExecutionResult, type KernelHostHandler, RlmKernel } from "../ultron/rlm/kernel.ts";
-import { KernelPool } from "../ultron/rlm/kernel-pool.ts";
+import { KernelPool, KernelPoolCapacityError } from "../ultron/rlm/kernel-pool.ts";
 import { NativeRlmHost } from "../ultron/rlm/native-host.ts";
 import { createSessionTaskStore } from "../ultron/rlm/task-store.ts";
 import { createScheduleModule } from "../ultron/schedules.ts";
 import { createSkillModule } from "../ultron/skills.ts";
-import { createSessionUsageLedger } from "../ultron/usage.ts";
+import { createSessionUsageLedger, nativeUsageLimitsFromEnv } from "../ultron/usage.ts";
 import { createWorkerServices } from "../ultron/worker-services.ts";
 import { COORDINATOR_PROTOCOL_VERSION } from "./coordinator.ts";
 import { LegacyExtensionAdapter } from "./legacy-extension-adapter.ts";
@@ -132,13 +132,28 @@ export type UltronRlmTool = AgentHarnessTool<{ env: NodeExecutionEnv }> & {
 	close(): Promise<void>;
 	/** Clear a lane's Python scratch before a new invocation of a retained instance. */
 	resetScratch(lane: string): Promise<void>;
+	/**
+	 * Keep a lane's kernel alive against idle and capacity eviction (a retained instance). Returns false
+	 * instead of pinning when pinned lanes would take more than the pool's pin share (half its capacity by
+	 * default), so pins never exhaust room for new work.
+	 */
+	pin(lane: string, holder: string): boolean;
+	unpin(lane: string, holder: string): void;
+	/** Pool introspection, for tests and diagnostics. */
+	readonly kernels: KernelPool<UltronRlmKernel>;
 };
 
 export function createUltronRlmTool(
 	cwd: string,
 	hostHandler: RlmHostHandler,
 	resolveLane: (invocation: AgentHarnessToolInvocation, context: Context) => Promise<string> = async () => "main",
-	options: { readonly snapshotDir?: string; readonly maxLive?: number; readonly idleTtlMs?: number } = {},
+	options: {
+		readonly snapshotDir?: string;
+		readonly maxLive?: number;
+		readonly maxPinned?: number;
+		readonly idleTtlMs?: number;
+		readonly now?: () => number;
+	} = {},
 ): UltronRlmTool {
 	// Idle kernels are evicted after a snapshot, so a lane's declared state survives and a crowded session
 	// cannot keep unbounded Python processes alive (A43). Running cells are never evicted.
@@ -146,6 +161,7 @@ export function createUltronRlmTool(
 		options.snapshotDir === undefined
 			? undefined
 			: join(options.snapshotDir, `${lane.replace(/[^A-Za-z0-9._-]/g, "_")}.snapshot`);
+	const maxLive = options.maxLive ?? 16;
 	const kernels = new KernelPool<UltronRlmKernel>({
 		create: (lane) =>
 			new UltronRlmKernel(
@@ -153,9 +169,11 @@ export function createUltronRlmTool(
 				(type, payload, signal) => hostHandler(type, payload, signal, { lane }),
 				snapshotPath(lane),
 			),
-		maxLive: options.maxLive ?? 16,
+		maxLive,
+		maxPinned: options.maxPinned ?? Math.floor(maxLive / 2),
 		idleTtlMs: options.idleTtlMs ?? 30 * 60 * 1000,
 		snapshotPath,
+		...(options.now === undefined ? {} : { now: options.now }),
 	});
 	const sweeper = setInterval(() => void kernels.sweep().catch(() => {}), 60_000);
 	sweeper.unref();
@@ -173,6 +191,18 @@ export function createUltronRlmTool(
 		},
 		// A lane without a live kernel has no scratch to clear; a restored snapshot keeps only declared state.
 		resetScratch: async (lane) => kernels.live(lane)?.resetScratch(),
+		pin: (lane, holder) => {
+			if (closed) return false;
+			try {
+				kernels.pin(lane, holder);
+				return true;
+			} catch (error) {
+				if (error instanceof KernelPoolCapacityError) return false;
+				throw error;
+			}
+		},
+		unpin: (lane, holder) => kernels.unpin(lane, holder),
+		kernels,
 		name: "rlm",
 		label: "rlm",
 		description:
@@ -1146,6 +1176,9 @@ async function createCodingAgentHarness(
 		async (invocation, context) => {
 			const meta = await session.getValue(value<{ lane: string }>("pi.op.meta", invocation.operationId), context);
 			if (!meta || typeof meta.value.lane !== "string") throw new Error("RLM invocation has no owning lane");
+			// The invocation's operation is the main-lane run (root turn) its cells belong to; host requests from
+			// the root kernel during this cell are charged to that turn's usage root.
+			if (meta.value.lane === "main") host?.beginRootTurn(invocation.operationId);
 			return meta.value.lane;
 		},
 		{ snapshotDir },
@@ -1263,7 +1296,11 @@ async function createCodingAgentHarness(
 		host = new NativeRlmHost(harness, lane, {
 			store: createSessionTaskStore(session),
 			definitionStore: createSessionDefinitionStore(session),
-			usage: createSessionUsageLedger(session, { limits: { maxAdmittedTasks: 24, maxWallMs: 30 * 60 * 1000 } }),
+			// Budgets apply per root turn: each main-lane run opens a fresh wall, admission and cost window.
+			usage: createSessionUsageLedger(session, { limits: nativeUsageLimitsFromEnv() }),
+			rootTurns: true,
+			pinLane: (lane, holder) => rlmTool.pin(lane, holder),
+			unpinLane: (lane, holder) => rlmTool.unpin(lane, holder),
 			services: branchedServices,
 			beforeLaneReuse: (lane) => rlmTool.resetScratch(lane),
 			predict: createPredictAdapter({ models: modelRuntime, model: () => lane.getModel(TODO_CONTEXT) }),
@@ -1302,6 +1339,10 @@ async function createCodingAgentHarness(
 				}),
 			],
 		});
+		// Top-level work admitted after the turn ends (a schedule firing) gets a root of its own.
+		const removeRootTurnListener = harness.events.on("run_end", (event) => {
+			if (event.lane === "main") host?.endRootTurn(event.runId);
+		});
 		const currentActiveToolNames = await lane.getActiveTools(TODO_CONTEXT);
 		if (
 			currentActiveToolNames.length !== extensionActiveToolNames.length ||
@@ -1312,6 +1353,7 @@ async function createCodingAgentHarness(
 		return {
 			harness,
 			closeRlm: async () => {
+				removeRootTurnListener();
 				await legacyExtensions?.close();
 				await rlmTool.close();
 				await host?.close();
