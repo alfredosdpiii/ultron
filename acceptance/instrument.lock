@@ -48,7 +48,7 @@
 		"packages/coding-agent/test/ultron-a43-resource-release.test.ts": "5e406e65932ec42aa51f12346c55f9e3045314199d5fa611161291a09076259f",
 		"packages/coding-agent/test/ultron-a45-saturated-recursion.test.ts": "f6ae7330dc37534321665108c9f84f6e11f026b3820660c2d7c3aa5fdf0500de",
 		"packages/coding-agent/test/ultron-a46-demo.test.ts": "ff917f30ad3b9583f32378c627f85d67062bef2cec5fd7dc31c03fd63361dd98",
-		"packages/coding-agent/test/ultron-a46-live-demo.test.ts": "917ca51a91f8e6916838c8c2e8254ffdb126cd82a1ef8fff81c006d1346c145a",
+		"packages/coding-agent/test/ultron-a46-live-demo.test.ts": "9bfe0f236dba64b078189cc45988b3ed101b4d4bb906b49acb96612a81f13b30",
 		"packages/coding-agent/test/ultron-family.test.ts": "1e6b0106a2e450ba05458d80e8d5000d3098231230d919d614cfb561e94598b8",
 		"packages/coding-agent/test/ultron-grants.test.ts": "fc673e68e0c9418f8f202fad757f3020e218755730e412ccc54a1ca79d1a9a2f",
 		"packages/coding-agent/test/ultron-instances.test.ts": "740cffb33a17183701f88b27f3aca4f1268b28726ccbe736a93da6ac42765df4",

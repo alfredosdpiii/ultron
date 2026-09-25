@@ -105,6 +105,9 @@ describe.skipIf(!LIVE)("A46 live demonstration", () => {
 				const answer = JSON.parse(answerText.match(/\{[\s\S]*\}/)?.[0] ?? "{}") as Record<string, string>;
 				const messages = await first.getMessages();
 				record.transcriptChars = JSON.stringify(messages).length;
+				record.toolOutputs = messages
+					.filter((message) => message.role === "toolResult")
+					.map((message) => JSON.stringify((message as { content: unknown }).content).slice(0, 1500));
 				await first.stop();
 
 				// Reattach from a new client process and reconstruct everything from records.
@@ -120,8 +123,10 @@ describe.skipIf(!LIVE)("A46 live demonstration", () => {
 						state: string;
 					}>;
 					record.tasks = status.tasks.map(
-						(task: { definition: string; state: string }) => `${task.definition}:${task.state}`,
+						(task: { definition: string; state: string; result?: { error?: string } }) =>
+							`${task.definition}:${task.state}${task.result?.error ? ` (${task.result.error.slice(0, 300)})` : ""}`,
 					);
+					record.gates = await inspect(second, "gates.list");
 					record.gate = gates.attempts.map((attempt: { decision: string }) => attempt.decision);
 					record.instances = instances.length;
 					record.experiments = experiments.length;
