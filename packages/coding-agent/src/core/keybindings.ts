@@ -23,6 +23,8 @@ export interface AppKeybindings {
 	"app.model.select": true;
 	"app.tools.expand": true;
 	"app.thinking.toggle": true;
+	"app.rlm.toggle": true;
+	"app.jev.toggle": true;
 	"app.session.toggleNamedFilter": true;
 	"app.editor.external": true;
 	"app.message.copy": true;
@@ -118,6 +120,14 @@ export const KEYBINDINGS = {
 	"app.thinking.toggle": {
 		defaultKeys: "ctrl+t",
 		description: "Toggle thinking blocks",
+	},
+	"app.rlm.toggle": {
+		defaultKeys: "ctrl+r",
+		description: "Toggle the live RLM panel (native TUI)",
+	},
+	"app.jev.toggle": {
+		defaultKeys: "alt+j",
+		description: "Toggle the Jev decisions panel (native TUI)",
 	},
 	"app.session.toggleNamedFilter": {
 		defaultKeys: "ctrl+n",

@@ -32,7 +32,33 @@ import { createInteractiveTui } from "../modes/interactive/tui-renderer.ts";
 import { ensureTool } from "../utils/tools-manager.ts";
 import { type OpenClientRuntimeOptions, openClientRuntime } from "./client-runtime.ts";
 import { ExperimentalChatView } from "./client-tui-chat.ts";
+import {
+	type JevSnapshot,
+	parseJevDecisions,
+	parseJevLedger,
+	renderJevPanel,
+	renderJevStatusLine,
+} from "./jev-visualizer.ts";
 import { createPresentationFacetLoaders } from "./plugins/bundled.ts";
+import {
+	extractRootCell,
+	isActiveState,
+	parseAgentsStatus,
+	parsePool,
+	parseProgress,
+	parseRetained,
+	RlmClock,
+	type RlmLimits,
+	type RlmPool,
+	type RlmProgress,
+	type RlmSnapshot,
+	type RlmStyle,
+	type RlmTask,
+	type RlmTiming,
+	type RlmUsage,
+	renderRlmPanel,
+	renderRlmStatusLine,
+} from "./rlm-visualizer.ts";
 import { AgentController, type AgentOperationResponse, type AgentQueueResponse } from "./services/agent-controller.ts";
 import type {
 	ServerConnectionState,
@@ -42,6 +68,7 @@ import type {
 } from "./services/connection.ts";
 import { PresentationPlugins } from "./services/plugins.ts";
 import { PresentationUI } from "./services/presentation-ui.ts";
+import { SessionControl } from "./services/session-control.ts";
 import { SessionDirectory, SessionManagement, type SessionSummary } from "./services/sessions.ts";
 import { SlashCommands } from "./services/slash-commands.ts";
 import {
@@ -80,6 +107,26 @@ interface PendingSelection {
 	resolve(value: string | undefined): void;
 }
 
+const RLM_POLL_VISIBLE_MS = 1000;
+const RLM_POLL_HIDDEN_MS = 5000;
+const RLM_MAX_ASSESSED = 8;
+
+const rlmStyle: RlmStyle = {
+	fg: (color, text) => theme.fg(color, text),
+	bold: (text) => theme.bold(text),
+};
+
+interface RlmPollState {
+	tasks: RlmTask[];
+	usage: RlmUsage | null;
+	limits: RlmLimits | null;
+	pool: RlmPool | null;
+	retained: Set<string>;
+	progress: Map<string, RlmProgress>;
+	timing: Map<string, RlmTiming>;
+	error?: string;
+}
+
 const selectTheme = {
 	selectedPrefix: (text: string) => theme.fg("accent", text),
 	selectedText: (text: string) => theme.fg("accent", text),
@@ -98,7 +145,41 @@ export class ExperimentalClientTui implements Component {
 	readonly #pendingMessagesContainer = new Container();
 	readonly #statusContainer = new Container();
 	readonly #editorContainer = new Container();
-	readonly #footerComponent = new Text("", 1, 0);
+	readonly #footerComponent = new Container();
+	readonly #footerText = new Text("", 1, 0);
+	readonly #rlmPanel: Component = {
+		render: (width) => this.#renderRlm(width, "panel"),
+		invalidate() {},
+	};
+	readonly #rlmFooterLine: Component = {
+		render: (width) => this.#renderRlm(width, "footer"),
+		invalidate() {},
+	};
+	readonly #jevPanel: Component = {
+		render: (width) => this.#renderJev(width, "panel"),
+		invalidate() {},
+	};
+	readonly #jevFooterLine: Component = {
+		render: (width) => this.#renderJev(width, "footer"),
+		invalidate() {},
+	};
+	#rlmVisible = false;
+	#jevVisible = false;
+	#jevState: Omit<JevSnapshot, "now"> = { available: null, decisions: [] };
+	#rlmTimer: ReturnType<typeof setInterval> | undefined;
+	#rlmInFlight = false;
+	#rlmQueued = false;
+	readonly #rlmClock = new RlmClock();
+	#rlmState: RlmPollState = {
+		tasks: [],
+		usage: null,
+		limits: null,
+		pool: null,
+		retained: new Set(),
+		progress: new Map(),
+		timing: new Map(),
+	};
+	#control: SessionControl | undefined;
 	readonly #layoutRoot: Component;
 	readonly #sharedFacets: LoadedFacets;
 	readonly #keybindings = KeybindingsManager.create();
@@ -142,6 +223,8 @@ export class ExperimentalClientTui implements Component {
 		this.#chatInput.onCtrlD = finish;
 		this.#chatInput.onAction("app.clear", finish);
 		this.#chatInput.onAction("app.model.select", () => void this.#executeSlashCommand("model", ""));
+		this.#chatInput.onAction("app.rlm.toggle", () => this.#toggleRlm());
+		this.#chatInput.onAction("app.jev.toggle", () => this.#toggleJev());
 		this.#chatInput.onAction("app.message.followUp", () => {
 			const text = this.#chatInput.getText().trim();
 			if (text.length === 0) return;
@@ -149,6 +232,9 @@ export class ExperimentalClientTui implements Component {
 			void this.#queueFollowUp(text);
 		});
 		this.#editorContainer.addChild(this.#chatInput);
+		this.#footerComponent.addChild(this.#rlmFooterLine);
+		this.#footerComponent.addChild(this.#jevFooterLine);
+		this.#footerComponent.addChild(this.#footerText);
 		this.#layoutRoot = createChatViewport({
 			document: this.#documentContainer,
 			pendingMessages: this.#pendingMessagesContainer,
@@ -297,6 +383,7 @@ export class ExperimentalClientTui implements Component {
 				const commands = env.use(SlashCommands);
 				const controller = env.use(AgentController);
 				const transcript = env.use(Transcript);
+				const control = env.use(SessionControl);
 				const sessionFeature: SessionFeature = {
 					serverId: server.serverId,
 					session: server.session,
@@ -309,11 +396,33 @@ export class ExperimentalClientTui implements Component {
 					this.#session = sessionFeature;
 					this.#slashCommands = commands;
 					this.#controller = controller;
+					this.#control = control ?? undefined;
 					env.own(() => {
 						if (this.#session === sessionFeature) this.#session = undefined;
 						if (this.#slashCommands === commands) this.#slashCommands = undefined;
 						if (this.#controller === controller) this.#controller = undefined;
+						if (this.#control === control) this.#control = undefined;
 					});
+					env.own(
+						commands.replace({
+							name: "rlm",
+							description: "Toggle the live RLM panel (task tree, root kernel, budget)",
+							run: () => {
+								this.#toggleRlm();
+								return undefined;
+							},
+						}),
+					);
+					env.own(
+						commands.replace({
+							name: "jev",
+							description: "Toggle the Jev panel (routing, recall gates, retention decisions)",
+							run: () => {
+								this.#toggleJev();
+								return undefined;
+							},
+						}),
+					);
 					env.own(commands.subscribe(() => this.#updateAutocomplete()));
 					if (server.radius) {
 						env.own(
@@ -349,11 +458,15 @@ export class ExperimentalClientTui implements Component {
 		await this.#openLane(feature);
 		this.#screen = "chat";
 		this.#status = "";
+		this.#scheduleRlmPolling();
+		void this.#refreshRlm();
 		this.#rebuild();
 	}
 
 	async #close(): Promise<void> {
 		this.#closed = true;
+		if (this.#rlmTimer !== undefined) clearInterval(this.#rlmTimer);
+		this.#rlmTimer = undefined;
 		this.#completeSelection(undefined);
 		const errors: unknown[] = [];
 		try {
@@ -391,8 +504,10 @@ export class ExperimentalClientTui implements Component {
 		if (this.#status.length > 0) {
 			this.#statusContainer.addChild(new Text(theme.fg("dim", this.#status), 1, 0));
 		}
+		if (this.#rlmVisible) this.#statusContainer.addChild(this.#rlmPanel);
+		if (this.#jevVisible) this.#statusContainer.addChild(this.#jevPanel);
 		if (this.#chatView !== undefined) this.#statusContainer.addChild(this.#chatView.status);
-		this.#footerComponent.setText(theme.fg("dim", this.#footer()));
+		this.#footerText.setText(theme.fg("dim", this.#footer()));
 		this.#editorContainer.clear();
 		if (this.#screen === "select" && this.#selection !== undefined) {
 			this.#chatInput.focused = false;
@@ -518,6 +633,10 @@ export class ExperimentalClientTui implements Component {
 		this.#laneUnsubscribe = feature.transcript.state.subscribe((value) => {
 			if (value.snapshot === null) return;
 			view.apply(value.snapshot);
+			// Stamp root-cell start/end times as they happen, and refresh the task tree on tool boundaries.
+			extractRootCell(value.snapshot, this.#rlmClock, Date.now());
+			const event = value.event;
+			if (event !== null && (event.type === "tool_start" || event.type === "tool_end")) void this.#refreshRlm();
 			this.#rebuild();
 		});
 		if (feature.transcript.state.value?.snapshot === null || feature.transcript.state.value?.snapshot === undefined) {
@@ -636,10 +755,138 @@ export class ExperimentalClientTui implements Component {
 		return snapshot === null ? undefined : snapshot;
 	}
 
+	#toggleRlm(): void {
+		this.#rlmVisible = !this.#rlmVisible;
+		this.#scheduleRlmPolling();
+		void this.#refreshRlm();
+		this.#rebuild();
+	}
+
+	#toggleJev(): void {
+		this.#jevVisible = !this.#jevVisible;
+		this.#scheduleRlmPolling();
+		void this.#refreshRlm();
+		this.#rebuild();
+	}
+
+	#scheduleRlmPolling(): void {
+		if (this.#rlmTimer !== undefined) clearInterval(this.#rlmTimer);
+		this.#rlmTimer = undefined;
+		if (this.#closed) return;
+		this.#rlmTimer = setInterval(
+			() => void this.#refreshRlm(),
+			this.#rlmVisible || this.#jevVisible ? RLM_POLL_VISIBLE_MS : RLM_POLL_HIDDEN_MS,
+		);
+		this.#rlmTimer.unref?.();
+	}
+
+	/** Poll read-only inspection requests; never awaited by input handling, and coalesced while in flight. */
+	async #refreshRlm(): Promise<void> {
+		const control = this.#control;
+		if (control === undefined || this.#closed) return;
+		if (this.#rlmInFlight) {
+			this.#rlmQueued = true;
+			return;
+		}
+		this.#rlmInFlight = true;
+		try {
+			const [status, instances, pool, jev] = await Promise.allSettled([
+				control.inspect("agents.status", {}, BACKGROUND_CONTEXT),
+				control.inspect("instances.list", {}, BACKGROUND_CONTEXT),
+				control.inspect("rlm.pool", {}, BACKGROUND_CONTEXT),
+				control.inspect("jev.decisions", {}, BACKGROUND_CONTEXT),
+			]);
+			if (this.#closed) return;
+			const next: RlmPollState = { ...this.#rlmState };
+			if (status.status === "fulfilled") {
+				const parsed = parseAgentsStatus(status.value);
+				next.tasks = parsed.tasks;
+				next.usage = parsed.usage;
+				next.limits = parsed.limits;
+				next.timing = this.#rlmClock.timings(parsed.tasks, parsed.usage, Date.now());
+				delete next.error;
+			} else {
+				next.error = message(status.reason);
+			}
+			if (instances.status === "fulfilled") next.retained = parseRetained(instances.value);
+			next.pool = pool.status === "fulfilled" ? parsePool(pool.value) : null;
+			// Progress assessments are cheap host reads; only fetch them for a few running tasks while visible.
+			const progress = new Map<string, RlmProgress>();
+			if (this.#rlmVisible) {
+				const running = next.tasks.filter((task) => isActiveState(task.state)).slice(0, RLM_MAX_ASSESSED);
+				const assessed = await Promise.allSettled(
+					running.map((task) => control.inspect("progress.assess", { task_id: task.id }, BACKGROUND_CONTEXT)),
+				);
+				assessed.forEach((result, index) => {
+					const value = result.status === "fulfilled" ? parseProgress(result.value) : undefined;
+					if (value !== undefined) progress.set(running[index]!.id, value);
+				});
+			}
+			next.progress = progress;
+			if (this.#closed) return;
+			this.#rlmState = next;
+			this.#jevState = {
+				...(jev.status === "fulfilled"
+					? parseJevDecisions(jev.value)
+					: { available: this.#jevState.available, decisions: this.#jevState.decisions }),
+				...(status.status === "fulfilled" ? parseJevLedger(status.value) : {}),
+				...(jev.status === "rejected" && this.#jevState.available !== null ? { error: message(jev.reason) } : {}),
+			};
+			this.#layoutRoot.invalidate();
+			this.#requestRender();
+		} finally {
+			this.#rlmInFlight = false;
+			if (this.#rlmQueued && !this.#closed) {
+				this.#rlmQueued = false;
+				void this.#refreshRlm();
+			}
+		}
+	}
+
+	#rlmSnapshot(): RlmSnapshot {
+		const now = Date.now();
+		const state = this.#rlmState;
+		return {
+			now,
+			tasks: state.tasks,
+			usage: state.usage,
+			limits: state.limits,
+			pool: state.pool,
+			rootCell: extractRootCell(this.#laneSnapshot(), this.#rlmClock, now),
+			retained: state.retained,
+			progress: state.progress,
+			timing: state.timing,
+			...(state.error === undefined ? {} : { error: state.error }),
+		};
+	}
+
+	#renderRlm(width: number, mode: "panel" | "footer"): string[] {
+		const inner = Math.max(1, width - 2);
+		if (mode === "panel") {
+			const lines = renderRlmPanel(this.#rlmSnapshot(), inner, {
+				style: rlmStyle,
+				spinnerFrame: Math.floor(Date.now() / 100),
+			});
+			return lines.map((line) => ` ${line}`);
+		}
+		if (this.#rlmVisible) return [];
+		const line = renderRlmStatusLine(this.#rlmSnapshot(), inner, { style: rlmStyle });
+		return line === undefined ? [] : [` ${line}`];
+	}
+
+	#renderJev(width: number, mode: "panel" | "footer"): string[] {
+		const inner = Math.max(1, width - 2);
+		const snapshot: JevSnapshot = { now: Date.now(), ...this.#jevState };
+		if (mode === "panel") return renderJevPanel(snapshot, inner, { style: rlmStyle }).map((line) => ` ${line}`);
+		if (this.#jevVisible) return [];
+		const line = renderJevStatusLine(snapshot, inner, { style: rlmStyle });
+		return line === undefined ? [] : [` ${line}`];
+	}
+
 	#footer(): string {
 		const snapshot = this.#laneSnapshot();
-		if (!snapshot) return "/model · /thinking · /compact · /reload";
-		return `${snapshot.configuration.model.provider}/${snapshot.configuration.model.modelId} · thinking:${snapshot.configuration.thinkingLevel} · ${snapshot.stats.messageCount} messages · /model · /thinking · /compact · /reload`;
+		if (!snapshot) return "/model · /thinking · /compact · /reload · /rlm · /jev";
+		return `${snapshot.configuration.model.provider}/${snapshot.configuration.model.modelId} · thinking:${snapshot.configuration.thinkingLevel} · ${snapshot.stats.messageCount} messages · /model · /thinking · /compact · /reload · /rlm · /jev`;
 	}
 }
 
