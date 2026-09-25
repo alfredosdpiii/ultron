@@ -15,7 +15,7 @@ import {
 import type { AgentMessage, ThinkingLevel } from "../../types.ts";
 import { type Context, getTelemetryContext } from "../context.ts";
 import { convertToLlm, createBranchSummaryMessage, createCompactionSummaryMessage } from "../messages.ts";
-import { buildContextEntries, sessionEntryToContextMessages } from "../session/context.ts";
+import { applyContextEdits, buildContextEntries, sessionEntryToContextMessages } from "../session/context.ts";
 import type { CompactionEntry, Entry, JsonValue } from "../session/types.ts";
 import { CompactionError, err, ok, type Result } from "../types.ts";
 import { addUsage } from "../utils/usage.ts";
@@ -662,10 +662,12 @@ export function prepareCompaction(
 		}));
 		compactableEntries = [...virtualRetainedEntries, ...pathEntries.slice(prevCompactionIndex + 1)];
 	}
+	// Context edits apply before summarizing: what the model no longer sees is not summarized back in.
+	compactableEntries = applyContextEdits(compactableEntries);
 	const boundaryEnd = compactableEntries.length;
 
 	const tokensBefore = estimateContextTokens(
-		buildContextEntries(pathEntries).flatMap(sessionEntryToContextMessages),
+		applyContextEdits(buildContextEntries(pathEntries)).flatMap(sessionEntryToContextMessages),
 	).tokens;
 
 	const cutPoint = findCutPoint(compactableEntries, 0, boundaryEnd, settings.keepRecentTokens);

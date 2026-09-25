@@ -41,6 +41,7 @@ import { Check } from "typebox/value";
 import { isValidThinkingLevel } from "../cli/args.ts";
 import { getAgentDir, getRlmRuntimePath } from "../config.ts";
 import { executeBashWithOperations } from "../core/bash-executor.ts";
+import { createEventBus } from "../core/event-bus.ts";
 import { configureHttpDispatcher } from "../core/http-dispatcher.ts";
 import { ModelRegistry } from "../core/model-registry.ts";
 import { findInitialModel, resolveCliModel } from "../core/model-resolver.ts";
@@ -60,6 +61,12 @@ import {
 	createLegacyRecall,
 	legacyBankFromEnv,
 } from "../ultron/auto-memory.ts";
+import {
+	CONTEXT_EDIT_EVENT,
+	CONTEXT_ENTRY_PROJECTORS,
+	CONTEXT_PROMPT,
+	ContextControl,
+} from "../ultron/context-control.ts";
 import { createFamilyModule } from "../ultron/family.ts";
 import { createGrantModule } from "../ultron/grants.ts";
 import { createInstanceModule } from "../ultron/instances.ts";
@@ -184,6 +191,7 @@ export const RLM_TOOL_DESCRIPTION = [
 	'- `await agents.invoke(definition, input)` runs a typed agent and returns its result (`await agents.list()` shows definitions, e.g. "rlm-child" with input {"prompt": ...}); `agents.spawn(...)` starts one in the background and returns a handle with `await handle.result()`.',
 	"- `await workflows.run(nodes)` runs a validated agent graph; `await memory.prepare(query)` / `await memory.propose(text, evidence)` recall and retain long-term memory; `await bash(cmd)` runs a shell command.",
 	"- `state` is a dict that survives between calls; other variables persist within the session until the kernel is reset.",
+	CONTEXT_PROMPT,
 ].join("\n");
 
 export function createUltronRlmTool(
@@ -1198,7 +1206,10 @@ async function createCodingAgentHarness(
 	configureHttpDispatcher(settingsManager.getHttpIdleTimeoutMs());
 	// Extensions (tool renderers, headless UI contexts) read the theme; Pi always has one initialized.
 	initTheme(settingsManager.getTheme(), false);
+	// Pi's shared extension event bus (`pi.events`); the worker also publishes context edits on it.
+	const extensionEvents = createEventBus();
 	const resourceLoader = new DefaultResourceLoader({
+		eventBus: extensionEvents,
 		cwd: session.metadata.cwd,
 		agentDir: getAgentDir(),
 		settingsManager,
@@ -1388,6 +1399,7 @@ async function createCodingAgentHarness(
 				toolContext: { env: executionEnv },
 				resources,
 				systemPrompt,
+				entryProjectors: CONTEXT_ENTRY_PROJECTORS,
 				streamOptions: providerRequestOptions(settingsManager),
 				retry: settingsManager.getRetrySettings(),
 			},
@@ -1456,6 +1468,13 @@ async function createCodingAgentHarness(
 					? nativeServices.handle(type, payload, context, await mainBranch(context))
 					: nativeServices.handle(type, payload, context),
 		};
+		// Model-owned context (`ctx`) and collapse on return; edits are published to extensions on `pi.events`.
+		const contextControl = new ContextControl({
+			harness,
+			rootLane: lane,
+			observe: (event) => extensionEvents.emit(CONTEXT_EDIT_EVENT, event),
+		});
+		const removeContextControl = contextControl.install();
 		traceStartup("worker.host");
 		host = new NativeRlmHost(harness, lane, {
 			store: createSessionTaskStore(session),
@@ -1465,6 +1484,7 @@ async function createCodingAgentHarness(
 			rootTurns: true,
 			pinLane: (lane, holder) => rlmTool.pin(lane, holder),
 			unpinLane: (lane, holder) => rlmTool.unpin(lane, holder),
+			onTaskEnd: (task, info) => contextControl.taskEnded(task, info),
 			services: branchedServices,
 			beforeLaneReuse: (lane) => rlmTool.resetScratch(lane),
 			predict: createPredictAdapter({ models: modelRuntime, model: () => lane.getModel(TODO_CONTEXT) }),
@@ -1480,6 +1500,7 @@ async function createCodingAgentHarness(
 				return [{ id: current.id, version: current.version, text }];
 			},
 			modules: [
+				contextControl.module,
 				createFamilyModule({ store: createSessionModuleStore(session, "family") }),
 				createProgressModule({ store: createSessionModuleStore(session, "progress") }),
 				createScheduleModule({ store: createSessionModuleStore(session, "schedules") }),
@@ -1544,6 +1565,7 @@ async function createCodingAgentHarness(
 			harness,
 			closeRlm: async () => {
 				removeRootTurnListener();
+				removeContextControl();
 				removeAutoMemory();
 				await autoMemory?.settle();
 				removeNudgeTurnListener();

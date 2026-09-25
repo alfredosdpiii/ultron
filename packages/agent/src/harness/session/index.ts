@@ -10,6 +10,16 @@ export type {
 	PreparedCommit,
 } from "./commit.ts";
 export { commitWrite, insertEntry, insertUsage, prepareStorageCommit, validateCommittedWrites } from "./commit.ts";
+export {
+	applyContextEdits,
+	buildSessionContext,
+	CONTEXT_EDIT_CUSTOM_TYPE,
+	CONTEXT_OMITTED_CUSTOM_TYPE,
+	CONTEXT_OMITTED_TOOL_RESULT_TEXT,
+	type ContextEdit,
+	type ContextEditReplacement,
+	contextEditsOf,
+} from "./context.ts";
 export { createForkSnapshot, type ForkSourceSnapshot } from "./fork.ts";
 export { type ForkCurrentStatePlan, projectForkCurrentStateWrite } from "./fork-policy.ts";
 export {

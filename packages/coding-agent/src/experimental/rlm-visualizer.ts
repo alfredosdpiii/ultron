@@ -69,6 +69,8 @@ export interface RlmSnapshot {
 	readonly timing?: ReadonlyMap<string, RlmTiming>;
 	/** Last inspection failure, shown instead of stale data being mistaken for live data. */
 	readonly error?: string;
+	/** What the root model forgot, pinned, or noted in its own context (`ctx.state`). */
+	readonly context?: RlmContextState | null;
 }
 
 /** Color hooks; the TUI passes the theme, tests pass identity functions. */
@@ -279,6 +281,8 @@ export function renderRlmPanel(snapshot: RlmSnapshot, width: number, options: Rl
 			lines.push(style.fg("dim", `+${more} more${hiddenActive > 0 ? ` (${hiddenActive} active)` : ""}`));
 		}
 	}
+
+	lines.push(...renderContextLines(snapshot.context, style));
 
 	const pool = snapshot.pool;
 	if (pool) {
@@ -625,4 +629,63 @@ export function extractRootCell(
 		};
 	}
 	return null;
+}
+
+/** Root context control state (`ctx.state`): forgotten, pinned, and noted items. */
+export interface RlmContextState {
+	readonly forgotten: readonly {
+		readonly id: string;
+		readonly kind?: string;
+		readonly preview?: string;
+		readonly source?: string;
+		readonly reason?: string;
+	}[];
+	readonly forgottenCount: number;
+	readonly collapsedCount: number;
+	readonly pinned: readonly { readonly id: string; readonly kind?: string; readonly preview?: string }[];
+	readonly pinnedCount: number;
+	readonly notes: number;
+}
+
+export function parseContextState(value: unknown): RlmContextState | null {
+	if (value === null || typeof value !== "object") return null;
+	const record = value as Record<string, unknown>;
+	const list = (items: unknown) =>
+		Array.isArray(items)
+			? items.filter(
+					(item): item is { id: string } =>
+						item !== null && typeof item === "object" && typeof (item as { id?: unknown }).id === "string",
+				)
+			: [];
+	const count = (item: unknown) => (typeof item === "number" && Number.isFinite(item) ? item : 0);
+	return {
+		forgotten: list(record.forgotten),
+		forgottenCount: count(record.forgottenCount),
+		collapsedCount: count(record.collapsedCount),
+		pinned: list(record.pinned),
+		pinnedCount: count(record.pinnedCount),
+		notes: count(record.notes),
+	};
+}
+
+/** Context lines of the panel: a summary line, then the latest forgotten and pinned items (at most three each). */
+export function renderContextLines(context: RlmContextState | null | undefined, style: RlmStyle): string[] {
+	if (!context) return [];
+	const { forgottenCount, collapsedCount, pinnedCount, notes } = context;
+	if (forgottenCount + collapsedCount + pinnedCount + notes === 0) return [];
+	const lines = [
+		style.fg(
+			"muted",
+			`context: ${forgottenCount} forgotten · ${collapsedCount} collapsed · ${pinnedCount} pinned · ${notes} notes`,
+		),
+	];
+	for (const item of context.forgotten.slice(-3)) {
+		const why = item.reason ? ` (${oneLine(item.reason)})` : item.source ? ` (${item.source})` : "";
+		lines.push(
+			style.fg("dim", `  forgot ${shortId(item.id)} ${item.kind ?? ""} ${oneLine(item.preview ?? "")}${why}`),
+		);
+	}
+	for (const item of context.pinned.slice(-3))
+		lines.push(style.fg("dim", `  pinned ${shortId(item.id)} ${item.kind ?? ""} ${oneLine(item.preview ?? "")}`));
+	return lines;
 }

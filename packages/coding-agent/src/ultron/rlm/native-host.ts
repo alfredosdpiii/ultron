@@ -37,6 +37,8 @@ type TaskRecord = NativeTask & {
 	cleanup?: () => void;
 	usageReservation?: NativeUsageReservation;
 	usageSettled?: boolean;
+	/** Provider-reported cost of the task's own model run, when known. */
+	cost?: number;
 };
 
 type TaskRequest = {
@@ -246,6 +248,8 @@ export type NativeHostOptions = {
 	/** Keep a lane's kernel alive against eviction; returns false when the pool has no pin capacity left. */
 	pinLane?: (lane: string, holder: string) => boolean;
 	unpinLane?: (lane: string, holder: string) => void;
+	/** Called once a task's terminal result is durable (context control collapses returned results on it). */
+	onTaskEnd?: (task: NativeTask, info: { cost: number | null }) => void;
 	now?: () => number;
 };
 
@@ -274,6 +278,7 @@ export class NativeRlmHost {
 	private rootTurnActive = false;
 	private readonly pinLane: NativeHostOptions["pinLane"];
 	private readonly unpinLane: NativeHostOptions["unpinLane"];
+	private readonly onTaskEnd: NativeHostOptions["onTaskEnd"];
 
 	constructor(harness: AgentHarness, _rootLane: AgentLane, options: NativeHostOptions) {
 		if (!options?.store) throw new Error("NativeRlmHost requires options.store");
@@ -289,6 +294,7 @@ export class NativeRlmHost {
 		this.rootTurns = options.rootTurns ?? false;
 		this.pinLane = options.pinLane;
 		this.unpinLane = options.unpinLane;
+		this.onTaskEnd = options.onTaskEnd;
 		this.registry = new NativeDefinitionRegistry(options.definitionStore, {
 			deterministic: options.deterministic,
 			predict: options.predict,
@@ -549,6 +555,7 @@ export class NativeRlmHost {
 				verification: "unverified",
 			};
 		} finally {
+			if (typeof modelUsage?.cost === "number") task.cost = modelUsage.cost;
 			if (modelReservation)
 				await this.usage?.settle(modelReservation, {
 					status: modelStatus,
@@ -580,6 +587,11 @@ export class NativeRlmHost {
 					task.usageSettled = true;
 				}
 				task.resolve?.(committed.result);
+				try {
+					this.onTaskEnd?.(publicRecord(task), { cost: task.cost ?? null });
+				} catch {
+					// Observers never affect a task's durable result.
+				}
 				return committed.result;
 			} catch (error) {
 				task.reject?.(error);

@@ -52,10 +52,12 @@ import {
 	extractRootCell,
 	isActiveState,
 	parseAgentsStatus,
+	parseContextState,
 	parsePool,
 	parseProgress,
 	parseRetained,
 	RlmClock,
+	type RlmContextState,
 	type RlmLimits,
 	type RlmPool,
 	type RlmProgress,
@@ -149,6 +151,7 @@ interface RlmPollState {
 	retained: Set<string>;
 	progress: Map<string, RlmProgress>;
 	timing: Map<string, RlmTiming>;
+	context?: RlmContextState | null;
 	error?: string;
 }
 
@@ -1310,11 +1313,12 @@ export class ExperimentalClientTui implements Component {
 		}
 		this.#rlmInFlight = true;
 		try {
-			const [status, instances, pool, jev] = await Promise.allSettled([
+			const [status, instances, pool, jev, contextState] = await Promise.allSettled([
 				control.inspect("agents.status", {}, BACKGROUND_CONTEXT),
 				control.inspect("instances.list", {}, BACKGROUND_CONTEXT),
 				control.inspect("rlm.pool", {}, BACKGROUND_CONTEXT),
 				control.inspect("jev.decisions", {}, BACKGROUND_CONTEXT),
+				control.inspect("ctx.state", {}, BACKGROUND_CONTEXT),
 			]);
 			if (this.#closed) return;
 			const next: RlmPollState = { ...this.#rlmState };
@@ -1330,6 +1334,7 @@ export class ExperimentalClientTui implements Component {
 			}
 			if (instances.status === "fulfilled") next.retained = parseRetained(instances.value);
 			next.pool = pool.status === "fulfilled" ? parsePool(pool.value) : null;
+			next.context = contextState.status === "fulfilled" ? parseContextState(contextState.value) : null;
 			// Progress assessments are cheap host reads; only fetch them for a few running tasks while visible.
 			const progress = new Map<string, RlmProgress>();
 			if (this.#rlmVisible) {
@@ -1376,6 +1381,7 @@ export class ExperimentalClientTui implements Component {
 			retained: state.retained,
 			progress: state.progress,
 			timing: state.timing,
+			context: state.context ?? null,
 			...(state.error === undefined ? {} : { error: state.error }),
 		};
 	}
