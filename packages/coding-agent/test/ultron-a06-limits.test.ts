@@ -268,12 +268,12 @@ describe("A06 limits", () => {
 		test("an interrupted runaway cell stops, and the kernel serves the next cell", async () => {
 			const kernel = new RlmKernel({ cwd: dir, runtimePath }, async () => null);
 			try {
-				await kernel.execute("state = 1");
+				await kernel.execute("marker = 1");
 				const started = Date.now();
 				await expect(kernel.execute("while True:\n    pass", AbortSignal.timeout(300))).rejects.toThrow();
 				expect(Date.now() - started).toBeLessThan(5000);
 				// Interrupt replaces the process; state is lost rather than silently restored.
-				expect(await kernel.execute("'state' in globals()")).toMatchObject({ result: "False" });
+				expect(await kernel.execute("'marker' in globals()")).toMatchObject({ result: "False" });
 			} finally {
 				await kernel.shutdown();
 			}
