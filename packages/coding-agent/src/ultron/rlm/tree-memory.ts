@@ -8,9 +8,15 @@ import { readdirSync, readFileSync } from "node:fs";
  *   (`systemd-run --user --scope -p MemoryMax=… -p MemorySwapMax=0`), so the kernel's own memory
  *   controller enforces the cap; the host reads the scope's `memory.events` to report an OOM kill clearly.
  *   Needs no root, only a running user manager with the memory controller delegated.
- * - "watchdog": the host sums anonymous and shared resident memory (RssAnon + RssShmem) of the kernel's
- *   descendant tree from /proc every ~500 ms and SIGKILLs the tree when it is over the cap. Shared anonymous
- *   pages of forked children are counted once per process, so the sum can overestimate, never underestimate.
+ * - "watchdog": the host sums the proportional anonymous and shared memory (Pss_Anon + Pss_Shmem + SwapPss, so
+ *   copy-on-write pages shared by forked children count once; RssAnon + RssShmem + VmSwap where PSS is
+ *   unavailable) of the kernel's descendant tree from /proc and SIGKILLs the tree when it is over the cap. It
+ *   polls every 500 ms, every 250 ms above 40% of the cap and every 100 ms above 70%, so an allocation burst
+ *   can overshoot by what the tree allocates within one poll; RLIMIT_DATA still bounds each process.
+ *
+ * In every mode the runtime makes the kernel a child subreaper (PR_SET_CHILD_SUBREAPER), so processes that
+ * double-fork out of a cell are reparented to the kernel and stay counted and killable, and the host kills the
+ * kernel's process group, its descendant tree, and (for a scope) every process left in the scope.
  * - "off": no tree cap (non-Linux, or the cap is 0).
  *
  * Per-process RLIMIT_DATA stays in force in every mode.
@@ -124,10 +130,30 @@ export function cgroupOomKills(dir: string): number | undefined {
 	}
 }
 
+interface ProcStat {
+	ppid: number;
+	state: string;
+	/** Start time in clock ticks since boot; tells a live process apart from a later one reusing its pid. */
+	startTime: number;
+}
+
+/** Parent, state and start time of one process from /proc/<pid>/stat, or undefined when it is gone. */
+export function processStat(pid: number): ProcStat | undefined {
+	try {
+		const stat = readFileSync(`/proc/${pid}/stat`, "utf8");
+		// After the parenthesized command name (which may contain spaces): state(3) ppid(4) ... starttime(22).
+		const fields = stat.slice(stat.lastIndexOf(")") + 2).split(" ");
+		return { state: fields[0]!, ppid: Number(fields[1]), startTime: Number(fields[19]) };
+	} catch {
+		return undefined;
+	}
+}
+
 /**
- * Linux descendants of `root`, found before the group is killed so that children
- * which left the kernel's process group (setsid, setpgid) are still terminated.
- * A process that already reparented away (double-fork daemon) is not owned anymore.
+ * Live Linux descendants of `root` (zombies are skipped: they hold no memory and cannot be signalled).
+ * They are found before the group is killed so that children which left the kernel's process group
+ * (setsid, setpgid) are still terminated. The runtime makes the kernel a child subreaper, so a process that
+ * double-forks away from its parent is reparented to the kernel and stays in this tree while the kernel lives.
  */
 export function descendantPids(root: number): number[] {
 	if (process.platform !== "linux") return [];
@@ -140,16 +166,12 @@ export function descendantPids(root: number): number[] {
 	}
 	for (const entry of entries) {
 		if (!/^[0-9]+$/.test(entry)) continue;
-		try {
-			const stat = readFileSync(`/proc/${entry}/stat`, "utf8");
-			// Field 4 (ppid) follows the parenthesized command name, which may contain spaces.
-			const parent = Number(stat.slice(stat.lastIndexOf(")") + 2).split(" ")[1]);
-			const list = children.get(parent) ?? [];
-			list.push(Number(entry));
-			children.set(parent, list);
-		} catch {
-			/* The process exited during the scan. */
-		}
+		const stat = processStat(Number(entry));
+		// The process exited during the scan, or is a zombie (which has no children of its own).
+		if (!stat || stat.state === "Z" || stat.state === "X") continue;
+		const list = children.get(stat.ppid) ?? [];
+		list.push(Number(entry));
+		children.set(stat.ppid, list);
 	}
 	const result: number[] = [];
 	const queue = [root];
@@ -162,21 +184,114 @@ export function descendantPids(root: number): number[] {
 	return result;
 }
 
-/** RssAnon + RssShmem of one process in bytes; 0 when it is gone or a kernel thread. */
+/** RssAnon + RssShmem + VmSwap of one process in bytes, from /proc/<pid>/status; 0 when it is gone. */
 export function processPrivateRssBytes(pid: number): number {
 	try {
 		const status = readFileSync(`/proc/${pid}/status`, "utf8");
 		let kib = 0;
-		for (const match of status.matchAll(/^(?:RssAnon|RssShmem):\s+(\d+) kB$/gm)) kib += Number(match[1]);
+		for (const match of status.matchAll(/^(?:RssAnon|RssShmem|VmSwap):\s+(\d+) kB$/gm)) kib += Number(match[1]);
 		return kib * 1024;
 	} catch {
 		return 0;
 	}
 }
 
-/** Resident memory of `root` and its descendant tree, as counted by the watchdog. */
-export function treeRssBytes(root: number): number {
-	let total = processPrivateRssBytes(root);
-	for (const pid of descendantPids(root)) total += processPrivateRssBytes(pid);
-	return total;
+/**
+ * Proportional anonymous and shared memory of one process in bytes: Pss_Anon + Pss_Shmem + SwapPss from
+ * /proc/<pid>/smaps_rollup, where a page shared by N processes (copy-on-write pages after fork, shared memory)
+ * counts 1/N in each, so summing over a tree counts it once. Falls back to RssAnon + RssShmem + VmSwap when
+ * smaps_rollup or its Pss_Anon field (Linux 5.9+) is unavailable. 0 when the process is gone or a kernel thread.
+ */
+export function processMemoryBytes(pid: number): number {
+	let rollup: string;
+	try {
+		rollup = readFileSync(`/proc/${pid}/smaps_rollup`, "utf8");
+	} catch {
+		return processPrivateRssBytes(pid);
+	}
+	if (!/^Pss_Anon:/m.test(rollup)) return rollup.trim() === "" ? 0 : processPrivateRssBytes(pid);
+	let kib = 0;
+	for (const match of rollup.matchAll(/^(?:Pss_Anon|Pss_Shmem|SwapPss):\s+(\d+) kB$/gm)) kib += Number(match[1]);
+	return kib * 1024;
+}
+
+/** Memory of `root` and its live descendant tree as counted by the watchdog, with the descendants seen. */
+export function treeMemoryUsage(root: number): { bytes: number; descendants: number[] } {
+	const descendants = descendantPids(root);
+	let bytes = processMemoryBytes(root);
+	for (const pid of descendants) bytes += processMemoryBytes(pid);
+	return { bytes, descendants };
+}
+
+/** Watchdog poll interval for a tree at `bytes` of a `capBytes` cap: faster as it nears the cap. */
+export function watchdogPollMs(bytes: number, capBytes: number): number {
+	if (bytes >= capBytes * 0.7) return 100;
+	if (bytes >= capBytes * 0.4) return 250;
+	return 500;
+}
+
+/** Pids listed in a cgroup's cgroup.procs (and its child cgroups), or [] when it is gone. */
+export function cgroupPids(dir: string): number[] {
+	const pids: number[] = [];
+	try {
+		for (const line of readFileSync(`${dir}/cgroup.procs`, "utf8").split("\n")) {
+			if (/^[0-9]+$/.test(line)) pids.push(Number(line));
+		}
+		for (const entry of readdirSync(dir, { withFileTypes: true })) {
+			if (entry.isDirectory()) pids.push(...cgroupPids(`${dir}/${entry.name}`));
+		}
+	} catch {
+		/* The scope is gone. */
+	}
+	return pids;
+}
+
+function pause(ms: number): void {
+	Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+function signal(pid: number, name: NodeJS.Signals): void {
+	try {
+		process.kill(pid, name);
+	} catch {
+		/* Already gone. */
+	}
+}
+
+export interface KillTreeOptions {
+	/** Whether `root` leads its own process group (spawned detached), so the group is killed too. */
+	ownsProcessGroup: boolean;
+	/** Whether `root` is still the host's unreaped child, so its pid cannot belong to another process yet. */
+	rootAlive: boolean;
+	/** Processes known to have been in the tree earlier, with their start times, killed if still the same process. */
+	known?: ReadonlyMap<number, number>;
+	/** The kernel's cgroup scope; every process still in it is killed. */
+	cgroupDir?: string;
+}
+
+/**
+ * SIGKILLs `root` and every process in its tree. The root is stopped first, so it can neither start new
+ * processes nor exit while its descendants are killed; as a child subreaper it then adopts the orphans of each
+ * killed descendant, and repeated sweeps (bounded, a few ms apart) kill those too before the root itself dies.
+ * The process group, processes seen in earlier watchdog scans, and the cgroup scope's members are killed as well.
+ */
+export function killProcessTree(root: number, options: KillTreeOptions): void {
+	if (options.rootAlive) signal(root, "SIGSTOP");
+	if (options.rootAlive && process.platform === "linux") {
+		for (let sweep = 0; sweep < 20; sweep++) {
+			const pids = descendantPids(root);
+			if (pids.length === 0) break;
+			for (const pid of pids) signal(pid, "SIGKILL");
+			pause(sweep < 5 ? 2 : 10);
+		}
+	}
+	if (options.ownsProcessGroup) signal(-root, "SIGKILL");
+	if (options.rootAlive) signal(root, "SIGKILL");
+	for (const [pid, startTime] of options.known ?? []) {
+		const stat = processStat(pid);
+		if (stat && stat.startTime === startTime && stat.state !== "Z") signal(pid, "SIGKILL");
+	}
+	if (options.cgroupDir) {
+		for (const pid of cgroupPids(options.cgroupDir)) if (pid !== process.pid) signal(pid, "SIGKILL");
+	}
 }

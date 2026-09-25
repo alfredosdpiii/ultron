@@ -6,12 +6,14 @@ import { processSnapshotKey, sha256Hex, signSnapshot, verifySnapshot } from "./s
 import {
 	cgroupOomKills,
 	cgroupScopeCommand,
-	descendantPids,
 	kernelTreeMemoryLimit,
+	killProcessTree,
 	processCgroupDir,
+	processStat,
 	type TreeMemoryBackend,
 	treeMemoryBackend,
-	treeRssBytes,
+	treeMemoryUsage,
+	watchdogPollMs,
 } from "./tree-memory.ts";
 
 const CREDENTIAL_NAME =
@@ -174,7 +176,9 @@ type Generation = {
 	/** cgroup v2 directory of the kernel's scope, resolved once the runtime is up. */
 	cgroupDir?: string;
 	oomKillsAtStart?: number;
-	memoryTimer?: ReturnType<typeof setInterval>;
+	memoryTimer?: ReturnType<typeof setTimeout>;
+	/** Descendants seen by watchdog scans (pid to start time), killed with the tree even if they left it. */
+	knownDescendants: Map<number, number>;
 	buffer?: Buffer;
 	bufferedBytes: number;
 	protocolBytes: number;
@@ -404,6 +408,7 @@ export class RlmKernel {
 			bufferedBytes: 0,
 			protocolBytes: 0,
 			treeBackend,
+			knownDescendants: new Map(),
 		};
 		this.generation = generation;
 		this.stderr = "";
@@ -487,7 +492,8 @@ export class RlmKernel {
 	private treeMemoryExceeded(generation: Generation): boolean {
 		const pid = generation.child.pid;
 		if (!pid) return false;
-		if (generation.treeBackend === "watchdog") return treeRssBytes(pid) > this.treeMemoryMb * 1024 * 1024;
+		if (generation.treeBackend === "watchdog")
+			return this.watchdogTreeBytes(generation) > this.treeMemoryMb * 1024 * 1024;
 		if (generation.treeBackend !== "cgroup") return false;
 		if (!generation.cgroupDir) {
 			// Before systemd-run execs the runtime the pid may still sit in the caller's cgroup.
@@ -500,14 +506,47 @@ export class RlmKernel {
 		return kills !== undefined && kills > (generation.oomKillsAtStart ?? 0);
 	}
 
-	/** Polls the tree cap every ~500 ms and SIGKILLs the whole tree (through fail) when it is exceeded. */
+	/** Memory of the kernel's tree for the watchdog; remembers the descendants it saw (see knownDescendants). */
+	private watchdogTreeBytes(generation: Generation): number {
+		const pid = generation.child.pid;
+		if (!pid) return 0;
+		const { bytes, descendants } = treeMemoryUsage(pid);
+		const known = generation.knownDescendants;
+		for (const [seen, startTime] of known) {
+			if (processStat(seen)?.startTime !== startTime) known.delete(seen);
+		}
+		for (const descendant of descendants) {
+			const stat = processStat(descendant);
+			if (stat) known.set(descendant, stat.startTime);
+		}
+		return bytes;
+	}
+
+	/**
+	 * Polls the tree cap and SIGKILLs the whole tree (through fail) when it is exceeded. The scope's memory.events
+	 * is read every 500 ms (the kernel enforces MemoryMax itself); the watchdog polls faster as the tree nears the cap.
+	 */
 	private startTreeMemoryWatchdog(generation: Generation): void {
 		if (generation.treeBackend === "off") return;
-		generation.memoryTimer = setInterval(() => {
+		const capBytes = this.treeMemoryMb * 1024 * 1024;
+		const poll = () => {
 			if (!this.isCurrent(generation)) return;
-			if (this.treeMemoryExceeded(generation))
+			let delay = 500;
+			if (generation.treeBackend === "watchdog") {
+				const bytes = this.watchdogTreeBytes(generation);
+				if (bytes > capBytes) {
+					this.fail(generation, new Error(treeMemoryLimitMessage(this.treeMemoryMb, generation.treeBackend)));
+					return;
+				}
+				delay = watchdogPollMs(bytes, capBytes);
+			} else if (this.treeMemoryExceeded(generation)) {
 				this.fail(generation, new Error(treeMemoryLimitMessage(this.treeMemoryMb, generation.treeBackend)));
-		}, 500);
+				return;
+			}
+			generation.memoryTimer = setTimeout(poll, delay);
+			generation.memoryTimer.unref?.();
+		};
+		generation.memoryTimer = setTimeout(poll, 500);
 		generation.memoryTimer.unref?.();
 	}
 
@@ -805,7 +844,7 @@ export class RlmKernel {
 		if (generation.initialized) this.autoRestore = false;
 		clearTimeout(generation.startupTimer);
 		clearInterval(generation.cpuTimer);
-		clearInterval(generation.memoryTimer);
+		clearTimeout(generation.memoryTimer);
 		generation.buffer = undefined;
 		generation.bufferedBytes = 0;
 		generation.activeCell?.controller.abort(error);
@@ -817,27 +856,21 @@ export class RlmKernel {
 		generation.pending.clear();
 		this.rejectOperations(error);
 
-		// The detached child owns this group. SIGKILL also stops infinite loops and
-		// descendants that ignore SIGTERM, even if the group leader already exited.
-		// Descendants are collected first, while they are still linked to the kernel.
-		const descendants = generation.child.pid ? descendantPids(generation.child.pid) : [];
-		try {
-			if (generation.ownsProcessGroup && generation.child.pid) {
-				process.kill(-generation.child.pid, "SIGKILL");
-			} else {
-				generation.child.kill("SIGKILL");
-			}
-		} catch {
-			// ESRCH is normal when the child exited before its exit event was handled.
-			try {
-				generation.child.kill("SIGKILL");
-			} catch {
-				/* Already gone. */
-			}
+		// The detached child owns this group. SIGKILL also stops infinite loops and descendants that ignore
+		// SIGTERM, even if the group leader already exited. The kernel is stopped while its descendants are
+		// killed, so orphans it adopts as a subreaper are caught too.
+		const pid = generation.child.pid;
+		if (pid) {
+			killProcessTree(pid, {
+				ownsProcessGroup: generation.ownsProcessGroup,
+				rootAlive: generation.child.exitCode === null && generation.child.signalCode === null,
+				known: generation.knownDescendants,
+				cgroupDir: generation.cgroupDir,
+			});
 		}
-		for (const pid of descendants) {
+		if (!generation.ownsProcessGroup || !pid) {
 			try {
-				process.kill(pid, "SIGKILL");
+				generation.child.kill("SIGKILL");
 			} catch {
 				/* Already gone. */
 			}

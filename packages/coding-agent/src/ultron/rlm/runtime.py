@@ -247,6 +247,21 @@ def _apply_resource_limits() -> None:
         _arm_cpu_limit()
 
 
+def _become_subreaper() -> None:
+    # A cell may start a process that double-forks (or setsid()s and forks) so its parent exits. Linux would
+    # reparent such an orphan to init or a subreaper outside the kernel, where the host's tree memory watchdog
+    # neither counts nor kills it. As a child subreaper the kernel adopts every orphaned descendant instead.
+    if not sys.platform.startswith("linux"):
+        return
+    try:
+        import ctypes
+
+        libc = ctypes.CDLL(None, use_errno=True)
+        libc.prctl(36, 1, 0, 0, 0)  # PR_SET_CHILD_SUBREAPER
+    except (OSError, AttributeError):
+        pass
+
+
 def _memory_limit_note() -> str:
     return (
         f"RLM kernel exceeded its memory limit ({_MAX_MEMORY_MB} MiB per process, ULTRON_RLM_MAX_MEMORY_MB); "
@@ -905,6 +920,7 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
+    _become_subreaper()
     _apply_resource_limits()
     try:
         asyncio.run(main())
