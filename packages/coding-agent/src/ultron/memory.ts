@@ -26,7 +26,16 @@ export type MemoryGateDecision =
  */
 export type MemoryGateRequest =
 	| { action: "recall"; query: string; scope: MemoryScope; taskId: string; explicit?: boolean }
-	| { action: "retain"; text: string; evidence: MemoryEvidence[]; scope: MemoryScope; explicit?: boolean };
+	| {
+			action: "retain";
+			text: string;
+			evidence: MemoryEvidence[];
+			scope: MemoryScope;
+			explicit?: boolean;
+			/** The exchange an automatic retention came from, so the gate judges the request and the answer. */
+			source?: MemoryRetainSource;
+	  };
+export type MemoryRetainSource = { prompt: string; response: string };
 /** Bind this required callback to Jev's recall and retention policy decisions. */
 export type MemoryGate = (request: MemoryGateRequest, signal?: AbortSignal) => Promise<MemoryGateDecision>;
 export type MemoryRecallRequest = {
@@ -784,12 +793,14 @@ export class NativeMemoryService {
 			scope = "session",
 			evidenceClass,
 			explicit = false,
+			source,
 		}: {
 			text: string;
 			evidence: MemoryEvidence[];
 			scope?: MemoryScope;
 			evidenceClass?: MemoryEvidenceClass;
 			explicit?: boolean;
+			source?: MemoryRetainSource;
 		},
 		signal?: AbortSignal,
 	): Promise<MemoryOperation> {
@@ -799,7 +810,7 @@ export class NativeMemoryService {
 		const claim = evidenceClassOf(evidenceClass, "hypothesis");
 		const tags = this.tags(scope);
 		await this.load();
-		return this.retain("propose", undefined, text, refs, claim, scope, tags, signal, explicit);
+		return this.retain("propose", undefined, text, refs, claim, scope, tags, signal, explicit, source);
 	}
 	async correct(
 		memoryId: string,
@@ -830,6 +841,7 @@ export class NativeMemoryService {
 		tags: string[],
 		signal?: AbortSignal,
 		explicit = false,
+		source?: MemoryRetainSource,
 	): Promise<MemoryOperation> {
 		const previous = memoryId ? this.currentClaim(memoryId) : undefined;
 		const id = await this.start(kind, {
@@ -850,6 +862,7 @@ export class NativeMemoryService {
 						evidence: structuredClone(evidence),
 						scope,
 						...(explicit ? { explicit } : {}),
+						...(source ? { source: { prompt: source.prompt, response: source.response } } : {}),
 					},
 					signal,
 				),

@@ -1,4 +1,7 @@
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { getAgentDir } from "../config.ts";
 
 export type JevRoute = "fast" | "powerful" | "architecture" | "designer";
 export type JevTriage = {
@@ -289,8 +292,21 @@ export class NativeJevClient {
 	}
 }
 
-export function createNativeJevClient(): NativeJevClient | undefined {
-	const apiKey = process.env.TYPESAFE_API_KEY?.trim();
+/**
+ * Jev is configured by TYPESAFE_API_KEY or, as with the Pi Jev extension, a `jev-api-key` file in the
+ * agent directory. Pass `keyFile: undefined` explicitly to consult only the environment.
+ */
+export function createNativeJevClient(
+	options: { keyFile?: string } = { keyFile: join(getAgentDir(), "jev-api-key") },
+): NativeJevClient | undefined {
+	let apiKey = process.env.TYPESAFE_API_KEY?.trim();
+	if (!apiKey && options.keyFile) {
+		try {
+			apiKey = readFileSync(options.keyFile, "utf8").trim();
+		} catch {
+			return undefined;
+		}
+	}
 	if (!apiKey) return undefined;
 	return new NativeJevClient({
 		apiKey,
