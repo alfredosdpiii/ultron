@@ -21,6 +21,7 @@ const allowedExternalPackages = new Set([
 	"@earendil-works/chord/context",
 	"@earendil-works/chord/delta",
 	"@earendil-works/chord/node",
+	"<runtime>",
 	"@silvia-odwyer/photon-node",
 	"jiti",
 	// Optional native accelerators. Their callers fall back to JavaScript when absent.
@@ -165,6 +166,9 @@ const mainResult = await build({
 		"cli-runtime": join(codingAgentDistDir, "cli.js"),
 		index: join(codingAgentDistDir, "index.js"),
 		"rpc-entry": join(codingAgentDistDir, "rpc-entry.js"),
+		"experimental/coordinator-entry": join(codingAgentDistDir, "experimental", "coordinator-entry.js"),
+		"experimental/server-entry": join(codingAgentDistDir, "experimental", "server-entry.js"),
+		"experimental/session-worker-entry": join(codingAgentDistDir, "experimental", "session-worker-entry.js"),
 	},
 	outdir: bundleDir,
 	chunkNames: "chunks/[name]-[hash]",

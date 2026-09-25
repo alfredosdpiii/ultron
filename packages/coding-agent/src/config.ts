@@ -431,6 +431,22 @@ export function getExportTemplateDir(): string {
 	return join(packageDir, srcOrDist, "core", "export-html");
 }
 
+/** Resolve only shipped Python code, never a file relative to the user's project. */
+export function getRlmRuntimePath(): string {
+	const packageDir = getPackageDir();
+	const candidates = isBunBinary
+		? [join(packageDir, "ultron/rlm/runtime.py")]
+		: [
+				join(packageDir, "src/ultron/rlm/runtime.py"),
+				join(packageDir, "dist/ultron/rlm/runtime.py"),
+				// Test runners may resolve the workspace root as the package directory.
+				join(packageDir, "packages/coding-agent/src/ultron/rlm/runtime.py"),
+			];
+	const runtime = candidates.find((path) => existsSync(path));
+	if (!runtime) throw new Error("Ultron RLM runtime.py is not installed");
+	return runtime;
+}
+
 /** Get path to package.json */
 export function getPackageJsonPath(): string {
 	return join(getPackageDir(), "package.json");
@@ -498,10 +514,13 @@ try {
 }
 
 const piConfigName: string | undefined = pkg.piConfig?.name;
-export const PACKAGE_NAME: string = pkg.name || "@earendil-works/pi-coding-agent";
+export const PACKAGE_NAME: string = pkg.name || "@bryandlp/ultron-coding-agent";
 export const APP_NAME: string = piConfigName || "pi";
-export const APP_TITLE: string = piConfigName ? APP_NAME : "π";
-export const CONFIG_DIR_NAME: string = pkg.piConfig?.configDir || ".pi";
+export const APP_TITLE: string = piConfigName ? APP_NAME : "ultron";
+// Keep project-local resources in the upstream-compatible .pi directory. Ultron's
+// user-owned configuration is separate and lives under ~/.ultron/agent.
+export const CONFIG_DIR_NAME = ".pi";
+export const AGENT_CONFIG_DIR_NAME = ".ultron";
 export const VERSION: string = pkg.version || "0.0.0";
 
 // e.g., PI_CODING_AGENT_DIR or TAU_CODING_AGENT_DIR
@@ -530,7 +549,7 @@ export function getAgentDir(): string {
 	if (envDir) {
 		return expandTildePath(envDir);
 	}
-	return join(homedir(), CONFIG_DIR_NAME, "agent");
+	return join(homedir(), AGENT_CONFIG_DIR_NAME, "agent");
 }
 
 /** Get path to user's custom themes directory */

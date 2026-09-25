@@ -32,6 +32,8 @@ import {
 const OFFICIAL_PACKAGE_NAME = "@earendil-works/pi-coding-agent";
 const OFFICIAL_APP_NAME = "pi";
 const OFFICIAL_CONFIG_DIR_NAME = ".pi";
+const ULTRON_PACKAGE_NAME = "@bryandlp/ultron-coding-agent";
+const ULTRON_APP_NAME = "ultron";
 
 interface DistributionMetadata {
 	packageName: string;
@@ -41,9 +43,10 @@ interface DistributionMetadata {
 
 function isOfficialDistribution({ packageName, appName, configDirName }: DistributionMetadata): boolean {
 	return (
-		packageName === OFFICIAL_PACKAGE_NAME &&
-		appName === OFFICIAL_APP_NAME &&
-		configDirName === OFFICIAL_CONFIG_DIR_NAME
+		(packageName === OFFICIAL_PACKAGE_NAME &&
+			appName === OFFICIAL_APP_NAME &&
+			configDirName === OFFICIAL_CONFIG_DIR_NAME) ||
+		(packageName === ULTRON_PACKAGE_NAME && appName === ULTRON_APP_NAME && configDirName === OFFICIAL_CONFIG_DIR_NAME)
 	);
 }
 

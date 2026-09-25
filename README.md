@@ -10,18 +10,18 @@
 
 > New issues and PRs from new contributors are auto-closed by default. Maintainers review auto-closed issues daily. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
-# Pi Agent Harness
+# Ultron agent harness
 
-This is the home of the Pi agent harness project including our self extensible coding agent.
+Ultron is a fork of the Pi agent harness focused on RLM-first execution, typed agents, durable task state, optional workflows, and explicit runtime controls.
 
 * **[@earendil-works/pi-coding-agent](packages/coding-agent)**: Interactive coding agent CLI
 * **[@earendil-works/pi-agent-core](packages/agent)**: Agent runtime with tool calling and state management
 * **[@earendil-works/pi-ai](packages/ai)**: Unified multi-provider LLM API (OpenAI, Anthropic, Google, …)
 
-To learn more about Pi:
+To learn more about Ultron:
 
-* [Visit pi.dev](https://pi.dev), the project website with demos
-* [Read the documentation](https://pi.dev/docs/latest), but you can also ask the agent to explain itself
+* [Visit pi.dev](https://pi.dev), the upstream project website and documentation
+* [Read the upstream documentation](https://pi.dev/docs/latest), then see `docs/ultron-architecture.md` for Ultron-specific design
 
 ## All Packages
 
