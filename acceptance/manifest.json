@@ -728,7 +728,9 @@
       "evidence": [
         {
           "file": "packages/coding-agent/test/ultron-a39-live-capabilities.test.ts",
-          "tests": []
+          "tests": [
+            "uses the typed RLM interface"
+          ]
         }
       ],
       "status_when_green": "passed",

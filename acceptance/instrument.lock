@@ -1,7 +1,7 @@
 {
 	"version": 1,
 	"algorithm": "sha256",
-	"manifest": "9e0acf09e078610103154fe51590981e76d0c7c696bbad940fe68b00e32633be",
+	"manifest": "e93577f80c492c263bf1bddeb18aac5a056fb13bf4eb2847b5b96a09a4a79db2",
 	"instrument": {
 		"acceptance/mutations.json": "1ff99ca3f89075496562a64bd2d5513c88e80c582d454125678f04bfc25fe23a",
 		"scripts/acceptance-lock.mjs": "0738f59da364f20af0634b28b9d32d70b2768f6d4cb6f2bf03cab13302923980",
@@ -58,7 +58,7 @@
 		"packages/coding-agent/test/ultron-native-rpc.test.ts": "26b11eaad34dfa5fd799903b259189122bda95aed466a43fbea11079aa01f7bd",
 		"packages/coding-agent/test/ultron-predict-adapter.test.ts": "42dfa9e8726de2485e2a98eb9c7acb59e431b4ac402aace05de2bc9d7a53678e",
 		"packages/coding-agent/test/ultron-progress.test.ts": "3d3af8a53626ca8a96eab39b7071f47da8381b9ea370c57c4d3ff0aa55aa24c8",
-		"packages/coding-agent/test/ultron-release-gate.test.ts": "94aea0db37368bd7ac22f8dc168536a4a307a09f203b87e2d8daafb48dac3a1a",
+		"packages/coding-agent/test/ultron-release-gate.test.ts": "9811920617d41b539505e623a7f997f861abb3e6af4127c5fcc42003033b0d21",
 		"packages/coding-agent/test/ultron-schedules.test.ts": "53a83836658238798f67f71ece291f2437859049f6ba0e02ec2c320fb30c065e",
 		"packages/coding-agent/test/ultron-skills.test.ts": "557478db705d08814ec982571cbc70199676a6a4e5c5035ea0a0e3d5310acb28",
 		"packages/coding-agent/test/ultron-usage-deadline.test.ts": "5ed196acc010010db308878c2248761c5862daa03393992ff7b71eb4ba5e74a4",

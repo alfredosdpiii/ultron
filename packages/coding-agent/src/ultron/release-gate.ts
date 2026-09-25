@@ -156,7 +156,12 @@ function gateDigest(id: string, checks: GateCheck[], fixtureHash: string): strin
 
 function runField(value: unknown, name: string, gate: Gate): RunRecord {
 	const run = plainObject(value, name);
-	fields(run, ["variant", "fixture_hash", "results"]);
+	for (const key of Object.keys(run)) {
+		if (!["variant", "fixture_hash", "results"].includes(key))
+			throw new Error(
+				`Unknown field ${name}.${key}: a run is {variant, fixture_hash, results: {check: "passed" | "failed" | "missing"}}`,
+			);
+	}
 	if (typeof run.variant !== "string" || !VARIANT_PATTERN.test(run.variant))
 		throw new Error(`${name}.variant must be a nonempty string of at most 256 characters`);
 	const fixtureHash = hashField(run.fixture_hash, `${name}.fixture_hash`);

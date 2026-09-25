@@ -221,7 +221,7 @@ describe("release gate module (A15)", () => {
 				baseline: { ...run("main", allPass), notes: "x" },
 				candidate: run("branch", allPass),
 			}),
-		).rejects.toThrow("Unknown payload field: notes");
+		).rejects.toThrow("Unknown field baseline.notes");
 		await expect(
 			call("gates.compare", {
 				gate_id: "release-core",

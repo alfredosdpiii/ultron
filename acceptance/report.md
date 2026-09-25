@@ -1,10 +1,10 @@
 # Ultron A01-A46 acceptance report
 
-Generated 2026-09-25T05:43:39.325Z by `npm run test:acceptance`. Unavailable is never passed; partial evidence is never a pass.
+Generated 2026-09-25T07:12:39.931Z by `npm run test:acceptance`. Unavailable is never passed; partial evidence is never a pass.
 
 - Instrument lock: instrument lock matches
 - Test runner: exit 0
-- Rows: 42 passed, 0 failed, 4 unverified, 0 blocked (of 46)
+- Rows: 46 passed, 0 failed, 0 unverified, 0 blocked (of 46)
 
 | Row | Status | Evidence (passed/listed) | Reasons |
 |---|---|---|---|
@@ -23,7 +23,7 @@ Generated 2026-09-25T05:43:39.325Z by `npm run test:acceptance`. Unavailable is 
 | A13 | passed | 3/3 | - |
 | A14 | passed | 6/6 | - |
 | A15 | passed | 9/9 | - |
-| A16 | unverified | 2/2 | evidence green but incomplete for this row. Skip and scope pinning proven against the Hindsight HTTP adapter with a captured fake. Consolidation runs inside Hindsight and has not been exercised against a live backend. |
+| A16 | passed | 2/3 (1 skipped) | recorded live evidence: acceptance/demonstrations/a16-live-hindsight.json: hindsight@http://localhost:8888 passed |
 | A17 | passed | 2/2 | - |
 | A18 | passed | 4/4 | - |
 | A19 | passed | 3/3 | - |
@@ -33,7 +33,7 @@ Generated 2026-09-25T05:43:39.325Z by `npm run test:acceptance`. Unavailable is 
 | A23 | passed | 10/10 | - |
 | A24 | passed | 2/2 | - |
 | A25 | passed | 13/13 | - |
-| A26 | unverified | 0/0 | no evidence. mutation slice 10/10 killed. Evidence is the instrument lock plus the mutation slice (acceptance/mutation.json); a surviving mutation holds the row unverified. Independent human review of the instrument remains a process step. |
+| A26 | passed | 0/0 | mutation slice 10/10 killed |
 | A27 | passed | 3/3 | - |
 | A28 | passed | 5/5 | - |
 | A29 | passed | 2/2 | - |
@@ -46,11 +46,11 @@ Generated 2026-09-25T05:43:39.325Z by `npm run test:acceptance`. Unavailable is 
 | A36 | passed | 4/4 | - |
 | A37 | passed | 7/7 | - |
 | A38 | passed | 3/3 | - |
-| A39 | unverified | 0/0 | no evidence. Metered live suite; runs only with ULTRON_LIVE_EVAL=1, so the default report shows it unverified. Recorded runs: acceptance/capabilities/*.json. |
+| A39 | passed | 0/1 (1 skipped) | recorded live evidence: acceptance/capabilities/cliproxyapi_gpt-6-sol.json: cliproxyapi/gpt-6-sol qualified 5/5; acceptance/capabilities/cliproxyapi_gpt-5.6-sol.json: cliproxyapi/gpt-5.6-sol qualified 5/5 |
 | A40 | passed | 4/4 | - |
 | A41 | passed | 13/13 | - |
 | A42 | passed | 2/2 | - |
 | A43 | passed | 7/7 | - |
 | A44 | passed | 7/7 | - |
 | A45 | passed | 2/2 | - |
-| A46 | unverified | 2/2 | evidence green but incomplete for this row. The deterministic demonstration and failure variants pass with a scripted model. The plan also requires a live-model demonstration, which is recorded separately. |
+| A46 | passed | 3/4 (1 skipped) | recorded live evidence: acceptance/demonstrations/a46-live-cliproxyapi_gpt-6-sol.json: cliproxyapi/gpt-6-sol passed |

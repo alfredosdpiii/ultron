@@ -35,6 +35,7 @@ All optional controls (permission prompts, risk blocking, capability enforcement
 ## Known limits
 
 - Resource limits are the trusted-local profile: output, artifacts, wall time, admission, and process-group kills. There are no memory or CPU limits and no isolated sandbox profile.
+- Without a sandbox, a model can read anything the user can, including test files outside the project. The live A46 run observed the model reading its own demonstration test; hostile-code or blind evaluation needs real isolation.
 - Snapshot checksums detect corruption, not a writer who recomputes the digest.
 - Quitting in the middle of a root turn still stops that turn; work started by earlier turns continues. A hard-killed client leaves idle work to a 30-second orphan grace.
 - Workflows have no any-of joins or bounded revision cycles.

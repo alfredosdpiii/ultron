@@ -1,5 +1,5 @@
 {
-	"generated_at": "2026-09-25T05:43:39.325Z",
+	"generated_at": "2026-09-25T07:12:39.931Z",
 	"lock": {
 		"ok": true,
 		"lockMissing": false,
@@ -14,9 +14,9 @@
 	},
 	"summary": {
 		"total": 46,
-		"passed": 42,
+		"passed": 46,
 		"failed": 0,
-		"unverified": 4,
+		"unverified": 0,
 		"blocked": 0
 	},
 	"rows": [
@@ -908,19 +908,18 @@
 		{
 			"id": "A16",
 			"behavior": "Memory skip causes no retrieval; scopes survive consolidation",
-			"status": "unverified",
-			"declared": "unverified",
+			"status": "passed",
+			"declared": "passed",
 			"evidence": {
-				"listed": 2,
+				"listed": 3,
 				"passed": 2,
 				"failed": 0,
 				"missing": 0,
-				"skipped": 0,
+				"skipped": 1,
 				"infrastructure": 0
 			},
 			"reasons": [
-				"evidence green but incomplete for this row",
-				"Skip and scope pinning proven against the Hindsight HTTP adapter with a captured fake. Consolidation runs inside Hindsight and has not been exercised against a live backend."
+				"recorded live evidence: acceptance/demonstrations/a16-live-hindsight.json: hindsight@http://localhost:8888 passed"
 			],
 			"checks": [
 				{
@@ -934,6 +933,13 @@
 					"file": "packages/coding-agent/test/ultron-a16-memory-skip-scope.test.ts",
 					"test": "scope tags are pinned through retain, correction and Hindsight consolidation; a cross-scope merge is refused",
 					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-a16-live-hindsight.test.ts",
+					"test": "recall after a real consolidation returns only items carrying exactly the requested scope's tags",
+					"outcome": "skipped",
 					"matched": 1,
 					"infra": null
 				}
@@ -1375,7 +1381,7 @@
 		{
 			"id": "A26",
 			"behavior": "Component changes cannot pass merely by weakening tests",
-			"status": "unverified",
+			"status": "passed",
 			"declared": "passed",
 			"evidence": {
 				"listed": 0,
@@ -1386,9 +1392,7 @@
 				"infrastructure": 0
 			},
 			"reasons": [
-				"no evidence",
-				"mutation slice 10/10 killed",
-				"Evidence is the instrument lock plus the mutation slice (acceptance/mutation.json); a surviving mutation holds the row unverified. Independent human review of the instrument remains a process step."
+				"mutation slice 10/10 killed"
 			],
 			"checks": []
 		},
@@ -1956,21 +1960,28 @@
 		{
 			"id": "A39",
 			"behavior": "Configured models can use the actual typed RLM interface",
-			"status": "unverified",
+			"status": "passed",
 			"declared": "passed",
 			"evidence": {
-				"listed": 0,
+				"listed": 1,
 				"passed": 0,
 				"failed": 0,
 				"missing": 0,
-				"skipped": 0,
+				"skipped": 1,
 				"infrastructure": 0
 			},
 			"reasons": [
-				"no evidence",
-				"Metered live suite; runs only with ULTRON_LIVE_EVAL=1, so the default report shows it unverified. Recorded runs: acceptance/capabilities/*.json."
+				"recorded live evidence: acceptance/capabilities/cliproxyapi_gpt-6-sol.json: cliproxyapi/gpt-6-sol qualified 5/5; acceptance/capabilities/cliproxyapi_gpt-5.6-sol.json: cliproxyapi/gpt-5.6-sol qualified 5/5"
 			],
-			"checks": []
+			"checks": [
+				{
+					"file": "packages/coding-agent/test/ultron-a39-live-capabilities.test.ts",
+					"test": "uses the typed RLM interface",
+					"outcome": "skipped",
+					"matched": 1,
+					"infra": null
+				}
+			]
 		},
 		{
 			"id": "A40",
@@ -2322,21 +2333,27 @@
 		{
 			"id": "A46",
 			"behavior": "The combined system performs the full demonstration without manual state repair",
-			"status": "unverified",
-			"declared": "unverified",
+			"status": "passed",
+			"declared": "passed",
 			"evidence": {
-				"listed": 2,
-				"passed": 2,
+				"listed": 4,
+				"passed": 3,
 				"failed": 0,
 				"missing": 0,
-				"skipped": 0,
+				"skipped": 1,
 				"infrastructure": 0
 			},
 			"reasons": [
-				"evidence green but incomplete for this row",
-				"The deterministic demonstration and failure variants pass with a scripted model. The plan also requires a live-model demonstration, which is recorded separately."
+				"recorded live evidence: acceptance/demonstrations/a46-live-cliproxyapi_gpt-6-sol.json: cliproxyapi/gpt-6-sol passed"
 			],
 			"checks": [
+				{
+					"file": "packages/coding-agent/test/ultron-a46-demo.test.ts",
+					"test": "aborting mid-invoke cancels the child and the session keeps working",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
 				{
 					"file": "packages/coding-agent/test/ultron-a46-demo.test.ts",
 					"test": "fix, review, retain, and improve with real runtime effects",
@@ -2348,6 +2365,13 @@
 					"file": "packages/coding-agent/test/ultron-a46-demo.test.ts",
 					"test": "failure variants never become verified completion",
 					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-a46-live-demo.test.ts",
+					"test": "fixes, reviews, retains, and improves through the typed RLM API",
+					"outcome": "skipped",
 					"matched": 1,
 					"infra": null
 				}
