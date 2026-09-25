@@ -324,6 +324,8 @@ export type RlmKernelOptions = {
 	 * Defaults to a per-process random key, so snapshots are then restorable only within this process.
 	 */
 	snapshotKey?: Uint8Array;
+	/** Extra environment for the kernel process, applied after the credential filter (for example ULTRON_CODE_SKILLS_DIR). */
+	env?: Readonly<Record<string, string>>;
 };
 
 export class RlmKernel {
@@ -387,6 +389,7 @@ export class RlmKernel {
 					PYTHONDONTWRITEBYTECODE: "1",
 					ULTRON_RLM_MAX_MEMORY_MB: String(this.limits.maxMemoryMb),
 					ULTRON_RLM_MAX_CPU_SECONDS: String(this.limits.maxCpuSeconds),
+					...this.options.env,
 				},
 				stdio: ["pipe", "pipe", "pipe"],
 				detached: ownsProcessGroup,

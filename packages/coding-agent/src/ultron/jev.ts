@@ -62,6 +62,23 @@ function probability(value: unknown): number {
 function errorCode(error: unknown): string {
 	return error instanceof Error && error.name === "AbortError" ? "ABORTED" : "UNAVAILABLE";
 }
+/**
+ * Secrets in source code. Narrower than the memory patterns, which would flag ordinary identifiers such as
+ * `skill_version`: token prefixes are case-sensitive with their separator, and a credential name counts only
+ * when it is assigned a string literal.
+ */
+const codeSecretPatterns = [
+	/\b(?:sk-(?:proj-|live-|test-)?|sk_live_|sk_test_|ghp_|gho_|github_pat_|xox[baprs]-|AIza|AKIA|ASIA)[A-Za-z0-9_-]{12,}/,
+	/-----BEGIN [A-Z ]*PRIVATE KEY-----/,
+	/\b(?:api[_-]?key|access[_-]?token|auth[_-]?token|password|passwd|secret|private[_-]?key)\s*[:=]\s*["'][^"'\s]{8,}["']/i,
+	/\bbearer\s+[A-Za-z0-9._~+/=-]{20,}/i,
+	/\b\d{3}-\d{2}-\d{4}\b/,
+];
+
+/** Deterministic secret check for code proposals; runs whether or not Jev is configured. */
+export function containsCodeSecret(text: string): boolean {
+	return codeSecretPatterns.some((pattern) => pattern.test(text));
+}
 function deterministicPolicy(prompt: string, text: string): JevMemoryPolicy | undefined {
 	const content = `${prompt}\n${text}`;
 	if (sensitivePatterns.some((pattern) => pattern.test(content))) return { action: "sensitive", confidence: 1 };
@@ -276,6 +293,38 @@ export class NativeJevClient {
 						keep: "Keep durable facts, preferences, decisions, commitments, or reusable context.",
 						skip: "Do not keep ephemeral or task-local details.",
 						sensitive: "Do not keep secrets or unusually sensitive data.",
+					},
+				},
+			},
+			signal,
+		);
+		const action = response.answers?.action?.choice;
+		if (action !== "keep" && action !== "skip" && action !== "sensitive")
+			throw new Error("Invalid Jev memory policy result");
+		return { action, confidence: probability(response.answers?.action?.confidence) };
+	}
+
+	/**
+	 * Relevance and sensitivity of a proposed code skill, judged like a memory retention: keep (a reusable
+	 * procedure), skip (a one-off), or sensitive. Secrets in the code are caught before any call.
+	 */
+	async skillPolicy(name: string, evidence: string, source: string, signal?: AbortSignal): Promise<JevMemoryPolicy> {
+		if (containsCodeSecret(`${name}\n${evidence}\n${source}`)) return { action: "sensitive", confidence: 1 };
+		const response = await this.systemOne(
+			{
+				skill_name: name,
+				evidence,
+				source,
+				task: "Decide whether this Python procedure should be kept as a reusable, tested skill for later tasks.",
+			},
+			{
+				action: {
+					type: "choice",
+					instructions: "What should happen to this proposed skill?",
+					criteria: {
+						keep: "Keep a reusable procedure likely to recur in later tasks.",
+						skip: "A one-off, task-specific script with little reuse.",
+						sensitive: "Do not keep: it embeds secrets, credentials, or unusually sensitive data.",
 					},
 				},
 			},

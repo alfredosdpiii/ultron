@@ -60,6 +60,7 @@ import {
 	createLegacyRecall,
 	legacyBankFromEnv,
 } from "../ultron/auto-memory.ts";
+import { CodeSkills, codeSkillsDir, codeSkillsToolSection } from "../ultron/code-skills.ts";
 import { createFamilyModule } from "../ultron/family.ts";
 import { createGrantModule } from "../ultron/grants.ts";
 import { createInstanceModule } from "../ultron/instances.ts";
@@ -78,7 +79,12 @@ import { loadSnapshotKey } from "../ultron/rlm/snapshot-auth.ts";
 import { createSessionTaskStore } from "../ultron/rlm/task-store.ts";
 import { createScheduleModule } from "../ultron/schedules.ts";
 import { createSkillModule } from "../ultron/skills.ts";
-import { ToolRoundNudger, toolRoundsNudgeFromEnv } from "../ultron/tool-round-nudge.ts";
+import {
+	SkillExtractionNudger,
+	skillNudgeFromEnv,
+	ToolRoundNudger,
+	toolRoundsNudgeFromEnv,
+} from "../ultron/tool-round-nudge.ts";
 import { createSessionUsageLedger, nativeUsageLimitsFromEnv } from "../ultron/usage.ts";
 import { createWorkerServices } from "../ultron/worker-services.ts";
 import { COORDINATOR_PROTOCOL_VERSION } from "./coordinator.ts";
@@ -114,11 +120,19 @@ type RlmHostHandler = (
 export class UltronRlmKernel {
 	private readonly kernel: RlmKernel;
 
-	constructor(cwd: string, hostHandler: KernelHostHandler, snapshotPath?: string, snapshotKey?: Uint8Array) {
+	constructor(
+		cwd: string,
+		hostHandler: KernelHostHandler,
+		snapshotPath?: string,
+		snapshotKey?: Uint8Array,
+		env: Record<string, string> = { ULTRON_CODE_SKILLS_DIR: codeSkillsDir() },
+	) {
 		this.kernel = new RlmKernel(
 			{
 				cwd,
 				runtimePath: getRlmRuntimePath(),
+				// Active code skills import as `from code_skills import <name>` in every kernel.
+				env,
 				...(snapshotPath === undefined ? {} : { snapshotPath }),
 				...(snapshotKey === undefined ? {} : { snapshotKey }),
 			},
@@ -255,7 +269,10 @@ export function createUltronRlmTool(
 		}),
 		name: "rlm",
 		label: "rlm",
-		description: RLM_TOOL_DESCRIPTION,
+		// Read per request, so a skill activated mid-session is listed on the next model call.
+		get description() {
+			return RLM_TOOL_DESCRIPTION + codeSkillsToolSection();
+		},
 		parameters: schema,
 		async execute(
 			_toolCallId,
@@ -1489,6 +1506,20 @@ async function createCodingAgentHarness(
 				createReleaseGateModule({ store: createSessionModuleStore(session, "release-gates") }),
 				createSkillModule({
 					store: createSessionModuleStore(session, "skills"),
+					// Tested Python skills: each proposal's test runs in a fresh kernel with no host capabilities.
+					code: new CodeSkills({
+						...(jev ? { jev } : {}),
+						createTestKernel: (cwd, env) =>
+							new UltronRlmKernel(
+								cwd,
+								() => {
+									throw new Error("Host requests are unavailable while a code skill test runs");
+								},
+								undefined,
+								undefined,
+								env,
+							),
+					}),
 					// Re-read skill files so skills.refresh sees edits made during the session.
 					loadSkills: () =>
 						Promise.all(
@@ -1526,12 +1557,21 @@ async function createCodingAgentHarness(
 		const nudger = new ToolRoundNudger(toolRoundsNudgeFromEnv(process.env.ULTRON_TOOL_ROUNDS_NUDGE), (message) =>
 			lane.steer(message, undefined, BACKGROUND_CONTEXT),
 		);
+		// After a long streak of successful tool rounds, suggest saving the procedure as a code skill
+		// (ULTRON_SKILL_NUDGE, 0 disables).
+		const skillNudger = new SkillExtractionNudger(skillNudgeFromEnv(process.env.ULTRON_SKILL_NUDGE), (message) =>
+			lane.steer(message, undefined, BACKGROUND_CONTEXT),
+		);
 		const removeNudgeTurnListener = harness.events.on("turn_end", (event) => {
 			if (event.lane !== "main") return;
-			nudger.turnEnded(event.runId, event.message.content.filter((part) => part.type === "toolCall").length);
+			const toolCalls = event.message.content.filter((part) => part.type === "toolCall").length;
+			nudger.turnEnded(event.runId, toolCalls);
+			skillNudger.turnEnded(event.runId, toolCalls, event.toolResults.filter((result) => result.isError).length);
 		});
 		const removeNudgeRunListener = harness.events.on("run_end", (event) => {
-			if (event.lane === "main") nudger.runEnded(event.runId);
+			if (event.lane !== "main") return;
+			nudger.runEnded(event.runId);
+			skillNudger.runEnded(event.runId);
 		});
 		const currentActiveToolNames = await lane.getActiveTools(TODO_CONTEXT);
 		if (
