@@ -50,6 +50,7 @@ import { createFamilyModule } from "../ultron/family.ts";
 import { createGrantModule } from "../ultron/grants.ts";
 import { createInstanceModule } from "../ultron/instances.ts";
 import { createNativeJevClient } from "../ultron/jev.ts";
+import { createPredictAdapter } from "../ultron/predict-adapter.ts";
 import { createProgressModule } from "../ultron/progress.ts";
 import { createReleaseGateModule } from "../ultron/release-gate.ts";
 import { createSessionDefinitionStore } from "../ultron/rlm/definition-registry.ts";
@@ -1136,6 +1137,7 @@ async function createCodingAgentHarness(
 			usage: createSessionUsageLedger(session, { limits: { maxAdmittedTasks: 24, maxWallMs: 30 * 60 * 1000 } }),
 			services: nativeServices,
 			beforeLaneReuse: (lane) => rlmTool.resetScratch(lane),
+			predict: createPredictAdapter({ models: modelRuntime, model: () => lane.getModel(TODO_CONTEXT) }),
 			refinements: async (definitionId, context) => {
 				const current = (await nativeServices.handle(
 					"refinements.current",
