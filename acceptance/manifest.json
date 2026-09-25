@@ -1,0 +1,637 @@
+{
+	"version": 1,
+	"description": "Reviewed Ultron A01-A46 acceptance instrument. Evidence tests are matched by name substring against vitest JSON results (fullName). Change only through a recorded review, then run npm run acceptance:lock.",
+	"vitest_cwd": "packages/coding-agent",
+	"rows": [
+		{
+			"id": "A01",
+			"behavior": "Direct/graph/RLM invocation shares one definition and result contract",
+			"evidence": [
+				{
+					"file": "packages/coding-agent/test/ultron-native-host.test.ts",
+					"tests": [
+						"runs an explicit background job through the same durable task host",
+						"runs deterministic agents and preserves durable task records"
+					]
+				}
+			],
+			"status_when_green": "unverified",
+			"notes": "Background and agent dispatch share the durable task host. No parity suite compares direct, workflow-graph, and RLM invocation of the same definition and result contract."
+		},
+		{
+			"id": "A02",
+			"behavior": "Large input stays outside active context; full data remains usable",
+			"evidence": [],
+			"status_when_green": "unverified",
+			"notes": "No evidence: no large-data fixture capturing request sizes against expected output."
+		},
+		{
+			"id": "A03",
+			"behavior": "Invalid result triggers bounded repair or typed failure",
+			"evidence": [
+				{
+					"file": "packages/coding-agent/test/ultron-native-host.test.ts",
+					"tests": [
+						"rejects malformed reviewer output instead of claiming success",
+						"only a completed prompt at its returned tip can succeed"
+					]
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-definition-registry.test.ts",
+					"tests": ["rejects malformed schemas and executable payload values"]
+				}
+			],
+			"status_when_green": "unverified",
+			"notes": "Typed failure on invalid output is tested. Bounded repair (maxRepairs > 0) with a semantically invalid result is not exercised."
+		},
+		{
+			"id": "A04",
+			"behavior": "Root pin and explicit child model are preserved",
+			"evidence": [
+				{
+					"file": "packages/coding-agent/test/ultron-skills.test.ts",
+					"tests": ["invoke through the real host keeps the child's model and tools and links the parent"]
+				}
+			],
+			"status_when_green": "unverified",
+			"notes": "Child model preservation is tested for skill invocation only. Root pin capture and the live provider smoke require a metered live run (not part of this deterministic report)."
+		},
+		{
+			"id": "A05",
+			"behavior": "Cancellation terminates owned work and rejects late success",
+			"evidence": [
+				{
+					"file": "packages/coding-agent/test/ultron-native-host.test.ts",
+					"tests": [
+						"cancellation commits a terminal result without waiting for a stuck lane",
+						"parent cancellation before admission does not start a task",
+						"timeout has a bounded range and commits cancellation"
+					]
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-kernel.test.ts",
+					"tests": [
+						"queued cancellation leaves the active cell running",
+						"active cancellation stops Python and propagates to host work"
+					]
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-task-store.test.ts",
+					"tests": ["returns the committed terminal record when completion races cancellation"]
+				}
+			],
+			"status_when_green": "unverified",
+			"notes": "Cancellation and late-success races are covered for lanes and the kernel. A real external process-tree fixture is missing."
+		},
+		{
+			"id": "A06",
+			"behavior": "Output, artifact, wall-time, concurrency, and process limits hold",
+			"evidence": [
+				{
+					"file": "packages/coding-agent/test/ultron-kernel.test.ts",
+					"tests": [
+						"rejects oversized input without losing existing Python state",
+						"rejects malformed protocol and startup stalls"
+					]
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-native-host.test.ts",
+					"tests": ["timeout has a bounded range and commits cancellation"]
+				}
+			],
+			"status_when_green": "unverified",
+			"notes": "Input and wall-time bounds only. No flooding/hanging worker matrix for output, artifact, concurrency, and process limits."
+		},
+		{
+			"id": "A07",
+			"behavior": "Branch/fork/resume restores matching state; no abandoned lesson leak",
+			"evidence": [
+				{
+					"file": "packages/coding-agent/test/ultron-session-selection.test.ts",
+					"tests": [
+						"uses the real JsonlSessionRepo and scopes discovery to cwd",
+						"resolves exact ids, unique prefixes, and rejects ambiguous prefixes",
+						"continue selects by modification time, not creation time"
+					]
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-task-store.test.ts",
+					"tests": ["recovers unfinished tasks as interrupted and persists the recovery"]
+				}
+			],
+			"status_when_green": "unverified",
+			"notes": "Session selection and task recovery only. No branch/fork/resume state-restoration or abandoned-lesson leak test across restart."
+		},
+		{
+			"id": "A08",
+			"behavior": "Unsupported Python state reports non-restorable, never silently correct",
+			"evidence": [],
+			"status_when_green": "unverified",
+			"notes": "No evidence: no snapshot type matrix or tamper rejection test for Python kernel state."
+		},
+		{
+			"id": "A09",
+			"behavior": "Concurrent calls/retries cannot bypass tree budget admission",
+			"evidence": [
+				{
+					"file": "packages/coding-agent/test/ultron-native-host.test.ts",
+					"tests": ["concurrent idempotent invokes share the same live promise"]
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-task-store.test.ts",
+					"tests": ["uses one durable document and detects idempotency conflicts"]
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-schedules.test.ts",
+					"tests": ["admission failure from the usage budget is recorded once per slot without a retry storm"]
+				}
+			],
+			"status_when_green": "unverified",
+			"notes": "Idempotent concurrent invokes and one budget-admission failure path. No nested tree-budget race matrix, missing-usage, or unknown-pricing fixtures."
+		},
+		{
+			"id": "A10",
+			"behavior": "Worker receives no ambient credentials or unauthorized host capability",
+			"evidence": [
+				{
+					"file": "packages/coding-agent/test/ultron-worker-isolation.test.ts",
+					"tests": [
+						"model-written Python sees no ambient credentials or worker control channel",
+						"explicit allow-list passes a named variable through"
+					]
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-host-modules.test.ts",
+					"tests": ["dispatches by prefix and passes the calling task from the lane, not the payload"]
+				}
+			],
+			"status_when_green": "passed",
+			"notes": "Trusted-local profile only: environment inspection inside the real kernel and capability denial through host requests. Not a hostile-code isolation claim."
+		},
+		{
+			"id": "A11",
+			"behavior": "Approval binds scope/revision/policy and is rechecked",
+			"evidence": [],
+			"status_when_green": "blocked",
+			"notes": "No evidence: approval scope/revision/policy binding is not implemented in the default native path."
+		},
+		{
+			"id": "A12",
+			"behavior": "Graph validates before effects; routes/skips/fan-in/cycles are explicit",
+			"evidence": [
+				{
+					"file": "packages/coding-agent/test/ultron-native-host.test.ts",
+					"tests": [
+						"validates every workflow node, normalizes missing dependencies, and skips failed dependencies"
+					]
+				}
+			],
+			"status_when_green": "unverified",
+			"notes": "Validation-before-effects and cycle rejection are tested. Routes, fan-in, and explicit skip records lack a contract suite."
+		},
+		{
+			"id": "A13",
+			"behavior": "Agent admission does not satisfy a graph dependency",
+			"evidence": [],
+			"status_when_green": "unverified",
+			"notes": "No evidence: no slow-child fixture with a delayed valid result proving admission does not satisfy a dependency."
+		},
+		{
+			"id": "A14",
+			"behavior": "No checks/incomplete review/stale receipt cannot imply verified completion",
+			"evidence": [
+				{
+					"file": "packages/coding-agent/test/ultron-native-host.test.ts",
+					"tests": [
+						"rejects malformed reviewer output instead of claiming success",
+						"runs an explicit background job through the same durable task host"
+					]
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-progress.test.ts",
+					"tests": ["never verifies a completion claim without a passing verifier"]
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-schedules.test.ts",
+					"tests": ["required gate: achieved only when every required check succeeds with passed === true"]
+				}
+			],
+			"status_when_green": "unverified",
+			"notes": "No-check and failed-check paths stay unverified. Stale receipt and incomplete-review fixtures are missing."
+		},
+		{
+			"id": "A15",
+			"behavior": "Baseline versus candidate is recorded; required regressions block",
+			"evidence": [],
+			"status_when_green": "unverified",
+			"notes": "No evidence: no baseline/candidate checker with protected inputs."
+		},
+		{
+			"id": "A16",
+			"behavior": "Memory skip causes no retrieval; scopes survive consolidation",
+			"evidence": [
+				{
+					"file": "packages/coding-agent/test/ultron-memory.test.ts",
+					"tests": [
+						"requires Jev and concrete scope tags, and a skipped recall does not call the backend",
+						"sends exact tags and refuses recalled documents outside the requested scope"
+					]
+				}
+			],
+			"status_when_green": "unverified",
+			"notes": "Skip-means-no-retrieval and scope tags are tested against a fake backend. Scope survival through consolidation and a real backend contract are missing."
+		},
+		{
+			"id": "A17",
+			"behavior": "Correction supersedes stale claims; hypotheses remain distinguishable",
+			"evidence": [],
+			"status_when_green": "unverified",
+			"notes": "No evidence: memory correct() API exists but no contradictory-claim scenario across fresh sessions."
+		},
+		{
+			"id": "A18",
+			"behavior": "Ingestion acceptance is distinct from completed retention; forgetting persists",
+			"evidence": [
+				{
+					"file": "packages/coding-agent/test/ultron-memory.test.ts",
+					"tests": [
+						"does not claim an async write is stored until a receipt completes",
+						"an interrupted backend mutation becomes unknown and cannot be edited or replayed"
+					]
+				}
+			],
+			"status_when_green": "unverified",
+			"notes": "Acceptance versus completed retention is tested. Forgetting persistence across backend restart is missing."
+		},
+		{
+			"id": "A19",
+			"behavior": "Refiner cannot alter policy, grants, or acceptance tests",
+			"evidence": [
+				{
+					"file": "packages/coding-agent/test/ultron-local-services.test.ts",
+					"tests": ["rejects path-like and protected refinement targets without touching documents"]
+				}
+			],
+			"status_when_green": "unverified",
+			"notes": "Protected-target rejection only. Capability-escalation and policy/grant edit proposals are not exercised."
+		},
+		{
+			"id": "A20",
+			"behavior": "Versioned refinement changes later behavior and can roll back",
+			"evidence": [
+				{
+					"file": "packages/coding-agent/test/ultron-local-services.test.ts",
+					"tests": [
+						"requires evidence, validates activation, and preserves rollback history",
+						"stores refinements through injected documents and enforces versions without approval"
+					]
+				}
+			],
+			"status_when_green": "unverified",
+			"notes": "Versioning and rollback bookkeeping are tested. No before/after/rollback task proving changed later behavior."
+		},
+		{
+			"id": "A21",
+			"behavior": "Replay does not duplicate external effects; uncertainty stays explicit",
+			"evidence": [
+				{
+					"file": "packages/coding-agent/test/ultron-memory.test.ts",
+					"tests": ["an interrupted backend mutation becomes unknown and cannot be edited or replayed"]
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-schedules.test.ts",
+					"tests": ["a restart on the same stores does not re-run a completed or claimed slot"]
+				}
+			],
+			"status_when_green": "unverified",
+			"notes": "Uncertain mutations stay explicit and schedule slots are not replayed. No lost-response external-effect service fixture."
+		},
+		{
+			"id": "A22",
+			"behavior": "Detached work and retained children survive UI loss",
+			"evidence": [],
+			"status_when_green": "unverified",
+			"notes": "No evidence: no real supervisor/client disconnect and reconnect test with retained children."
+		},
+		{
+			"id": "A23",
+			"behavior": "Schedules/goals/verification compose within budgets",
+			"evidence": [
+				{
+					"file": "packages/coding-agent/test/ultron-schedules.test.ts",
+					"tests": [
+						"duplicate and concurrent ticks in the same slot run the slot once",
+						"a restart on the same stores does not re-run a completed or claimed slot",
+						"missed ticks coalesce into one run for the latest slot and record the skipped count",
+						"max_runs completes a schedule and pause stops firings",
+						"a paused goal stops attached schedule firings and resume re-enables them",
+						"required gate: achieved only when every required check succeeds with passed === true",
+						"max_tasks caps schedule firings, verification, and attachments",
+						"admission failure from the usage budget is recorded once per slot without a retry storm",
+						"the background timer fires due slots and stops on close",
+						"rejects unknown payload fields and forged identity"
+					]
+				}
+			],
+			"status_when_green": "passed",
+			"notes": "Dedicated A23 suite: duplicate, missed, and restart ticks, goal pause, required gate, and budget admission."
+		},
+		{
+			"id": "A24",
+			"behavior": "Costs, task transitions, and inspection agree on one record",
+			"evidence": [],
+			"status_when_green": "unverified",
+			"notes": "No evidence: no event reconstruction or accounting reconciliation test tying costs, transitions, and inspection to one record."
+		},
+		{
+			"id": "A25",
+			"behavior": "Existing Pi capabilities and data survive migration and rollback",
+			"evidence": [
+				{
+					"file": "packages/coding-agent/test/ultron-native-rpc.test.ts",
+					"tests": [
+						"reconstructs Pi turn and agent boundaries from lane events",
+						"runs prompts, bash, and session commands through the native worker"
+					]
+				}
+			],
+			"status_when_green": "unverified",
+			"notes": "RPC compatibility only. No profile parity, import/export, or backup restoration rehearsal."
+		},
+		{
+			"id": "A26",
+			"behavior": "Component changes cannot pass merely by weakening tests",
+			"evidence": [],
+			"status_when_green": "unverified",
+			"mutation_slice": true,
+			"notes": "Evidence is this instrument: acceptance/instrument.lock (checked by the report) and the mutation slice in acceptance/mutation.json. Independent human review of the instrument is a process step, not automated, so the row cannot pass automatically."
+		},
+		{
+			"id": "A27",
+			"behavior": "RLM handles a self-contained task without graph/delegation/memory/refinement",
+			"evidence": [
+				{
+					"file": "packages/coding-agent/test/ultron-kernel.test.ts",
+					"tests": ["preserves Python state and returns host replies and Python errors"]
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-rlm-tool.test.ts",
+					"tests": ["keeps Python state across tool invocations and exposes protocol errors"]
+				}
+			],
+			"status_when_green": "unverified",
+			"notes": "Kernel runs without optional services. No test asserts a self-contained task completes with zero graph, delegation, memory, or refinement dispatches."
+		},
+		{
+			"id": "A28",
+			"behavior": "Retrieval explanation/query/scope match the executed search; rewrite cannot widen access",
+			"evidence": [
+				{
+					"file": "packages/coding-agent/test/ultron-memory.test.ts",
+					"tests": ["sends exact tags and refuses recalled documents outside the requested scope"]
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-memory-inspection.test.ts",
+					"tests": ["why shows the evidence that was injected, with no new search and no other task's scope"]
+				}
+			],
+			"status_when_green": "unverified",
+			"notes": "Scope enforcement on recall. No query rewrite failure or rewrite-widening test."
+		},
+		{
+			"id": "A29",
+			"behavior": "Memory inspector shows actual injected evidence without a new search or hidden-scope disclosure",
+			"evidence": [
+				{
+					"file": "packages/coding-agent/test/ultron-memory-inspection.test.ts",
+					"tests": [
+						"why shows the evidence that was injected, with no new search and no other task's scope",
+						"the inspector refuses requests that would search or change state"
+					]
+				}
+			],
+			"status_when_green": "passed",
+			"notes": "Dedicated A29 suite with a fake backend: no new search, no cross-task scope leak, inspection-only requests."
+		},
+		{
+			"id": "A30",
+			"behavior": "Correction/deletion propagates to managed memory views/exports without changing trusted instructions",
+			"evidence": [],
+			"status_when_green": "unverified",
+			"notes": "No evidence: no export/cache propagation or AGENTS.md preservation test for correction/deletion."
+		},
+		{
+			"id": "A31",
+			"behavior": "Skill selection is version-pinned, explainable, and cannot grant capabilities",
+			"evidence": [
+				{
+					"file": "packages/coding-agent/test/ultron-skills.test.ts",
+					"tests": [
+						"lists skills with content-hash versions and invocability",
+						"select explains each candidate, ranks deterministically, and records the decision",
+						"why returns the original decision after the catalog changes",
+						"version-pinned load succeeds and a stale version is rejected",
+						"capability-granting frontmatter is reported and never reaches the spawned child",
+						"invoke through the real host keeps the child's model and tools and links the parent",
+						"concurrent loads, selects, and invokes each observe one catalog snapshot while content changes",
+						"disableModelInvocation skills are listed but cannot be invoked",
+						"rejects unknown payload fields, forged identity, and malformed arguments",
+						"durable state survives a new module instance and records catalog changes across restarts"
+					]
+				}
+			],
+			"status_when_green": "passed",
+			"notes": "Dedicated A31 suite: pinned versions, explanations, capability non-grant, concurrent activation."
+		},
+		{
+			"id": "A32",
+			"behavior": "Skill proposals require evidence, validation, and applicable approval; rejection/rollback holds",
+			"evidence": [
+				{
+					"file": "packages/coding-agent/test/ultron-local-services.test.ts",
+					"tests": [
+						"requires evidence, validates activation, and preserves rollback history",
+						"stores refinements through injected documents and enforces versions without approval"
+					]
+				}
+			],
+			"status_when_green": "unverified",
+			"notes": "Evidence, validation, and rollback for refinements. Applicable approval is disabled and repeated-procedure/duplicate skill proposal cases are missing."
+		},
+		{
+			"id": "A33",
+			"behavior": "Experiment history includes all attempts and variants do not contaminate each other",
+			"evidence": [
+				{
+					"file": "packages/coding-agent/test/ultron-local-services.test.ts",
+					"tests": ["records and compares only matched experiment fixtures"]
+				}
+			],
+			"status_when_green": "unverified",
+			"notes": "Matched-fixture recording only. No memory/skill isolation between variants or failed-run usage reconciliation."
+		},
+		{
+			"id": "A34",
+			"behavior": "Optional-service failure preserves RLM operation without bypassing required checks or replaying effects",
+			"evidence": [
+				{
+					"file": "packages/coding-agent/test/ultron-memory.test.ts",
+					"tests": ["requires Jev and concrete scope tags, and a skipped recall does not call the backend"]
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-jev.test.ts",
+					"tests": [
+						"does not dispatch when already aborted and redacts fetch failures",
+						"rejects invalid probabilities instead of clamping or defaulting"
+					]
+				}
+			],
+			"status_when_green": "unverified",
+			"notes": "Jev/memory fail closed. No combined outage run showing RLM continues without bypassing required checks."
+		},
+		{
+			"id": "A35",
+			"behavior": "Deterministic/predict/rlm methods share policy, validation, accounting, and task semantics",
+			"evidence": [
+				{
+					"file": "packages/coding-agent/test/ultron-native-host.test.ts",
+					"tests": ["runs deterministic agents and preserves durable task records"]
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-definition-registry.test.ts",
+					"tests": ["requires adapters for predict and non-identity deterministic definitions"]
+				}
+			],
+			"status_when_green": "unverified",
+			"notes": "Deterministic path and adapter requirements. No strategy parity test for accounting or that predict launches no kernel."
+		},
+		{
+			"id": "A36",
+			"behavior": "Invocation scratch is isolated while declared instance state persists",
+			"evidence": [],
+			"status_when_green": "unverified",
+			"notes": "No evidence: retained-instance state versus invocation scratch is not exposed or tested."
+		},
+		{
+			"id": "A37",
+			"behavior": "Bounded preview preserves full values and does not execute unsafe introspection on the host",
+			"evidence": [
+				{
+					"file": "packages/coding-agent/test/ultron-local-services.test.ts",
+					"tests": ["deduplicates and reads artifacts with integrity and range checks"]
+				}
+			],
+			"status_when_green": "unverified",
+			"notes": "Artifact range reads only. No large-value, cyclic, or hostile-repr preview test in this suite."
+		},
+		{
+			"id": "A38",
+			"behavior": "Nested context excludes unauthorized and contaminating history",
+			"evidence": [],
+			"status_when_green": "unverified",
+			"notes": "No evidence: no captured reviewer request or scope-restricted event query test."
+		},
+		{
+			"id": "A39",
+			"behavior": "Configured models can use the actual typed RLM interface",
+			"evidence": [],
+			"status_when_green": "unverified",
+			"notes": "Requires the metered live capability suite (npm run eval:capabilities) with repeated trials; not run by this deterministic report."
+		},
+		{
+			"id": "A40",
+			"behavior": "Retained instances accept new invocations without rewriting old terminal outcomes",
+			"evidence": [
+				{
+					"file": "packages/coding-agent/test/ultron-native-host.test.ts",
+					"tests": ["reopened invoke returns the durable result, not undefined"]
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-task-store.test.ts",
+					"tests": ["enforces forward transitions and matching terminal results"]
+				}
+			],
+			"status_when_green": "unverified",
+			"notes": "Terminal records are immutable. Retained-instance follow-up invocations are not exposed."
+		},
+		{
+			"id": "A41",
+			"behavior": "Family messages enforce identity, scope, deduplication, expiry, and safe delivery",
+			"evidence": [
+				{
+					"file": "packages/coding-agent/test/ultron-family.test.ts",
+					"tests": [
+						"rejects forged sender fields and takes the sender from the calling lane",
+						"delivers between parent and child in both directions, including root",
+						"rejects siblings, grandchildren, and other families",
+						"replays a keyed send idempotently and rejects conflicting content under the same key",
+						"never delivers expired messages and reports them as expired",
+						"rejects sends to a full inbox and oversized messages instead of dropping",
+						"receive is at-most-once and respects limit and FIFO order",
+						"steers a live receiver through the host and falls back to the inbox otherwise",
+						"isolates verifiers to their direct parent and never steers them",
+						"validates payloads strictly",
+						"durable state survives a new module instance on the same store",
+						"serializes concurrent sends against the inbox cap",
+						"derives identity from real task lanes and steers a live child lane"
+					]
+				}
+			],
+			"status_when_green": "passed",
+			"notes": "Dedicated A41 suite: forged sender, cross-family, saturation, replay, expiry, steering, verifier isolation."
+		},
+		{
+			"id": "A42",
+			"behavior": "Human child intervention and subtree stop preserve unrelated work",
+			"evidence": [
+				{
+					"file": "packages/coding-agent/test/ultron-native-host.test.ts",
+					"tests": ["cancellation commits a terminal result without waiting for a stuck lane"]
+				}
+			],
+			"status_when_green": "unverified",
+			"notes": "Single-child cancellation only. No two-child inspect/correct/stop run proving unrelated work continues."
+		},
+		{
+			"id": "A43",
+			"behavior": "Resource release/eviction respects live references, evidence retention, and quotas",
+			"evidence": [],
+			"status_when_green": "unverified",
+			"notes": "No evidence: no pinned checkpoint, live artifact, idle eviction, or quota test."
+		},
+		{
+			"id": "A44",
+			"behavior": "Progress and reassessment use evidence and cannot extend budgets or declare unsupported success",
+			"evidence": [
+				{
+					"file": "packages/coding-agent/test/ultron-progress.test.ts",
+					"tests": [
+						"classifies stalled, progressing, busy, and finished from recorded evidence",
+						"takes the reporter from the lane and rejects reports for unrelated tasks",
+						"validates payloads strictly and bounds evidence and receipts",
+						"always denies budget extension and records the reason",
+						"never verifies a completion claim without a passing verifier",
+						"persists receipts and decisions across module instances and settles interrupted verifications",
+						"rejects a corrupt stored document"
+					]
+				}
+			],
+			"status_when_green": "passed",
+			"notes": "Dedicated A44 suite: stalled/busy/progressing fixtures, budget-extension denial, unknown-verifier cases."
+		},
+		{
+			"id": "A45",
+			"behavior": "Saturated nested recursion makes progress or returns bounded capacity failure, never deadlock",
+			"evidence": [],
+			"status_when_green": "unverified",
+			"notes": "No evidence: no parent-awaiting-child saturation or bounded capacity failure test."
+		},
+		{
+			"id": "A46",
+			"behavior": "The combined system performs the full demonstration without manual state repair",
+			"evidence": [],
+			"status_when_green": "blocked",
+			"notes": "Combined fix/review/retain/refine demonstration is not implemented; also needs a live RLM run plus deterministic failure variants."
+		}
+	]
+}

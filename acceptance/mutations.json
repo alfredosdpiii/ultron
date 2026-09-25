@@ -1,0 +1,144 @@
+{
+	"version": 1,
+	"description": "A26 regression-mutation slice. Each mutation weakens one critical guarantee; the listed evidence tests must fail (kill it). Reviewed with the manifest and covered by instrument.lock.",
+	"mutations": [
+		{
+			"id": "family-sender-from-payload",
+			"row": "A41",
+			"file": "packages/coding-agent/src/ultron/family.ts",
+			"guarantee": "Sender identity comes from the calling lane, never the payload",
+			"edits": [
+				{
+					"find": "fields(payload, [\"message\", \"receiver_role\", \"receiver_name\", \"receiver_id\", \"key\", \"ttl_ms\", \"steer\"]);",
+					"replace": "fields(payload, [\"message\", \"receiver_role\", \"receiver_name\", \"receiver_id\", \"key\", \"ttl_ms\", \"steer\", \"sender\"]);"
+				},
+				{
+					"find": "const caller = host.callerTaskId(request.caller);",
+					"replace": "const caller = typeof request.payload.sender === \"string\" ? request.payload.sender : host.callerTaskId(request.caller);"
+				}
+			],
+			"tests": ["packages/coding-agent/test/ultron-family.test.ts"]
+		},
+		{
+			"id": "family-drop-family-scope",
+			"row": "A41",
+			"file": "packages/coding-agent/src/ultron/family.ts",
+			"guarantee": "Child sends are limited to direct children of the sender",
+			"edits": [
+				{
+					"find": "const children = tasks.filter((task) => (task.parentId ?? null) === sender);",
+					"replace": "const children = tasks;"
+				}
+			],
+			"tests": ["packages/coding-agent/test/ultron-family.test.ts"]
+		},
+		{
+			"id": "family-verifier-may-message-children",
+			"row": "A41",
+			"file": "packages/coding-agent/src/ultron/family.ts",
+			"guarantee": "Verifier tasks may only message their direct parent",
+			"edits": [
+				{
+					"find": "if (verifier(senderTask)) throw new Error(\"Verifier tasks may only message their direct parent\");",
+					"replace": ""
+				}
+			],
+			"tests": ["packages/coding-agent/test/ultron-family.test.ts"]
+		},
+		{
+			"id": "family-messages-never-expire",
+			"row": "A41",
+			"file": "packages/coding-agent/src/ultron/family.ts",
+			"guarantee": "Expired messages are never delivered",
+			"edits": [
+				{
+					"find": "return message.state === \"pending\" && message.expiresAt <= now;",
+					"replace": "return false;"
+				}
+			],
+			"tests": ["packages/coding-agent/test/ultron-family.test.ts"]
+		},
+		{
+			"id": "progress-truthy-passed",
+			"row": "A44",
+			"file": "packages/coding-agent/src/ultron/progress.ts",
+			"guarantee": "A completion claim is verified only when the verifier returns passed === true",
+			"edits": [
+				{
+					"find": "if (passed === true)",
+					"replace": "if (passed)"
+				}
+			],
+			"tests": ["packages/coding-agent/test/ultron-progress.test.ts"]
+		},
+		{
+			"id": "progress-grants-budget-extension",
+			"row": "A44",
+			"file": "packages/coding-agent/src/ultron/progress.ts",
+			"guarantee": "Reassessment never extends budgets",
+			"edits": [
+				{
+					"find": "decision: \"denied\",",
+					"replace": "decision: \"granted\","
+				}
+			],
+			"tests": ["packages/coding-agent/test/ultron-progress.test.ts"]
+		},
+		{
+			"id": "kernel-keeps-credentials",
+			"row": "A10",
+			"file": "packages/coding-agent/src/ultron/rlm/kernel.ts",
+			"guarantee": "Credential-named variables are scrubbed from the kernel environment",
+			"edits": [
+				{
+					"find": "if (!allowed.has(name) && (control || CREDENTIAL_NAME.test(name))) continue;",
+					"replace": "if (!allowed.has(name) && control) continue;"
+				}
+			],
+			"tests": ["packages/coding-agent/test/ultron-worker-isolation.test.ts"]
+		},
+		{
+			"id": "kernel-keeps-worker-control-channel",
+			"row": "A10",
+			"file": "packages/coding-agent/src/ultron/rlm/kernel.ts",
+			"guarantee": "Worker control-channel variables are scrubbed even when their names look harmless",
+			"edits": [
+				{
+					"find": "if (!allowed.has(name) && (control || CREDENTIAL_NAME.test(name))) continue;",
+					"replace": "if (!allowed.has(name) && CREDENTIAL_NAME.test(name)) continue;"
+				}
+			],
+			"tests": ["packages/coding-agent/test/ultron-worker-isolation.test.ts"]
+		},
+		{
+			"id": "schedules-drop-slot-key",
+			"row": "A23",
+			"file": "packages/coding-agent/src/ultron/schedules.ts",
+			"guarantee": "Schedule firings are admitted with a slot-derived idempotency key",
+			"edits": [
+				{
+					"find": "key: scheduleKey(claimed, slot),",
+					"replace": "key: `${scheduleKey(claimed, slot)}:${Math.random()}`,"
+				}
+			],
+			"tests": ["packages/coding-agent/test/ultron-schedules.test.ts"]
+		},
+		{
+			"id": "schedules-truthy-gate",
+			"row": "A23",
+			"file": "packages/coding-agent/src/ultron/schedules.ts",
+			"guarantee": "A required check passes only with a boolean passed === true",
+			"edits": [
+				{
+					"find": "if (typeof passed !== \"boolean\") {",
+					"replace": "if (passed === undefined) {"
+				},
+				{
+					"find": "outcome.passed = passed;",
+					"replace": "outcome.passed = Boolean(passed);"
+				}
+			],
+			"tests": ["packages/coding-agent/test/ultron-schedules.test.ts"]
+		}
+	]
+}

@@ -1,0 +1,30 @@
+{
+	"version": 1,
+	"algorithm": "sha256",
+	"manifest": "f6d25970a87c99babc1750c803c7a699d23d6de260809a0113b4343571ac1276",
+	"instrument": {
+		"acceptance/mutations.json": "1ff99ca3f89075496562a64bd2d5513c88e80c582d454125678f04bfc25fe23a",
+		"scripts/acceptance-lock.mjs": "0738f59da364f20af0634b28b9d32d70b2768f6d4cb6f2bf03cab13302923980",
+		"scripts/acceptance-report.mjs": "1cafa8fd92359cf590a9176058f8e3cba93868e60f57ecfd97ad635b939da94c",
+		"scripts/acceptance-mutation.mjs": "c66e48020596036a1f6676c8c4478cf840887b535e28f8643c8044a63003ce9b"
+	},
+	"evidence": {
+		"packages/coding-agent/test/ultron-definition-registry.test.ts": "044c50998bb7f315686760332d7b8e3a673fbe6bf105a26049d4ecabaa7a1266",
+		"packages/coding-agent/test/ultron-family.test.ts": "32ea9a9643be3b13fc7bc176178584eb29955f5055f2f6f873717af3a44db33c",
+		"packages/coding-agent/test/ultron-host-modules.test.ts": "170bf867fb92a75e070f3a1cb3ce7a8d4e3730244286c8ac35fd5b6a66e504e5",
+		"packages/coding-agent/test/ultron-jev.test.ts": "c76da23f14a319e57c4fc1bc2d68902590b902a4823bcd5c06928447ff0a19d9",
+		"packages/coding-agent/test/ultron-kernel.test.ts": "1fe993d958d7dc48f2df3bf4a75434eb34f37b951d9d0e5f6746ed7503cf7294",
+		"packages/coding-agent/test/ultron-local-services.test.ts": "fc02ff0c4c8c91af4aa038964b1188e78578840fd7af6d10b2645a99e5207eaa",
+		"packages/coding-agent/test/ultron-memory-inspection.test.ts": "6f066ccf662be2e44b98bd9fe7de387361dc3b58eeb52a65f82690cae8a9d9b4",
+		"packages/coding-agent/test/ultron-memory.test.ts": "9c5cbddd6c9fcd8133967a6dffb164e0a7509b542f288a4463474909feec41c1",
+		"packages/coding-agent/test/ultron-native-host.test.ts": "cce8a21580274ef87509fe9cc0897009a422fcc46d7b89c48e57275e098d02dc",
+		"packages/coding-agent/test/ultron-native-rpc.test.ts": "a22bddcf3327f2a3371f8c99d5dedf2325b279cf3d699e3a13d332e472aab86f",
+		"packages/coding-agent/test/ultron-progress.test.ts": "3d3af8a53626ca8a96eab39b7071f47da8381b9ea370c57c4d3ff0aa55aa24c8",
+		"packages/coding-agent/test/ultron-rlm-tool.test.ts": "c8f5a0807fc8b7e372e21ac5ad98e7ecf6b827bf31de39debfb1bd9b252be617",
+		"packages/coding-agent/test/ultron-schedules.test.ts": "53a83836658238798f67f71ece291f2437859049f6ba0e02ec2c320fb30c065e",
+		"packages/coding-agent/test/ultron-session-selection.test.ts": "434ac4cedd31682a8afde2b66029f71d14117224e02b1c3001817a1c4162c22e",
+		"packages/coding-agent/test/ultron-skills.test.ts": "557478db705d08814ec982571cbc70199676a6a4e5c5035ea0a0e3d5310acb28",
+		"packages/coding-agent/test/ultron-task-store.test.ts": "87bc755c9520f7d111d9b6728601e1c1c8609585fd874cda0c26ee63906d372d",
+		"packages/coding-agent/test/ultron-worker-isolation.test.ts": "ab0721125d4d25d1ca6058cd4effd24ae72d3e08150b61d9c53febf067b5b0c2"
+	}
+}

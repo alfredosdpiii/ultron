@@ -1,0 +1,150 @@
+{
+	"generated_at": "2026-09-25T04:52:19.815Z",
+	"mutations_sha256": "1ff99ca3f89075496562a64bd2d5513c88e80c582d454125678f04bfc25fe23a",
+	"summary": {
+		"total": 10,
+		"killed": 9,
+		"survived": 1,
+		"error": 0,
+		"invalid": 0
+	},
+	"findings": [
+		"kernel-keeps-worker-control-channel"
+	],
+	"results": [
+		{
+			"id": "family-sender-from-payload",
+			"row": "A41",
+			"file": "packages/coding-agent/src/ultron/family.ts",
+			"guarantee": "Sender identity comes from the calling lane, never the payload",
+			"tests": [
+				"packages/coding-agent/test/ultron-family.test.ts"
+			],
+			"outcome": "killed",
+			"failing_tests": [
+				"family messaging module rejects forged sender fields and takes the sender from the calling lane"
+			]
+		},
+		{
+			"id": "family-drop-family-scope",
+			"row": "A41",
+			"file": "packages/coding-agent/src/ultron/family.ts",
+			"guarantee": "Child sends are limited to direct children of the sender",
+			"tests": [
+				"packages/coding-agent/test/ultron-family.test.ts"
+			],
+			"outcome": "killed",
+			"failing_tests": [
+				"family messaging module rejects siblings, grandchildren, and other families",
+				"family messaging module isolates verifiers to their direct parent and never steers them",
+				"family messaging through the native host derives identity from real task lanes and steers a live child lane"
+			]
+		},
+		{
+			"id": "family-verifier-may-message-children",
+			"row": "A41",
+			"file": "packages/coding-agent/src/ultron/family.ts",
+			"guarantee": "Verifier tasks may only message their direct parent",
+			"tests": [
+				"packages/coding-agent/test/ultron-family.test.ts"
+			],
+			"outcome": "killed",
+			"failing_tests": [
+				"family messaging module isolates verifiers to their direct parent and never steers them"
+			]
+		},
+		{
+			"id": "family-messages-never-expire",
+			"row": "A41",
+			"file": "packages/coding-agent/src/ultron/family.ts",
+			"guarantee": "Expired messages are never delivered",
+			"tests": [
+				"packages/coding-agent/test/ultron-family.test.ts"
+			],
+			"outcome": "killed",
+			"failing_tests": [
+				"family messaging module never delivers expired messages and reports them as expired",
+				"family messaging module rejects sends to a full inbox and oversized messages instead of dropping"
+			]
+		},
+		{
+			"id": "progress-truthy-passed",
+			"row": "A44",
+			"file": "packages/coding-agent/src/ultron/progress.ts",
+			"guarantee": "A completion claim is verified only when the verifier returns passed === true",
+			"tests": [
+				"packages/coding-agent/test/ultron-progress.test.ts"
+			],
+			"outcome": "killed",
+			"failing_tests": [
+				"progress module (A44) never verifies a completion claim without a passing verifier"
+			]
+		},
+		{
+			"id": "progress-grants-budget-extension",
+			"row": "A44",
+			"file": "packages/coding-agent/src/ultron/progress.ts",
+			"guarantee": "Reassessment never extends budgets",
+			"tests": [
+				"packages/coding-agent/test/ultron-progress.test.ts"
+			],
+			"outcome": "killed",
+			"failing_tests": [
+				"progress module (A44) always denies budget extension and records the reason",
+				"progress module (A44) persists receipts and decisions across module instances and settles interrupted verifications"
+			]
+		},
+		{
+			"id": "kernel-keeps-credentials",
+			"row": "A10",
+			"file": "packages/coding-agent/src/ultron/rlm/kernel.ts",
+			"guarantee": "Credential-named variables are scrubbed from the kernel environment",
+			"tests": [
+				"packages/coding-agent/test/ultron-worker-isolation.test.ts"
+			],
+			"outcome": "killed",
+			"failing_tests": [
+				"A10 worker isolation model-written Python sees no ambient credentials or worker control channel",
+				"A10 worker isolation explicit allow-list passes a named variable through"
+			]
+		},
+		{
+			"id": "kernel-keeps-worker-control-channel",
+			"row": "A10",
+			"file": "packages/coding-agent/src/ultron/rlm/kernel.ts",
+			"guarantee": "Worker control-channel variables are scrubbed even when their names look harmless",
+			"tests": [
+				"packages/coding-agent/test/ultron-worker-isolation.test.ts"
+			],
+			"outcome": "survived"
+		},
+		{
+			"id": "schedules-drop-slot-key",
+			"row": "A23",
+			"file": "packages/coding-agent/src/ultron/schedules.ts",
+			"guarantee": "Schedule firings are admitted with a slot-derived idempotency key",
+			"tests": [
+				"packages/coding-agent/test/ultron-schedules.test.ts"
+			],
+			"outcome": "killed",
+			"failing_tests": [
+				"Ultron schedules and goals (A23) duplicate and concurrent ticks in the same slot run the slot once",
+				"Ultron schedules and goals (A23) a restart on the same stores does not re-run a completed or claimed slot",
+				"Ultron schedules and goals (A23) the background timer fires due slots and stops on close"
+			]
+		},
+		{
+			"id": "schedules-truthy-gate",
+			"row": "A23",
+			"file": "packages/coding-agent/src/ultron/schedules.ts",
+			"guarantee": "A required check passes only with a boolean passed === true",
+			"tests": [
+				"packages/coding-agent/test/ultron-schedules.test.ts"
+			],
+			"outcome": "killed",
+			"failing_tests": [
+				"Ultron schedules and goals (A23) required gate: achieved only when every required check succeeds with passed === true"
+			]
+		}
+	]
+}
