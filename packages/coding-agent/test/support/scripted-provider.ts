@@ -10,6 +10,8 @@ export interface ScriptedRequest {
 		}>;
 	};
 	readonly raw: string;
+	/** Request headers, lower-cased as Node reports them. */
+	readonly headers: Readonly<Record<string, string | string[] | undefined>>;
 	/** Text of the system message, if any. */
 	readonly system: string;
 	/** Text of the first user message: identifies which lane or call this is. */
@@ -63,6 +65,7 @@ export class ScriptedProvider {
 			const scripted: ScriptedRequest = {
 				body,
 				raw,
+				headers: request.headers,
 				system: text(body.messages.find((message) => message.role === "system")?.content),
 				firstUser: text(body.messages.find((message) => message.role === "user")?.content),
 				lastUser: text([...body.messages].reverse().find((message) => message.role === "user")?.content),
