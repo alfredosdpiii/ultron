@@ -669,6 +669,7 @@ async function run(options: SessionWorkerRuntimeOptions, createHarness: CreateSe
 			harness,
 			cwd: metadata.cwd,
 			legacyExtensionCommands: runtime.legacyExtensionCommands,
+			inspect: runtime.inspect,
 			modelRuntime: runtime.modelRuntime,
 			settingsManager: runtime.settingsManager,
 			facetLoader: runtime.facetLoader,
@@ -1134,6 +1135,10 @@ async function createCodingAgentHarness(
 			lane,
 			modelRuntime,
 			settingsManager,
+			inspect: async (request, payload, context) => {
+				if (!host) throw new Error("Ultron RLM host is not initialized");
+				return host.handle(request, payload, context);
+			},
 			legacyExtensionCommands: {
 				list: async () => legacyExtensions?.commands ?? [],
 				run: async (name, args) => legacyExtensions?.runCommand(name, args) ?? { notifications: [] },

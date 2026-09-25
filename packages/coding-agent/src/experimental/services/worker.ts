@@ -31,6 +31,8 @@ export interface SessionWorkerRuntime {
 	readonly settingsManager?: SettingsManager;
 	readonly facetLoader?: FacetLoader;
 	readonly legacyExtensionCommands?: LegacyExtensionCommands;
+	/** Read-only access to the RLM host, used by inspection commands. */
+	readonly inspect?: (request: string, payload: Record<string, unknown>, context: Context) => Promise<unknown>;
 }
 
 export interface WorkerServiceScope {
@@ -58,6 +60,7 @@ export async function createSessionWorkerServices(options: {
 	readonly settingsManager?: SettingsManager;
 	readonly facetLoader?: FacetLoader;
 	readonly legacyExtensionCommands?: LegacyExtensionCommands;
+	readonly inspect?: SessionWorkerRuntime["inspect"];
 	publish(scope: WorkerServiceScope, subscriptionId: string, update: ServiceProviderUpdate): Promise<void>;
 }): Promise<SessionWorkerServices> {
 	const agentControllerRuntimeFacet = defineFacet({
@@ -90,6 +93,7 @@ export async function createSessionWorkerServices(options: {
 					cwd: options.cwd,
 					settingsManager: options.settingsManager,
 					extensionCommands: options.legacyExtensionCommands,
+					inspect: options.inspect,
 				}),
 			);
 		},

@@ -1,9 +1,10 @@
+import type { Context, JsonValue } from "@earendil-works/chord";
 import type { AgentHarness, AgentLane, BashExecutionMessage } from "@earendil-works/pi-agent-core";
 import { executeBashWithOperations } from "../../core/bash-executor.ts";
 import type { SettingsManager } from "../../core/settings-manager.ts";
 import { createLocalBashOperations } from "../../core/tools/bash.ts";
 import type { LegacyExtensionCommands } from "./legacy-extensions.ts";
-import type { SessionCommandInfo, SessionControl } from "./session-control.ts";
+import { INSPECTION_REQUESTS, type SessionCommandInfo, type SessionControl } from "./session-control.ts";
 
 export function createSessionControl(options: {
 	readonly harness: AgentHarness;
@@ -11,6 +12,7 @@ export function createSessionControl(options: {
 	readonly cwd: string;
 	readonly settingsManager?: SettingsManager;
 	readonly extensionCommands?: LegacyExtensionCommands;
+	readonly inspect?: (request: string, payload: Record<string, unknown>, context: Context) => Promise<unknown>;
 }): SessionControl {
 	const { harness, lane } = options;
 	const bashAborts = new Set<AbortController>();
@@ -100,6 +102,13 @@ export function createSessionControl(options: {
 		},
 		async abortBash() {
 			for (const abort of bashAborts) abort.abort();
+		},
+		async inspect(request, payload, context) {
+			if (!INSPECTION_REQUESTS.includes(request)) throw new Error(`Not an inspection request: ${request}`);
+			if (!options.inspect) throw new Error("This Session has no Ultron runtime to inspect");
+			const body = payload === null ? {} : payload;
+			if (typeof body !== "object" || Array.isArray(body)) throw new Error("Inspection payload must be an object");
+			return (await options.inspect(request, body, context)) as JsonValue;
 		},
 	};
 }

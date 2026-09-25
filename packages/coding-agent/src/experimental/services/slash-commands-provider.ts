@@ -1,10 +1,13 @@
 import { defineFacet, type Facet, type JsonValue } from "@earendil-works/chord";
+import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
 import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
 import { AgentController } from "./agent-controller.ts";
+import { inspectionCommands } from "./inspection-commands.ts";
 import { LegacyExtensionCommands } from "./legacy-extensions.ts";
 import { type ModelSummary, Models, type Models as ModelsService } from "./models.ts";
 import { PresentationPlugins, SessionPlugins } from "./plugins.ts";
 import { PresentationUI } from "./presentation-ui.ts";
+import { SessionControl } from "./session-control.ts";
 import { type SlashCommandContribution, SlashCommands } from "./slash-commands.ts";
 
 const THINKING_DESCRIPTIONS: Record<ThinkingLevel, string> = {
@@ -97,10 +100,22 @@ export function createBuiltInSlashCommandsFacet(options: {
 			const presentationPlugins = env.use(PresentationPlugins);
 			const sessionPlugins = env.use(SessionPlugins);
 			const legacyExtensions = env.use(LegacyExtensionCommands);
-			env.onActivate(() => {
+			const control = env.use(SessionControl);
+			env.onActivate(async () => {
 				env.own(commands.replace(modelCommand(models, ui)));
+				if (control) {
+					for (const command of inspectionCommands(control, ui)) env.own(commands.replace(command));
+				}
 				if (legacyExtensions) {
 					env.own(commands.replace(legacyExtensionCommand(legacyExtensions, ui)));
+					// Pi exposes each extension command as its own slash command; built-ins keep their names.
+					for (const info of await legacyExtensions.list(BACKGROUND_CONTEXT)) {
+						try {
+							env.own(commands.register(directExtensionCommand(legacyExtensions, ui, info)));
+						} catch {
+							// Name collides with a built-in or is not a valid slash command name; /extension still runs it.
+						}
+					}
 				}
 				env.own(commands.replace(thinkingCommand(models, ui)));
 				env.own(commands.replace(compactCommand(controller, ui)));
@@ -121,6 +136,22 @@ export function createBuiltInSlashCommandsFacet(options: {
 			});
 		},
 	});
+}
+
+function directExtensionCommand(
+	service: LegacyExtensionCommands,
+	ui: PresentationUI,
+	info: { readonly name: string; readonly description?: string },
+): SlashCommandContribution {
+	return {
+		name: info.name,
+		description: info.description ?? "Extension command",
+		async run(args, context) {
+			const result = await service.run(info.name, args, context);
+			for (const notification of result.notifications) ui.showStatus(notification, context);
+			return undefined;
+		},
+	};
 }
 
 function legacyExtensionCommand(service: LegacyExtensionCommands, ui: PresentationUI): SlashCommandContribution {

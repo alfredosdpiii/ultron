@@ -1,4 +1,4 @@
-import { type Context, defineService } from "@earendil-works/chord";
+import { type Context, defineService, type JsonValue } from "@earendil-works/chord";
 
 export type SessionQueueMode = "all" | "one-at-a-time";
 
@@ -36,6 +36,26 @@ export interface SessionControl {
 	/** Run a user shell command in the Session cwd and record it for the model unless excluded. */
 	bash(command: string, excludeFromContext: boolean, context: Context): Promise<SessionBashResult>;
 	abortBash(context: Context): Promise<void>;
+	/** Read recorded runtime state (tasks, memory evidence, skills, experiments) without side effects. */
+	inspect(request: string, payload: JsonValue, context: Context): Promise<JsonValue>;
 }
+
+/** Read-only host requests the inspector may issue. None of them runs a search or starts work. */
+export const INSPECTION_REQUESTS: readonly string[] = [
+	"agents.status",
+	"agents.list",
+	"agents.inspect",
+	"memory.why",
+	"memory.list",
+	"skills.list",
+	"skills.why",
+	"experiments.list",
+	"refinements.list",
+	"progress.history",
+	"progress.assess",
+	"schedules.list",
+	"goals.list",
+	"goals.get",
+];
 
 export const SessionControl = defineService<SessionControl>("ultron.session-control");

@@ -35,6 +35,7 @@ import type {
 import { LegacyExtensionCommands } from "../src/experimental/services/legacy-extensions.ts";
 import { Models, type ModelsState } from "../src/experimental/services/models.ts";
 import { PresentationPlugins, SessionPlugins } from "../src/experimental/services/plugins.ts";
+import { SessionControl } from "../src/experimental/services/session-control.ts";
 import {
 	SessionDirectory,
 	type SessionDirectoryState,
@@ -258,8 +259,27 @@ describe("experimental client TUI", () => {
 				SessionPlugins,
 				Transcript,
 				LegacyExtensionCommands,
+				SessionControl,
 			]);
 			sessionProvider.provide(SessionPlugins, { reload: reloadSessionPlugins });
+			sessionProvider.provide(SessionControl, {
+				getSettings: async () => ({
+					name: null,
+					steeringMode: "all",
+					followUpMode: "all",
+					autoCompaction: true,
+					autoRetry: true,
+				}),
+				setName: async () => {},
+				setSteeringMode: async () => {},
+				setFollowUpMode: async () => {},
+				setAutoCompaction: async () => {},
+				setAutoRetry: async () => {},
+				listCommands: async () => [],
+				bash: async () => ({ output: "", exitCode: 0, cancelled: false, truncated: false, fullOutputPath: null }),
+				abortBash: async () => {},
+				inspect: async () => null,
+			});
 			sessionProvider.provide(LegacyExtensionCommands, {
 				list: async () => [],
 				run: async () => ({ notifications: [] }),
@@ -306,7 +326,7 @@ describe("experimental client TUI", () => {
 				},
 			});
 			const sessionNamespace = createRemoteServiceBinding({
-				services: [Models, AgentController, SessionPlugins, Transcript, LegacyExtensionCommands],
+				services: [Models, AgentController, SessionPlugins, Transcript, LegacyExtensionCommands, SessionControl],
 				transport: createLoopbackServiceTransport(sessionProvider),
 				bound: false,
 			});

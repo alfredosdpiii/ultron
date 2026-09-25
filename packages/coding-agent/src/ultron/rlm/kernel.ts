@@ -2,6 +2,31 @@ import { type ChildProcessWithoutNullStreams, spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 
+const CREDENTIAL_NAME =
+	/(API_?KEY|ACCESS_?KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL|PRIVATE_?KEY|AUTH|COOKIE|SESSION_?KEY|WEBHOOK)/i;
+
+/**
+ * Environment for model-written Python. Credentials and the worker's control channel are
+ * removed so the kernel receives no ambient authority; host capabilities go through host
+ * requests instead. ULTRON_RLM_ENV_ALLOW lists names (comma-separated) to pass through anyway.
+ */
+export function kernelEnvironment(source: NodeJS.ProcessEnv): Record<string, string> {
+	const allowed = new Set(
+		(source.ULTRON_RLM_ENV_ALLOW ?? "")
+			.split(",")
+			.map((name) => name.trim())
+			.filter(Boolean),
+	);
+	const environment: Record<string, string> = {};
+	for (const [name, value] of Object.entries(source)) {
+		if (value === undefined) continue;
+		const control = name.startsWith("PI_SESSION_WORKER_") || name.startsWith("ULTRON_SESSION_WORKER_");
+		if (!allowed.has(name) && (control || CREDENTIAL_NAME.test(name))) continue;
+		environment[name] = value;
+	}
+	return environment;
+}
+
 /** The signal covers the active cell, including failure, completion and shutdown. */
 export type KernelHostHandler = (
 	type: string,
@@ -179,7 +204,7 @@ export class RlmKernel {
 				(process.platform === "linux" && existsSync("/usr/bin/python3") ? "/usr/bin/python3" : "python3");
 			child = spawn(python, [this.options.runtimePath], {
 				cwd: this.options.cwd,
-				env: { ...process.env, NO_COLOR: "1", PYTHONDONTWRITEBYTECODE: "1" },
+				env: { ...kernelEnvironment(process.env), NO_COLOR: "1", PYTHONDONTWRITEBYTECODE: "1" },
 				stdio: ["pipe", "pipe", "pipe"],
 				detached: ownsProcessGroup,
 			});
