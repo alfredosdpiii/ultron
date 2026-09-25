@@ -1,6 +1,8 @@
 import { type ChildProcessWithoutNullStreams, spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { basename, dirname, join } from "node:path";
+import { processSnapshotKey, sha256Hex, signSnapshot, verifySnapshot } from "./snapshot-auth.ts";
 
 const CREDENTIAL_NAME =
 	/(API_?KEY|ACCESS_?KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL|PRIVATE_?KEY|AUTH|COOKIE|SESSION_?KEY|WEBHOOK)/i;
@@ -27,6 +29,66 @@ export function kernelEnvironment(source: NodeJS.ProcessEnv): Record<string, str
 	return environment;
 }
 
+/**
+ * Per-kernel resource limits; 0 disables one. These are resource limits, not isolation.
+ * - maxMemoryMb: RLIMIT_DATA (heap and private writable mappings) for the kernel and, inherited, for
+ *   every process a cell spawns. Each process gets the limit; it is not an aggregate over the tree.
+ *   RLIMIT_DATA rather than RLIMIT_AS, so runtimes that reserve large address ranges (V8, Go) still start.
+ * - maxCpuSeconds: CPU time per cell, not per process: kernels are long-lived and would otherwise
+ *   eventually die of a lifetime budget, and cells legitimately wait on subagents for hours without
+ *   using CPU. Python raises RlmCpuLimitExceeded in the cell; a cell stuck in C code or swallowing the
+ *   error is killed by the host after a grace period. Spawned processes inherit the soft RLIMIT_CPU.
+ */
+export type KernelResourceLimits = { maxMemoryMb: number; maxCpuSeconds: number };
+
+export const DEFAULT_KERNEL_LIMITS: Readonly<KernelResourceLimits> = { maxMemoryMb: 4096, maxCpuSeconds: 1800 };
+
+function limitValue(value: string | undefined, fallback: number): number {
+	if (value === undefined || value.trim() === "") return fallback;
+	return /^\s*[0-9]+\s*$/.test(value) ? Number(value) : fallback;
+}
+
+/** Limits from ULTRON_RLM_MAX_MEMORY_MB and ULTRON_RLM_MAX_CPU_SECONDS, then explicit overrides. */
+export function kernelResourceLimits(
+	source: NodeJS.ProcessEnv = process.env,
+	overrides: Partial<KernelResourceLimits> = {},
+): KernelResourceLimits {
+	const limits = {
+		maxMemoryMb:
+			overrides.maxMemoryMb ?? limitValue(source.ULTRON_RLM_MAX_MEMORY_MB, DEFAULT_KERNEL_LIMITS.maxMemoryMb),
+		maxCpuSeconds:
+			overrides.maxCpuSeconds ?? limitValue(source.ULTRON_RLM_MAX_CPU_SECONDS, DEFAULT_KERNEL_LIMITS.maxCpuSeconds),
+	};
+	for (const [name, value] of Object.entries(limits)) {
+		if (!Number.isSafeInteger(value) || value < 0) throw new Error(`RLM ${name} must be a non-negative integer`);
+	}
+	return limits;
+}
+
+/** Runtime exit codes (runtime.py) for limits it could not report in-band. */
+const EXIT_MEMORY = 86;
+const EXIT_CPU = 87;
+
+function memoryLimitMessage(limits: KernelResourceLimits): string {
+	return `RLM kernel exceeded its memory limit (${limits.maxMemoryMb} MiB per process, ULTRON_RLM_MAX_MEMORY_MB) and was stopped; the next cell starts a fresh kernel without earlier Python state`;
+}
+
+function cpuLimitMessage(limits: KernelResourceLimits): string {
+	return `RLM kernel exceeded its CPU limit (${limits.maxCpuSeconds} CPU-seconds per cell, ULTRON_RLM_MAX_CPU_SECONDS) and was stopped; the next cell starts a fresh kernel without earlier Python state`;
+}
+
+/** CPU seconds (user + system) of one Linux process, or undefined when unavailable. */
+function processCpuSeconds(pid: number): number | undefined {
+	try {
+		const stat = readFileSync(`/proc/${pid}/stat`, "utf8");
+		// After the command name: state(3) ppid(4) ... utime(14) stime(15), clock ticks (USER_HZ = 100 on Linux).
+		const fields = stat.slice(stat.lastIndexOf(")") + 2).split(" ");
+		return (Number(fields[11]) + Number(fields[12])) / 100;
+	} catch {
+		return undefined;
+	}
+}
+
 /** The signal covers the active cell, including failure, completion and shutdown. */
 export type KernelHostHandler = (
 	type: string,
@@ -40,6 +102,8 @@ export type KernelSnapshotReport = {
 	skipped: string[];
 	reasons: Record<string, string>;
 	sha256: string;
+	/** sha256 of the unsigned file content the host signed. */
+	contentSha256?: string;
 };
 
 /** `skipped` repeats the names the snapshot could not restore; they are absent, not stale. */
@@ -89,6 +153,8 @@ type Generation = {
 	failure?: Error;
 	startupTimer?: ReturnType<typeof setTimeout>;
 	restorePath?: string;
+	cpuTimer?: ReturnType<typeof setInterval>;
+	cellCpuStart?: number;
 	buffer?: Buffer;
 	bufferedBytes: number;
 	protocolBytes: number;
@@ -167,6 +233,24 @@ function snapshotReport(value: unknown): KernelSnapshotReport | undefined {
 		skipped: stringList(report.skipped),
 		reasons: stringRecord(report.reasons),
 		sha256: typeof report.sha256 === "string" ? report.sha256 : "",
+		...(typeof report.content_sha256 === "string" ? { contentSha256: report.content_sha256 } : {}),
+	};
+}
+
+function removeQuietly(path: string): void {
+	try {
+		rmSync(path, { force: true });
+	} catch {
+		/* The directory may not exist (the kernel failed to write), or the file is already gone. */
+	}
+}
+
+function snapshotError(message: string): KernelExecutionResult {
+	return {
+		status: "error",
+		stdout: "",
+		stderr: "",
+		error: { ename: "SnapshotIntegrityError", evalue: message, traceback: [] },
 	};
 }
 
@@ -233,6 +317,22 @@ function encodeFrame(frame: Frame): string {
 	return `${line}\n`;
 }
 
+export type RlmKernelOptions = {
+	cwd: string;
+	runtimePath: string;
+	python?: string;
+	snapshotPath?: string;
+	/** Bounds initialization, including restore, not user execution. */
+	startupTimeoutMs?: number;
+	/** Overrides ULTRON_RLM_MAX_MEMORY_MB / ULTRON_RLM_MAX_CPU_SECONDS; 0 disables a limit. */
+	limits?: Partial<KernelResourceLimits>;
+	/**
+	 * HMAC key that signs and verifies snapshots in this host process; the kernel never receives it.
+	 * Defaults to a per-process random key, so snapshots are then restorable only within this process.
+	 */
+	snapshotKey?: Uint8Array;
+};
+
 export class RlmKernel {
 	private generation?: Generation;
 	private readonly operations = new Set<Operation>();
@@ -242,27 +342,15 @@ export class RlmKernel {
 	private autoRestore = true;
 	private stderr = "";
 
-	private readonly options: {
-		cwd: string;
-		runtimePath: string;
-		python?: string;
-		snapshotPath?: string;
-		/** Bounds initialization, including restore, not user execution. */
-		startupTimeoutMs?: number;
-	};
+	private readonly options: RlmKernelOptions;
 	private readonly hostHandler: KernelHostHandler;
-	constructor(
-		options: {
-			cwd: string;
-			runtimePath: string;
-			python?: string;
-			snapshotPath?: string;
-			startupTimeoutMs?: number;
-		},
-		hostHandler: KernelHostHandler,
-	) {
+	private readonly limits: KernelResourceLimits;
+	private readonly snapshotKey: Uint8Array;
+	constructor(options: RlmKernelOptions, hostHandler: KernelHostHandler) {
 		this.options = options;
 		this.hostHandler = hostHandler;
+		this.limits = kernelResourceLimits(process.env, options.limits);
+		this.snapshotKey = options.snapshotKey ?? processSnapshotKey();
 		const timeout = options.startupTimeoutMs ?? STARTUP_TIMEOUT_MS;
 		if (!Number.isFinite(timeout) || timeout <= 0 || timeout > 2_147_483_647) {
 			throw new Error("RLM startupTimeoutMs must be a positive, finite timer duration");
@@ -293,7 +381,13 @@ export class RlmKernel {
 				(process.platform === "linux" && existsSync("/usr/bin/python3") ? "/usr/bin/python3" : "python3");
 			child = spawn(python, [this.options.runtimePath], {
 				cwd: this.options.cwd,
-				env: { ...kernelEnvironment(process.env), NO_COLOR: "1", PYTHONDONTWRITEBYTECODE: "1" },
+				env: {
+					...kernelEnvironment(process.env),
+					NO_COLOR: "1",
+					PYTHONDONTWRITEBYTECODE: "1",
+					ULTRON_RLM_MAX_MEMORY_MB: String(this.limits.maxMemoryMb),
+					ULTRON_RLM_MAX_CPU_SECONDS: String(this.limits.maxCpuSeconds),
+				},
 				stdio: ["pipe", "pipe", "pipe"],
 				detached: ownsProcessGroup,
 			});
@@ -332,14 +426,19 @@ export class RlmKernel {
 		});
 		child.once("exit", (code, signal) => {
 			generation.exited.resolve(undefined);
-			if (this.isCurrent(generation)) {
-				this.fail(generation, new Error(`RLM kernel exited (${signal ?? code ?? "unknown"})${this.diagnostics()}`));
-			}
+			if (this.isCurrent(generation)) this.fail(generation, this.exitError(code, signal));
 		});
+		this.startCpuWatchdog(generation);
 		child.stdout.once("end", () => {
-			if (this.isCurrent(generation)) {
-				this.fail(generation, new Error(`RLM kernel stdout closed${this.diagnostics()}`));
-			}
+			if (!this.isCurrent(generation)) return;
+			// Output usually ends just before the exit event; wait briefly so the exit code
+			// (for example a resource limit) is what gets reported.
+			const timer = setTimeout(() => {
+				if (this.isCurrent(generation)) {
+					this.fail(generation, new Error(`RLM kernel stdout closed${this.diagnostics()}`));
+				}
+			}, 200);
+			void generation.exited.promise.then(() => clearTimeout(timer));
 		});
 		// Streams may still report errors after termination. Keep handlers scoped
 		// to their process so late EPIPE/exit/data events cannot affect a restart.
@@ -347,6 +446,33 @@ export class RlmKernel {
 			stream.on("error", (error) => this.fail(generation, error));
 		}
 		return generation.started.promise;
+	}
+
+	private exitError(code: number | null, signal: NodeJS.Signals | null): Error {
+		if (code === EXIT_MEMORY) return new Error(memoryLimitMessage(this.limits));
+		if (code === EXIT_CPU || signal === "SIGXCPU") return new Error(cpuLimitMessage(this.limits));
+		// The host's own kills happen after fail(), so a SIGKILL seen here came from elsewhere.
+		const hint = signal === "SIGKILL" ? "; the system out-of-memory killer may have stopped it" : "";
+		return new Error(`RLM kernel exited (${signal ?? code ?? "unknown"})${hint}${this.diagnostics()}`);
+	}
+
+	/**
+	 * Backstop for the per-cell CPU limit: Python cannot interrupt a cell stuck in C code, and cell code
+	 * can catch the limit error or raise its own soft RLIMIT_CPU. Kill the kernel after a grace period.
+	 */
+	private startCpuWatchdog(generation: Generation): void {
+		const limit = this.limits.maxCpuSeconds;
+		const pid = generation.child.pid;
+		if (limit <= 0 || process.platform !== "linux" || !pid) return;
+		const grace = Math.max(2, Math.min(10, limit * 0.1));
+		generation.cpuTimer = setInterval(() => {
+			if (!generation.activeCell || generation.cellCpuStart === undefined) return;
+			const used = processCpuSeconds(pid);
+			if (used !== undefined && used - generation.cellCpuStart > limit + grace) {
+				this.fail(generation, new Error(cpuLimitMessage(this.limits)));
+			}
+		}, 500);
+		generation.cpuTimer.unref?.();
 	}
 
 	private diagnostics(): string {
@@ -360,7 +486,7 @@ export class RlmKernel {
 	private async completeStartup(generation: Generation): Promise<void> {
 		try {
 			if (generation.restorePath) {
-				const result = await this.request(generation, { request: "restore", path: generation.restorePath });
+				const result = await this.verifiedRestore(generation, generation.restorePath);
 				if (result.status === "error") {
 					throw new Error(`RLM kernel startup restore failed: ${result.error?.evalue ?? "unknown restore error"}`);
 				}
@@ -601,6 +727,7 @@ export class RlmKernel {
 		} else {
 			generation.pending.set(id, waiter);
 			if (frame.request === "execute") {
+				generation.cellCpuStart = generation.child.pid ? processCpuSeconds(generation.child.pid) : undefined;
 				generation.activeCell = waiter;
 				if (operation) operation.cell = waiter;
 			}
@@ -634,6 +761,7 @@ export class RlmKernel {
 		// Once user code could have run, never silently resurrect an older checkpoint.
 		if (generation.initialized) this.autoRestore = false;
 		clearTimeout(generation.startupTimer);
+		clearInterval(generation.cpuTimer);
 		generation.buffer = undefined;
 		generation.bufferedBytes = 0;
 		generation.activeCell?.controller.abort(error);
@@ -715,7 +843,15 @@ export class RlmKernel {
 				// Explicit restore can also recover from a broken configured checkpoint.
 				await this.ensureStarted(frame.request !== "restore");
 				if (operation.settled) return;
-				operation.resolve(await this.request(this.generation!, frame, operation));
+				const generation = this.generation!;
+				const path = typeof frame.path === "string" ? frame.path : "";
+				operation.resolve(
+					await (frame.request === "snapshot"
+						? this.signedSnapshot(generation, path, operation)
+						: frame.request === "restore"
+							? this.verifiedRestore(generation, path, operation)
+							: this.request(generation, frame, operation)),
+				);
 			} catch (error) {
 				operation.reject(asError(error));
 			} finally {
@@ -724,6 +860,65 @@ export class RlmKernel {
 		};
 		this.executionQueue = this.executionQueue.then(run, run);
 		return operation.promise;
+	}
+
+	/**
+	 * The kernel writes an unsigned temporary file; the host checks it is exactly what the kernel
+	 * reported, signs it, and atomically replaces `path`. A failure leaves the previous snapshot intact.
+	 */
+	private async signedSnapshot(
+		generation: Generation,
+		path: string,
+		operation?: Operation,
+	): Promise<KernelExecutionResult> {
+		const unsigned = join(dirname(path), `.${basename(path)}.${randomUUID()}.unsigned`);
+		try {
+			const result = await this.request(generation, { request: "snapshot", path: unsigned }, operation);
+			if (result.status !== "ok") return result;
+			const content = readFileSync(unsigned);
+			if (!result.snapshot?.contentSha256 || sha256Hex(content) !== result.snapshot.contentSha256) {
+				return snapshotError("snapshot changed after the kernel wrote it; refusing to sign it");
+			}
+			const temporary = join(dirname(path), `.${basename(path)}.${randomUUID()}.tmp`);
+			try {
+				writeFileSync(temporary, signSnapshot(this.snapshotKey, content), { mode: 0o600 });
+				renameSync(temporary, path);
+			} finally {
+				removeQuietly(temporary);
+			}
+			return result;
+		} catch (error) {
+			return snapshotError(`snapshot signing failed: ${asError(error).message}`);
+		} finally {
+			removeQuietly(unsigned);
+		}
+	}
+
+	/** Refuses unsigned or tampered snapshots before the kernel reads them; the namespace stays untouched. */
+	private async verifiedRestore(
+		generation: Generation,
+		path: string,
+		operation?: Operation,
+	): Promise<KernelExecutionResult> {
+		let raw: Buffer;
+		try {
+			raw = readFileSync(path);
+		} catch (error) {
+			// A missing snapshot is reported by the kernel as `missing`; nothing is loaded.
+			const code = (error as NodeJS.ErrnoException).code;
+			if (code === "ENOENT" || code === "ENOTDIR") {
+				return this.request(generation, { request: "restore", path }, operation);
+			}
+			return snapshotError(`snapshot cannot be read: ${asError(error).message}`);
+		}
+		let contentSha256: string;
+		try {
+			({ contentSha256 } = verifySnapshot(this.snapshotKey, raw));
+		} catch (error) {
+			return snapshotError(asError(error).message);
+		}
+		// The kernel re-hashes what it reads, so a file swapped after this check is refused too.
+		return this.request(generation, { request: "restore", path, content_sha256: contentSha256 }, operation);
 	}
 
 	execute(code: string, signal?: AbortSignal): Promise<KernelExecutionResult> {

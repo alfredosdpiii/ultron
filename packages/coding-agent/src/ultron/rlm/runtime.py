@@ -7,6 +7,7 @@ import contextlib
 import hashlib
 import io
 import json
+import math
 import os
 import signal
 import sys
@@ -167,9 +168,88 @@ async def bash(command: str) -> dict[str, Any]:
     return await _STATE.bridge.request("bash", {"command": command})
 
 
+def _env_limit(name: str) -> int:
+    try:
+        return max(0, int(os.environ.get(name, "0")))
+    except ValueError:
+        return 0
+
+
+# Resource limits come from the host (kernel.ts), which resolves defaults and overrides. 0 disables one.
+# Memory is RLIMIT_DATA per process, inherited by every subprocess a cell spawns. CPU is a per-cell budget:
+# the soft RLIMIT_CPU is re-armed at each cell start, and the host kills the kernel if a cell overruns it.
+_MAX_MEMORY_MB = _env_limit("ULTRON_RLM_MAX_MEMORY_MB")
+_MAX_CPU_SECONDS = _env_limit("ULTRON_RLM_MAX_CPU_SECONDS")
+# Exit codes the host maps to "exceeded its memory/CPU limit" when the runtime cannot report in-band.
+_EXIT_MEMORY = 86
+_EXIT_CPU = 87
+_EXIT_INTERNAL = 70
+
+
+class RlmCpuLimitExceeded(BaseException):
+    """Raised in the cell when it uses more than ULTRON_RLM_MAX_CPU_SECONDS of CPU time."""
+
+
+def _cpu_used() -> float:
+    import resource
+
+    usage = resource.getrusage(resource.RUSAGE_SELF)
+    return usage.ru_utime + usage.ru_stime
+
+
+def _arm_cpu_limit() -> None:
+    """Give the process `_MAX_CPU_SECONDS` more CPU before SIGXCPU; children inherit the soft limit."""
+    if _MAX_CPU_SECONDS <= 0:
+        return
+    try:
+        import resource
+
+        _soft, hard = resource.getrlimit(resource.RLIMIT_CPU)
+        soft = math.ceil(_cpu_used()) + _MAX_CPU_SECONDS
+        if hard != resource.RLIM_INFINITY:
+            soft = min(soft, hard)
+        resource.setrlimit(resource.RLIMIT_CPU, (soft, hard))
+    except (ImportError, OSError, ValueError):
+        pass
+
+
+def _on_cpu_limit(_signum: int, _frame: Any) -> None:
+    # Re-arm first so the error path gets a fresh budget instead of a signal every second.
+    _arm_cpu_limit()
+    if _STATE.cell_active:
+        raise RlmCpuLimitExceeded(
+            f"RLM cell exceeded its CPU limit of {_MAX_CPU_SECONDS} CPU-seconds (ULTRON_RLM_MAX_CPU_SECONDS)"
+        )
+
+
+def _apply_resource_limits() -> None:
+    try:
+        import resource
+    except ImportError:
+        return
+    if _MAX_MEMORY_MB > 0 and hasattr(resource, "RLIMIT_DATA"):
+        limit = _MAX_MEMORY_MB * 1024 * 1024
+        _soft, hard = resource.getrlimit(resource.RLIMIT_DATA)
+        if hard != resource.RLIM_INFINITY:
+            limit = min(limit, hard)
+        # The hard limit is lowered too, so cell code cannot raise it again for itself or its children.
+        resource.setrlimit(resource.RLIMIT_DATA, (limit, limit))
+    if _MAX_CPU_SECONDS > 0 and hasattr(signal, "SIGXCPU"):
+        signal.signal(signal.SIGXCPU, _on_cpu_limit)
+        _arm_cpu_limit()
+
+
+def _memory_limit_note() -> str:
+    return (
+        f"RLM kernel exceeded its memory limit ({_MAX_MEMORY_MB} MiB per process, ULTRON_RLM_MAX_MEMORY_MB); "
+        "the allocation failed and the kernel keeps running"
+    )
+
+
 class RuntimeState:
     def __init__(self) -> None:
         self.bridge = HostBridge()
+        self.cell_active = False
         self.execution_lock = asyncio.Lock()
         self.snapshot_path: Path | None = None
         self.namespace: dict[str, Any] = {"__name__": "__main__"}
@@ -315,8 +395,8 @@ def _persistable_namespace() -> tuple[dict[str, Any], dict[str, str]]:
 def save_snapshot(path: str) -> dict[str, Any]:
     """Write a constrained data-only snapshot: a sha256 header line, then a JSON body.
 
-    The digest detects corruption and naive edits, not a writer that can recompute it;
-    snapshots are still trusted host artifacts and must not come from users or repositories.
+    The digest detects corruption. Authenticity is the host's job: kernel.ts signs the file with an
+    HMAC key this process never sees and verifies it before any restore.
     """
     target = Path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -330,19 +410,47 @@ def save_snapshot(path: str) -> dict[str, Any]:
         {"format": _SNAPSHOT_FORMAT, "version": _SNAPSHOT_VERSION, "sha256": digest, "bytes": len(body)},
         separators=(",", ":"),
     ).encode("utf-8")
+    content = header + b"\n" + body
     temporary = target.with_name(f".{target.name}.{os.getpid()}.tmp")
-    temporary.write_bytes(header + b"\n" + body)
+    temporary.write_bytes(content)
     os.replace(temporary, target)
     _STATE.snapshot_path = target
-    return {"saved": sorted(encoded), "skipped": skipped, "reasons": reasons, "serializer": "json", "sha256": digest}
+    return {
+        "saved": sorted(encoded),
+        "skipped": skipped,
+        "reasons": reasons,
+        "serializer": "json",
+        "sha256": digest,
+        # The host signs exactly these bytes; it refuses to sign a file that changed after this write.
+        "content_sha256": hashlib.sha256(content).hexdigest(),
+    }
 
 
-def restore_snapshot(path: str) -> dict[str, Any]:
+_SIGNATURE_FORMAT = "ultron-rlm-snapshot-signature"
+
+
+def restore_snapshot(path: str, verified_sha256: Any = None) -> dict[str, Any]:
+    """Restore a snapshot the host has already authenticated.
+
+    The host checks the HMAC signature line and passes the sha256 of the signed content; the bytes read
+    here must hash to that value, so a file swapped after the host's check is refused as well.
+    """
     target = Path(path)
     if not target.exists():
         return {"restored": [], "missing": True, "skipped": [], "reasons": {}}
     raw = target.read_bytes()
-    header_line, separator, body = raw.partition(b"\n")
+    signature_line, separator, content = raw.partition(b"\n")
+    try:
+        signature = json.loads(signature_line) if separator else None
+    except ValueError:
+        signature = None
+    if type(signature) is not dict or signature.get("format") != _SIGNATURE_FORMAT:
+        raise SnapshotIntegrityError(
+            "snapshot integrity check failed: missing host signature (unsigned snapshots are refused)"
+        )
+    if type(verified_sha256) is not str or hashlib.sha256(content).hexdigest() != verified_sha256:
+        raise SnapshotIntegrityError("snapshot integrity check failed: content differs from the host-verified snapshot")
+    header_line, separator, body = content.partition(b"\n")
     try:
         header = json.loads(header_line) if separator else None
     except ValueError:
@@ -688,29 +796,55 @@ async def execute_cell(request_id: str, source: str) -> None:
         _STATE.namespace.pop("_rlm_result", None)
         try:
             compiled = _prepare_code(source)
-            with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
-                result = eval(compiled, _STATE.namespace, _STATE.namespace)
-                if asyncio.iscoroutine(result):
-                    await result
-            if "_rlm_result" in _STATE.namespace:
-                with _preview_deadline():
-                    result_text = _result_preview(_STATE.namespace.pop("_rlm_result"))
-            else:
-                result_text = ""
+            _arm_cpu_limit()
+            _STATE.cell_active = True
+            try:
+                with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+                    result = eval(compiled, _STATE.namespace, _STATE.namespace)
+                    if asyncio.iscoroutine(result):
+                        await result
+                if "_rlm_result" in _STATE.namespace:
+                    with _preview_deadline():
+                        result_text = _result_preview(_STATE.namespace.pop("_rlm_result"))
+                else:
+                    result_text = ""
+            finally:
+                _STATE.cell_active = False
             emit("stdout", id=request_id, text=stdout.getvalue())
             emit("stderr", id=request_id, text=stderr.getvalue())
             emit("result", id=request_id, result=result_text)
             emit("done", id=request_id, status="ok")
         except BaseException as error:
-            emit("stdout", id=request_id, text=stdout.getvalue())
-            emit("stderr", id=request_id, text=stderr.getvalue())
             try:
-                with _preview_deadline():
-                    details = _error_preview(error)
-            except BaseException:
-                details = {"ename": _text_preview(type(error).__name__), "evalue": "<error preview failed>", "traceback": []}
-            emit("error", id=request_id, **details)
-            emit("done", id=request_id, status="error")
+                emit("stdout", id=request_id, text=stdout.getvalue())
+                emit("stderr", id=request_id, text=stderr.getvalue())
+                try:
+                    with _preview_deadline():
+                        details = _error_preview(error)
+                except BaseException:
+                    details = {"ename": _text_preview(type(error).__name__), "evalue": "<error preview failed>", "traceback": []}
+                if isinstance(error, MemoryError) and _MAX_MEMORY_MB > 0:
+                    note = _memory_limit_note()
+                    details["evalue"] = f"{details['evalue']} ({note})" if details["evalue"] else note
+                emit("error", id=request_id, **details)
+                emit("done", id=request_id, status="error")
+            except BaseException as secondary:
+                # The cell cannot be reported in-band (e.g. no memory left to encode it): exit with a code
+                # the host maps to a clear error, rather than leaving the cell pending forever.
+                _exit_for(error, secondary)
+
+
+def _exit_for(*errors: BaseException) -> None:
+    code = _EXIT_INTERNAL
+    if any(isinstance(error, MemoryError) for error in errors):
+        code = _EXIT_MEMORY
+    elif any(isinstance(error, RlmCpuLimitExceeded) for error in errors):
+        code = _EXIT_CPU
+    try:
+        sys.__stdout__.flush()
+    except BaseException:
+        pass
+    os._exit(code)
 
 
 async def handle_request(frame: dict[str, Any]) -> None:
@@ -728,7 +862,7 @@ async def handle_request(frame: dict[str, Any]) -> None:
             emit("done", id=request_id, status="error", error=_exception_message(error))
     elif request_type == "restore":
         try:
-            result = restore_snapshot(str(frame.get("path")))
+            result = restore_snapshot(str(frame.get("path")), frame.get("content_sha256"))
             emit("done", id=request_id, status="ok", restore=result)
         except Exception as error:
             emit("done", id=request_id, status="error", error=_exception_message(error))
@@ -763,4 +897,8 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    _apply_resource_limits()
+    try:
+        asyncio.run(main())
+    except (MemoryError, RlmCpuLimitExceeded) as fatal:
+        _exit_for(fatal)

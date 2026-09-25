@@ -12,7 +12,7 @@ Ultron is a fork of Pi whose only agent runtime is the native RLM session worker
 
 ## RLM host
 
-- Each lane (the root and every task) has its own persistent Python kernel. Kernels receive no credential-like environment variables and no worker control channel (`ULTRON_RLM_ENV_ALLOW` passes named variables through). A pool caps live kernels (16), evicts idle ones after a snapshot, and never evicts a running cell. Snapshots use a checksummed, constrained JSON format.
+- Each lane (the root and every task) has its own persistent Python kernel. Kernels receive no credential-like environment variables and no worker control channel (`ULTRON_RLM_ENV_ALLOW` passes named variables through). A pool caps live kernels (16), evicts idle ones after a snapshot, and never evicts a running cell. Snapshots use a checksummed, constrained JSON format, signed by the host with HMAC-SHA256 under a per-profile key (`<agentDir>/rlm-snapshot.key`, 0600); the kernel never holds the key, and restore refuses unsigned or mismatched snapshots before the kernel reads them. Kernels run under per-process memory limits (`ULTRON_RLM_MAX_MEMORY_MB`, default 4096, RLIMIT_DATA inherited by subprocesses) and a per-cell CPU budget (`ULTRON_RLM_MAX_CPU_SECONDS`, default 1800; the cell gets `RlmCpuLimitExceeded`, and the host kills a kernel that overruns it by a grace period); 0 disables either.
 - The host knows which lane issued each request, so tasks record their parent, child lanes can only query their own subtree, and cancelling a task stops its whole subtree.
 - Strategies: `deterministic`, `predict` (one tool-free model call with bounded repair), and `rlm` (a model lane). All share admission, idempotency, timeouts, usage accounting, and the durable journal. Results are always `verification: "unverified"`; only explicit checks (progress reassessment, goals, release gates) can say more.
 - `agents.spawn` and `rlm.spawn` tasks outlive the Python cell that started them; `agents.invoke` waits inside the cell. A child's deadline is capped at the root's remaining wall budget.
@@ -34,9 +34,10 @@ All optional controls (permission prompts, risk blocking, capability enforcement
 
 ## Known limits
 
-- Resource limits are the trusted-local profile: output, artifacts, wall time, admission, and process-group kills. There are no memory or CPU limits and no isolated sandbox profile.
+- Resource limits are the trusted-local profile: output, artifacts, wall time, admission, process-group kills, and per-kernel memory and CPU limits. There is no isolated sandbox profile.
+- The memory limit is per process, not an aggregate over the kernel's process tree (that needs cgroups, which are not used); the host CPU backstop watches the kernel process itself, and subprocesses rely on their inherited rlimits. The CPU budget is per cell: background tasks between cells are not charged, and a subprocess inherits the kernel's soft RLIMIT_CPU as its own lifetime budget. A kernel killed for a limit loses its Python state; the next cell starts a fresh kernel.
 - Without a sandbox, a model can read anything the user can, including test files outside the project. The live A46 run observed the model reading its own demonstration test; hostile-code or blind evaluation needs real isolation.
-- Snapshot checksums detect corruption, not a writer who recomputes the digest.
+- Snapshot signatures stop forged or edited snapshots from any writer without the profile key, including one who recomputes the sha256. Without a sandbox, model code runs as the same OS user and could read `rlm-snapshot.key` from disk; the signature proves the host wrote a snapshot, not that model code never saw the key. Unsigned snapshots from before signing are refused, not migrated; kernels built without a profile key sign with a per-process key.
 - Quitting in the middle of a root turn still stops that turn; work started by earlier turns continues. A hard-killed client leaves idle work to a 30-second orphan grace.
 - Workflows have no any-of joins or bounded revision cycles.
 - Pi import brings in the active branch only; labels and model changes are reported as skipped.
