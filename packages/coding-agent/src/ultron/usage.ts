@@ -113,6 +113,37 @@ export type NativeUsageStatus = {
 	remainingWallMs: number | null;
 	usage: NativeUsageTotals;
 	reservations: NativeUsageReservation[];
+	/** The whole session: every detailed root plus the folded history of older roots. */
+	session: NativeUsageSessionTotals;
+};
+
+export type NativeUsageSessionTotals = {
+	/** Roots still kept call by call. */
+	roots: number;
+	/** Older roots folded into the bounded history summary. */
+	foldedRoots: number;
+	usage: NativeUsageTotals;
+	/** Provider-reported model spend across the session, folded history included. */
+	spentUsd: number;
+	unknownPricedCalls: number;
+};
+
+/**
+ * Bounded summary of roots that were folded out of the detailed document. Sums are exact over the folded calls;
+ * a null token or cost field means at least one folded call did not report it, as for live totals.
+ */
+export type NativeUsageHistory = {
+	roots: number;
+	firstStartedAt: number | null;
+	lastSettledAt: number | null;
+	usage: NativeUsageTotals;
+	byKind: Record<NativeUsageKind, NativeUsageTotals>;
+	spentUsd: number;
+	unknownPricedCalls: number;
+	/** Folded task admissions by settlement status, so reconciliation can still account for their journal tasks. */
+	taskAdmissions: Record<NativeUsageCallStatus, number>;
+	/** Folded roots that came from an import (see `StoredRoot.imported`). */
+	importedRoots: number;
 };
 
 export type NativeUsageCost = {
@@ -163,12 +194,19 @@ type StoredRoot = {
 	deadlineAt: number | null;
 	reservations: StoredReservation[];
 	calls: StoredCall[];
+	/** Set on a historical root written by an import, e.g. Pi usage entries; never admits new work. */
+	imported?: { source: string; entries: number };
 };
 
 type StoredDocument = {
 	version: 1;
 	roots: Record<string, StoredRoot>;
+	/** Folded older roots; absent until the first fold. */
+	history?: NativeUsageHistory;
 };
+
+/** Roots kept call by call; older idle roots are folded into `history`. */
+export const DEFAULT_USAGE_DETAILED_ROOTS = 50;
 
 const DEFAULT_ROOT_ID = "ultron-root";
 const USAGE_DOCUMENT_VERSION = 1;
@@ -262,9 +300,37 @@ function validateCall(valueToCheck: unknown): asserts valueToCheck is StoredCall
 	validateMeasurement(item.usage);
 }
 
+function validateTotals(valueToCheck: unknown): void {
+	const item = object(valueToCheck);
+	for (const name of ["calls", "taskCalls", "modelCalls", "jevCalls", "unknownCalls"])
+		finiteInteger(item[name], `history ${name}`);
+	if (finiteNumber(item.wallMs, "history wallMs") < 0) throw new Error("Invalid usage ledger history wallMs");
+	for (const name of ["inputTokens", "outputTokens", "totalTokens", "cost"]) {
+		if (!Object.hasOwn(item, name)) throw new Error("Invalid usage ledger history totals");
+		optionalFiniteNumber(item[name], `history ${name}`);
+	}
+}
+
+function validateHistory(valueToCheck: unknown): void {
+	const item = object(valueToCheck);
+	finiteInteger(item.roots, "history roots");
+	finiteInteger(item.importedRoots, "history importedRoots");
+	optionalFiniteNumber(item.firstStartedAt, "history firstStartedAt");
+	optionalFiniteNumber(item.lastSettledAt, "history lastSettledAt");
+	validateTotals(item.usage);
+	const byKind = object(item.byKind);
+	for (const kind of ["task", "model", "jev"]) validateTotals(byKind[kind]);
+	finiteNumber(item.spentUsd, "history spentUsd");
+	finiteInteger(item.unknownPricedCalls, "history unknownPricedCalls");
+	const admissions = object(item.taskAdmissions);
+	for (const status of ["succeeded", "failed", "cancelled", "unknown"])
+		finiteInteger(admissions[status], "history taskAdmissions");
+}
+
 function validateDocument(valueToCheck: JsonValue): StoredDocument {
 	const document = object(valueToCheck);
 	if (document.version !== USAGE_DOCUMENT_VERSION) throw new Error("Unsupported usage ledger version");
+	if (document.history !== undefined) validateHistory(document.history);
 	const roots = object(document.roots);
 	for (const [rootId, valueToValidate] of Object.entries(roots)) {
 		const root = object(valueToValidate);
@@ -274,6 +340,11 @@ function validateDocument(valueToCheck: JsonValue): StoredDocument {
 		optionalFiniteNumber(root.deadlineAt, "deadlineAt");
 		if (!Array.isArray(root.reservations) || !Array.isArray(root.calls))
 			throw new Error("Invalid usage ledger root records");
+		if (root.imported !== undefined) {
+			const imported = object(root.imported);
+			if (typeof imported.source !== "string" || !imported.source) throw new Error("Invalid usage ledger import");
+			finiteInteger(imported.entries, "import entries");
+		}
 		const reservationIds = new Set<string>();
 		for (const reservation of root.reservations) {
 			validateReservation(reservation);
@@ -383,20 +454,84 @@ function totals(calls: readonly StoredCall[]): NativeUsageTotals {
 	};
 }
 
+function emptyTotals(): NativeUsageTotals {
+	return totals([]);
+}
+
+/** Adds `source` into `target` with the same null rule as `totals`: any unknown makes the sum unknown. */
+function mergeTotals(target: NativeUsageTotals, source: NativeUsageTotals): NativeUsageTotals {
+	const known = (left: number | null, right: number | null): number | null =>
+		left === null || right === null ? null : left + right;
+	return {
+		calls: target.calls + source.calls,
+		taskCalls: target.taskCalls + source.taskCalls,
+		modelCalls: target.modelCalls + source.modelCalls,
+		jevCalls: target.jevCalls + source.jevCalls,
+		wallMs: target.wallMs + source.wallMs,
+		inputTokens: known(target.inputTokens, source.inputTokens),
+		outputTokens: known(target.outputTokens, source.outputTokens),
+		totalTokens: known(target.totalTokens, source.totalTokens),
+		cost: known(target.cost, source.cost),
+		unknownCalls: target.unknownCalls + source.unknownCalls,
+	};
+}
+
+function emptyHistory(): NativeUsageHistory {
+	return {
+		roots: 0,
+		firstStartedAt: null,
+		lastSettledAt: null,
+		usage: emptyTotals(),
+		byKind: { task: emptyTotals(), model: emptyTotals(), jev: emptyTotals() },
+		spentUsd: 0,
+		unknownPricedCalls: 0,
+		taskAdmissions: { succeeded: 0, failed: 0, cancelled: 0, unknown: 0 },
+		importedRoots: 0,
+	};
+}
+
+function foldRoot(history: NativeUsageHistory, root: StoredRoot): void {
+	history.roots += 1;
+	if (root.imported) history.importedRoots += 1;
+	const started =
+		root.startedAt ??
+		root.calls.reduce<number | null>((min, call) => Math.min(min ?? call.admittedAt, call.admittedAt), null);
+	if (started !== null) history.firstStartedAt = Math.min(history.firstStartedAt ?? started, started);
+	for (const call of root.calls)
+		history.lastSettledAt = Math.max(history.lastSettledAt ?? call.settledAt, call.settledAt);
+	history.usage = mergeTotals(history.usage, totals(root.calls));
+	for (const kind of ["task", "model", "jev"] as const)
+		history.byKind[kind] = mergeTotals(history.byKind[kind], totals(root.calls.filter((call) => call.kind === kind)));
+	for (const call of root.calls) {
+		if (call.kind === "model") {
+			if (call.usage.cost === null) history.unknownPricedCalls += 1;
+			else history.spentUsd += call.usage.cost;
+		}
+		if (call.kind === "task") history.taskAdmissions[call.status] += 1;
+	}
+}
+
+function lastActivity(root: StoredRoot): number {
+	let latest = root.startedAt ?? Number.NEGATIVE_INFINITY;
+	for (const call of root.calls) latest = Math.max(latest, call.settledAt, call.admittedAt);
+	for (const reservation of root.reservations) latest = Math.max(latest, reservation.admittedAt);
+	return latest;
+}
+
 export class NativeUsageLedger implements NativeUsageLedgerLike {
 	private readonly store: NativeUsageStore;
 	private readonly limits: Required<NativeUsageLimits>;
 	private readonly defaultRootId: string;
 	private readonly now: () => number;
+	private readonly detailedRoots: number;
 	private document: StoredDocument = emptyDocument();
 	private loading?: Promise<void>;
 	private tail: Promise<void> = Promise.resolve();
 	private broken = false;
 
-	constructor(
-		store: NativeUsageStore = memoryStore(),
-		options: { limits?: NativeUsageLimits; rootId?: string; now?: () => number } = {},
-	) {
+	constructor(store: NativeUsageStore = memoryStore(), options: NativeUsageLedgerOptions = {}) {
+		if (options.detailedRoots !== undefined) finiteInteger(options.detailedRoots, "detailedRoots", 1);
+		this.detailedRoots = options.detailedRoots ?? DEFAULT_USAGE_DETAILED_ROOTS;
 		if (options.rootId !== undefined && (!options.rootId.trim() || options.rootId.includes("\0")))
 			throw new Error("Usage rootId must be a nonempty string without NUL");
 		this.store = store;
@@ -424,7 +559,36 @@ export class NativeUsageLedger implements NativeUsageLedgerLike {
 		return this.loading;
 	}
 
+	/**
+	 * Folds idle old roots into the history summary: a root is folded only when it has no active reservation, is
+	 * not among the `detailedRoots` most recently active roots, and cannot admit again (its wall deadline passed,
+	 * it has none, or it is an import). The default root is never folded, since callers without a root reuse it.
+	 */
+	private fold(document: StoredDocument): boolean {
+		const roots = Object.values(document.roots);
+		if (roots.length <= this.detailedRoots) return false;
+		let folded = false;
+		const now = this.now();
+		const recent = new Set(
+			roots
+				.map((root) => ({ root, at: lastActivity(root) }))
+				.sort((left, right) => right.at - left.at)
+				.slice(0, this.detailedRoots)
+				.map(({ root }) => root.rootId),
+		);
+		for (const root of roots) {
+			if (recent.has(root.rootId) || root.rootId === this.defaultRootId || root.reservations.length > 0) continue;
+			if (!root.imported && root.deadlineAt !== null && now < root.deadlineAt) continue;
+			document.history ??= emptyHistory();
+			foldRoot(document.history, root);
+			delete document.roots[root.rootId];
+			folded = true;
+		}
+		return folded;
+	}
+
 	private async write(document: StoredDocument): Promise<void> {
+		this.fold(document);
 		try {
 			await this.store.write(structuredClone(document) as unknown as JsonValue);
 		} catch {
@@ -460,6 +624,7 @@ export class NativeUsageLedger implements NativeUsageLedgerLike {
 			const rootId = request.rootId ?? this.defaultRootId;
 			if (!rootId.trim() || rootId.includes("\0"))
 				throw new Error("Usage rootId must be a nonempty string without NUL");
+			if (this.document.roots[rootId]?.imported) throw new Error(`Usage root ${rootId} is an imported history root`);
 			if (!(["task", "model", "jev"] as string[]).includes(request.kind)) throw new Error("Invalid usage kind");
 			if (request.requestKey !== undefined && !request.requestKey.trim())
 				throw new Error("Usage requestKey is empty");
@@ -568,7 +733,62 @@ export class NativeUsageLedger implements NativeUsageLedgerLike {
 				remainingWallMs: root.deadlineAt === null ? null : Math.max(0, root.deadlineAt - now),
 				usage: totals(root.calls),
 				reservations: root.reservations.map(cloneReservation),
+				session: this.sessionTotals(),
 			};
+		});
+	}
+
+	private sessionTotals(): NativeUsageSessionTotals {
+		const history = this.document.history;
+		let usage = history ? structuredClone(history.usage) : emptyTotals();
+		let spentUsd = history?.spentUsd ?? 0;
+		let unknownPricedCalls = history?.unknownPricedCalls ?? 0;
+		const roots = Object.values(this.document.roots);
+		for (const root of roots) {
+			usage = mergeTotals(usage, totals(root.calls));
+			const cost = spend(root, this.limits);
+			spentUsd += cost.spentUsd;
+			unknownPricedCalls += cost.unknownPricedCalls;
+		}
+		return { roots: roots.length, foldedRoots: history?.roots ?? 0, usage, spentUsd, unknownPricedCalls };
+	}
+
+	/**
+	 * Adds a historical root for usage recorded before this ledger existed (e.g. a Pi import). Its calls count in
+	 * session totals but it never admits work. Idempotent per `rootId`.
+	 */
+	importHistory(
+		rootId: string,
+		source: string,
+		calls: ReadonlyArray<{ at: number; usage: NativeUsageMeasurement; status?: NativeUsageCallStatus }>,
+	): Promise<void> {
+		return this.enqueue(async () => {
+			if (!rootId.trim() || rootId.includes("\0"))
+				throw new Error("Usage rootId must be a nonempty string without NUL");
+			if (this.document.roots[rootId]) return;
+			const stored: StoredCall[] = calls.map((call, index) => ({
+				id: `ultron-usage-call-${rootId}-${index}`,
+				reservationId: `ultron-usage-${rootId}-${index}`,
+				rootId,
+				kind: "model",
+				admittedAt: call.at,
+				settledAt: call.at,
+				status: call.status ?? "succeeded",
+				usage: normalizeMeasurement(call.usage, 0),
+			}));
+			const startedAt = stored.reduce<number | null>(
+				(min, call) => Math.min(min ?? call.admittedAt, call.admittedAt),
+				null,
+			);
+			this.document.roots[rootId] = {
+				rootId,
+				startedAt,
+				deadlineAt: startedAt,
+				reservations: [],
+				calls: stored,
+				imported: { source, entries: stored.length },
+			};
+			await this.write(this.document);
 		});
 	}
 
@@ -603,10 +823,19 @@ export class NativeUsageLedger implements NativeUsageLedgerLike {
 					changed = true;
 				}
 			}
-			if (changed) await this.write(this.document);
+			// Folding happens on every write; a restart with nothing to settle still compacts an oversized document.
+			if (this.fold(this.document) || changed) await this.write(this.document);
 		});
 	}
 }
+
+export type NativeUsageLedgerOptions = {
+	limits?: NativeUsageLimits;
+	rootId?: string;
+	now?: () => number;
+	/** Most recently active roots kept call by call (default 50); older idle roots fold into the history summary. */
+	detailedRoots?: number;
+};
 
 function cryptoRandomUUID(): string {
 	return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -622,7 +851,7 @@ export function createSessionUsageStore(session: Pick<Session, "getValue" | "set
 
 export function createSessionUsageLedger(
 	session: Pick<Session, "getValue" | "setValue">,
-	options: { limits?: NativeUsageLimits; rootId?: string; now?: () => number } = {},
+	options: NativeUsageLedgerOptions = {},
 ): NativeUsageLedger {
 	return new NativeUsageLedger(createSessionUsageStore(session), options);
 }

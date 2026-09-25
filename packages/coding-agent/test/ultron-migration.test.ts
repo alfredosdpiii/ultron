@@ -14,6 +14,7 @@ import {
 	laneConfig,
 	type Session,
 	StorageBackedSession,
+	value,
 } from "@earendil-works/pi-agent-core";
 import { NodeExecutionEnv } from "@earendil-works/pi-agent-core/node";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -37,6 +38,8 @@ import {
 	restoreProfile,
 } from "../src/ultron/migration.ts";
 import { runMigrationCommand } from "../src/ultron/migration-cli.ts";
+import { reconcileRecords } from "../src/ultron/reconcile.ts";
+import { createSessionUsageLedger } from "../src/ultron/usage.ts";
 import { readSessionName } from "./experimental-session-support.ts";
 
 const PI_SESSION_ID = "0192a0b0-0000-7000-8000-000000000001";
@@ -632,7 +635,7 @@ describe("importPiSession", () => {
 		});
 	});
 
-	it("reports context edits that only some branches carry and leaves their targets untouched", async () => {
+	it("applies a context edit that only some branches carry on those branches only", async () => {
 		const cwd = join(root, "project");
 		const lines = [
 			{ type: "session", version: 3, id: PI_SESSION_ID, timestamp: ts(0), cwd },
@@ -664,12 +667,22 @@ describe("importPiSession", () => {
 		await writeFile(piPath, `${lines.map((line) => JSON.stringify(line)).join("\n")}\n`);
 		const sessionsRoot = join(root, "native");
 		const result = await importPiSession({ piSessionPath: piPath, sessionsRoot });
-		expect(result.unappliedContextEdits).toEqual(["e"]);
+		expect(result.unappliedContextEdits).toEqual([]);
+		expect(result).toMatchObject({ imported: 4, branchCopies: 1 });
 
 		const pi = openPi(piPath);
 		await withNative(sessionsRoot, result.sessionId, async (native) => {
-			expect(json(await native.contextAt("b"))).toEqual(json(piContextAt(pi, "b").messages));
+			// The sibling branch keeps the untouched original; the edit's branch runs through an edited copy.
+			for (const leafId of ["b", "e"])
+				expect(json(await native.contextAt(leafId))).toEqual(json(piContextAt(pi, leafId).messages));
 			expect(native.allEntries.find((entry) => entry.id === "a")).toMatchObject({ message: user("shared", 1) });
+			expect(native.allEntries.find((entry) => entry.id === "a~e")).toMatchObject({
+				parentId: null,
+				message: { content: "edited" },
+			});
+			expect(native.allEntries.find((entry) => entry.id === "c")?.parentId).toBe("a~e");
+			expect(native.tip).toBe("e");
+			expect(JSON.stringify(await native.contextAt("e"))).toContain("edited");
 		});
 		// Pi still honors the edit after a round trip.
 		const outputPath = join(root, "edit-out.jsonl");
@@ -677,6 +690,197 @@ describe("importPiSession", () => {
 		const restored = SessionManager.open(outputPath);
 		expect(restored.buildSessionContext()).toEqual(pi.buildSessionContext());
 		expect(JSON.stringify(restored.buildSessionContext().messages)).toContain("edited");
+	});
+
+	it("matches Pi's context at every leaf with nested, competing, compacted, and omitting branch-local edits", async () => {
+		const cwd = join(root, "project");
+		const text = (id: string, at: number, role: "user" | "assistant" = "user") => ({
+			type: "message",
+			id,
+			timestamp: ts(at),
+			message:
+				role === "user" ? user(`${id} text`, at) : assistant([{ type: "text", text: `${id} text` }], "stop", at),
+		});
+		const edit = (id: string, parentId: string, at: number, targetId: string, content: string | null) => ({
+			type: "context_edit",
+			id,
+			parentId,
+			timestamp: ts(at),
+			targetId,
+			replacement: content === null ? null : { content },
+		});
+		const lines = [
+			{ type: "session", version: 3, id: PI_SESSION_ID, timestamp: ts(0), cwd },
+			{ ...text("r", 1), parentId: null },
+			{ ...text("t", 2, "assistant"), parentId: "r" },
+			{
+				type: "custom_message",
+				id: "n",
+				parentId: "t",
+				timestamp: ts(3),
+				customType: "note",
+				content: "n text",
+				display: true,
+			},
+			// Fork at n: branch A edits t and n; branch B edits t differently; branch C leaves them alone.
+			{ ...text("a1", 4), parentId: "n" },
+			edit("ea", "a1", 5, "t", "t edited on A"),
+			{ ...text("a2", 6, "assistant"), parentId: "ea" },
+			edit("en", "a2", 7, "n", null),
+			// A sub-fork below both A edits: A1 edits t again (later edit wins), A2 compacts keeping t.
+			{ ...text("a3", 8), parentId: "en" },
+			edit("ea1", "a3", 9, "t", "t edited again on A1"),
+			{ ...text("a4", 10, "assistant"), parentId: "ea1" },
+			{
+				type: "compaction",
+				id: "ca",
+				parentId: "en",
+				timestamp: ts(11),
+				summary: "A so far",
+				firstKeptEntryId: "t",
+				tokensBefore: 50,
+			},
+			edit("ea2", "ca", 12, "a1", "a1 edited after compaction"),
+			{ ...text("a5", 13), parentId: "ea2" },
+			{ ...text("a6", 14), parentId: "ca" },
+			{ ...text("b1", 15), parentId: "n" },
+			edit("eb", "b1", 16, "t", "t edited on B"),
+			{ ...text("b2", 17, "assistant"), parentId: "eb" },
+			{ ...text("c1", 18), parentId: "n" },
+			// An edit whose target is on another branch: Pi applies it nowhere.
+			edit("ex", "c1", 19, "b1", "never visible"),
+		];
+		const piPath = join(root, "edits.jsonl");
+		await writeFile(piPath, `${lines.map((line) => JSON.stringify(line)).join("\n")}\n`);
+		const sessionsRoot = join(root, "native");
+		const result = await importPiSession({ piSessionPath: piPath, sessionsRoot });
+		expect(result.unappliedContextEdits, JSON.stringify(result)).toEqual(["ex"]);
+		expect(result.branchCopies).toBeGreaterThan(0);
+
+		const pi = openPi(piPath);
+		const piIds = pi.getEntries().map((entry) => entry.id);
+		const parents = new Set(pi.getEntries().map((entry) => entry.parentId));
+		const leaves = piIds.filter((id) => !parents.has(id));
+		expect(leaves).toEqual(["a4", "a5", "a6", "b2", "ex"]);
+		expect(result.imported).toBe(piIds.length);
+		await withNative(sessionsRoot, result.sessionId, async (native) => {
+			// Every Pi leaf has the same model context natively, and no native leaf exists that Pi lacks.
+			for (const id of leaves)
+				expect(json(await native.contextAt(id)), id).toEqual(json(piContextAt(pi, id).messages));
+			const nativeParents = new Set(native.allEntries.map((entry) => entry.parentId));
+			expect(
+				native.allEntries
+					.filter((entry) => !nativeParents.has(entry.id))
+					.map((entry) => entry.id)
+					.sort(),
+			).toEqual(leaves);
+			// The edits really differ per branch in Pi.
+			const shown = (id: string) => JSON.stringify(piContextAt(pi, id).messages);
+			expect(shown("c1")).toContain("t text");
+			expect(shown("b2")).toContain("t edited on B");
+			expect(shown("a2")).toContain("t edited on A");
+			expect(shown("a4")).toContain("t edited again on A1");
+			expect(shown("a4")).not.toContain("n text");
+			expect(shown("a5")).toContain("a1 edited after compaction");
+			expect(shown("a6")).not.toContain("a1 edited after compaction");
+		});
+
+		// Export drops the copies: the Pi file has exactly the original entries and the same context everywhere.
+		const outputPath = join(root, "edits-out.jsonl");
+		await exportNativeSessionToPi({ sessionPath: result.path, outputPath });
+		const restored = SessionManager.open(outputPath);
+		expect(restored.getEntries().map((entry) => [entry.id, entry.parentId])).toEqual(
+			pi.getEntries().map((entry) => [entry.id, entry.parentId]),
+		);
+		for (const id of piIds) expect(json(piContextAt(restored, id)), id).toEqual(json(piContextAt(pi, id)));
+	});
+
+	it("imports Pi-reported usage into the usage ledger as a marked historical root", async () => {
+		const priced = (input: number, output: number, cost: number) => ({
+			input,
+			output,
+			cacheRead: 1,
+			cacheWrite: 2,
+			totalTokens: input + output + 3,
+			cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: cost },
+		});
+		const cwd = join(root, "project");
+		const lines = [
+			{ type: "session", version: 3, id: PI_SESSION_ID, timestamp: ts(0), cwd },
+			{ type: "message", id: "u", parentId: null, timestamp: ts(1), message: user("hi", 1) },
+			{
+				type: "message",
+				id: "a",
+				parentId: "u",
+				timestamp: ts(2),
+				message: { ...assistant([{ type: "text", text: "hello" }], "stop", 2), usage: priced(100, 20, 0.25) },
+			},
+			{
+				type: "usage",
+				id: "w",
+				parentId: "a",
+				timestamp: ts(3),
+				kind: "cache_warm",
+				provider: "anthropic",
+				model: "claude-test",
+				usage: priced(7, 0, 0.125),
+			},
+			{
+				type: "compaction",
+				id: "c",
+				parentId: "w",
+				timestamp: ts(4),
+				summary: "s",
+				firstKeptEntryId: "a",
+				tokensBefore: 10,
+				usage: priced(50, 5, 0.5),
+			},
+		];
+		const piPath = join(root, "usage.jsonl");
+		await writeFile(piPath, `${lines.map((line) => JSON.stringify(line)).join("\n")}\n`);
+		const sessionsRoot = join(root, "native");
+		const result = await importPiSession({ piSessionPath: piPath, sessionsRoot });
+		expect(result.importedUsage).toEqual({ root: `import:pi:${PI_SESSION_ID}`, entries: 3, cost: 0.875 });
+
+		// Pi's own session totals, as its stats compute them.
+		const piTotals = { input: 0, output: 0, cost: 0 };
+		for (const entry of openPi(piPath).getEntries()) {
+			const reported =
+				entry.type === "usage" || entry.type === "compaction"
+					? entry.usage
+					: entry.type === "message" && entry.message.role === "assistant"
+						? entry.message.usage
+						: undefined;
+			if (!reported) continue;
+			piTotals.input += reported.input;
+			piTotals.output += reported.output;
+			piTotals.cost += reported.cost.total;
+		}
+		await withNative(sessionsRoot, result.sessionId, async (native) => {
+			const ledger = createSessionUsageLedger(native.session);
+			const status = await ledger.status();
+			expect(status.session.usage).toMatchObject({
+				calls: 3,
+				modelCalls: 3,
+				inputTokens: piTotals.input,
+				outputTokens: piTotals.output,
+				totalTokens: 100 + 20 + 7 + 50 + 5 + 9,
+				cost: piTotals.cost,
+				unknownCalls: 0,
+			});
+			expect(status.session.spentUsd).toBe(piTotals.cost);
+			const stored = (
+				await native.session.getValue(value<Record<string, unknown>>("ultron.usage", "root"), BACKGROUND_CONTEXT)
+			)?.value as { roots: Record<string, { imported?: unknown }> };
+			expect(stored.roots[`import:pi:${PI_SESSION_ID}`]?.imported).toEqual({ source: "pi", entries: 3 });
+			// The imported root never admits new work, and reconciliation accounts it without discrepancies.
+			await expect(ledger.reserve({ kind: "task", rootId: `import:pi:${PI_SESSION_ID}` })).rejects.toThrow(
+				/imported history root/,
+			);
+			const reconciliation = reconcileRecords({ tasks: undefined, usage: stored as never });
+			expect(reconciliation.discrepancies).toEqual([]);
+			expect(reconciliation.imported).toMatchObject({ modelCalls: 3, cost: piTotals.cost });
+		});
 	});
 
 	it("refuses to re-import the same Pi session", async () => {

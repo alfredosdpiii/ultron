@@ -28,8 +28,11 @@ export type ReconciledTask = {
 	state: string;
 	resultStatus: string | null;
 	parentId: string | null;
-	/** Settlement of the task's admission reservation, or "active" while it is still reserved. */
-	admission: "active" | "succeeded" | "failed" | "cancelled" | "unknown" | "missing";
+	/**
+	 * Settlement of the task's admission reservation, or "active" while it is still reserved. "folded" means the
+	 * admission's root was folded into the ledger's history summary, which still counts it by status.
+	 */
+	admission: "active" | "succeeded" | "failed" | "cancelled" | "unknown" | "missing" | "folded";
 	admittedAt: number | null;
 	settledAt: number | null;
 	/** Every call attributed to the task: its admission plus its model calls. */
@@ -58,9 +61,19 @@ export type Reconciliation = {
 	tasks: ReconciledTask[];
 	/** Calls that belong to no journal task: Jev calls and admissions that never created a task. */
 	unattributed: ReconciledUsage;
-	/** Sum of every task's usage plus unattributed usage, computed from individual call records. */
+	/** Historical usage written by an import (e.g. a Pi session's reported usage); it has no journal tasks. */
+	imported: ReconciledUsage;
+	/** Sum of every task's usage plus unattributed and imported usage, computed from individual call records. */
 	totals: ReconciledUsage;
 	activeReservations: number;
+	/** The reconciled root, or null when every root was read. */
+	scope: string | null;
+	/** Per detailed root: its own call totals and open reservations. */
+	roots: Record<string, { usage: ReconciledUsage; activeReservations: number }>;
+	/** Totals of roots folded into the ledger's history summary, or null if none were folded. */
+	history: ReconciledUsage | null;
+	/** `totals` plus `history`: everything the session ever spent. Equals `totals` when scoped to one root. */
+	sessionTotals: ReconciledUsage;
 	timeline: TimelineEvent[];
 	discrepancies: string[];
 };
@@ -151,12 +164,36 @@ export function reconcileRecords(input: ReconcileInput): Reconciliation {
 	const rootIds = input.rootId === undefined ? Object.keys(roots) : [input.rootId];
 	const calls: Json[] = [];
 	const reservations: Json[] = [];
+	const perRoot: Reconciliation["roots"] = {};
+	const imported = emptyUsage();
 	for (const rootId of rootIds) {
 		if (roots[rootId] === undefined) continue;
 		const root = object(roots[rootId], `usage root ${rootId}`);
-		calls.push(...list(root.calls, "usage calls"));
-		reservations.push(...list(root.reservations, "usage reservations"));
+		const rootCalls = list(root.calls, "usage calls");
+		const rootReservations = list(root.reservations, "usage reservations");
+		const usage = emptyUsage();
+		for (const call of rootCalls) add(usage, call);
+		reservations.push(...rootReservations);
+		if (root.imported !== undefined) merge(imported, usage);
+		else calls.push(...rootCalls);
+		perRoot[rootId] = { usage, activeReservations: rootReservations.length };
 	}
+	const storedHistory =
+		input.usage === undefined || input.rootId !== undefined
+			? undefined
+			: (object(input.usage, "usage ledger").history as unknown);
+	const history =
+		storedHistory === undefined || storedHistory === null
+			? null
+			: historyUsage(object(object(storedHistory, "usage history").usage, "usage history totals"));
+	// Folded task admissions by status; journal tasks without a detailed admission draw from these.
+	const foldedAdmissions = new Map<string, number>(
+		storedHistory === undefined || storedHistory === null
+			? []
+			: Object.entries(object(object(storedHistory, "usage history").taskAdmissions, "folded admissions")).map(
+					([status, count]) => [status, num(count) ?? 0],
+				),
+	);
 
 	const byId = new Map<string, ReconciledTask>();
 	const byKey = new Map<string, ReconciledTask>();
@@ -239,7 +276,10 @@ export function reconcileRecords(input: ReconcileInput): Reconciliation {
 			task.admittedAt = num(active[0]!.admittedAt);
 		}
 		const expected = EXPECTED_ADMISSION[task.state];
-		if (task.admission !== expected)
+		if (task.admission === "missing" && expected !== undefined && (foldedAdmissions.get(expected) ?? 0) > 0) {
+			foldedAdmissions.set(expected, foldedAdmissions.get(expected)! - 1);
+			task.admission = "folded";
+		} else if (task.admission !== expected)
 			discrepancies.push(`task ${task.id} is ${task.state} but its admission is ${task.admission}`);
 		if (task.admittedAt !== null)
 			timeline.push({ at: task.admittedAt, kind: "task.admitted", taskId: task.id, detail: task.definition });
@@ -327,16 +367,48 @@ export function reconcileRecords(input: ReconcileInput): Reconciliation {
 	const totals = emptyUsage();
 	for (const task of tasks) merge(totals, task.usage);
 	merge(totals, unattributed);
+	merge(totals, imported);
+	const sessionTotals = structuredClone(totals);
+	if (history) merge(sessionTotals, history);
 	// Stable: equal timestamps keep journal/call order.
 	timeline.sort((left, right) => left.at - right.at);
 	return {
 		tasks,
 		unattributed,
+		imported,
 		totals,
 		activeReservations: reservations.length,
+		scope: input.rootId ?? null,
+		roots: perRoot,
+		history,
+		sessionTotals,
 		timeline,
 		discrepancies,
 	};
+}
+
+function historyUsage(stored: Json): ReconciledUsage {
+	const usage = emptyUsage();
+	for (const field of ["calls", "taskCalls", "modelCalls", "jevCalls", "wallMs", "unknownCalls"] as const)
+		usage[field] = num(stored[field]) ?? 0;
+	for (const field of ["inputTokens", "outputTokens", "totalTokens", "cost"] as const)
+		usage[field] = num(stored[field]);
+	return usage;
+}
+
+function usageDiscrepancies(label: string, expected: ReconciledUsage, actualValue: unknown): string[] {
+	const actual = object(actualValue, `${label} totals`);
+	const problems: string[] = [];
+	for (const field of Object.keys(expected) as (keyof ReconciledUsage)[]) {
+		const want = expected[field];
+		const got = actual[field];
+		const equal =
+			typeof want === "number" && typeof got === "number"
+				? Math.abs(want - got) <= 1e-9 * Math.max(1, Math.abs(want))
+				: want === got;
+		if (!equal) problems.push(`${label} ${field} ${String(got)} != records ${String(want)}`);
+	}
+	return problems;
 }
 
 /** Compare the `agents.status` inspection view with a reconciliation of the durable records. */
@@ -361,20 +433,26 @@ export function inspectionDiscrepancies(reconciliation: Reconciliation, status: 
 			discrepancies.push(`task ${task.id} inspected parent ${String(viewed.parentId)}`);
 	}
 	if (view.usage !== null && view.usage !== undefined) {
-		const usage = object(object(view.usage, "inspected usage").usage, "inspected usage totals");
-		for (const field of Object.keys(reconciliation.totals) as (keyof ReconciledUsage)[]) {
-			const expected = reconciliation.totals[field];
-			const actual = usage[field];
-			const equal =
-				typeof expected === "number" && typeof actual === "number"
-					? Math.abs(expected - actual) <= 1e-9 * Math.max(1, Math.abs(expected))
-					: expected === actual;
-			if (!equal) discrepancies.push(`inspected usage ${field} ${String(actual)} != records ${String(expected)}`);
-		}
-		const active = object(view.usage, "inspected usage").activeReservations;
-		if (active !== reconciliation.activeReservations)
+		const inspected = object(view.usage, "inspected usage");
+		// `agents.status` shows one root; compare it with that root's records, not with every root's sum.
+		const rootId = str(inspected.rootId);
+		const scoped =
+			rootId === null
+				? { usage: reconciliation.totals, activeReservations: reconciliation.activeReservations }
+				: (reconciliation.roots[rootId] ?? { usage: emptyUsage(), activeReservations: 0 });
+		discrepancies.push(...usageDiscrepancies("inspected usage", scoped.usage, inspected.usage));
+		if (inspected.activeReservations !== scoped.activeReservations)
 			discrepancies.push(
-				`inspected ${String(active)} active reservations, records have ${reconciliation.activeReservations}`,
+				`inspected ${String(inspected.activeReservations)} active reservations, records have ${scoped.activeReservations}`,
+			);
+		// The session view (every root plus folded history) is comparable only with an unscoped reconciliation.
+		if (inspected.session !== undefined && reconciliation.scope === null)
+			discrepancies.push(
+				...usageDiscrepancies(
+					"inspected session usage",
+					reconciliation.sessionTotals,
+					object(inspected.session, "inspected session").usage,
+				),
 			);
 	}
 	return discrepancies;

@@ -1,8 +1,18 @@
 import { type ChildProcessWithoutNullStreams, spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { existsSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { processSnapshotKey, sha256Hex, signSnapshot, verifySnapshot } from "./snapshot-auth.ts";
+import {
+	cgroupOomKills,
+	cgroupScopeCommand,
+	descendantPids,
+	kernelTreeMemoryLimit,
+	processCgroupDir,
+	type TreeMemoryBackend,
+	treeMemoryBackend,
+	treeRssBytes,
+} from "./tree-memory.ts";
 
 const CREDENTIAL_NAME =
 	/(API_?KEY|ACCESS_?KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL|PRIVATE_?KEY|AUTH|COOKIE|SESSION_?KEY|WEBHOOK)/i;
@@ -71,6 +81,11 @@ const EXIT_CPU = 87;
 
 function memoryLimitMessage(limits: KernelResourceLimits): string {
 	return `RLM kernel exceeded its memory limit (${limits.maxMemoryMb} MiB per process, ULTRON_RLM_MAX_MEMORY_MB) and was stopped; the next cell starts a fresh kernel without earlier Python state`;
+}
+
+function treeMemoryLimitMessage(capMb: number, backend: TreeMemoryBackend): string {
+	const how = backend === "cgroup" ? "cgroup MemoryMax" : "host watchdog";
+	return `RLM kernel process tree exceeded its memory limit (${capMb} MiB total across the kernel and every process its cells started, ULTRON_RLM_MAX_TREE_MEMORY_MB, enforced by ${how}) and was stopped; the next cell starts a fresh kernel without earlier Python state`;
 }
 
 function cpuLimitMessage(limits: KernelResourceLimits): string {
@@ -155,6 +170,11 @@ type Generation = {
 	restorePath?: string;
 	cpuTimer?: ReturnType<typeof setInterval>;
 	cellCpuStart?: number;
+	treeBackend: TreeMemoryBackend;
+	/** cgroup v2 directory of the kernel's scope, resolved once the runtime is up. */
+	cgroupDir?: string;
+	oomKillsAtStart?: number;
+	memoryTimer?: ReturnType<typeof setInterval>;
 	buffer?: Buffer;
 	bufferedBytes: number;
 	protocolBytes: number;
@@ -265,44 +285,6 @@ function restoreReport(value: unknown): KernelRestoreReport | undefined {
 	};
 }
 
-/**
- * Linux descendants of `root`, found before the group is killed so that children
- * which left the kernel's process group (setsid, setpgid) are still terminated.
- * A process that already reparented away (double-fork daemon) is not owned anymore.
- */
-function descendantPids(root: number): number[] {
-	if (process.platform !== "linux") return [];
-	const children = new Map<number, number[]>();
-	let entries: string[];
-	try {
-		entries = readdirSync("/proc");
-	} catch {
-		return [];
-	}
-	for (const entry of entries) {
-		if (!/^[0-9]+$/.test(entry)) continue;
-		try {
-			const stat = readFileSync(`/proc/${entry}/stat`, "utf8");
-			// Field 4 (ppid) follows the parenthesized command name, which may contain spaces.
-			const parent = Number(stat.slice(stat.lastIndexOf(")") + 2).split(" ")[1]);
-			const list = children.get(parent) ?? [];
-			list.push(Number(entry));
-			children.set(parent, list);
-		} catch {
-			/* The process exited during the scan. */
-		}
-	}
-	const result: number[] = [];
-	const queue = [root];
-	while (queue.length > 0) {
-		for (const child of children.get(queue.shift()!) ?? []) {
-			result.push(child);
-			queue.push(child);
-		}
-	}
-	return result;
-}
-
 function encodeFrame(frame: Frame): string {
 	let line: string | undefined;
 	try {
@@ -327,6 +309,13 @@ export type RlmKernelOptions = {
 	/** Overrides ULTRON_RLM_MAX_MEMORY_MB / ULTRON_RLM_MAX_CPU_SECONDS; 0 disables a limit. */
 	limits?: Partial<KernelResourceLimits>;
 	/**
+	 * Memory cap in MiB over the kernel and all its descendants; overrides ULTRON_RLM_MAX_TREE_MEMORY_MB, whose
+	 * default is twice the per-process limit. 0 disables it.
+	 */
+	maxTreeMemoryMb?: number;
+	/** How the tree cap is enforced; default ULTRON_RLM_TREE_MEMORY_BACKEND or "auto" (cgroup scope, else watchdog). */
+	treeMemoryBackend?: "auto" | "cgroup" | "watchdog" | "off";
+	/**
 	 * HMAC key that signs and verifies snapshots in this host process; the kernel never receives it.
 	 * Defaults to a per-process random key, so snapshots are then restorable only within this process.
 	 */
@@ -345,11 +334,13 @@ export class RlmKernel {
 	private readonly options: RlmKernelOptions;
 	private readonly hostHandler: KernelHostHandler;
 	private readonly limits: KernelResourceLimits;
+	private readonly treeMemoryMb: number;
 	private readonly snapshotKey: Uint8Array;
 	constructor(options: RlmKernelOptions, hostHandler: KernelHostHandler) {
 		this.options = options;
 		this.hostHandler = hostHandler;
 		this.limits = kernelResourceLimits(process.env, options.limits);
+		this.treeMemoryMb = kernelTreeMemoryLimit(process.env, this.limits.maxMemoryMb, options.maxTreeMemoryMb);
 		this.snapshotKey = options.snapshotKey ?? processSnapshotKey();
 		const timeout = options.startupTimeoutMs ?? STARTUP_TIMEOUT_MS;
 		if (!Number.isFinite(timeout) || timeout <= 0 || timeout > 2_147_483_647) {
@@ -374,12 +365,17 @@ export class RlmKernel {
 		if (this.generation) return this.generation.started.promise;
 		let child: ChildProcessWithoutNullStreams;
 		const ownsProcessGroup = process.platform !== "win32";
+		const treeBackend = treeMemoryBackend(this.treeMemoryMb, this.options.treeMemoryBackend);
 		try {
 			const python =
 				this.options.python ??
 				process.env.ULTRON_PYTHON ??
 				(process.platform === "linux" && existsSync("/usr/bin/python3") ? "/usr/bin/python3" : "python3");
-			child = spawn(python, [this.options.runtimePath], {
+			const command =
+				treeBackend === "cgroup"
+					? [...cgroupScopeCommand(this.treeMemoryMb), python, this.options.runtimePath]
+					: [python, this.options.runtimePath];
+			child = spawn(command[0]!, command.slice(1), {
 				cwd: this.options.cwd,
 				env: {
 					...kernelEnvironment(process.env),
@@ -407,6 +403,7 @@ export class RlmKernel {
 			buffer: Buffer.allocUnsafe(MAX_FRAME_BYTES),
 			bufferedBytes: 0,
 			protocolBytes: 0,
+			treeBackend,
 		};
 		this.generation = generation;
 		this.stderr = "";
@@ -426,9 +423,17 @@ export class RlmKernel {
 		});
 		child.once("exit", (code, signal) => {
 			generation.exited.resolve(undefined);
-			if (this.isCurrent(generation)) this.fail(generation, this.exitError(code, signal));
+			if (!this.isCurrent(generation)) return;
+			// A cgroup OOM kill of the kernel itself arrives as SIGKILL; the scope still exists while its other
+			// processes live, so its memory.events says whether the tree cap did it.
+			const treeKill = (signal === "SIGKILL" || signal === "SIGTERM") && this.treeMemoryExceeded(generation);
+			this.fail(
+				generation,
+				treeKill ? new Error(treeMemoryLimitMessage(this.treeMemoryMb, treeBackend)) : this.exitError(code, signal),
+			);
 		});
 		this.startCpuWatchdog(generation);
+		this.startTreeMemoryWatchdog(generation);
 		child.stdout.once("end", () => {
 			if (!this.isCurrent(generation)) return;
 			// Output usually ends just before the exit event; wait briefly so the exit code
@@ -473,6 +478,37 @@ export class RlmKernel {
 			}
 		}, 500);
 		generation.cpuTimer.unref?.();
+	}
+
+	/**
+	 * Whether the tree cap has been hit: for a cgroup scope, an OOM kill in its memory.events; for the watchdog,
+	 * the summed resident memory of the kernel's tree is over the cap.
+	 */
+	private treeMemoryExceeded(generation: Generation): boolean {
+		const pid = generation.child.pid;
+		if (!pid) return false;
+		if (generation.treeBackend === "watchdog") return treeRssBytes(pid) > this.treeMemoryMb * 1024 * 1024;
+		if (generation.treeBackend !== "cgroup") return false;
+		if (!generation.cgroupDir) {
+			// Before systemd-run execs the runtime the pid may still sit in the caller's cgroup.
+			const dir = processCgroupDir(pid);
+			if (!dir?.endsWith(".scope") || !generation.readyReceived) return false;
+			generation.cgroupDir = dir;
+			generation.oomKillsAtStart = cgroupOomKills(dir) ?? 0;
+		}
+		const kills = cgroupOomKills(generation.cgroupDir);
+		return kills !== undefined && kills > (generation.oomKillsAtStart ?? 0);
+	}
+
+	/** Polls the tree cap every ~500 ms and SIGKILLs the whole tree (through fail) when it is exceeded. */
+	private startTreeMemoryWatchdog(generation: Generation): void {
+		if (generation.treeBackend === "off") return;
+		generation.memoryTimer = setInterval(() => {
+			if (!this.isCurrent(generation)) return;
+			if (this.treeMemoryExceeded(generation))
+				this.fail(generation, new Error(treeMemoryLimitMessage(this.treeMemoryMb, generation.treeBackend)));
+		}, 500);
+		generation.memoryTimer.unref?.();
 	}
 
 	private diagnostics(): string {
@@ -558,6 +594,8 @@ export class RlmKernel {
 				if (generation.readyReceived) throw new Error("duplicate ready event");
 				if (frame.id !== undefined) throw new Error("ready event cannot have an id");
 				generation.readyReceived = true;
+				// Resolve the scope and its OOM baseline now that systemd-run has exec'd the runtime.
+				if (generation.treeBackend === "cgroup") this.treeMemoryExceeded(generation);
 				void this.completeStartup(generation);
 				return;
 			case "host_request":
@@ -683,6 +721,11 @@ export class RlmKernel {
 			};
 		}
 		if (frame.event === "done") {
+			// A subprocess killed by the scope's OOM killer may let the cell finish; report the cap, not a stray error.
+			if (generation.treeBackend === "cgroup" && this.treeMemoryExceeded(generation)) {
+				this.fail(generation, new Error(treeMemoryLimitMessage(this.treeMemoryMb, generation.treeBackend)));
+				return;
+			}
 			state.status = frame.status === "error" ? "error" : state.status;
 			// Snapshot/restore failures are reported only on the done frame by runtime.py.
 			if (state.status === "error" && !state.error && frame.error != null) {
@@ -762,6 +805,7 @@ export class RlmKernel {
 		if (generation.initialized) this.autoRestore = false;
 		clearTimeout(generation.startupTimer);
 		clearInterval(generation.cpuTimer);
+		clearInterval(generation.memoryTimer);
 		generation.buffer = undefined;
 		generation.bufferedBytes = 0;
 		generation.activeCell?.controller.abort(error);

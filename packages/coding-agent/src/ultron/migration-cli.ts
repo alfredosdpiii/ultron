@@ -87,9 +87,19 @@ export async function runMigrationCommand(args: string[], io: MigrationCommandIo
 				for (const { type, count } of result.preserved) {
 					io.stdout(`  preserved ${count} unknown ${type} ${entries(count)} as custom entries`);
 				}
+				if (result.branchCopies > 0)
+					io.stdout(
+						`  applied branch-local context edits per branch with ${result.branchCopies} copied ${entries(result.branchCopies)}`,
+					);
 				for (const id of result.unappliedContextEdits) {
-					io.stdout(`  context edit ${id} is branch-local; kept as an entry, not applied to its target`);
+					io.stdout(
+						`  context edit ${id} does not target a message on its own path; kept as an entry, not applied`,
+					);
 				}
+				if (result.importedUsage.entries > 0)
+					io.stdout(
+						`  imported usage of ${result.importedUsage.entries} Pi ${entries(result.importedUsage.entries)} ($${result.importedUsage.cost}) into usage root ${result.importedUsage.root}`,
+					);
 				return true;
 			}
 			case "export-pi": {

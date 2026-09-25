@@ -62,7 +62,7 @@ import { createSessionModuleStore, type HostCaller } from "../ultron/rlm/host-mo
 import { type KernelExecutionResult, type KernelHostHandler, RlmKernel } from "../ultron/rlm/kernel.ts";
 import { KernelPool, KernelPoolCapacityError } from "../ultron/rlm/kernel-pool.ts";
 import { NativeRlmHost } from "../ultron/rlm/native-host.ts";
-import { loadOrCreateSnapshotKey } from "../ultron/rlm/snapshot-auth.ts";
+import { loadSnapshotKey } from "../ultron/rlm/snapshot-auth.ts";
 import { createSessionTaskStore } from "../ultron/rlm/task-store.ts";
 import { createScheduleModule } from "../ultron/schedules.ts";
 import { createSkillModule } from "../ultron/skills.ts";
@@ -1243,6 +1243,8 @@ async function createCodingAgentHarness(
 	};
 	// Snapshots are trusted host artifacts: keep them in the private profile directory, one folder per session.
 	const snapshotDir = join(getAgentDir(), "rlm-snapshots", options.metadata.id);
+	const snapshotKey = loadSnapshotKey(getAgentDir());
+	if (snapshotKey.warning) console.error(snapshotKey.warning);
 	mkdirSync(snapshotDir, { recursive: true, mode: 0o700 });
 	const rlmTool = createUltronRlmTool(
 		options.metadata.cwd,
@@ -1255,8 +1257,9 @@ async function createCodingAgentHarness(
 			if (meta.value.lane === "main") host?.beginRootTurn(invocation.operationId);
 			return meta.value.lane;
 		},
-		// The signing key stays in this process; the kernel running model code never receives it.
-		{ snapshotDir, snapshotKey: loadOrCreateSnapshotKey(getAgentDir()) },
+		// The signing key stays in this process; the kernel running model code never receives it. It is kept in the
+		// OS keyring when one is reachable, so it is not a file in the profile directory.
+		{ snapshotDir, snapshotKey: snapshotKey.key },
 	);
 	const tools = [createReadTool(), createEditTool(), createWriteTool(), createBashTool(), rlmTool];
 	const loadedSkills = await Promise.all(

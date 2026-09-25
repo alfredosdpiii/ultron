@@ -9,8 +9,9 @@ export default mergeConfig(
 			environment: "node",
 			testTimeout: 30000,
 			// Tests run offline by default; opt in with allowNetwork() from test/test-network-env.ts.
-			// Offline by default, and never against the user's real Hindsight memory server.
-			env: { PI_OFFLINE: "1", ULTRON_HINDSIGHT_URL: "off" },
+			// Offline by default, never against the user's real Hindsight memory server, and never writing RLM
+			// snapshot keys of temporary profiles into the user's login keyring.
+			env: { PI_OFFLINE: "1", ULTRON_HINDSIGHT_URL: "off", ULTRON_RLM_SNAPSHOT_KEY_STORE: "file" },
 			unstubEnvs: true,
 			reporters: process.env.GITHUB_ACTIONS ? ["dot", "github-actions"] : ["dot"],
 			silent: "passed-only",
