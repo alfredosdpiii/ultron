@@ -40,6 +40,7 @@ import { Check } from "typebox/value";
 import { isValidThinkingLevel } from "../cli/args.ts";
 import { getAgentDir, getRlmRuntimePath } from "../config.ts";
 import { executeBashWithOperations } from "../core/bash-executor.ts";
+import { configureHttpDispatcher } from "../core/http-dispatcher.ts";
 import { ModelRegistry } from "../core/model-registry.ts";
 import { findInitialModel, resolveCliModel } from "../core/model-resolver.ts";
 import { ModelRuntime } from "../core/model-runtime.ts";
@@ -84,6 +85,7 @@ import {
 	type SessionWorkerServices,
 	type WorkerServiceScope,
 } from "./services/worker.ts";
+import { traceStartup } from "./startup-trace.ts";
 
 export type { SessionWorkerRuntime } from "./services/worker.ts";
 
@@ -1076,6 +1078,7 @@ async function run(options: SessionWorkerRuntimeOptions, createHarness: CreateSe
 
 	try {
 		ready = true;
+		traceStartup("worker.ready");
 		await control.send({
 			type: "worker_ready",
 			token,
@@ -1135,8 +1138,12 @@ async function createCodingAgentHarness(
 	options: SessionWorkerRuntimeOptions,
 	executionEnv: NodeExecutionEnv,
 ): Promise<SessionWorkerRuntime> {
+	traceStartup("worker.harness");
 	const modelRuntime = await ModelRuntime.create({ refreshOnCreate: false, allowModelNetwork: false });
 	const settingsManager = SettingsManager.create(session.metadata.cwd);
+	// Model requests leave from this process: use Pi's HTTP stack (npm undici fetch, Pi's idle timeout, env proxy)
+	// rather than Node's bundled fetch, so requests match what stock Pi sends.
+	configureHttpDispatcher(settingsManager.getHttpIdleTimeoutMs());
 	// Extensions (tool renderers, headless UI contexts) read the theme; Pi always has one initialized.
 	initTheme(settingsManager.getTheme(), false);
 	const resourceLoader = new DefaultResourceLoader({
@@ -1146,6 +1153,7 @@ async function createCodingAgentHarness(
 		systemPrompt: options.systemPrompt,
 	});
 	await resourceLoader.reload();
+	traceStartup("worker.resources-loaded");
 	const loadedExtensions = resourceLoader.getExtensions();
 	for (const registration of loadedExtensions.runtime.pendingProviderRegistrations) {
 		modelRuntime.registerProvider(registration.name, registration.config);
@@ -1303,6 +1311,7 @@ async function createCodingAgentHarness(
 				);
 	const effectiveActiveToolNames =
 		options.noTools === "builtin" ? activeToolNames.filter((name) => name === "rlm") : activeToolNames;
+	traceStartup("worker.harness-create");
 	const harness = (
 		await AgentHarness.create(
 			{
@@ -1368,6 +1377,7 @@ async function createCodingAgentHarness(
 					? nativeServices.handle(type, payload, context, await mainBranch(context))
 					: nativeServices.handle(type, payload, context),
 		};
+		traceStartup("worker.host");
 		host = new NativeRlmHost(harness, lane, {
 			store: createSessionTaskStore(session),
 			definitionStore: createSessionDefinitionStore(session),

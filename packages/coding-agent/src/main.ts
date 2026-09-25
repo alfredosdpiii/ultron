@@ -61,6 +61,7 @@ import { collectSettingsDiagnostics, deduplicateDiagnostics } from "./core/setti
 import { SettingsManager } from "./core/settings-manager.ts";
 import { printTimings, resetTimings, time } from "./core/timings.ts";
 import { hasTrustRequiringProjectResources, ProjectTrustStore } from "./core/trust-manager.ts";
+import { traceStartup } from "./experimental/startup-trace.ts";
 import { builtInExtensions } from "./extensions/index.ts";
 import { runMigrations, showDeprecationWarnings } from "./migrations.ts";
 import { InteractiveMode, runPrintMode, runRpcMode } from "./modes/index.ts";
@@ -638,6 +639,7 @@ export async function main(args: string[], options?: MainOptions) {
 	}
 
 	if (shouldRunUltronWorker(parsed)) {
+		traceStartup("cli.native");
 		if (parsed.mode === "rpc" && parsed.fileArgs.length > 0) {
 			console.error(chalk.red("Error: @file arguments are not supported in RPC mode"));
 			process.exit(1);

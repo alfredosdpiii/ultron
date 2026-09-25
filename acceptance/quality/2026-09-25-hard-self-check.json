@@ -1,0 +1,403 @@
+{
+  "taskSet": "hard",
+  "frozenAt": "2026-09-25-hard",
+  "passed": true,
+  "results": [
+    {
+      "task": "bugs-invoicing",
+      "category": "multi-bug",
+      "ok": true,
+      "durationMs": 1313,
+      "outcomes": [
+        {
+          "trial": "unsolved",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 99
+        },
+        {
+          "trial": "solved",
+          "expect": "pass",
+          "ok": true,
+          "verifyMs": 105
+        },
+        {
+          "trial": "without invoicing/money.py",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 86
+        },
+        {
+          "trial": "without invoicing/parse.py",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 637
+        },
+        {
+          "trial": "without invoicing/units.py",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 101
+        },
+        {
+          "trial": "without invoicing/pricing.py",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 104
+        },
+        {
+          "trial": "without invoicing/tax.py",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 83
+        },
+        {
+          "trial": "without invoicing/shipping.py",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 90
+        }
+      ]
+    },
+    {
+      "task": "bugs-scheduler",
+      "category": "multi-bug",
+      "ok": true,
+      "durationMs": 305,
+      "outcomes": [
+        {
+          "trial": "unsolved",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 29
+        },
+        {
+          "trial": "solved",
+          "expect": "pass",
+          "ok": true,
+          "verifyMs": 123
+        },
+        {
+          "trial": "without sched/days.js",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 30
+        },
+        {
+          "trial": "without sched/clock.js",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 32
+        },
+        {
+          "trial": "without sched/offset.js",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 29
+        },
+        {
+          "trial": "without sched/next.js",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 27
+        },
+        {
+          "trial": "without sched/duration.js",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 31
+        }
+      ]
+    },
+    {
+      "task": "bugs-ttl-cache",
+      "category": "multi-bug",
+      "ok": true,
+      "durationMs": 205,
+      "outcomes": [
+        {
+          "trial": "unsolved",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 44
+        },
+        {
+          "trial": "solved",
+          "expect": "pass",
+          "ok": true,
+          "verifyMs": 161
+        }
+      ]
+    },
+    {
+      "task": "refactor-intervals-fast",
+      "category": "refactor",
+      "ok": true,
+      "durationMs": 31875,
+      "outcomes": [
+        {
+          "trial": "unsolved",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 30383
+        },
+        {
+          "trial": "solved",
+          "expect": "pass",
+          "ok": true,
+          "verifyMs": 1491
+        }
+      ]
+    },
+    {
+      "task": "refactor-shop-package",
+      "category": "refactor",
+      "ok": true,
+      "durationMs": 1778,
+      "outcomes": [
+        {
+          "trial": "unsolved",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 79
+        },
+        {
+          "trial": "solved",
+          "expect": "pass",
+          "ok": true,
+          "verifyMs": 845
+        },
+        {
+          "trial": "without shop/__init__.py",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 84
+        },
+        {
+          "trial": "without shop/money.py",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 114
+        },
+        {
+          "trial": "without shop/promotions.py",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 107
+        },
+        {
+          "trial": "without shop/cart.py",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 443
+        },
+        {
+          "trial": "without shop/receipts.py",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 103
+        }
+      ]
+    },
+    {
+      "task": "refactor-streaming-records",
+      "category": "refactor",
+      "ok": true,
+      "durationMs": 8244,
+      "outcomes": [
+        {
+          "trial": "unsolved",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 70
+        },
+        {
+          "trial": "solved",
+          "expect": "pass",
+          "ok": true,
+          "verifyMs": 8174
+        }
+      ]
+    },
+    {
+      "task": "data-sessions",
+      "category": "large-data",
+      "ok": true,
+      "durationMs": 2120,
+      "outcomes": [
+        {
+          "trial": "unsolved",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 49
+        },
+        {
+          "trial": "solved",
+          "expect": "pass",
+          "ok": true,
+          "verifyMs": 69
+        }
+      ]
+    },
+    {
+      "task": "data-ledger-reconcile",
+      "category": "large-data",
+      "ok": true,
+      "durationMs": 1779,
+      "outcomes": [
+        {
+          "trial": "unsolved",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 43
+        },
+        {
+          "trial": "solved",
+          "expect": "pass",
+          "ok": true,
+          "verifyMs": 699
+        }
+      ]
+    },
+    {
+      "task": "data-sensors",
+      "category": "large-data",
+      "ok": true,
+      "durationMs": 3083,
+      "outcomes": [
+        {
+          "trial": "unsolved",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 47
+        },
+        {
+          "trial": "solved",
+          "expect": "pass",
+          "ok": true,
+          "verifyMs": 71
+        }
+      ]
+    },
+    {
+      "task": "data-dependencies",
+      "category": "large-data",
+      "ok": true,
+      "durationMs": 5559,
+      "outcomes": [
+        {
+          "trial": "unsolved",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 515
+        },
+        {
+          "trial": "solved",
+          "expect": "pass",
+          "ok": true,
+          "verifyMs": 1874
+        }
+      ]
+    },
+    {
+      "task": "logs-revoked-tokens",
+      "category": "log-forensics",
+      "ok": true,
+      "durationMs": 1128,
+      "outcomes": [
+        {
+          "trial": "unsolved",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 54
+        },
+        {
+          "trial": "solved",
+          "expect": "pass",
+          "ok": true,
+          "verifyMs": 50
+        }
+      ]
+    },
+    {
+      "task": "logs-deploy-asof",
+      "category": "log-forensics",
+      "ok": true,
+      "durationMs": 1953,
+      "outcomes": [
+        {
+          "trial": "unsolved",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 53
+        },
+        {
+          "trial": "solved",
+          "expect": "pass",
+          "ok": true,
+          "verifyMs": 63
+        }
+      ]
+    },
+    {
+      "task": "logs-bruteforce",
+      "category": "log-forensics",
+      "ok": true,
+      "durationMs": 3587,
+      "outcomes": [
+        {
+          "trial": "unsolved",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 55
+        },
+        {
+          "trial": "solved",
+          "expect": "pass",
+          "ok": true,
+          "verifyMs": 473
+        }
+      ]
+    },
+    {
+      "task": "huge-customer-dedupe",
+      "category": "huge-file",
+      "ok": true,
+      "durationMs": 4469,
+      "outcomes": [
+        {
+          "trial": "unsolved",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 481
+        },
+        {
+          "trial": "solved",
+          "expect": "pass",
+          "ok": true,
+          "verifyMs": 331
+        }
+      ]
+    },
+    {
+      "task": "huge-catalog-diff",
+      "category": "huge-file",
+      "ok": true,
+      "durationMs": 1625,
+      "outcomes": [
+        {
+          "trial": "unsolved",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 43
+        },
+        {
+          "trial": "solved",
+          "expect": "pass",
+          "ok": true,
+          "verifyMs": 48
+        }
+      ]
+    }
+  ]
+}

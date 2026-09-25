@@ -3,20 +3,26 @@
  * Quality comparison: stock Pi (baseline) vs Ultron (candidate) on the frozen tasks in
  * evals/quality/tasks.mjs, with matched model and settings. Metered: every run calls the model.
  *
- *   node scripts/eval-quality.mjs [--model cliproxyapi/gpt-6-sol] [--trials 2] [--concurrency 3]
- *                                 [--only id,id] [--variants pi,ultron] [--out path] [--baseline recorded.json]
+ *   node scripts/eval-quality.mjs [--tasks default|hard] [--model cliproxyapi/gpt-6-sol] [--trials 2]
+ *                                 [--concurrency 3] [--only id,id] [--variants pi,ultron] [--out path]
+ *                                 [--baseline recorded.json]
+ *   node scripts/eval-quality.mjs --tasks hard --self-check [--only id,id] [--concurrency 4]
+ *
+ * `--tasks` picks the frozen set: default is evals/quality/tasks.mjs, `hard` is tasks-hard.mjs.
+ * `--self-check` runs no model: for every task it checks that the hidden check fails on the
+ * untouched task files, passes after applying the reference solution (tasks-<set>-solutions.mjs),
+ * and, when the solution changes several files, fails if any one of those files is left unfixed.
  *
  * Both agents run in RPC mode in a fresh copy of the task files with an isolated profile that holds
  * only models.json and auth.json (no extensions, skills, or memory), so the runtimes are compared,
  * not the user's setup. Hidden checks are copied in after the agent finishes and decide pass/fail.
  * Thresholds are frozen below, before any measurement.
  */
-import { spawn, spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { FROZEN_AT, tasks } from "../evals/quality/tasks.mjs";
 
 /** Frozen before measurement. */
 export const THRESHOLDS = {
@@ -30,6 +36,50 @@ export const THRESHOLDS = {
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const RUN_TIMEOUT_MS = 20 * 60 * 1000;
+const VERIFY_TIMEOUT_MS = 60_000;
+
+const TASK_SETS = {
+	default: { tasks: "../evals/quality/tasks.mjs", solutions: null },
+	hard: { tasks: "../evals/quality/tasks-hard.mjs", solutions: "../evals/quality/tasks-hard-solutions.mjs" },
+};
+
+/** Task files and hidden files; hard tasks generate their (large) data on demand. */
+function materialize(task) {
+	return task.build ? task.build() : { files: task.files, hidden: task.hidden };
+}
+
+function writeTree(dir, files) {
+	for (const [path, content] of Object.entries(files)) {
+		mkdirSync(dirname(join(dir, path)), { recursive: true });
+		writeFileSync(join(dir, path), content);
+	}
+}
+
+/** Run a shell command without blocking the event loop (other agents keep streaming meanwhile). */
+function sh(command, cwd, timeoutMs) {
+	return new Promise((resolveRun) => {
+		const child = spawn("sh", ["-c", command], { cwd, stdio: ["ignore", "pipe", "pipe"], detached: true });
+		let output = "";
+		const collect = (chunk) => {
+			output = (output + chunk).slice(-4000);
+		};
+		child.stdout.on("data", collect);
+		child.stderr.on("data", collect);
+		let timedOut = false;
+		const timer = setTimeout(() => {
+			timedOut = true;
+			try {
+				process.kill(-child.pid, "SIGKILL");
+			} catch {}
+		}, timeoutMs);
+		child.on("close", (code) => {
+			clearTimeout(timer);
+			resolveRun({ status: timedOut ? null : code, output: `${output}${timedOut ? `\n(timed out after ${timeoutMs} ms)` : ""}`.slice(-500) });
+		});
+	});
+}
+
+const runVerify = (task, cwd) => sh(task.verify, cwd, task.verifyTimeoutMs ?? VERIFY_TIMEOUT_MS);
 
 const VARIANTS = {
 	pi: { command: "pi", agentDirEnv: "PI_CODING_AGENT_DIR" },
@@ -135,10 +185,8 @@ async function runOne({ task, variant, trial, model }) {
 	const profile = join(homedir(), ".ultron", "agent");
 	for (const file of ["models.json", "auth.json"])
 		if (existsSync(join(profile, file))) copyFileSync(join(profile, file), join(agentDir, file));
-	for (const [path, content] of Object.entries(task.files)) {
-		mkdirSync(dirname(join(project, path)), { recursive: true });
-		writeFileSync(join(project, path), content);
-	}
+	const { files, hidden } = materialize(task);
+	writeTree(project, files);
 	const { command, agentDirEnv } = VARIANTS[variant];
 	const split = model.indexOf("/");
 	// Memory off: the baseline runs without extensions, so neither side gets cross-run memory.
@@ -182,10 +230,9 @@ async function runOne({ task, variant, trial, model }) {
 		record.durationMs = Date.now() - started;
 		await session.close().catch(() => {});
 	}
-	for (const [path, content] of Object.entries(task.hidden)) writeFileSync(join(project, path), content);
-	const check = spawnSync("sh", ["-c", task.verify], { cwd: project, timeout: 60_000, encoding: "utf8" });
-	record.passed = !record.error && check.status === 0;
-	record.verify = { status: check.status, output: `${check.stdout ?? ""}${check.stderr ?? ""}`.slice(-500) };
+	writeTree(project, hidden);
+	record.verify = await runVerify(task, project);
+	record.passed = !record.error && record.verify.status === 0;
 	rmSync(work, { recursive: true, force: true });
 	return record;
 }
@@ -234,18 +281,109 @@ export function summarize(records, variants) {
 	return { byVariant, gate, passed: gate.length > 0 && gate.every((entry) => entry.ok !== false) };
 }
 
+async function applySolution(dir, solution, files) {
+	writeTree(dir, files);
+	for (const path of solution.remove ?? []) rmSync(join(dir, path), { recursive: true, force: true });
+	if (!solution.run) return null;
+	const result = await sh(solution.run, dir, 10 * 60 * 1000);
+	return result.status === 0 ? null : `reference solution failed: ${result.output}`;
+}
+
+/**
+ * Model-free validation of a task set: the hidden check must reject the untouched task, accept the
+ * reference solution, and reject the solution with any single one of its files left out.
+ */
+async function checkTask(task, solution) {
+	const outcomes = [];
+	if (!solution) return [{ trial: "solution", ok: false, detail: "no reference solution" }];
+	const { files, hidden } = materialize(task);
+	const work = mkdtempSync(join(tmpdir(), `ultron-selfcheck-${task.id}-`));
+	const trial = async (name, solutionFiles, expectPass) => {
+		const dir = join(work, name.replace(/[^a-z0-9.-]+/gi, "_"));
+		mkdirSync(dir);
+		writeTree(dir, files);
+		const failure = solutionFiles ? await applySolution(dir, solution, solutionFiles) : null;
+		writeTree(dir, hidden);
+		const started = Date.now();
+		const verify = await runVerify(task, dir);
+		const passed = verify.status === 0;
+		const ok = !failure && passed === expectPass;
+		outcomes.push({
+			trial: name,
+			expect: expectPass ? "pass" : "fail",
+			ok,
+			verifyMs: Date.now() - started,
+			...(ok ? {} : { detail: failure ?? verify.output }),
+		});
+		rmSync(dir, { recursive: true, force: true });
+	};
+	try {
+		await trial("unsolved", null, false);
+		const solutionFiles = solution.files ?? {};
+		await trial("solved", solutionFiles, true);
+		const paths = Object.keys(solutionFiles);
+		if (paths.length > 1 && !solution.run)
+			for (const path of paths)
+				await trial(`without ${path}`, Object.fromEntries(Object.entries(solutionFiles).filter(([other]) => other !== path)), false);
+	} finally {
+		rmSync(work, { recursive: true, force: true });
+	}
+	return outcomes;
+}
+
+async function selfCheck(taskSet, selected, concurrency) {
+	const solutionsModule = TASK_SETS[taskSet].solutions;
+	if (!solutionsModule) throw new Error(`Task set "${taskSet}" has no reference solutions to self-check`);
+	const { solutions } = await import(solutionsModule);
+	console.log(`Self-check: ${selected.length} ${taskSet} tasks (no model calls)`);
+	const results = [];
+	let cursor = 0;
+	await Promise.all(
+		Array.from({ length: Math.max(1, concurrency) }, async () => {
+			while (cursor < selected.length) {
+				const task = selected[cursor++];
+				const started = Date.now();
+				const outcomes = await checkTask(task, solutions[task.id]);
+				const ok = outcomes.every((outcome) => outcome.ok);
+				results.push({ task: task.id, category: task.category, ok, durationMs: Date.now() - started, outcomes });
+				console.log(`${ok ? "OK  " : "BAD "} ${task.id} (${outcomes.length} trials, ${((Date.now() - started) / 1000).toFixed(0)}s)`);
+				for (const outcome of outcomes.filter((entry) => !entry.ok))
+					console.log(`     ${outcome.trial}: expected ${outcome.expect}; ${String(outcome.detail).slice(-300)}`);
+			}
+		}),
+	);
+	results.sort((a, b) => selected.findIndex((task) => task.id === a.task) - selected.findIndex((task) => task.id === b.task));
+	const passed = results.every((result) => result.ok);
+	const out = resolve(root, arg("out", `acceptance/quality/${new Date().toISOString().slice(0, 10)}-${taskSet}-self-check.json`));
+	mkdirSync(dirname(out), { recursive: true });
+	writeFileSync(out, `${JSON.stringify({ taskSet, frozenAt: FROZEN_AT, passed, results }, null, 2)}\n`);
+	console.log(`${passed ? "Self-check passed" : "Self-check FAILED"}: ${results.filter((result) => result.ok).length}/${results.length} tasks. Wrote ${out}`);
+	return passed ? 0 : 1;
+}
+
+let FROZEN_AT;
+
 async function main() {
+	const taskSet = arg("tasks", "default");
+	if (!TASK_SETS[taskSet]) throw new Error(`Unknown task set "${taskSet}" (expected ${Object.keys(TASK_SETS).join(" or ")})`);
+	const taskModule = await import(TASK_SETS[taskSet].tasks);
+	FROZEN_AT = taskModule.FROZEN_AT;
+	const only = arg("only", "");
+	const selected = taskModule.tasks().filter((task) => !only || only.split(",").includes(task.id));
+	if (only && selected.length !== only.split(",").length) throw new Error(`Unknown task id in --only ${only}`);
+	if (process.argv.includes("--self-check")) return selfCheck(taskSet, selected, Number(arg("concurrency", "4")));
 	const model = arg("model", "cliproxyapi/gpt-6-sol");
 	const trials = Number(arg("trials", "2"));
 	const concurrency = Number(arg("concurrency", "3"));
 	const variants = arg("variants", "pi,ultron").split(",");
-	const only = arg("only", "");
-	const selected = tasks().filter((task) => !only || only.split(",").includes(task.id));
-	const out = resolve(root, arg("out", `acceptance/quality/${new Date().toISOString().slice(0, 10)}-${model.replace(/[^a-z0-9.-]+/gi, "_")}.json`));
+	const out = resolve(
+		root,
+		arg("out", `acceptance/quality/${new Date().toISOString().slice(0, 10)}-${taskSet}-${model.replace(/[^a-z0-9.-]+/gi, "_")}.json`),
+	);
 	const jobs = selected.flatMap((task) =>
 		variants.flatMap((variant) => Array.from({ length: trials }, (_, index) => ({ task, variant, trial: index + 1, model }))),
 	);
-	console.log(`Quality comparison: ${selected.length} tasks x ${variants.join("/")} x ${trials} trials = ${jobs.length} runs (${model})`);
+	console.log(`Quality comparison (${taskSet} set): ${selected.length} tasks x ${variants.join("/")} x ${trials} trials = ${jobs.length} runs (${model})`);
 	const records = [];
 	let cursor = 0;
 	await Promise.all(
@@ -264,7 +402,7 @@ async function main() {
 	const baselinePath = arg("baseline", "");
 	if (baselinePath) {
 		const baseline = JSON.parse(readFileSync(resolve(root, baselinePath), "utf8"));
-		if (baseline.frozenAt !== FROZEN_AT || baseline.model !== model || baseline.trials !== trials)
+		if ((baseline.taskSet ?? "default") !== taskSet || baseline.frozenAt !== FROZEN_AT || baseline.model !== model || baseline.trials !== trials)
 			throw new Error("Baseline was recorded with a different task set, model, or trial count");
 		records.push(...baseline.records.filter((record) => !variants.includes(record.variant)));
 		for (const variant of new Set(baseline.records.map((record) => record.variant)))
@@ -272,7 +410,7 @@ async function main() {
 	}
 	const summary = summarize(records, variants);
 	mkdirSync(dirname(out), { recursive: true });
-	writeFileSync(out, `${JSON.stringify({ frozenAt: FROZEN_AT, thresholds: THRESHOLDS, model, trials, summary, records }, null, 2)}\n`);
+	writeFileSync(out, `${JSON.stringify({ taskSet, frozenAt: FROZEN_AT, thresholds: THRESHOLDS, model, trials, summary, records }, null, 2)}\n`);
 	console.log(JSON.stringify(summary, null, 2));
 	console.log(`Wrote ${out}`);
 	return summary.passed ? 0 : 1;

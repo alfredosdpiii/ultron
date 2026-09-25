@@ -28,6 +28,7 @@ import {
 import { messageText, queueUpdate, RpcEventTranslator } from "./rpc-events.ts";
 import type { ModelSummary } from "./services/models.ts";
 import { SessionControl } from "./services/session-control.ts";
+import { traceStartup } from "./startup-trace.ts";
 
 export interface NativeRpcOptions {
 	readonly sessionDir: string;
@@ -49,6 +50,7 @@ export async function runNativeRpcMode(options: NativeRpcOptions): Promise<void>
 		writeRawStdout(serializeJsonLine(value));
 	};
 	const context = BACKGROUND_CONTEXT;
+	traceStartup("rpc.open");
 	const runtime = await openClientRuntime({ command: "client" }, { sessionDir: options.sessionDir });
 	const cleanups: Array<() => Promise<void> | void> = [() => runtime.dispose()];
 	const createdSessions = new Set<string>();
@@ -61,8 +63,11 @@ export async function runNativeRpcMode(options: NativeRpcOptions): Promise<void>
 		const control = controlServices.use(SessionControl);
 		await controlServices.ready(context);
 
+		traceStartup("rpc.services-ready");
 		let sessionId = await selectInitialSession(server, options, context, createdSessions);
+		traceStartup("rpc.session-selected");
 		await attach(server, sessionId, context);
+		traceStartup("rpc.attached");
 
 		const translator = new RpcEventTranslator();
 		const eventWaiters = new Set<(event: LaneWatchEvent) => void>();
