@@ -282,6 +282,9 @@ export class NativeRlmHost {
 				},
 				context,
 				parentTaskId ?? undefined,
+				// Module work (instance invocations, skill runs, schedule firings, verifiers) is collected later or
+				// awaited explicitly; it must not die with the cell that requested it. Parent cancellation still cascades.
+				true,
 			);
 			return publicRecord(task);
 		},

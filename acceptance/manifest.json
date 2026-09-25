@@ -866,6 +866,7 @@
         {
           "file": "packages/coding-agent/test/ultron-a46-demo.test.ts",
           "tests": [
+            "aborting mid-invoke cancels the child and the session keeps working",
             "fix, review, retain, and improve with real runtime effects",
             "failure variants never become verified completion"
           ]

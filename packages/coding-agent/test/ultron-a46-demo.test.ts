@@ -110,6 +110,12 @@ await attempt('stale_revision', lambda: grants.check(g2['id'], 'repo:demo', 'rev
 await other.result()
 await attempt('unverified_claim', lambda: progress.reassess(other.id, claim='complete'))
 await attempt('unknown_verifier', lambda: progress.reassess(other.id, claim='complete', verifier='no-such-check@1'))`,
+	`r = await agents.spawn('correctness-reviewer@1', {'request': 'first review'})
+await r.result()
+inst = await instances.retain(r.id)
+state['follow'] = await instances.invoke(inst['id'], {'request': 'CORRECTION follow-up'})
+state['follow'].id  # the cell fails while the follow-up is still running`,
+	"await attempt('instance_after_failed_cell', lambda: agents.result(state['follow']['task_id']))",
 	`admitted = 0
 for i in range(40):
     try:
@@ -218,6 +224,31 @@ async function results(client: RpcClient): Promise<Array<Record<string, any>>> {
 		);
 }
 
+describe("interrupting a cell that waits on a child", () => {
+	let harness: Harness | undefined;
+
+	afterEach(async () => {
+		if (!harness) return;
+		await harness.client.stop().catch(() => {});
+		await harness.provider.stop();
+		rmSync(harness.root, { recursive: true, force: true });
+	});
+
+	test("aborting mid-invoke cancels the child and the session keeps working", async () => {
+		harness = await start(["await agents.invoke('rlm-child@1', {'prompt': 'SLOW child under invoke'})"], {});
+		const { client, provider } = harness;
+		await client.prompt("DEMO: invoke a slow child");
+		await new Promise((resolve) => setTimeout(resolve, 3000));
+		await client.abort();
+		await client.waitForIdle(60_000);
+		// The worker survived: a new prompt is answered (turn 1 of a fresh DEMO conversation has no scripted cell).
+		const before = provider.requests.length;
+		await client.promptAndWait("DEMO: are you still there?", undefined, 60_000);
+		expect(provider.requests.length).toBeGreaterThan(before);
+		expect(await client.getLastAssistantText()).toBe("DEMO COMPLETE");
+	}, 180_000);
+});
+
 describe("A46 combined demonstration", () => {
 	let harness: Harness | undefined;
 
@@ -317,5 +348,10 @@ describe("A46 combined demonstration", () => {
 			expect(JSON.stringify(claim)).not.toContain('"verified"');
 		}
 		expect(variants!.exhausted_budget).toMatchObject({ ok: false });
+		// Work started through a host module outlives a cell that fails right after starting it.
+		expect(variants!.instance_after_failed_cell).toMatchObject({
+			ok: true,
+			value: { status: "succeeded", value: { outcome: "findings" } },
+		});
 	}, 240_000);
 });
