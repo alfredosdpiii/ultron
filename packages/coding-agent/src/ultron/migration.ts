@@ -1,11 +1,27 @@
 /**
  * Explicit, repeatable migration between Pi and Ultron.
  *
- * - `importPiSession` copies the active branch of a Pi session into a new native Session.
- * - `exportNativeSessionToPi` writes a native Session's main branch back as a Pi session (rollback).
+ * - `importPiSession` copies a whole Pi session tree into a new native Session.
+ * - `exportNativeSessionToPi` writes a native Session's whole tree back as a Pi session (rollback).
  * - `backupProfile` / `restoreProfile` snapshot and restore the Ultron config profile (never sessions).
  *
  * Nothing here reads Pi's data directory implicitly: every source path is supplied by the caller.
+ *
+ * Pi entry mapping (Pi entry ids are kept as native entry ids, parents are unchanged):
+ * - `message`, `compaction`, `branch_summary`, `custom` -> the native entry of the same type.
+ * - `custom_message` -> a native `message` entry with a `custom` role message.
+ * - Every other Pi entry type (`model_change`, `thinking_level_change`, `label`, `session_info`, `usage`,
+ *   `context_edit`, and types added later) -> a native `custom` entry whose customType is
+ *   `pi-session:<type>` and whose data is the Pi entry without `type`/`id`/`parentId`/`timestamp`.
+ * - Derived native state at import end: the `main` branch tip is the Pi leaf, label values are Pi's
+ *   resolved labels, the session name is Pi's name, and the `main` lane configuration carries the
+ *   model and thinking level Pi resolves at the leaf.
+ * - A `context_edit` whose target reaches only leaves that pass through the edit is baked into the native
+ *   target (and into compaction tails that keep it): a replacement changes the message content, an
+ *   omission turns the message into a `pi-import:omitted-message` custom entry. Edits that would also
+ *   change sibling branches cannot be baked and are reported in `unappliedContextEdits`.
+ * - When the native entry cannot reproduce the Pi entry exactly (compactions, edited messages), the
+ *   original Pi entry is kept in the `ultron.pi.original` value for that entry id so export is lossless.
  */
 import { createHash } from "node:crypto";
 import { chmod, lstat, mkdir, readdir, readFile, readlink, rename, rm, symlink, writeFile } from "node:fs/promises";
@@ -16,18 +32,30 @@ import {
 	BACKGROUND_CONTEXT,
 	branchTip,
 	type Entry,
+	entryLabel,
 	insertEntry,
 	type JsonlSessionMetadata,
 	JsonlSessionRepo,
 	type JsonValue,
+	type LaneConfiguration,
+	laneConfig,
+	laneState,
+	type CompactionEntry as NativeCompactionEntry,
 	type NewEntry,
 	type Session,
+	sessionName,
 	setValue,
+	type Value,
+	value,
 	type Write,
 } from "@earendil-works/pi-agent-core";
 import { NodeExecutionEnv } from "@earendil-works/pi-agent-core/node";
 import { createCustomMessage } from "../core/messages.ts";
 import {
+	buildContextEntries,
+	buildSessionContext,
+	type ContextEditableContent,
+	type ContextEditEntry,
 	CURRENT_SESSION_VERSION,
 	type FileEntry,
 	loadEntriesFromFile,
@@ -36,6 +64,194 @@ import {
 	SessionManager,
 	sessionEntryToContextMessages,
 } from "../core/session-manager.ts";
+
+// =============================================================================
+// Shared Pi <-> native mapping
+// =============================================================================
+
+/** Native customType prefix for Pi entry types that have no native entry type. */
+export const PI_ENTRY_CUSTOM_TYPE_PREFIX = "pi-session:";
+/** Native customType for a message a Pi `context_edit` removed from model context. Data: `{ message }`. */
+export const PI_OMITTED_MESSAGE_CUSTOM_TYPE = "pi-import:omitted-message";
+/** Native customType for the marker export adds when the native tip is not a leaf (Pi resumes at a leaf). */
+export const PI_LEAF_MARKER_CUSTOM_TYPE = "ultron:pi-leaf";
+/** The original Pi entry, stored when its native entry cannot reproduce it exactly. */
+export const piOriginalEntry = (entryId: string): Value<JsonValue> => value<JsonValue>("ultron.pi.original", entryId);
+
+/** Pi entry types with a dedicated mapping; anything else is preserved and reported. */
+const KNOWN_PI_ENTRY_TYPES = new Set([
+	"message",
+	"custom_message",
+	"compaction",
+	"branch_summary",
+	"custom",
+	"model_change",
+	"thinking_level_change",
+	"label",
+	"session_info",
+	"usage",
+	"context_edit",
+]);
+
+function toJson(input: unknown): JsonValue {
+	return JSON.parse(JSON.stringify(input ?? null)) as JsonValue;
+}
+
+function iso(timestamp: number): string {
+	return new Date(timestamp).toISOString();
+}
+
+function parseTimestamp(value: string | undefined, fallback: number): number {
+	const parsed = value === undefined ? Number.NaN : Date.parse(value);
+	return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+/** Pi's content replacement for one projected message (mirrors Pi's context-edit projection). */
+function replaceContent(message: AgentMessage, content: ContextEditableContent): AgentMessage {
+	if (
+		message.role !== "user" &&
+		message.role !== "assistant" &&
+		message.role !== "toolResult" &&
+		message.role !== "custom"
+	) {
+		return message;
+	}
+	const next =
+		(message.role === "assistant" || message.role === "toolResult") && typeof content === "string"
+			? [{ type: "text" as const, text: content }]
+			: content;
+	return { ...message, content: next } as AgentMessage;
+}
+
+function applyEdit(messages: AgentMessage[], edit: ContextEditEntry["replacement"] | undefined): AgentMessage[] {
+	if (edit === undefined) return messages;
+	if (edit === null) return [];
+	return messages.map((message) => replaceContent(message, edit.content));
+}
+
+type PiEntryBase = Pick<SessionEntry, "id" | "parentId" | "timestamp">;
+
+/**
+ * Convert one native entry to the Pi entry that represents it. Compactions need their branch to resolve
+ * `firstKeptEntryId`, so they are converted by `compactionToPi`.
+ */
+function nativeToPiEntry(entry: Exclude<Entry, NativeCompactionEntry>, base: PiEntryBase): SessionEntry {
+	switch (entry.type) {
+		case "message": {
+			const message = entry.message;
+			if (message.role === "custom") {
+				return {
+					...base,
+					type: "custom_message",
+					customType: message.customType,
+					content: message.content,
+					display: message.display,
+					...(message.details === undefined ? {} : { details: message.details }),
+				};
+			}
+			return { ...base, type: "message", message };
+		}
+		case "branch_summary":
+			return {
+				...base,
+				type: "branch_summary",
+				fromId: entry.fromId ?? "root",
+				summary: entry.summary,
+				...(entry.details === undefined ? {} : { details: entry.details }),
+				...(entry.usage === undefined ? {} : { usage: entry.usage }),
+				fromHook: entry.fromHook,
+			};
+		case "custom": {
+			if (entry.customType.startsWith(PI_ENTRY_CUSTOM_TYPE_PREFIX)) {
+				const data = (entry.data ?? {}) as Record<string, unknown>;
+				const type = entry.customType.slice(PI_ENTRY_CUSTOM_TYPE_PREFIX.length);
+				return { ...data, ...base, type } as SessionEntry;
+			}
+			if (entry.customType === PI_OMITTED_MESSAGE_CUSTOM_TYPE) {
+				const message = (entry.data as { message?: AgentMessage } | undefined)?.message;
+				if (message !== undefined) {
+					return nativeToPiEntry({ ...entry, type: "message", message }, base);
+				}
+			}
+			return {
+				...base,
+				type: "custom",
+				customType: entry.customType,
+				...(entry.data === undefined ? {} : { data: entry.data }),
+			};
+		}
+	}
+}
+
+/** Parent-first order that otherwise keeps file order (Pi writes parents first; this tolerates files that do not). */
+class PiTree {
+	readonly byId = new Map<string, SessionEntry>();
+	private readonly children = new Map<string, string[]>();
+
+	constructor(entries: readonly SessionEntry[]) {
+		for (const entry of entries) this.byId.set(entry.id, entry);
+		for (const entry of entries) {
+			const parentId = this.parentOf(entry);
+			if (parentId === null) continue;
+			const siblings = this.children.get(parentId) ?? [];
+			siblings.push(entry.id);
+			this.children.set(parentId, siblings);
+		}
+	}
+
+	/** The parent as Pi's tree resolves it: missing or self parents make the entry a root. */
+	parentOf(entry: SessionEntry): string | null {
+		const parentId = entry.parentId;
+		return parentId === null || parentId === entry.id || !this.byId.has(parentId) ? null : parentId;
+	}
+
+	/** True when `descendantId` is below `ancestorId` and every leaf under `ancestorId` passes through it. */
+	dominates(ancestorId: string, descendantId: string): boolean {
+		let current = this.byId.get(descendantId);
+		if (current === undefined) return false;
+		let parentId = this.parentOf(current);
+		while (parentId !== null) {
+			if ((this.children.get(parentId)?.length ?? 0) !== 1) return false;
+			if (parentId === ancestorId) return true;
+			current = this.byId.get(parentId)!;
+			parentId = this.parentOf(current);
+		}
+		return false;
+	}
+
+	insertionOrder(entries: readonly SessionEntry[]): SessionEntry[] {
+		const out: SessionEntry[] = [];
+		const placed = new Set<string>();
+		const waiting = new Map<string, SessionEntry[]>();
+		const place = (entry: SessionEntry): void => {
+			const stack = [entry];
+			while (stack.length > 0) {
+				const next = stack.pop()!;
+				out.push(next);
+				placed.add(next.id);
+				const children = waiting.get(next.id);
+				if (children !== undefined) {
+					waiting.delete(next.id);
+					stack.push(...children.reverse());
+				}
+			}
+		};
+		for (const entry of entries) {
+			if (placed.has(entry.id)) continue;
+			const parentId = this.parentOf(entry);
+			if (parentId === null || placed.has(parentId)) {
+				place(entry);
+				continue;
+			}
+			const siblings = waiting.get(parentId) ?? [];
+			siblings.push(entry);
+			waiting.set(parentId, siblings);
+		}
+		// Only cycles remain; Pi cannot reach these entries from a root either.
+		for (const children of waiting.values()) for (const entry of children) if (!placed.has(entry.id)) place(entry);
+		return out;
+	}
+}
 
 // =============================================================================
 // Pi -> native import
@@ -51,10 +267,17 @@ export interface ImportPiSessionOptions {
 export interface ImportPiSessionResult {
 	sessionId: string;
 	path: string;
-	/** Number of native entries written. */
+	/** Number of native entries written (one per Pi entry). */
 	imported: number;
-	/** Active-branch Pi entry types that have no native equivalent, with counts. */
+	/** Pi entries that could not be imported. Empty: every entry type is mapped or preserved. */
 	skipped: Array<{ type: string; count: number }>;
+	/** Unknown Pi entry types kept verbatim as `pi-session:<type>` custom entries, with counts. */
+	preserved: Array<{ type: string; count: number }>;
+	/**
+	 * `context_edit` entry ids whose effect is branch-local: the target is shared with branches that do not
+	 * carry the edit, so it is kept only as a `pi-session:context_edit` entry (Pi still honors it after export).
+	 */
+	unappliedContextEdits: string[];
 }
 
 /** The Pi session was already imported; re-import is refused so the native copy is never duplicated. */
@@ -84,8 +307,8 @@ export function nativeSessionIdForPiSession(piSessionId: string): string {
 
 interface PiSessionSnapshot {
 	header: SessionHeader;
-	branch: SessionEntry[];
-	name: string | undefined;
+	manager: SessionManager;
+	entries: SessionEntry[];
 }
 
 function readPiSession(piSessionPath: string): PiSessionSnapshot {
@@ -96,53 +319,79 @@ function readPiSession(piSessionPath: string): PiSessionSnapshot {
 	}
 	// In-memory manager: applies Pi's format migrations without rewriting the source file.
 	const manager = SessionManager.inMemory(header.cwd, undefined, fileEntries);
-	return { header, branch: manager.getBranch(), name: manager.getSessionName() };
-}
-
-/** Messages Pi would keep in context for a compaction: [firstKeptEntryId, compaction) on the branch. */
-function piRetainedTail(
-	branch: readonly SessionEntry[],
-	compactionIndex: number,
-	firstKeptEntryId: string,
-): AgentMessage[] {
-	const start = branch.findIndex((entry, index) => index < compactionIndex && entry.id === firstKeptEntryId);
-	if (start < 0) return [];
-	const tail: AgentMessage[] = [];
-	for (const entry of branch.slice(start, compactionIndex)) {
-		// Pi drops system messages and older compaction summaries from the kept range.
-		if (entry.type === "compaction") continue;
-		if (entry.type === "message" && entry.message.role === "system") continue;
-		tail.push(...sessionEntryToContextMessages(entry));
-	}
-	return tail;
+	return { header, manager, entries: manager.getEntries() };
 }
 
 type NativeEntryBody = NewEntry extends infer T ? (T extends unknown ? Omit<T, "id" | "parentId"> : never) : never;
 
-function toNativeEntryBody(
-	entry: SessionEntry,
-	branch: readonly SessionEntry[],
-	index: number,
-): NativeEntryBody | undefined {
+interface ImportPlan {
+	/** Effective replacement per message entry id, for edits that reach every leaf under the target. */
+	messageEdits: Map<string, ContextEditEntry["replacement"]>;
+	unappliedContextEdits: string[];
+	/** Native retained tail per compaction id. */
+	tails: Map<string, AgentMessage[]>;
+}
+
+function planImport(entries: readonly SessionEntry[], tree: PiTree): ImportPlan {
+	const edits = entries.filter((entry): entry is ContextEditEntry => entry.type === "context_edit");
+	const messageEdits = new Map<string, ContextEditEntry["replacement"]>();
+	const unappliedContextEdits: string[] = [];
+	for (const edit of edits) {
+		const target = tree.byId.get(edit.targetId);
+		const editable = target?.type === "message" || target?.type === "custom_message";
+		// Edits appear in path order along a single chain, so the later edit wins as in Pi.
+		if (editable && tree.dominates(target.id, edit.id)) messageEdits.set(target.id, edit.replacement);
+		else unappliedContextEdits.push(edit.id);
+	}
+
+	const tails = new Map<string, AgentMessage[]>();
+	for (const compaction of entries) {
+		if (compaction.type !== "compaction") continue;
+		// What Pi keeps in context at the compaction: [compaction, kept entries...], with edits among them.
+		const contextEntries = buildContextEntries([...entries], compaction.id, tree.byId);
+		const replacements = new Map<string, ContextEditEntry["replacement"]>();
+		for (const entry of contextEntries) {
+			if (entry.type === "context_edit") replacements.set(entry.targetId, entry.replacement);
+		}
+		// Later edits of kept entries apply on every leaf below the compaction only when they dominate it.
+		for (const edit of edits) {
+			if (tree.dominates(compaction.id, edit.id)) replacements.set(edit.targetId, edit.replacement);
+		}
+		tails.set(
+			compaction.id,
+			contextEntries
+				.slice(1)
+				.flatMap((entry) =>
+					entry.type === "compaction"
+						? []
+						: applyEdit(sessionEntryToContextMessages(entry), replacements.get(entry.id)),
+				),
+		);
+	}
+	return { messageEdits, unappliedContextEdits, tails };
+}
+
+function editedMessageBody(message: AgentMessage, edit: ContextEditEntry["replacement"] | undefined): NativeEntryBody {
+	if (edit === undefined) return { type: "message", message };
+	if (edit === null) return { type: "custom", customType: PI_OMITTED_MESSAGE_CUSTOM_TYPE, data: toJson({ message }) };
+	return { type: "message", message: replaceContent(message, edit.content) };
+}
+
+function toNativeEntryBody(entry: SessionEntry, plan: ImportPlan): NativeEntryBody {
+	const edit = plan.messageEdits.has(entry.id) ? plan.messageEdits.get(entry.id) : undefined;
 	switch (entry.type) {
 		case "message":
-			return { type: "message", message: entry.message };
+			return editedMessageBody(entry.message, edit);
 		case "custom_message":
-			return {
-				type: "message",
-				message: createCustomMessage(
-					entry.customType,
-					entry.content,
-					entry.display,
-					entry.details,
-					entry.timestamp,
-				),
-			};
+			return editedMessageBody(
+				createCustomMessage(entry.customType, entry.content, entry.display, entry.details, entry.timestamp),
+				edit,
+			);
 		case "compaction":
 			return {
 				type: "compaction",
 				summary: entry.summary,
-				retainedTail: piRetainedTail(branch, index, entry.firstKeptEntryId),
+				retainedTail: plan.tails.get(entry.id) ?? [],
 				tokensBefore: entry.tokensBefore,
 				...(entry.details === undefined ? {} : { details: entry.details as JsonValue }),
 				...(entry.usage === undefined ? {} : { usage: entry.usage }),
@@ -164,9 +413,22 @@ function toNativeEntryBody(
 				customType: entry.customType,
 				...(entry.data === undefined ? {} : { data: entry.data as JsonValue }),
 			};
-		default:
-			return undefined;
+		default: {
+			const { type, id: _id, parentId: _parentId, timestamp: _timestamp, ...data } = entry as SessionEntry;
+			return { type: "custom", customType: `${PI_ENTRY_CUSTOM_TYPE_PREFIX}${type}`, data: toJson(data) };
+		}
 	}
+}
+
+/** True when export would rebuild exactly this Pi entry from its native entry. */
+function reproducesPiEntry(original: SessionEntry, native: NewEntry, timestamp: number): boolean {
+	if (native.type === "compaction") return false;
+	const rebuilt = nativeToPiEntry({ ...native, seq: 0, timestamp } as Exclude<Entry, NativeCompactionEntry>, {
+		id: native.id,
+		parentId: native.parentId,
+		timestamp: iso(timestamp),
+	});
+	return isDeepStrictEqual(toJson(rebuilt), toJson(original));
 }
 
 interface RepoHandle {
@@ -188,20 +450,17 @@ function openRepo(sessionsRoot: string, now?: () => number): RepoHandle {
 	};
 }
 
-function parseTimestamp(value: string | undefined, fallback: number): number {
-	const parsed = value === undefined ? Number.NaN : Date.parse(value);
-	return Number.isFinite(parsed) ? parsed : fallback;
-}
-
 /**
- * Import the active branch (root -> leaf) of a Pi session as a new native Session with the same cwd.
- * Entry ids and timestamps are preserved; the native main branch tip is the last imported entry.
- * Throws `PiSessionAlreadyImportedError` when the Pi session was imported before.
+ * Import the whole tree of a Pi session as a new native Session with the same cwd (see the module comment
+ * for the entry mapping). Entry ids, parents, and timestamps are preserved; the native `main` branch tip is
+ * the Pi leaf. Throws `PiSessionAlreadyImportedError` when the Pi session was imported before.
  */
 export async function importPiSession(options: ImportPiSessionOptions): Promise<ImportPiSessionResult> {
 	const piPath = resolve(options.piSessionPath);
 	const pi = readPiSession(piPath);
 	const sessionId = nativeSessionIdForPiSession(pi.header.id);
+	const tree = new PiTree(pi.entries);
+	const plan = planImport(pi.entries, tree);
 
 	// Storage stamps every commit with the repo clock; drive it from the Pi timestamps.
 	let clock = parseTimestamp(pi.header.timestamp, Date.now());
@@ -214,33 +473,52 @@ export async function importPiSession(options: ImportPiSessionOptions): Promise<
 
 		session = await handle.repo.create({ id: sessionId, cwd: pi.header.cwd }, BACKGROUND_CONTEXT);
 		created = true;
-		const skipped = new Map<string, number>();
-		let parentId: string | null = null;
+		const preserved = new Map<string, number>();
 		let imported = 0;
-		for (const [index, entry] of pi.branch.entries()) {
-			const body = toNativeEntryBody(entry, pi.branch, index);
-			if (body === undefined) {
-				if (entry.type !== "session_info") skipped.set(entry.type, (skipped.get(entry.type) ?? 0) + 1);
-				continue;
-			}
+		for (const entry of tree.insertionOrder(pi.entries)) {
+			if (!KNOWN_PI_ENTRY_TYPES.has(entry.type)) preserved.set(entry.type, (preserved.get(entry.type) ?? 0) + 1);
 			clock = parseTimestamp(entry.timestamp, clock);
-			const writes: Write[] = [
-				insertEntry({ ...body, id: entry.id, parentId } as NewEntry),
-				setValue(branchTip("main"), entry.id),
-			];
+			const native = { ...toNativeEntryBody(entry, plan), id: entry.id, parentId: tree.parentOf(entry) } as NewEntry;
+			const writes: Write[] = [insertEntry(native)];
+			if (!reproducesPiEntry(entry, native, clock)) writes.push(setValue(piOriginalEntry(entry.id), toJson(entry)));
 			await session.mutate(async (mutator) => {
 				await mutator.commit(writes, BACKGROUND_CONTEXT);
 			}, BACKGROUND_CONTEXT);
-			parentId = entry.id;
 			imported++;
 		}
-		if (imported === 0) await session.createBranch("main", null, BACKGROUND_CONTEXT);
-		if (pi.name !== undefined) await session.setName(pi.name, BACKGROUND_CONTEXT);
+
+		// Derived state at the Pi leaf: tip, labels, name, and the lane configuration Pi would resume with.
+		const leafId = pi.manager.getLeafId();
+		const writes: Write[] = [setValue(branchTip("main"), leafId !== null && tree.byId.has(leafId) ? leafId : null)];
+		for (const entry of pi.entries) {
+			const label = pi.manager.getLabel(entry.id);
+			if (label !== undefined) writes.push(setValue(entryLabel(entry.id), label));
+		}
+		const name = pi.manager.getSessionName();
+		if (name !== undefined) writes.push(setValue(sessionName, name));
+		const { model, thinkingLevel } = pi.manager.buildSessionContext();
+		if (model !== null) {
+			const configuration: LaneConfiguration = {
+				model: { provider: model.provider, modelId: model.modelId },
+				thinkingLevel: thinkingLevel as LaneConfiguration["thinkingLevel"],
+				// Tools are not recorded by Pi; the host activates its own tool set when it opens the lane.
+				activeToolNames: [],
+			};
+			writes.push(
+				setValue(laneConfig("main"), configuration),
+				setValue(laneState("main"), { currentOperationId: null, lastOperationId: null, inbox: [] }),
+			);
+		}
+		await session.mutate(async (mutator) => {
+			await mutator.commit(writes, BACKGROUND_CONTEXT);
+		}, BACKGROUND_CONTEXT);
 		return {
 			sessionId,
 			path: session.metadata.path,
 			imported,
-			skipped: [...skipped].map(([type, count]) => ({ type, count })),
+			skipped: [],
+			preserved: [...preserved].map(([type, count]) => ({ type, count })),
+			unappliedContextEdits: plan.unappliedContextEdits,
 		};
 	} catch (error) {
 		if (created && session !== undefined) {
@@ -275,13 +553,9 @@ export interface ExportNativeSessionToPiResult {
 	entries: number;
 }
 
-function iso(timestamp: number): string {
-	return new Date(timestamp).toISOString();
-}
-
 /**
- * Pi keeps compaction tails by reference (`firstKeptEntryId`). Find the earliest preceding entry whose
- * projected context equals the native retained tail.
+ * Pi keeps compaction tails by reference (`firstKeptEntryId`). Find the earliest preceding entry on the
+ * compaction's branch whose projected context equals the native retained tail.
  */
 function findFirstKeptEntryId(previous: readonly SessionEntry[], retainedTail: readonly AgentMessage[]): string | null {
 	if (retainedTail.length === 0) return null;
@@ -299,69 +573,57 @@ function findFirstKeptEntryId(previous: readonly SessionEntry[], retainedTail: r
 	return null;
 }
 
-function toPiEntries(entries: readonly Entry[]): SessionEntry[] {
-	const out: SessionEntry[] = [];
-	// Map native ids to the Pi id that represents them (synthetic tail entries shift the chain).
-	let lastId: string | null = null;
-	const parentOf = (entry: Entry): string | null => (entry.parentId === null ? null : lastId);
-	for (const entry of entries) {
-		const base = { id: entry.id, parentId: parentOf(entry), timestamp: iso(entry.timestamp) };
-		switch (entry.type) {
-			case "message":
-				out.push({ ...base, type: "message", message: entry.message });
-				break;
-			case "compaction": {
-				const firstKept = findFirstKeptEntryId(out, entry.retainedTail);
-				out.push({
-					...base,
-					type: "compaction",
-					summary: entry.summary,
-					// No kept tail (or it could not be matched): nothing before the compaction is kept.
-					firstKeptEntryId: firstKept ?? entry.id,
-					tokensBefore: entry.tokensBefore,
-					...(entry.details === undefined ? {} : { details: entry.details }),
-					...(entry.usage === undefined ? {} : { usage: entry.usage }),
-					fromHook: entry.fromHook,
-				});
-				if (firstKept === null && entry.retainedTail.length > 0) {
-					// Unmatched tail: replay it after the summary so Pi's model context is unchanged.
-					let parentId = entry.id;
-					for (const [index, message] of entry.retainedTail.entries()) {
-						const id = `${entry.id}-tail-${index}`;
-						out.push({ id, parentId, timestamp: base.timestamp, type: "message", message });
-						parentId = id;
-					}
-					lastId = parentId;
-					continue;
-				}
-				break;
-			}
-			case "branch_summary":
-				out.push({
-					...base,
-					type: "branch_summary",
-					fromId: entry.fromId ?? "root",
-					summary: entry.summary,
-					...(entry.details === undefined ? {} : { details: entry.details }),
-					...(entry.usage === undefined ? {} : { usage: entry.usage }),
-					fromHook: entry.fromHook,
-				});
-				break;
-			case "custom":
-				out.push({
-					...base,
-					type: "custom",
-					customType: entry.customType,
-					...(entry.data === undefined ? {} : { data: entry.data }),
-				});
-				break;
+/** A native compaction as Pi entries: the compaction, plus a replayed tail when Pi cannot reference it. */
+function compactionToPi(entry: NativeCompactionEntry, base: PiEntryBase, branch: SessionEntry[]): SessionEntry[] {
+	const firstKept = findFirstKeptEntryId(branch, entry.retainedTail);
+	const out: SessionEntry[] = [
+		{
+			...base,
+			type: "compaction",
+			summary: entry.summary,
+			// No kept tail (or it could not be matched): nothing before the compaction is kept.
+			firstKeptEntryId: firstKept ?? entry.id,
+			tokensBefore: entry.tokensBefore,
+			...(entry.details === undefined ? {} : { details: entry.details }),
+			...(entry.usage === undefined ? {} : { usage: entry.usage }),
+			fromHook: entry.fromHook,
+		},
+	];
+	if (firstKept === null) {
+		// Unmatched tail: replay it after the summary so Pi's model context is unchanged.
+		let parentId = entry.id;
+		for (const [index, message] of entry.retainedTail.entries()) {
+			const id = `${entry.id}-tail-${index}`;
+			out.push({ id, parentId, timestamp: base.timestamp, type: "message", message });
+			parentId = id;
 		}
-		lastId = entry.id;
 	}
 	return out;
 }
 
-/** Write the main branch of a native Session as a Pi-format JSONL session (for rollback to Pi). */
+function piLabelsOf(entries: readonly SessionEntry[]): Map<string, string> {
+	const labels = new Map<string, string>();
+	for (const entry of entries) {
+		if (entry.type !== "label") continue;
+		if (entry.label) labels.set(entry.targetId, entry.label);
+		else labels.delete(entry.targetId);
+	}
+	return labels;
+}
+
+function piNameOf(entries: readonly SessionEntry[]): string | undefined {
+	for (let index = entries.length - 1; index >= 0; index--) {
+		const entry = entries[index]!;
+		if (entry.type === "session_info") return entry.name?.trim() || undefined;
+	}
+	return undefined;
+}
+
+/**
+ * Write a native Session's whole tree as a Pi-format JSONL session (for rollback to Pi). Pi resumes at the
+ * last entry, which is the native `main` tip. Labels, the session name, and the `main` lane model and thinking
+ * level that differ from what the entries already say are appended as Pi entries after that leaf.
+ */
 export async function exportNativeSessionToPi(
 	options: ExportNativeSessionToPiOptions,
 ): Promise<ExportNativeSessionToPiResult> {
@@ -372,22 +634,92 @@ export async function exportNativeSessionToPi(
 		const metadata = (await handle.repo.list(undefined, BACKGROUND_CONTEXT)).find((m) => m.path === path);
 		if (metadata === undefined) throw new Error(`Not a native session in its session directory: ${path}`);
 		session = await handle.repo.open(metadata, BACKGROUND_CONTEXT);
-		const main = await session.branch("main", BACKGROUND_CONTEXT);
-		const nativeEntries =
-			main === undefined ? [] : await main.findEntries({ order: "oldestFirst" }, BACKGROUND_CONTEXT);
-		const entries = toPiEntries(nativeEntries);
-		const stamp = iso(nativeEntries.at(-1)?.timestamp ?? metadata.createdAt);
-		const append = (entry: Record<string, unknown> & { type: string; id: string }): void => {
-			entries.push({ ...entry, parentId: entries.at(-1)?.id ?? null, timestamp: stamp } as SessionEntry);
+		const nativeEntries = await session.findEntries({ order: "asc" }, BACKGROUND_CONTEXT);
+		const originals = new Map(
+			(await session.scanValues(piOriginalEntry(""), BACKGROUND_CONTEXT)).map((stored) => [
+				stored.address.key,
+				stored.value as unknown as SessionEntry,
+			]),
+		);
+		const nativeById = new Map(nativeEntries.map((entry) => [entry.id, entry]));
+
+		// Storage order is parent-first, so every parent is converted before its children.
+		const produced = new Map<string, SessionEntry[]>();
+		const piIdOf = (nativeId: string | null): string | null =>
+			nativeId === null ? null : (produced.get(nativeId)?.at(-1)?.id ?? nativeId);
+		const piBranchTo = (nativeId: string | null): SessionEntry[] => {
+			const ids: string[] = [];
+			for (let id = nativeId; id !== null; id = nativeById.get(id)?.parentId ?? null) ids.push(id);
+			return ids.reverse().flatMap((id) => produced.get(id) ?? []);
 		};
 		for (const entry of nativeEntries) {
-			const label = await session.getLabel(entry.id, BACKGROUND_CONTEXT);
-			if (label !== undefined) {
-				append({ type: "label", id: `label-${entry.id}`, targetId: entry.id, label });
+			const base = { id: entry.id, parentId: piIdOf(entry.parentId), timestamp: iso(entry.timestamp) };
+			const original = originals.get(entry.id);
+			const items =
+				original !== undefined
+					? [original]
+					: entry.type === "compaction"
+						? compactionToPi(entry, base, piBranchTo(entry.parentId))
+						: [nativeToPiEntry(entry, base)];
+			produced.set(entry.id, items);
+		}
+		let entries = nativeEntries.flatMap((entry) => produced.get(entry.id)!);
+		const ids = new Set(entries.map((entry) => entry.id));
+		let stamp = iso(Math.max(metadata.createdAt, ...nativeEntries.map((entry) => entry.timestamp)));
+		let leafId = entries.at(-1)?.id ?? null;
+		const append = (entry: Record<string, unknown> & { type: string }, kind: string): void => {
+			let id = `ultron-${kind}`;
+			for (let counter = 1; ids.has(id); counter++) id = `ultron-${kind}-${counter}`;
+			ids.add(id);
+			entries.push({ ...entry, id, parentId: leafId, timestamp: stamp } as SessionEntry);
+			leafId = id;
+		};
+
+		// Pi resumes at its last entry: make that the native main tip.
+		const main = await session.branch("main", BACKGROUND_CONTEXT);
+		const tipId = (await main?.getTipId(BACKGROUND_CONTEXT)) ?? null;
+		const tipPiId = piIdOf(tipId);
+		if (tipId !== null && tipPiId !== leafId) {
+			if (nativeEntries.some((entry) => entry.parentId === tipId)) {
+				leafId = tipPiId;
+				append({ type: "custom", customType: PI_LEAF_MARKER_CUSTOM_TYPE }, "leaf");
+			} else {
+				const tipItems = produced.get(tipId)!;
+				entries = [...entries.filter((entry) => !tipItems.includes(entry)), ...tipItems];
+				leafId = tipPiId;
 			}
 		}
+		stamp = entries.find((entry) => entry.id === leafId)?.timestamp ?? stamp;
+
+		// Labels set natively after import (or never recorded as Pi entries).
+		const piLabels = piLabelsOf(entries);
+		const nativeLabels = new Map(
+			(await session.scanValues(entryLabel(""), BACKGROUND_CONTEXT)).map((stored) => [
+				stored.address.key,
+				stored.value,
+			]),
+		);
+		for (const targetId of new Set([...piLabels.keys(), ...nativeLabels.keys()])) {
+			const label = nativeLabels.get(targetId);
+			if (piLabels.get(targetId) === label || !nativeById.has(targetId)) continue;
+			append({ type: "label", targetId, ...(label === undefined ? {} : { label }) }, "label");
+		}
 		const name = await session.getName(BACKGROUND_CONTEXT);
-		if (name !== undefined) append({ type: "session_info", id: `name-${metadata.id}`, name });
+		if (piNameOf(entries) !== name) append({ type: "session_info", name: name ?? "" }, "name");
+
+		const configuration = (await session.getValue(laneConfig("main"), BACKGROUND_CONTEXT))?.value;
+		if (configuration !== undefined) {
+			const resolved = buildSessionContext(entries, leafId);
+			if (
+				resolved.model?.provider !== configuration.model.provider ||
+				resolved.model?.modelId !== configuration.model.modelId
+			) {
+				append({ type: "model_change", ...configuration.model }, "model");
+			}
+			if (resolved.thinkingLevel !== configuration.thinkingLevel) {
+				append({ type: "thinking_level_change", thinkingLevel: configuration.thinkingLevel }, "thinking");
+			}
+		}
 
 		const header: SessionHeader = {
 			type: "session",
