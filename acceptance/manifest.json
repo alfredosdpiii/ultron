@@ -473,10 +473,16 @@
         {
           "file": "packages/coding-agent/test/ultron-migration.test.ts",
           "tests": [
-            "imports the active branch with exact messages, compaction tail, skipped types, name, and tip",
+            "imports every entry of the linear fixture, with nothing skipped, and resumes at the Pi leaf",
+            "imports the whole tree with labels, model history, usage, context edits, and unknown types",
+            "reports context edits that only some branches carry and leaves their targets untouched",
             "refuses to re-import the same Pi session",
+            "removes a partial import when an entry cannot be written, so a retry is possible",
             "rejects files that are not Pi sessions",
             "round-trips Pi -> native -> Pi with the same active-branch messages and context",
+            "round-trips the whole tree: identical getTree, contexts at every leaf, labels, and name",
+            "exports native changes made after import: new entries, labels, name, model, and thinking level",
+            "resumes Pi at the native tip when the tip is not the newest entry",
             "backs up the profile privately with a manifest and excludes sessions",
             "rehearses restore: every profile file comes back byte-identical and sessions are untouched",
             "refuses a tampered backup without touching the profile",
@@ -495,7 +501,7 @@
         }
       ],
       "status_when_green": "passed",
-      "notes": "Pi session import/export round trip and profile backup/restore rehearsal. Only the active branch is imported; labels and model changes are reported as skipped."
+      "notes": "Whole Pi session trees (all branches, labels, model/thinking history, context edits) import and round-trip back to Pi; profile backup/restore rehearsal."
     },
     {
       "id": "A26",

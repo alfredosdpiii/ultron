@@ -1,5 +1,5 @@
 {
-	"generated_at": "2026-09-25T07:12:39.931Z",
+	"generated_at": "2026-09-25T08:20:54.829Z",
 	"lock": {
 		"ok": true,
 		"lockMissing": false,
@@ -1276,8 +1276,8 @@
 			"status": "passed",
 			"declared": "passed",
 			"evidence": {
-				"listed": 13,
-				"passed": 13,
+				"listed": 19,
+				"passed": 19,
 				"failed": 0,
 				"missing": 0,
 				"skipped": 0,
@@ -1287,7 +1287,21 @@
 			"checks": [
 				{
 					"file": "packages/coding-agent/test/ultron-migration.test.ts",
-					"test": "imports the active branch with exact messages, compaction tail, skipped types, name, and tip",
+					"test": "imports every entry of the linear fixture, with nothing skipped, and resumes at the Pi leaf",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-migration.test.ts",
+					"test": "imports the whole tree with labels, model history, usage, context edits, and unknown types",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-migration.test.ts",
+					"test": "reports context edits that only some branches carry and leaves their targets untouched",
 					"outcome": "passed",
 					"matched": 1,
 					"infra": null
@@ -1295,6 +1309,13 @@
 				{
 					"file": "packages/coding-agent/test/ultron-migration.test.ts",
 					"test": "refuses to re-import the same Pi session",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-migration.test.ts",
+					"test": "removes a partial import when an entry cannot be written, so a retry is possible",
 					"outcome": "passed",
 					"matched": 1,
 					"infra": null
@@ -1309,6 +1330,27 @@
 				{
 					"file": "packages/coding-agent/test/ultron-migration.test.ts",
 					"test": "round-trips Pi -> native -> Pi with the same active-branch messages and context",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-migration.test.ts",
+					"test": "round-trips the whole tree: identical getTree, contexts at every leaf, labels, and name",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-migration.test.ts",
+					"test": "exports native changes made after import: new entries, labels, name, model, and thinking level",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-migration.test.ts",
+					"test": "resumes Pi at the native tip when the tip is not the newest entry",
 					"outcome": "passed",
 					"matched": 1,
 					"infra": null

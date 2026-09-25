@@ -1,6 +1,6 @@
 # Ultron A01-A46 acceptance report
 
-Generated 2026-09-25T07:12:39.931Z by `npm run test:acceptance`. Unavailable is never passed; partial evidence is never a pass.
+Generated 2026-09-25T08:20:54.829Z by `npm run test:acceptance`. Unavailable is never passed; partial evidence is never a pass.
 
 - Instrument lock: instrument lock matches
 - Test runner: exit 0
@@ -32,7 +32,7 @@ Generated 2026-09-25T07:12:39.931Z by `npm run test:acceptance`. Unavailable is 
 | A22 | passed | 3/3 | - |
 | A23 | passed | 10/10 | - |
 | A24 | passed | 2/2 | - |
-| A25 | passed | 13/13 | - |
+| A25 | passed | 19/19 | - |
 | A26 | passed | 0/0 | mutation slice 10/10 killed |
 | A27 | passed | 3/3 | - |
 | A28 | passed | 5/5 | - |
