@@ -47,9 +47,11 @@ import { SettingsManager } from "../core/settings-manager.ts";
 import { buildSystemPrompt } from "../core/system-prompt.ts";
 import { createLocalBashOperations } from "../core/tools/bash.ts";
 import { createFamilyModule } from "../ultron/family.ts";
+import { createGrantModule } from "../ultron/grants.ts";
 import { createInstanceModule } from "../ultron/instances.ts";
 import { createNativeJevClient } from "../ultron/jev.ts";
 import { createProgressModule } from "../ultron/progress.ts";
+import { createReleaseGateModule } from "../ultron/release-gate.ts";
 import { createSessionDefinitionStore } from "../ultron/rlm/definition-registry.ts";
 import { createSessionModuleStore, type HostCaller } from "../ultron/rlm/host-module.ts";
 import { type KernelHostHandler, RlmKernel } from "../ultron/rlm/kernel.ts";
@@ -1149,6 +1151,9 @@ async function createCodingAgentHarness(
 				createProgressModule({ store: createSessionModuleStore(session, "progress") }),
 				createScheduleModule({ store: createSessionModuleStore(session, "schedules") }),
 				createInstanceModule({ store: createSessionModuleStore(session, "instances") }),
+				// Grants stay dormant (enforce: false) so nothing ever prompts or blocks by default.
+				createGrantModule({ store: createSessionModuleStore(session, "grants") }),
+				createReleaseGateModule({ store: createSessionModuleStore(session, "release-gates") }),
 				createSkillModule({
 					store: createSessionModuleStore(session, "skills"),
 					// Re-read skill files so skills.refresh sees edits made during the session.

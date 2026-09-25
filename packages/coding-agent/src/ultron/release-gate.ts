@@ -337,7 +337,7 @@ export function createReleaseGateModule(options: ReleaseGateModuleOptions): Nati
 	}
 
 	return {
-		prefixes: ["experiments.compare", "gates."],
+		prefixes: ["gates."],
 		async start(host) {
 			if (options.now === undefined) clock = () => host.now();
 			await enqueue(() => {});
@@ -347,7 +347,7 @@ export function createReleaseGateModule(options: ReleaseGateModuleOptions): Nati
 			switch (request.type) {
 				case "gates.define":
 					return define(request, host);
-				case "experiments.compare":
+				case "gates.compare":
 					return compare(request, host);
 				case "gates.history":
 					return history(request);

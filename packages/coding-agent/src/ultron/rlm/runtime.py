@@ -18,6 +18,8 @@ from progress_api import Progress
 from skills_api import Skills
 from schedules_api import Goals, Schedules
 from instances_api import Instances
+from grants_api import Grants
+from release_gate_api import ReleaseGates
 
 try:
     import dill as _dill
@@ -188,6 +190,8 @@ class RuntimeState:
         self.namespace["schedules"] = Schedules(self.bridge)
         self.namespace["goals"] = Goals(self.bridge)
         self.namespace["instances"] = Instances(self.bridge)
+        self.namespace["grants"] = Grants(self.bridge)
+        self.namespace["gates"] = ReleaseGates(self.bridge)
         # Declared instance state survives reset_scratch; every other name is invocation scratch.
         self.namespace["state"] = {}
         self.bindings = {name: value for name, value in self.namespace.items() if name != "state"}

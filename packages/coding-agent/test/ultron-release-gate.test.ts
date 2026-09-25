@@ -84,7 +84,7 @@ async function defined(store?: HostModuleStore) {
 describe("release gate module (A15)", () => {
 	test("passes when every required check passes in the candidate", async () => {
 		const call = await defined();
-		const attempt = await call<Attempt>("experiments.compare", {
+		const attempt = await call<Attempt>("gates.compare", {
 			gate_id: "release-core",
 			baseline: run("main@abc", { unit: "passed", typecheck: "failed", perf: "passed" }),
 			candidate: run("branch@def", allPass),
@@ -98,7 +98,7 @@ describe("release gate module (A15)", () => {
 
 	test("a required regression blocks", async () => {
 		const call = await defined();
-		const attempt = await call<Attempt>("experiments.compare", {
+		const attempt = await call<Attempt>("gates.compare", {
 			gate_id: "release-core",
 			baseline: run("main", allPass),
 			candidate: run("branch", { ...allPass, unit: "failed" }),
@@ -110,7 +110,7 @@ describe("release gate module (A15)", () => {
 
 	test("an optional regression is reported but does not block", async () => {
 		const call = await defined();
-		const attempt = await call<Attempt>("experiments.compare", {
+		const attempt = await call<Attempt>("gates.compare", {
 			gate_id: "release-core",
 			baseline: run("main", allPass),
 			candidate: run("branch", { ...allPass, perf: "failed" }),
@@ -124,7 +124,7 @@ describe("release gate module (A15)", () => {
 
 	test("a required check missing or failed in the candidate blocks even without a baseline pass", async () => {
 		const call = await defined();
-		const omitted = await call<Attempt>("experiments.compare", {
+		const omitted = await call<Attempt>("gates.compare", {
 			gate_id: "release-core",
 			baseline: run("main", { unit: "failed", typecheck: "missing" }),
 			candidate: run("branch", { unit: "passed" }),
@@ -132,7 +132,7 @@ describe("release gate module (A15)", () => {
 		expect(omitted.decision).toBe("blocked");
 		expect(omitted.candidate.results).toEqual({ unit: "passed", typecheck: "missing", perf: "missing" });
 		expect(omitted.reasons).toEqual(["Required check typecheck is missing in candidate"]);
-		const explicit = await call<Attempt>("experiments.compare", {
+		const explicit = await call<Attempt>("gates.compare", {
 			gate_id: "release-core",
 			baseline: run("main", allPass),
 			candidate: run("branch", { ...allPass, typecheck: "missing" }),
@@ -155,7 +155,7 @@ describe("release gate module (A15)", () => {
 		await expect(call("gates.define", { ...gate, fixture_hash: OTHER_FIXTURE })).rejects.toThrow("cannot be changed");
 		// A run cannot introduce checks the gate does not define.
 		await expect(
-			call("experiments.compare", {
+			call("gates.compare", {
 				gate_id: "release-core",
 				baseline: run("main", allPass),
 				candidate: run("branch", { ...allPass, bonus: "passed" }),
@@ -168,7 +168,7 @@ describe("release gate module (A15)", () => {
 
 	test("a fixture mismatch blocks with a reason", async () => {
 		const call = await defined();
-		const attempt = await call<Attempt>("experiments.compare", {
+		const attempt = await call<Attempt>("gates.compare", {
 			gate_id: "release-core",
 			baseline: run("main", allPass),
 			candidate: run("branch", allPass, OTHER_FIXTURE),
@@ -179,12 +179,12 @@ describe("release gate module (A15)", () => {
 
 	test("every attempt, blocked or passed, is recorded in history", async () => {
 		const call = await defined();
-		const blocked = await call<Attempt>("experiments.compare", {
+		const blocked = await call<Attempt>("gates.compare", {
 			gate_id: "release-core",
 			baseline: run("main", allPass),
 			candidate: run("try-1", { ...allPass, unit: "failed" }),
 		});
-		const passed = await call<Attempt>("experiments.compare", {
+		const passed = await call<Attempt>("gates.compare", {
 			gate_id: "release-core",
 			baseline: run("main", allPass),
 			candidate: run("try-2", allPass),
@@ -208,7 +208,7 @@ describe("release gate module (A15)", () => {
 			call("gates.define", { ...gate, id: "g3", checks: [{ name: "unit", required: true, weight: 2 }] }),
 		).rejects.toThrow("Unknown payload field: weight");
 		await expect(
-			call("experiments.compare", {
+			call("gates.compare", {
 				gate_id: "release-core",
 				baseline: run("main", allPass),
 				candidate: run("branch", allPass),
@@ -216,14 +216,14 @@ describe("release gate module (A15)", () => {
 			}),
 		).rejects.toThrow("Unknown payload field: override");
 		await expect(
-			call("experiments.compare", {
+			call("gates.compare", {
 				gate_id: "release-core",
 				baseline: { ...run("main", allPass), notes: "x" },
 				candidate: run("branch", allPass),
 			}),
 		).rejects.toThrow("Unknown payload field: notes");
 		await expect(
-			call("experiments.compare", {
+			call("gates.compare", {
 				gate_id: "release-core",
 				baseline: run("main", allPass),
 				candidate: run("branch", { ...allPass, unit: "skipped" }),
@@ -235,7 +235,7 @@ describe("release gate module (A15)", () => {
 	test("gates and attempts survive a new module instance, and tampered definitions are refused", async () => {
 		const store = createMemoryModuleStore();
 		const first = await defined(store);
-		const attempt = await first<Attempt>("experiments.compare", {
+		const attempt = await first<Attempt>("gates.compare", {
 			gate_id: "release-core",
 			baseline: run("main", allPass),
 			candidate: run("branch", allPass),

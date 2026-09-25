@@ -9,7 +9,7 @@ class ReleaseGates:
         return await self._bridge.request('gates.define', {'id': gate_id, 'checks': checks, 'fixture_hash': fixture_hash})
 
     async def compare(self, gate_id, baseline, candidate):
-        return await self._bridge.request('experiments.compare', {'gate_id': gate_id, 'baseline': baseline, 'candidate': candidate})
+        return await self._bridge.request('gates.compare', {'gate_id': gate_id, 'baseline': baseline, 'candidate': candidate})
 
     async def history(self, gate_id):
         return await self._bridge.request('gates.history', {'gate_id': gate_id})
