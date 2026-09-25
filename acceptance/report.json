@@ -1,5 +1,5 @@
 {
-	"generated_at": "2026-09-25T08:20:54.829Z",
+	"generated_at": "2026-09-25T10:10:40.944Z",
 	"lock": {
 		"ok": true,
 		"lockMissing": false,
@@ -1276,8 +1276,8 @@
 			"status": "passed",
 			"declared": "passed",
 			"evidence": {
-				"listed": 19,
-				"passed": 19,
+				"listed": 21,
+				"passed": 21,
 				"failed": 0,
 				"missing": 0,
 				"skipped": 0,
@@ -1301,7 +1301,21 @@
 				},
 				{
 					"file": "packages/coding-agent/test/ultron-migration.test.ts",
-					"test": "reports context edits that only some branches carry and leaves their targets untouched",
+					"test": "applies a context edit that only some branches carry on those branches only",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-migration.test.ts",
+					"test": "matches Pi's context at every leaf with nested, competing, compacted, and omitting branch-local edits",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-migration.test.ts",
+					"test": "imports Pi-reported usage into the usage ledger as a marked historical root",
 					"outcome": "passed",
 					"matched": 1,
 					"infra": null

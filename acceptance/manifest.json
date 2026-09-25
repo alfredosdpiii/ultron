@@ -475,7 +475,9 @@
           "tests": [
             "imports every entry of the linear fixture, with nothing skipped, and resumes at the Pi leaf",
             "imports the whole tree with labels, model history, usage, context edits, and unknown types",
-            "reports context edits that only some branches carry and leaves their targets untouched",
+            "applies a context edit that only some branches carry on those branches only",
+            "matches Pi's context at every leaf with nested, competing, compacted, and omitting branch-local edits",
+            "imports Pi-reported usage into the usage ledger as a marked historical root",
             "refuses to re-import the same Pi session",
             "removes a partial import when an entry cannot be written, so a retry is possible",
             "rejects files that are not Pi sessions",
