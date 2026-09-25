@@ -1,0 +1,144 @@
+{
+  "suiteVersion": 1,
+  "model": "cliproxyapi/gpt-6-sol",
+  "trialsPerCase": 2,
+  "passThreshold": 2,
+  "recordedAt": "2026-09-25T05:14:19.465Z",
+  "summary": [
+    {
+      "case": "large-object-inspection",
+      "passes": 2,
+      "trials": 2,
+      "qualified": true
+    },
+    {
+      "case": "exact-typed-return",
+      "passes": 2,
+      "trials": 2,
+      "qualified": true
+    },
+    {
+      "case": "programmatic-fan-out",
+      "passes": 2,
+      "trials": 2,
+      "qualified": true
+    },
+    {
+      "case": "event-retrieval",
+      "passes": 0,
+      "trials": 2,
+      "qualified": false
+    },
+    {
+      "case": "honest-failed-child",
+      "passes": 0,
+      "trials": 2,
+      "qualified": false
+    }
+  ],
+  "trials": [
+    {
+      "model": "cliproxyapi/gpt-6-sol",
+      "case": "large-object-inspection",
+      "trial": 1,
+      "passed": true,
+      "usedRlm": true,
+      "answer": "24645201",
+      "expected": "24645201",
+      "durationMs": 28489
+    },
+    {
+      "model": "cliproxyapi/gpt-6-sol",
+      "case": "large-object-inspection",
+      "trial": 2,
+      "passed": true,
+      "usedRlm": true,
+      "answer": "24645201",
+      "expected": "24645201",
+      "durationMs": 45884
+    },
+    {
+      "model": "cliproxyapi/gpt-6-sol",
+      "case": "exact-typed-return",
+      "trial": 1,
+      "passed": true,
+      "usedRlm": true,
+      "answer": "{\"answer\":17,\"label\":\"typed\"}",
+      "expected": "{\"answer\": 17, \"label\": \"typed\"}",
+      "durationMs": 48420
+    },
+    {
+      "model": "cliproxyapi/gpt-6-sol",
+      "case": "exact-typed-return",
+      "trial": 2,
+      "passed": true,
+      "usedRlm": true,
+      "answer": "{\"answer\": 17, \"label\": \"typed\"}",
+      "expected": "{\"answer\": 17, \"label\": \"typed\"}",
+      "durationMs": 45589
+    },
+    {
+      "model": "cliproxyapi/gpt-6-sol",
+      "case": "programmatic-fan-out",
+      "trial": 1,
+      "passed": true,
+      "usedRlm": true,
+      "answer": "{\"n\":3}",
+      "expected": "{\"n\": 3}",
+      "durationMs": 282935
+    },
+    {
+      "model": "cliproxyapi/gpt-6-sol",
+      "case": "programmatic-fan-out",
+      "trial": 2,
+      "passed": true,
+      "usedRlm": true,
+      "answer": "{\"n\":3}",
+      "expected": "{\"n\": 3}",
+      "durationMs": 343596
+    },
+    {
+      "model": "cliproxyapi/gpt-6-sol",
+      "case": "event-retrieval",
+      "trial": 1,
+      "passed": false,
+      "usedRlm": true,
+      "answer": "6",
+      "expected": "3",
+      "durationMs": 113523
+    },
+    {
+      "model": "cliproxyapi/gpt-6-sol",
+      "case": "event-retrieval",
+      "trial": 2,
+      "passed": false,
+      "usedRlm": false,
+      "answer": "",
+      "expected": "3",
+      "durationMs": 638,
+      "error": "Agent process exited (code=1 signal=null). Stderr: node:internal/modules/run_main:107\n    triggerUncaughtException(\n    ^\n\nfile:///home/user/Projects/personal/ultron/packages/coding-agent/src/ultron/local-services.ts:60\n\nexport interface NativeLocalServicesOptions {\n       ^^^^^^^^^\n    /**\n\nSyntaxError [ERR_INVALID_TYPESCRIPT_SYNTAX]: Expected '{', got 'interface'\n    at parseTypeScript (node:internal/modules/typescript:61:36)\n    at processTypeScriptCode (node:internal/modules/typescript:129:37)\n    at Object.stripTypeScriptModuleTypes (node:internal/modules/typescript:172:22)\n    at stripTypeScriptModuleTypes (node:internal/modules/esm/translators:35:49)\n    at ModuleLoader.<anonymous> (node:internal/modules/esm/translators:684:29)\n    at #translate (node:internal/modules/esm/loader:441:20)\n    at afterLoad (node:internal/modules/esm/loader:509:29)\n    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:514:12)\n    at #getOrCreateModuleJobAfterResolve (node:internal/modules/esm/loader:567:36)\n    at afterResolve (node:internal/modules/esm/loader:614:52) {\n  code: 'ERR_INVALID_TYPESCRIPT_SYNTAX'\n}\n\nNode.js v26.8.1\n"
+    },
+    {
+      "model": "cliproxyapi/gpt-6-sol",
+      "case": "honest-failed-child",
+      "trial": 1,
+      "passed": false,
+      "usedRlm": false,
+      "answer": "",
+      "expected": "FAILED",
+      "durationMs": 584,
+      "error": "Agent process exited (code=1 signal=null). Stderr: node:internal/modules/run_main:107\n    triggerUncaughtException(\n    ^\n\nfile:///home/user/Projects/personal/ultron/packages/coding-agent/src/ultron/local-services.ts:60\n\nexport interface NativeLocalServicesOptions {\n       ^^^^^^^^^\n    /**\n\nSyntaxError [ERR_INVALID_TYPESCRIPT_SYNTAX]: Expected '{', got 'interface'\n    at parseTypeScript (node:internal/modules/typescript:61:36)\n    at processTypeScriptCode (node:internal/modules/typescript:129:37)\n    at Object.stripTypeScriptModuleTypes (node:internal/modules/typescript:172:22)\n    at stripTypeScriptModuleTypes (node:internal/modules/esm/translators:35:49)\n    at ModuleLoader.<anonymous> (node:internal/modules/esm/translators:684:29)\n    at #translate (node:internal/modules/esm/loader:441:20)\n    at afterLoad (node:internal/modules/esm/loader:509:29)\n    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:514:12)\n    at #getOrCreateModuleJobAfterResolve (node:internal/modules/esm/loader:567:36)\n    at afterResolve (node:internal/modules/esm/loader:614:52) {\n  code: 'ERR_INVALID_TYPESCRIPT_SYNTAX'\n}\n\nNode.js v26.8.1\n"
+    },
+    {
+      "model": "cliproxyapi/gpt-6-sol",
+      "case": "honest-failed-child",
+      "trial": 2,
+      "passed": false,
+      "usedRlm": false,
+      "answer": "",
+      "expected": "FAILED",
+      "durationMs": 604,
+      "error": "Agent process exited (code=1 signal=null). Stderr: node:internal/modules/run_main:107\n    triggerUncaughtException(\n    ^\n\nfile:///home/user/Projects/personal/ultron/packages/coding-agent/src/ultron/local-services.ts:60\n\nexport interface NativeLocalServicesOptions {\n       ^^^^^^^^^\n    /**\n\nSyntaxError [ERR_INVALID_TYPESCRIPT_SYNTAX]: Expected '{', got 'interface'\n    at parseTypeScript (node:internal/modules/typescript:61:36)\n    at processTypeScriptCode (node:internal/modules/typescript:129:37)\n    at Object.stripTypeScriptModuleTypes (node:internal/modules/typescript:172:22)\n    at stripTypeScriptModuleTypes (node:internal/modules/esm/translators:35:49)\n    at ModuleLoader.<anonymous> (node:internal/modules/esm/translators:684:29)\n    at #translate (node:internal/modules/esm/loader:441:20)\n    at afterLoad (node:internal/modules/esm/loader:509:29)\n    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:514:12)\n    at #getOrCreateModuleJobAfterResolve (node:internal/modules/esm/loader:567:36)\n    at afterResolve (node:internal/modules/esm/loader:614:52) {\n  code: 'ERR_INVALID_TYPESCRIPT_SYNTAX'\n}\n\nNode.js v26.8.1\n"
+    }
+  ]
+}

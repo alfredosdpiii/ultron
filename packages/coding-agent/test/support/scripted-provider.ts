@@ -35,7 +35,11 @@ export class ScriptedProvider {
 	#server: Server | undefined;
 	#calls = 0;
 
-	constructor(private readonly script: (request: ScriptedRequest) => ScriptedReply) {}
+	readonly #script: (request: ScriptedRequest) => ScriptedReply;
+
+	constructor(script: (request: ScriptedRequest) => ScriptedReply) {
+		this.#script = script;
+	}
 
 	get baseUrl(): string {
 		const address = this.#server?.address();
@@ -61,14 +65,14 @@ export class ScriptedProvider {
 				raw,
 				system: text(body.messages.find((message) => message.role === "system")?.content),
 				firstUser: text(body.messages.find((message) => message.role === "user")?.content),
-				lastUser: text(body.messages.findLast((message) => message.role === "user")?.content),
+				lastUser: text([...body.messages].reverse().find((message) => message.role === "user")?.content),
 				turn: body.messages.filter((message) => message.role === "assistant").length,
 				lastToolResult: last?.role === "tool" ? text(last.content) : undefined,
 			};
 			this.requests.push(scripted);
 			let reply: ScriptedReply;
 			try {
-				reply = this.script(scripted);
+				reply = this.#script(scripted);
 			} catch (error) {
 				response.writeHead(500).end(String(error));
 				return;
