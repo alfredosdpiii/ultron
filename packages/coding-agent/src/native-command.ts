@@ -1,4 +1,4 @@
-import { readdir, readFile, stat } from "node:fs/promises";
+import { open, readdir, stat } from "node:fs/promises";
 import { isAbsolute, resolve } from "node:path";
 import { createInterface } from "node:readline";
 import { type Args, normalizeSessionName } from "./cli/args.ts";
@@ -8,6 +8,7 @@ import { runClient } from "./experimental/client.ts";
 import { runClientTui } from "./experimental/client-tui.ts";
 import { runNativeRpcMode } from "./experimental/rpc-native.ts";
 import { type RunningServer, resolveSessionDirectory, startForegroundServer } from "./experimental/server.ts";
+import { traceStartup } from "./experimental/startup-trace.ts";
 import { isLocalPath, resolvePath } from "./utils/paths.ts";
 
 interface NativeSessionHeader {
@@ -16,6 +17,31 @@ interface NativeSessionHeader {
 	readonly modifiedAt: number;
 	readonly cwd: string;
 	readonly path: string;
+}
+
+/** Read a session file's header line without loading the whole transcript. */
+async function readFirstLine(path: string): Promise<string> {
+	const handle = await open(path, "r");
+	try {
+		const chunks: Buffer[] = [];
+		const buffer = Buffer.alloc(16 * 1024);
+		let position = 0;
+		while (true) {
+			const { bytesRead } = await handle.read(buffer, 0, buffer.length, position);
+			if (bytesRead === 0) break;
+			const chunk = buffer.subarray(0, bytesRead);
+			const newline = chunk.indexOf(0x0a);
+			if (newline !== -1) {
+				chunks.push(Buffer.from(chunk.subarray(0, newline)));
+				break;
+			}
+			chunks.push(Buffer.from(chunk));
+			position += bytesRead;
+		}
+		return Buffer.concat(chunks).toString("utf8");
+	} finally {
+		await handle.close();
+	}
 }
 
 async function importStatMtime(path: string): Promise<number> {
@@ -38,7 +64,7 @@ async function listNativeSessions(sessionDir: string, cwd: string): Promise<Nati
 			if (!entry.isFile() || !entry.name.endsWith(".jsonl")) continue;
 			const path = resolve(directory, entry.name);
 			try {
-				const firstLine = (await readFile(path, "utf8")).split("\n", 1)[0];
+				const firstLine = await readFirstLine(path);
 				const value: unknown = JSON.parse(firstLine ?? "");
 				if (
 					typeof value !== "object" ||
@@ -76,7 +102,7 @@ async function listNativeSessions(sessionDir: string, cwd: string): Promise<Nati
 async function sessionIdFromSelector(selector: string, sessions: readonly NativeSessionHeader[]): Promise<string> {
 	if (selector.includes("/") || selector.includes("\\") || selector.endsWith(".jsonl")) {
 		const path = resolve(selector);
-		const firstLine = (await readFile(path, "utf8")).split("\n", 1)[0];
+		const firstLine = await readFirstLine(path);
 		const value: unknown = JSON.parse(firstLine ?? "");
 		if (
 			typeof value !== "object" ||
@@ -147,7 +173,10 @@ export async function runNativeUltronCommand(parsed: Args, stdinContent: string 
 		throw new Error("--name requires a non-empty value");
 	}
 	const sessionDir = resolveSessionDirectory(parsed.sessionDir);
-	const sessions = await listNativeSessions(sessionDir, process.cwd());
+	traceStartup("cli.list-sessions");
+	// Only session selectors consult the existing sessions; a fresh (or --no-session) start skips the scan.
+	const needsSessions = parsed.continue || parsed.resume || parsed.session !== undefined || parsed.fork !== undefined;
+	const sessions = needsSessions ? await listNativeSessions(sessionDir, process.cwd()) : [];
 	if (parsed.fork !== undefined && parsed.noSession) {
 		throw new Error("--fork cannot be combined with --no-session");
 	}
@@ -217,6 +246,7 @@ export async function runNativeUltronCommand(parsed: Args, stdinContent: string 
 				: { extensionPaths: parsed.extensions.map((path) => (isLocalPath(path) ? resolvePath(path) : path)) }),
 			...(parsed.noExtensions ? { noExtensions: true } : {}),
 		});
+		traceStartup("cli.server-started");
 		if (parsed.mode === "rpc") {
 			await runNativeRpcMode({
 				sessionDir,

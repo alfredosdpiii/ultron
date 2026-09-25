@@ -31,6 +31,7 @@ import {
 	type WorkerOperationResponse,
 	type WorkerOperationScope,
 } from "./session-worker.ts";
+import { traceStartup } from "./startup-trace.ts";
 
 const WORKER_STARTUP_TIMEOUT_MS = 15_000;
 const WORKER_SHUTDOWN_TIMEOUT_MS = 10_000;
@@ -573,6 +574,7 @@ export class SessionWorkerManager {
 				...(this.#model?.extensionPaths === undefined ? {} : { extensionPaths: [...this.#model.extensionPaths] }),
 				...(this.#model?.noExtensions === true ? { noExtensions: true } : {}),
 			};
+			traceStartup("server.spawn-worker");
 			child = spawnInternalProcess("session-worker", [JSON.stringify(options)], {
 				env: {
 					[SESSION_WORKER_CONTROL_ADDRESS_ENV]: this.#coordinator.controlPath,

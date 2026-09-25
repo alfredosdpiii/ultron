@@ -166,9 +166,9 @@ const mainResult = await build({
 		"cli-runtime": join(codingAgentDistDir, "cli.js"),
 		index: join(codingAgentDistDir, "index.js"),
 		"rpc-entry": join(codingAgentDistDir, "rpc-entry.js"),
-		"experimental/coordinator-entry": join(codingAgentDistDir, "experimental", "coordinator-entry.js"),
-		"experimental/server-entry": join(codingAgentDistDir, "experimental", "server-entry.js"),
-		"experimental/session-worker-entry": join(codingAgentDistDir, "experimental", "session-worker-entry.js"),
+		"coordinator-entry-runtime": join(codingAgentDistDir, "experimental", "coordinator-entry.js"),
+		"server-entry-runtime": join(codingAgentDistDir, "experimental", "server-entry.js"),
+		"session-worker-entry-runtime": join(codingAgentDistDir, "experimental", "session-worker-entry.js"),
 	},
 	outdir: bundleDir,
 	chunkNames: "chunks/[name]-[hash]",
@@ -218,9 +218,25 @@ createRequire(import.meta.url)("./cli-runtime.js");
 `;
 writeFileSync(join(bundleDir, "cli.js"), cliLauncher);
 chmodSync(join(bundleDir, "cli.js"), 0o755);
+// Internal processes (coordinator, server, session worker) get the same launcher so their ~4 MiB of bundled
+// code is loaded through Node's compile cache too: the session worker starts on every new session.
+const internalLaunchers = ["coordinator-entry", "server-entry", "session-worker-entry"].map((name) => {
+	const launcher = `#!/usr/bin/env node
+import { enableCompileCache } from "node:module";
+
+enableCompileCache();
+await import("./${name}-runtime.js");
+`;
+	writeFileSync(join(bundleDir, `${name}.js`), launcher);
+	chmodSync(join(bundleDir, `${name}.js`), 0o755);
+	return launcher;
+});
 chmodSync(join(bundleDir, "rpc-entry.js"), 0o755);
 
 const files =
-	new Set([...Object.keys(mainResult.metafile.outputs), ...Object.keys(lazyResult.metafile.outputs)]).size + 1;
-const mib = (outputBytes([mainResult.metafile, lazyResult.metafile]) + cliLauncher.length) / (1024 * 1024);
+	new Set([...Object.keys(mainResult.metafile.outputs), ...Object.keys(lazyResult.metafile.outputs)]).size +
+	1 +
+	internalLaunchers.length;
+const launcherBytes = [cliLauncher, ...internalLaunchers].reduce((total, launcher) => total + launcher.length, 0);
+const mib = (outputBytes([mainResult.metafile, lazyResult.metafile]) + launcherBytes) / (1024 * 1024);
 console.log(`Built ${relative(repoRoot, bundleDir)} (${files} files, ${mib.toFixed(1)} MiB)`);

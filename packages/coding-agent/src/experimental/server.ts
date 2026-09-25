@@ -48,6 +48,7 @@ import { RadiusRelayHost, type RadiusRelayHostStatus } from "./radius-relay.ts";
 import { createExperimentalServerServices } from "./services/server.ts";
 import type { SessionCreateOptions, SessionSummary } from "./services/sessions.ts";
 import { SessionPluginSelectionConflictError, SessionWorkerManager } from "./session-worker-manager.ts";
+import { traceStartup } from "./startup-trace.ts";
 
 export const ENV_SERVER_DIR = "ULTRON_SERVER_DIR";
 export const ENV_SERVER_ID = "ULTRON_SERVER_ID";
@@ -686,7 +687,9 @@ export async function startServer(options: StartServerOptions = {}): Promise<Run
 		const serverNonce = randomUUID().replaceAll("-", "").slice(0, 12);
 		const serverPath = join(directory, `server-${serverId}-${serverNonce}.sock`);
 		await removeDeadServerEndpoints(directory, serverId);
+		traceStartup("server.coordinator");
 		startupLease = await ensureCoordinator(socketPath, controlPath);
+		traceStartup("server.coordinator-ready");
 		coordinator = new CoordinatorConnection({ controlPath, endpoint: serverPath });
 		const sessionDir = resolveSessionDirectory(options.sessionDir);
 		workers = new SessionWorkerManager(coordinator, sessionDir, workerModel, (count) =>
@@ -706,6 +709,7 @@ export async function startServer(options: StartServerOptions = {}): Promise<Run
 		);
 		await coordinator.connect();
 		startupLease.close();
+		traceStartup("server.connected");
 		startupLease = undefined;
 		await workers.discover(coordinator.peerIds);
 		await backend.refreshSessions();
