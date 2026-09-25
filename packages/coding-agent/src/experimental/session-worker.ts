@@ -69,6 +69,7 @@ import type { RefinementBranch } from "../ultron/local-services.ts";
 import { createPredictAdapter } from "../ultron/predict-adapter.ts";
 import { createProgressModule } from "../ultron/progress.ts";
 import { createReleaseGateModule } from "../ultron/release-gate.ts";
+import { AGENT_CLASS_PROMPT } from "../ultron/rlm/agent-class-prompt.ts";
 import { createSessionDefinitionStore } from "../ultron/rlm/definition-registry.ts";
 import { createSessionModuleStore, type HostCaller } from "../ultron/rlm/host-module.ts";
 import { type KernelExecutionResult, type KernelHostHandler, RlmKernel } from "../ultron/rlm/kernel.ts";
@@ -184,6 +185,7 @@ export const RLM_TOOL_DESCRIPTION = [
 	'- `await agents.invoke(definition, input)` runs a typed agent and returns its result (`await agents.list()` shows definitions, e.g. "rlm-child" with input {"prompt": ...}); `agents.spawn(...)` starts one in the background and returns a handle with `await handle.result()`.',
 	"- `await workflows.run(nodes)` runs a validated agent graph; `await memory.prepare(query)` / `await memory.propose(text, evidence)` recall and retain long-term memory; `await bash(cmd)` runs a shell command.",
 	"- `state` is a dict that survives between calls; other variables persist within the session until the kernel is reset.",
+	AGENT_CLASS_PROMPT,
 ].join("\n");
 
 export function createUltronRlmTool(

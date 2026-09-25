@@ -1,7 +1,7 @@
 {
 	"version": 1,
 	"algorithm": "sha256",
-	"manifest": "bcb1e01a1399c56077471404de9dddd7b37e1285cc44e1ee0b2f3128f38bee15",
+	"manifest": "6b901ed7228b3e5abeb244b8c51eba88dbdfd2fdc2c76a6f5b0e16bb35f5ce35",
 	"instrument": {
 		"acceptance/mutations.json": "1ff99ca3f89075496562a64bd2d5513c88e80c582d454125678f04bfc25fe23a",
 		"scripts/acceptance-lock.mjs": "0738f59da364f20af0634b28b9d32d70b2768f6d4cb6f2bf03cab13302923980",
@@ -49,6 +49,8 @@
 		"packages/coding-agent/test/ultron-a45-saturated-recursion.test.ts": "0d65ee5721e5f5141542bdaea14ed8da33582c3d18900772a43a57c476a88341",
 		"packages/coding-agent/test/ultron-a46-demo.test.ts": "3aa3c45495b0474091f8d4fa56201660fab73dbbae0ec3350e2ce660e4e44bac",
 		"packages/coding-agent/test/ultron-a46-live-demo.test.ts": "fd6f85c01b193c74584fc6b47bfa277c4c02a0f1dbd6d753b1152d343a69dfb4",
+		"packages/coding-agent/test/ultron-a55-agent-classes.test.ts": "d35a76e256cfb8138a47d503232ea92767dc01eb7238ce32e6d8e64ec3134e98",
+		"packages/coding-agent/test/ultron-agent-classes.test.ts": "484f03805bdfc11f43a1e5a82af4d698d5b13fefe4ef2fc8ee421d3ab967a7a8",
 		"packages/coding-agent/test/ultron-family.test.ts": "1e6b0106a2e450ba05458d80e8d5000d3098231230d919d614cfb561e94598b8",
 		"packages/coding-agent/test/ultron-grants.test.ts": "fc673e68e0c9418f8f202fad757f3020e218755730e412ccc54a1ca79d1a9a2f",
 		"packages/coding-agent/test/ultron-instances.test.ts": "740cffb33a17183701f88b27f3aca4f1268b28726ccbe736a93da6ac42765df4",

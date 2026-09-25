@@ -3,7 +3,7 @@ import { type Context, type Session, value } from "@ultron/agent-core";
 import { isJsonValue, type JsonValue } from "@ultron/chord";
 import { BACKGROUND_CONTEXT } from "@ultron/chord/context";
 import Type, { IsSchema, type TSchema } from "typebox";
-import { Check } from "typebox/value";
+import { Check, Errors } from "typebox/value";
 
 export type NativeDefinitionStrategy = "deterministic" | "predict" | "rlm";
 
@@ -598,8 +598,39 @@ export class NativeDefinitionRegistry {
 			if (!isObject(value) || typeof value.request !== "string" || !value.request.trim())
 				return new Error(`${definition.id} input.request must be nonempty`);
 		}
-		return new Error(`${definition.id}@${definition.version} ${direction} does not match its schema`);
+		const message = `${definition.id}@${definition.version} ${direction} does not match its schema`;
+		const schema = direction === "input" ? definition.inputSchema : definition.outputSchema;
+		// Definitions derived from Python agent classes name the failing path, so the model can see why (A55).
+		if (!isObject(schema) || !(AGENT_CLASS_MARKER in schema) || !isJsonValue(value)) return new Error(message);
+		const detail = schemaErrorDetail(schema, value);
+		return new Error(detail ? `${message}: ${detail}` : message);
 	}
+}
+
+/** Schema keyword marking a definition derived from a Python agent class (see agent_class_api.py). */
+export const AGENT_CLASS_MARKER = "x-ultron-agent-class";
+
+function schemaErrorDetail(schema: JsonValue, value: JsonValue): string {
+	let errors: ReturnType<typeof Errors>;
+	try {
+		errors = Errors(schema as TSchema, value);
+	} catch {
+		return "";
+	}
+	const lines: string[] = [];
+	for (const error of errors) {
+		if (error.keyword === "boolean") continue;
+		const path = error.instancePath ? `$${error.instancePath.replaceAll("/", ".")}` : "$";
+		const params = error.params as { allowedValues?: unknown[]; additionalProperties?: unknown[] };
+		const allowed = Array.isArray(params.allowedValues)
+			? ` (${params.allowedValues.map((item) => JSON.stringify(item)).join(", ")})`
+			: "";
+		const extra = Array.isArray(params.additionalProperties) ? ` (${params.additionalProperties.join(", ")})` : "";
+		const line = `${path} ${error.message}${allowed}${extra}`;
+		if (!lines.includes(line)) lines.push(line);
+		if (lines.length === 3) break;
+	}
+	return lines.join("; ").slice(0, 600);
 }
 
 export function nativeDefinitionKey(definition: Pick<NativeDefinitionDescriptor, "id" | "version">): string {
