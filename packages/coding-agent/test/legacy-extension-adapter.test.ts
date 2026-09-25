@@ -39,7 +39,7 @@ describe("LegacyExtensionAdapter", () => {
 		});
 		try {
 			adapter.bind();
-			expect(adapter.commands).toContainEqual({ name: "hello", description: "Say hello" });
+			expect(adapter.commands).toContainEqual(expect.objectContaining({ name: "hello", description: "Say hello" }));
 			expect(adapter.tools.map((tool) => tool.name)).toContain("test_tool");
 			await expect(adapter.runCommand("hello", "")).resolves.toEqual({ notifications: [] });
 		} finally {
