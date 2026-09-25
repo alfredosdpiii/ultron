@@ -47,6 +47,7 @@ import { DefaultResourceLoader } from "../core/resource-loader.ts";
 import { SettingsManager } from "../core/settings-manager.ts";
 import { buildSystemPrompt } from "../core/system-prompt.ts";
 import { createLocalBashOperations } from "../core/tools/bash.ts";
+import { initTheme } from "../modes/interactive/theme/theme.ts";
 import { createFamilyModule } from "../ultron/family.ts";
 import { createGrantModule } from "../ultron/grants.ts";
 import { createInstanceModule } from "../ultron/instances.ts";
@@ -1135,6 +1136,8 @@ async function createCodingAgentHarness(
 ): Promise<SessionWorkerRuntime> {
 	const modelRuntime = await ModelRuntime.create({ refreshOnCreate: false, allowModelNetwork: false });
 	const settingsManager = SettingsManager.create(session.metadata.cwd);
+	// Extensions (tool renderers, headless UI contexts) read the theme; Pi always has one initialized.
+	initTheme(settingsManager.getTheme(), false);
 	const resourceLoader = new DefaultResourceLoader({
 		cwd: session.metadata.cwd,
 		agentDir: getAgentDir(),
