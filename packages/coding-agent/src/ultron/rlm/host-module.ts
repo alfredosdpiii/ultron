@@ -40,7 +40,14 @@ export interface NativeHostApi {
 	cancel(taskId: string, reason: string): Promise<NativeResult>;
 	/** Queue a steering message into the lane of a running task. Returns false when the task has no live lane. */
 	steer(taskId: string, message: string, context: Context): Promise<boolean>;
+	/** Usage status of the caller's root (the current root turn for the root lane). */
 	usage(): Promise<JsonValue | null>;
+	/**
+	 * Keep a lane's Python kernel alive against idle and capacity eviction for `holder`. Returns false
+	 * when the worker has no kernel pool or its pin capacity is spent; the lane then stays evictable.
+	 */
+	pinLane?(lane: string, holder: string): boolean;
+	unpinLane?(lane: string, holder: string): void;
 	now(): number;
 }
 

@@ -110,6 +110,8 @@ export type HostFixtureOptions = {
 	predict?: NativeDefinitionAdapter;
 	modules?: readonly NativeHostModule[];
 	definitionStore?: NativeDefinitionStore;
+	rootTurns?: boolean;
+	now?: () => number;
 };
 
 export function hostFixture(options: HostFixtureOptions = {}) {
@@ -122,6 +124,8 @@ export function hostFixture(options: HostFixtureOptions = {}) {
 		deterministic: options.deterministic,
 		predict: options.predict,
 		modules: options.modules,
+		...(options.rootTurns === undefined ? {} : { rootTurns: options.rootTurns }),
+		...(options.now === undefined ? {} : { now: options.now }),
 	});
 	return {
 		host,

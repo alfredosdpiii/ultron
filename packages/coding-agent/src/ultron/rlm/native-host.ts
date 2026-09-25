@@ -237,6 +237,15 @@ export type NativeHostOptions = {
 	beforeLaneReuse?: (lane: string, context: Context) => Promise<void>;
 	/** Marks a live task as active work until it reaches a terminal state; returns the release. */
 	holdActivity?: () => () => void;
+	/**
+	 * Charge usage to one root per root turn (see {@link NativeRlmHost.beginRootTurn}). Without it every
+	 * reservation uses the ledger's single default root. With it, top-level work admitted while no turn is
+	 * running (a schedule firing) gets a root of its own.
+	 */
+	rootTurns?: boolean;
+	/** Keep a lane's kernel alive against eviction; returns false when the pool has no pin capacity left. */
+	pinLane?: (lane: string, holder: string) => boolean;
+	unpinLane?: (lane: string, holder: string) => void;
 	now?: () => number;
 };
 
@@ -259,6 +268,12 @@ export class NativeRlmHost {
 	private readonly holdActivity: NativeHostOptions["holdActivity"];
 	private readonly refinements: NativeHostOptions["refinements"];
 	private modulesStarted?: Promise<void>;
+	private readonly rootTurns: boolean;
+	/** Usage root of the current or most recent root turn. */
+	private rootTurn: string | undefined;
+	private rootTurnActive = false;
+	private readonly pinLane: NativeHostOptions["pinLane"];
+	private readonly unpinLane: NativeHostOptions["unpinLane"];
 
 	constructor(harness: AgentHarness, _rootLane: AgentLane, options: NativeHostOptions) {
 		if (!options?.store) throw new Error("NativeRlmHost requires options.store");
@@ -271,10 +286,44 @@ export class NativeRlmHost {
 		this.holdActivity = options.holdActivity;
 		this.refinements = options.refinements;
 		this.now = options.now ?? Date.now;
+		this.rootTurns = options.rootTurns ?? false;
+		this.pinLane = options.pinLane;
+		this.unpinLane = options.unpinLane;
 		this.registry = new NativeDefinitionRegistry(options.definitionStore, {
 			deterministic: options.deterministic,
 			predict: options.predict,
 		});
+	}
+
+	/**
+	 * A root-lane run started: its work gets a fresh usage root (wall budget, admission and cost windows).
+	 * Work admitted earlier keeps the root and deadline it was admitted under.
+	 */
+	beginRootTurn(runId: string): void {
+		if (!runId) throw new Error("Root turn id must be nonempty");
+		this.rootTurn = `turn:${runId}`;
+		this.rootTurnActive = true;
+	}
+
+	/** The root-lane run ended; work it started keeps running under its own root. */
+	endRootTurn(runId: string): void {
+		if (this.rootTurn === `turn:${runId}`) this.rootTurnActive = false;
+	}
+
+	/** Usage root that new work of `parentId` is charged to; undefined means the ledger's default root. */
+	private admissionRoot(parentId: string | null | undefined): string | undefined {
+		const inherited = parentId == null ? undefined : this.tasks.get(parentId)?.usageReservation?.rootId;
+		if (inherited !== undefined) return inherited;
+		if (!this.rootTurns) return undefined;
+		if (this.rootTurnActive && this.rootTurn !== undefined) return this.rootTurn;
+		// Top-level work outside any root turn is its own job with its own budget.
+		return `job:${randomUUID()}`;
+	}
+
+	/** Usage root shown to a caller: its task's root, else the current or last root turn. */
+	private statusRoot(parentId: string | null | undefined): string | undefined {
+		const inherited = parentId == null ? undefined : this.tasks.get(parentId)?.usageReservation?.rootId;
+		return inherited ?? (this.rootTurns ? this.rootTurn : undefined);
 	}
 
 	private definition(key: string): NativeDefinition {
@@ -341,7 +390,10 @@ export class NativeRlmHost {
 			if (!task?.lane || task.result) return false;
 			return (await task.lane.steer(message, undefined, context)).ok;
 		},
-		usage: async () => (this.usage ? ((await this.usage.status()) as unknown as JsonValue) : null),
+		usage: async () =>
+			this.usage ? ((await this.usage.status(this.statusRoot(null))) as unknown as JsonValue) : null,
+		pinLane: (lane, holder) => this.pinLane?.(lane, holder) ?? false,
+		unpinLane: (lane, holder) => this.unpinLane?.(lane, holder),
 		now: () => this.now(),
 	};
 
@@ -383,6 +435,7 @@ export class NativeRlmHost {
 					// Every model attempt, including each repair, is charged to this task.
 					const reservation = await this.usage?.reserve({
 						kind: "model",
+						...(task.usageReservation === undefined ? {} : { rootId: task.usageReservation.rootId }),
 						parentTaskId: task.id,
 						taskId: task.id,
 						requestKey: attempt === 0 ? `${task.id}:model` : `${task.id}:model:repair-${attempt}`,
@@ -452,6 +505,7 @@ export class NativeRlmHost {
 							.join("\n\n")}`;
 			modelReservation = await this.usage?.reserve({
 				kind: "model",
+				...(task.usageReservation === undefined ? {} : { rootId: task.usageReservation.rootId }),
 				parentTaskId: task.id,
 				taskId: task.id,
 				requestKey: `${task.id}:model`,
@@ -610,8 +664,11 @@ export class NativeRlmHost {
 					return prior;
 				}
 			}
+			const rootId = this.admissionRoot(parentId);
 			const usageReservation = await this.usage?.reserve({
 				kind: "task",
+				...(rootId === undefined ? {} : { rootId }),
+				modelBacked: this.definition(request.definition).strategy !== "deterministic",
 				requestKey: key,
 				timeoutMs: request.timeoutMs,
 				signal: context.abortSignal,
@@ -645,7 +702,7 @@ export class NativeRlmHost {
 			const timeoutDelay =
 				usageReservation?.deadlineAt === null || usageReservation?.deadlineAt === undefined
 					? request.timeoutMs
-					: Math.max(1, Math.min(request.timeoutMs, usageReservation.deadlineAt - Date.now()));
+					: Math.max(1, Math.min(request.timeoutMs, usageReservation.deadlineAt - this.now()));
 			// Only a deadline the ledger capped below the task's own timeout is the root wall deadline.
 			const deadlineTimeout =
 				usageReservation?.deadlineAt != null &&
@@ -1068,7 +1125,7 @@ export class NativeRlmHost {
 		if (type === "ping") return { ok: true };
 		if (type === "agents.list") return this.list();
 		if (type === "agents.status" || type === "agents.tasks") {
-			const usage = this.usage ? await this.usage.status() : null;
+			const usage = this.usage ? await this.usage.status(this.statusRoot(parentId)) : null;
 			return {
 				definitions: this.list(),
 				tasks: journal.filter((task) => visible(task.id)).map(publicTask),
@@ -1209,7 +1266,15 @@ export class NativeRlmHost {
 		) {
 			if (!this.services) throw new Error("Ultron local services are not connected to this session worker");
 			const reservation = type.startsWith("jev.")
-				? await this.usage?.reserve({ kind: "jev", requestKey: `jev:${randomUUID()}`, signal: context.abortSignal })
+				? await (() => {
+						const rootId = this.admissionRoot(parentId);
+						return this.usage?.reserve({
+							kind: "jev",
+							...(rootId === undefined ? {} : { rootId }),
+							requestKey: `jev:${randomUUID()}`,
+							signal: context.abortSignal,
+						});
+					})()
 				: undefined;
 			try {
 				const result = await this.services.handle(type, payload, context);

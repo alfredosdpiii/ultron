@@ -6,9 +6,41 @@ export type NativeUsageKind = "task" | "model" | "jev";
 export type NativeUsageCallStatus = "succeeded" | "failed" | "cancelled" | "unknown";
 
 export type NativeUsageLimits = {
+	/** Unfinished tasks admitted at once under one root. */
 	maxAdmittedTasks?: number;
+	/** Wall budget of one root, counted from its first reservation. */
 	maxWallMs?: number;
+	/** Optional spend cap per root, from provider-reported model cost. Unset means no cap. */
+	maxCostUsd?: number;
 };
+
+/** Worker defaults: 24 unfinished tasks and a 30-minute wall budget per root turn; no cost cap. */
+export const DEFAULT_NATIVE_USAGE_LIMITS = { maxAdmittedTasks: 24, maxWallMs: 30 * 60 * 1000 } as const;
+
+/**
+ * Limits from `ULTRON_MAX_WALL_MS`, `ULTRON_MAX_ADMITTED_TASKS` and `ULTRON_MAX_COST_USD`. A missing or
+ * invalid value keeps the default; `none`, `off` or `unlimited` removes the wall or admission limit.
+ * The cost cap is off unless set to a nonnegative number (an optional leading `$` is accepted).
+ */
+export function nativeUsageLimitsFromEnv(env: Record<string, string | undefined> = process.env): NativeUsageLimits {
+	const unlimited = (raw: string) => ["none", "off", "unlimited"].includes(raw.toLowerCase());
+	const integer = (raw: string | undefined, fallback: number, minimum: number): number | undefined => {
+		const text = raw?.trim();
+		if (!text) return fallback;
+		if (unlimited(text)) return undefined;
+		const parsed = Number(text);
+		return Number.isSafeInteger(parsed) && parsed >= minimum ? parsed : fallback;
+	};
+	const costText = env.ULTRON_MAX_COST_USD?.trim().replace(/^\$/, "");
+	const cost = costText ? Number(costText) : Number.NaN;
+	const limits: NativeUsageLimits = {};
+	const maxAdmittedTasks = integer(env.ULTRON_MAX_ADMITTED_TASKS, DEFAULT_NATIVE_USAGE_LIMITS.maxAdmittedTasks, 0);
+	const maxWallMs = integer(env.ULTRON_MAX_WALL_MS, DEFAULT_NATIVE_USAGE_LIMITS.maxWallMs, 1);
+	if (maxAdmittedTasks !== undefined) limits.maxAdmittedTasks = maxAdmittedTasks;
+	if (maxWallMs !== undefined) limits.maxWallMs = maxWallMs;
+	if (Number.isFinite(cost) && cost >= 0) limits.maxCostUsd = cost;
+	return limits;
+}
 
 export type NativeUsageStore = {
 	read(): Promise<JsonValue | undefined>;
@@ -31,6 +63,8 @@ export type NativeUsageReservationRequest = {
 	requestKey?: string;
 	timeoutMs?: number;
 	deadlineAt?: number;
+	/** Whether admitted work calls a model, so the cost cap applies. Model reservations always do; tasks default to true. */
+	modelBacked?: boolean;
 	signal?: AbortSignal;
 };
 
@@ -68,7 +102,10 @@ export type NativeUsageStatus = {
 	limits: {
 		maxAdmittedTasks: number | null;
 		maxWallMs: number | null;
+		maxCostUsd: number | null;
 	};
+	/** Settled model spend of this root against the optional cap. */
+	cost: NativeUsageCost;
 	admittedTasks: number;
 	activeReservations: number;
 	startedAt: number | null;
@@ -76,6 +113,15 @@ export type NativeUsageStatus = {
 	remainingWallMs: number | null;
 	usage: NativeUsageTotals;
 	reservations: NativeUsageReservation[];
+};
+
+export type NativeUsageCost = {
+	maxCostUsd: number | null;
+	/** Sum of provider-reported cost over settled model calls whose cost is known. */
+	spentUsd: number;
+	/** Settled model calls without a reported cost; with a cap set, any of these stops new model-backed work. */
+	unknownPricedCalls: number;
+	remainingUsd: number | null;
 };
 
 export type NativeUsageLedgerLike = {
@@ -247,11 +293,15 @@ function validateDocument(valueToCheck: JsonValue): StoredDocument {
 function normalizeLimits(limits: NativeUsageLimits | undefined): Required<NativeUsageLimits> {
 	const maxAdmittedTasks = limits?.maxAdmittedTasks;
 	const maxWallMs = limits?.maxWallMs;
+	const maxCostUsd = limits?.maxCostUsd;
 	if (maxAdmittedTasks !== undefined) finiteInteger(maxAdmittedTasks, "maxAdmittedTasks", 0);
 	if (maxWallMs !== undefined) finiteInteger(maxWallMs, "maxWallMs", 1);
+	if (maxCostUsd !== undefined && finiteNumber(maxCostUsd, "maxCostUsd") < 0)
+		throw new Error("Invalid usage ledger maxCostUsd");
 	return {
 		maxAdmittedTasks: maxAdmittedTasks ?? Number.POSITIVE_INFINITY,
 		maxWallMs: maxWallMs ?? Number.POSITIVE_INFINITY,
+		maxCostUsd: maxCostUsd ?? Number.POSITIVE_INFINITY,
 	};
 }
 
@@ -259,6 +309,19 @@ function publicLimits(limits: Required<NativeUsageLimits>): NativeUsageStatus["l
 	return {
 		maxAdmittedTasks: Number.isFinite(limits.maxAdmittedTasks) ? limits.maxAdmittedTasks : null,
 		maxWallMs: Number.isFinite(limits.maxWallMs) ? limits.maxWallMs : null,
+		maxCostUsd: Number.isFinite(limits.maxCostUsd) ? limits.maxCostUsd : null,
+	};
+}
+
+function spend(root: StoredRoot, limits: Required<NativeUsageLimits>): NativeUsageCost {
+	const models = root.calls.filter((call) => call.kind === "model");
+	const spentUsd = models.reduce((total, call) => total + (call.usage.cost ?? 0), 0);
+	const maxCostUsd = Number.isFinite(limits.maxCostUsd) ? limits.maxCostUsd : null;
+	return {
+		maxCostUsd,
+		spentUsd,
+		unknownPricedCalls: models.filter((call) => call.usage.cost === null).length,
+		remainingUsd: maxCostUsd === null ? null : Math.max(0, maxCostUsd - spentUsd),
 	};
 }
 
@@ -324,17 +387,22 @@ export class NativeUsageLedger implements NativeUsageLedgerLike {
 	private readonly store: NativeUsageStore;
 	private readonly limits: Required<NativeUsageLimits>;
 	private readonly defaultRootId: string;
+	private readonly now: () => number;
 	private document: StoredDocument = emptyDocument();
 	private loading?: Promise<void>;
 	private tail: Promise<void> = Promise.resolve();
 	private broken = false;
 
-	constructor(store: NativeUsageStore = memoryStore(), options: { limits?: NativeUsageLimits; rootId?: string } = {}) {
+	constructor(
+		store: NativeUsageStore = memoryStore(),
+		options: { limits?: NativeUsageLimits; rootId?: string; now?: () => number } = {},
+	) {
 		if (options.rootId !== undefined && (!options.rootId.trim() || options.rootId.includes("\0")))
 			throw new Error("Usage rootId must be a nonempty string without NUL");
 		this.store = store;
 		this.limits = normalizeLimits(options.limits);
 		this.defaultRootId = options.rootId ?? DEFAULT_ROOT_ID;
+		this.now = options.now ?? Date.now;
 	}
 
 	private assertHealthy(): void {
@@ -402,7 +470,7 @@ export class NativeUsageLedger implements NativeUsageLedgerLike {
 				? root.reservations.find((reservation) => reservation.requestKey === request.requestKey)
 				: undefined;
 			if (existing) return cloneReservation(existing);
-			const now = Date.now();
+			const now = this.now();
 			if (root.startedAt === null) {
 				root.startedAt = now;
 				root.deadlineAt = Number.isFinite(this.limits.maxWallMs) ? now + this.limits.maxWallMs : null;
@@ -415,6 +483,20 @@ export class NativeUsageLedger implements NativeUsageLedgerLike {
 					this.limits.maxAdmittedTasks
 			)
 				throw new Error(`Usage admitted-task limit exceeded for root ${rootId}`);
+			if (
+				Number.isFinite(this.limits.maxCostUsd) &&
+				(request.kind === "model" || (request.kind === "task" && request.modelBacked !== false))
+			) {
+				const cost = spend(root, this.limits);
+				if (cost.unknownPricedCalls > 0)
+					throw new Error(
+						`Usage pricing unknown; cannot enforce cost cap of $${this.limits.maxCostUsd} for root ${rootId} (${cost.unknownPricedCalls} model call(s) reported no cost)`,
+					);
+				if (cost.spentUsd >= this.limits.maxCostUsd)
+					throw new Error(
+						`Usage cost cap reached for root ${rootId}: spent $${cost.spentUsd} of $${this.limits.maxCostUsd}`,
+					);
+			}
 			const asked = request.deadlineAt ?? (request.timeoutMs === undefined ? null : now + request.timeoutMs);
 			// A child inherits whatever remains of the root's wall budget; a longer request is capped, not refused.
 			const requestedDeadline =
@@ -448,7 +530,7 @@ export class NativeUsageLedger implements NativeUsageLedgerLike {
 				throw new Error("Unknown usage reservation");
 			}
 			const active = root.reservations[activeIndex]!;
-			const now = Date.now();
+			const now = this.now();
 			const status = settlement.status ?? "unknown";
 			if (!(["succeeded", "failed", "cancelled", "unknown"] as string[]).includes(status))
 				throw new Error("Invalid usage settlement status");
@@ -474,10 +556,11 @@ export class NativeUsageLedger implements NativeUsageLedgerLike {
 	async status(rootId = this.defaultRootId): Promise<NativeUsageStatus> {
 		return this.enqueue(async () => {
 			const root = this.document.roots[rootId] ?? emptyRoot(rootId);
-			const now = Date.now();
+			const now = this.now();
 			return {
 				rootId,
 				limits: publicLimits(this.limits),
+				cost: spend(root, this.limits),
 				admittedTasks: root.reservations.filter((reservation) => reservation.kind === "task").length,
 				activeReservations: root.reservations.length,
 				startedAt: root.startedAt,
@@ -493,7 +576,7 @@ export class NativeUsageLedger implements NativeUsageLedgerLike {
 		return this.enqueue(async () => {
 			const active = new Set(activeTaskIds);
 			let changed = false;
-			const now = Date.now();
+			const now = this.now();
 			for (const root of Object.values(this.document.roots)) {
 				const abandoned = root.reservations.filter((reservation) => {
 					if (reservation.kind === "task")
@@ -539,7 +622,7 @@ export function createSessionUsageStore(session: Pick<Session, "getValue" | "set
 
 export function createSessionUsageLedger(
 	session: Pick<Session, "getValue" | "setValue">,
-	options: { limits?: NativeUsageLimits; rootId?: string } = {},
+	options: { limits?: NativeUsageLimits; rootId?: string; now?: () => number } = {},
 ): NativeUsageLedger {
 	return new NativeUsageLedger(createSessionUsageStore(session), options);
 }

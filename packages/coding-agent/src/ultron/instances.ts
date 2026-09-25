@@ -1,11 +1,15 @@
 import { createHash, randomUUID } from "node:crypto";
 import { isJsonValue, type JsonValue } from "@earendil-works/chord";
-import type { HostModuleStore, NativeHostModule } from "./rlm/host-module.ts";
+import type { HostModuleStore, NativeHostApi, NativeHostModule } from "./rlm/host-module.ts";
 
 /**
  * Retained instances (A36, A40): a completed RLM task can be kept so later invocations run on the
  * same lane, continuing its conversation and declared Python `state`, while each invocation gets
  * fresh scratch and its own task record. Earlier terminal results are never rewritten.
+ *
+ * An open instance pins its lane's Python kernel (holder `instance:<id>`) so an idle retained agent keeps
+ * its process; closing unpins it, and a restarted owner re-pins every open instance. Pinning is best
+ * effort: when the pool's pin capacity is spent, retain still succeeds and reports `pinned: false`.
  */
 export interface InstanceRecord {
 	id: string;
@@ -29,6 +33,23 @@ const TERMINAL = new Set(["completed", "failed", "cancelled", "interrupted"]);
 export function createInstanceModule(options: { store: HostModuleStore; now?: () => number }): NativeHostModule {
 	let document: InstanceDocument | undefined;
 	let tail: Promise<unknown> = Promise.resolve();
+	const pinned = new Set<string>();
+	const holder = (instance: InstanceRecord) => `instance:${instance.id}`;
+	const pin = (instance: InstanceRecord, host: NativeHostApi): boolean => {
+		if (pinned.has(instance.id)) return true;
+		let ok = false;
+		try {
+			ok = host.pinLane?.(instance.lane, holder(instance)) ?? false;
+		} catch {
+			ok = false;
+		}
+		if (ok) pinned.add(instance.id);
+		return ok;
+	};
+	const unpin = (instance: InstanceRecord, host: NativeHostApi): void => {
+		if (!pinned.delete(instance.id)) return;
+		host.unpinLane?.(instance.lane, holder(instance));
+	};
 
 	const load = async (): Promise<InstanceDocument> => {
 		if (document) return document;
@@ -48,6 +69,11 @@ export function createInstanceModule(options: { store: HostModuleStore; now?: ()
 
 	return {
 		prefixes: ["instances."],
+		start(host) {
+			return serialize(async () => {
+				for (const instance of (await load()).instances) if (instance.state === "open") pin(instance, host);
+			});
+		},
 		handle(request, host) {
 			return serialize(async () => {
 				const current = await load();
@@ -61,7 +87,7 @@ export function createInstanceModule(options: { store: HostModuleStore; now?: ()
 						const existing = current.instances.find((instance) => instance.task_id === taskId);
 						if (existing) {
 							assertOwner(existing, caller);
-							return existing;
+							return { ...existing, pinned: existing.state === "open" && pin(existing, host) };
 						}
 						const task = (await host.tasks()).find((candidate) => candidate.id === taskId);
 						if (!task) throw new Error("Unknown Ultron task");
@@ -81,7 +107,7 @@ export function createInstanceModule(options: { store: HostModuleStore; now?: ()
 							invocations: [],
 						};
 						await commit({ ...current, instances: [...current.instances, record] });
-						return record;
+						return { ...record, pinned: pin(record, host) };
 					}
 					case "instances.invoke": {
 						fields(payload, ["id", "input", "key"]);
@@ -119,6 +145,7 @@ export function createInstanceModule(options: { store: HostModuleStore; now?: ()
 						const next = structuredClone(current);
 						Object.assign(find(next, instance.id), { state: "closed", closed_at: now });
 						await commit(next);
+						unpin(instance, host);
 						return find(next, instance.id);
 					}
 					case "instances.get": {
