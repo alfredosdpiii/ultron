@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { Context } from "@ultron/agent-core";
 import { isJsonValue, type JsonValue } from "@ultron/chord";
 import { BACKGROUND_CONTEXT } from "@ultron/chord/context";
+import { readVersioned } from "./format-version.ts";
 import type {
 	HostModuleRequest,
 	HostModuleStore,
@@ -197,7 +198,8 @@ class ScheduleModule implements NativeHostModule {
 	private load(): Promise<ScheduleDocument> {
 		this.loading ??= (async () => {
 			const saved = await this.store.read();
-			this.document = saved === undefined ? emptyDocument() : validateDocument(saved);
+			this.document =
+				saved === undefined ? emptyDocument() : validateDocument(readVersioned("ultron.module/schedules", saved));
 			return this.document;
 		})();
 		return this.loading;

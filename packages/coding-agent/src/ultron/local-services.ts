@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import type { Context, JsonValue } from "@ultron/chord";
+import { readVersioned } from "./format-version.ts";
 
 export type { JsonValue } from "@ultron/chord";
 
@@ -410,9 +411,10 @@ function experiment(value: JsonValue): asserts value is ExperimentRecord {
 type ArtifactTombstone = ArtifactRecord & { deleted: { at: string; reason: string } };
 
 function artifactDocument(
-	value: JsonValue,
+	stored: JsonValue,
 	id: string,
 ): { record: ArtifactRecord; bytes: Buffer } | { record: ArtifactRecord; tombstone: ArtifactTombstone } {
+	const value = readVersioned(`ultron.local/${artifactPrefix}${id}`, stored, { field: "formatVersion" });
 	if (value !== null && typeof value === "object" && !Array.isArray(value) && Object.hasOwn(value, "deleted")) {
 		fields(value, ["formatVersion", "id", "bytes", "mediaType", "label", "deleted"]);
 		const { deleted } = value;
@@ -436,8 +438,9 @@ function artifactDocument(
 
 type ArtifactRefs = Record<string, string[]>;
 
-function artifactRefs(value: JsonValue | undefined): ArtifactRefs {
-	if (value === undefined) return {};
+function artifactRefs(stored: JsonValue | undefined): ArtifactRefs {
+	if (stored === undefined) return {};
+	const value = readVersioned(`ultron.local/${artifactRefsKey}`, stored, { field: "formatVersion" });
 	fields(value, ["formatVersion", "refs"]);
 	const { refs } = value;
 	if (value.formatVersion !== 1 || refs === null || typeof refs !== "object" || Array.isArray(refs))
@@ -571,7 +574,8 @@ export class NativeLocalServices {
 		context: Context,
 		branch?: RefinementBranch,
 	): Promise<JsonValue> {
-		const stored = await this.documents.get(refinementKey, context);
+		const saved = await this.documents.get(refinementKey, context);
+		const stored = readVersioned(`ultron.local/${refinementKey}`, saved, { field: "formatVersion" });
 		const records: RefinementRecord[] = [];
 		let events: JsonValue[] = [];
 		if (stored !== undefined) {
@@ -801,7 +805,8 @@ export class NativeLocalServices {
 	}
 
 	private async experiments(type: string, payload: JsonValue, context: Context): Promise<JsonValue> {
-		const stored = await this.documents.get(experimentKey, context);
+		const saved = await this.documents.get(experimentKey, context);
+		const stored = readVersioned(`ultron.local/${experimentKey}`, saved, { field: "formatVersion" });
 		let runs: ExperimentRecord[] = [];
 		if (stored !== undefined) {
 			const document = jsonCopy(stored);

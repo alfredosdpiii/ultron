@@ -1,0 +1,122 @@
+{
+  "taskSet": "judged",
+  "frozenAt": "2026-09-26-judged",
+  "passed": true,
+  "results": [
+    {
+      "task": "explain-ratelimit-module",
+      "category": "judged-explanation",
+      "ok": true,
+      "durationMs": 6222,
+      "outcomes": [
+        {
+          "trial": "unsolved",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 46
+        },
+        {
+          "trial": "judge rubric",
+          "expect": "pass",
+          "ok": true
+        },
+        {
+          "trial": "judge inputs exist in the solved tree",
+          "expect": "pass",
+          "ok": true
+        },
+        {
+          "trial": "judge prompt names every criterion and input",
+          "expect": "pass",
+          "ok": true
+        },
+        {
+          "trial": "fake judge: full marks parse",
+          "expect": "pass",
+          "ok": true
+        },
+        {
+          "trial": "fake judge: partial marks score lower",
+          "expect": "pass",
+          "ok": true
+        },
+        {
+          "trial": "fake judge: malformed reply rejected after 2 attempts",
+          "expect": "pass",
+          "ok": true
+        },
+        {
+          "trial": "fake judge: out-of-range reply rejected after 2 attempts",
+          "expect": "pass",
+          "ok": true
+        },
+        {
+          "trial": "live judge (cliproxyapi/glm-5.3-flash) scores the reference at or above 0.7",
+          "expect": "pass",
+          "ok": true,
+          "score": 1
+        },
+        {
+          "trial": "solved",
+          "expect": "pass",
+          "ok": true,
+          "verifyMs": 47
+        }
+      ]
+    }
+  ],
+  "judge": {
+    "model": "cliproxyapi/glm-5.3-flash",
+    "thinking": "low",
+    "judgements": {
+      "explain-ratelimit-module": {
+        "model": "cliproxyapi/glm-5.3-flash",
+        "thinking": "low",
+        "promptVersion": 1,
+        "rubricDigest": "4990129092ce056ea77a9993f09746c5789d395dddcfd3abdff18e2a29fc2211",
+        "passAt": 0.7,
+        "system": "You are a strict, consistent grader of software work. Score only against the rubric you are given, using the evidence in the files shown. Do not reward length or confidence. Reply with a single JSON object and nothing else.",
+        "prompt": "Grade the work an AI coding agent did for the task below.\n\n## Task given to the agent\n\nWrite EXPLANATION.md explaining the ratelimit package to a new team member: what it is for, how the token-bucket algorithm works here (including the refill arithmetic), the public API of TokenBucket and BucketRegistry, the edge cases the code handles, and how to test it deterministically. Use markdown headings. Do not change any code.\n\n## Rubric\n\nScore each criterion with an integer from 0 to its maximum. Half-done earns partial credit; missing or wrong earns 0.\n\n- refill_accuracy (0-3): Explains refill correctly: tokens = min(capacity, tokens + elapsed * rate), the bucket starts full, and elapsed is clamped at 0 so a clock going backwards adds nothing.\n- edge_cases (0-2): Names the handled edge cases: a cost above capacity always fails and consumes nothing (retry_after returns None); non-positive cost, capacity or rate raise ValueError; a refused allow consumes nothing.\n- registry (0-2): Explains BucketRegistry correctly: one bucket per key, least-recently-used eviction at max_keys through dict re-insertion, and an evicted key starts again with a full bucket.\n- testing (0-1): Shows how to test deterministically by injecting a fake clock.\n- clarity_no_invention (0-2): Clear for a newcomer, and invents no API, parameter or behaviour that the code does not have.\n\n## Files\n\n=== EXPLANATION.md ===\n# The ratelimit package\n\n`ratelimit` limits how often something may happen, per caller, while still allowing short bursts. It has two\nparts: `TokenBucket` (one limiter) and `BucketRegistry` (one limiter per key, for example per user or per IP).\n\n## How the token bucket works\n\nA bucket holds up to `capacity` tokens and starts **full**. Every action costs tokens (`cost`, default 1). Tokens\nflow back continuously at `rate` tokens per second, but never above `capacity`. So a client can burst up to\n`capacity` actions at once and then sustain `rate` actions per second.\n\nThe bucket does not run a timer. It refills lazily whenever it is asked (`_refill`):\n\n```\nelapsed = max(0, now - last)\nlast    = max(last, now)\ntokens  = min(capacity, tokens + elapsed * rate)\n```\n\n`now` comes from the injected `clock` (default `time.monotonic`). Clamping `elapsed` at 0 means a clock that\ngoes backwards adds no tokens, and `last` never moves backwards either.\n\n## Public API\n\n- `TokenBucket(capacity, rate, clock=time.monotonic)`: both numbers must be positive, otherwise `ValueError`.\n- `TokenBucket.allow(cost=1) -> bool`: refills, then takes `cost` tokens and returns True if that many are\n  available; otherwise returns False and takes nothing.\n- `TokenBucket.retry_after(cost=1) -> float | None`: seconds until `allow(cost)` could succeed\n  (`(cost - tokens) / rate`, or 0.0 if it could succeed now), or `None` if it never can.\n- `BucketRegistry(capacity, rate, max_keys=10_000, clock=None)` and `BucketRegistry.allow(key, cost=1) -> bool`:\n  keeps one `TokenBucket` per key, created on first use with the registry's capacity, rate and clock.\n\n## Edge cases the code handles\n\n- **Cost above capacity:** `allow` returns False and consumes nothing, forever; `retry_after` returns `None`.\n- **Non-positive values:** `capacity <= 0` or `rate <= 0` raise `ValueError` in the constructor, and\n  `allow` raises `ValueError` for `cost <= 0`.\n- **Refusals are free:** a refused `allow` leaves the tokens unchanged.\n- **Clock going backwards:** no refill, no negative tokens.\n- **Too many keys:** the registry keeps at most `max_keys` buckets. Every `allow` pops the key's bucket and\n  re-inserts it, so dict order is least recently used first; when a new key arrives at the limit, the oldest key is\n  dropped. An evicted key that comes back gets a new, full bucket, so eviction can briefly forgive a heavy user.\n\n## Testing it deterministically\n\nInject a fake clock instead of sleeping:\n\n```python\nnow = [0.0]\nbucket = TokenBucket(capacity=2, rate=1, clock=lambda: now[0])\nassert bucket.allow() and bucket.allow() and not bucket.allow()\nassert bucket.retry_after() == 1.0\nnow[0] += 1.0\nassert bucket.allow()\nassert bucket.retry_after(cost=3) is None\n```\n\nFor the registry, pass the same fake clock and a small `max_keys` (for example 2) to check eviction order and that\nan evicted key starts full again.\n\n\n\n=== ratelimit/bucket.py ===\n\"\"\"Token-bucket rate limiting.\"\"\"\nimport time\n\n\nclass TokenBucket:\n    \"\"\"Allows bursts up to `capacity`, refilling at `rate` tokens per second.\"\"\"\n\n    def __init__(self, capacity, rate, clock=time.monotonic):\n        if capacity <= 0 or rate <= 0:\n            raise ValueError(\"capacity and rate must be positive\")\n        self.capacity = float(capacity)\n        self.rate = float(rate)\n        self._clock = clock\n        self._tokens = float(capacity)\n        self._last = clock()\n\n    def _refill(self):\n        now = self._clock()\n        elapsed = max(0.0, now - self._last)\n        self._last = max(self._last, now)\n        self._tokens = min(self.capacity, self._tokens + elapsed * self.rate)\n\n    def allow(self, cost=1):\n        \"\"\"Take `cost` tokens if available. A cost above capacity can never succeed and consumes nothing.\"\"\"\n        if cost <= 0:\n            raise ValueError(\"cost must be positive\")\n        self._refill()\n        if cost > self.capacity or cost > self._tokens:\n            return False\n        self._tokens -= cost\n        return True\n\n    def retry_after(self, cost=1):\n        \"\"\"Seconds until `allow(cost)` could succeed; None if it never can.\"\"\"\n        if cost > self.capacity:\n            return None\n        self._refill()\n        missing = cost - self._tokens\n        return 0.0 if missing <= 0 else missing / self.rate\n\n\n\n=== ratelimit/registry.py ===\n\"\"\"Per-key buckets with least-recently-used eviction.\"\"\"\nfrom .bucket import TokenBucket\n\n\nclass BucketRegistry:\n    def __init__(self, capacity, rate, max_keys=10_000, clock=None):\n        self._args = (capacity, rate)\n        self._clock = clock\n        self._max_keys = max_keys\n        self._buckets = {}\n\n    def allow(self, key, cost=1):\n        bucket = self._buckets.pop(key, None)\n        if bucket is None:\n            if len(self._buckets) >= self._max_keys:\n                oldest = next(iter(self._buckets))\n                del self._buckets[oldest]\n            bucket = TokenBucket(*self._args, **({\"clock\": self._clock} if self._clock else {}))\n        self._buckets[key] = bucket  # re-insert: dict order is least recently used first\n        return bucket.allow(cost)\n\n\n\n## Reply\n\nReply with JSON only, exactly this shape:\n{\"scores\": {\"refill_accuracy\": <0-3>, \"edge_cases\": <0-2>, \"registry\": <0-2>, \"testing\": <0-1>, \"clarity_no_invention\": <0-2>}, \"reasons\": {\"refill_accuracy\": \"<one sentence>\", \"edge_cases\": \"<one sentence>\", \"registry\": \"<one sentence>\", \"testing\": \"<one sentence>\", \"clarity_no_invention\": \"<one sentence>\"}}",
+        "attempts": [
+          {
+            "raw": "{\"scores\": {\"refill_accuracy\": 3, \"edge_cases\": 2, \"registry\": 2, \"testing\": 1, \"clarity_no_invention\": 2}, \"reasons\": {\"refill_accuracy\": \"Correctly shows tokens = min(capacity, tokens + elapsed*rate), the full start, and elapsed clamped at 0 for backwards clocks.\", \"edge_cases\": \"All handled cases are named: cost above capacity always fails consuming nothing with retry_after None, ValueErrors for non-positive cost/capacity/rate, and refused allows consuming nothing.\", \"registry\": \"Accurately explains one bucket per key, LRU via pop/re-insert, and evicted keys restarting full.\", \"testing\": \"Gives a concrete fake-clock injection example with advancing time and notes registry testing with a small max_keys.\", \"clarity_no_invention\": \"Clear for a newcomer and every documented API and behaviour matches the code.\"}}",
+            "usage": {
+              "input": 1779,
+              "output": 201,
+              "cacheRead": 0,
+              "cacheWrite": 0,
+              "reasoning": 3,
+              "totalTokens": 1980,
+              "cost": {
+                "input": 0,
+                "output": 0,
+                "cacheRead": 0,
+                "cacheWrite": 0,
+                "total": 0
+              }
+            }
+          }
+        ],
+        "scores": {
+          "refill_accuracy": 3,
+          "edge_cases": 2,
+          "registry": 2,
+          "testing": 1,
+          "clarity_no_invention": 2
+        },
+        "reasons": {
+          "refill_accuracy": "Correctly shows tokens = min(capacity, tokens + elapsed*rate), the full start, and elapsed clamped at 0 for backwards clocks.",
+          "edge_cases": "All handled cases are named: cost above capacity always fails consuming nothing with retry_after None, ValueErrors for non-positive cost/capacity/rate, and refused allows consuming nothing.",
+          "registry": "Accurately explains one bucket per key, LRU via pop/re-insert, and evicted keys restarting full.",
+          "testing": "Gives a concrete fake-clock injection example with advancing time and notes registry testing with a small max_keys.",
+          "clarity_no_invention": "Clear for a newcomer and every documented API and behaviour matches the code."
+        },
+        "total": 10,
+        "max": 10,
+        "normalized": 1,
+        "passed": true,
+        "durationMs": 6127
+      }
+    }
+  }
+}

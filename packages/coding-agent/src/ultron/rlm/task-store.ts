@@ -4,6 +4,7 @@ import { isJsonValue, type JsonValue } from "@ultron/chord";
 import { BACKGROUND_CONTEXT } from "@ultron/chord/context";
 import Type from "typebox";
 import { Check } from "typebox/value";
+import { readVersioned } from "../format-version.ts";
 
 /** Atomic document replacement. One live task host per store, enforced by the worker owner lock. */
 export interface NativeHostStore {
@@ -176,7 +177,7 @@ export class NativeTaskJournal {
 		}
 		if (saved === undefined) return;
 		if (!isJsonValue(saved)) throw invalidDocument();
-		const parsed = validateDocument(saved);
+		const parsed = validateDocument(readVersioned("ultron.tasks/root", saved));
 		const recovered: NativeTask[] = parsed.tasks.map(
 			(task): NativeTask =>
 				task.state !== "admitted" && task.state !== "running"

@@ -4,7 +4,7 @@ Ultron installs as its own command (`ultron`) with its own profile (`~/.ultron/a
 
 ## Before relying on Ultron day to day
 
-1. **Gate.** `npm run gate` must pass: check, all A01-A46 acceptance rows, and a current quality comparison (`npm run eval:quality`) within the frozen thresholds.
+1. **Gate.** `npm run gate` must pass: check, all A01-A46 acceptance rows, and a current quality comparison (`npm run eval:quality`) within the frozen thresholds. The gate uses deterministic pass rates only; LLM-judge scores from the judged set (`node scripts/eval-quality.mjs --tasks judged`) and the uptake metrics are evidence to read beside it, never a gate on their own.
 2. **Back up the profile.** `ultron migrate backup` writes a timestamped, hash-manifested copy of `~/.ultron/agent` (not sessions) to `~/.ultron/backups/` with owner-only permissions. Credentials are copied, never printed.
 3. **Record versions.** Note `ultron --version`, the git commit of this repository (`git rev-parse HEAD`), and `pi --version` for the preserved stock Pi.
 4. **Bring sessions over explicitly.** `ultron migrate import-pi <pi-session.jsonl>` imports a Pi session; the Pi file is never changed. Importing the same session twice is refused.
@@ -18,6 +18,8 @@ Ultron installs as its own command (`ultron`) with its own profile (`~/.ultron/a
 4. Start using `ultron`. Keep `pi` installed.
 
 ## Rollback
+
+Session values are versioned. An older Ultron opening a session written by a newer one refuses it with the value and format version named (`Cannot resume: session value … has format version N …`) and leaves it unchanged, so rolling back Ultron never silently drops or rewrites newer state; open such a session with the version that wrote it. Sessions written before versioning read as version 1.
 
 1. Stop `ultron` sessions (idle workers exit on their own; busy workers finish their work first).
 2. Restore the previous profile if it was changed: `ultron migrate restore <backup-dir>` verifies every file hash before overwriting.

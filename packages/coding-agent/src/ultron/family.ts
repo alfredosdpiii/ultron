@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import type { Context } from "@ultron/agent-core";
 import type { JsonValue } from "@ultron/chord";
+import { readVersioned } from "./format-version.ts";
 import type { HostModuleStore, NativeHostApi, NativeHostModule } from "./rlm/host-module.ts";
 import type { NativeTask } from "./rlm/task-store.ts";
 
@@ -83,7 +84,7 @@ function defaultIsVerifier(definition: string): boolean {
 
 function parseDocument(value: JsonValue | undefined): FamilyDocument {
 	if (value === undefined) return { version: 1, messages: [] };
-	const document = value as unknown as FamilyDocument;
+	const document = readVersioned("ultron.module/family", value) as unknown as FamilyDocument;
 	if (!document || typeof document !== "object" || document.version !== 1 || !Array.isArray(document.messages))
 		throw new Error("Family message store is corrupt");
 	return structuredClone(document);

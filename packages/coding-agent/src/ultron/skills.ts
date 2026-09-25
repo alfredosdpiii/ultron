@@ -3,6 +3,7 @@ import { dirname } from "node:path";
 import { isJsonValue, type JsonValue } from "@ultron/chord";
 import { parseFrontmatter } from "../utils/frontmatter.ts";
 import type { CodeSkillProposal, CodeSkills } from "./code-skills.ts";
+import { readVersioned } from "./format-version.ts";
 import type { HostModuleRequest, HostModuleStore, NativeHostApi, NativeHostModule } from "./rlm/host-module.ts";
 
 /** A skill as discovered by Pi's existing loader; this module never discovers skills itself. */
@@ -233,7 +234,7 @@ function emptyDocument(): SkillDocument {
 
 function readDocument(value: JsonValue | undefined): SkillDocument {
 	if (value === undefined) return emptyDocument();
-	const document = value as SkillDocument;
+	const document = readVersioned("ultron.module/skills", value, { field: "format" }) as unknown as SkillDocument;
 	if (
 		!document ||
 		typeof document !== "object" ||

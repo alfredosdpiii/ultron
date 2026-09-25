@@ -7,12 +7,31 @@
  *                                 [--concurrency 3] [--only id,id] [--variants pi,ultron] [--out path]
  *                                 [--baseline recorded.json] [--thinking off|low|medium|high|xhigh|max]
  *                                 [--keep-failed dir] [--ultron-command "node --import ... cli.ts"]
+ *                                 [--judge-model cliproxyapi/glm-5.3-flash] [--judge-thinking low] [--no-judge]
  *   node scripts/eval-quality.mjs --tasks hard --self-check [--only id,id] [--concurrency 4]
+ *   node scripts/eval-quality.mjs --tasks judged --self-check [--judge-live]
  *
- * `--tasks` picks the frozen set: default is evals/quality/tasks.mjs, `hard` is tasks-hard.mjs.
+ * `--tasks` picks the frozen set: default is evals/quality/tasks.mjs, `hard` is tasks-hard.mjs, `judged` is
+ * tasks-judged.mjs (open-ended work scored by an LLM judge next to a light deterministic sanity check).
  * `--self-check` runs no model: for every task it checks that the hidden check fails on the
  * untouched task files, passes after applying the reference solution (tasks-<set>-solutions.mjs),
  * and, when the solution changes several files, fails if any one of those files is left unfixed.
+ * For judged tasks it also validates the rubric wiring against the solved tree with a fake judge (see
+ * scripts/eval-judge.mjs). `--judge-live` additionally scores each reference solution with the real judge
+ * (one or two model calls per task) to calibrate the rubric.
+ *
+ * LLM judge: a task with `judge: {rubric, inputs, passAt, model?}` is scored after its run by a fixed judge model
+ * (`--judge-model`, default cliproxyapi/glm-5.3-flash, through the same proxy config as the agents, run by stock Pi
+ * with no tools). The judge's prompt, raw replies, scores, reasons and normalized score go into `record.judge`, and
+ * the summary reports them per variant next to the deterministic pass rate. `record.passed` stays the deterministic
+ * check: the judge never decides a run alone and never feeds the release gate (scripts/gate.mjs).
+ *
+ * Uptake metrics in every record: `toolsByName` (tool calls by tool, from `tool_execution_start` events),
+ * `framesSpawned` (rlm.spawn/infer/map frames: tasks whose definition starts with `rlm-`, read from Ultron's
+ * `inspect agents.status`; else counted from the rlm tool's code in the events; null when neither is available,
+ * as for stock Pi), and `rootUnseenBytes` (bytes loaded through handles minus bytes printed to the root, reported
+ * only when Ultron exposes it in `agents.status` as `uptake.rootUnseenBytes` or `uptake.handleBytesLoaded` and
+ * `uptake.handleBytesPrinted`; otherwise null). Summaries aggregate them per variant.
  *
  * Both agents run in RPC mode in a fresh copy of the task files with an isolated profile that holds
  * only models.json and auth.json (no extensions, skills, or memory), so the runtimes are compared,
@@ -40,6 +59,13 @@ import {
 import { homedir, tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+	checkJudgeWiring,
+	collectJudgeFiles,
+	DEFAULT_JUDGE_MODEL,
+	judgeRun,
+	summarizeJudged,
+} from "./eval-judge.mjs";
 
 /** Frozen before measurement. */
 export const THRESHOLDS = {
@@ -65,7 +91,9 @@ const VERIFY_TIMEOUT_MS = 60_000;
 const TASK_SETS = {
 	default: { tasks: "../evals/quality/tasks.mjs", solutions: null },
 	hard: { tasks: "../evals/quality/tasks-hard.mjs", solutions: "../evals/quality/tasks-hard-solutions.mjs" },
+	judged: { tasks: "../evals/quality/tasks-judged.mjs", solutions: "../evals/quality/tasks-judged-solutions.mjs" },
 };
+const JUDGE_TIMEOUT_MS = 5 * 60 * 1000;
 
 /** Task files and hidden files; hard tasks generate their (large) data on demand. */
 function materialize(task) {
@@ -208,13 +236,87 @@ function rpcSession({ command, args, cwd, env, log }) {
 	};
 }
 
-/** " tools rlm=3 bash=1" for the per-run line, or "" before any tool ran. */
-function formatTools(toolsByName) {
-	const entries = Object.entries(toolsByName ?? {}).sort((a, b) => b[1] - a[1]);
-	return entries.length === 0 ? " tools none" : ` tools ${entries.map(([name, count]) => `${name}=${count}`).join(" ")}`;
+/** Frames (rlm.spawn / rlm.infer / rlm.map) named in the rlm tool's code, for runs whose host cannot be inspected. */
+const FRAME_CALL = /\brlm\.(?:spawn|infer|map)\s*\(/g;
+
+/**
+ * Uptake from Ultron's read-only inspector; null fields when the agent has no inspector (stock Pi) or the host does
+ * not expose the metric yet.
+ */
+async function inspectUptake(session) {
+	const response = await session.send({ type: "inspect", request: "agents.status", payload: {} }).catch(() => null);
+	if (!response?.success || !response.data) return null;
+	const tasks = Array.isArray(response.data.tasks) ? response.data.tasks : [];
+	const tasksByDefinition = {};
+	for (const task of tasks) {
+		const name = String(task.definition ?? "unknown").replace(/@\d+$/, "");
+		tasksByDefinition[name] = (tasksByDefinition[name] ?? 0) + 1;
+	}
+	const uptake = response.data.uptake ?? response.data.usage?.uptake;
+	const rootUnseenBytes =
+		typeof uptake?.rootUnseenBytes === "number"
+			? uptake.rootUnseenBytes
+			: typeof uptake?.handleBytesLoaded === "number" && typeof uptake?.handleBytesPrinted === "number"
+				? uptake.handleBytesLoaded - uptake.handleBytesPrinted
+				: null;
+	return {
+		framesSpawned: tasks.filter((task) => /^rlm-/.test(String(task.definition))).length,
+		tasksByDefinition,
+		rootUnseenBytes,
+	};
 }
 
-async function runOne({ task, variant, trial, model, thinking, keepDir, commands }) {
+/** One judge call through stock Pi in RPC mode with no tools, extensions, skills or context files. */
+function createModelJudge({ command, model, thinking, keepDir }) {
+	const split = model.indexOf("/");
+	let calls = 0;
+	return async (system, prompt) => {
+		const work = mkdtempSync(join(tmpdir(), "ultron-quality-judge-"));
+		const agentDir = join(work, "agent");
+		mkdirSync(agentDir, { recursive: true });
+		const profile = join(homedir(), ".ultron", "agent");
+		for (const file of ["models.json", "auth.json"])
+			if (existsSync(join(profile, file))) copyFileSync(join(profile, file), join(agentDir, file));
+		const session = rpcSession({
+			command,
+			args: [
+				"--mode",
+				"rpc",
+				"--provider",
+				model.slice(0, split),
+				"--model",
+				model.slice(split + 1),
+				"--no-session",
+				"--no-tools",
+				"--no-extensions",
+				"--no-skills",
+				"--no-context-files",
+				"--system-prompt",
+				system,
+				...(thinking ? ["--thinking", thinking] : []),
+			],
+			cwd: work,
+			env: { ...process.env, PI_CODING_AGENT_DIR: agentDir, ULTRON_CODING_AGENT_DIR: agentDir, ULTRON_HINDSIGHT_URL: "off" },
+			log: keepDir ? join(keepDir, `judge-${Date.now()}-${++calls}.jsonl`) : undefined,
+		});
+		try {
+			const events = await session.turn(prompt, JUDGE_TIMEOUT_MS);
+			const message = events.filter((event) => event.type === "message_end" && event.message?.role === "assistant").at(-1)?.message;
+			if (!message) throw new Error("judge produced no answer");
+			if (message.stopReason === "error") throw new Error(`judge provider error: ${message.errorMessage ?? "unknown"}`);
+			const text = (message.content ?? [])
+				.filter((part) => part.type === "text")
+				.map((part) => part.text)
+				.join("");
+			return { text, usage: message.usage ?? null };
+		} finally {
+			await session.close().catch(() => {});
+			rmSync(work, { recursive: true, force: true });
+		}
+	};
+}
+
+async function runOne({ task, variant, trial, model, thinking, keepDir, commands, judge }) {
 	const work = mkdtempSync(join(tmpdir(), `ultron-quality-${task.id}-${variant}-`));
 	const project = join(work, "project");
 	const agentDir = join(work, "agent");
@@ -257,18 +359,19 @@ async function runOne({ task, variant, trial, model, thinking, keepDir, commands
 		env,
 		log: join(keep, "events.jsonl"),
 	});
+	record.toolsByName = {};
+	record.framesSpawned = null;
+	record.rootUnseenBytes = null;
+	let frameCallsInCode = 0;
 	try {
 		let toolCalls = 0;
-		// Tool calls by name measure how the model works, e.g. whether it uses the RLM REPL at all.
-		const toolsByName = {};
-		record.toolsByName = toolsByName;
 		for (const prompt of task.prompts) {
 			const events = await session.turn(prompt, RUN_TIMEOUT_MS);
+			toolCalls += events.filter((event) => event.type === "tool_execution_start").length;
 			for (const event of events) {
 				if (event.type !== "tool_execution_start") continue;
-				toolCalls += 1;
-				const name = typeof event.toolName === "string" ? event.toolName : "unknown";
-				toolsByName[name] = (toolsByName[name] ?? 0) + 1;
+				record.toolsByName[event.toolName] = (record.toolsByName[event.toolName] ?? 0) + 1;
+				if (event.toolName === "rlm") frameCallsInCode += JSON.stringify(event.args ?? "").match(FRAME_CALL)?.length ?? 0;
 			}
 			const failed = events.find(
 				(event) => event.type === "message_end" && event.message?.role === "assistant" && event.message.stopReason === "error",
@@ -279,6 +382,9 @@ async function runOne({ task, variant, trial, model, thinking, keepDir, commands
 			}
 		}
 		record.toolCalls = toolCalls;
+		const uptake = await inspectUptake(session);
+		if (uptake) Object.assign(record, uptake, { framesSource: "inspect" });
+		else if (record.toolsByName.rlm) Object.assign(record, { framesSpawned: frameCallsInCode, framesSource: "events" });
 		const stats = await session.send({ type: "get_session_stats" });
 		const usage = stats.data?.usage ?? stats.data?.tokens ?? null;
 		record.cost = typeof stats.data?.cost === "number" ? stats.data.cost : (usage?.cost?.total ?? null);
@@ -290,6 +396,18 @@ async function runOne({ task, variant, trial, model, thinking, keepDir, commands
 	} finally {
 		record.durationMs = Date.now() - started;
 		await session.close().catch(() => {});
+	}
+	// The judge reads the agent's files before the hidden check files are copied in; it never runs for
+	// infrastructure outcomes (the agent never reached the model).
+	if (task.judge && judge && !record.infrastructure) {
+		const judgeModel = task.judge.model ?? judge.model;
+		record.judge = await judgeRun({
+			task,
+			files: collectJudgeFiles(project, task.judge, files),
+			call: judge.call(judgeModel),
+			model: judgeModel,
+			thinking: judge.thinking,
+		});
 	}
 	writeTree(project, hidden);
 	record.verify = await runVerify(task, project);
@@ -314,6 +432,26 @@ function median(values) {
 	return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
 }
 
+/** Per-variant uptake: tool calls by name, share of runs that used `rlm`, frames spawned and bytes the root never saw. */
+export function summarizeUptake(records) {
+	const toolsByName = {};
+	for (const record of records)
+		for (const [name, count] of Object.entries(record.toolsByName ?? {})) toolsByName[name] = (toolsByName[name] ?? 0) + count;
+	const measuredOf = (field) => records.map((record) => record[field]).filter((value) => typeof value === "number");
+	const aggregate = (field) => {
+		const values = measuredOf(field);
+		return values.length
+			? { runs: values.length, total: values.reduce((a, b) => a + b, 0), median: median(values) }
+			: { runs: 0, total: null, median: null };
+	};
+	return {
+		toolsByName,
+		rlmRunShare: records.length ? records.filter((record) => (record.toolsByName?.rlm ?? 0) > 0).length / records.length : null,
+		framesSpawned: aggregate("framesSpawned"),
+		rootUnseenBytes: aggregate("rootUnseenBytes"),
+	};
+}
+
 export function summarize(records, variants) {
 	const byVariant = {};
 	for (const variant of variants) {
@@ -326,6 +464,7 @@ export function summarize(records, variants) {
 			if (record.passed) categories[record.category].passed += 1;
 		}
 		const costs = measured.map((record) => record.cost).filter((cost) => typeof cost === "number");
+		const judged = summarizeJudged(measured);
 		byVariant[variant] = {
 			runs: own.length,
 			infrastructure: own.length - measured.length,
@@ -333,6 +472,9 @@ export function summarize(records, variants) {
 			categories,
 			medianDurationMs: median(measured.map((record) => record.durationMs)),
 			totalCost: costs.length === measured.length && costs.length > 0 ? costs.reduce((a, b) => a + b, 0) : null,
+			uptake: summarizeUptake(measured),
+			// Reported next to passRate; never part of the gate below.
+			...(judged ? { judged } : {}),
 		};
 	}
 	const baseline = byVariant.pi;
@@ -372,16 +514,18 @@ async function applySolution(dir, solution, files) {
  * Model-free validation of a task set: the hidden check must reject the untouched task, accept the
  * reference solution, and reject the solution with any single one of its files left out.
  */
-async function checkTask(task, solution) {
+async function checkTask(task, solution, liveJudge) {
 	const outcomes = [];
 	if (!solution) return [{ trial: "solution", ok: false, detail: "no reference solution" }];
 	const { files, hidden } = materialize(task);
 	const work = mkdtempSync(join(tmpdir(), `ultron-selfcheck-${task.id}-`));
-	const trial = async (name, solutionFiles, expectPass) => {
+	const trial = async (name, solutionFiles, expectPass, inspect) => {
 		const dir = join(work, name.replace(/[^a-z0-9.-]+/gi, "_"));
 		mkdirSync(dir);
 		writeTree(dir, files);
 		const failure = solutionFiles ? await applySolution(dir, solution, solutionFiles) : null;
+		// Judged tasks: the judge reads the solved tree as an agent would leave it, before the hidden files.
+		if (inspect) outcomes.push(...(await inspect(dir)));
 		writeTree(dir, hidden);
 		const started = Date.now();
 		const verify = await runVerify(task, dir);
@@ -399,7 +543,34 @@ async function checkTask(task, solution) {
 	try {
 		await trial("unsolved", null, false);
 		const solutionFiles = solution.files ?? {};
-		await trial("solved", solutionFiles, true);
+		const judgeChecks = task.judge
+			? async (dir) => {
+					const wiring = await checkJudgeWiring(task, dir, files);
+					if (!liveJudge) return wiring;
+					// Calibration: the real judge scores the reference solution; it should reach the task's passAt.
+					const judgeModel = task.judge.model ?? liveJudge.model;
+					const judgement = await judgeRun({
+						task,
+						files: collectJudgeFiles(dir, task.judge, files),
+						call: liveJudge.call(judgeModel),
+						model: judgeModel,
+						thinking: liveJudge.thinking,
+					});
+					liveJudge.judgements[task.id] = judgement;
+					const ok = judgement.passed === true;
+					return [
+						...wiring,
+						{
+							trial: `live judge (${judgeModel}) scores the reference at or above ${task.judge.passAt}`,
+							expect: "pass",
+							ok,
+							score: judgement.normalized ?? null,
+							...(ok ? {} : { detail: judgement.error ?? `scored ${judgement.normalized}` }),
+						},
+					];
+				}
+			: undefined;
+		await trial("solved", solutionFiles, true, judgeChecks);
 		const paths = Object.keys(solutionFiles);
 		if (paths.length > 1 && !solution.run)
 			for (const path of paths)
@@ -410,11 +581,13 @@ async function checkTask(task, solution) {
 	return outcomes;
 }
 
-async function selfCheck(taskSet, selected, concurrency) {
+async function selfCheck(taskSet, selected, concurrency, liveJudge) {
 	const solutionsModule = TASK_SETS[taskSet].solutions;
 	if (!solutionsModule) throw new Error(`Task set "${taskSet}" has no reference solutions to self-check`);
 	const { solutions } = await import(solutionsModule);
-	console.log(`Self-check: ${selected.length} ${taskSet} tasks (no model calls)`);
+	console.log(
+		`Self-check: ${selected.length} ${taskSet} tasks (${liveJudge ? `live judge ${liveJudge.model}` : "no model calls"})`,
+	);
 	const results = [];
 	let cursor = 0;
 	await Promise.all(
@@ -422,10 +595,13 @@ async function selfCheck(taskSet, selected, concurrency) {
 			while (cursor < selected.length) {
 				const task = selected[cursor++];
 				const started = Date.now();
-				const outcomes = await checkTask(task, solutions[task.id]);
+				const outcomes = await checkTask(task, solutions[task.id], liveJudge);
 				const ok = outcomes.every((outcome) => outcome.ok);
 				results.push({ task: task.id, category: task.category, ok, durationMs: Date.now() - started, outcomes });
-				console.log(`${ok ? "OK  " : "BAD "} ${task.id} (${outcomes.length} trials, ${((Date.now() - started) / 1000).toFixed(0)}s)`);
+				const judged = liveJudge?.judgements[task.id];
+				console.log(
+					`${ok ? "OK  " : "BAD "} ${task.id} (${outcomes.length} trials, ${((Date.now() - started) / 1000).toFixed(0)}s)${judged ? ` judge ${judged.total ?? "?"}/${judged.max ?? "?"} ${JSON.stringify(judged.scores ?? judged.error)}` : ""}`,
+				);
 				for (const outcome of outcomes.filter((entry) => !entry.ok))
 					console.log(`     ${outcome.trial}: expected ${outcome.expect}; ${String(outcome.detail).slice(-300)}`);
 			}
@@ -435,7 +611,8 @@ async function selfCheck(taskSet, selected, concurrency) {
 	const passed = results.every((result) => result.ok);
 	const out = resolve(root, arg("out", `acceptance/quality/${new Date().toISOString().slice(0, 10)}-${taskSet}-self-check.json`));
 	mkdirSync(dirname(out), { recursive: true });
-	writeFileSync(out, `${JSON.stringify({ taskSet, frozenAt: FROZEN_AT, passed, results }, null, 2)}\n`);
+	const judge = liveJudge ? { model: liveJudge.model, thinking: liveJudge.thinking ?? null, judgements: liveJudge.judgements } : undefined;
+	writeFileSync(out, `${JSON.stringify({ taskSet, frozenAt: FROZEN_AT, passed, results, judge }, null, 2)}\n`);
 	console.log(`${passed ? "Self-check passed" : "Self-check FAILED"}: ${results.filter((result) => result.ok).length}/${results.length} tasks. Wrote ${out}`);
 	return passed ? 0 : 1;
 }
@@ -450,7 +627,22 @@ async function main() {
 	const only = arg("only", "");
 	const selected = taskModule.tasks().filter((task) => !only || only.split(",").includes(task.id));
 	if (only && selected.length !== only.split(",").length) throw new Error(`Unknown task id in --only ${only}`);
-	if (process.argv.includes("--self-check")) return selfCheck(taskSet, selected, Number(arg("concurrency", "4")));
+	const judgeModel = arg("judge-model", DEFAULT_JUDGE_MODEL);
+	const judgeThinking = arg("judge-thinking", "low") || undefined;
+	const judgeCommand = arg("judge-command", "pi").trim().split(/\s+/);
+	const makeJudge = (keepDir) => ({
+		model: judgeModel,
+		thinking: judgeThinking,
+		judgements: {},
+		call: (model) => createModelJudge({ command: judgeCommand, model, thinking: judgeThinking, keepDir }),
+	});
+	if (process.argv.includes("--self-check"))
+		return selfCheck(
+			taskSet,
+			selected,
+			Number(arg("concurrency", "4")),
+			process.argv.includes("--judge-live") ? makeJudge(undefined) : undefined,
+		);
 	const model = arg("model", "cliproxyapi/gpt-6-sol");
 	const trials = Number(arg("trials", "2"));
 	const concurrency = Number(arg("concurrency", "3"));
@@ -469,8 +661,11 @@ async function main() {
 			`acceptance/quality/${new Date().toISOString().slice(0, 10)}-${taskSet}-${model.replace(/[^a-z0-9.-]+/gi, "_")}${thinking ? `-thinking-${thinking}` : ""}.json`,
 		),
 	);
+	const judge = process.argv.includes("--no-judge") ? undefined : makeJudge(keepDir);
 	const jobs = selected.flatMap((task) =>
-		variants.flatMap((variant) => Array.from({ length: trials }, (_, index) => ({ task, variant, trial: index + 1, model, thinking, keepDir, commands }))),
+		variants.flatMap((variant) =>
+			Array.from({ length: trials }, (_, index) => ({ task, variant, trial: index + 1, model, thinking, keepDir, commands, judge })),
+		),
 	);
 	console.log(`Quality comparison (${taskSet} set): ${selected.length} tasks x ${variants.join("/")} x ${trials} trials = ${jobs.length} runs (${model}${thinking ? `, thinking ${thinking}` : ""})`);
 	const records = [];
@@ -482,7 +677,7 @@ async function main() {
 				const record = await runOne(job);
 				records.push(record);
 				console.log(
-					`${record.passed ? "PASS" : record.infrastructure ? "INFRA" : "FAIL"} ${record.variant} ${record.task}#${record.trial} ${(record.durationMs / 1000).toFixed(0)}s${formatTools(record.toolsByName)}${record.error ? ` (${record.error.slice(0, 120)})` : ""}`,
+					`${record.passed ? "PASS" : record.infrastructure ? "INFRA" : "FAIL"} ${record.variant} ${record.task}#${record.trial} ${(record.durationMs / 1000).toFixed(0)}s tools ${JSON.stringify(record.toolsByName ?? {})} frames ${record.framesSpawned ?? "n/a"}${record.judge ? ` judge ${record.judge.error ? `error (${record.judge.error.slice(0, 80)})` : `${record.judge.total}/${record.judge.max}`}` : ""}${record.error ? ` (${record.error.slice(0, 120)})` : ""}`,
 				);
 			}
 		}),
@@ -505,7 +700,8 @@ async function main() {
 	}
 	const summary = summarize(records, variants);
 	mkdirSync(dirname(out), { recursive: true });
-	writeFileSync(out, `${JSON.stringify({ taskSet, frozenAt: FROZEN_AT, thresholds: THRESHOLDS, model, thinking, ultronCommand: ultronCommand || undefined, trials, summary, records }, null, 2)}\n`);
+	const judgeConfig = judge ? { model: judgeModel, thinking: judgeThinking ?? null, command: judgeCommand.join(" ") } : undefined;
+	writeFileSync(out, `${JSON.stringify({ taskSet, frozenAt: FROZEN_AT, thresholds: THRESHOLDS, model, thinking, ultronCommand: ultronCommand || undefined, trials, judge: judgeConfig, summary, records }, null, 2)}\n`);
 	console.log(JSON.stringify(summary, null, 2));
 	console.log(`Wrote ${out}`);
 	return summary.passed ? 0 : 1;

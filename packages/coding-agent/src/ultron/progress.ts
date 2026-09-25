@@ -3,6 +3,7 @@ import type { Context } from "@ultron/agent-core";
 import { isJsonValue, type JsonValue } from "@ultron/chord";
 import Type from "typebox";
 import { Check } from "typebox/value";
+import { readVersioned } from "./format-version.ts";
 import type { HostModuleRequest, HostModuleStore, NativeHostApi, NativeHostModule } from "./rlm/host-module.ts";
 import type { NativeTask } from "./rlm/task-store.ts";
 
@@ -232,8 +233,9 @@ export function createProgressModule(options: ProgressModuleOptions): NativeHost
 	}
 
 	async function load(): Promise<void> {
-		const saved = await options.store.read();
-		if (saved === undefined) return;
+		const stored = await options.store.read();
+		if (stored === undefined) return;
+		const saved = isJsonValue(stored) ? readVersioned("ultron.module/progress", stored) : stored;
 		if (!isJsonValue(saved) || !Check(documentSchema, saved)) throw invalidDocument();
 		const parsed = structuredClone(saved) as unknown as ProgressDocument;
 		// A verifier that was still running when the owner ended produced no evidence of success.

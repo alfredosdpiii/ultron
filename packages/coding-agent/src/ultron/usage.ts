@@ -1,6 +1,7 @@
 import { type Session, value } from "@ultron/agent-core";
 import type { Context, JsonValue } from "@ultron/chord";
 import { BACKGROUND_CONTEXT } from "@ultron/chord/context";
+import { readVersioned } from "./format-version.ts";
 
 export type NativeUsageKind = "task" | "model" | "jev";
 export type NativeUsageCallStatus = "succeeded" | "failed" | "cancelled" | "unknown";
@@ -12,7 +13,17 @@ export type NativeUsageLimits = {
 	maxWallMs?: number;
 	/** Optional spend cap per root, from provider-reported model cost. Unset means no cap. */
 	maxCostUsd?: number;
+	/**
+	 * nano-rlm's `max_total_tokens`: provider-reported tokens of every model turn of one root, its descendants
+	 * included. Unset means no limit.
+	 */
+	maxTotalTokens?: number;
+	/** nano-rlm's `max_total_turns`: model turns (responses) of one root, its descendants included. Unset means no limit. */
+	maxTotalTurns?: number;
 };
+
+/** The per-root policy knobs as settings (`rootBudget` in settings.json); the environment overrides them. */
+export type NativeRootBudgetSettings = { maxTotalTokens?: number; maxTotalTurns?: number };
 
 /** Worker defaults: 24 unfinished tasks and a 30-minute wall budget per root turn; no cost cap. */
 export const DEFAULT_NATIVE_USAGE_LIMITS = { maxAdmittedTasks: 24, maxWallMs: 30 * 60 * 1000 } as const;
@@ -21,8 +32,13 @@ export const DEFAULT_NATIVE_USAGE_LIMITS = { maxAdmittedTasks: 24, maxWallMs: 30
  * Limits from `ULTRON_MAX_WALL_MS`, `ULTRON_MAX_ADMITTED_TASKS` and `ULTRON_MAX_COST_USD`. A missing or
  * invalid value keeps the default; `none`, `off` or `unlimited` removes the wall or admission limit.
  * The cost cap is off unless set to a nonnegative number (an optional leading `$` is accepted).
+ * `ULTRON_MAX_TOTAL_TOKENS` and `ULTRON_MAX_TOTAL_TURNS` (positive integers) override the `rootBudget` settings;
+ * `none`, `off` or `unlimited` removes a limit the settings set. Both are off by default.
  */
-export function nativeUsageLimitsFromEnv(env: Record<string, string | undefined> = process.env): NativeUsageLimits {
+export function nativeUsageLimitsFromEnv(
+	env: Record<string, string | undefined> = process.env,
+	settings: NativeRootBudgetSettings = {},
+): NativeUsageLimits {
 	const unlimited = (raw: string) => ["none", "off", "unlimited"].includes(raw.toLowerCase());
 	const integer = (raw: string | undefined, fallback: number, minimum: number): number | undefined => {
 		const text = raw?.trim();
@@ -39,6 +55,12 @@ export function nativeUsageLimitsFromEnv(env: Record<string, string | undefined>
 	if (maxAdmittedTasks !== undefined) limits.maxAdmittedTasks = maxAdmittedTasks;
 	if (maxWallMs !== undefined) limits.maxWallMs = maxWallMs;
 	if (Number.isFinite(cost) && cost >= 0) limits.maxCostUsd = cost;
+	const setting = (candidate: number | undefined): number | undefined =>
+		Number.isSafeInteger(candidate) && (candidate as number) >= 1 ? candidate : undefined;
+	const maxTotalTokens = integer(env.ULTRON_MAX_TOTAL_TOKENS, setting(settings.maxTotalTokens) ?? 0, 1);
+	const maxTotalTurns = integer(env.ULTRON_MAX_TOTAL_TURNS, setting(settings.maxTotalTurns) ?? 0, 1);
+	if (maxTotalTokens) limits.maxTotalTokens = maxTotalTokens;
+	if (maxTotalTurns) limits.maxTotalTurns = maxTotalTurns;
 	return limits;
 }
 
@@ -103,7 +125,11 @@ export type NativeUsageStatus = {
 		maxAdmittedTasks: number | null;
 		maxWallMs: number | null;
 		maxCostUsd: number | null;
+		maxTotalTokens: number | null;
+		maxTotalTurns: number | null;
 	};
+	/** Model turns and tokens of this root and its descendants, counted while a turn or token limit is set. */
+	turns: NativeUsageTurns;
 	/** Settled model spend of this root against the optional cap. */
 	cost: NativeUsageCost;
 	admittedTasks: number;
@@ -146,6 +172,13 @@ export type NativeUsageHistory = {
 	importedRoots: number;
 };
 
+export type NativeUsageTurns = {
+	turns: number;
+	tokens: number;
+	maxTotalTurns: number | null;
+	maxTotalTokens: number | null;
+};
+
 export type NativeUsageCost = {
 	maxCostUsd: number | null;
 	/** Sum of provider-reported cost over settled model calls whose cost is known. */
@@ -161,6 +194,10 @@ export type NativeUsageLedgerLike = {
 	settle(reservation: NativeUsageReservation, settlement?: NativeUsageSettlement): Promise<void>;
 	status(rootId?: string): Promise<NativeUsageStatus>;
 	reconcile?(activeTaskIds: readonly string[]): Promise<void>;
+	/** Counts one model turn of `rootId` (the default root when undefined) against the turn and token limits. */
+	recordTurn?(rootId: string | undefined, measurement?: { totalTokens?: number | null }): Promise<void>;
+	/** Why `rootId` may start no further model work under the turn and token limits, or undefined. */
+	turnBudgetExhausted?(rootId: string | undefined): Promise<string | undefined>;
 };
 
 type StoredMeasurement = {
@@ -196,6 +233,8 @@ type StoredRoot = {
 	calls: StoredCall[];
 	/** Set on a historical root written by an import, e.g. Pi usage entries; never admits new work. */
 	imported?: { source: string; entries: number };
+	/** Model turns of the root and its descendants, kept while a turn or token limit is set. */
+	turns?: { count: number; tokens: number; lastAt: number };
 };
 
 type StoredDocument = {
@@ -340,6 +379,12 @@ function validateDocument(valueToCheck: JsonValue): StoredDocument {
 		optionalFiniteNumber(root.deadlineAt, "deadlineAt");
 		if (!Array.isArray(root.reservations) || !Array.isArray(root.calls))
 			throw new Error("Invalid usage ledger root records");
+		if (root.turns !== undefined) {
+			const turns = object(root.turns);
+			finiteInteger(turns.count, "turn count");
+			if (finiteNumber(turns.tokens, "turn tokens") < 0) throw new Error("Invalid usage ledger turn tokens");
+			finiteNumber(turns.lastAt, "turn lastAt");
+		}
 		if (root.imported !== undefined) {
 			const imported = object(root.imported);
 			if (typeof imported.source !== "string" || !imported.source) throw new Error("Invalid usage ledger import");
@@ -365,6 +410,10 @@ function normalizeLimits(limits: NativeUsageLimits | undefined): Required<Native
 	const maxAdmittedTasks = limits?.maxAdmittedTasks;
 	const maxWallMs = limits?.maxWallMs;
 	const maxCostUsd = limits?.maxCostUsd;
+	const maxTotalTokens = limits?.maxTotalTokens;
+	const maxTotalTurns = limits?.maxTotalTurns;
+	if (maxTotalTokens !== undefined) finiteInteger(maxTotalTokens, "maxTotalTokens", 1);
+	if (maxTotalTurns !== undefined) finiteInteger(maxTotalTurns, "maxTotalTurns", 1);
 	if (maxAdmittedTasks !== undefined) finiteInteger(maxAdmittedTasks, "maxAdmittedTasks", 0);
 	if (maxWallMs !== undefined) finiteInteger(maxWallMs, "maxWallMs", 1);
 	if (maxCostUsd !== undefined && finiteNumber(maxCostUsd, "maxCostUsd") < 0)
@@ -373,6 +422,8 @@ function normalizeLimits(limits: NativeUsageLimits | undefined): Required<Native
 		maxAdmittedTasks: maxAdmittedTasks ?? Number.POSITIVE_INFINITY,
 		maxWallMs: maxWallMs ?? Number.POSITIVE_INFINITY,
 		maxCostUsd: maxCostUsd ?? Number.POSITIVE_INFINITY,
+		maxTotalTokens: maxTotalTokens ?? Number.POSITIVE_INFINITY,
+		maxTotalTurns: maxTotalTurns ?? Number.POSITIVE_INFINITY,
 	};
 }
 
@@ -381,7 +432,30 @@ function publicLimits(limits: Required<NativeUsageLimits>): NativeUsageStatus["l
 		maxAdmittedTasks: Number.isFinite(limits.maxAdmittedTasks) ? limits.maxAdmittedTasks : null,
 		maxWallMs: Number.isFinite(limits.maxWallMs) ? limits.maxWallMs : null,
 		maxCostUsd: Number.isFinite(limits.maxCostUsd) ? limits.maxCostUsd : null,
+		maxTotalTokens: Number.isFinite(limits.maxTotalTokens) ? limits.maxTotalTokens : null,
+		maxTotalTurns: Number.isFinite(limits.maxTotalTurns) ? limits.maxTotalTurns : null,
 	};
+}
+
+function turnUsage(root: StoredRoot, limits: Required<NativeUsageLimits>): NativeUsageTurns {
+	return {
+		turns: root.turns?.count ?? 0,
+		tokens: root.turns?.tokens ?? 0,
+		maxTotalTurns: Number.isFinite(limits.maxTotalTurns) ? limits.maxTotalTurns : null,
+		maxTotalTokens: Number.isFinite(limits.maxTotalTokens) ? limits.maxTotalTokens : null,
+	};
+}
+
+/** The error text for a root that has used up its turn or token limit, or undefined. */
+function turnExhaustion(root: StoredRoot, limits: Required<NativeUsageLimits>): string | undefined {
+	const count = root.turns?.count ?? 0;
+	const tokens = root.turns?.tokens ?? 0;
+	const advice = "No further model work is admitted for this root; answer with what you have.";
+	if (count >= limits.maxTotalTurns)
+		return `Usage turn limit reached for root ${root.rootId}: ${count} of ${limits.maxTotalTurns} model turns used (max_total_turns, ULTRON_MAX_TOTAL_TURNS). ${advice}`;
+	if (tokens >= limits.maxTotalTokens)
+		return `Usage token limit reached for root ${root.rootId}: ${tokens} of ${limits.maxTotalTokens} tokens used (max_total_tokens, ULTRON_MAX_TOTAL_TOKENS). ${advice}`;
+	return undefined;
 }
 
 function spend(root: StoredRoot, limits: Required<NativeUsageLimits>): NativeUsageCost {
@@ -515,6 +589,7 @@ function lastActivity(root: StoredRoot): number {
 	let latest = root.startedAt ?? Number.NEGATIVE_INFINITY;
 	for (const call of root.calls) latest = Math.max(latest, call.settledAt, call.admittedAt);
 	for (const reservation of root.reservations) latest = Math.max(latest, reservation.admittedAt);
+	if (root.turns) latest = Math.max(latest, root.turns.lastAt);
 	return latest;
 }
 
@@ -551,7 +626,8 @@ export class NativeUsageLedger implements NativeUsageLedgerLike {
 		} catch {
 			throw new Error("Usage ledger could not be read");
 		}
-		this.document = saved === undefined ? emptyDocument() : validateDocument(saved);
+		this.document =
+			saved === undefined ? emptyDocument() : validateDocument(readVersioned("ultron.usage/root", saved));
 	}
 
 	private ensureLoaded(): Promise<void> {
@@ -648,10 +724,10 @@ export class NativeUsageLedger implements NativeUsageLedgerLike {
 					this.limits.maxAdmittedTasks
 			)
 				throw new Error(`Usage admitted-task limit exceeded for root ${rootId}`);
-			if (
-				Number.isFinite(this.limits.maxCostUsd) &&
-				(request.kind === "model" || (request.kind === "task" && request.modelBacked !== false))
-			) {
+			const modelWork = request.kind === "model" || (request.kind === "task" && request.modelBacked !== false);
+			const exhausted = modelWork ? turnExhaustion(root, this.limits) : undefined;
+			if (exhausted) throw new Error(exhausted);
+			if (Number.isFinite(this.limits.maxCostUsd) && modelWork) {
 				const cost = spend(root, this.limits);
 				if (cost.unknownPricedCalls > 0)
 					throw new Error(
@@ -726,6 +802,7 @@ export class NativeUsageLedger implements NativeUsageLedgerLike {
 				rootId,
 				limits: publicLimits(this.limits),
 				cost: spend(root, this.limits),
+				turns: turnUsage(root, this.limits),
 				admittedTasks: root.reservations.filter((reservation) => reservation.kind === "task").length,
 				activeReservations: root.reservations.length,
 				startedAt: root.startedAt,
@@ -735,6 +812,38 @@ export class NativeUsageLedger implements NativeUsageLedgerLike {
 				reservations: root.reservations.map(cloneReservation),
 				session: this.sessionTotals(),
 			};
+		});
+	}
+
+	private get countsTurns(): boolean {
+		return Number.isFinite(this.limits.maxTotalTurns) || Number.isFinite(this.limits.maxTotalTokens);
+	}
+
+	/**
+	 * Counts one model turn (one provider response) of `rootId` or one of its descendants. Kept only while a turn or
+	 * token limit is set, so sessions without one never write the ledger per response.
+	 */
+	recordTurn(rootId: string | undefined, measurement: { totalTokens?: number | null } = {}): Promise<void> {
+		if (!this.countsTurns) return Promise.resolve();
+		return this.enqueue(async () => {
+			const id = rootId ?? this.defaultRootId;
+			const root = this.document.roots[id] ?? emptyRoot(id);
+			if (root.imported) return;
+			const tokens = measurement.totalTokens;
+			const counted = typeof tokens === "number" && Number.isFinite(tokens) && tokens > 0 ? tokens : 0;
+			const turns = root.turns ?? { count: 0, tokens: 0, lastAt: 0 };
+			root.turns = { count: turns.count + 1, tokens: turns.tokens + counted, lastAt: this.now() };
+			this.document.roots[id] = root;
+			await this.write(this.document);
+		});
+	}
+
+	/** The limit error for `rootId` once its turns or tokens reached a limit; undefined while work may continue. */
+	turnBudgetExhausted(rootId: string | undefined): Promise<string | undefined> {
+		if (!this.countsTurns) return Promise.resolve(undefined);
+		return this.enqueue(async () => {
+			const root = this.document.roots[rootId ?? this.defaultRootId];
+			return root ? turnExhaustion(root, this.limits) : undefined;
 		});
 	}
 
