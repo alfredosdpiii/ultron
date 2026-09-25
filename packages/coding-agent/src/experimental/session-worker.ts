@@ -161,6 +161,16 @@ export type RlmPoolStats = {
 	evictions: number;
 };
 
+/** Names the preloaded globals so models call them instead of guessing imports. */
+export const RLM_TOOL_DESCRIPTION = [
+	"Execute Python in Ultron's persistent RLM environment. Use ordinary Python to inspect data, retain intermediate values, invoke typed specialists, and compose optional workflows.",
+	"Globals are preloaded (nothing to import) and their methods are async, so use top-level `await`:",
+	'- `await rlm.spawn(prompt, name="short-name")` starts a recursive subagent and returns a handle; `await rlm.collect()` waits for and returns subagent results; `await rlm.list_subagents()`.',
+	'- `await agents.invoke(definition, input)` runs a typed agent and returns its result (`await agents.list()` shows definitions, e.g. "rlm-child" with input {"prompt": ...}); `agents.spawn(...)` starts one in the background and returns a handle with `await handle.result()`.',
+	"- `await workflows.run(nodes)` runs a validated agent graph; `await memory.prepare(query)` / `await memory.propose(text, evidence)` recall and retain long-term memory; `await bash(cmd)` runs a shell command.",
+	"- `state` is a dict that survives between calls; other variables persist within the session until the kernel is reset.",
+].join("\n");
+
 export function createUltronRlmTool(
 	cwd: string,
 	hostHandler: RlmHostHandler,
@@ -230,8 +240,7 @@ export function createUltronRlmTool(
 		}),
 		name: "rlm",
 		label: "rlm",
-		description:
-			"Execute Python in Ultron's persistent RLM environment. Use ordinary Python to inspect data, retain intermediate values, invoke typed specialists, and compose optional workflows.",
+		description: RLM_TOOL_DESCRIPTION,
 		parameters: schema,
 		async execute(
 			_toolCallId,
