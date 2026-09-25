@@ -4,7 +4,7 @@ Ultron installs as its own command (`ultron`) with its own profile (`~/.ultron/a
 
 ## Before relying on Ultron day to day
 
-1. **Gate.** `npm run gate` must pass: check, all A01-A46 acceptance rows, and a current quality comparison (`npm run eval:quality`) within the frozen thresholds. The gate uses deterministic pass rates only; LLM-judge scores from the judged set (`node scripts/eval-quality.mjs --tasks judged`) and the uptake metrics are evidence to read beside it, never a gate on their own.
+1. **Gate.** `npm run gate` must pass: check, every acceptance row (A01-A55), and a current quality comparison (`npm run eval:quality`) within the frozen thresholds. The gate uses deterministic pass rates only; LLM-judge scores from the judged set (`node scripts/eval-quality.mjs --tasks judged`) and the uptake metrics are evidence to read beside it, never a gate on their own.
 2. **Back up the profile.** `ultron migrate backup` writes a timestamped, hash-manifested copy of `~/.ultron/agent` (not sessions) to `~/.ultron/backups/` with owner-only permissions. Credentials are copied, never printed.
 3. **Record versions.** Note `ultron --version`, the git commit of this repository (`git rev-parse HEAD`), and `pi --version` for the preserved stock Pi.
 4. **Bring sessions over explicitly.** `ultron migrate import-pi <pi-session.jsonl>` imports a Pi session; the Pi file is never changed. Importing the same session twice is refused.

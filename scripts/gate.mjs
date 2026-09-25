@@ -3,7 +3,7 @@
  * Release gate: required suites plus the frozen quality thresholds.
  *
  * 1. `npm run check` (lint, types, dependency checks).
- * 2. `npm run test:acceptance` must report every A01-A46 row passed.
+ * 2. `npm run test:acceptance` must report every manifest row passed.
  * 3. The newest full quality comparison of the default task set in acceptance/quality/ must exist, use the current frozen task set,
  *    and meet the thresholds it was frozen with. Quality runs are metered, so the gate reads the recorded
  *    result instead of re-running it; run `npm run eval:quality` to refresh it.
@@ -32,8 +32,9 @@ step("acceptance", "npm run test:acceptance");
 const report = join(root, "acceptance/report.json");
 if (existsSync(report)) {
 	const { summary } = JSON.parse(readFileSync(report, "utf8"));
-	const complete = summary.passed === summary.total || summary.passed === 46;
-	results.push({ name: "acceptance rows", ok: complete, detail: `${summary.passed} passed of 46` });
+	// Every row in the manifest, not a fixed count: new rows must pass too.
+	const complete = summary.total > 0 && summary.passed === summary.total;
+	results.push({ name: "acceptance rows", ok: complete, detail: `${summary.passed} passed of ${summary.total}` });
 }
 
 const qualityDir = join(root, "acceptance/quality");

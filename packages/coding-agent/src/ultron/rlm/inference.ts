@@ -188,6 +188,8 @@ type FrameState = {
 	/** Requests settled by the response hook during the current prompt. */
 	settled: { requests: number; tokens: number };
 	conversationChars: number;
+	/** Input-token estimate of the frame's latest request, used to size the next one before it is built. */
+	lastEstimate?: number;
 	exhausted?: string;
 	outputs: string[];
 	attempts: Array<{ attempt: number; at: number; output: string; error?: string }>;
@@ -461,6 +463,15 @@ export class InferenceRuntime {
 				const frame = this.byLane.get(event.lane);
 				return frame ? { systemPrompt: frameSystemPrompt(frame.spec.depth) } : undefined;
 			}),
+			// A retry or tool round that the budget cannot cover is refused before it is sent (the run fails with
+			// request_blocked and the frame reports Incomplete); before_payload still guards estimate misses.
+			harness.hooks.on("before_request", (event) => {
+				const frame = this.byLane.get(event.lane);
+				if (!frame || frame.pending || frame.lastEstimate === undefined) return undefined;
+				if (this.canCover(frame.node, frame.lastEstimate, event.model.maxTokens)) return undefined;
+				frame.exhausted = "budget exhausted before a follow-up request (a retry or tool round)";
+				return { block: { reason: `Inference frame ${frame.id}: ${frame.exhausted}` } };
+			}),
 			harness.hooks.on("before_payload", (event) => {
 				const frame = this.byLane.get(event.lane);
 				return frame ? { payload: this.beforePayload(frame, event.payload, event.model) } : undefined;
@@ -480,11 +491,12 @@ export class InferenceRuntime {
 	beforePayload(frame: FrameState, payload: unknown, model?: { api?: string; provider?: string; maxTokens?: number }) {
 		let hold = frame.pending;
 		frame.pending = undefined;
+		const estimate = Math.ceil(JSON.stringify(payload ?? null).length / 4) + REQUEST_OVERHEAD_TOKENS;
+		frame.lastEstimate = estimate;
 		if (!hold) {
-			const estimate = Math.ceil(JSON.stringify(payload ?? null).length / 4) + REQUEST_OVERHEAD_TOKENS;
 			hold = this.claim(frame.node, estimate, model?.maxTokens, false);
 			if (!hold) {
-				// Hooks cannot refuse a request; stop the lane and keep whatever still goes out to one token.
+				// The payload outgrew the before_request estimate: stop the lane and cap what still goes out to one token.
 				frame.exhausted = "budget exhausted before a follow-up request (a retry or tool round)";
 				void frame.lane?.abort(BACKGROUND_CONTEXT).catch(() => {});
 				return capOutputTokens(payload, 1, model?.api, model?.provider);
@@ -513,6 +525,15 @@ export class InferenceRuntime {
 				charged,
 				status: message.stopReason ?? "unknown",
 			});
+	}
+
+	/** Whether a request of about `estimate` input tokens fits: one call and a minimum output tranche. */
+	private canCover(node: BudgetNode, estimate: number, modelMax: number | undefined): boolean {
+		if (node.available("calls") < 1) return false;
+		const available = node.available("tokens");
+		if (!Number.isFinite(available)) return true;
+		const ceiling = Math.min(MAX_TRANCHE, modelMax && modelMax > 0 ? modelMax : MAX_TRANCHE);
+		return Math.min(ceiling, Math.floor(available / 4), available - estimate) >= MIN_TRANCHE;
 	}
 
 	/**

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Ultron A01-A46 acceptance report (`npm run test:acceptance`).
+ * Ultron acceptance report (`npm run test:acceptance`), over every row in acceptance/manifest.json.
  *
  * Runs the evidence tests named in acceptance/manifest.json and judges every row:
  * - passed: every listed evidence test exists and passed, the instrument lock matches, and the
@@ -228,12 +228,17 @@ export function computeRows({ manifest, run, lock, root, mutation = null, mutati
 	});
 }
 
+/** "A01-A55" for the rows in the report, so the label follows the manifest. */
+export function rowRange(rows) {
+	return rows.length === 0 ? "no rows" : `${rows[0].id}-${rows.at(-1).id}`;
+}
+
 const cell = (text) => String(text).replace(/\|/g, "\\|").replace(/\n/g, " ");
 
 export function renderMarkdown(report) {
 	const { summary } = report;
 	const lines = [
-		"# Ultron A01-A46 acceptance report",
+		`# Ultron ${rowRange(report.rows)} acceptance report`,
 		"",
 		`Generated ${report.generated_at} by \`npm run test:acceptance\`. Unavailable is never passed; partial evidence is never a pass.`,
 		"",
@@ -330,7 +335,7 @@ function main(argv) {
 	writeFileSync(join(root, REPORT_MD), renderMarkdown(report));
 	const { summary } = report;
 	console.log(
-		`A01-A46: ${summary.passed} passed, ${summary.failed} failed, ${summary.unverified} unverified, ${summary.blocked} blocked. Wrote ${REPORT_MD}`,
+		`${rowRange(report.rows)}: ${summary.passed} passed, ${summary.failed} failed, ${summary.unverified} unverified, ${summary.blocked} blocked. Wrote ${REPORT_MD}`,
 	);
 	return summary.failed > 0 ? 1 : 0;
 }

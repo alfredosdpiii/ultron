@@ -1,6 +1,22 @@
-# Ultron A01-A46 acceptance
+# Ultron acceptance (A01-A55)
 
 The acceptance matrix comes from the plan's section 13. Row status is not written by hand: it is computed by the acceptance runner from `acceptance/manifest.json`, and the latest result is in [acceptance/report.md](../acceptance/report.md).
+
+## Rows added by the supreme plan
+
+A01-A46 are the original acceptance rows. The supreme plan (`supremeplan.md`) added:
+
+| Row | Phase | Behavior |
+|---|---|---|
+| A47 | 2 | An input larger than the model's window is processed to the exact answer; no request exceeds the window and the root transcript never contains the input |
+| A48 | 2 | Contract repair: a malformed frame answer is re-asked; exhaustion returns `Incomplete` with evidence and the root turn continues |
+| A49 | 2 | Budget subtree: a map under a call budget runs what fits and marks the rest incomplete; tokens never exceed the pool; failed requests refund |
+| A50 | 2 | Aborting the root cancels every running frame within 2 s |
+| A51 | 3 | After many completed tasks root requests stay bounded (collapse on return) while `agents.result` returns full values |
+| A52 | 3 | `ctx.forget` never removes the current user turn or pinned items; extensions observe edits; notes and pins survive compaction |
+| A53 | 4 | A code skill whose test fails is never importable; a passing one is, survives restart, and rolls back cleanly |
+| A54 | 4 | A repeated task reuses a saved code skill and costs less the second time |
+| A55 | 6 | An agent class defined in a cell is invokable typed end to end, keeps state across cells and snapshots, and rejects a bad return with the schema error |
 
 ## How a row is judged
 

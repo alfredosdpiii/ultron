@@ -25,6 +25,8 @@ type Reply = {
 	fail?: boolean;
 	/** Resolves the reply later (the request stays in flight until then). */
 	wait?: Promise<void>;
+	/** After this response the harness makes a follow-up request in the same prompt (a tool round). */
+	followUp?: { text: string };
 };
 type Call = { lane: string; message: string; system: string; payload: Record<string, unknown>; attempt: number };
 type Script = (call: Call) => Reply;
@@ -135,6 +137,44 @@ function hookedHarness(script: Script) {
 					await run("after_response", { lane: name, message: assistant });
 					conversation.push({ role: "assistant", content: text });
 					entries.push({ id, type: "message", message: assistant });
+					if (reply.followUp) {
+						// A tool round: the harness asks before_request first, and a block fails the run unsent.
+						const blocked = (await run("before_request", { lane: name, model: MODEL, step: "assistant" }))
+							?.block as { reason: string } | undefined;
+						if (blocked)
+							return {
+								ok: true,
+								value: {
+									status: "failed",
+									tipId: id,
+									fromTipId,
+									error: { code: "request_blocked", message: blocked.reason },
+								},
+							};
+						conversation.push({ role: "user", content: "tool result" });
+						let next: Record<string, unknown> = {
+							...payload,
+							messages: [...(payload.messages as unknown[]), ...conversation.slice(-2)],
+						};
+						next =
+							((await run("before_payload", { lane: name, model: MODEL, payload: next }))?.payload as Record<
+								string,
+								unknown
+							>) ?? next;
+						calls.push({ lane: name, message: "tool round", system, payload: next, attempt: counter });
+						counter += 1;
+						const followId = `${name}#${counter}`;
+						const second = {
+							role: "assistant",
+							content: [{ type: "text", text: reply.followUp.text }],
+							usage: { ...usage, input: Math.ceil(JSON.stringify(next).length / 4) },
+							stopReason: "stop",
+						};
+						await run("after_response", { lane: name, message: second });
+						conversation.push({ role: "assistant", content: reply.followUp.text });
+						entries.push({ id: followId, type: "message", message: second });
+						return { ok: true, value: { status: "completed", tipId: followId, fromTipId } };
+					}
 					return { ok: true, value: { status: "completed", tipId: id, fromTipId } };
 				},
 				findEntries: async (query?: { stopAtId?: string }) => {
@@ -388,6 +428,21 @@ describe("A49 budget subtree: shared pool, tranches, refunds", () => {
 		expect(reply.results[1]).toMatchObject({ status: "incomplete", reason: "budget_exhausted" });
 		expect(calls).toHaveLength(1);
 		expect(reply.budget.spent.tokens).toBeLessThanOrEqual(700);
+	});
+
+	test("a follow-up request the budget cannot cover is refused before it is sent, and the frame is incomplete", async () => {
+		const { call, calls, aborts } = setup(() => ({ text: "1", followUp: { text: "2" } }));
+		const reply = await call<MapReply>("rlm.map", {
+			frames: [{ task: "Count.", context: [text("z".repeat(600))] }],
+			contract: { type: "integer" },
+			budget: { calls: 1 },
+			concurrency: 1,
+		});
+		expect(reply.results[0]).toMatchObject({ status: "incomplete", reason: "budget_exhausted" });
+		// Only the first request went out; the tool round was refused, not aborted mid-flight.
+		expect(calls).toHaveLength(1);
+		expect(aborts).toEqual([]);
+		expect(reply.budget.spent.calls).toBe(1);
 	});
 
 	test("a provider failure refunds its tranche; cache reads are discounted", async () => {
