@@ -12,12 +12,21 @@ import { type KernelExecutionResult, RlmKernel } from "../src/ultron/rlm/kernel.
 const runtimePath = fileURLToPath(new URL("../src/ultron/rlm/runtime.py", import.meta.url));
 const PREVIEW_BYTES = 8192;
 const MARKER = "\n... [truncated]";
+/** Appended to a truncated result preview: the value is still reachable as `_`. */
+const HINT =
+	"The whole value is kept in the kernel as `_`: slice it, search it, or use preview(_) instead of showing it all.";
+/** stdout and stderr keep their head and tail within the output budget (ULTRON_RLM_OUTPUT_BYTES), plus a marker. */
+const OUTPUT_LIMIT = 20_000 + 64;
 
 function bounded(result: KernelExecutionResult): void {
 	// The host receives plain strings only; it never renders Python objects itself.
-	for (const text of [result.stdout, result.stderr, result.result ?? "", result.error?.evalue ?? ""]) {
+	for (const text of [result.stdout, result.stderr]) {
 		expect(typeof text).toBe("string");
-		expect(Buffer.byteLength(text)).toBeLessThanOrEqual(PREVIEW_BYTES + MARKER.length);
+		expect(Buffer.byteLength(text)).toBeLessThanOrEqual(OUTPUT_LIMIT);
+	}
+	for (const text of [result.result ?? "", result.error?.evalue ?? ""]) {
+		expect(typeof text).toBe("string");
+		expect(Buffer.byteLength(text)).toBeLessThanOrEqual(PREVIEW_BYTES + MARKER.length + HINT.length + 1);
 	}
 	for (const line of result.error?.traceback ?? []) expect(typeof line).toBe("string");
 }
@@ -40,16 +49,20 @@ describe("A37 bounded preview in the kernel", () => {
 	test("large values get a bounded preview while the full value stays usable in later cells", async () => {
 		const list = await kernel.execute("big = list(range(1_000_000))\nbig");
 		bounded(list);
-		expect(list.result?.startsWith("[0, 1, 2, 3")).toBe(true);
-		expect(list.result?.endsWith(MARKER)).toBe(true);
+		// A big container is shown by reference: size, item types, head and tail.
+		expect(list.result).toContain("<list: 1,000,000 items; item types int>");
+		expect(list.result).toContain("head: [0, 1, 2, 3");
+		expect(list.result).toContain("tail: [999995, 999996, 999997, 999998, 999999]");
+		expect(list.result?.endsWith(HINT)).toBe(true);
 		expect(await kernel.execute("sum(big), len(big), big[-1]")).toMatchObject({
 			result: "(499999500000, 1000000, 999999)",
 		});
 
 		const text = await kernel.execute("text = 'ab' * 5_000_000\nprint(text)\ntext");
 		bounded(text);
-		expect(text.stdout.endsWith(MARKER)).toBe(true);
-		expect(text.result?.endsWith(MARKER)).toBe(true);
+		expect(text.stdout).toMatch(/^abab.*\[\.\.\. \d+ bytes truncated \.\.\.\].*abab\n$/s);
+		expect(text.result?.startsWith("<str: 10,000,000 chars, 1 lines, sha256 ")).toBe(true);
+		expect(text.result?.endsWith(HINT)).toBe(true);
 		expect(await kernel.execute("len(text), text[-3:]")).toMatchObject({ result: "(10000000, 'bab')" });
 
 		const described = await kernel.execute(
@@ -75,7 +88,8 @@ describe("A37 bounded preview in the kernel", () => {
 			"deep = []\ncur = deep\nfor _ in range(100_000):\n    nxt = []\n    cur.append(nxt)\n    cur = nxt\ndeep",
 		);
 		bounded(deep);
-		expect(deep).toMatchObject({ status: "ok", result: expect.stringMatching(/^\[\[\[.*truncated\]$/s) });
+		expect(deep).toMatchObject({ status: "ok", result: expect.stringMatching(/^\[\[\[.*truncated\]\n/s) });
+		expect(deep.result?.endsWith(HINT)).toBe(true);
 		// A user __repr__ that recurses into its own cycle becomes a placeholder, not a crash.
 		const recursive = await kernel.execute(
 			"class Node:\n    def __init__(self):\n        self.other = self\n    def __repr__(self):\n        return f'Node({self.other!r})'\nNode()",
@@ -100,7 +114,7 @@ describe("A37 bounded preview in the kernel", () => {
 		const started = Date.now();
 		const result = await kernel.execute("slow");
 		expect(Date.now() - started).toBeLessThan(10_000);
-		expect(result).toMatchObject({ status: "ok", result: ` <preview timed out>${MARKER}` });
+		expect(result).toMatchObject({ status: "ok", result: ` <preview timed out>${MARKER}\n${HINT}` });
 		const preview = await kernel.execute("preview([1, slow])['preview']");
 		expect(preview.result).toContain("preview timed out");
 		expect(await kernel.execute("type(slow).__name__")).toMatchObject({ result: "'Sleeps'" });

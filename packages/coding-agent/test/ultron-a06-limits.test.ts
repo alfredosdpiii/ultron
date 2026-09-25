@@ -26,6 +26,8 @@ import { NativeUsageLedger } from "../src/ultron/usage.ts";
 const runtimePath = fileURLToPath(new URL("../src/ultron/rlm/runtime.py", import.meta.url));
 const context = {} as Context;
 const PREVIEW_LIMIT = 8192 + Buffer.byteLength("\n... [truncated]");
+/** Captured stdout/stderr keep their head and tail within the output budget, plus the middle marker. */
+const OUTPUT_LIMIT = 20_000 + 64;
 const WORKER_MAX_ADMITTED_TASKS = 24;
 
 function memoryStore(): NativeHostStore & { value: JsonValue | undefined } {
@@ -127,10 +129,13 @@ describe("A06 limits", () => {
 					].join("\n"),
 				);
 				expect(result.status).toBe("ok");
-				for (const stream of [result.stdout, result.stderr, result.result ?? ""]) {
-					expect(Buffer.byteLength(stream)).toBeLessThanOrEqual(PREVIEW_LIMIT);
-					expect(stream.endsWith("... [truncated]")).toBe(true);
+				for (const stream of [result.stdout, result.stderr]) {
+					expect(Buffer.byteLength(stream)).toBeLessThanOrEqual(OUTPUT_LIMIT);
+					expect(stream).toMatch(/\[\.\.\. \d+ bytes truncated \.\.\.\]/);
 				}
+				// The 50 MB list is shown by reference: its size and bounded head and tail.
+				expect(Buffer.byteLength(result.result ?? "")).toBeLessThanOrEqual(PREVIEW_LIMIT);
+				expect(result.result).toContain("<list: 5,000 items; item types str>");
 				// A flooding exception message and traceback are bounded too.
 				const failed = await kernel.execute("raise ValueError('x' * 5_000_000)");
 				expect(failed.status).toBe("error");

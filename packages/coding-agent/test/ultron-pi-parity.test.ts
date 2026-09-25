@@ -236,6 +236,8 @@ describe("Pi parity through the real CLI", () => {
 			ULTRON_HINDSIGHT_URL: "off",
 			ULTRON_SERVER_DIR: mkdtempSync(join("/tmp", "u-parity-")),
 			PI_OFFLINE: "1",
+			// Pi's native tools are what this parity suite exercises; by default only the RLM REPL is active.
+			ULTRON_TOOLS: "native",
 		};
 	}
 

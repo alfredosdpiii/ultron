@@ -162,10 +162,131 @@ class JevNamespace:
         result = await self._bridge.request("jev.recall", {"prompt": prompt})
         return result if isinstance(result, dict) else {"result": result}
 
-async def bash(command: str) -> dict[str, Any]:
+# A command's full output is read back from the host's spill file up to this size.
+_BASH_MAX_OUTPUT_BYTES = 64 * 1024 * 1024
+
+
+class BashOutput(str):
+    """The combined stdout/stderr of a shell command, as a string (nano-rlm's bash skill).
+
+    A nonzero exit, a timeout or a cancellation is appended as a bracketed status line, so
+    printing the string always shows whether the command failed. The details are attributes:
+    .output (raw output), .exit_code, .ok, .timed_out, .cancelled, .truncated (output cut
+    short), .full_output_path. Earlier cells used a dict; ``out["exit_code"]`` still works.
+    """
+
+    output: str
+    exit_code: int | None
+    timed_out: bool
+    cancelled: bool
+    truncated: bool
+    full_output_path: str | None
+
+    def __new__(cls, output: str, exit_code: int | None, *, timed_out: bool = False, cancelled: bool = False,
+                truncated: bool = False, full_output_path: str | None = None, timeout: float | None = None) -> "BashOutput":
+        text = output.strip()
+        if timed_out:
+            text += f"\n[timed out after {timeout:g}s]"
+        elif cancelled:
+            text += "\n[cancelled]"
+        elif exit_code not in (0, None):
+            text += f"\n[exit code {exit_code}]"
+        if truncated:
+            text += f"\n[output truncated; full output in {full_output_path}]" if full_output_path else "\n[output truncated]"
+        self = super().__new__(cls, text.strip() or "(no output)")
+        self.output = output
+        self.exit_code = exit_code
+        self.timed_out = timed_out
+        self.cancelled = cancelled
+        self.truncated = truncated
+        self.full_output_path = full_output_path
+        return self
+
+    @property
+    def ok(self) -> bool:
+        return self.exit_code == 0 and not self.timed_out and not self.cancelled
+
+    def __getitem__(self, key: Any) -> Any:
+        if isinstance(key, str):
+            if key in ("output", "exit_code", "timed_out", "cancelled", "truncated", "full_output_path", "ok"):
+                return getattr(self, key)
+            raise KeyError(key)
+        return str.__getitem__(self, key)
+
+    def get(self, key: str, default: Any = None) -> Any:
+        try:
+            return self[key]
+        except KeyError:
+            return default
+
+
+async def bash(command: str, timeout: float | None = None) -> BashOutput:
+    """Run a shell command in the working directory and return its output as a string.
+
+    Args:
+        command: The command, run by the user's shell (bash).
+        timeout: Seconds before the command is killed (default: no limit).
+
+    Returns:
+        A BashOutput: stdout and stderr combined, with "[exit code N]" appended when the
+        command failed. Its .exit_code and .ok attributes carry the status.
+    """
     if not isinstance(command, str) or not command.strip():
         raise ValueError("bash command must be a non-empty string")
-    return await _STATE.bridge.request("bash", {"command": command})
+    if timeout is not None and (isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or timeout <= 0):
+        raise ValueError("bash timeout must be a positive number of seconds")
+    payload: dict[str, Any] = {"command": command}
+    if timeout is not None:
+        payload["timeout"] = timeout
+    result = await _STATE.bridge.request("bash", payload)
+    if not isinstance(result, dict):
+        raise RuntimeError("bash: the host returned no result")
+    output = str(result.get("output") or "")
+    truncated = bool(result.get("truncated"))
+    path = result.get("full_output_path")
+    if truncated and isinstance(path, str) and path:
+        # The host keeps only the tail; the whole output is in its spill file.
+        with contextlib.suppress(OSError):
+            with open(path, "rb") as handle:
+                data = handle.read(_BASH_MAX_OUTPUT_BYTES + 1)
+            if len(data) <= _BASH_MAX_OUTPUT_BYTES:
+                output = data.decode("utf-8", errors="replace")
+                truncated = False
+    exit_code = result.get("exit_code")
+    return BashOutput(
+        output,
+        exit_code if isinstance(exit_code, int) else None,
+        timed_out=bool(result.get("timed_out")),
+        cancelled=bool(result.get("cancelled")),
+        truncated=truncated,
+        full_output_path=path if isinstance(path, str) else None,
+        timeout=timeout,
+    )
+
+
+async def edit(path: str, old_str: str, new_str: str) -> str:
+    """Replace a unique string in a file (nano-rlm's edit skill).
+
+    Args:
+        path: File path, relative to the working directory or absolute.
+        old_str: Exact string to find; it must appear exactly once in the file.
+        new_str: Replacement string.
+
+    Returns:
+        A confirmation message. Raises FileNotFoundError when the file is missing and
+        ValueError when old_str is absent or appears more than once.
+    """
+    filepath = Path(path)
+    if not filepath.is_absolute():
+        filepath = Path.cwd() / filepath
+    if not filepath.exists():
+        raise FileNotFoundError(f"{path} not found")
+    content = filepath.read_text()
+    count = content.count(old_str)
+    if count != 1:
+        raise ValueError(f"old_str must appear exactly once in {path} (found {count})")
+    filepath.write_text(content.replace(old_str, new_str, 1))
+    return f"Edited {path}"
 
 
 def _env_limit(name: str) -> int:
@@ -281,6 +402,7 @@ class RuntimeState:
         self.namespace["jev"] = JevNamespace(self.bridge)
         self.namespace["background"] = BackgroundNamespace(self.bridge)
         self.namespace["bash"] = bash
+        self.namespace["edit"] = edit
         self.namespace["SpawnHandle"] = SpawnHandle
         self.namespace["agents"] = Agents(self.bridge)
         self.namespace["workflows"] = Workflows(self.bridge)
@@ -560,6 +682,70 @@ class _BoundedTextIO(io.TextIOBase):
         )
 
 
+def _output_budget() -> int:
+    """Bytes of a cell's stdout or stderr kept for the model (ULTRON_RLM_OUTPUT_BYTES, default 20 KB)."""
+    raw = os.environ.get("ULTRON_RLM_OUTPUT_BYTES", "")
+    try:
+        value = int(raw)
+    except ValueError:
+        return 20_000
+    return value if value > 0 else 20_000
+
+
+class _MiddleTextIO(io.TextIOBase):
+    """Capture a stream keeping its head and tail (each half the budget) and count what was cut,
+    so both the first error and the final summary of a long output survive (nano-rlm style)."""
+
+    def __init__(self, limit: int) -> None:
+        super().__init__()
+        self._half = max(1, limit // 2)
+        self._head = bytearray()
+        self._tail = bytearray()
+        self._total = 0
+
+    def writable(self) -> bool:
+        return True
+
+    def write(self, text: str) -> int:
+        if self.closed:
+            raise ValueError("I/O operation on closed file")
+        if not isinstance(text, str):
+            raise TypeError("write() argument must be str")
+        length = len(text)
+        # Bound the temporary encoding of a huge write: only its ends can be kept.
+        if length > 4 * self._half + 8:
+            head_room = max(0, self._half - len(self._head))
+            self._total += len(text.encode("utf-8", errors="backslashreplace"))
+            front = text[:head_room].encode("utf-8", errors="backslashreplace")[:head_room]
+            self._head.extend(front)
+            self._tail = bytearray(text[-self._half:].encode("utf-8", errors="backslashreplace")[-self._half:])
+            return length
+        encoded = text.encode("utf-8", errors="backslashreplace")
+        self._total += len(encoded)
+        head_room = self._half - len(self._head)
+        if head_room > 0:
+            self._head.extend(encoded[:head_room])
+            encoded = encoded[head_room:]
+        if encoded:
+            self._tail.extend(encoded)
+            if len(self._tail) > 2 * self._half:
+                del self._tail[: len(self._tail) - self._half]
+        return length
+
+    def getvalue(self) -> str:
+        tail = bytes(self._tail[-self._half:])
+        kept = len(self._head) + len(tail)
+        head = self._head.decode("utf-8", errors="ignore")
+        if kept >= self._total:
+            return head + tail.decode("utf-8", errors="ignore")
+        # Drop partial code points at the cut rather than add replacement glyphs.
+        return (
+            head
+            + f"\n[... {self._total - kept} bytes truncated ...]\n"
+            + tail.decode("utf-8", errors="ignore")
+        )
+
+
 def _text_preview(text: str) -> str:
     stream = _BoundedTextIO()
     stream.write(text)
@@ -743,6 +929,120 @@ def preview(value: Any, depth: int = 20, max_bytes: int = _PREVIEW_BYTES) -> dic
     }
 
 
+# A cell's last expression is shown whole only up to these sizes; a larger value stays in the kernel
+# (as `_`) and is shown by reference: its type, size, head, tail and digest (NOOA-style pass-by-reference).
+_REFERENCE_CHARS = 2_000
+_REFERENCE_ITEMS = 40
+_REFERENCE_HEAD = 600
+_REFERENCE_TAIL = 300
+_REFERENCE_HINT = "The whole value is kept in the kernel as `_`: slice it, search it, or use preview(_) instead of showing it all."
+
+
+def _digest(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()[:12]
+
+
+def _items_preview(items: list[Any]) -> str:
+    text, _truncated = _render_preview(items, _REFERENCE_HEAD * 2, 6)
+    return text
+
+
+def _frame_preview(value: Any) -> str | None:
+    """A pandas DataFrame/Series or numpy array, described without importing those packages."""
+    kind = type(value)
+    name = kind.__name__
+    if name in ("DataFrame", "Series") and hasattr(value, "shape") and hasattr(value, "head"):
+        shape = "x".join(str(int(n)) for n in value.shape)
+        lines = [f"<{name} {shape}, {_type_name(kind)}>"]
+        if name == "DataFrame":
+            lines.append("columns: " + _text_preview(", ".join(f"{col} ({dtype})" for col, dtype in value.dtypes.items())))
+        lines.append("head:\n" + _text_preview(str(value.head(5))))
+        if int(value.shape[0]) > 8:
+            lines.append("tail:\n" + _text_preview(str(value.tail(3))))
+        lines.append("It stays in the kernel as `_`: filter, aggregate or `.to_string()` a slice instead of showing it all.")
+        return "\n".join(lines)
+    if name == "ndarray" and hasattr(value, "shape") and hasattr(value, "dtype"):
+        if int(value.size) <= _REFERENCE_ITEMS:
+            return None
+        shape = "x".join(str(int(n)) for n in value.shape)
+        flat = value.ravel()
+        return "\n".join([
+            f"<ndarray {shape} dtype={value.dtype}, {_type_name(kind)}>",
+            "head: " + _text_preview(str(flat[: _REFERENCE_ITEMS // 2])),
+            "tail: " + _text_preview(str(flat[-(_REFERENCE_ITEMS // 4):])),
+            _REFERENCE_HINT,
+        ])
+    return None
+
+
+def _reference_preview(value: Any) -> str | None:
+    """A bounded, by-reference description of a large value, or None when it is small enough to show whole."""
+    kind = type(value)
+    if kind is str:
+        if len(value) <= _REFERENCE_CHARS:
+            return None
+        return "\n".join([
+            f"<str: {len(value):,} chars, {value.count(chr(10)) + 1:,} lines, sha256 {_digest(value.encode('utf-8', 'surrogatepass'))}>",
+            f"head: {value[:_REFERENCE_HEAD]!r}",
+            f"tail: {value[-_REFERENCE_TAIL:]!r}",
+            _REFERENCE_HINT,
+        ])
+    if kind in (bytes, bytearray):
+        if len(value) <= _REFERENCE_CHARS:
+            return None
+        return "\n".join([
+            f"<{kind.__name__}: {len(value):,} bytes, sha256 {_digest(bytes(value))}>",
+            f"head: {bytes(value[: _REFERENCE_HEAD // 4])!r}",
+            f"tail: {bytes(value[-(_REFERENCE_TAIL // 4):])!r}",
+            _REFERENCE_HINT,
+        ])
+    if kind in (list, tuple):
+        if len(value) <= _REFERENCE_ITEMS:
+            return None
+        kinds = sorted({type(item).__name__ for item in value[:200]})
+        return "\n".join([
+            f"<{kind.__name__}: {len(value):,} items; item types {', '.join(kinds)}>",
+            f"head: {_items_preview(list(value[:10]))}",
+            f"tail: {_items_preview(list(value[-5:]))}",
+            _REFERENCE_HINT,
+        ])
+    if kind is dict:
+        if len(value) <= _REFERENCE_ITEMS:
+            return None
+        keys = list(value)
+        return "\n".join([
+            f"<dict: {len(value):,} keys>",
+            f"first keys: {_items_preview(keys[:10])}",
+            f"last keys: {_items_preview(keys[-5:])}",
+            f"first item: {_items_preview([keys[0], value[keys[0]]])}",
+            _REFERENCE_HINT,
+        ])
+    if kind in (set, frozenset):
+        if len(value) <= _REFERENCE_ITEMS:
+            return None
+        sample = []
+        for item in value:
+            sample.append(item)
+            if len(sample) == 10:
+                break
+        return "\n".join([f"<{kind.__name__}: {len(value):,} items>", f"sample: {_items_preview(sample)}", _REFERENCE_HINT])
+    try:
+        return _frame_preview(value)
+    except BaseException:
+        return None
+
+
+def _cell_result_text(value: Any) -> str:
+    """The text shown for a cell's last expression: whole when small, by reference when large."""
+    reference = _reference_preview(value)
+    if reference is not None:
+        return reference
+    text, truncated = _render_preview(value)
+    if truncated:
+        return f"{text}\n{_REFERENCE_HINT}"
+    return text
+
+
 def _exception_message(error: BaseException) -> str:
     if _deadline_expired:
         return "<exception str() timed out>"
@@ -814,8 +1114,9 @@ _STATE = RuntimeState()
 
 async def execute_cell(request_id: str, source: str) -> None:
     async with _STATE.execution_lock:
-        stdout = _BoundedTextIO()
-        stderr = _BoundedTextIO()
+        budget = _output_budget()
+        stdout = _MiddleTextIO(budget)
+        stderr = _MiddleTextIO(budget)
         _STATE.namespace.pop("_rlm_result", None)
         try:
             compiled = _prepare_code(source)
@@ -827,8 +1128,15 @@ async def execute_cell(request_id: str, source: str) -> None:
                     if asyncio.iscoroutine(result):
                         await result
                 if "_rlm_result" in _STATE.namespace:
-                    with _preview_deadline():
-                        result_text = _result_preview(_STATE.namespace.pop("_rlm_result"))
+                    value = _STATE.namespace.pop("_rlm_result")
+                    if value is None:
+                        # As in IPython, a None expression (a bare print(...) call) shows nothing.
+                        result_text = ""
+                    else:
+                        # The value stays reachable as `_`, so a by-reference preview can be followed up.
+                        _STATE.namespace["_"] = value
+                        with _preview_deadline():
+                            result_text = _cell_result_text(value)
                 else:
                     result_text = ""
             finally:

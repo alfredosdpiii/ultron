@@ -208,6 +208,12 @@ function rpcSession({ command, args, cwd, env, log }) {
 	};
 }
 
+/** " tools rlm=3 bash=1" for the per-run line, or "" before any tool ran. */
+function formatTools(toolsByName) {
+	const entries = Object.entries(toolsByName ?? {}).sort((a, b) => b[1] - a[1]);
+	return entries.length === 0 ? " tools none" : ` tools ${entries.map(([name, count]) => `${name}=${count}`).join(" ")}`;
+}
+
 async function runOne({ task, variant, trial, model, thinking, keepDir, commands }) {
 	const work = mkdtempSync(join(tmpdir(), `ultron-quality-${task.id}-${variant}-`));
 	const project = join(work, "project");
@@ -253,9 +259,17 @@ async function runOne({ task, variant, trial, model, thinking, keepDir, commands
 	});
 	try {
 		let toolCalls = 0;
+		// Tool calls by name measure how the model works, e.g. whether it uses the RLM REPL at all.
+		const toolsByName = {};
+		record.toolsByName = toolsByName;
 		for (const prompt of task.prompts) {
 			const events = await session.turn(prompt, RUN_TIMEOUT_MS);
-			toolCalls += events.filter((event) => event.type === "tool_execution_start").length;
+			for (const event of events) {
+				if (event.type !== "tool_execution_start") continue;
+				toolCalls += 1;
+				const name = typeof event.toolName === "string" ? event.toolName : "unknown";
+				toolsByName[name] = (toolsByName[name] ?? 0) + 1;
+			}
 			const failed = events.find(
 				(event) => event.type === "message_end" && event.message?.role === "assistant" && event.message.stopReason === "error",
 			);
@@ -468,7 +482,7 @@ async function main() {
 				const record = await runOne(job);
 				records.push(record);
 				console.log(
-					`${record.passed ? "PASS" : record.infrastructure ? "INFRA" : "FAIL"} ${record.variant} ${record.task}#${record.trial} ${(record.durationMs / 1000).toFixed(0)}s${record.error ? ` (${record.error.slice(0, 120)})` : ""}`,
+					`${record.passed ? "PASS" : record.infrastructure ? "INFRA" : "FAIL"} ${record.variant} ${record.task}#${record.trial} ${(record.durationMs / 1000).toFixed(0)}s${formatTools(record.toolsByName)}${record.error ? ` (${record.error.slice(0, 120)})` : ""}`,
 				);
 			}
 		}),

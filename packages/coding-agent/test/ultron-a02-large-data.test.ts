@@ -5,9 +5,9 @@
  * RLM kernel computes exact aggregates over every row, while the text returned to the model
  * (the `rlm` tool result) stays bounded even when a cell prints or returns the whole dataset.
  *
- * Model-visible bound: runtime.py caps stdout, stderr and the result preview at 8 KiB each
- * (plus a 16-byte truncation marker), and createUltronRlmTool joins those three with newlines,
- * so one `rlm` tool result is at most 3 * (8192 + 16) + 2 = 24,626 bytes.
+ * Model-visible bound: runtime.py keeps the head and tail of stdout and stderr within the output budget
+ * (ULTRON_RLM_OUTPUT_BYTES, default 20 000 bytes) and shows a large result by reference, and the whole
+ * `rlm` tool result is middle-truncated at that budget again, plus a warning line and a marker.
  */
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { createServer, type Server } from "node:http";
@@ -19,15 +19,16 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { createUltronRlmTool } from "../src/experimental/session-worker.ts";
 import { RpcClient } from "../src/modes/rpc/rpc-client.ts";
 
-const PREVIEW_BYTES = 8192;
-const MARKER = "\n... [truncated]";
-const TOOL_RESULT_BOUND = 3 * (PREVIEW_BYTES + Buffer.byteLength(MARKER)) + 2;
+const OUTPUT_BUDGET = 20_000;
+/** The budget plus the truncation warning and marker lines. */
+const TOOL_RESULT_BOUND = OUTPUT_BUDGET + 512;
 const ROWS = 600_000;
-const TAIL_SENTINEL = "TAIL_SENTINEL_ROW_7f3a";
+/** On a middle row: the head and tail of a flood reach the model, the middle never does. */
+const HIDDEN_SENTINEL = "HIDDEN_SENTINEL_ROW_7f3a";
 
 type Dataset = { path: string; bytes: number; sum: number; max: number; tailCount: number };
 
-/** Deterministic rows: id,value,tag. The last row carries a sentinel that must never reach the model. */
+/** Deterministic rows: id,value,tag. A middle row carries a sentinel that must never reach the model. */
 function writeDataset(dir: string): Dataset {
 	const lines: string[] = ["id,value,tag"];
 	let sum = 0;
@@ -36,7 +37,7 @@ function writeDataset(dir: string): Dataset {
 		const value = (id * 7919) % 100_003;
 		sum += value;
 		if (value > max) max = value;
-		const tag = id === ROWS - 1 ? TAIL_SENTINEL : `t${id % 97}`;
+		const tag = id === ROWS / 2 ? HIDDEN_SENTINEL : `t${id % 97}`;
 		lines.push(`${id},${value},${tag}`);
 	}
 	const text = `${lines.join("\n")}\n`;
@@ -83,7 +84,7 @@ describe("A02 large data stays outside the model context", () => {
 			const result = await tool.execute(`a02-${call}`, { code }, () => {}, { env }, invocation, BACKGROUND_CONTEXT);
 			const text = toolText(result as never);
 			expect(Buffer.byteLength(text)).toBeLessThanOrEqual(TOOL_RESULT_BOUND);
-			expect(text).not.toContain(TAIL_SENTINEL);
+			expect(text).not.toContain(HIDDEN_SENTINEL);
 			return text;
 		};
 		try {
@@ -99,20 +100,24 @@ describe("A02 large data stays outside the model context", () => {
 				].join("\n"),
 			);
 			expect(loaded).toContain("id,value,tag\n0,0,t0\n");
-			expect(loaded.split("[truncated]").length - 1).toBe(3);
+			expect(loaded).toContain("Warning: truncated output");
+			expect(loaded).toContain("bytes truncated");
+			// The returned list is shown by reference, not rendered.
+			expect(loaded).toContain("<list: 600,000 items; item types list>");
 
 			// Later cells still see every row: the preview bound did not discard data.
 			const aggregate = await run(
 				[
 					"values = [int(row[1]) for row in rows]",
-					`(len(rows), sum(values), max(values), sum(1 for row in rows if row[2] == ${JSON.stringify(TAIL_SENTINEL)}))`,
+					`(len(rows), sum(values), max(values), sum(1 for row in rows if row[2] == ${JSON.stringify(HIDDEN_SENTINEL)}))`,
 				].join("\n"),
 			);
 			expect(aggregate).toBe(`(${ROWS}, ${data.sum}, ${data.max}, ${data.tailCount})`);
 
 			// A huge single value (the raw text) and a huge int are also previewed, not returned whole.
 			const huge = await run("raw");
-			expect(huge.endsWith(MARKER)).toBe(true);
+			expect(huge).toMatch(/^<str: [\d,]+ chars, [\d,]+ lines, sha256 [0-9a-f]{12}>\nhead: 'id,value,tag/);
+			expect(huge).toContain("kept in the kernel as `_`");
 			const bigInt = await run("10 ** 200000");
 			expect(bigInt).toMatch(/^<int with \d+ bits>/);
 		} finally {
@@ -241,8 +246,8 @@ describe("A02 large data stays outside the model context", () => {
 			expect(second! - first!).toBeLessThanOrEqual(TOOL_RESULT_BOUND + 4096);
 			expect(second!).toBeLessThan(data.bytes / 100);
 			expect(bodies[1]).toContain(`ROWS=${ROWS} SUM=${data.sum}`);
-			expect(bodies[1]).toContain("[truncated]");
-			expect(bodies[1]).not.toContain(TAIL_SENTINEL);
+			expect(bodies[1]).toContain("bytes truncated");
+			expect(bodies[1]).not.toContain(HIDDEN_SENTINEL);
 		}, 120_000);
 	});
 });
