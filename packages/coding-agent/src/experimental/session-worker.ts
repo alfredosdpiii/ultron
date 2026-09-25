@@ -1,6 +1,7 @@
+import { mkdirSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { createConnection, type Socket } from "node:net";
-import { isAbsolute } from "node:path";
+import { isAbsolute, join } from "node:path";
 import type { Context } from "@earendil-works/chord";
 import {
 	isJsonValue,
@@ -56,7 +57,8 @@ import { createProgressModule } from "../ultron/progress.ts";
 import { createReleaseGateModule } from "../ultron/release-gate.ts";
 import { createSessionDefinitionStore } from "../ultron/rlm/definition-registry.ts";
 import { createSessionModuleStore, type HostCaller } from "../ultron/rlm/host-module.ts";
-import { type KernelHostHandler, RlmKernel } from "../ultron/rlm/kernel.ts";
+import { type KernelExecutionResult, type KernelHostHandler, RlmKernel } from "../ultron/rlm/kernel.ts";
+import { KernelPool } from "../ultron/rlm/kernel-pool.ts";
 import { NativeRlmHost } from "../ultron/rlm/native-host.ts";
 import { createSessionTaskStore } from "../ultron/rlm/task-store.ts";
 import { createScheduleModule } from "../ultron/schedules.ts";
@@ -93,8 +95,19 @@ type RlmHostHandler = (
 export class UltronRlmKernel {
 	private readonly kernel: RlmKernel;
 
-	constructor(cwd: string, hostHandler: KernelHostHandler) {
-		this.kernel = new RlmKernel({ cwd, runtimePath: getRlmRuntimePath() }, hostHandler);
+	constructor(cwd: string, hostHandler: KernelHostHandler, snapshotPath?: string) {
+		this.kernel = new RlmKernel(
+			{ cwd, runtimePath: getRlmRuntimePath(), ...(snapshotPath === undefined ? {} : { snapshotPath }) },
+			hostHandler,
+		);
+	}
+
+	snapshot(path?: string): Promise<KernelExecutionResult> {
+		return this.kernel.snapshot(path);
+	}
+
+	shutdown(): Promise<void> {
+		return this.kernel.shutdown();
 	}
 
 	async execute(code: string, context: Context): Promise<string> {
@@ -125,8 +138,27 @@ export function createUltronRlmTool(
 	cwd: string,
 	hostHandler: RlmHostHandler,
 	resolveLane: (invocation: AgentHarnessToolInvocation, context: Context) => Promise<string> = async () => "main",
+	options: { readonly snapshotDir?: string; readonly maxLive?: number; readonly idleTtlMs?: number } = {},
 ): UltronRlmTool {
-	const kernels = new Map<string, UltronRlmKernel>();
+	// Idle kernels are evicted after a snapshot, so a lane's declared state survives and a crowded session
+	// cannot keep unbounded Python processes alive (A43). Running cells are never evicted.
+	const snapshotPath = (lane: string): string | undefined =>
+		options.snapshotDir === undefined
+			? undefined
+			: join(options.snapshotDir, `${lane.replace(/[^A-Za-z0-9._-]/g, "_")}.snapshot`);
+	const kernels = new KernelPool<UltronRlmKernel>({
+		create: (lane) =>
+			new UltronRlmKernel(
+				cwd,
+				(type, payload, signal) => hostHandler(type, payload, signal, { lane }),
+				snapshotPath(lane),
+			),
+		maxLive: options.maxLive ?? 16,
+		idleTtlMs: options.idleTtlMs ?? 30 * 60 * 1000,
+		snapshotPath,
+	});
+	const sweeper = setInterval(() => void kernels.sweep().catch(() => {}), 60_000);
+	sweeper.unref();
 	let closed = false;
 	const schema = Type.Object({
 		code: Type.String({
@@ -136,11 +168,11 @@ export function createUltronRlmTool(
 	return {
 		close: async () => {
 			closed = true;
-			await Promise.all([...kernels.values()].map((kernel) => kernel.close()));
-			kernels.clear();
+			clearInterval(sweeper);
+			await kernels.close();
 		},
-		// A lane that has not run Python yet has no scratch to clear.
-		resetScratch: async (lane) => kernels.get(lane)?.resetScratch(),
+		// A lane without a live kernel has no scratch to clear; a restored snapshot keeps only declared state.
+		resetScratch: async (lane) => kernels.live(lane)?.resetScratch(),
 		name: "rlm",
 		label: "rlm",
 		description:
@@ -158,12 +190,7 @@ export function createUltronRlmTool(
 			const lane = await resolveLane(invocation, context);
 			context.abortSignal?.throwIfAborted();
 			if (closed) throw new Error("Ultron RLM tool is closed");
-			let kernel = kernels.get(lane);
-			if (!kernel) {
-				kernel = new UltronRlmKernel(cwd, (type, payload, signal) => hostHandler(type, payload, signal, { lane }));
-				kernels.set(lane, kernel);
-			}
-			const result = await kernel.execute(params.code, context);
+			const result = await kernels.use(lane, (kernel) => kernel.execute(params.code, context));
 			return { content: [{ type: "text", text: result || "(no result)" }], details: {} };
 		},
 	};
@@ -1110,11 +1137,19 @@ async function createCodingAgentHarness(
 		if (!host) throw new Error("Ultron RLM host is not initialized");
 		return host.handle(type, payload, signal ? withAbortSignal(signal, TODO_CONTEXT) : TODO_CONTEXT, caller);
 	};
-	const rlmTool = createUltronRlmTool(options.metadata.cwd, hostHandler, async (invocation, context) => {
-		const meta = await session.getValue(value<{ lane: string }>("pi.op.meta", invocation.operationId), context);
-		if (!meta || typeof meta.value.lane !== "string") throw new Error("RLM invocation has no owning lane");
-		return meta.value.lane;
-	});
+	// Snapshots are trusted host artifacts: keep them in the private profile directory, one folder per session.
+	const snapshotDir = join(getAgentDir(), "rlm-snapshots", options.metadata.id);
+	mkdirSync(snapshotDir, { recursive: true, mode: 0o700 });
+	const rlmTool = createUltronRlmTool(
+		options.metadata.cwd,
+		hostHandler,
+		async (invocation, context) => {
+			const meta = await session.getValue(value<{ lane: string }>("pi.op.meta", invocation.operationId), context);
+			if (!meta || typeof meta.value.lane !== "string") throw new Error("RLM invocation has no owning lane");
+			return meta.value.lane;
+		},
+		{ snapshotDir },
+	);
 	const tools = [createReadTool(), createEditTool(), createWriteTool(), createBashTool(), rlmTool];
 	const loadedSkills = await Promise.all(
 		resourceLoader.getSkills().skills.map(async (skill) => ({

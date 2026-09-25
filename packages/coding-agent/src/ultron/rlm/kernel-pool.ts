@@ -153,6 +153,12 @@ export class KernelPool<K extends PoolableKernel> {
 	}
 
 	/** Retain a lane (checkpoint, retained agent instance, evidence) against eviction. */
+	/** The lane's live kernel without leasing it, or undefined when the lane has none (never started or evicted). */
+	live(lane: string): K | undefined {
+		const entry = this.entries.get(lane);
+		return entry && !entry.evicting ? entry.kernel : undefined;
+	}
+
 	pin(lane: string, holder: string): void {
 		if (!holder) throw new TypeError("pin holder must be nonempty");
 		const holders = this.pins.get(lane) ?? new Set<string>();
