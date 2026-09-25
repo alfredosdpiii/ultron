@@ -27,6 +27,7 @@ from grants_api import Grants
 from release_gate_api import ReleaseGates
 import agent_class_api
 from context_api import Context
+from infer_api import install as install_inference
 
 @dataclass
 class SpawnHandle:
@@ -423,6 +424,7 @@ class RuntimeState:
         self.namespace["agent"] = agent_class_api.agent
         self.namespace["Agent"] = agent_class_api.Agent
         self.namespace["AgentCallError"] = agent_class_api.AgentCallError
+        install_inference(self.namespace, self.bridge)
         # Declared instance state survives reset_scratch; every other name is invocation scratch.
         self.namespace["state"] = {}
         self.bindings = {name: value for name, value in self.namespace.items() if name != "state"}

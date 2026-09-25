@@ -1,7 +1,7 @@
 import { mkdirSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { createConnection, type Socket } from "node:net";
-import { isAbsolute, join } from "node:path";
+import { dirname, isAbsolute, join } from "node:path";
 import type { ThinkingLevel } from "@ultron/agent-core";
 import {
 	AgentHarness,
@@ -75,6 +75,7 @@ import { createReleaseGateModule } from "../ultron/release-gate.ts";
 import { createSessionDefinitionStore } from "../ultron/rlm/definition-registry.ts";
 import { runHostBash } from "../ultron/rlm/host-bash.ts";
 import { createSessionModuleStore, type HostCaller } from "../ultron/rlm/host-module.ts";
+import { createInferenceRuntime, createSessionFrameStore } from "../ultron/rlm/inference.ts";
 import { type KernelExecutionResult, type KernelHostHandler, RlmKernel } from "../ultron/rlm/kernel.ts";
 import { KernelPool, KernelPoolCapacityError } from "../ultron/rlm/kernel-pool.ts";
 import { NativeRlmHost } from "../ultron/rlm/native-host.ts";
@@ -1505,11 +1506,19 @@ async function createCodingAgentHarness(
 		// A session written by a newer Ultron fails here, naming the value and its format version, before any of
 		// it is loaded or rewritten.
 		await assertSessionFormatsReadable(session, BACKGROUND_CONTEXT);
+		// Bounded inference: handles are content-addressed beside the session file, frame traces are session values.
+		const inference = createInferenceRuntime({
+			contextDir: join(dirname(options.metadata.path), "rlm-context", options.metadata.id),
+			traces: createSessionFrameStore(session),
+			usage,
+		});
+		const removeInferenceHooks = inference.install(harness);
 		host = new NativeRlmHost(harness, lane, {
 			store: createSessionTaskStore(session),
 			definitionStore: createSessionDefinitionStore(session),
 			// Budgets apply per root turn: each main-lane run opens a fresh wall, admission and cost window.
 			usage,
+			frames: inference.executor,
 			rootTurns: true,
 			pinLane: (lane, holder) => rlmTool.pin(lane, holder),
 			unpinLane: (lane, holder) => rlmTool.unpin(lane, holder),
@@ -1530,6 +1539,7 @@ async function createCodingAgentHarness(
 			},
 			modules: [
 				contextControl.module,
+				inference.module,
 				createFamilyModule({ store: createSessionModuleStore(session, "family") }),
 				createProgressModule({ store: createSessionModuleStore(session, "progress") }),
 				createScheduleModule({ store: createSessionModuleStore(session, "schedules") }),
@@ -1641,6 +1651,7 @@ async function createCodingAgentHarness(
 			closeRlm: async () => {
 				removeRootTurnListener();
 				removeContextControl();
+				removeInferenceHooks();
 				removeAutoMemory();
 				await autoMemory?.settle();
 				removeNudgeTurnListener();

@@ -53,11 +53,13 @@ import {
 	isActiveState,
 	parseAgentsStatus,
 	parseContextState,
+	parseFrames,
 	parsePool,
 	parseProgress,
 	parseRetained,
 	RlmClock,
 	type RlmContextState,
+	type RlmFrame,
 	type RlmLimits,
 	type RlmPool,
 	type RlmProgress,
@@ -152,6 +154,7 @@ interface RlmPollState {
 	progress: Map<string, RlmProgress>;
 	timing: Map<string, RlmTiming>;
 	context?: RlmContextState | null;
+	frames: RlmFrame[];
 	error?: string;
 }
 
@@ -206,6 +209,7 @@ export class ExperimentalClientTui implements Component {
 		retained: new Set(),
 		progress: new Map(),
 		timing: new Map(),
+		frames: [],
 	};
 	#control: SessionControl | undefined;
 	readonly #layoutRoot: Component;
@@ -1313,12 +1317,13 @@ export class ExperimentalClientTui implements Component {
 		}
 		this.#rlmInFlight = true;
 		try {
-			const [status, instances, pool, jev, contextState] = await Promise.allSettled([
+			const [status, instances, pool, jev, contextState, frames] = await Promise.allSettled([
 				control.inspect("agents.status", {}, BACKGROUND_CONTEXT),
 				control.inspect("instances.list", {}, BACKGROUND_CONTEXT),
 				control.inspect("rlm.pool", {}, BACKGROUND_CONTEXT),
 				control.inspect("jev.decisions", {}, BACKGROUND_CONTEXT),
 				control.inspect("ctx.state", {}, BACKGROUND_CONTEXT),
+				control.inspect("rlm.frames", { limit: 20 }, BACKGROUND_CONTEXT),
 			]);
 			if (this.#closed) return;
 			const next: RlmPollState = { ...this.#rlmState };
@@ -1335,6 +1340,7 @@ export class ExperimentalClientTui implements Component {
 			if (instances.status === "fulfilled") next.retained = parseRetained(instances.value);
 			next.pool = pool.status === "fulfilled" ? parsePool(pool.value) : null;
 			next.context = contextState.status === "fulfilled" ? parseContextState(contextState.value) : null;
+			if (frames.status === "fulfilled") next.frames = parseFrames(frames.value);
 			// Progress assessments are cheap host reads; only fetch them for a few running tasks while visible.
 			const progress = new Map<string, RlmProgress>();
 			if (this.#rlmVisible) {
@@ -1382,6 +1388,7 @@ export class ExperimentalClientTui implements Component {
 			progress: state.progress,
 			timing: state.timing,
 			context: state.context ?? null,
+			frames: state.frames,
 			...(state.error === undefined ? {} : { error: state.error }),
 		};
 	}

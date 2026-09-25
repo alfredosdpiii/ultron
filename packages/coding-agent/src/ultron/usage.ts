@@ -83,6 +83,8 @@ export type NativeUsageReservationRequest = {
 	taskId?: string;
 	parentTaskId?: string;
 	requestKey?: string;
+	/** Inference budget subtree (`rlm.infer`/`rlm.map`) this call is charged to, for tree accounting. */
+	budgetId?: string;
 	timeoutMs?: number;
 	deadlineAt?: number;
 	/** Whether admitted work calls a model, so the cost cap applies. Model reservations always do; tasks default to true. */
@@ -97,6 +99,7 @@ export type NativeUsageReservation = {
 	taskId?: string;
 	parentTaskId?: string;
 	requestKey?: string;
+	budgetId?: string;
 	admittedAt: number;
 	deadlineAt: number | null;
 };
@@ -219,6 +222,7 @@ type StoredCall = {
 	taskId?: string;
 	parentTaskId?: string;
 	requestKey?: string;
+	budgetId?: string;
 	admittedAt: number;
 	settledAt: number;
 	status: NativeUsageCallStatus;
@@ -315,6 +319,8 @@ function validateReservation(valueToCheck: unknown): asserts valueToCheck is Sto
 		throw new Error("Invalid usage ledger parent task ID");
 	if (item.requestKey !== undefined && (typeof item.requestKey !== "string" || !item.requestKey))
 		throw new Error("Invalid usage ledger request key");
+	if (item.budgetId !== undefined && (typeof item.budgetId !== "string" || !item.budgetId))
+		throw new Error("Invalid usage ledger budget ID");
 	const admittedAt = finiteNumber(item.admittedAt, "admittedAt");
 	if (admittedAt < 0) throw new Error("Invalid usage ledger admittedAt");
 	optionalFiniteNumber(item.deadlineAt, "deadlineAt");
@@ -329,6 +335,8 @@ function validateCall(valueToCheck: unknown): asserts valueToCheck is StoredCall
 		throw new Error("Invalid usage ledger call kind");
 	if (item.requestKey !== undefined && (typeof item.requestKey !== "string" || !item.requestKey))
 		throw new Error("Invalid usage ledger call request key");
+	if (item.budgetId !== undefined && (typeof item.budgetId !== "string" || !item.budgetId))
+		throw new Error("Invalid usage ledger call budget ID");
 	for (const name of ["taskId", "parentTaskId"] as const)
 		if (item[name] !== undefined && (typeof item[name] !== "string" || !item[name]))
 			throw new Error("Invalid usage ledger call task ID");
@@ -704,6 +712,7 @@ export class NativeUsageLedger implements NativeUsageLedgerLike {
 			if (!(["task", "model", "jev"] as string[]).includes(request.kind)) throw new Error("Invalid usage kind");
 			if (request.requestKey !== undefined && !request.requestKey.trim())
 				throw new Error("Usage requestKey is empty");
+			if (request.budgetId !== undefined && !request.budgetId.trim()) throw new Error("Usage budgetId is empty");
 			if (request.timeoutMs !== undefined) finiteInteger(request.timeoutMs, "timeoutMs", 1);
 			if (request.deadlineAt !== undefined) finiteNumber(request.deadlineAt, "deadlineAt");
 			const root = this.document.roots[rootId] ?? emptyRoot(rootId);
@@ -751,6 +760,7 @@ export class NativeUsageLedger implements NativeUsageLedgerLike {
 				...(request.taskId === undefined ? {} : { taskId: request.taskId }),
 				...(request.parentTaskId === undefined ? {} : { parentTaskId: request.parentTaskId }),
 				...(request.requestKey === undefined ? {} : { requestKey: request.requestKey }),
+				...(request.budgetId === undefined ? {} : { budgetId: request.budgetId }),
 				admittedAt: now,
 				deadlineAt: requestedDeadline,
 			};
@@ -783,6 +793,7 @@ export class NativeUsageLedger implements NativeUsageLedgerLike {
 				...(active.taskId === undefined ? {} : { taskId: active.taskId }),
 				...(active.parentTaskId === undefined ? {} : { parentTaskId: active.parentTaskId }),
 				...(active.requestKey === undefined ? {} : { requestKey: active.requestKey }),
+				...(active.budgetId === undefined ? {} : { budgetId: active.budgetId }),
 				admittedAt: active.admittedAt,
 				settledAt: now,
 				status,

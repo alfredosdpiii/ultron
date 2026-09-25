@@ -898,6 +898,87 @@
       }
     },
     {
+      "id": "A47",
+      "behavior": "An input larger than the model's context window is processed to the exact answer through bounded inference frames; no request exceeds the window and the root transcript never contains the input",
+      "evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-a47-large-input.test.ts",
+          "tests": [
+            "exact answer, no request above the window, and the root never sees the input"
+          ]
+        },
+        {
+          "file": "packages/coding-agent/test/ultron-a47-a50-bounded-inference.test.ts",
+          "tests": [
+            "handles never render content; views, search, lines and chunks slice it; reopen by digest",
+            "the frame sees only its task and views under its own system prompt, with no tools"
+          ]
+        }
+      ],
+      "status_when_green": "passed",
+      "notes": "The scripted provider records every request body; the model declares a 48k-token window and the input is over 5x that."
+    },
+    {
+      "id": "A48",
+      "behavior": "Contract repair: a malformed frame answer is re-asked within budget and returns a valid value; exhaustion yields an Incomplete with evidence and the root turn continues",
+      "evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-a47-a50-bounded-inference.test.ts",
+          "tests": [
+            "a frame that first answers malformed JSON is re-asked and returns a valid value",
+            "exhausted repairs yield an Incomplete with status, spent and remaining budget, trace id and outputs",
+            "running out of calls mid-repair is an Incomplete, not an exception"
+          ]
+        },
+        {
+          "file": "packages/coding-agent/test/ultron-a47-large-input.test.ts",
+          "tests": [
+            "A48 end to end: repair returns a valid value, exhaustion is an Incomplete, and the root turn continues"
+          ]
+        }
+      ],
+      "status_when_green": "passed",
+      "notes": ""
+    },
+    {
+      "id": "A49",
+      "behavior": "Budget subtree: a map of 8 frames under calls=6 runs 6 and marks 2 incomplete; tranches never oversubscribe the token pool; provider failures are refunded",
+      "evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-a47-a50-bounded-inference.test.ts",
+          "tests": [
+            "a map of 8 frames under calls=6 runs 6 and marks 2 incomplete, in order",
+            "concurrent siblings hold tranches that never oversubscribe the token pool",
+            "when the pool cannot cover a request the frame is incomplete and nothing is sent",
+            "a provider failure refunds its tranche; cache reads are discounted",
+            "nested frames draw on their parent's pool and one level less depth"
+          ]
+        }
+      ],
+      "status_when_green": "passed",
+      "notes": ""
+    },
+    {
+      "id": "A50",
+      "behavior": "Cancellation: aborting the root cancels every running inference frame within 2 s",
+      "evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-a47-a50-bounded-inference.test.ts",
+          "tests": [
+            "all in-flight frames are cancelled within 2 s and the map returns per-item errors"
+          ]
+        },
+        {
+          "file": "packages/coding-agent/test/ultron-a47-large-input.test.ts",
+          "tests": [
+            "A50 end to end: aborting the root turn cancels every running frame within 2 s"
+          ]
+        }
+      ],
+      "status_when_green": "passed",
+      "notes": "Host-level test uses the A42-style blocking lanes; the end-to-end test aborts a real RPC root turn."
+    },
+    {
       "id": "A51",
       "behavior": "After 20 completed tasks the root's next request stays bounded (results collapse on return by context edit) while agents.result still returns full values",
       "evidence": [

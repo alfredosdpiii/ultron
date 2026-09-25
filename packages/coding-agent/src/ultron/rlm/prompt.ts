@@ -8,6 +8,7 @@
 import { CODE_SKILLS_PROMPT } from "../code-skills.ts";
 import { CONTEXT_PROMPT } from "../context-control.ts";
 import { AGENT_CLASS_PROMPT } from "./agent-class-prompt.ts";
+import { INFERENCE_PROMPT } from "./inference.ts";
 
 export const NATIVE_FILE_TOOLS = ["read", "edit", "write", "bash"] as const;
 
@@ -29,9 +30,10 @@ export function defaultBuiltinToolNames(env: NodeJS.ProcessEnv = process.env): s
 
 export const RLM_TOOL_DESCRIPTION = [
 	"Run a Python cell in your persistent RLM REPL. Variables, imports and functions persist across calls; top-level `await` works; the value of the last expression is shown along with anything printed, and stays available as `_`.",
-	"Pre-imported, nothing to import: `bash`, `edit`, `rlm`, `agents`, `workflows`, `background`, `memory`, `ctx`, `skills`, `agent`/`Agent`, `state`, `jev`, `preview`.",
+	"Pre-imported, nothing to import: `bash`, `edit`, `rlm`, `agents`, `workflows`, `background`, `memory`, `ctx`, `skills`, `agent`/`Agent`, `Budget`, `state`, `jev`, `preview`.",
 	"- `out = await bash('''command''')` runs a shell command in the working directory and returns its output as a string, with `[exit code N]` appended on failure (`out.exit_code`, `out.ok`).",
 	'- `await edit(path="file.py", old_str=..., new_str=...)` replaces exactly one occurrence and raises ValueError when old_str is absent or appears more than once. Create new files with ordinary Python (`Path(p).write_text(...)`).',
+	"- Large inputs stay out of your context: `h = await rlm.load(path)` returns a handle (size, digest; `h.search`, `h.lines`, `h.chunks`), and `await rlm.infer(task, context=[views], contract=...)` / `await rlm.map(...)` run bounded sub-model frames that return validated values.",
 	'- `h = await rlm.spawn(task, name="short-name")` starts a subagent with its own REPL; `await rlm.collect([h.rlm_child_id])` waits for results. `await agents.invoke(definition, input)` runs a typed agent; `await workflows.run(nodes)` runs an agent graph.',
 	"- `state` is a dict for data that must survive kernel restarts. Output over about 20 KB is cut in the middle and a large last value is shown by reference (type, size, head, tail): keep data in variables and print what you need.",
 ].join("\n");
@@ -90,6 +92,8 @@ Delegate when a task has independent parts (separate modules, separate questions
 Typed agents: \`await agents.list()\` shows definitions (for example "rlm-child@1" with input \`{"prompt": ...}\`); \`await agents.invoke(definition, input)\` runs one and returns \`{"status": ..., "value": ...}\`; \`t = await agents.spawn(definition, input)\` starts one in the background and \`await t.result()\` collects it. \`await workflows.run(nodes)\` runs a validated agent graph. \`await background.start(prompt)\` starts a long-running background agent job that outlives the turn (\`background.list()\`, \`background.inspect(id)\`, \`background.result(id)\`, \`background.stop(id)\`).
 If you are a subagent, your final reply (with no tool call) is your result for the parent: make it self-contained, with the evidence, paths and uncertainties it needs.`;
 
+const BOUNDED_INFERENCE = `## Bounded inference\n${INFERENCE_PROMPT}`;
+
 const CONTEXT = `## Your context\n${CONTEXT_PROMPT}`;
 
 const CODE_SKILLS = `## Code skills\n${CODE_SKILLS_PROMPT}`;
@@ -114,5 +118,14 @@ export function rlmRuntimePrompt(activeTools: readonly string[]): string | undef
 		nativeEdit ? EDIT_SKILL_WITH_TOOL : EDIT_SKILL,
 		PROJECT_ENV,
 	];
-	return [RUNTIME, skills.join("\n\n"), DELEGATION, CONTEXT, CODE_SKILLS, AGENT_CLASSES, MEMORY].join("\n\n");
+	return [
+		RUNTIME,
+		BOUNDED_INFERENCE,
+		skills.join("\n\n"),
+		DELEGATION,
+		CONTEXT,
+		CODE_SKILLS,
+		AGENT_CLASSES,
+		MEMORY,
+	].join("\n\n");
 }

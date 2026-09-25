@@ -219,6 +219,20 @@ function taskOptions(payload: Payload): Pick<TaskRequest, "model" | "key" | "tim
 	return { model, key, timeoutMs };
 }
 
+/** One `rlm-frame@1` task run on its own lane (see inference.ts); the executor owns prompts, repair and budget. */
+export type NativeFrameRun = {
+	taskId: string;
+	input: JsonValue;
+	lane: AgentLane;
+	laneName: string;
+	signal: AbortSignal;
+	context: Context;
+	usageRootId?: string;
+	deadlineAt: number | null;
+	timeoutMs: number;
+};
+export type NativeFrameExecutor = (run: NativeFrameRun) => Promise<NativeResult>;
+
 export type NativeHostService = {
 	handle(type: string, payload: Record<string, unknown>, context: Context): Promise<unknown>;
 };
@@ -229,6 +243,8 @@ export type NativeHostOptions = {
 	usage?: NativeUsageLedgerLike;
 	deterministic?: NativeDefinitionAdapter;
 	predict?: NativeDefinitionAdapter;
+	/** Runs `rlm-frame@1` tasks (bounded inference frames). */
+	frames?: NativeFrameExecutor;
 	modules?: readonly NativeHostModule[];
 	/** Active instruction refinements targeting a definition id, applied to its model prompt. */
 	refinements?: (
@@ -271,6 +287,7 @@ export class NativeRlmHost {
 	private readonly beforeLaneReuse: NativeHostOptions["beforeLaneReuse"];
 	private readonly holdActivity: NativeHostOptions["holdActivity"];
 	private readonly refinements: NativeHostOptions["refinements"];
+	private readonly frames: NativeHostOptions["frames"];
 	private modulesStarted?: Promise<void>;
 	private readonly rootTurns: boolean;
 	/** Usage root of the current or most recent root turn. */
@@ -290,6 +307,7 @@ export class NativeRlmHost {
 		this.beforeLaneReuse = options.beforeLaneReuse;
 		this.holdActivity = options.holdActivity;
 		this.refinements = options.refinements;
+		this.frames = options.frames;
 		this.now = options.now ?? Date.now;
 		this.rootTurns = options.rootTurns ?? false;
 		this.pinLane = options.pinLane;
@@ -505,6 +523,18 @@ export class NativeRlmHost {
 				await lane.setModel({ provider: model.slice(0, split), modelId: model.slice(split + 1) }, taskContext);
 				signal.throwIfAborted();
 			}
+			if (definition.id === "rlm-frame" && this.frames)
+				return await this.frames({
+					taskId: task.id,
+					input: request.input,
+					lane,
+					laneName,
+					signal,
+					context: taskContext,
+					...(task.usageReservation === undefined ? {} : { usageRootId: task.usageReservation.rootId }),
+					deadlineAt: task.usageReservation?.deadlineAt ?? null,
+					timeoutMs: request.timeoutMs,
+				});
 			const basePrompt =
 				definition.id === "rlm-child"
 					? String(objectInput(request.input).prompt)
