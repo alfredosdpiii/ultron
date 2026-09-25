@@ -18,8 +18,17 @@
  *   model and thinking level Pi resolves at the leaf.
  * - A `context_edit` whose target reaches only leaves that pass through the edit is baked into the native
  *   target (and into compaction tails that keep it): a replacement changes the message content, an
- *   omission turns the message into a `pi-import:omitted-message` custom entry. Edits that would also
- *   change sibling branches cannot be baked and are reported in `unappliedContextEdits`.
+ *   omission turns the message into a `pi-import:omitted-message` custom entry.
+ * - A `context_edit` that only some branches below its target carry is applied per branch: the path from the
+ *   target down to the last fork before the edit is copied (copy ids `<id>~<editId>`, recorded in
+ *   `ultron.pi.copyOf`), the rest of the edit's branch is re-parented onto the copies, and the edit is baked
+ *   into the copied target. Other branches keep the untouched originals, so the native context equals Pi's at
+ *   every leaf. As for dominated edits, entries between a target and its edit show the edit natively. Export drops the
+ *   copies and writes the original Pi entries. Edits whose target is not an editable message on the edit's own
+ *   path (Pi applies those to no leaf, or to a summary entry) are reported in `unappliedContextEdits`.
+ * - Usage Pi reports for the session (usage entries, assistant and tool-result message usage, compaction and
+ *   branch-summary usage) is written to the session's usage ledger (`ultron.usage`) as one imported historical
+ *   root `import:pi:<piSessionId>`, one model call per entry with its cost, so native totals include it.
  * - When the native entry cannot reproduce the Pi entry exactly (compactions, edited messages), the
  *   original Pi entry is kept in the `ultron.pi.original` value for that entry id so export is lossless.
  */
@@ -50,6 +59,7 @@ import {
 	type Write,
 } from "@earendil-works/pi-agent-core";
 import { NodeExecutionEnv } from "@earendil-works/pi-agent-core/node";
+import type { Usage } from "@earendil-works/pi-ai";
 import { createCustomMessage } from "../core/messages.ts";
 import {
 	buildContextEntries,
@@ -64,6 +74,7 @@ import {
 	SessionManager,
 	sessionEntryToContextMessages,
 } from "../core/session-manager.ts";
+import { createSessionUsageLedger } from "./usage.ts";
 
 // =============================================================================
 // Shared Pi <-> native mapping
@@ -77,6 +88,10 @@ export const PI_OMITTED_MESSAGE_CUSTOM_TYPE = "pi-import:omitted-message";
 export const PI_LEAF_MARKER_CUSTOM_TYPE = "ultron:pi-leaf";
 /** The original Pi entry, stored when its native entry cannot reproduce it exactly. */
 export const piOriginalEntry = (entryId: string): Value<JsonValue> => value<JsonValue>("ultron.pi.original", entryId);
+/** For a native copy made to apply a branch-local context edit: the Pi entry id it copies. */
+export const piCopyOf = (entryId: string): Value<string> => value<string>("ultron.pi.copyOf", entryId);
+/** Usage-ledger root holding the usage a Pi session reported before import. */
+export const piImportUsageRoot = (piSessionId: string): string => `import:pi:${piSessionId}`;
 
 /** Pi entry types with a dedicated mapping; anything else is preserved and reported. */
 const KNOWN_PI_ENTRY_TYPES = new Set([
@@ -199,6 +214,10 @@ class PiTree {
 		}
 	}
 
+	childIds(id: string): readonly string[] {
+		return this.children.get(id) ?? [];
+	}
+
 	/** The parent as Pi's tree resolves it: missing or self parents make the entry a root. */
 	parentOf(entry: SessionEntry): string | null {
 		const parentId = entry.parentId;
@@ -274,10 +293,14 @@ export interface ImportPiSessionResult {
 	/** Unknown Pi entry types kept verbatim as `pi-session:<type>` custom entries, with counts. */
 	preserved: Array<{ type: string; count: number }>;
 	/**
-	 * `context_edit` entry ids whose effect is branch-local: the target is shared with branches that do not
-	 * carry the edit, so it is kept only as a `pi-session:context_edit` entry (Pi still honors it after export).
+	 * `context_edit` entry ids not baked into native context: their target is not an editable message on the
+	 * edit's own path. They are kept as `pi-session:context_edit` entries (Pi still honors them after export).
 	 */
 	unappliedContextEdits: string[];
+	/** Native copies written to apply branch-local context edits per branch (not counted in `imported`). */
+	branchCopies: number;
+	/** Pi usage imported into the usage ledger as the historical root `import:pi:<piSessionId>`. */
+	importedUsage: { root: string; entries: number; cost: number };
 }
 
 /** The Pi session was already imported; re-import is refused so the native copy is never duplicated. */
@@ -320,6 +343,119 @@ function readPiSession(piSessionPath: string): PiSessionSnapshot {
 	// In-memory manager: applies Pi's format migrations without rewriting the source file.
 	const manager = SessionManager.inMemory(header.cwd, undefined, fileEntries);
 	return { header, manager, entries: manager.getEntries() };
+}
+
+/**
+ * Rewrites the Pi tree so every context edit on a message on its own path is dominated by its target: for an
+ * edit that only some branches below the target carry, the path from the target down to the last fork before the
+ * edit is copied and the edit's branch below that fork is moved onto the copies. References inside the moved branch (edit and label
+ * targets, compaction `firstKeptEntryId`) that point at a copied entry are redirected to the copy, since the copy
+ * is what that branch's path now contains. Entries are cloned; the input is not changed.
+ */
+function splitBranchLocalEdits(input: readonly SessionEntry[]): {
+	entries: SessionEntry[];
+	copyOf: Map<string, string>;
+} {
+	let entries = input.map((entry) => ({ ...entry }) as SessionEntry);
+	const copyOf = new Map<string, string>();
+	const ids = new Set(entries.map((entry) => entry.id));
+	const remap = (entry: SessionEntry, mapping: ReadonlyMap<string, string>): void => {
+		const record = entry as unknown as Record<string, unknown>;
+		const field = entry.type === "compaction" ? "firstKeptEntryId" : "targetId";
+		if (
+			(entry.type === "context_edit" || entry.type === "label" || entry.type === "compaction") &&
+			typeof record[field] === "string"
+		) {
+			const next = mapping.get(record[field] as string);
+			if (next !== undefined) record[field] = next;
+		}
+	};
+	/** Splits for one edit; false when it is already dominated by its target or has none on its path. */
+	const split = (editId: string): boolean => {
+		const tree = new PiTree(entries);
+		const edit = tree.byId.get(editId) as ContextEditEntry;
+		const target = tree.byId.get(edit.targetId);
+		if (target?.type !== "message" && target?.type !== "custom_message") return false;
+		if (tree.dominates(target.id, edit.id)) return false;
+		// Path target .. parent(edit), oldest first; the edit must lie below its target.
+		const path: SessionEntry[] = [];
+		for (let parentId = tree.parentOf(edit); parentId !== null; ) {
+			const parent = tree.byId.get(parentId)!;
+			path.unshift(parent);
+			if (parent.id === target.id) break;
+			parentId = tree.parentOf(parent);
+		}
+		if (path[0]?.id !== target.id) return false;
+		// Copy down to the deepest fork on the path; below it every entry already leads only to the edit.
+		const next = (index: number) => (index + 1 < path.length ? path[index + 1]! : edit).id;
+		let fork = -1;
+		for (let index = 0; index < path.length; index++)
+			if (tree.childIds(path[index]!.id).some((child) => child !== next(index))) fork = index;
+		if (fork === -1) return false;
+		const mapping = new Map<string, string>();
+		const copies = new Map<string, SessionEntry>();
+		let parentId = target.parentId;
+		for (const original of path.slice(0, fork + 1)) {
+			const base = `${copyOf.get(original.id) ?? original.id}~${copyOf.get(edit.id) ?? edit.id}`;
+			let id = base;
+			for (let counter = 2; ids.has(id); counter++) id = `${base}~${counter}`;
+			ids.add(id);
+			mapping.set(original.id, id);
+			copyOf.set(id, copyOf.get(original.id) ?? original.id);
+			copies.set(original.id, { ...original, id, parentId } as SessionEntry);
+			parentId = id;
+		}
+		for (const copy of copies.values()) remap(copy, mapping);
+		// Move the edit's branch onto the copies and redirect its references to them.
+		const head = next(fork);
+		const moved = new Set<string>([head]);
+		const queue = [head];
+		while (queue.length > 0) {
+			for (const child of tree.childIds(queue.shift()!)) {
+				moved.add(child);
+				queue.push(child);
+			}
+		}
+		entries = entries.flatMap((entry) => {
+			if (moved.has(entry.id)) {
+				if (entry.id === head) entry.parentId = parentId;
+				remap(entry, mapping);
+			}
+			// Each copy goes right after its original, so edit order (the later edit wins) is kept.
+			const copy = copies.get(entry.id);
+			return copy === undefined ? [entry] : [entry, copy];
+		});
+		return true;
+	};
+	// A split can make an earlier edit whose target lies above the new copies branch-local again (and it copies
+	// edits too), so repeat until every edit on its own path is dominated by its target. Each split only divides
+	// paths further; the bound is a guard against pathological inputs, whose remaining edits are then reported.
+	let budget = 64 * (input.length + 1);
+	for (let changed = true; changed && budget > 0; ) {
+		changed = false;
+		for (const entry of [...entries]) {
+			if (entry.type !== "context_edit" || budget <= 0) continue;
+			if (split(entry.id)) {
+				changed = true;
+				budget--;
+			}
+		}
+	}
+	return { entries, copyOf };
+}
+
+/** Pi-reported usage per entry, as Pi's session stats count it. */
+function piUsageEntries(entries: readonly SessionEntry[]): Array<{ id: string; at: number; usage: Usage }> {
+	const out: Array<{ id: string; at: number; usage: Usage }> = [];
+	for (const entry of entries) {
+		let usage: Usage | undefined;
+		if (entry.type === "usage") usage = entry.usage;
+		else if (entry.type === "compaction" || entry.type === "branch_summary") usage = entry.usage;
+		else if (entry.type === "message" && (entry.message.role === "assistant" || entry.message.role === "toolResult"))
+			usage = (entry.message as { usage?: Usage }).usage;
+		if (usage !== undefined) out.push({ id: entry.id, at: parseTimestamp(entry.timestamp, 0), usage });
+	}
+	return out;
 }
 
 type NativeEntryBody = NewEntry extends infer T ? (T extends unknown ? Omit<T, "id" | "parentId"> : never) : never;
@@ -459,8 +595,10 @@ export async function importPiSession(options: ImportPiSessionOptions): Promise<
 	const piPath = resolve(options.piSessionPath);
 	const pi = readPiSession(piPath);
 	const sessionId = nativeSessionIdForPiSession(pi.header.id);
-	const tree = new PiTree(pi.entries);
-	const plan = planImport(pi.entries, tree);
+	const split = splitBranchLocalEdits(pi.entries);
+	const tree = new PiTree(split.entries);
+	const plan = planImport(split.entries, tree);
+	const piById = new Map(pi.entries.map((entry) => [entry.id, entry]));
 
 	// Storage stamps every commit with the repo clock; drive it from the Pi timestamps.
 	let clock = parseTimestamp(pi.header.timestamp, Date.now());
@@ -475,17 +613,44 @@ export async function importPiSession(options: ImportPiSessionOptions): Promise<
 		created = true;
 		const preserved = new Map<string, number>();
 		let imported = 0;
-		for (const entry of tree.insertionOrder(pi.entries)) {
-			if (!KNOWN_PI_ENTRY_TYPES.has(entry.type)) preserved.set(entry.type, (preserved.get(entry.type) ?? 0) + 1);
+		for (const entry of tree.insertionOrder(split.entries)) {
+			const copied = split.copyOf.get(entry.id);
+			if (copied === undefined && !KNOWN_PI_ENTRY_TYPES.has(entry.type))
+				preserved.set(entry.type, (preserved.get(entry.type) ?? 0) + 1);
 			clock = parseTimestamp(entry.timestamp, clock);
 			const native = { ...toNativeEntryBody(entry, plan), id: entry.id, parentId: tree.parentOf(entry) } as NewEntry;
 			const writes: Write[] = [insertEntry(native)];
-			if (!reproducesPiEntry(entry, native, clock)) writes.push(setValue(piOriginalEntry(entry.id), toJson(entry)));
+			if (copied !== undefined) writes.push(setValue(piCopyOf(entry.id), copied));
+			else {
+				// Compare with the Pi entry as written: a split may have re-parented or re-targeted this one.
+				const original = piById.get(entry.id)!;
+				if (!reproducesPiEntry(original, native, clock))
+					writes.push(setValue(piOriginalEntry(entry.id), toJson(original)));
+				imported++;
+			}
 			await session.mutate(async (mutator) => {
 				await mutator.commit(writes, BACKGROUND_CONTEXT);
 			}, BACKGROUND_CONTEXT);
-			imported++;
 		}
+
+		// Usage Pi reported, as one imported historical root of the session's usage ledger.
+		const usageRoot = piImportUsageRoot(pi.header.id);
+		const reported = piUsageEntries(pi.entries);
+		if (reported.length > 0)
+			await createSessionUsageLedger(session).importHistory(
+				usageRoot,
+				"pi",
+				reported.map(({ at, usage }) => ({
+					at,
+					usage: {
+						inputTokens: usage.input,
+						outputTokens: usage.output,
+						totalTokens: usage.totalTokens,
+						cost: usage.cost.total,
+						wallMs: 0,
+					},
+				})),
+			);
 
 		// Derived state at the Pi leaf: tip, labels, name, and the lane configuration Pi would resume with.
 		const leafId = pi.manager.getLeafId();
@@ -519,6 +684,12 @@ export async function importPiSession(options: ImportPiSessionOptions): Promise<
 			skipped: [],
 			preserved: [...preserved].map(([type, count]) => ({ type, count })),
 			unappliedContextEdits: plan.unappliedContextEdits,
+			branchCopies: split.copyOf.size,
+			importedUsage: {
+				root: usageRoot,
+				entries: reported.length,
+				cost: reported.reduce((total, { usage }) => total + usage.cost.total, 0),
+			},
 		};
 	} catch (error) {
 		if (created && session !== undefined) {
@@ -642,17 +813,26 @@ export async function exportNativeSessionToPi(
 			]),
 		);
 		const nativeById = new Map(nativeEntries.map((entry) => [entry.id, entry]));
+		// Copies made on import for branch-local context edits are not exported; Pi has the originals.
+		const copyOf = new Map(
+			(await session.scanValues(piCopyOf(""), BACKGROUND_CONTEXT)).map((stored) => [
+				stored.address.key,
+				stored.value,
+			]),
+		);
+		const originalId = (nativeId: string): string => copyOf.get(nativeId) ?? nativeId;
 
 		// Storage order is parent-first, so every parent is converted before its children.
 		const produced = new Map<string, SessionEntry[]>();
 		const piIdOf = (nativeId: string | null): string | null =>
-			nativeId === null ? null : (produced.get(nativeId)?.at(-1)?.id ?? nativeId);
+			nativeId === null ? null : (produced.get(originalId(nativeId))?.at(-1)?.id ?? originalId(nativeId));
 		const piBranchTo = (nativeId: string | null): SessionEntry[] => {
 			const ids: string[] = [];
 			for (let id = nativeId; id !== null; id = nativeById.get(id)?.parentId ?? null) ids.push(id);
-			return ids.reverse().flatMap((id) => produced.get(id) ?? []);
+			return ids.reverse().flatMap((id) => produced.get(originalId(id)) ?? []);
 		};
 		for (const entry of nativeEntries) {
+			if (copyOf.has(entry.id)) continue;
 			const base = { id: entry.id, parentId: piIdOf(entry.parentId), timestamp: iso(entry.timestamp) };
 			const original = originals.get(entry.id);
 			const items =
@@ -663,7 +843,7 @@ export async function exportNativeSessionToPi(
 						: [nativeToPiEntry(entry, base)];
 			produced.set(entry.id, items);
 		}
-		let entries = nativeEntries.flatMap((entry) => produced.get(entry.id)!);
+		let entries = nativeEntries.flatMap((entry) => produced.get(entry.id) ?? []);
 		const ids = new Set(entries.map((entry) => entry.id));
 		let stamp = iso(Math.max(metadata.createdAt, ...nativeEntries.map((entry) => entry.timestamp)));
 		let leafId = entries.at(-1)?.id ?? null;
