@@ -56,7 +56,7 @@ describe("Ultron native RLM tool", () => {
 				"call-services",
 				{
 					code: [
-						'proposal = await refinements.propose("skill", "skill:review", 0, "Check boundaries.", [{"ref": "test"}])',
+						'proposal = await refinements.propose("skill", "skill:review", 0, "---\\nname: review\\ndescription: Review boundaries\\n---\\nCheck boundaries.", [{"ref": "test"}])',
 						'active = await refinements.activate(proposal["id"])',
 						"refinement_records = await refinements.list()",
 						'put = await rlm.host_request("artifacts.put", {"text": "native artifact", "options": {"label": "integration"}})',

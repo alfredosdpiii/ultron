@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { isJsonValue, type JsonValue } from "@earendil-works/chord";
-import type { HostModuleStore, NativeHostApi, NativeHostModule } from "./rlm/host-module.ts";
+import type { HostModuleStore, NativeHostModule } from "./rlm/host-module.ts";
 
 /**
  * Retained instances (A36, A40): a completed RLM task can be kept so later invocations run on the
