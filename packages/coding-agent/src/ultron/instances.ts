@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { isJsonValue, type JsonValue } from "@ultron/chord";
+import { readVersioned } from "./format-version.ts";
 import type { HostModuleStore, NativeHostApi, NativeHostModule } from "./rlm/host-module.ts";
 
 /**
@@ -54,7 +55,8 @@ export function createInstanceModule(options: { store: HostModuleStore; now?: ()
 	const load = async (): Promise<InstanceDocument> => {
 		if (document) return document;
 		const saved = await options.store.read();
-		document = saved === undefined ? { version: 1, instances: [] } : parse(saved);
+		document =
+			saved === undefined ? { version: 1, instances: [] } : parse(readVersioned("ultron.module/instances", saved));
 		return document;
 	};
 	const commit = async (next: InstanceDocument): Promise<void> => {

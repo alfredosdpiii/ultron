@@ -61,6 +61,7 @@ import {
 	legacyBankFromEnv,
 } from "../ultron/auto-memory.ts";
 import { createFamilyModule } from "../ultron/family.ts";
+import { assertSessionFormatsReadable } from "../ultron/format-version.ts";
 import { createGrantModule } from "../ultron/grants.ts";
 import { createInstanceModule } from "../ultron/instances.ts";
 import { createNativeJevClient } from "../ultron/jev.ts";
@@ -1457,11 +1458,19 @@ async function createCodingAgentHarness(
 					: nativeServices.handle(type, payload, context),
 		};
 		traceStartup("worker.host");
+		// Budgets apply per root turn; the turn and token limits (rootBudget settings, ULTRON_MAX_TOTAL_*) count
+		// every model turn of a root and its descendants.
+		const usage = createSessionUsageLedger(session, {
+			limits: nativeUsageLimitsFromEnv(process.env, settingsManager.getRootBudgetSettings()),
+		});
+		// A session written by a newer Ultron fails here, naming the value and its format version, before any of
+		// it is loaded or rewritten.
+		await assertSessionFormatsReadable(session, BACKGROUND_CONTEXT);
 		host = new NativeRlmHost(harness, lane, {
 			store: createSessionTaskStore(session),
 			definitionStore: createSessionDefinitionStore(session),
 			// Budgets apply per root turn: each main-lane run opens a fresh wall, admission and cost window.
-			usage: createSessionUsageLedger(session, { limits: nativeUsageLimitsFromEnv() }),
+			usage,
 			rootTurns: true,
 			pinLane: (lane, holder) => rlmTool.pin(lane, holder),
 			unpinLane: (lane, holder) => rlmTool.unpin(lane, holder),
@@ -1522,6 +1531,17 @@ async function createCodingAgentHarness(
 					})
 				: undefined;
 		const removeAutoMemory = autoMemory?.install(harness) ?? (() => {});
+		// Per-root turn and token limits: every model response on any lane counts against its root, and once a root
+		// is spent its tool calls are refused with the limit error and the run stops (no-ops without a limit).
+		const removeBudgetTurnListener = harness.events.on("message_end", (event) => {
+			if (event.message.role !== "assistant" || event.runId === undefined || "recovery" in event) return;
+			const totalTokens = (event.message as { usage?: { totalTokens?: number } }).usage?.totalTokens ?? null;
+			void usage.recordTurn(host?.usageRootForLane(event.lane, event.runId), { totalTokens }).catch(() => {});
+		});
+		const removeBudgetToolHook = harness.hooks.on("before_tool", async (event) => {
+			const reason = await usage.turnBudgetExhausted(host?.usageRootForLane(event.lane, event.runId));
+			return reason === undefined ? undefined : { block: { reason, terminate: true } };
+		});
 		// Brake for open-ended research loops on the root agent (ULTRON_TOOL_ROUNDS_NUDGE, 0 disables).
 		const nudger = new ToolRoundNudger(toolRoundsNudgeFromEnv(process.env.ULTRON_TOOL_ROUNDS_NUDGE), (message) =>
 			lane.steer(message, undefined, BACKGROUND_CONTEXT),
@@ -1547,6 +1567,8 @@ async function createCodingAgentHarness(
 				removeAutoMemory();
 				await autoMemory?.settle();
 				removeNudgeTurnListener();
+				removeBudgetTurnListener();
+				removeBudgetToolHook();
 				removeNudgeRunListener();
 				await legacyExtensions?.close();
 				await rlmTool.close();

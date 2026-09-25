@@ -320,6 +320,17 @@ export class NativeRlmHost {
 		return `job:${randomUUID()}`;
 	}
 
+	/**
+	 * Usage root that a model turn on `lane` during run `runId` is charged to for the turn and token limits: a
+	 * main-lane run is its own root turn, a task lane belongs to its task's root. Undefined means the ledger's
+	 * default root.
+	 */
+	usageRootForLane(lane: string, runId: string): string | undefined {
+		if (lane === "main") return this.rootTurns ? `turn:${runId}` : undefined;
+		const taskId = this.laneTasks.get(lane);
+		return taskId === undefined ? undefined : this.tasks.get(taskId)?.usageReservation?.rootId;
+	}
+
 	/** Usage root shown to a caller: its task's root, else the current or last root turn. */
 	private statusRoot(parentId: string | null | undefined): string | undefined {
 		const inherited = parentId == null ? undefined : this.tasks.get(parentId)?.usageReservation?.rootId;
@@ -451,6 +462,8 @@ export class NativeRlmHost {
 						throw error;
 					} finally {
 						if (reservation) await this.usage?.settle(reservation, { status: attemptStatus });
+						// A predict attempt is one model turn of its root (tokens are not reported by the adapter).
+						await this.usage?.recordTurn?.(task.usageReservation?.rootId);
 					}
 					if (isJsonValue(value) && this.registry.isValidOutput(definition, value))
 						return { status: "succeeded", value, verification: "unverified" };

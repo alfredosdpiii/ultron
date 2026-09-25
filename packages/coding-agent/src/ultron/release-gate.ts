@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { isJsonValue, type JsonValue } from "@ultron/chord";
 import Type from "typebox";
 import { Check } from "typebox/value";
+import { readVersioned } from "./format-version.ts";
 import type { HostModuleRequest, HostModuleStore, NativeHostApi, NativeHostModule } from "./rlm/host-module.ts";
 
 export interface ReleaseGateModuleOptions {
@@ -247,8 +248,9 @@ export function createReleaseGateModule(options: ReleaseGateModuleOptions): Nati
 	}
 
 	async function load(): Promise<void> {
-		const saved = await options.store.read();
-		if (saved === undefined) return;
+		const stored = await options.store.read();
+		if (stored === undefined) return;
+		const saved = isJsonValue(stored) ? readVersioned("ultron.module/release-gates", stored) : stored;
 		if (!isJsonValue(saved) || !Check(documentSchema, saved)) throw new Error("Invalid release gate document");
 		const parsed = structuredClone(saved) as unknown as GateDocument;
 		for (const gate of parsed.gates) {

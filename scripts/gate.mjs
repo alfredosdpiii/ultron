@@ -7,6 +7,10 @@
  * 3. The newest full quality comparison of the default task set in acceptance/quality/ must exist, use the current frozen task set,
  *    and meet the thresholds it was frozen with. Quality runs are metered, so the gate reads the recorded
  *    result instead of re-running it; run `npm run eval:quality` to refresh it.
+ *
+ * The gate uses deterministic pass rates only. LLM-judge scores (`record.judge`, `summary.byVariant.*.judged`,
+ * from the judged set evals/quality/tasks-judged.mjs) and uptake metrics are evidence reported beside them; they
+ * are never read here, so a judge can never pass or fail a release on its own.
  */
 import { spawnSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";

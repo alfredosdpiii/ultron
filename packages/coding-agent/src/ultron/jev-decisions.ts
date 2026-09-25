@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { isJsonValue, type JsonValue } from "@ultron/chord";
+import { readVersioned } from "./format-version.ts";
 import type { JevMemoryGate, JevMemoryPolicy, JevTriage, NativeJevClient } from "./jev.ts";
 
 /**
@@ -76,7 +77,10 @@ export class JevDecisionLog {
 
 	async #load(): Promise<JevDecision[]> {
 		if (this.#decisions !== undefined) return this.#decisions;
-		const stored = await this.#store.read().catch(() => undefined);
+		// An unreadable store starts an empty log, but a document in a newer format fails explicitly: it must never be
+		// replaced by this build's shorter log.
+		const read = await this.#store.read().catch(() => undefined);
+		const stored = isJsonValue(read) ? readVersioned("ultron.jev.decisions/root", read) : read;
 		const list =
 			stored !== null &&
 			typeof stored === "object" &&

@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import type { JsonValue } from "@ultron/chord";
+import { readVersioned } from "./format-version.ts";
 
 export type { JsonValue } from "@ultron/chord";
 
@@ -504,7 +505,8 @@ export class NativeMemoryService {
 			} catch {
 				throw new MemoryError("STORE_ERROR");
 			}
-			if (value !== undefined) this.records = readJournal(value, this.namespace);
+			if (value !== undefined)
+				this.records = readJournal(readVersioned("ultron.memory.state/root", value), this.namespace);
 			if (this.records.some((op) => op.state === "started")) {
 				await this.commit((records) =>
 					records.map((op) =>

@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { isJsonValue, type JsonValue } from "@ultron/chord";
 import Type from "typebox";
 import { Check } from "typebox/value";
+import { readVersioned } from "./format-version.ts";
 import type { HostModuleRequest, HostModuleStore, NativeHostApi, NativeHostModule } from "./rlm/host-module.ts";
 
 export interface GrantModuleOptions {
@@ -179,8 +180,9 @@ export function createGrantModule(options: GrantModuleOptions): NativeHostModule
 	}
 
 	async function load(): Promise<void> {
-		const saved = await options.store.read();
-		if (saved === undefined) return;
+		const stored = await options.store.read();
+		if (stored === undefined) return;
+		const saved = isJsonValue(stored) ? readVersioned("ultron.module/grants", stored) : stored;
 		if (!isJsonValue(saved) || !Check(documentSchema, saved)) throw new Error("Invalid grant document");
 		document = structuredClone(saved) as unknown as GrantDocument;
 	}

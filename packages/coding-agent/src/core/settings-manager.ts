@@ -160,6 +160,13 @@ export interface Settings {
 	fullscreenExitOutput?: FullscreenExitOutput; // default: "transcript"; no effect in regular TUI mode
 	fullscreenScrollbar?: ScrollViewScrollbar; // default: "auto"; no effect in regular TUI mode
 	fullscreenCopyOnSelect?: boolean; // default: true; no effect in regular TUI mode
+	rootBudget?: RootBudgetSettings; // Ultron: per-root max_total_tokens / max_total_turns (nano-rlm policy knobs)
+}
+
+/** Ultron per-root policy knobs; `ULTRON_MAX_TOTAL_TOKENS` / `ULTRON_MAX_TOTAL_TURNS` override them. Unset: no limit. */
+export interface RootBudgetSettings {
+	maxTotalTokens?: number;
+	maxTotalTurns?: number;
 }
 
 function isMergeableObject(value: unknown): value is Record<string, unknown> {
@@ -935,6 +942,18 @@ export class SettingsManager {
 			maxRetries: this.settings.retry?.maxRetries ?? 3,
 			baseDelayMs: this.settings.retry?.baseDelayMs ?? 2000,
 			maxAgentDelayMs: this.settings.retry?.maxAgentDelayMs ?? DEFAULT_MAX_AGENT_RETRY_DELAY_MS,
+		};
+	}
+
+	/** Ultron's per-root turn and token limits from settings; the usage ledger applies the environment on top. */
+	getRootBudgetSettings(): RootBudgetSettings {
+		const positive = (value: unknown): number | undefined =>
+			typeof value === "number" && Number.isSafeInteger(value) && value >= 1 ? value : undefined;
+		const maxTotalTokens = positive(this.settings.rootBudget?.maxTotalTokens);
+		const maxTotalTurns = positive(this.settings.rootBudget?.maxTotalTurns);
+		return {
+			...(maxTotalTokens === undefined ? {} : { maxTotalTokens }),
+			...(maxTotalTurns === undefined ? {} : { maxTotalTurns }),
 		};
 	}
 

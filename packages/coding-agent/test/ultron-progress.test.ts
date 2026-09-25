@@ -367,7 +367,14 @@ describe("progress module (A44)", () => {
 	});
 
 	test("rejects a corrupt stored document", async () => {
-		const module = createProgressModule({ store: createMemoryModuleStore({ version: 2 }) });
+		const module = createProgressModule({ store: createMemoryModuleStore({ version: 1 }) });
 		await expect(Promise.resolve(module.start?.({} as never))).rejects.toThrow("Invalid progress document");
+	});
+
+	test("a document in a newer format fails naming its namespace and version", async () => {
+		const module = createProgressModule({ store: createMemoryModuleStore({ version: 2 }) });
+		await expect(Promise.resolve(module.start?.({} as never))).rejects.toThrow(
+			"ultron.module/progress has format version 2",
+		);
 	});
 });

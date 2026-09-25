@@ -1,0 +1,172 @@
+{
+  "taskSet": "judged",
+  "frozenAt": "2026-09-26-judged",
+  "passed": true,
+  "results": [
+    {
+      "task": "refactor-order-report",
+      "category": "judged-refactor",
+      "ok": true,
+      "durationMs": 144,
+      "outcomes": [
+        {
+          "trial": "unsolved",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 73
+        },
+        {
+          "trial": "judge rubric",
+          "expect": "pass",
+          "ok": true
+        },
+        {
+          "trial": "judge inputs exist in the solved tree",
+          "expect": "pass",
+          "ok": true
+        },
+        {
+          "trial": "judge prompt names every criterion and input",
+          "expect": "pass",
+          "ok": true
+        },
+        {
+          "trial": "fake judge: full marks parse",
+          "expect": "pass",
+          "ok": true
+        },
+        {
+          "trial": "fake judge: partial marks score lower",
+          "expect": "pass",
+          "ok": true
+        },
+        {
+          "trial": "fake judge: malformed reply rejected after 2 attempts",
+          "expect": "pass",
+          "ok": true
+        },
+        {
+          "trial": "fake judge: out-of-range reply rejected after 2 attempts",
+          "expect": "pass",
+          "ok": true
+        },
+        {
+          "trial": "solved",
+          "expect": "pass",
+          "ok": true,
+          "verifyMs": 71
+        }
+      ]
+    },
+    {
+      "task": "explain-ratelimit-module",
+      "category": "judged-explanation",
+      "ok": true,
+      "durationMs": 86,
+      "outcomes": [
+        {
+          "trial": "unsolved",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 40
+        },
+        {
+          "trial": "judge rubric",
+          "expect": "pass",
+          "ok": true
+        },
+        {
+          "trial": "judge inputs exist in the solved tree",
+          "expect": "pass",
+          "ok": true
+        },
+        {
+          "trial": "judge prompt names every criterion and input",
+          "expect": "pass",
+          "ok": true
+        },
+        {
+          "trial": "fake judge: full marks parse",
+          "expect": "pass",
+          "ok": true
+        },
+        {
+          "trial": "fake judge: partial marks score lower",
+          "expect": "pass",
+          "ok": true
+        },
+        {
+          "trial": "fake judge: malformed reply rejected after 2 attempts",
+          "expect": "pass",
+          "ok": true
+        },
+        {
+          "trial": "fake judge: out-of-range reply rejected after 2 attempts",
+          "expect": "pass",
+          "ok": true
+        },
+        {
+          "trial": "solved",
+          "expect": "pass",
+          "ok": true,
+          "verifyMs": 45
+        }
+      ]
+    },
+    {
+      "task": "design-note-price-cache",
+      "category": "judged-design",
+      "ok": true,
+      "durationMs": 85,
+      "outcomes": [
+        {
+          "trial": "unsolved",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 42
+        },
+        {
+          "trial": "judge rubric",
+          "expect": "pass",
+          "ok": true
+        },
+        {
+          "trial": "judge inputs exist in the solved tree",
+          "expect": "pass",
+          "ok": true
+        },
+        {
+          "trial": "judge prompt names every criterion and input",
+          "expect": "pass",
+          "ok": true
+        },
+        {
+          "trial": "fake judge: full marks parse",
+          "expect": "pass",
+          "ok": true
+        },
+        {
+          "trial": "fake judge: partial marks score lower",
+          "expect": "pass",
+          "ok": true
+        },
+        {
+          "trial": "fake judge: malformed reply rejected after 2 attempts",
+          "expect": "pass",
+          "ok": true
+        },
+        {
+          "trial": "fake judge: out-of-range reply rejected after 2 attempts",
+          "expect": "pass",
+          "ok": true
+        },
+        {
+          "trial": "solved",
+          "expect": "pass",
+          "ok": true,
+          "verifyMs": 42
+        }
+      ]
+    }
+  ]
+}

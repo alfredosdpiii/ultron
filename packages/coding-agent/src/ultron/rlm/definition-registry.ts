@@ -4,6 +4,7 @@ import { isJsonValue, type JsonValue } from "@ultron/chord";
 import { BACKGROUND_CONTEXT } from "@ultron/chord/context";
 import Type, { IsSchema, type TSchema } from "typebox";
 import { Check } from "typebox/value";
+import { readVersioned } from "../format-version.ts";
 
 export type NativeDefinitionStrategy = "deterministic" | "predict" | "rlm";
 
@@ -463,6 +464,7 @@ export class NativeDefinitionRegistry {
 			throw new Error("Definition store could not be read");
 		}
 		if (saved === undefined) return;
+		if (isJsonValue(saved)) saved = readVersioned("ultron.definitions/root", saved);
 		if (!isJsonValue(saved) || !Check(documentSchema, saved)) throw new Error("Invalid native definition document");
 		const document = saved as unknown as DefinitionDocument;
 		const loaded = new Map(this.definitions);
