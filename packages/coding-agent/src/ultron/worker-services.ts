@@ -9,6 +9,9 @@ import { NativeLocalServices, type RefinementBranch } from "./local-services.ts"
 import { createHindsightBackend, type MemoryBackend, NativeMemoryService } from "./memory.ts";
 import { validateRefinementContent } from "./refinement-validation.ts";
 
+/** Minimum Jev confidence for an automatic (non-explicit) retention to be kept. */
+export const AUTOMATIC_KEEP_THRESHOLD = 0.65;
+
 type SessionValues = Pick<Session, "getValue" | "setValue" | "scanValues">;
 const evidence = Type.Array(
 	Type.Object(
@@ -89,9 +92,17 @@ export function createWorkerServices(options: {
 					if (request.action === "recall" && request.explicit) return { retrieve: true, probability: 1 };
 					if (!jev) return request.action === "recall" ? { retrieve: false } : { action: "skip" };
 					if (request.action === "recall") return jev.memoryGate(request.query, signal);
-					const policy = await jev.memoryPolicy(request.text, "", signal);
-					// A deliberate write is kept unless Jev judges it sensitive; automatic writes follow Jev fully.
-					return request.explicit && policy.action === "skip" ? { ...policy, action: "keep" } : policy;
+					const policy = await jev.memoryPolicy(
+						request.source?.prompt ?? request.text,
+						request.source?.response ?? "",
+						signal,
+					);
+					// A deliberate write is kept unless Jev judges it sensitive.
+					if (request.explicit) return policy.action === "skip" ? { ...policy, action: "keep" } : policy;
+					// Automatic writes follow Jev fully, and a keep needs the same confidence the Pi Jev extension used.
+					return policy.action === "keep" && policy.confidence < AUTOMATIC_KEEP_THRESHOLD
+						? { ...policy, action: "skip" }
+						: policy;
 				},
 			})
 		: undefined;
@@ -108,6 +119,8 @@ export function createWorkerServices(options: {
 		{ validate: validateRefinementContent },
 	);
 	return {
+		/** The memory service, when Hindsight is configured; automatic per-turn memory drives it directly. */
+		memory,
 		async handle(
 			type: string,
 			payload: Record<string, unknown>,

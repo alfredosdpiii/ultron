@@ -48,6 +48,7 @@ import { SettingsManager } from "../core/settings-manager.ts";
 import { buildSystemPrompt } from "../core/system-prompt.ts";
 import { createLocalBashOperations } from "../core/tools/bash.ts";
 import { initTheme } from "../modes/interactive/theme/theme.ts";
+import { AutoMemory, autoMemoryModeFromEnv, autoMemoryScopeFromEnv } from "../ultron/auto-memory.ts";
 import { createFamilyModule } from "../ultron/family.ts";
 import { createGrantModule } from "../ultron/grants.ts";
 import { createInstanceModule } from "../ultron/instances.ts";
@@ -1427,6 +1428,20 @@ async function createCodingAgentHarness(
 		const removeRootTurnListener = harness.events.on("run_end", (event) => {
 			if (event.lane === "main") host?.endRootTurn(event.runId);
 		});
+		// Automatic per-turn memory for the root lane (ULTRON_AUTO_MEMORY=off|recall|on, default on). It needs
+		// both Hindsight and Jev: without Jev nothing could pass the gate, so it stays out of the way.
+		const autoMemoryMode = autoMemoryModeFromEnv(process.env.ULTRON_AUTO_MEMORY);
+		const autoMemory =
+			autoMemoryMode !== "off" && nativeServices.memory && jev
+				? new AutoMemory({
+						mode: autoMemoryMode,
+						scope: autoMemoryScopeFromEnv(process.env.ULTRON_AUTO_MEMORY_SCOPE),
+						memory: nativeServices.memory,
+						sessionId: options.metadata.id,
+						holdActivity: () => holdActivity?.() ?? (() => {}),
+					})
+				: undefined;
+		const removeAutoMemory = autoMemory?.install(harness) ?? (() => {});
 		// Brake for open-ended research loops on the root agent (ULTRON_TOOL_ROUNDS_NUDGE, 0 disables).
 		const nudger = new ToolRoundNudger(toolRoundsNudgeFromEnv(process.env.ULTRON_TOOL_ROUNDS_NUDGE), (message) =>
 			lane.steer(message, undefined, BACKGROUND_CONTEXT),
@@ -1449,6 +1464,8 @@ async function createCodingAgentHarness(
 			harness,
 			closeRlm: async () => {
 				removeRootTurnListener();
+				removeAutoMemory();
+				await autoMemory?.settle();
 				removeNudgeTurnListener();
 				removeNudgeRunListener();
 				await legacyExtensions?.close();

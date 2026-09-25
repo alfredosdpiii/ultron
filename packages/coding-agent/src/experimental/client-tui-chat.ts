@@ -131,6 +131,14 @@ export class ExperimentalChatView {
 			return;
 		}
 		if (message.role === "toolResult") this.#tool(message.toolName, message.toolCallId).updateResult(message);
+		// Injected context (automatic memory) is shown muted, so what reached the model is visible.
+		if (message.role === "custom" && message.display) {
+			const text =
+				typeof message.content === "string"
+					? message.content
+					: message.content.map((part) => (part.type === "text" ? part.text : "")).join("\n");
+			this.#addText(theme.fg("muted", `[${message.customType}]\n${text}`));
+		}
 	}
 
 	#syncStreaming(message: AssistantMessage | undefined): void {
