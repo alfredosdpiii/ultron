@@ -734,6 +734,16 @@ export class NativeRlmHost {
 		await this.loadTasks();
 		if (this.closed) throw new Error("Ultron task host is closed");
 		const parentId = this.laneTasks.get(caller.lane);
+		// A child lane sees only its own task and descendants; siblings and ancestors' other work stay out of its
+		// context (A38). The root lane sees the whole session.
+		const journal = await this.journal.list();
+		const visible = (id: string): boolean => {
+			if (parentId === undefined) return true;
+			const byId = new Map(journal.map((task) => [task.id, task]));
+			for (let current = byId.get(id); current; current = current.parentId ? byId.get(current.parentId) : undefined)
+				if (current.id === parentId) return true;
+			return false;
+		};
 		const module = this.modules.find((candidate) => candidate.prefixes.some((prefix) => type.startsWith(prefix)));
 		if (module) return module.handle({ type, payload, caller, context }, this.api);
 		if (["ping", "agents.list", "agents.status", "agents.tasks"].includes(type)) fields(payload, []);
@@ -743,7 +753,7 @@ export class NativeRlmHost {
 			const usage = this.usage ? await this.usage.status() : null;
 			return {
 				definitions: this.list(),
-				tasks: (await this.journal.list()).map(publicTask),
+				tasks: journal.filter((task) => visible(task.id)).map(publicTask),
 				usage,
 				limits: usage?.limits ?? null,
 				controls: Object.fromEntries(
@@ -780,15 +790,13 @@ export class NativeRlmHost {
 		}
 		if (type === "background.list") {
 			fields(payload, []);
-			return (await this.journal.list()).filter((task) => task.definition === "background-job@1").map(publicTask);
+			return journal.filter((task) => task.definition === "background-job@1" && visible(task.id)).map(publicTask);
 		}
 		if (type === "background.inspect" || type === "background.result" || type === "background.stop") {
 			fields(payload, ["id"]);
 			const id = nonemptyString(payload.id, "id");
-			const stored = (await this.journal.list()).find(
-				(task) => task.id === id && task.definition === "background-job@1",
-			);
-			if (!stored) throw new Error("Unknown background job");
+			const stored = journal.find((task) => task.id === id && task.definition === "background-job@1");
+			if (!stored || !visible(id)) throw new Error("Unknown background job");
 			const task = this.tasks.get(id) ?? stored;
 			if (type === "background.inspect") return publicTask(task);
 			if (type === "background.stop")
@@ -824,7 +832,9 @@ export class NativeRlmHost {
 		if (type === "rlm.list_subagents") {
 			fields(payload, []);
 			return {
-				subagents: [...this.tasks.values()].filter((task) => task.definition === "rlm-child@1").map(publicTask),
+				subagents: [...this.tasks.values()]
+					.filter((task) => task.definition === "rlm-child@1" && task.id !== parentId && visible(task.id))
+					.map(publicTask),
 			};
 		}
 		if (type === "rlm.collect") {
@@ -833,7 +843,11 @@ export class NativeRlmHost {
 				? payload.selectors.map((selector) => nonemptyString(selector, "selector"))
 				: [];
 			const tasks = [...this.tasks.values()].filter(
-				(task) => task.definition === "rlm-child@1" && (selectors.length === 0 || selectors.includes(task.id)),
+				(task) =>
+					task.definition === "rlm-child@1" &&
+					task.id !== parentId &&
+					visible(task.id) &&
+					(selectors.length === 0 || selectors.includes(task.id)),
 			);
 			const results = await Promise.all(
 				tasks.map(async (task) => ({ id: task.id, result: await (task.promise ?? task.result) })),
@@ -844,7 +858,7 @@ export class NativeRlmHost {
 			fields(payload, ["selector"]);
 			const selector = nonemptyString(payload.selector, "selector");
 			const task = this.tasks.get(selector);
-			if (!task || task.definition !== "rlm-child@1") throw new Error("Unknown RLM child");
+			if (!task || task.definition !== "rlm-child@1" || !visible(task.id)) throw new Error("Unknown RLM child");
 			return { deleted: (await this.cancel(task, "RLM child deleted")).status === "cancelled" };
 		}
 		if (type === "agents.spawn" || type === "agents.invoke") {
@@ -857,8 +871,8 @@ export class NativeRlmHost {
 		if (["agents.inspect", "agents.result", "agents.cancel"].includes(type)) {
 			fields(payload, ["id"]);
 			const id = nonemptyString(payload.id, "id");
-			const stored = (await this.journal.list()).find((task) => task.id === id);
-			if (!stored) throw new Error("Unknown Ultron task");
+			const stored = journal.find((task) => task.id === id);
+			if (!stored || !visible(id)) throw new Error("Unknown Ultron task");
 			if (type === "agents.inspect") return publicTask(stored);
 			const task = this.tasks.get(id)!;
 			if (type === "agents.cancel") {
