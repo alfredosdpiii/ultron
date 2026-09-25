@@ -2,7 +2,7 @@
  * Pure rendering for the native TUI's live RLM panel.
  *
  * The TUI polls read-only inspection requests (`agents.status`, `instances.list`, `rlm.pool`,
- * `progress.assess`) and reads the root `rlm` tool cell from the replicated transcript. This module
+ * `rlm.frames`, `progress.assess`) and reads the root `rlm` tool cell from the replicated transcript. This module
  * turns that snapshot into width-bounded lines so the layout is unit-testable without a terminal.
  */
 import { truncateToWidth } from "@ultron/tui";
@@ -36,6 +36,17 @@ export interface RlmPool {
 	readonly evictions?: number;
 }
 
+/** One bounded inference frame (`rlm.infer`/`rlm.map`), from `rlm.frames`. */
+export interface RlmFrame {
+	readonly id: string;
+	readonly status: string;
+	readonly reason?: string;
+	readonly task: string;
+	readonly spent: { readonly calls: number; readonly tokens: number };
+	readonly startedAt?: number;
+	readonly endedAt?: number;
+}
+
 export interface RlmRootCell {
 	readonly toolCallId: string;
 	readonly code: string;
@@ -67,6 +78,8 @@ export interface RlmSnapshot {
 	readonly retained?: ReadonlySet<string>;
 	readonly progress?: ReadonlyMap<string, RlmProgress>;
 	readonly timing?: ReadonlyMap<string, RlmTiming>;
+	/** Recent inference frames, newest first. */
+	readonly frames?: readonly RlmFrame[];
 	/** Last inspection failure, shown instead of stale data being mistaken for live data. */
 	readonly error?: string;
 }
@@ -86,6 +99,8 @@ export interface RlmRenderOptions {
 	readonly maxNodes?: number;
 	/** Maximum code lines shown for the root cell. */
 	readonly maxCodeLines?: number;
+	/** Maximum inference frame rows. */
+	readonly maxFrames?: number;
 	readonly spinnerFrame?: number;
 }
 
@@ -280,6 +295,8 @@ export function renderRlmPanel(snapshot: RlmSnapshot, width: number, options: Rl
 		}
 	}
 
+	lines.push(...renderFrames(snapshot, style, frame, Math.max(0, options.maxFrames ?? 4)));
+
 	const pool = snapshot.pool;
 	if (pool) {
 		const pinned = pool.lanes.filter((lane) => lane.pinnedBy.length > 0).length;
@@ -291,6 +308,48 @@ export function renderRlmPanel(snapshot: RlmSnapshot, width: number, options: Rl
 
 	const bound = Math.max(1, width);
 	return lines.map((line) => truncateToWidth(line, bound, "…"));
+}
+
+/** "frames 2 running · 14 complete · 1 incomplete", then the newest frames with spend and task. */
+function renderFrames(snapshot: RlmSnapshot, style: RlmStyle, spinner: string, maxFrames: number): string[] {
+	const frames = snapshot.frames ?? [];
+	if (frames.length === 0) return [];
+	const counts = new Map<string, number>();
+	for (const item of frames) counts.set(item.status, (counts.get(item.status) ?? 0) + 1);
+	const order = ["running", "complete", "incomplete", "error"];
+	const summary = [...counts]
+		.sort((left, right) => order.indexOf(left[0]) - order.indexOf(right[0]))
+		.map(([status, count]) => `${count} ${status}`)
+		.join(" · ");
+	const lines = [`${style.fg("toolTitle", style.bold("frames"))} ${style.fg("muted", summary)}`];
+	for (const item of frames.slice(0, maxFrames)) {
+		const color =
+			item.status === "running"
+				? "accent"
+				: item.status === "complete"
+					? "success"
+					: item.status === "incomplete"
+						? "warning"
+						: "error";
+		const glyph =
+			item.status === "running"
+				? spinner
+				: item.status === "complete"
+					? "✓"
+					: item.status === "incomplete"
+						? "◐"
+						: "✗";
+		const end = item.endedAt ?? (item.status === "running" ? snapshot.now : undefined);
+		const duration =
+			item.startedAt !== undefined && end !== undefined
+				? ` ${formatDuration(Math.max(0, end - item.startedAt))}`
+				: "";
+		lines.push(
+			`${style.fg("dim", "│ ")}${style.fg(color, glyph)} ${style.fg("dim", item.id.replace(/^frame-/, "").slice(0, 8))} ${style.fg(color, item.reason ?? item.status)} ${style.fg("dim", `${item.spent.calls}c ${item.spent.tokens}t${duration}`)} ${style.fg("muted", oneLine(item.task))}`,
+		);
+	}
+	if (frames.length > maxFrames && maxFrames > 0) lines.push(style.fg("dim", `│ +${frames.length - maxFrames} more`));
+	return lines;
 }
 
 function renderNode(
@@ -526,6 +585,28 @@ export function parsePool(value: unknown): RlmPool | null {
 		lanes,
 		...(typeof body.evictions === "number" ? { evictions: body.evictions } : {}),
 	};
+}
+
+export function parseFrames(value: unknown): RlmFrame[] {
+	const frames: RlmFrame[] = [];
+	for (const item of Array.isArray(record(value)?.frames) ? (record(value)!.frames as unknown[]) : []) {
+		const frame = record(item);
+		if (frame === undefined || typeof frame.id !== "string" || typeof frame.status !== "string") continue;
+		const spent = record(frame.spent);
+		frames.push({
+			id: frame.id,
+			status: frame.status,
+			...(typeof frame.reason === "string" ? { reason: frame.reason } : {}),
+			task: typeof frame.task === "string" ? frame.task : "",
+			spent: {
+				calls: typeof spent?.calls === "number" ? spent.calls : 0,
+				tokens: typeof spent?.tokens === "number" ? spent.tokens : 0,
+			},
+			...(typeof frame.startedAt === "number" ? { startedAt: frame.startedAt } : {}),
+			...(typeof frame.endedAt === "number" ? { endedAt: frame.endedAt } : {}),
+		});
+	}
+	return frames;
 }
 
 export function parseProgress(value: unknown): RlmProgress | undefined {

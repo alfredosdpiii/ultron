@@ -88,6 +88,7 @@ export const INSPECTION_REQUESTS: readonly string[] = [
 	"gates.history",
 	"grants.list",
 	"rlm.pool",
+	"rlm.frames",
 	"jev.decisions",
 ];
 

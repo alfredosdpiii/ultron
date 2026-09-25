@@ -115,6 +115,24 @@ const builtinDefinitions: NativeDefinitionDescriptor[] = [
 		outputDescription: "A completed assistant response as a string",
 	},
 	{
+		// An inference frame (`rlm.infer`/`rlm.map`): its task, context views, contract and budget are held by the
+		// inference runtime, never in the journal; the contract is validated there, with bounded repair.
+		id: "rlm-frame",
+		version: "1",
+		strategy: "rlm",
+		instructions: "Answer the task from the supplied context views only and satisfy the frame's contract.",
+		inputSchema: {
+			type: "object",
+			properties: { frame: { type: "string", pattern: "^frame-" }, task: { type: "string" } },
+			required: ["frame", "task"],
+			additionalProperties: false,
+		},
+		outputSchema: {},
+		maxRepairs: 0,
+		inputDescription: "{frame:string,task:string} (started by rlm.infer and rlm.map only)",
+		outputDescription: "The frame's contract-validated value",
+	},
+	{
 		id: "identity",
 		version: "1",
 		strategy: "deterministic",
@@ -229,7 +247,7 @@ function schemaList(value: unknown, path: string, seen: Set<object>): void {
 	for (const [index, nested] of value.entries()) validateJsonSchema(nested, `${path}[${index}]`, seen);
 }
 
-function validateJsonSchema(value: unknown, path = "$", seen = new Set<object>()): asserts value is JsonValue {
+export function validateJsonSchema(value: unknown, path = "$", seen = new Set<object>()): asserts value is JsonValue {
 	if (!isJsonValue(value) || !IsSchema(value)) throw schemaFailure(path, "must be a JSON schema object");
 	if (typeof value !== "object" || value === null) throw schemaFailure(path, "must be an object");
 	if (seen.has(value)) throw schemaFailure(path, "must not be cyclic");

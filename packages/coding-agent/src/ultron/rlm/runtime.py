@@ -25,6 +25,7 @@ from schedules_api import Goals, Schedules
 from instances_api import Instances
 from grants_api import Grants
 from release_gate_api import ReleaseGates
+from infer_api import install as install_inference
 
 @dataclass
 class SpawnHandle:
@@ -294,6 +295,7 @@ class RuntimeState:
         self.namespace["grants"] = Grants(self.bridge)
         self.namespace["gates"] = ReleaseGates(self.bridge)
         self.namespace["preview"] = preview
+        install_inference(self.namespace, self.bridge)
         # Declared instance state survives reset_scratch; every other name is invocation scratch.
         self.namespace["state"] = {}
         self.bindings = {name: value for name, value in self.namespace.items() if name != "state"}

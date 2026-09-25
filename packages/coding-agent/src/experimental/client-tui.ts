@@ -52,10 +52,12 @@ import {
 	extractRootCell,
 	isActiveState,
 	parseAgentsStatus,
+	parseFrames,
 	parsePool,
 	parseProgress,
 	parseRetained,
 	RlmClock,
+	type RlmFrame,
 	type RlmLimits,
 	type RlmPool,
 	type RlmProgress,
@@ -149,6 +151,7 @@ interface RlmPollState {
 	retained: Set<string>;
 	progress: Map<string, RlmProgress>;
 	timing: Map<string, RlmTiming>;
+	frames: RlmFrame[];
 	error?: string;
 }
 
@@ -203,6 +206,7 @@ export class ExperimentalClientTui implements Component {
 		retained: new Set(),
 		progress: new Map(),
 		timing: new Map(),
+		frames: [],
 	};
 	#control: SessionControl | undefined;
 	readonly #layoutRoot: Component;
@@ -1310,11 +1314,12 @@ export class ExperimentalClientTui implements Component {
 		}
 		this.#rlmInFlight = true;
 		try {
-			const [status, instances, pool, jev] = await Promise.allSettled([
+			const [status, instances, pool, jev, frames] = await Promise.allSettled([
 				control.inspect("agents.status", {}, BACKGROUND_CONTEXT),
 				control.inspect("instances.list", {}, BACKGROUND_CONTEXT),
 				control.inspect("rlm.pool", {}, BACKGROUND_CONTEXT),
 				control.inspect("jev.decisions", {}, BACKGROUND_CONTEXT),
+				control.inspect("rlm.frames", { limit: 20 }, BACKGROUND_CONTEXT),
 			]);
 			if (this.#closed) return;
 			const next: RlmPollState = { ...this.#rlmState };
@@ -1330,6 +1335,7 @@ export class ExperimentalClientTui implements Component {
 			}
 			if (instances.status === "fulfilled") next.retained = parseRetained(instances.value);
 			next.pool = pool.status === "fulfilled" ? parsePool(pool.value) : null;
+			if (frames.status === "fulfilled") next.frames = parseFrames(frames.value);
 			// Progress assessments are cheap host reads; only fetch them for a few running tasks while visible.
 			const progress = new Map<string, RlmProgress>();
 			if (this.#rlmVisible) {
@@ -1376,6 +1382,7 @@ export class ExperimentalClientTui implements Component {
 			retained: state.retained,
 			progress: state.progress,
 			timing: state.timing,
+			frames: state.frames,
 			...(state.error === undefined ? {} : { error: state.error }),
 		};
 	}

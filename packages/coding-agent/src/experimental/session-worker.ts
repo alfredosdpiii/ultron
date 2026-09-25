@@ -1,7 +1,7 @@
 import { mkdirSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { createConnection, type Socket } from "node:net";
-import { isAbsolute, join } from "node:path";
+import { dirname, isAbsolute, join } from "node:path";
 import type { ThinkingLevel } from "@ultron/agent-core";
 import {
 	AgentHarness,
@@ -71,6 +71,7 @@ import { createProgressModule } from "../ultron/progress.ts";
 import { createReleaseGateModule } from "../ultron/release-gate.ts";
 import { createSessionDefinitionStore } from "../ultron/rlm/definition-registry.ts";
 import { createSessionModuleStore, type HostCaller } from "../ultron/rlm/host-module.ts";
+import { createInferenceRuntime, createSessionFrameStore, INFERENCE_PROMPT } from "../ultron/rlm/inference.ts";
 import { type KernelExecutionResult, type KernelHostHandler, RlmKernel } from "../ultron/rlm/kernel.ts";
 import { KernelPool, KernelPoolCapacityError } from "../ultron/rlm/kernel-pool.ts";
 import { NativeRlmHost } from "../ultron/rlm/native-host.ts";
@@ -184,6 +185,7 @@ export const RLM_TOOL_DESCRIPTION = [
 	'- `await agents.invoke(definition, input)` runs a typed agent and returns its result (`await agents.list()` shows definitions, e.g. "rlm-child" with input {"prompt": ...}); `agents.spawn(...)` starts one in the background and returns a handle with `await handle.result()`.',
 	"- `await workflows.run(nodes)` runs a validated agent graph; `await memory.prepare(query)` / `await memory.propose(text, evidence)` recall and retain long-term memory; `await bash(cmd)` runs a shell command.",
 	"- `state` is a dict that survives between calls; other variables persist within the session until the kernel is reset.",
+	INFERENCE_PROMPT,
 ].join("\n");
 
 export function createUltronRlmTool(
@@ -1457,11 +1459,20 @@ async function createCodingAgentHarness(
 					: nativeServices.handle(type, payload, context),
 		};
 		traceStartup("worker.host");
+		const usageLedger = createSessionUsageLedger(session, { limits: nativeUsageLimitsFromEnv() });
+		// Bounded inference: handles are content-addressed beside the session file, frame traces are session values.
+		const inference = createInferenceRuntime({
+			contextDir: join(dirname(options.metadata.path), "rlm-context", options.metadata.id),
+			traces: createSessionFrameStore(session),
+			usage: usageLedger,
+		});
+		const removeInferenceHooks = inference.install(harness);
 		host = new NativeRlmHost(harness, lane, {
 			store: createSessionTaskStore(session),
 			definitionStore: createSessionDefinitionStore(session),
 			// Budgets apply per root turn: each main-lane run opens a fresh wall, admission and cost window.
-			usage: createSessionUsageLedger(session, { limits: nativeUsageLimitsFromEnv() }),
+			usage: usageLedger,
+			frames: inference.executor,
 			rootTurns: true,
 			pinLane: (lane, holder) => rlmTool.pin(lane, holder),
 			unpinLane: (lane, holder) => rlmTool.unpin(lane, holder),
@@ -1480,6 +1491,7 @@ async function createCodingAgentHarness(
 				return [{ id: current.id, version: current.version, text }];
 			},
 			modules: [
+				inference.module,
 				createFamilyModule({ store: createSessionModuleStore(session, "family") }),
 				createProgressModule({ store: createSessionModuleStore(session, "progress") }),
 				createScheduleModule({ store: createSessionModuleStore(session, "schedules") }),
@@ -1544,6 +1556,7 @@ async function createCodingAgentHarness(
 			harness,
 			closeRlm: async () => {
 				removeRootTurnListener();
+				removeInferenceHooks();
 				removeAutoMemory();
 				await autoMemory?.settle();
 				removeNudgeTurnListener();
