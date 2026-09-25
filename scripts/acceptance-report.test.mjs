@@ -193,3 +193,35 @@ test("a surviving mutation of a row's guarantee keeps the row unverified", () =>
 	assert.equal(fresh.A02.status, "passed");
 	assert.equal(judged("stale").A01.status, "passed", "stale mutation results do not apply");
 });
+
+test("a fully killed mutation slice with an intact lock passes the instrument row", () => {
+	const mutation = { mutations_sha256: "m1", summary: { total: 2, killed: 2 }, results: [{ outcome: "killed" }, { outcome: "killed" }] };
+	const instrument = { ...row("A26", []), mutation_slice: true };
+	const judged = (candidate) =>
+		computeRows({ manifest: { rows: [instrument] }, run: { results: green, infraError: null }, lock: okLock, root, mutation: candidate, mutationsSha: "m1" })[0];
+	assert.equal(judged(mutation).status, "passed");
+	assert.equal(judged({ ...mutation, results: [{ outcome: "killed" }, { outcome: "survived" }] }).status, "unverified");
+	assert.equal(judged({ ...mutation, mutations_sha256: "stale" }).status, "unverified");
+});
+
+test("recorded live evidence stands in only for skipped live tests", () => {
+	const liveRow = row("A39", ["skipped case"]);
+	const judged = (verdict) =>
+		computeRows({
+			manifest: { rows: [liveRow] },
+			run: { results: green, infraError: null },
+			lock: okLock,
+			root,
+			live: new Map([["A39", verdict]]),
+		})[0];
+	assert.equal(judged({ ok: true, detail: "model qualified 5/5" }).status, "passed");
+	assert.equal(judged({ ok: false, detail: "not all qualified" }).status, "unverified");
+	const missing = computeRows({
+		manifest: { rows: [row("A39", ["not a real test"])] },
+		run: { results: green, infraError: null },
+		lock: okLock,
+		root,
+		live: new Map([["A39", { ok: true, detail: "x" }]]),
+	})[0];
+	assert.equal(missing.status, "unverified", "missing evidence is never excused by live results");
+});

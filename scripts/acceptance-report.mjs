@@ -136,7 +136,7 @@ function mutationSummary(mutation, mutationsSha) {
  * Pure row judgement. `run` is `{ results, infraError }` from runVitest (or a fixture),
  * `lock` is the result of checkLock.
  */
-export function computeRows({ manifest, run, lock, root, mutation = null, mutationsSha = null }) {
+export function computeRows({ manifest, run, lock, root, mutation = null, mutationsSha = null, live = new Map() }) {
 	const files = [...new Set((manifest.rows ?? []).flatMap((row) => (row.evidence ?? []).map((e) => e.file)))];
 	const byFile = run.infraError
 		? new Map(files.map((file) => [file, { infraError: run.infraError, assertions: [] }]))
@@ -188,12 +188,31 @@ export function computeRows({ manifest, run, lock, root, mutation = null, mutati
 		} else if (row.status_when_green === "blocked") {
 			status = "blocked";
 		} else if (evidence.missing || evidence.skipped) {
-			status = "unverified";
-			const names = checks.filter((c) => c.outcome === "missing" || c.outcome === "skipped");
-			reasons.push(`evidence not found or skipped: ${names.map((c) => c.test).join("; ")}`);
+			// A metered live row skips by default; its recorded live results can stand in for the skipped tests.
+			const recorded = live.get(row.id);
+			if (!evidence.missing && recorded?.ok && row.status_when_green === "passed") {
+				status = "passed";
+				reasons.push(`recorded live evidence: ${recorded.detail}`);
+			} else {
+				status = "unverified";
+				const names = checks.filter((c) => c.outcome === "missing" || c.outcome === "skipped");
+				reasons.push(`evidence not found or skipped: ${names.map((c) => c.test).join("; ")}`);
+				if (recorded && !recorded.ok) reasons.push(`live evidence insufficient: ${recorded.detail}`);
+			}
 		} else if (checks.length === 0) {
-			status = "unverified";
-			reasons.push("no evidence");
+			// The instrument's own row: its evidence is the intact lock plus a fully killed mutation slice.
+			const sliceComplete =
+				row.mutation_slice &&
+				mutation &&
+				mutation.mutations_sha256 === mutationsSha &&
+				(mutation.summary?.total ?? 0) > 0 &&
+				(mutation.results ?? []).every((result) => result.outcome === "killed");
+			if (sliceComplete && row.status_when_green === "passed") {
+				status = "passed";
+			} else {
+				status = "unverified";
+				reasons.push("no evidence");
+			}
 		} else if (row.status_when_green !== "passed") {
 			status = "unverified";
 			reasons.push("evidence green but incomplete for this row");
@@ -242,6 +261,28 @@ export function summarize(rows) {
 	return summary;
 }
 
+/**
+ * Recorded live runs. `capabilities` files pass when every case qualified; `demonstration` files pass when
+ * the run recorded passed: true. Every listed file must exist and pass.
+ */
+export function judgeLiveEvidence(root, spec) {
+	const verdicts = (spec.files ?? []).map((file) => {
+		const path = join(root, file);
+		if (!existsSync(path)) return { file, ok: false, why: "missing" };
+		const record = readJson(path);
+		if (spec.kind === "capabilities") {
+			const summary = record.summary ?? [];
+			const ok = summary.length > 0 && summary.every((entry) => entry.outcome === "qualified");
+			return { file, ok, why: ok ? `${record.model} qualified ${summary.length}/${summary.length}` : "not all qualified" };
+		}
+		return { file, ok: record.passed === true, why: record.passed === true ? `${record.model} passed` : "not passed" };
+	});
+	return {
+		ok: verdicts.length > 0 && verdicts.every((verdict) => verdict.ok),
+		detail: verdicts.map((verdict) => `${verdict.file}: ${verdict.why}`).join("; ") || "no live files listed",
+	};
+}
+
 function argValue(argv, name) {
 	const index = argv.indexOf(name);
 	return index >= 0 ? argv[index + 1] : undefined;
@@ -264,6 +305,9 @@ function main(argv) {
 		console.log(`Running ${files.length} evidence files with vitest...`);
 		run = runVitest({ cwd: vitestCwd, files: files.map((file) => relative(vitestCwd, join(root, file))), timeoutMs });
 	}
+	const live = new Map(
+		manifest.rows.filter((row) => row.live_evidence).map((row) => [row.id, judgeLiveEvidence(root, row.live_evidence)]),
+	);
 	const mutationPath = join(root, MUTATION_RESULT);
 	const mutation = existsSync(mutationPath) ? readJson(mutationPath) : null;
 	const rows = computeRows({
@@ -273,6 +317,7 @@ function main(argv) {
 		root,
 		mutation,
 		mutationsSha: sha256File(join(root, MUTATIONS_PATH)),
+		live,
 	});
 	const report = {
 		generated_at: new Date().toISOString(),

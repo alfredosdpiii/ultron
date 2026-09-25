@@ -1,16 +1,14 @@
 {
-	"generated_at": "2026-09-25T04:52:19.815Z",
+	"generated_at": "2026-09-25T05:42:26.818Z",
 	"mutations_sha256": "1ff99ca3f89075496562a64bd2d5513c88e80c582d454125678f04bfc25fe23a",
 	"summary": {
 		"total": 10,
-		"killed": 9,
-		"survived": 1,
+		"killed": 10,
+		"survived": 0,
 		"error": 0,
 		"invalid": 0
 	},
-	"findings": [
-		"kernel-keeps-worker-control-channel"
-	],
+	"findings": [],
 	"results": [
 		{
 			"id": "family-sender-from-payload",
@@ -116,7 +114,10 @@
 			"tests": [
 				"packages/coding-agent/test/ultron-worker-isolation.test.ts"
 			],
-			"outcome": "survived"
+			"outcome": "killed",
+			"failing_tests": [
+				"A10 worker isolation model-written Python sees no ambient credentials or worker control channel"
+			]
 		},
 		{
 			"id": "schedules-drop-slot-key",
