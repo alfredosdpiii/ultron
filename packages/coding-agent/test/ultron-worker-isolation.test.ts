@@ -14,6 +14,8 @@ describe("A10 worker isolation", () => {
 		vi.stubEnv("GITHUB_TOKEN", "ghp_planted");
 		vi.stubEnv("AWS_SECRET_ACCESS_KEY", "aws-planted");
 		vi.stubEnv("PI_SESSION_WORKER_CONTROL_TOKEN", "control-planted");
+		// A control variable without a credential-like name must be removed by the control-channel rule itself.
+		vi.stubEnv("PI_SESSION_WORKER_PEER_ID", "peer-planted");
 		vi.stubEnv("ULTRON_HARMLESS_SETTING", "kept");
 		const kernel = new RlmKernel({ cwd: process.cwd(), runtimePath }, async () => {
 			throw new Error("no host capability is granted in this test");

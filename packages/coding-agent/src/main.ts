@@ -68,6 +68,7 @@ import { initTheme, setThemeJsonValidator, stopThemeWatcher } from "./modes/inte
 import { validateThemeJson } from "./modes/interactive/theme/theme-json.ts";
 import { runNativeUltronCommand } from "./native-command.ts";
 import { cleanupManagedInstall, handleConfigCommand, handlePackageCommand } from "./package-manager-cli.ts";
+import { runMigrationCommand } from "./ultron/migration-cli.ts";
 import { exportNativeSessionFile, isNativeSessionFile } from "./ultron/native-export.ts";
 import { isLocalPath, normalizePath, resolvePath } from "./utils/paths.ts";
 import { cleanupWindowsSelfUpdateQuarantine } from "./utils/windows-self-update.ts";
@@ -583,6 +584,11 @@ export async function main(args: string[], options?: MainOptions) {
 	}
 
 	if (await runAuthCommand(args)) {
+		return;
+	}
+
+	if (await runMigrationCommand(args)) {
+		process.exit(process.exitCode ?? 0);
 		return;
 	}
 
