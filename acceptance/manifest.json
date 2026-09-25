@@ -896,6 +896,39 @@
           "acceptance/demonstrations/a46-live-cliproxyapi_gpt-6-sol.json"
         ]
       }
+    },
+    {
+      "id": "A53",
+      "behavior": "A proposed code skill whose test fails is never importable; a passing one is, survives worker restart, and rolls back cleanly",
+      "evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-a53-code-skills.test.ts",
+          "tests": [
+            "a proposed skill whose test fails is never importable",
+            "the test runs in a fresh isolated kernel without host capabilities",
+            "a passing skill is importable in every kernel, listed with its docstring, and survives worker restart",
+            "rollback follows refinement semantics and never leaves a stale import",
+            "Jev scores proposals: sensitive ones are refused, an outage never blocks",
+            "policy skills store any plan function with a test, filterable by task family"
+          ]
+        }
+      ],
+      "status_when_green": "passed",
+      "notes": ""
+    },
+    {
+      "id": "A54",
+      "behavior": "On a repeated task the second run uses the saved skill (tool use and skill import observed) and costs less than the first",
+      "evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-a54-skill-reuse.test.ts",
+          "tests": [
+            "the second run imports the skill in its kernel and makes fewer, cheaper model calls"
+          ]
+        }
+      ],
+      "status_when_green": "passed",
+      "notes": "Scripted provider: cost is provider calls and prompt tokens (request bytes / 4). A metered hard-set comparison is a separate eval, not this row."
     }
   ]
 }

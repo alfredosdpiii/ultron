@@ -43,3 +43,49 @@ export class ToolRoundNudger {
 		this.#rounds.delete(runId);
 	}
 }
+
+/**
+ * Procedural-memory hint for the root agent. After `threshold` consecutive tool rounds in one run whose
+ * tool calls all succeeded, the agent is steered once, in one line, to consider saving the procedure as a
+ * tested code skill. A round with a failed tool call or a turn without tools resets the streak.
+ */
+export const DEFAULT_SKILL_NUDGE = 8;
+
+export function skillNudgeFromEnv(value: string | undefined): number {
+	if (value === undefined || value.trim() === "") return DEFAULT_SKILL_NUDGE;
+	if (["off", "false", "no"].includes(value.trim().toLowerCase())) return 0;
+	const parsed = Number(value);
+	return Number.isInteger(parsed) && parsed >= 0 ? parsed : DEFAULT_SKILL_NUDGE;
+}
+
+export function skillNudgeMessage(rounds: number): string {
+	return `[Ultron] ${rounds} tool rounds in a row succeeded. If this procedure will recur, once it works save it as a tested skill with \`await skills.propose_code(name, source, test_source, evidence)\`; otherwise carry on.`;
+}
+
+export class SkillExtractionNudger {
+	readonly #threshold: number;
+	readonly #steer: (message: string) => Promise<unknown>;
+	readonly #streaks = new Map<string, number>();
+	readonly #nudged = new Set<string>();
+
+	constructor(threshold: number, steer: (message: string) => Promise<unknown>) {
+		this.#threshold = threshold;
+		this.#steer = steer;
+	}
+
+	/** `toolCalls` made in the turn, `failed` of whose results were errors. */
+	turnEnded(runId: string, toolCalls: number, failed: number): void {
+		if (this.#threshold <= 0 || this.#nudged.has(runId)) return;
+		const streak = toolCalls > 0 && failed === 0 ? (this.#streaks.get(runId) ?? 0) + 1 : 0;
+		this.#streaks.set(runId, streak);
+		if (streak < this.#threshold) return;
+		this.#nudged.add(runId);
+		this.#streaks.delete(runId);
+		void this.#steer(skillNudgeMessage(streak)).catch(() => {});
+	}
+
+	runEnded(runId: string): void {
+		this.#streaks.delete(runId);
+		this.#nudged.delete(runId);
+	}
+}

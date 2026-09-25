@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { dirname } from "node:path";
 import { isJsonValue, type JsonValue } from "@ultron/chord";
 import { parseFrontmatter } from "../utils/frontmatter.ts";
+import type { CodeSkillProposal, CodeSkills } from "./code-skills.ts";
 import type { HostModuleRequest, HostModuleStore, NativeHostApi, NativeHostModule } from "./rlm/host-module.ts";
 
 /** A skill as discovered by Pi's existing loader; this module never discovers skills itself. */
@@ -17,6 +18,8 @@ export type SkillModuleOptions = {
 	store: HostModuleStore;
 	loadSkills: () => Promise<SkillSource[]>;
 	now?: () => number;
+	/** Code skills (`skills.propose_code`, `skills.propose_policy`, `skills.rollback`, …); absent, those requests fail. */
+	code?: CodeSkills;
 };
 
 type CatalogEntry = {
@@ -64,8 +67,25 @@ type Invocation = {
 	error?: string;
 };
 
+/** Journal entry for a code-skill proposal or rollback; the per-skill history lives beside the skill files. */
+type CodeRecord = {
+	id: string;
+	at: number;
+	action: "propose_code" | "propose_policy" | "rollback";
+	name: string;
+	version: number | null;
+	status: CodeSkillProposal["status"] | "rolled_back" | "failed";
+	caller_task_id: string | null;
+	active?: number | null;
+	jev?: JsonValue;
+	test?: { passed: boolean; tests: number; failed: string[]; error?: string };
+	error?: string;
+};
+
 type SkillDocument = {
 	format: 1;
+	/** Absent in documents written before code skills existed. */
+	code?: CodeRecord[];
 	generation: number;
 	catalog: CatalogEntry[];
 	changes: Array<{ at: number; generation: number; name: string; from: string | null; to: string | null }>;
@@ -264,6 +284,7 @@ class SkillModule implements NativeHostModule {
 	private readonly store: HostModuleStore;
 	private readonly loadSkills: () => Promise<SkillSource[]>;
 	private readonly now: () => number;
+	private readonly code?: CodeSkills;
 
 	constructor(options: SkillModuleOptions) {
 		if (!options?.store) throw new Error("createSkillModule requires options.store");
@@ -271,6 +292,7 @@ class SkillModule implements NativeHostModule {
 		this.store = options.store;
 		this.loadSkills = options.loadSkills;
 		this.now = options.now ?? Date.now;
+		this.code = options.code;
 	}
 
 	/** Durable mutations and snapshot installation run one at a time. */
@@ -378,9 +400,99 @@ class SkillModule implements NativeHostModule {
 			}
 			case "skills.invoke":
 				return this.invoke(request, payload, caller, host);
+			case "skills.propose_code":
+			case "skills.propose_policy":
+			case "skills.rollback":
+				return this.changeCode(type, payload, caller, request);
+			case "skills.code_list": {
+				fields(payload, ["kind", "family"]);
+				if (payload.kind !== undefined && payload.kind !== "code" && payload.kind !== "policy")
+					throw new Error('kind must be "code" or "policy"');
+				return this.codeSkills().list({
+					...(payload.kind === undefined ? {} : { kind: payload.kind }),
+					...(payload.family === undefined ? {} : { family: nonemptyString(payload.family, "family") }),
+				});
+			}
+			case "skills.code_history":
+				fields(payload, ["name"]);
+				return this.codeSkills().history(payload.name);
 			default:
 				throw new Error(`Unsupported skills request: ${type}`);
 		}
+	}
+
+	private codeSkills(): CodeSkills {
+		if (!this.code) throw new Error("Code skills are not configured in this worker");
+		return this.code;
+	}
+
+	/** Proposals and rollbacks, recorded in this module's journal whatever their outcome. */
+	private async changeCode(
+		type: "skills.propose_code" | "skills.propose_policy" | "skills.rollback",
+		payload: Record<string, unknown>,
+		caller: string | null,
+		request: HostModuleRequest,
+	): Promise<unknown> {
+		const code = this.codeSkills();
+		const action = type.slice("skills.".length) as CodeRecord["action"];
+		const base = {
+			id: randomUUID(),
+			at: this.now(),
+			action,
+			name: typeof payload.name === "string" ? payload.name.slice(0, 64) : "",
+			caller_task_id: caller,
+		};
+		let record: CodeRecord;
+		let outcome: unknown;
+		try {
+			if (type === "skills.rollback") {
+				const result = await code.rollback(payload);
+				record = { ...base, version: result.rolledBack, status: "rolled_back", active: result.active };
+				outcome = result;
+			} else {
+				const result = await code.propose(
+					type === "skills.propose_policy" ? "policy" : "code",
+					payload,
+					request.context,
+				);
+				record = {
+					...base,
+					version: result.version,
+					status: result.status,
+					jev: result.jev as unknown as JsonValue,
+					...(result.test
+						? {
+								test: {
+									passed: result.test.passed,
+									tests: result.test.tests.length,
+									failed: result.test.tests.filter((item) => !item.ok).map((item) => item.name),
+									...(result.test.error ? { error: result.test.error.slice(0, 500) } : {}),
+								},
+							}
+						: {}),
+				};
+				outcome = result;
+			}
+		} catch (error) {
+			record = {
+				...base,
+				version: null,
+				status: "failed",
+				error: (error instanceof Error ? error.message : String(error)).slice(0, 500),
+			};
+			await this.exclusive(() =>
+				this.mutate((document) => {
+					document.code = capped([...(document.code ?? []), record]);
+				}),
+			);
+			throw error;
+		}
+		await this.exclusive(() =>
+			this.mutate((document) => {
+				document.code = capped([...(document.code ?? []), record]);
+			}),
+		);
+		return outcome;
 	}
 
 	private async select(payload: Record<string, unknown>, caller: string | null): Promise<Decision> {

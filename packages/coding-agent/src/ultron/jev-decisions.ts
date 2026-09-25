@@ -115,7 +115,8 @@ export class JevDecisionLog {
 	}
 }
 
-type RecordableJev = Pick<NativeJevClient, "triage" | "memoryGate" | "memoryPolicy" | "memoryRecall">;
+type RecordableJev = Pick<NativeJevClient, "triage" | "memoryGate" | "memoryPolicy" | "memoryRecall"> &
+	Partial<Pick<NativeJevClient, "skillPolicy">>;
 
 /** Wrap a Jev client so every triage, recall gate, and retention policy call lands in `log`. */
 export function recordingJevClient(client: RecordableJev, log: JevDecisionLog): RecordableJev {
@@ -169,5 +170,17 @@ export function recordingJevClient(client: RecordableJev, log: JevDecisionLog): 
 				() => client.memoryPolicy(prompt, text, signal),
 				(value: JevMemoryPolicy) => ({ action: value.action, confidence: value.confidence }),
 			),
+		// Code skill proposals are retention decisions too (Phase 4); recorded under the same kind.
+		...(client.skillPolicy
+			? {
+					skillPolicy: (name: string, evidence: string, source: string, signal?: AbortSignal) =>
+						timed(
+							"retain",
+							`${name}\n${evidence}\n${source}`,
+							() => client.skillPolicy!(name, evidence, source, signal),
+							(value: JevMemoryPolicy) => ({ action: value.action, confidence: value.confidence }),
+						),
+				}
+			: {}),
 	};
 }
