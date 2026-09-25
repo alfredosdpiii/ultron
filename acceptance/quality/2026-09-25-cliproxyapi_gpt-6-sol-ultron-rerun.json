@@ -1,0 +1,231 @@
+{
+  "frozenAt": "2026-09-25",
+  "thresholds": {
+    "maxPassRateDropPoints": 10,
+    "maxMedianLatencyRatio": 2,
+    "maxCostRatio": 2
+  },
+  "model": "cliproxyapi/gpt-6-sol",
+  "trials": 2,
+  "summary": {
+    "byVariant": {
+      "ultron": {
+        "runs": 12,
+        "infrastructure": 0,
+        "passRate": 0.9166666666666666,
+        "categories": {
+          "multi-file": {
+            "passed": 4,
+            "runs": 4
+          },
+          "large-data": {
+            "passed": 3,
+            "runs": 4
+          },
+          "correction": {
+            "passed": 4,
+            "runs": 4
+          }
+        },
+        "medianDurationMs": 117929.5,
+        "totalCost": 0.23727240000000002
+      }
+    },
+    "gate": [],
+    "passed": false
+  },
+  "records": [
+    {
+      "task": "multi-pagination",
+      "category": "multi-file",
+      "variant": "ultron",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "toolCalls": 7,
+      "cost": 0.0179028,
+      "tokens": 19217,
+      "durationMs": 116484,
+      "verify": {
+        "status": 0,
+        "output": ""
+      }
+    },
+    {
+      "task": "multi-pagination",
+      "category": "multi-file",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "toolCalls": 7,
+      "cost": 0.023476,
+      "tokens": 23166,
+      "durationMs": 119375,
+      "verify": {
+        "status": 0,
+        "output": ""
+      }
+    },
+    {
+      "task": "multi-timezone",
+      "category": "multi-file",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "toolCalls": 11,
+      "cost": 0.0427852,
+      "tokens": 31647,
+      "durationMs": 148011,
+      "verify": {
+        "status": 0,
+        "output": ""
+      }
+    },
+    {
+      "task": "data-error-streak",
+      "category": "large-data",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "toolCalls": 1,
+      "cost": 0.0038744,
+      "tokens": 4334,
+      "durationMs": 37281,
+      "verify": {
+        "status": 0,
+        "output": ""
+      }
+    },
+    {
+      "task": "data-error-streak",
+      "category": "large-data",
+      "variant": "ultron",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "toolCalls": 1,
+      "cost": 0.0045744,
+      "tokens": 4452,
+      "durationMs": 41935,
+      "verify": {
+        "status": 0,
+        "output": ""
+      }
+    },
+    {
+      "task": "multi-timezone",
+      "category": "multi-file",
+      "variant": "ultron",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "toolCalls": 7,
+      "cost": 0.028259600000000003,
+      "tokens": 19501,
+      "durationMs": 111123,
+      "verify": {
+        "status": 0,
+        "output": ""
+      }
+    },
+    {
+      "task": "data-median-latency",
+      "category": "large-data",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "toolCalls": 3,
+      "cost": 0.0279152,
+      "tokens": 34880,
+      "durationMs": 79313,
+      "verify": {
+        "status": 0,
+        "output": ""
+      }
+    },
+    {
+      "task": "data-median-latency",
+      "category": "large-data",
+      "variant": "ultron",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "toolCalls": 2,
+      "cost": 0.0082556,
+      "tokens": 7075,
+      "durationMs": 68502,
+      "verify": {
+        "status": 1,
+        "output": ""
+      }
+    },
+    {
+      "task": "learn-output-convention",
+      "category": "correction",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "toolCalls": 4,
+      "cost": 0.0182324,
+      "tokens": 16997,
+      "durationMs": 138453,
+      "verify": {
+        "status": 0,
+        "output": ""
+      }
+    },
+    {
+      "task": "learn-type-hints",
+      "category": "correction",
+      "variant": "ultron",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "toolCalls": 6,
+      "cost": 0.0251304,
+      "tokens": 20722,
+      "durationMs": 189148,
+      "verify": {
+        "status": 0,
+        "output": ""
+      }
+    },
+    {
+      "task": "learn-type-hints",
+      "category": "correction",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "toolCalls": 5,
+      "cost": 0.020196000000000002,
+      "tokens": 20706,
+      "durationMs": 255643,
+      "verify": {
+        "status": 0,
+        "output": ""
+      }
+    },
+    {
+      "task": "learn-output-convention",
+      "category": "correction",
+      "variant": "ultron",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "toolCalls": 4,
+      "cost": 0.0166704,
+      "tokens": 16624,
+      "durationMs": 124396,
+      "verify": {
+        "status": 0,
+        "output": ""
+      }
+    }
+  ]
+}
