@@ -574,16 +574,26 @@ export class NativeMemoryService {
 			);
 			checkAbort(signal);
 			if (!record(response) || !Array.isArray(response.results)) throw new MemoryError("INVALID_RESPONSE");
-			const results = response.results.map((item: unknown): MemoryRecall => {
+			// A backend index or cache can lag a delete. Never re-inject a document the user asked to forget.
+			const forgotten = new Set(
+				this.records
+					.filter((op) => op.kind === "forget" && (op.state === "forgotten" || op.state === "unknown"))
+					.map((op) => op.memoryId),
+			);
+			const results = response.results.flatMap((item: unknown): MemoryRecall[] => {
 				if (!record(item) || !nonempty(item.id) || typeof item.text !== "string" || !sameTags(item.tags, tags))
 					throw new MemoryError("INVALID_RESPONSE");
-				return {
-					id: item.id,
-					text: item.text,
-					tags: [...tags],
-					...(typeof item.type === "string" ? { type: item.type } : {}),
-					...(typeof item.context === "string" ? { context: item.context } : {}),
-				};
+				if (forgotten.has(item.id) || (typeof item.document_id === "string" && forgotten.has(item.document_id)))
+					return [];
+				return [
+					{
+						id: item.id,
+						text: item.text,
+						tags: [...tags],
+						...(typeof item.type === "string" ? { type: item.type } : {}),
+						...(typeof item.context === "string" ? { context: item.context } : {}),
+					},
+				];
 			});
 			const operation = await this.update(id, {
 				state: "recalled",
