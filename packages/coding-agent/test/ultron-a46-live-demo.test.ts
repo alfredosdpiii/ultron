@@ -90,6 +90,10 @@ describe.skipIf(!LIVE)("A46 live demonstration", () => {
 			const record: Record<string, unknown> = { model: MODEL, recordedAt: new Date().toISOString() };
 			try {
 				await first.start();
+				// RpcClient does not notice its process dying; record it so a crash is not mistaken for a slow model.
+				(first as unknown as { process?: import("node:child_process").ChildProcess }).process?.on("exit", (code, signal) => {
+					record.cliExit = { code, signal, at: new Date().toISOString() };
+				});
 				const started = Date.now();
 				await first.promptAndWait(TASK, undefined, 40 * 60 * 1000);
 				record.durationMs = Date.now() - started;
