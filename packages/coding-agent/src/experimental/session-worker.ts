@@ -6,6 +6,7 @@ import type { ThinkingLevel } from "@ultron/agent-core";
 import {
 	AgentHarness,
 	type AgentHarness as AgentHarnessInstance,
+	type AgentHarnessStreamOptions,
 	type AgentHarnessTool,
 	type AgentHarnessToolInvocation,
 	type AgentLane,
@@ -1125,6 +1126,21 @@ async function run(options: SessionWorkerRuntimeOptions, createHarness: CreateSe
 	}
 }
 
+/**
+ * Provider request options from the profile's settings, as Pi's session applies them to every model request
+ * (sdk.ts buildRequestOptions): the request timeout defaults to Pi's HTTP idle timeout (5 min), and provider-level
+ * retries follow `retry.provider`. Without them the worker's requests carried no timeout at all.
+ */
+export function providerRequestOptions(settingsManager: SettingsManager): AgentHarnessStreamOptions {
+	const provider = settingsManager.getProviderRetrySettings();
+	const idleTimeoutMs = settingsManager.getHttpIdleTimeoutMs();
+	return {
+		timeoutMs: provider.timeoutMs ?? (idleTimeoutMs === 0 ? 2147483647 : idleTimeoutMs),
+		...(provider.maxRetries === undefined ? {} : { maxRetries: provider.maxRetries }),
+		maxRetryDelayMs: provider.maxRetryDelayMs,
+	};
+}
+
 export async function runSessionWorkerWithHarness(
 	args: readonly string[],
 	createHarness: CreateSessionWorkerHarness,
@@ -1316,13 +1332,22 @@ async function createCodingAgentHarness(
 			content: template.content,
 		})),
 	};
-	const selectedToolNames = ["read", "edit", "write", "bash", "rlm"];
+	const toolNames = tools.map((tool) => tool.name);
+	const activeToolNames =
+		options.noTools === "all"
+			? []
+			: (options.tools === undefined ? toolNames : toolNames.filter((name) => options.tools?.includes(name))).filter(
+					(name) => options.excludeTools?.includes(name) !== true,
+				);
+	const effectiveActiveToolNames =
+		options.noTools === "builtin" ? activeToolNames.filter((name) => name === "rlm") : activeToolNames;
 	const contextFiles = resourceLoader.getAgentsFiles().agentsFiles;
 	const systemPrompt =
 		options.systemPrompt ??
 		buildSystemPrompt({
 			cwd: options.metadata.cwd,
-			selectedTools: selectedToolNames,
+			// Only the tools the model can call, as Pi lists them: `--tools`/`--exclude-tools` drop their snippets too.
+			selectedTools: effectiveActiveToolNames,
 			// Pi's own tool snippets and guidelines, and the profile's SYSTEM.md, as Pi's session builds them.
 			customPrompt: resourceLoader.getSystemPrompt(),
 			toolSnippets: {
@@ -1341,15 +1366,6 @@ async function createCodingAgentHarness(
 			skills: resourceLoader.getSkills().skills,
 			appendSystemPrompt: resourceLoader.getAppendSystemPrompt().join("\n\n"),
 		});
-	const toolNames = tools.map((tool) => tool.name);
-	const activeToolNames =
-		options.noTools === "all"
-			? []
-			: (options.tools === undefined ? toolNames : toolNames.filter((name) => options.tools?.includes(name))).filter(
-					(name) => options.excludeTools?.includes(name) !== true,
-				);
-	const effectiveActiveToolNames =
-		options.noTools === "builtin" ? activeToolNames.filter((name) => name === "rlm") : activeToolNames;
 	traceStartup("worker.harness-create");
 	const harness = (
 		await AgentHarness.create(
@@ -1363,6 +1379,8 @@ async function createCodingAgentHarness(
 				toolContext: { env: executionEnv },
 				resources,
 				systemPrompt,
+				streamOptions: providerRequestOptions(settingsManager),
+				retry: settingsManager.getRetrySettings(),
 			},
 			TODO_CONTEXT,
 		)

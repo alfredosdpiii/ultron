@@ -6,6 +6,7 @@
  *   node scripts/eval-quality.mjs [--tasks default|hard] [--model cliproxyapi/gpt-6-sol] [--trials 2]
  *                                 [--concurrency 3] [--only id,id] [--variants pi,ultron] [--out path]
  *                                 [--baseline recorded.json] [--thinking off|low|medium|high|xhigh|max]
+ *                                 [--keep-failed dir] [--ultron-command "node --import ... cli.ts"]
  *   node scripts/eval-quality.mjs --tasks hard --self-check [--only id,id] [--concurrency 4]
  *
  * `--tasks` picks the frozen set: default is evals/quality/tasks.mjs, `hard` is tasks-hard.mjs.
@@ -17,9 +18,25 @@
  * only models.json and auth.json (no extensions, skills, or memory), so the runtimes are compared,
  * not the user's setup. Hidden checks are copied in after the agent finishes and decide pass/fail.
  * Thresholds are frozen below, before any measurement.
+ *
+ * Evidence: every run's RPC event stream (commands sent and everything the agent printed) is written to
+ * <keep>/<run>/events.jsonl, where <keep> is `--keep-failed` (default /tmp/ultron-quality-failed). A failed
+ * run additionally keeps its project dir (with the hidden check files), its isolated agent dir (Ultron's
+ * session files live under agent/experimental/sessions), the agent's stderr, and the hidden check output.
+ * `--ultron-command` replaces the `ultron` binary (e.g. a worktree's source through the source resolver).
  */
 import { spawn } from "node:child_process";
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+	appendFileSync,
+	copyFileSync,
+	cpSync,
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -89,9 +106,10 @@ function sh(command, cwd, timeoutMs) {
 const runVerify = (task, cwd) => sh(task.verify, cwd, task.verifyTimeoutMs ?? VERIFY_TIMEOUT_MS);
 
 const VARIANTS = {
-	pi: { command: "pi", agentDirEnv: "PI_CODING_AGENT_DIR" },
-	ultron: { command: "ultron", agentDirEnv: "ULTRON_CODING_AGENT_DIR" },
+	pi: { command: ["pi"], agentDirEnv: "PI_CODING_AGENT_DIR" },
+	ultron: { command: ["ultron"], agentDirEnv: "ULTRON_CODING_AGENT_DIR" },
 };
+const DEFAULT_KEEP_DIR = "/tmp/ultron-quality-failed";
 
 function arg(name, fallback) {
 	const index = process.argv.indexOf(`--${name}`);
@@ -99,8 +117,12 @@ function arg(name, fallback) {
 }
 
 /** Minimal Pi RPC driver: JSONL commands on stdin, responses and events on stdout. */
-function rpcSession({ command, args, cwd, env }) {
-	const child = spawn(command, args, { cwd, env, stdio: ["pipe", "pipe", "pipe"] });
+function rpcSession({ command, args, cwd, env, log }) {
+	const [binary, ...prefix] = command;
+	const child = spawn(binary, [...prefix, ...args], { cwd, env, stdio: ["pipe", "pipe", "pipe"] });
+	const record = (direction, line) => {
+		if (log) appendFileSync(log, `${JSON.stringify({ at: Date.now(), direction, line })}\n`);
+	};
 	let buffer = "";
 	let stderr = "";
 	let nextId = 0;
@@ -118,6 +140,7 @@ function rpcSession({ command, args, cwd, env }) {
 			buffer = buffer.slice(newline + 1);
 			newline = buffer.indexOf("\n");
 			if (!line.trim()) continue;
+			record("out", line);
 			let message;
 			try {
 				message = JSON.parse(line);
@@ -136,7 +159,9 @@ function rpcSession({ command, args, cwd, env }) {
 		new Promise((resolveResponse, reject) => {
 			const id = `q${++nextId}`;
 			pending.set(id, resolveResponse);
-			child.stdin.write(`${JSON.stringify({ ...command, id })}\n`, (error) => error && reject(error));
+			const line = JSON.stringify({ ...command, id });
+			record("in", line);
+			child.stdin.write(`${line}\n`, (error) => error && reject(error));
 			void exited.then(({ code, signal }) =>
 				reject(new Error(`agent exited (code ${code}, signal ${signal}) before responding: ${stderr}`)),
 			);
@@ -183,7 +208,7 @@ function rpcSession({ command, args, cwd, env }) {
 	};
 }
 
-async function runOne({ task, variant, trial, model, thinking }) {
+async function runOne({ task, variant, trial, model, thinking, keepDir, commands }) {
 	const work = mkdtempSync(join(tmpdir(), `ultron-quality-${task.id}-${variant}-`));
 	const project = join(work, "project");
 	const agentDir = join(work, "agent");
@@ -194,7 +219,11 @@ async function runOne({ task, variant, trial, model, thinking }) {
 		if (existsSync(join(profile, file))) copyFileSync(join(profile, file), join(agentDir, file));
 	const { files, hidden } = materialize(task);
 	writeTree(project, files);
-	const { command, agentDirEnv } = VARIANTS[variant];
+	const { agentDirEnv } = VARIANTS[variant];
+	const command = commands[variant];
+	const runName = `${task.id}-${variant}-${trial}-${new Date().toISOString().replace(/[:.]/g, "-")}`;
+	const keep = join(keepDir, runName);
+	mkdirSync(keep, { recursive: true });
 	const split = model.indexOf("/");
 	// Memory off: the baseline runs without extensions, so neither side gets cross-run memory.
 	const env = {
@@ -220,6 +249,7 @@ async function runOne({ task, variant, trial, model, thinking }) {
 		],
 		cwd: project,
 		env,
+		log: join(keep, "events.jsonl"),
 	});
 	try {
 		let toolCalls = 0;
@@ -250,6 +280,15 @@ async function runOne({ task, variant, trial, model, thinking }) {
 	writeTree(project, hidden);
 	record.verify = await runVerify(task, project);
 	record.passed = !record.error && record.verify.status === 0;
+	if (!record.passed) {
+		// Evidence for failed runs: the files the agent left, its session files, stderr and the hidden check output.
+		cpSync(project, join(keep, "project"), { recursive: true });
+		cpSync(agentDir, join(keep, "agent"), { recursive: true });
+		writeFileSync(join(keep, "stderr.txt"), session.stderr());
+		writeFileSync(join(keep, "verify.txt"), `status: ${record.verify.status}\n${record.verify.output}\n`);
+		writeFileSync(join(keep, "record.json"), `${JSON.stringify(record, null, 2)}\n`);
+	}
+	record.evidence = keep;
 	rmSync(work, { recursive: true, force: true });
 	return record;
 }
@@ -403,6 +442,12 @@ async function main() {
 	const concurrency = Number(arg("concurrency", "3"));
 	const variants = arg("variants", "pi,ultron").split(",");
 	const thinking = arg("thinking", "") || undefined;
+	const keepDir = resolve(arg("keep-failed", DEFAULT_KEEP_DIR));
+	const ultronCommand = arg("ultron-command", "");
+	const commands = {
+		pi: VARIANTS.pi.command,
+		ultron: ultronCommand ? ultronCommand.trim().split(/\s+/) : VARIANTS.ultron.command,
+	};
 	const out = resolve(
 		root,
 		arg(
@@ -411,7 +456,7 @@ async function main() {
 		),
 	);
 	const jobs = selected.flatMap((task) =>
-		variants.flatMap((variant) => Array.from({ length: trials }, (_, index) => ({ task, variant, trial: index + 1, model, thinking }))),
+		variants.flatMap((variant) => Array.from({ length: trials }, (_, index) => ({ task, variant, trial: index + 1, model, thinking, keepDir, commands }))),
 	);
 	console.log(`Quality comparison (${taskSet} set): ${selected.length} tasks x ${variants.join("/")} x ${trials} trials = ${jobs.length} runs (${model}${thinking ? `, thinking ${thinking}` : ""})`);
 	const records = [];
@@ -446,7 +491,7 @@ async function main() {
 	}
 	const summary = summarize(records, variants);
 	mkdirSync(dirname(out), { recursive: true });
-	writeFileSync(out, `${JSON.stringify({ taskSet, frozenAt: FROZEN_AT, thresholds: THRESHOLDS, model, thinking, trials, summary, records }, null, 2)}\n`);
+	writeFileSync(out, `${JSON.stringify({ taskSet, frozenAt: FROZEN_AT, thresholds: THRESHOLDS, model, thinking, ultronCommand: ultronCommand || undefined, trials, summary, records }, null, 2)}\n`);
 	console.log(JSON.stringify(summary, null, 2));
 	console.log(`Wrote ${out}`);
 	return summary.passed ? 0 : 1;

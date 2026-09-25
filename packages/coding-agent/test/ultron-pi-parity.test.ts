@@ -197,6 +197,17 @@ describe("Pi parity through the real CLI", () => {
 		expect(system).toContain("Use read to examine files instead of cat or sed.");
 		expect(system).toContain("Use write only for new files or complete rewrites.");
 		expect(system).toContain("including multiple disjoint edits in one call");
+		expect(system).toContain("- rlm: ");
+
+		// Tools the model cannot call are not advertised, as in Pi.
+		const without = startClient(["--no-session", "--exclude-tools", "rlm,edit"]);
+		await without.start();
+		await without.promptAndWait("hello without", undefined, 60_000);
+		const narrowed = provider.requests.at(-1)!;
+		expect(narrowed.system).not.toContain("- rlm: ");
+		expect(narrowed.system).not.toContain("- edit: ");
+		expect(narrowed.system).toContain("- bash: ");
+		expect(narrowed.raw).not.toContain('"name":"rlm"');
 
 		writeFileSync(join(agentDir, "SYSTEM.md"), "You are the parity test prompt.");
 		const custom = startClient(["--no-session"]);
@@ -323,6 +334,22 @@ describe("Pi parity through the real CLI", () => {
 		expect(await awaitExit(child, 60_000)).toBe(0);
 		expect(stdout).toContain("picked=undefined confirmed=false name=undefined timedOut=undefined");
 	}, 90_000);
+
+	test("print mode: provider requests carry Pi's request timeout, from settings when set", async () => {
+		const run = async (prompt: string) => {
+			const child = spawn(
+				"node",
+				[cliPath, "--provider", "scripted", "--model", "scripted", "--no-session", "-p", prompt],
+				{ cwd: projectDir, env: { ...process.env, ...env() }, stdio: ["ignore", "pipe", "pipe"] },
+			);
+			expect(await awaitExit(child, 60_000)).toBe(0);
+			return provider.requests.find((request) => request.lastUser === prompt);
+		};
+		// Pi sends its HTTP idle timeout (5 min) as the SDK request timeout; the OpenAI SDK reports it in seconds.
+		expect((await run("default timeout"))?.headers["x-stainless-timeout"]).toBe("300");
+		writeFileSync(join(agentDir, "settings.json"), JSON.stringify({ retry: { provider: { timeoutMs: 45_000 } } }));
+		expect((await run("configured timeout"))?.headers["x-stainless-timeout"]).toBe("45");
+	}, 120_000);
 
 	test("print mode: SIGINT aborts the running turn before exiting", async () => {
 		const sessionId = randomUUID();
