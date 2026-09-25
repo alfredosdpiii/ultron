@@ -48,7 +48,13 @@ import { SettingsManager } from "../core/settings-manager.ts";
 import { buildSystemPrompt } from "../core/system-prompt.ts";
 import { createLocalBashOperations } from "../core/tools/bash.ts";
 import { initTheme } from "../modes/interactive/theme/theme.ts";
-import { AutoMemory, autoMemoryModeFromEnv, autoMemoryScopeFromEnv } from "../ultron/auto-memory.ts";
+import {
+	AutoMemory,
+	autoMemoryModeFromEnv,
+	autoMemoryScopeFromEnv,
+	createLegacyRecall,
+	legacyBankFromEnv,
+} from "../ultron/auto-memory.ts";
 import { createFamilyModule } from "../ultron/family.ts";
 import { createGrantModule } from "../ultron/grants.ts";
 import { createInstanceModule } from "../ultron/instances.ts";
@@ -1439,6 +1445,7 @@ async function createCodingAgentHarness(
 						memory: nativeServices.memory,
 						sessionId: options.metadata.id,
 						holdActivity: () => holdActivity?.() ?? (() => {}),
+						...legacyRecallOption(),
 					})
 				: undefined;
 		const removeAutoMemory = autoMemory?.install(harness) ?? (() => {});
@@ -1514,6 +1521,13 @@ async function createCodingAgentHarness(
  * Hindsight memory is on by default against a local server, as in the Pi Jev extension.
  * ULTRON_HINDSIGHT_URL overrides the address; "off" (or "none"/"0") disables memory.
  */
+/** Read-only recall from the Pi extension's Hindsight bank, when Hindsight and that bank are configured. */
+function legacyRecallOption(): { legacyRecall?: ReturnType<typeof createLegacyRecall> } {
+	const url = hindsightUrl(process.env.ULTRON_HINDSIGHT_URL);
+	const bank = legacyBankFromEnv(process.env.ULTRON_HINDSIGHT_LEGACY_BANK);
+	return url && bank ? { legacyRecall: createLegacyRecall(url, bank) } : {};
+}
+
 export function hindsightUrl(configured: string | undefined): string | undefined {
 	if (configured === undefined || configured.trim() === "") return "http://localhost:8888";
 	return ["off", "none", "0", "false"].includes(configured.trim().toLowerCase()) ? undefined : configured.trim();

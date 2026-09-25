@@ -6,7 +6,13 @@ import type { JsonValue } from "@earendil-works/chord";
 import type { AgentMessage } from "@earendil-works/pi-agent-core";
 import { describe, expect, test, vi } from "vitest";
 import { RpcClient } from "../src/modes/rpc/rpc-client.ts";
-import { AUTO_MEMORY_MESSAGE_TYPE, AutoMemory, autoMemoryModeFromEnv } from "../src/ultron/auto-memory.ts";
+import {
+	AUTO_MEMORY_MESSAGE_TYPE,
+	AutoMemory,
+	autoMemoryModeFromEnv,
+	createLegacyRecall,
+	legacyBankFromEnv,
+} from "../src/ultron/auto-memory.ts";
 import { createNativeJevClient, NativeJevClient } from "../src/ultron/jev.ts";
 import { JevDecisionLog, recordingJevClient } from "../src/ultron/jev-decisions.ts";
 import { createWorkerServices } from "../src/ultron/worker-services.ts";
@@ -78,7 +84,11 @@ function user(text: string): AgentMessage {
 	return { role: "user", content: [{ type: "text", text }], timestamp: 0 };
 }
 
-function setup(script: JevScript = {}, mode: "on" | "recall" | "off" = "on") {
+function setup(
+	script: JevScript = {},
+	mode: "on" | "recall" | "off" = "on",
+	legacyRecall?: (query: string, signal: AbortSignal) => Promise<string>,
+) {
 	const hindsight = new FakeHindsight();
 	hindsight.documents.set("d1", {
 		id: "d1",
@@ -108,6 +118,7 @@ function setup(script: JevScript = {}, mode: "on" | "recall" | "off" = "on") {
 		memory: services.memory!,
 		sessionId: "s1",
 		onError: (phase) => errors.push(phase),
+		...(legacyRecall ? { legacyRecall } : {}),
 	});
 	const harness = fakeHarness();
 	auto.install(harness as never);
@@ -195,6 +206,53 @@ describe("automatic per-turn memory", () => {
 		await ephemeral.auto.settle();
 		expect(ephemeral.jevRequests).toEqual(["retrieve", "retrieve", "retrieve", "retrieve"]);
 		expect(ephemeral.hindsight.retains()).toEqual([]);
+	});
+
+	test("memory from the Pi extension's bank is read only when the gate retrieves, and its failures are harmless", async () => {
+		const queries: string[] = [];
+		const legacy = async (query: string) => {
+			queries.push(query);
+			return "1. The user deploys with make ship.";
+		};
+		const kept = setup({ retrieve: 0.9 }, "on", legacy);
+		const result = await kept.harness.beforeRun("main", "run-1", "how do I deploy this?");
+		const content = String((result!.messages[0] as { content: unknown }).content);
+		expect(content).toContain("prefers tabs");
+		expect(content).toContain("Earlier memory (from Pi, read-only):\n1. The user deploys with make ship.");
+		expect(queries).toEqual(["how do I deploy this?"]);
+
+		const skipped = setup({ retrieve: 0.2 }, "on", legacy);
+		await expect(skipped.harness.beforeRun("main", "run-2", "explain closures")).resolves.toBeUndefined();
+		expect(queries).toHaveLength(1);
+
+		const failing = setup({ retrieve: 0.9 }, "on", async () => {
+			throw new Error("bank unavailable");
+		});
+		const fallback = await failing.harness.beforeRun("main", "run-3", "which style do I use?");
+		expect(String((fallback!.messages[0] as { content: unknown }).content)).toContain("prefers tabs");
+		expect(failing.errors).toEqual(["recall"]);
+	});
+
+	test("legacy recall reads one bank without tags, treats a missing bank as empty, and is configurable", async () => {
+		const calls: { url: string; body: Record<string, unknown> }[] = [];
+		const recall = createLegacyRecall("http://hs.test/", "omp", (async (url: string, init?: RequestInit) => {
+			calls.push({ url, body: JSON.parse(String(init?.body)) });
+			return url.includes("/banks/omp/")
+				? new Response(JSON.stringify({ results: [{ text: " A fact. " }, { text: "" }, { text: "A fact." }, { text: "Another." }] }))
+				: new Response("{}", { status: 404 });
+		}) as typeof fetch);
+		await expect(recall("q", new AbortController().signal)).resolves.toBe("1. A fact.\n2. Another.");
+		expect(calls[0]!.url).toBe("http://hs.test/v1/default/banks/omp/memories/recall");
+		expect(calls[0]!.body).not.toHaveProperty("tags");
+		const missing = createLegacyRecall(
+			"http://hs.test",
+			"gone",
+			(async () => new Response("{}", { status: 404 })) as unknown as typeof fetch,
+		);
+		await expect(missing("q", new AbortController().signal)).resolves.toBe("");
+		expect(legacyBankFromEnv(undefined)).toBe("omp");
+		expect(legacyBankFromEnv("mine")).toBe("mine");
+		expect(legacyBankFromEnv("off")).toBeUndefined();
 	});
 
 	test("a memory or Jev outage never fails the turn", async () => {
