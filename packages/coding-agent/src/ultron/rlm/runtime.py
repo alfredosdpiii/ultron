@@ -25,6 +25,7 @@ from schedules_api import Goals, Schedules
 from instances_api import Instances
 from grants_api import Grants
 from release_gate_api import ReleaseGates
+import agent_class_api
 
 @dataclass
 class SpawnHandle:
@@ -416,6 +417,10 @@ class RuntimeState:
         self.namespace["grants"] = Grants(self.bridge)
         self.namespace["gates"] = ReleaseGates(self.bridge)
         self.namespace["preview"] = preview
+        agent_class_api.configure(self.bridge, lambda: self.namespace, preview)
+        self.namespace["agent"] = agent_class_api.agent
+        self.namespace["Agent"] = agent_class_api.Agent
+        self.namespace["AgentCallError"] = agent_class_api.AgentCallError
         # Declared instance state survives reset_scratch; every other name is invocation scratch.
         self.namespace["state"] = {}
         self.bindings = {name: value for name, value in self.namespace.items() if name != "state"}
@@ -425,6 +430,8 @@ class RuntimeState:
         self.namespace.clear()
         self.namespace.update(self.bindings)
         self.namespace["state"] = state
+        # Agent classes and their instances live in `state`; define the classes again for the fresh scratch.
+        agent_class_api.rehydrate()
 
 def emit(event: str, **fields: Any) -> None:
     payload = {"event": event, **fields}
@@ -545,6 +552,7 @@ def save_snapshot(path: str) -> dict[str, Any]:
     """
     target = Path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
+    agent_class_api.flush()
     encoded, reasons = _persistable_namespace()
     skipped = sorted(reasons)
     body = json.dumps(
@@ -625,6 +633,7 @@ def restore_snapshot(path: str, verified_sha256: Any = None) -> dict[str, Any]:
     decoded = {name: _decode_value(value) for name, value in names.items()}
     _STATE.namespace.update(decoded)
     _STATE.snapshot_path = target
+    agent_class_api.rehydrate()
     return {"restored": sorted(decoded), "missing": False, "skipped": sorted(skipped), "reasons": reasons}
 
 
@@ -1124,9 +1133,13 @@ async def execute_cell(request_id: str, source: str) -> None:
             _STATE.cell_active = True
             try:
                 with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
-                    result = eval(compiled, _STATE.namespace, _STATE.namespace)
-                    if asyncio.iscoroutine(result):
-                        await result
+                    agent_class_api.begin_cell(source)
+                    try:
+                        result = eval(compiled, _STATE.namespace, _STATE.namespace)
+                        if asyncio.iscoroutine(result):
+                            await result
+                    finally:
+                        agent_class_api.end_cell()
                 if "_rlm_result" in _STATE.namespace:
                     value = _STATE.namespace.pop("_rlm_result")
                     if value is None:

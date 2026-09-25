@@ -929,6 +929,32 @@
       ],
       "status_when_green": "passed",
       "notes": "Scripted provider: cost is provider calls and prompt tokens (request bytes / 4). A metered hard-set comparison is a separate eval, not this row."
+    },
+    {
+      "id": "A55",
+      "behavior": "An agent class defined in a cell is invokable typed end to end, its state persists across cells and snapshots, and a bad return is rejected with the schema error",
+      "evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-a55-agent-classes.test.ts",
+          "tests": [
+            "a class defined in a cell is invokable typed end to end, keeps state across cells, and rejects a bad return with the schema error"
+          ]
+        },
+        {
+          "file": "packages/coding-agent/test/ultron-agent-classes.test.ts",
+          "tests": [
+            "annotations become JSON schemas the host accepts",
+            "a model-driven method is one typed agents.invoke: docstrings are the prompt, arguments and fields are data",
+            "large arguments reach the model as bounded previews with a file holding the full value",
+            "a bad return is rejected with the schema error and never recorded as success (A14)",
+            "fields persist across cells and reset_scratch; assignments are type-checked",
+            "the class, its generation, and instance fields survive a snapshot and restore into a new kernel",
+            "redefinition makes a new generation; older generations stay invokable and roll back"
+          ]
+        }
+      ],
+      "status_when_green": "passed",
+      "notes": "The real CLI (scripted provider) runs a class defined in an rlm cell; kernel-level tests with the real host cover schema derivation, bounded previews, snapshot/restore, reset_scratch, and generations with rollback. Bad returns fail typed and stay unverified (A14)."
     }
   ]
 }
