@@ -83,6 +83,11 @@ interface WorkerServiceSubscription {
 	deliveryTail: Promise<void>;
 }
 
+interface PendingRelease {
+	readonly worker: WorkerRecord;
+	resolve(retained: boolean | undefined): void;
+}
+
 interface PendingLaunch {
 	readonly sessionKey: string;
 	readonly peerId: string;
@@ -121,12 +126,14 @@ export class SessionWorkerManager {
 	readonly #pendingDemand = new Map<string, PendingDemand>();
 	readonly #pendingOperations = new Map<string, PendingWorkerOperation>();
 	readonly #serviceSubscriptions = new Map<string, WorkerServiceSubscription>();
+	readonly #pendingReleases = new Map<string, PendingRelease>();
 	readonly #removeListener: () => void;
 	readonly #onWorkerCountChanged: ((count: number) => void) | undefined;
 	#discoveryPeers?: Set<string>;
 	#resolveDiscovery?: () => void;
 	#detached = false;
 	#shuttingDown = false;
+	#releasing = false;
 
 	constructor(
 		coordinator: Pick<
@@ -219,7 +226,8 @@ export class SessionWorkerManager {
 		return {
 			terminated: worker.terminated,
 			attachClient: (context) => this.#attachClient(worker, context),
-			close: (context) => this.#stopWorker(worker, context),
+			// Server shutdown closes every routed Session; busy workers are released rather than stopped then.
+			close: (context) => (this.#releasing ? this.#releaseWorker(worker) : this.#stopWorker(worker, context)),
 		};
 	}
 
@@ -424,9 +432,15 @@ export class SessionWorkerManager {
 		}
 	}
 
+	/** Mark the start of a server shutdown, before routed Sessions close, so busy workers are handed off. */
+	prepareShutdown(): void {
+		this.#releasing = true;
+	}
+
 	async shutdown(): Promise<void> {
 		if (this.#detached || this.#shuttingDown) return;
 		this.#shuttingDown = true;
+		this.#releasing = true;
 		const pendingWorkers = [...this.#pending.values()];
 		for (const pending of pendingWorkers) {
 			void this.#coordinator.send(pending.peerId, { type: "shutdown" }).catch(() => {});
@@ -451,9 +465,63 @@ export class SessionWorkerManager {
 		})();
 		await Promise.all([
 			stopPending,
-			...[...this.#workersBySession.values()].map((worker) => this.#stopWorker(worker, BACKGROUND_CONTEXT)),
+			...[...this.#workersBySession.values()].map((worker) => this.#releaseWorker(worker)),
 		]);
 		this.#detachState();
+	}
+
+	/**
+	 * Let a departing server hand off busy workers. An idle worker exits as before; a worker with active lane or
+	 * background work keeps running detached behind the coordinator, retires itself once idle, and can be
+	 * rediscovered by the next server for the same logical ID.
+	 */
+	#releaseWorker(worker: WorkerRecord): Promise<void> {
+		if (this.#detached || this.#workersByPeer.get(worker.peerId) !== worker) return Promise.resolve();
+		worker.stopPromise ??= this.#releaseWorkerInternal(worker);
+		return worker.stopPromise;
+	}
+
+	async #releaseWorkerInternal(worker: WorkerRecord): Promise<void> {
+		this.#rejectWorkerOperations(worker, new Error("Experimental server is shutting down"));
+		// Either outcome ends this server's ownership, so a disconnect is no longer unexpected.
+		worker.expectedStop = true;
+		const requestId = randomUUID();
+		let timer: NodeJS.Timeout | undefined;
+		const released = new Promise<boolean | undefined>((resolve) => {
+			this.#pendingReleases.set(requestId, { worker, resolve });
+			timer = setTimeout(() => resolve(undefined), WORKER_SHUTDOWN_TIMEOUT_MS);
+			timer.unref();
+		});
+		void this.#coordinator
+			.send(worker.peerId, {
+				type: "release",
+				requestId,
+				serverConnectionId: this.#coordinator.serverConnectionId,
+			})
+			.catch(() => this.#pendingReleases.get(requestId)?.resolve(false));
+		const retained = await Promise.race([released, worker.terminated.then(() => false)]);
+		if (timer) clearTimeout(timer);
+		this.#pendingReleases.delete(requestId);
+		if (retained === true) {
+			// The worker is no longer this server's to stop; forget it without signalling.
+			this.#removeWorker(worker, undefined);
+			return;
+		}
+		// Idle workers exit on release; unresponsive ones are stopped the old way.
+		if (retained === false) {
+			worker.stopping = true;
+			let exitTimer: NodeJS.Timeout | undefined;
+			const exited = await Promise.race([
+				worker.terminated.then(() => true),
+				new Promise<boolean>((resolve) => {
+					exitTimer = setTimeout(() => resolve(false), WORKER_SHUTDOWN_TIMEOUT_MS);
+					exitTimer.unref();
+				}),
+			]);
+			if (exitTimer) clearTimeout(exitTimer);
+			if (exited) return;
+		}
+		await this.#stopWorkerInternal(worker);
 	}
 
 	/** Forget workers without stopping them when this server is replaced. */
@@ -605,6 +673,18 @@ export class SessionWorkerManager {
 			clearTimeout(pending.timer);
 			if (message.type === "demand_applied") pending.resolve();
 			else pending.reject(new Error(`Session worker rejected demand: ${message.message}`));
+			return;
+		}
+		if (message.type === "worker_released") {
+			const pending = this.#pendingReleases.get(message.requestId);
+			if (
+				pending &&
+				pending.worker.peerId === event.from &&
+				pending.worker.token === message.token &&
+				pending.worker.metadata.path === message.sessionKey
+			) {
+				pending.resolve(message.retained);
+			}
 			return;
 		}
 		if (message.type === "operation_response") {
@@ -859,6 +939,8 @@ export class SessionWorkerManager {
 
 	#detachState(): void {
 		this.#removeListener();
+		for (const pending of this.#pendingReleases.values()) pending.resolve(undefined);
+		this.#pendingReleases.clear();
 		for (const requestId of [...this.#pendingOperations.keys()]) {
 			this.#rejectOperation(requestId, new Error("Experimental server detached during a worker operation"));
 		}
