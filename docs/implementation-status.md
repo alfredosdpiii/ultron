@@ -29,6 +29,8 @@ Ultron is a fork of Pi whose only agent runtime is the native RLM session worker
 - Refinements (versioned lessons) reach later task prompts, follow the conversation branch (a lesson from an abandoned branch never applies), refuse protected targets and capability requests, and are content-validated. Approval is off by default and recorded as `not_required`.
 - Memory uses Hindsight at `http://localhost:8888` by default (bank `ultron`, created on first use; `ULTRON_HINDSIGHT_URL` overrides, `off` disables). Automatic memory is gated by Jev; deliberate `memory.prepare`/`memory.propose` calls from agent code skip the relevance gate, and writes Jev rates sensitive are still refused. Memory withholds forgotten and superseded items even when the backend still returns them, labels evidence classes, records scope denials, and reuses recorded decisions.
 
+- A research-loop brake steers the root agent to answer after 10 consecutive tool-call rounds in one turn, and again more firmly at 20 (`ULTRON_TOOL_ROUNDS_NUDGE`, 0 disables). It never aborts; Esc does.
+
 ## Controls
 
 All optional controls (permission prompts, risk blocking, capability enforcement, completion gates, refinement approval, mandatory sandbox, cost cap) are off by default, reported by `agents.status`, and never prompt.

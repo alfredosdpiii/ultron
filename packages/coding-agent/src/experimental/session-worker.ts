@@ -66,6 +66,7 @@ import { loadOrCreateSnapshotKey } from "../ultron/rlm/snapshot-auth.ts";
 import { createSessionTaskStore } from "../ultron/rlm/task-store.ts";
 import { createScheduleModule } from "../ultron/schedules.ts";
 import { createSkillModule } from "../ultron/skills.ts";
+import { ToolRoundNudger, toolRoundsNudgeFromEnv } from "../ultron/tool-round-nudge.ts";
 import { createSessionUsageLedger, nativeUsageLimitsFromEnv } from "../ultron/usage.ts";
 import { createWorkerServices } from "../ultron/worker-services.ts";
 import { COORDINATOR_PROTOCOL_VERSION } from "./coordinator.ts";
@@ -1417,6 +1418,17 @@ async function createCodingAgentHarness(
 		const removeRootTurnListener = harness.events.on("run_end", (event) => {
 			if (event.lane === "main") host?.endRootTurn(event.runId);
 		});
+		// Brake for open-ended research loops on the root agent (ULTRON_TOOL_ROUNDS_NUDGE, 0 disables).
+		const nudger = new ToolRoundNudger(toolRoundsNudgeFromEnv(process.env.ULTRON_TOOL_ROUNDS_NUDGE), (message) =>
+			lane.steer(message, undefined, BACKGROUND_CONTEXT),
+		);
+		const removeNudgeTurnListener = harness.events.on("turn_end", (event) => {
+			if (event.lane !== "main") return;
+			nudger.turnEnded(event.runId, event.message.content.filter((part) => part.type === "toolCall").length);
+		});
+		const removeNudgeRunListener = harness.events.on("run_end", (event) => {
+			if (event.lane === "main") nudger.runEnded(event.runId);
+		});
 		const currentActiveToolNames = await lane.getActiveTools(TODO_CONTEXT);
 		if (
 			currentActiveToolNames.length !== extensionActiveToolNames.length ||
@@ -1428,6 +1440,8 @@ async function createCodingAgentHarness(
 			harness,
 			closeRlm: async () => {
 				removeRootTurnListener();
+				removeNudgeTurnListener();
+				removeNudgeRunListener();
 				await legacyExtensions?.close();
 				await rlmTool.close();
 				await host?.close();
