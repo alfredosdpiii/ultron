@@ -29,7 +29,8 @@ interface CapabilityCase {
 	readonly prompt: string;
 	/** Files written into the project directory before the trial. */
 	readonly files?: Record<string, string>;
-	readonly check: (answer: string) => boolean;
+	/** `records` is the session's actual task state, read through the inspector after the trial. */
+	readonly check: (answer: string, records: { completedIdentityTasks: number }) => boolean;
 	readonly expected: string;
 }
 
@@ -88,8 +89,10 @@ const CASES: CapabilityCase[] = [
 		id: "event-retrieval",
 		prompt:
 			"Use the rlm tool: invoke identity@1 three times with inputs {'i': 1}, {'i': 2}, {'i': 3}, then call `await agents.tasks()` and count the tasks in state 'completed' with definition identity@1. Reply with only that count.",
-		check: (answer) => numberIn(answer) === 3,
-		expected: "3",
+		// The answer must match the recorded state, whatever the model did; at least the three asked for exist.
+		check: (answer, records) =>
+			records.completedIdentityTasks >= 3 && numberIn(answer) === records.completedIdentityTasks,
+		expected: "the recorded count of completed identity@1 tasks (>= 3)",
 	},
 	{
 		id: "honest-failed-child",
@@ -110,6 +113,8 @@ interface TrialRecord {
 	expected: string;
 	durationMs: number;
 	error?: string;
+	/** Provider or runner failure: says nothing about the model's capability. */
+	infrastructure?: boolean;
 }
 
 async function runTrial(model: string, capability: CapabilityCase, trial: number): Promise<TrialRecord> {
@@ -141,11 +146,35 @@ async function runTrial(model: string, capability: CapabilityCase, trial: number
 		const events = await client.promptAndWait(capability.prompt, undefined, 10 * 60 * 1000);
 		const usedRlm = events.some((event) => event.type === "tool_execution_start" && event.toolName === "rlm");
 		const answer = (await client.getLastAssistantText()) ?? "";
+		const providerError = events
+			.filter((event) => event.type === "message_end")
+			.map((event) => (event as { message: { role: string; stopReason?: string; errorMessage?: string } }).message)
+			.find((message) => message.role === "assistant" && message.stopReason === "error");
+		if (providerError)
+			return {
+				model,
+				case: capability.id,
+				trial,
+				passed: false,
+				usedRlm,
+				answer: answer.slice(0, 500),
+				expected: capability.expected,
+				durationMs: Date.now() - started,
+				error: providerError.errorMessage ?? "provider error",
+				infrastructure: true,
+			};
+		const status = (await (client as unknown as { send(command: object): Promise<{ data?: unknown }> }).send({
+			type: "inspect",
+			request: "agents.status",
+		})) as { data?: { tasks?: Array<{ definition: string; state: string }> } };
+		const completedIdentityTasks = (status.data?.tasks ?? []).filter(
+			(task) => task.definition === "identity@1" && task.state === "completed",
+		).length;
 		return {
 			model,
 			case: capability.id,
 			trial,
-			passed: usedRlm && capability.check(answer),
+			passed: usedRlm && capability.check(answer, { completedIdentityTasks }),
 			usedRlm,
 			answer: answer.slice(0, 500),
 			expected: capability.expected,
@@ -162,6 +191,7 @@ async function runTrial(model: string, capability: CapabilityCase, trial: number
 			expected: capability.expected,
 			durationMs: Date.now() - started,
 			error: error instanceof Error ? error.message : String(error),
+			infrastructure: true,
 		};
 	} finally {
 		await client.stop().catch(() => {});
@@ -179,15 +209,24 @@ describe.skipIf(!LIVE)("A39 live typed RLM capability suite", () => {
 					for (let trial = 1; trial <= TRIALS; trial += 1) trials.push(await runTrial(model, capability, trial));
 				}
 				const summary = CASES.map((capability) => {
-					const passes = trials.filter((trial) => trial.case === capability.id && trial.passed).length;
-					return { case: capability.id, passes, trials: TRIALS, qualified: passes >= PASS_THRESHOLD };
+					const own = trials.filter((trial) => trial.case === capability.id);
+					const passes = own.filter((trial) => trial.passed).length;
+					const infrastructure = own.filter((trial) => trial.infrastructure).length;
+					// Infrastructure failures are neither passes nor capability failures: the case stays unverified.
+					const outcome =
+						passes >= PASS_THRESHOLD
+							? "qualified"
+							: passes + infrastructure >= PASS_THRESHOLD
+								? "unverified"
+								: "failed";
+					return { case: capability.id, passes, infrastructure, trials: TRIALS, outcome };
 				});
 				mkdirSync(RESULTS_DIR, { recursive: true });
 				writeFileSync(
 					join(RESULTS_DIR, `${model.replace(/[^a-z0-9.-]+/gi, "_")}.json`),
 					`${JSON.stringify({ suiteVersion: 1, model, trialsPerCase: TRIALS, passThreshold: PASS_THRESHOLD, recordedAt: new Date().toISOString(), summary, trials }, null, 2)}\n`,
 				);
-				expect(summary.filter((entry) => !entry.qualified)).toEqual([]);
+				expect(summary.filter((entry) => entry.outcome !== "qualified")).toEqual([]);
 			},
 			60 * 60 * 1000,
 		);
