@@ -1,3 +1,5 @@
+import type { Context } from "@earendil-works/chord";
+import { withoutAbortSignal } from "@earendil-works/chord/context";
 import type { AgentLane, OperationResultRecord, SuspendedRun } from "@earendil-works/pi-agent-core";
 import type { ImageContent } from "@earendil-works/pi-ai";
 import type {
@@ -7,6 +9,15 @@ import type {
 	AgentPromptRequest,
 	AgentQueueResponse,
 } from "./agent-controller.ts";
+
+/**
+ * A lane operation belongs to the Session, not to the call that started it. Cancelling that call means the caller
+ * stopped waiting (a client quit, disconnected, or its server departed), which must not abort the turn: it runs to
+ * completion in the worker and its result is persisted. Aborting is explicit, through `requestAbort`.
+ */
+function operationContext(context: Context): Context {
+	return withoutAbortSignal(context);
+}
 
 export function createAgentController(lane: AgentLane): AgentControllerService {
 	const queue = async (
@@ -24,7 +35,7 @@ export function createAgentController(lane: AgentLane): AgentControllerService {
 	return {
 		async prompt(request, context) {
 			const [message, images] = toTextPrompt(request);
-			const result = await lane.prompt(message, images, context);
+			const result = await lane.prompt(message, images, operationContext(context));
 			return result.ok
 				? toOperationResponse(result.value)
 				: { accepted: false, operationId: operationId(result.error), error: toAgentError(result.error) };
@@ -42,7 +53,7 @@ export function createAgentController(lane: AgentLane): AgentControllerService {
 			return { outcome: result.value.kind };
 		},
 		async resume(context) {
-			const result = await lane.resume(context);
+			const result = await lane.resume(operationContext(context));
 			return result.ok
 				? toOperationResponse(result.value)
 				: { accepted: false, operationId: null, error: toAgentError(result.error) };
@@ -50,7 +61,7 @@ export function createAgentController(lane: AgentLane): AgentControllerService {
 		async compact(request, context) {
 			const result = await lane.compact(
 				request.customInstructions === null ? undefined : { customInstructions: request.customInstructions },
-				context,
+				operationContext(context),
 			);
 			return result.ok
 				? toOperationResponse(result.value.compaction)
@@ -64,7 +75,7 @@ export function createAgentController(lane: AgentLane): AgentControllerService {
 					...(request.label === null ? {} : { label: request.label }),
 					...(request.customInstructions === null ? {} : { customInstructions: request.customInstructions }),
 				},
-				context,
+				operationContext(context),
 			);
 			return result.ok
 				? toOperationResponse(result.value.navigation)

@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { chmod, lstat, mkdir, readFile, writeFile } from "node:fs/promises";
+import { chmod, lstat, mkdir, readdir, readFile, unlink, writeFile } from "node:fs/promises";
+import { createConnection } from "node:net";
 import { homedir } from "node:os";
 import { isAbsolute, join } from "node:path";
 import type { Context } from "@earendil-works/chord";
@@ -676,6 +677,7 @@ export async function startServer(options: StartServerOptions = {}): Promise<Run
 		const controlPath = join(directory, `control-${serverId}.sock`);
 		const serverNonce = randomUUID().replaceAll("-", "").slice(0, 12);
 		const serverPath = join(directory, `server-${serverId}-${serverNonce}.sock`);
+		await removeDeadServerEndpoints(directory, serverId);
 		startupLease = await ensureCoordinator(socketPath, controlPath);
 		coordinator = new CoordinatorConnection({ controlPath, endpoint: serverPath });
 		const sessionDir = resolveSessionDirectory(options.sessionDir);
@@ -792,6 +794,32 @@ export async function startForegroundServer(
 	} finally {
 		await release();
 	}
+}
+
+/**
+ * A hard-killed server leaves its private endpoint socket behind. Remove this server ID's endpoints that no longer
+ * accept connections; a live one (a server being replaced) is left alone.
+ */
+async function removeDeadServerEndpoints(directory: string, serverId: string): Promise<void> {
+	const prefix = `server-${serverId}-`;
+	const names = (await readdir(directory)).filter((name) => name.startsWith(prefix) && name.endsWith(".sock"));
+	await Promise.all(
+		names.map(async (name) => {
+			const path = join(directory, name);
+			const live = await new Promise<boolean>((resolve) => {
+				const socket = createConnection(path);
+				socket.once("connect", () => {
+					socket.destroy();
+					resolve(true);
+				});
+				socket.once("error", (error: NodeJS.ErrnoException) => {
+					socket.destroy();
+					resolve(error.code !== "ECONNREFUSED" && error.code !== "ENOENT");
+				});
+			});
+			if (!live) await unlink(path).catch(() => {});
+		}),
+	);
 }
 
 function parseServerModelOptions(value: string | undefined): { provider?: string; model: string } | undefined {

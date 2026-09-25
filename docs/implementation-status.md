@@ -7,7 +7,7 @@ Ultron is a fork of Pi whose only agent runtime is the native RLM session worker
 - Every agent run goes through the native session worker: the TUI, `-p`/`--mode json`, and `--mode rpc`. `--help`, `--list-models`, and `--export` never run the agent and use Pi's handlers. `--export` renders native session files.
 - `--mode rpc` speaks Pi's JSONL protocol (`src/experimental/rpc-native.ts`); Pi's `RpcClient` drives it in tests. Differences from Pi: model objects carry `provider`, `id`, `name`, `reasoning`; `get_tree` returns the active branch; entries use the native format; extensions run headless, so there are no `extension_ui_request` events. The Ultron-specific `inspect` command exposes the read-only inspector.
 - Extension slash commands are registered directly (`/name`, as in Pi) and via `/extension <name>`. `/agents`, `/memory`, `/skills`, `/experiments`, `/goals`, and `/progress` read recorded runtime state without starting work or searching.
-- Busy session workers survive the client exiting: background jobs and child lanes keep running, the next `ultron` reattaches, and idle workers retire.
+- Busy session workers survive the client exiting: background jobs, child lanes, and a root turn in flight keep running, the next `ultron` reattaches, and idle workers retire. Leaving the app (Ctrl-C/Ctrl-D in the TUI, a signal, closing RPC stdin) is not an abort; Esc in the TUI and RPC `abort` are. After a hard kill, idle workers exit within about a second and busy ones finish first.
 - `ultron migrate import-pi | export-pi | backup | restore` moves Pi sessions in and out and rehearses profile backup and restore.
 
 ## RLM host
@@ -37,6 +37,5 @@ All optional controls (permission prompts, risk blocking, capability enforcement
 - Resource limits are the trusted-local profile: output, artifacts, wall time, admission, and process-group kills. There are no memory or CPU limits and no isolated sandbox profile.
 - Without a sandbox, a model can read anything the user can, including test files outside the project. The live A46 run observed the model reading its own demonstration test; hostile-code or blind evaluation needs real isolation.
 - Snapshot checksums detect corruption, not a writer who recomputes the digest.
-- Quitting in the middle of a root turn still stops that turn; work started by earlier turns continues. A hard-killed client leaves idle work to a 30-second orphan grace.
 - Workflows have no any-of joins or bounded revision cycles.
 - Pi import brings in the active branch only; labels and model changes are reported as skipped.

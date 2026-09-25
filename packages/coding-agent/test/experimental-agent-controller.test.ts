@@ -1,4 +1,5 @@
-import { createFacetHost, defineFacet } from "@earendil-works/chord";
+import { type Context, createFacetHost, defineFacet } from "@earendil-works/chord";
+import { withCancel } from "@earendil-works/chord/context";
 import {
 	type AgentLane,
 	BACKGROUND_CONTEXT,
@@ -135,6 +136,38 @@ describe("AgentController service", () => {
 		expect(resume).toHaveBeenCalledWith(BACKGROUND_CONTEXT);
 		expect(compact).toHaveBeenCalledWith({ customInstructions: "short" }, BACKGROUND_CONTEXT);
 		expect(navigateTree).toHaveBeenCalledWith("entry-1", { summarize: true, label: "branch" }, BACKGROUND_CONTEXT);
+	});
+
+	test("a cancelled call stops waiting but never aborts the lane operation", async () => {
+		const contexts: Context[] = [];
+		const record = async (...args: unknown[]) => {
+			contexts.push(args.at(-1) as Context);
+			return { ok: true as const, value: completed };
+		};
+		const controller = createAgentController({
+			prompt: record,
+			resume: record,
+			compact: async (...args: unknown[]) => {
+				contexts.push(args.at(-1) as Context);
+				return { ok: true as const, value: { compaction: completed } };
+			},
+			navigateTree: async (...args: unknown[]) => {
+				contexts.push(args.at(-1) as Context);
+				return { ok: true as const, value: { navigation: completed } };
+			},
+		} as unknown as AgentLane);
+		// A client that quit or disconnected cancels its in-flight call; only requestAbort aborts.
+		const call = withCancel(BACKGROUND_CONTEXT);
+		call.cancel(new Error("client disconnected"));
+		await controller.prompt({ message: "hello", images: null }, call.context);
+		await controller.resume(call.context);
+		await controller.compact({ customInstructions: null }, call.context);
+		await controller.navigate(
+			{ targetId: null, summarize: false, label: null, customInstructions: null },
+			call.context,
+		);
+		expect(contexts).toHaveLength(4);
+		for (const context of contexts) expect(context.abortSignal).toBeUndefined();
 	});
 
 	test("reports accepted successful and failed operations", async () => {
