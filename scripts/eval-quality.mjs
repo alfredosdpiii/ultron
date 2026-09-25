@@ -141,7 +141,13 @@ async function runOne({ task, variant, trial, model }) {
 	}
 	const { command, agentDirEnv } = VARIANTS[variant];
 	const split = model.indexOf("/");
-	const env = { ...process.env, [agentDirEnv]: agentDir, ULTRON_SERVER_DIR: mkdtempSync(join("/tmp", "u-q-")) };
+	// Memory off: the baseline runs without extensions, so neither side gets cross-run memory.
+	const env = {
+		...process.env,
+		[agentDirEnv]: agentDir,
+		ULTRON_SERVER_DIR: mkdtempSync(join("/tmp", "u-q-")),
+		ULTRON_HINDSIGHT_URL: "off",
+	};
 	const record = { task: task.id, category: task.category, variant, trial, model, passed: false };
 	const started = Date.now();
 	const session = rpcSession({

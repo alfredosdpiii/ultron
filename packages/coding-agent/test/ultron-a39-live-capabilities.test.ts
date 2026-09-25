@@ -137,6 +137,7 @@ async function runTrial(model: string, capability: CapabilityCase, trial: number
 		env: {
 			NODE_OPTIONS: `--import ${sourceResolverPath}`,
 			ULTRON_CODING_AGENT_DIR: agentDir,
+			ULTRON_HINDSIGHT_URL: "off",
 			ULTRON_SERVER_DIR: mkdtempSync(join("/tmp", "u-a39-")),
 		},
 	});

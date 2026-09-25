@@ -250,6 +250,7 @@ describe.skipIf(process.platform !== "linux")("A22 detached work survives UI los
 			env: {
 				NODE_OPTIONS: `--import ${sourceResolverPath}`,
 				ULTRON_CODING_AGENT_DIR: agentDir,
+				ULTRON_HINDSIGHT_URL: "off",
 				ULTRON_SERVER_DIR: serverDir,
 				PI_OFFLINE: "1",
 			},

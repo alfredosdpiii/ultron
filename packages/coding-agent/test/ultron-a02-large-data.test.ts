@@ -226,6 +226,7 @@ describe("A02 large data stays outside the model context", () => {
 				env: {
 					NODE_OPTIONS: `--import ${sourceResolverPath}`,
 					ULTRON_CODING_AGENT_DIR: agentDir,
+					ULTRON_HINDSIGHT_URL: "off",
 					ULTRON_SERVER_DIR: mkdtempSync(join("/tmp", "u-a02-")),
 					PI_OFFLINE: "1",
 				},

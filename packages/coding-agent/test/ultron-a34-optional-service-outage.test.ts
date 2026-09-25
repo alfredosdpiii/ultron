@@ -226,9 +226,10 @@ describe("A34 optional-service failure preserves RLM operation without bypassing
 			expect(report.outcomes.refinements).toMatchObject({ ok: false });
 			expect(report.outcomes.refinements.error).toContain("refinement store unavailable");
 			expect(report.outcomes.skills).toMatchObject({ ok: false, error: expect.stringContaining("skill module") });
-			// A failed gate cannot reach Hindsight at all, so nothing was retained behind the outage.
-			expect(backendCalls).toEqual([]);
-			expect(jevCalls).toEqual(["triage", "memoryGate", "memoryPolicy"]);
+			// An explicit recall from agent code skips Jev's relevance gate, reaches the down backend, and fails
+			// visibly; a write still needs Jev's policy, so nothing was retained behind the outage.
+			expect(backendCalls).toEqual(["recall"]);
+			expect(jevCalls).toEqual(["triage", "memoryPolicy"]);
 
 			// The workflow records its failure and skip; the explicit rerun does not repeat the keyed effect.
 			for (const run of [report.first_run, report.second_run]) {

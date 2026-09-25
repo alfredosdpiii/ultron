@@ -178,6 +178,8 @@ async function start(steps: readonly string[], files: Record<string, string>): P
 			NODE_OPTIONS: `--import ${sourceResolverPath}`,
 			ULTRON_CODING_AGENT_DIR: agentDir,
 			ULTRON_SERVER_DIR: mkdtempSync(join("/tmp", "u-a46-")),
+			// Never touch the user's memory server; an unreachable one models a Hindsight outage.
+			ULTRON_HINDSIGHT_URL: "http://127.0.0.1:9",
 			PI_OFFLINE: "1",
 		},
 	});
