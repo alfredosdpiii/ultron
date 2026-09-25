@@ -64,12 +64,16 @@ export class LegacyExtensionAdapter {
 		this.#onShutdown = options.onShutdown;
 		this.#sessionManager = createSessionManagerFacade(options.session, options.cwd);
 		const extensions = options.resourceLoader.getExtensions();
-		this.#runner = new ExtensionRunner(
+		const ui = options.ui;
+		this.#runner = new WorkerExtensionRunner(
 			extensions.extensions,
 			extensions.runtime,
 			this.#cwd,
 			this.#sessionManager,
 			new ModelRegistry(options.modelRuntime),
+			// As in Pi, `ctx.hasUI` is true only while an interactive client (the TUI or an RPC client) is attached:
+			// it serves the extension UI by polling. Print and JSON runs never poll, so there it is false.
+			ui === undefined ? () => true : () => ui.serving,
 		);
 		const headless = createHeadlessExtensionUI();
 		this.#runner.setUIContext(options.ui === undefined ? headless : options.ui.createContext(headless), "tui");
@@ -225,6 +229,27 @@ export class LegacyExtensionAdapter {
 				) as Promise<AgentToolResult<unknown>>;
 			},
 		};
+	}
+}
+
+/** Pi's runner whose `hasUI` follows whether an interactive client is attached to the worker. */
+class WorkerExtensionRunner extends ExtensionRunner {
+	readonly #interactive: () => boolean;
+
+	constructor(
+		extensions: ConstructorParameters<typeof ExtensionRunner>[0],
+		runtime: ConstructorParameters<typeof ExtensionRunner>[1],
+		cwd: string,
+		sessionManager: SessionManager,
+		modelRegistry: ModelRegistry,
+		interactive: () => boolean,
+	) {
+		super(extensions, runtime, cwd, sessionManager, modelRegistry);
+		this.#interactive = interactive;
+	}
+
+	override hasUI(): boolean {
+		return super.hasUI() && this.#interactive();
 	}
 }
 

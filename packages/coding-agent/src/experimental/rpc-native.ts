@@ -359,14 +359,24 @@ export async function runNativeRpcMode(options: NativeRpcOptions): Promise<void>
 					if (entry?.type !== "message" || entry.message.role !== "user") {
 						throw new RpcCommandError(`Entry is not a user message: ${command.entryId}`);
 					}
-					const created = await server.management.create({ forkFromSessionId: sessionId }, context);
+					// As in Pi, the new session holds only the path from the root to just before that message.
+					const created = await server.management.create(
+						{ forkFromSessionId: sessionId, forkPath: { entryId: entry.id, position: "before" } },
+						context,
+					);
+					if (options.noSession) createdSessions.add(created.sessionId);
 					await switchTo(created.sessionId);
-					// A fork at a user message continues from the state just before that message.
-					await navigate(entry.parentId);
 					return ok({ text: messageText(entry.message), cancelled: false });
 				}
 				case "clone": {
-					const created = await server.management.create({ forkFromSessionId: sessionId }, context);
+					// Pi's clone: a new session with the path from the root to the current leaf.
+					if ((await readView()).leafId === null)
+						throw new RpcCommandError("Cannot clone session: no current entry selected");
+					const created = await server.management.create(
+						{ forkFromSessionId: sessionId, forkPath: { position: "at" } },
+						context,
+					);
+					if (options.noSession) createdSessions.add(created.sessionId);
 					await switchTo(created.sessionId);
 					return ok({ cancelled: false });
 				}
@@ -438,14 +448,6 @@ export async function runNativeRpcMode(options: NativeRpcOptions): Promise<void>
 				}
 				default:
 					throw new RpcCommandError(`Unknown command: ${command.type}`);
-			}
-
-			async function navigate(targetId: string | null): Promise<void> {
-				await operationEnd(
-					() =>
-						server.agent.navigate({ targetId, summarize: false, label: null, customInstructions: null }, context),
-					"navigation_end",
-				);
 			}
 		};
 

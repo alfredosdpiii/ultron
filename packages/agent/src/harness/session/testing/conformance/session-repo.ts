@@ -552,14 +552,48 @@ export function createSessionRepoForkBehaviorConformance<TMetadata extends Sessi
 			strictEqual(await getBranchTip(empty, "empty"), null);
 			deepStrictEqual(await empty.findEntries({ order: "asc" }, BACKGROUND_CONTEXT), []);
 
-			for (const [id, branch, entryId] of [
-				["off-branch", "main", SIBLING_ID],
-				["unknown", "main", UNKNOWN_ID],
-				["null-tip", "empty", ROOT_ID],
+			// anyTreeEntry accepts an entry off the Branch's tip ancestry and copies that entry's own path.
+			const offBranch = await repo.fork(
+				source.metadata,
+				{ id: "any-at", scope: "branch", branch: "main", entryId: SIBLING_ID, position: "at", anyTreeEntry: true },
+				BACKGROUND_CONTEXT,
+			);
+			strictEqual(await getBranchTip(offBranch), SIBLING_ID);
+			deepStrictEqual(
+				(await offBranch.findEntries({ order: "asc" }, BACKGROUND_CONTEXT)).map(({ id }) => id),
+				[ROOT_ID, SIBLING_ID],
+			);
+			const offBranchBefore = await repo.fork(
+				source.metadata,
+				{
+					id: "any-before",
+					scope: "branch",
+					branch: "main",
+					entryId: SIBLING_ID,
+					position: "before",
+					anyTreeEntry: true,
+				},
+				BACKGROUND_CONTEXT,
+			);
+			strictEqual(await getBranchTip(offBranchBefore), ROOT_ID);
+			deepStrictEqual(
+				(await offBranchBefore.findEntries({ order: "asc" }, BACKGROUND_CONTEXT)).map(({ id }) => id),
+				[ROOT_ID],
+			);
+
+			for (const [id, branch, entryId, anyTreeEntry] of [
+				["off-branch", "main", SIBLING_ID, false],
+				["unknown", "main", UNKNOWN_ID, false],
+				["unknown-any", "main", UNKNOWN_ID, true],
+				["null-tip", "empty", ROOT_ID, false],
 			] as const) {
-				await rejects(repo.fork(source.metadata, { id, scope: "branch", branch, entryId }, BACKGROUND_CONTEXT));
+				await rejects(
+					repo.fork(source.metadata, { id, scope: "branch", branch, entryId, anyTreeEntry }, BACKGROUND_CONTEXT),
+				);
 			}
 			deepStrictEqual((await repo.list(undefined, BACKGROUND_CONTEXT)).map(({ id }) => id).sort(), [
+				"any-at",
+				"any-before",
 				"before",
 				"before-root",
 				"empty",
@@ -572,6 +606,8 @@ export function createSessionRepoForkBehaviorConformance<TMetadata extends Sessi
 				beforeRoot.close(BACKGROUND_CONTEXT),
 				empty.close(BACKGROUND_CONTEXT),
 				mid.close(BACKGROUND_CONTEXT),
+				offBranch.close(BACKGROUND_CONTEXT),
+				offBranchBefore.close(BACKGROUND_CONTEXT),
 			]);
 		}),
 		createCase(factory, "forks", "forks a closed source session", async ({ repo }) => {

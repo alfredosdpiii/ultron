@@ -18,6 +18,11 @@ export function selectBranchFork(
 	let found = requested === null;
 	let destinationTip: string | null = null;
 	let entryId = source.tip;
+	if (options.anyTreeEntry === true && requested !== null) {
+		if (source.getParent(requested) === undefined) throw new Error(`Unknown fork entry ${requested}`);
+		// Walk the requested entry's own ancestry; it need not be on the Branch's current tip path.
+		entryId = requested;
+	}
 	while (entryId !== null) {
 		const parentId = source.getParent(entryId);
 		if (parentId === undefined) throw new Error(`Corrupt source branch: missing parent ${entryId}`);

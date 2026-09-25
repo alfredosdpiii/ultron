@@ -139,6 +139,11 @@ export function createSessionControl(options: {
 				sessionFile: typeof path === "string" ? path : null,
 			};
 		},
+		async setLabel(entryId, label, context) {
+			const session = options.session;
+			if (session === undefined) throw new Error("This Session worker does not expose its storage");
+			await session.setLabel(entryId, label === null || label === "" ? undefined : label, context);
+		},
 	};
 }
 

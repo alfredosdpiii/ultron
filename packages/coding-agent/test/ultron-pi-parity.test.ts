@@ -16,6 +16,7 @@ import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import type { SessionTreeNode } from "../src/core/session-manager.ts";
 import { RpcClient } from "../src/modes/rpc/rpc-client.ts";
 import type { RpcExtensionUIRequest } from "../src/modes/rpc/rpc-types.ts";
+import { importPiSession } from "../src/ultron/migration.ts";
 import { ScriptedProvider, type ScriptedReply, type ScriptedRequest } from "./support/scripted-provider.ts";
 
 const cliPath = resolve(__dirname, "../src/cli.ts");
@@ -35,7 +36,7 @@ const ASK_EXTENSION = `export default function (pi) {
 			const name = await ctx.ui.input("Name", "your name");
 			const timedOut = await ctx.ui.select("Nobody answers", ["x"], { timeout: 300 });
 			return {
-				content: [{ type: "text", text: "picked=" + picked + " confirmed=" + confirmed + " name=" + name + " timedOut=" + timedOut }],
+				content: [{ type: "text", text: "picked=" + picked + " confirmed=" + confirmed + " name=" + name + " timedOut=" + timedOut + " hasUI=" + ctx.hasUI }],
 				details: {},
 			};
 		},
@@ -77,6 +78,73 @@ function script(request: ScriptedRequest): ScriptedReply {
 	}
 	if (request.lastUser.includes("slow turn")) return { text: "SHOULD_NOT_APPEAR", delayMs: 4_000 };
 	return { text: `reply:${request.lastUser.slice(0, 60)}` };
+}
+
+function entryText(message: unknown): string {
+	const content = (message as { content: unknown }).content;
+	return typeof content === "string"
+		? content
+		: (content as Array<{ type: string; text?: string }>).map((part) => part.text ?? "").join("");
+}
+
+/** Message texts of a Pi tree, depth first. */
+function texts(tree: SessionTreeNode[]): string[] {
+	const out: string[] = [];
+	const visit = (node: SessionTreeNode): void => {
+		expect(typeof node.entry.timestamp).toBe("string");
+		if (node.entry.type === "message") out.push(entryText(node.entry.message));
+		node.children.forEach(visit);
+	};
+	tree.forEach(visit);
+	return out;
+}
+
+/** A Pi session with two branches after "reply:first" and labels on "first" and on the abandoned "second". */
+function writeBranchedPiSession(path: string, cwd: string, sessionId: string): void {
+	const at = (seconds: number) => new Date(1_760_000_000_000 + seconds * 1000).toISOString();
+	const usage = {
+		input: 1,
+		output: 1,
+		cacheRead: 0,
+		cacheWrite: 0,
+		totalTokens: 2,
+		cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+	};
+	const user = (id: string, parentId: string | null, text: string, seconds: number) => ({
+		type: "message",
+		id,
+		parentId,
+		timestamp: at(seconds),
+		message: { role: "user", content: [{ type: "text", text }], timestamp: 1_760_000_000_000 + seconds * 1000 },
+	});
+	const reply = (id: string, parentId: string, text: string, seconds: number) => ({
+		type: "message",
+		id,
+		parentId,
+		timestamp: at(seconds),
+		message: {
+			role: "assistant",
+			content: [{ type: "text", text }],
+			api: "openai-completions",
+			provider: "scripted",
+			model: "scripted",
+			usage,
+			stopReason: "stop",
+			timestamp: 1_760_000_000_000 + seconds * 1000,
+		},
+	});
+	const lines = [
+		{ type: "session", version: 3, id: sessionId, timestamp: at(0), cwd },
+		user("u1", null, "first", 1),
+		reply("a1", "u1", "reply:first", 2),
+		user("u2", "a1", "second", 3),
+		reply("a2", "u2", "reply:second", 4),
+		{ type: "label", id: "l1", parentId: "a2", timestamp: at(5), targetId: "u1", label: "start" },
+		{ type: "label", id: "l2", parentId: "l1", timestamp: at(6), targetId: "u2", label: "abandoned" },
+		user("u3", "a1", "other", 7),
+		reply("a3", "u3", "reply:other", 8),
+	];
+	writeFileSync(path, `${lines.map((line) => JSON.stringify(line)).join("\n")}\n`);
 }
 
 function childOf(client: RpcClient): ChildProcess {
@@ -171,7 +239,9 @@ describe("Pi parity through the real CLI", () => {
 		});
 
 		await client.promptAndWait("use the ask tool", undefined, 60_000);
-		expect(await client.getLastAssistantText()).toBe("picked=b confirmed=true name=Ultron timedOut=undefined");
+		expect(await client.getLastAssistantText()).toBe(
+			"picked=b confirmed=true name=Ultron timedOut=undefined hasUI=true",
+		);
 		expect(requests).toEqual([
 			expect.objectContaining({ method: "notify", message: "asking now", notifyType: "info" }),
 			expect.objectContaining({ method: "setStatus", statusKey: "ask", statusText: "busy" }),
@@ -235,46 +305,22 @@ describe("Pi parity through the real CLI", () => {
 
 		await client.promptAndWait("first", undefined, 60_000);
 		await client.promptAndWait("second", undefined, 60_000);
+		const sourceSession = (await client.getState()).sessionId;
 		const second = (await client.getForkMessages()).find((message) => message.text === "second");
 		expect(second).toBeDefined();
-		// Forking at "second" continues from just before it; the next prompt starts a sibling branch.
+		// As in Pi, forking at "second" makes a new session with the path to just before it.
 		expect(await client.fork(second!.entryId)).toEqual({ text: "second", cancelled: false });
+		expect((await client.getState()).sessionId).not.toBe(sourceSession);
 		await client.promptAndWait("alternative", undefined, 60_000);
 
 		const { tree, leafId } = await client.getTree();
-		expect(tree).toHaveLength(1);
-		const byText = new Map<string, SessionTreeNode>();
-		const visit = (node: SessionTreeNode): void => {
-			expect(typeof node.entry.timestamp).toBe("string");
-			if (node.entry.type === "message") {
-				const content = (node.entry.message as { content: unknown }).content;
-				const text =
-					typeof content === "string"
-						? content
-						: (content as Array<{ type: string; text?: string }>).map((part) => part.text ?? "").join("");
-				byText.set(text, node);
-			}
-			node.children.forEach(visit);
-		};
-		tree.forEach(visit);
-		const firstReply = byText.get("reply:first");
-		expect(firstReply?.children.map((child) => child.entry.id).sort()).toEqual(
-			[byText.get("second")!.entry.id, byText.get("alternative")!.entry.id].sort(),
-		);
-		expect(leafId).toBe(byText.get("reply:alternative")!.entry.id);
+		expect(texts(tree)).toEqual(["first", "reply:first", "alternative", "reply:alternative"]);
 
 		const { entries, leafId: entriesLeaf } = await client.getEntries();
 		expect(entriesLeaf).toBe(leafId);
-		const userTexts = entries.flatMap((entry) =>
-			entry.type === "message" && entry.message.role === "user" ? [entry.message.content] : [],
-		);
-		expect(JSON.stringify(userTexts)).toContain("second");
-		expect(JSON.stringify(userTexts)).toContain("alternative");
 		const since = await client.getEntries(entries[0]!.id);
 		expect(since.entries).toHaveLength(entries.length - 1);
-		expect((await client.getForkMessages()).map((message) => message.text)).toEqual(
-			expect.arrayContaining(["first", "second", "alternative"]),
-		);
+		expect((await client.getForkMessages()).map((message) => message.text)).toEqual(["first", "alternative"]);
 
 		// Pi's context is the active branch only.
 		const messages = await client.getMessages();
@@ -282,11 +328,11 @@ describe("Pi parity through the real CLI", () => {
 
 		const stats = await client.getSessionStats();
 		expect(stats).toMatchObject({
-			userMessages: 3,
-			assistantMessages: 3,
+			userMessages: 2,
+			assistantMessages: 2,
 			toolCalls: 0,
 			toolResults: 0,
-			totalMessages: 6,
+			totalMessages: 4,
 			contextUsage: { contextWindow: 128000 },
 		});
 		expect(stats.tokens.total).toBeGreaterThan(0);
@@ -297,6 +343,45 @@ describe("Pi parity through the real CLI", () => {
 		expect(typeof compacted.summary).toBe("string");
 		expect(typeof compacted.firstKeptEntryId).toBe("string");
 		expect(typeof compacted.tokensBefore).toBe("number");
+	}, 120_000);
+
+	test("fork and clone copy only the path to the entry, from any branch, keeping its labels, as in Pi", async () => {
+		const piPath = join(root, "branched.jsonl");
+		writeBranchedPiSession(piPath, projectDir, "0192a0b0-0000-7000-8000-00000000f0a1");
+		const imported = await importPiSession({
+			piSessionPath: piPath,
+			sessionsRoot: join(agentDir, "experimental", "sessions"),
+		});
+		const client = startClient(["--session-id", imported.sessionId]);
+		await client.start();
+		const whole = await client.getTree();
+		expect(texts(whole.tree)).toEqual(["first", "reply:first", "second", "reply:second", "other", "reply:other"]);
+
+		// "second" is on the abandoned branch; the fork holds only root → just before it, with the label on "first".
+		const forkMessages = await client.getForkMessages();
+		const second = forkMessages.find((message) => message.text === "second")!;
+		expect(await client.fork(second.entryId)).toEqual({ text: "second", cancelled: false });
+		const forked = await client.getState();
+		expect(forked.sessionId).not.toBe(imported.sessionId);
+		const forkTree = await client.getTree();
+		expect(texts(forkTree.tree)).toEqual(["first", "reply:first"]);
+		expect(forkTree.tree[0]!.label).toBe("start");
+		expect(forkTree.leafId).toBe(forkTree.tree[0]!.children[0]!.entry.id);
+		expect((await client.getMessages()).map((message) => message.role)).toEqual(["user", "assistant"]);
+
+		// Clone copies the path to the current leaf into another new session.
+		await client.promptAndWait("third", undefined, 60_000);
+		expect(await client.clone()).toEqual({ cancelled: false });
+		expect((await client.getState()).sessionId).not.toBe(forked.sessionId);
+		expect(texts((await client.getTree()).tree)).toEqual(["first", "reply:first", "third", "reply:third"]);
+
+		// Forking at the first message gives an empty session, as in Pi.
+		const first = (await client.getForkMessages()).find((message) => message.text === "first")!;
+		expect(await client.fork(first.entryId)).toEqual({ text: "first", cancelled: false });
+		expect((await client.getTree()).tree).toEqual([]);
+		expect(await client.getMessages()).toEqual([]);
+		await client.promptAndWait("fresh", undefined, 60_000);
+		expect(texts((await client.getTree()).tree)).toEqual(["fresh", "reply:fresh"]);
 	}, 120_000);
 
 	test("print mode: with no client serving, extension dialogs get Pi's defaults", async () => {
@@ -321,7 +406,7 @@ describe("Pi parity through the real CLI", () => {
 			stdout += data.toString();
 		});
 		expect(await awaitExit(child, 60_000)).toBe(0);
-		expect(stdout).toContain("picked=undefined confirmed=false name=undefined timedOut=undefined");
+		expect(stdout).toContain("picked=undefined confirmed=false name=undefined timedOut=undefined hasUI=false");
 	}, 90_000);
 
 	test("print mode: SIGINT aborts the running turn before exiting", async () => {
