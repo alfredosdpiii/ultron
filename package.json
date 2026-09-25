@@ -55,7 +55,13 @@
 		"release:minor": "node scripts/release.mjs minor",
 		"release:major": "node scripts/release.mjs major",
 		"release:fix-links": "node scripts/release-notes.mjs fix-github-releases",
-		"prepare": "husky"
+		"prepare": "husky",
+		"eval:quality": "node scripts/eval-quality.mjs",
+		"eval:capabilities": "cd packages/coding-agent && ULTRON_LIVE_EVAL=1 npx vitest --run test/ultron-a39-live-capabilities.test.ts",
+		"demo:integration": "cd packages/coding-agent && npx vitest --run test/ultron-a46-demo.test.ts && if [ \"$ULTRON_LIVE_EVAL\" = 1 ]; then npx vitest --run test/ultron-a46-live-demo.test.ts; fi",
+		"test:subprocess": "cd packages/coding-agent && npx vitest --run test/ultron-a05-cancellation-process-tree.test.ts test/ultron-a06-limits.test.ts test/ultron-kernel.test.ts test/ultron-a43-kernel-pool-wired.test.ts",
+		"test:recovery": "cd packages/coding-agent && npx vitest --run test/ultron-a07-branch-fork-resume.test.ts test/ultron-a07-lesson-branches.test.ts test/ultron-a21-lost-response-replay.test.ts test/ultron-a22-detached-work.test.ts test/ultron-task-store.test.ts test/ultron-a08-snapshot-restorability.test.ts",
+		"gate": "node scripts/gate.mjs"
 	},
 	"devDependencies": {
 		"@anthropic-ai/sandbox-runtime": "0.0.26",
