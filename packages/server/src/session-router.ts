@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
-import type { JsonValue, ServiceCall, ServiceProviderUpdate } from "@earendil-works/chord";
-import { BACKGROUND_CONTEXT, type Context, type SessionMetadata } from "@earendil-works/pi-agent-core";
-import type { RpcTarget, SessionTarget } from "@earendil-works/pi-protocol";
+import { BACKGROUND_CONTEXT, type Context, type SessionMetadata } from "@ultron/agent-core";
+import type { JsonValue, ServiceCall, ServiceProviderUpdate } from "@ultron/chord";
+import type { RpcTarget, SessionTarget } from "@ultron/protocol";
 import { ServerDrainingError, SessionNotAttachedError } from "./errors.ts";
 import type { RoutedSessionAttachment, RoutedSessionHandle, ServerHost } from "./types.ts";
 

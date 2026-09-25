@@ -1,5 +1,5 @@
-import type { JsonValue, ServiceCall, ServiceProviderUpdate } from "@earendil-works/chord";
-import type { Context, SessionMetadata } from "@earendil-works/pi-agent-core";
+import type { Context, SessionMetadata } from "@ultron/agent-core";
+import type { JsonValue, ServiceCall, ServiceProviderUpdate } from "@ultron/chord";
 import type { ServerListener } from "./listener.ts";
 
 export interface ServerOptions {

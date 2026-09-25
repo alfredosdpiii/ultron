@@ -1,7 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { basename, dirname, resolve } from "node:path";
-import { BACKGROUND_CONTEXT, type Entry, JsonlSessionRepo } from "@earendil-works/pi-agent-core";
-import { NodeExecutionEnv } from "@earendil-works/pi-agent-core/node";
+import { BACKGROUND_CONTEXT, type Entry, JsonlSessionRepo } from "@ultron/agent-core";
+import { NodeExecutionEnv } from "@ultron/agent-core/node";
 import { APP_NAME } from "../config.ts";
 import { generateHtml, type SessionData } from "../core/export-html/index.ts";
 import type { SessionEntry } from "../core/session-manager.ts";

@@ -1,4 +1,4 @@
-import type { JsonValue } from "@earendil-works/chord";
+import type { JsonValue } from "@ultron/chord";
 import { describe, expect, test } from "vitest";
 import { createFamilyModule } from "../src/ultron/family.ts";
 import { createProgressModule } from "../src/ultron/progress.ts";

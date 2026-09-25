@@ -1,6 +1,6 @@
-import { replicatedState } from "@earendil-works/chord";
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
-import type { AgentLane, EventListener, HarnessEvent, LaneSnapshot, WatchHandle } from "@earendil-works/pi-agent-core";
+import type { AgentLane, EventListener, HarnessEvent, LaneSnapshot, WatchHandle } from "@ultron/agent-core";
+import { replicatedState } from "@ultron/chord";
+import { BACKGROUND_CONTEXT } from "@ultron/chord/context";
 import { describe, expect, test, vi } from "vitest";
 import type { TranscriptState } from "../src/experimental/services/transcript.ts";
 import { createTranscriptService } from "../src/experimental/services/transcript-provider.ts";

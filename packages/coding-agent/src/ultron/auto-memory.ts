@@ -1,4 +1,4 @@
-import type { AgentHarness, AgentMessage, CustomMessage } from "@earendil-works/pi-agent-core";
+import type { AgentHarness, AgentMessage, CustomMessage } from "@ultron/agent-core";
 import type { MemoryPrepared, MemoryScope, NativeMemoryService } from "./memory.ts";
 
 /**
@@ -85,15 +85,17 @@ export function createLegacyRecall(baseUrl: string, bankId: string, fetchImpl: t
 		if (!response.ok) throw new Error(`legacy recall from ${bankId} failed: HTTP ${response.status}`);
 		const body = (await response.json()) as { results?: unknown };
 		const results = Array.isArray(body.results) ? body.results : [];
-		return results
-			.map((item) => (typeof item === "object" && item !== null ? (item as { text?: unknown }).text : undefined))
-			.filter((text): text is string => typeof text === "string" && text.trim() !== "")
-			.map((text) => text.trim())
-			// Hindsight returns a fact and its observation with the same text; show each once.
-			.filter((text, index, all) => all.indexOf(text) === index)
-			.slice(0, MAX_LEGACY_RESULTS)
-			.map((text, index) => `${index + 1}. ${text}`)
-			.join("\n");
+		return (
+			results
+				.map((item) => (typeof item === "object" && item !== null ? (item as { text?: unknown }).text : undefined))
+				.filter((text): text is string => typeof text === "string" && text.trim() !== "")
+				.map((text) => text.trim())
+				// Hindsight returns a fact and its observation with the same text; show each once.
+				.filter((text, index, all) => all.indexOf(text) === index)
+				.slice(0, MAX_LEGACY_RESULTS)
+				.map((text, index) => `${index + 1}. ${text}`)
+				.join("\n")
+		);
 	};
 }
 

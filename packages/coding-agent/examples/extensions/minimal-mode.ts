@@ -26,7 +26,7 @@ import {
 	createReadTool,
 	createWriteTool,
 } from "@earendil-works/pi-coding-agent";
-import { Text } from "@earendil-works/pi-tui";
+import { Text } from "@ultron/tui";
 import { homedir } from "os";
 
 /**

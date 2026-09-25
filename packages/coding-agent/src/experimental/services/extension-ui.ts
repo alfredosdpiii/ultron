@@ -1,4 +1,4 @@
-import { type Context, defineService } from "@earendil-works/chord";
+import { type Context, defineService } from "@ultron/chord";
 import type { RpcExtensionUIRequest } from "../../modes/rpc/rpc-types.ts";
 
 /** One extension UI request, in Pi's RPC wire format, with its position in the worker's request stream. */

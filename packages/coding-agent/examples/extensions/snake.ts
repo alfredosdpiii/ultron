@@ -3,7 +3,7 @@
  */
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { matchesKey, visibleWidth } from "@earendil-works/pi-tui";
+import { matchesKey, visibleWidth } from "@ultron/tui";
 
 const GAME_WIDTH = 40;
 const GAME_HEIGHT = 15;

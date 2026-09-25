@@ -6,8 +6,8 @@ import {
 	type ModelsSimpleStreamOptions,
 	type SimpleStreamOptions,
 	type Usage,
-} from "@earendil-works/pi-ai";
-import { getProviderEnvValue } from "@earendil-works/pi-ai/utils/provider-env";
+} from "@ultron/ai";
+import { getProviderEnvValue } from "@ultron/ai/utils/provider-env";
 import type { ModelRuntime } from "./model-runtime.ts";
 import type { SessionEntry, SessionManager, UsageEntry } from "./session-manager.ts";
 import type { CacheWarmingMode } from "./settings-manager.ts";

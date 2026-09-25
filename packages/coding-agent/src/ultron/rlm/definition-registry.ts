@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
-import { isJsonValue, type JsonValue } from "@earendil-works/chord";
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
-import { type Context, type Session, value } from "@earendil-works/pi-agent-core";
+import { type Context, type Session, value } from "@ultron/agent-core";
+import { isJsonValue, type JsonValue } from "@ultron/chord";
+import { BACKGROUND_CONTEXT } from "@ultron/chord/context";
 import Type, { IsSchema, type TSchema } from "typebox";
 import { Check } from "typebox/value";
 

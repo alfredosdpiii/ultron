@@ -69,11 +69,51 @@ describe("extensions discovery", () => {
 		expect(result.extensions).toHaveLength(1);
 	});
 
+	it("resolves legacy Pi package names and @ultron/* names to the same modules", async () => {
+		fs.writeFileSync(
+			path.join(extensionsDir, "legacy-names.ts"),
+			`
+				import * as legacyCodingAgent from "@earendil-works/pi-coding-agent";
+				import * as marioCodingAgent from "@mariozechner/pi-coding-agent";
+				import * as ultronCodingAgent from "@ultron/coding-agent";
+				import * as legacyAi from "@ultron/ai";
+				import * as marioAi from "@mariozechner/pi-ai";
+				import * as ultronAi from "@ultron/ai";
+				import * as legacyOauth from "@ultron/ai/oauth";
+				import * as ultronOauth from "@ultron/ai/oauth";
+				import * as legacyAgentCore from "@ultron/agent-core";
+				import * as ultronAgentCore from "@ultron/agent-core";
+				import * as legacyTui from "@ultron/tui";
+				import * as ultronTui from "@ultron/tui";
+				const pairs = [
+					["coding-agent", legacyCodingAgent.getAgentDir, ultronCodingAgent.getAgentDir],
+					["coding-agent (mariozechner)", marioCodingAgent.getAgentDir, ultronCodingAgent.getAgentDir],
+					["ai", legacyAi.getModel, ultronAi.getModel],
+					["ai (mariozechner)", marioAi.getModel, ultronAi.getModel],
+					["ai/oauth", Object.keys(legacyOauth).join(","), Object.keys(ultronOauth).join(",")],
+					["agent-core", legacyAgentCore.Agent, ultronAgentCore.Agent],
+					["tui", legacyTui.Text, ultronTui.Text],
+				];
+				for (const [name, legacy, current] of pairs) {
+					if (legacy === undefined || legacy !== current) throw new Error("mismatched module: " + name);
+				}
+				export default function(pi) {
+					pi.registerCommand("test", { handler: async () => {} });
+				}
+			`,
+		);
+
+		const result = await discoverAndLoadExtensions([], tempDir, tempDir);
+
+		expect(result.errors).toEqual([]);
+		expect(result.extensions).toHaveLength(1);
+	});
+
 	it("keeps the type-only pi-ai OAuth compatibility barrel resolvable", async () => {
 		fs.writeFileSync(
 			path.join(extensionsDir, "oauth-import.ts"),
 			`
-				import * as oauth from "@earendil-works/pi-ai/oauth";
+				import * as oauth from "@ultron/ai/oauth";
 				void oauth;
 				export default function(pi) {
 					pi.registerCommand("test", { handler: async () => {} });

@@ -1,7 +1,7 @@
-import type { Context } from "@earendil-works/chord";
-import { withoutAbortSignal } from "@earendil-works/chord/context";
-import type { AgentLane, OperationResultRecord, SuspendedRun } from "@earendil-works/pi-agent-core";
-import type { ImageContent } from "@earendil-works/pi-ai";
+import type { AgentLane, OperationResultRecord, SuspendedRun } from "@ultron/agent-core";
+import type { ImageContent } from "@ultron/ai";
+import type { Context } from "@ultron/chord";
+import { withoutAbortSignal } from "@ultron/chord/context";
 import type {
 	AgentController as AgentControllerService,
 	AgentOperationError,

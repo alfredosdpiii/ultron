@@ -1,10 +1,10 @@
-import { combineFacetLoaders, type FacetLoader, type JsonValue } from "@earendil-works/chord";
+import { combineFacetLoaders, type FacetLoader, type JsonValue } from "@ultron/chord";
 import {
 	createFacetBundleArtifactLoader,
 	createFacetBundleLoader,
 	type FacetBundleArtifact,
 	readFacetBundleManifest,
-} from "@earendil-works/chord/node";
+} from "@ultron/chord/node";
 
 const PRESENTATION_FACET_BUNDLES_KEY = "presentationFacetBundles";
 const PI_PLUGIN_API = "@earendil-works/pi-coding-agent/experimental/plugin";

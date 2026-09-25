@@ -1,4 +1,4 @@
-import type { ImageContent, TextContent } from "@earendil-works/pi-ai";
+import type { ImageContent, TextContent } from "@ultron/ai";
 import { type Static, Type } from "typebox";
 import type { Context } from "../context.ts";
 import type { AgentHarnessTool } from "../types.ts";

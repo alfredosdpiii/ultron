@@ -1,9 +1,9 @@
-import { BACKGROUND_CONTEXT } from "@earendil-works/pi-agent-core";
+import { BACKGROUND_CONTEXT } from "@ultron/agent-core";
 import {
 	type ConformanceCase,
 	createStorageConformance,
 	type StorageFixture,
-} from "@earendil-works/pi-agent-core/harness/session/testing";
+} from "@ultron/agent-core/harness/session/testing";
 import { describe, it } from "vitest";
 import { createNodeSqliteFactory, SQLITE_STORAGE_VERSION, SqliteStorage, sql } from "../src/index.ts";
 import { applyInitialSchema } from "../src/sqlite/migrations.ts";

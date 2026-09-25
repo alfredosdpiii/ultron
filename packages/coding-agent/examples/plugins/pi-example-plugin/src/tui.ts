@@ -1,5 +1,5 @@
-import { defineFacet } from "@earendil-works/chord";
 import { AgentController, PresentationUI, SlashCommands } from "@earendil-works/pi-coding-agent/experimental/plugin";
+import { defineFacet } from "@ultron/chord";
 import { ExampleFacetService } from "./contract.ts";
 
 export default defineFacet({

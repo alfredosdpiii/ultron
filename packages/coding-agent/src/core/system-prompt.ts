@@ -2,7 +2,7 @@
  * System prompt construction and project context loading
  */
 
-import { getSystemMessageText } from "@earendil-works/pi-ai";
+import { getSystemMessageText } from "@ultron/ai";
 import { getDocsPath, getExamplesPath, getReadmePath } from "../config.ts";
 import { formatSkillsForPrompt, type Skill } from "./skills.ts";
 

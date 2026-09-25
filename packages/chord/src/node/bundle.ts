@@ -94,7 +94,16 @@ async function bundleEntry(input: {
 		define: input.options.define,
 		entryNames: `${entryPrefix}-[hash]`,
 		entryPoints: [input.source],
-		external: [...new Set(["@earendil-works/chord", "@earendil-works/chord/*", ...(input.options.external ?? [])])],
+		external: [
+			...new Set([
+				"@ultron/chord",
+				"@ultron/chord/*",
+				// Legacy package name, resolved to @ultron/chord by the bundle loader.
+				"@ultron/chord",
+				"@ultron/chord/*",
+				...(input.options.external ?? []),
+			]),
+		],
 		format: "cjs",
 		legalComments: "none",
 		logLevel: "silent",

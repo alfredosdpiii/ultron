@@ -2,19 +2,7 @@ import { mkdirSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { createConnection, type Socket } from "node:net";
 import { isAbsolute, join } from "node:path";
-import type { Context } from "@earendil-works/chord";
-import {
-	isJsonValue,
-	type JsonValue,
-	parseServiceProviderUpdate,
-	REMOTE_SERVICE_ERROR_CODES,
-	RemoteServiceError,
-	type RemoteServiceErrorCode,
-	type ServiceCall,
-	type ServiceProviderUpdate,
-} from "@earendil-works/chord";
-import { withAbortSignal } from "@earendil-works/chord/context";
-import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
+import type { ThinkingLevel } from "@ultron/agent-core";
 import {
 	AgentHarness,
 	type AgentHarness as AgentHarnessInstance,
@@ -32,8 +20,20 @@ import {
 	TODO_CONTEXT,
 	value,
 	withCancel,
-} from "@earendil-works/pi-agent-core";
-import { NodeExecutionEnv } from "@earendil-works/pi-agent-core/node";
+} from "@ultron/agent-core";
+import { NodeExecutionEnv } from "@ultron/agent-core/node";
+import type { Context } from "@ultron/chord";
+import {
+	isJsonValue,
+	type JsonValue,
+	parseServiceProviderUpdate,
+	REMOTE_SERVICE_ERROR_CODES,
+	RemoteServiceError,
+	type RemoteServiceErrorCode,
+	type ServiceCall,
+	type ServiceProviderUpdate,
+} from "@ultron/chord";
+import { withAbortSignal } from "@ultron/chord/context";
 import lockfile from "proper-lockfile";
 import Type, { type Static } from "typebox";
 import { Check } from "typebox/value";

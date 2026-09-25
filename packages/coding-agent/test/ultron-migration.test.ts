@@ -15,8 +15,8 @@ import {
 	type Session,
 	StorageBackedSession,
 	value,
-} from "@earendil-works/pi-agent-core";
-import { NodeExecutionEnv } from "@earendil-works/pi-agent-core/node";
+} from "@ultron/agent-core";
+import { NodeExecutionEnv } from "@ultron/agent-core/node";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { buildSessionContext as buildNativeContext } from "../../agent/src/harness/session/context.ts";
 import {

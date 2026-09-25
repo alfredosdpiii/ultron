@@ -11,7 +11,7 @@
 import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { Context, JsonValue } from "@earendil-works/chord";
+import type { Context, JsonValue } from "@ultron/chord";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { formatInspection } from "../src/experimental/services/inspection-commands.ts";
 import type { MemoryBackend, MemoryOperation, MemoryPrepared } from "../src/ultron/memory.ts";

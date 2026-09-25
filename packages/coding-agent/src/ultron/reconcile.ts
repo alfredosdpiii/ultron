@@ -1,4 +1,4 @@
-import type { JsonValue } from "@earendil-works/chord";
+import type { JsonValue } from "@ultron/chord";
 
 /**
  * Pure event reconstruction and accounting reconciliation (A24). It reads the durable documents

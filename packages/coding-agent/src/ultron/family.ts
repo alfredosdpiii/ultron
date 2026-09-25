@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
-import type { JsonValue } from "@earendil-works/chord";
-import type { Context } from "@earendil-works/pi-agent-core";
+import type { Context } from "@ultron/agent-core";
+import type { JsonValue } from "@ultron/chord";
 import type { HostModuleStore, NativeHostApi, NativeHostModule } from "./rlm/host-module.ts";
 import type { NativeTask } from "./rlm/task-store.ts";
 

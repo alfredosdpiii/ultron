@@ -1,6 +1,6 @@
-import { type Context, defineService, type ReplicatedState } from "@earendil-works/chord";
-import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
-import type { Api, Model } from "@earendil-works/pi-ai";
+import type { ThinkingLevel } from "@ultron/agent-core";
+import type { Api, Model } from "@ultron/ai";
+import { type Context, defineService, type ReplicatedState } from "@ultron/chord";
 
 export interface ModelRef {
 	provider: string;

@@ -1,5 +1,5 @@
-import type { ConversationView, ModelRef } from "@earendil-works/pi-agent-core/experimental/pico3";
-import type { AuthEvent, AuthPrompt } from "@earendil-works/pi-ai";
+import type { ConversationView, ModelRef } from "@ultron/agent-core/experimental/pico3";
+import type { AuthEvent, AuthPrompt } from "@ultron/ai";
 
 export type AuthPromptRequest = AuthPrompt extends infer Prompt
 	? Prompt extends unknown

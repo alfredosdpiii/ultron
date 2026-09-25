@@ -1,4 +1,4 @@
-import type { JsonValue } from "@earendil-works/chord";
+import type { JsonValue } from "@ultron/chord";
 import { afterEach, describe, expect, test } from "vitest";
 import { NativeUsageLedger } from "../src/ultron/usage.ts";
 import { definition, hostFixture, journal, memoryDefinitionStore, memoryStore } from "./ultron-host-fixtures.ts";

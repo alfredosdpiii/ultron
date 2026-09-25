@@ -12,9 +12,7 @@ describe("package boundary", () => {
 		const manifest = JSON.parse(await readFile(resolve(packageDirectory, "package.json"), "utf8")) as {
 			dependencies?: Record<string, string>;
 		};
-		expect(Object.keys(manifest.dependencies ?? {}).filter((name) => name.startsWith("@earendil-works/pi-"))).toEqual(
-			[],
-		);
+		expect(Object.keys(manifest.dependencies ?? {}).filter((name) => name.startsWith("@ultron/"))).toEqual([]);
 
 		const paths = (await readdir(sourceDirectory, { recursive: true })).filter((path) => path.endsWith(".ts")).sort();
 		const violations: string[] = [];
@@ -23,7 +21,8 @@ describe("package boundary", () => {
 			const source = await readFile(file, "utf8");
 			for (const match of source.matchAll(IMPORT_SPECIFIER)) {
 				const specifier = match[1]!;
-				if (specifier.startsWith("@earendil-works/pi-")) violations.push(`${path}: ${specifier}`);
+				if (specifier.startsWith("@ultron/") && !specifier.startsWith("@ultron/chord"))
+					violations.push(`${path}: ${specifier}`);
 				if (specifier.startsWith(".") && !resolve(dirname(file), specifier).startsWith(`${sourceDirectory}/`)) {
 					violations.push(`${path}: ${specifier}`);
 				}

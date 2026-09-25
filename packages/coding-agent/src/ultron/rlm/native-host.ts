@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
-import { isJsonValue, type JsonValue } from "@earendil-works/chord";
-import { BACKGROUND_CONTEXT, withAbortSignal, withoutAbortSignal } from "@earendil-works/chord/context";
-import type { AgentHarness, AgentLane, Context, Entry } from "@earendil-works/pi-agent-core";
+import type { AgentHarness, AgentLane, Context, Entry } from "@ultron/agent-core";
+import { isJsonValue, type JsonValue } from "@ultron/chord";
+import { BACKGROUND_CONTEXT, withAbortSignal, withoutAbortSignal } from "@ultron/chord/context";
 import type {
 	NativeUsageCallStatus,
 	NativeUsageLedgerLike,

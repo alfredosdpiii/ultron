@@ -1,6 +1,6 @@
-import type { JsonValue } from "@earendil-works/chord";
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
-import type { Op } from "@earendil-works/chord/delta";
+import type { JsonValue } from "@ultron/chord";
+import { BACKGROUND_CONTEXT } from "@ultron/chord/context";
+import type { Op } from "@ultron/chord/delta";
 import { describe, expect, it } from "vitest";
 import {
 	type DocumentCreate,

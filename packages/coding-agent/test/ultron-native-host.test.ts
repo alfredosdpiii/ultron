@@ -1,4 +1,4 @@
-import { withAbortSignal } from "@earendil-works/chord/context";
+import { withAbortSignal } from "@ultron/chord/context";
 import { describe, expect, test } from "vitest";
 import { NativeRlmHost } from "../src/ultron/rlm/native-host.ts";
 import type { NativeHostStore } from "../src/ultron/rlm/task-store.ts";

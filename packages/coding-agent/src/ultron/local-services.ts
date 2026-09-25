@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
-import type { Context, JsonValue } from "@earendil-works/chord";
+import type { Context, JsonValue } from "@ultron/chord";
 
-export type { JsonValue } from "@earendil-works/chord";
+export type { JsonValue } from "@ultron/chord";
 
 export interface LocalServiceDocument {
 	key: string;

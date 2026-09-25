@@ -2,8 +2,8 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import type { JsonValue } from "@earendil-works/chord";
-import type { AgentMessage } from "@earendil-works/pi-agent-core";
+import type { AgentMessage } from "@ultron/agent-core";
+import type { JsonValue } from "@ultron/chord";
 import { describe, expect, test, vi } from "vitest";
 import { RpcClient } from "../src/modes/rpc/rpc-client.ts";
 import {
@@ -238,7 +238,11 @@ describe("automatic per-turn memory", () => {
 		const recall = createLegacyRecall("http://hs.test/", "omp", (async (url: string, init?: RequestInit) => {
 			calls.push({ url, body: JSON.parse(String(init?.body)) });
 			return url.includes("/banks/omp/")
-				? new Response(JSON.stringify({ results: [{ text: " A fact. " }, { text: "" }, { text: "A fact." }, { text: "Another." }] }))
+				? new Response(
+						JSON.stringify({
+							results: [{ text: " A fact. " }, { text: "" }, { text: "A fact." }, { text: "Another." }],
+						}),
+					)
 				: new Response("{}", { status: 404 });
 		}) as typeof fetch);
 		await expect(recall("q", new AbortController().signal)).resolves.toBe("1. A fact.\n2. Another.");

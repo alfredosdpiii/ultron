@@ -211,6 +211,56 @@ function isolatedCliEnvironment(root, consumerDirectory, mockBaseUrl) {
 	};
 }
 
+// User extensions written for Pi import the legacy package names. The packed CLI
+// must resolve them (and the current @ultron/* names) to its own bundled modules.
+function writeLegacyImportExtension(agentDirectory, root) {
+	const directory = join(agentDirectory, "extensions");
+	mkdirSync(directory, { recursive: true });
+	const path = join(directory, "legacy-imports.ts");
+	const markerPath = join(root, "legacy-extension-loaded.json");
+	writeFileSync(
+		path,
+		`import { writeFileSync } from "node:fs";
+import * as legacyCodingAgent from "@earendil-works/pi-coding-agent";
+import * as marioCodingAgent from "@mariozechner/pi-coding-agent";
+import * as ultronCodingAgent from "@ultron/coding-agent";
+import * as legacyAi from "@ultron/ai";
+import * as ultronAi from "@ultron/ai";
+import * as legacyAgentCore from "@ultron/agent-core";
+import * as ultronAgentCore from "@ultron/agent-core";
+import * as legacyTui from "@ultron/tui";
+import * as ultronTui from "@ultron/tui";
+
+const checks = {
+	codingAgent: typeof legacyCodingAgent.getAgentDir === "function" && legacyCodingAgent.getAgentDir === ultronCodingAgent.getAgentDir,
+	marioCodingAgent: marioCodingAgent.getAgentDir === ultronCodingAgent.getAgentDir,
+	ai: typeof legacyAi.getModel === "function" && legacyAi.getModel === ultronAi.getModel,
+	agentCore: typeof legacyAgentCore.Agent === "function" && legacyAgentCore.Agent === ultronAgentCore.Agent,
+	tui: typeof legacyTui.Text === "function" && legacyTui.Text === ultronTui.Text,
+};
+
+export default function (pi) {
+	writeFileSync(${JSON.stringify(markerPath)}, JSON.stringify(checks));
+	pi.registerCommand("legacy-imports", { handler: async () => {} });
+}
+`,
+	);
+	return { path, markerPath };
+}
+
+function assertLegacyImportExtensionLoaded(markerPath, result) {
+	if (!existsSync(markerPath)) {
+		throw new Error(
+			`Packed ultron CLI did not load the legacy-import extension\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}`,
+		);
+	}
+	const checks = JSON.parse(readFileSync(markerPath, "utf8"));
+	const failed = Object.entries(checks).filter(([, ok]) => ok !== true);
+	if (failed.length > 0) {
+		throw new Error(`Legacy extension imports resolved to different modules: ${JSON.stringify(checks)}`);
+	}
+}
+
 export async function runPackedNativeCliAcceptance() {
 	const root = mkdtempSync(join(tmpdir(), "ultron-native-cli-consumer-"));
 	const mock = await startMockProvider();
@@ -226,6 +276,7 @@ export async function runPackedNativeCliAcceptance() {
 		const isolated = isolatedCliEnvironment(root, consumer, mock.baseUrl);
 		serverDirectory = isolated.env.ULTRON_SERVER_DIR;
 		const command = join(consumer, "node_modules", ".bin", process.platform === "win32" ? "ultron.cmd" : "ultron");
+		const legacyExtension = writeLegacyImportExtension(isolated.env.ULTRON_CODING_AGENT_DIR, root);
 		const args = [
 			"--provider",
 			"mock",
@@ -276,6 +327,7 @@ export async function runPackedNativeCliAcceptance() {
 				`Packed ultron CLI returned unexpected output (status=${result.status}, signal=${result.signal ?? "none"}):\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}\nmock requests: ${JSON.stringify(mock.requests)}`,
 			);
 		}
+		assertLegacyImportExtensionLoaded(legacyExtension.markerPath, result);
 		if (mock.requests.length !== 1) throw new Error(`Expected one mock request, got ${mock.requests.length}`);
 		const request = mock.requests[0];
 		if (request.method !== "POST" || request.url !== "/v1/chat/completions") {

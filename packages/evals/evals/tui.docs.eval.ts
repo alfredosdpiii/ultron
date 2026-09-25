@@ -1,6 +1,6 @@
 import { setTimeout } from "node:timers/promises";
 import { stripVTControlCharacters } from "node:util";
-import type { AssistantMessage } from "@earendil-works/pi-ai";
+import type { AssistantMessage } from "@ultron/ai";
 import {
 	type AgentSession,
 	AgentSessionRuntime,
@@ -8,7 +8,7 @@ import {
 	InteractiveMode,
 	SessionManager,
 	createAgentSessionFromServices,
-} from "@earendil-works/pi-coding-agent";
+} from "@bryandlp/ultron-coding-agent";
 import { Levenshtein } from "autoevals";
 import { createJudge, describeEval } from "vitest-evals";
 import { createPiDocumentationEvalHarness, type PiCodingAgentInput } from "../src/harness.ts";

@@ -1,4 +1,4 @@
-import type { Api, Model, Models } from "@earendil-works/pi-ai";
+import type { Api, Model, Models } from "@ultron/ai";
 import type { NativeDefinitionAdapter } from "./rlm/definition-registry.ts";
 
 /**

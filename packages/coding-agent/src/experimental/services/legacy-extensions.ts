@@ -1,4 +1,4 @@
-import { type Context, defineService, type JsonValue } from "@earendil-works/chord";
+import { type Context, defineService, type JsonValue } from "@ultron/chord";
 
 export interface LegacyExtensionCommandInfo {
 	readonly name: string;

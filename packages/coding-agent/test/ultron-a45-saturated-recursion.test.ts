@@ -1,4 +1,4 @@
-import type { Context } from "@earendil-works/pi-agent-core";
+import type { Context } from "@ultron/agent-core";
 import { afterEach, describe, expect, test } from "vitest";
 import { NativeUsageLedger } from "../src/ultron/usage.ts";
 import { aborted, deferred, hostFixture, journal, waitFor } from "./ultron-host-fixtures.ts";

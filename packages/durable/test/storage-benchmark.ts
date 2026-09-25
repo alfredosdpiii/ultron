@@ -1,5 +1,5 @@
-import type { JsonValue } from "@earendil-works/chord";
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
+import type { JsonValue } from "@ultron/chord";
+import { BACKGROUND_CONTEXT } from "@ultron/chord/context";
 import type { DocumentCreate, Id, Seq, Storage, StorageWrite, TaskRecord } from "../src/types.ts";
 import { ROOT_CONVERSATION_ID } from "../src/types.ts";
 

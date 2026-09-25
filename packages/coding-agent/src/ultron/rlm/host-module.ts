@@ -1,6 +1,6 @@
-import type { JsonValue } from "@earendil-works/chord";
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
-import { type Context, type Session, value } from "@earendil-works/pi-agent-core";
+import { type Context, type Session, value } from "@ultron/agent-core";
+import type { JsonValue } from "@ultron/chord";
+import { BACKGROUND_CONTEXT } from "@ultron/chord/context";
 import type { NativeResult, NativeTask } from "./task-store.ts";
 
 /** Lane whose Python kernel issued a host request. The root agent uses lane "main". */

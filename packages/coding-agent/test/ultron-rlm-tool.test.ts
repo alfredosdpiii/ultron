@@ -1,9 +1,9 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { JsonValue } from "@earendil-works/chord";
-import { BACKGROUND_CONTEXT, withAbortSignal } from "@earendil-works/chord/context";
-import { NodeExecutionEnv } from "@earendil-works/pi-agent-core/node";
+import { NodeExecutionEnv } from "@ultron/agent-core/node";
+import type { JsonValue } from "@ultron/chord";
+import { BACKGROUND_CONTEXT, withAbortSignal } from "@ultron/chord/context";
 import { describe, expect, test } from "vitest";
 import { createUltronRlmTool } from "../src/experimental/session-worker.ts";
 import { NativeRlmHost } from "../src/ultron/rlm/native-host.ts";

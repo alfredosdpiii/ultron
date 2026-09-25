@@ -7,7 +7,7 @@ import {
 	type AutocompleteProvider,
 	type AutocompleteSuggestions,
 	fuzzyFilter,
-} from "@earendil-works/pi-tui";
+} from "@ultron/tui";
 
 type GitHubIssue = {
 	number: number;

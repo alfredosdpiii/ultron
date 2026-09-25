@@ -1,10 +1,10 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { JsonValue } from "@earendil-works/chord";
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
-import { type JsonlSessionMetadata, JsonlSessionRepo, type Session } from "@earendil-works/pi-agent-core";
-import { NodeExecutionEnv } from "@earendil-works/pi-agent-core/node";
+import { type JsonlSessionMetadata, JsonlSessionRepo, type Session } from "@ultron/agent-core";
+import { NodeExecutionEnv } from "@ultron/agent-core/node";
+import type { JsonValue } from "@ultron/chord";
+import { BACKGROUND_CONTEXT } from "@ultron/chord/context";
 import { afterEach, describe, expect, test } from "vitest";
 import type { MemoryBackend } from "../src/ultron/memory.ts";
 import { createProgressModule } from "../src/ultron/progress.ts";

@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { dirname } from "node:path";
-import { isJsonValue, type JsonValue } from "@earendil-works/chord";
+import { isJsonValue, type JsonValue } from "@ultron/chord";
 import { parseFrontmatter } from "../utils/frontmatter.ts";
 import type { HostModuleRequest, HostModuleStore, NativeHostApi, NativeHostModule } from "./rlm/host-module.ts";
 

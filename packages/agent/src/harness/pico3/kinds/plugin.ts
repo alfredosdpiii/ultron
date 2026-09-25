@@ -1,4 +1,4 @@
-import type { Context } from "@earendil-works/chord";
+import type { Context } from "@ultron/chord";
 import { type JsonValue, type Kind, type Runtime, type Step, type Task, toStored } from "../types.ts";
 import { taskApi } from "./task-api.ts";
 

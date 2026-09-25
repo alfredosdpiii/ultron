@@ -1,4 +1,4 @@
-import { type Context, defineService, type JsonValue } from "@earendil-works/chord";
+import { type Context, defineService, type JsonValue } from "@ultron/chord";
 import type { CommandSourceInfo } from "./legacy-extensions.ts";
 
 export type SessionQueueMode = "all" | "one-at-a-time";

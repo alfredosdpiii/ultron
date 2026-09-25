@@ -1,7 +1,7 @@
 import { homedir } from "node:os";
-import type { Context, JsonValue } from "@earendil-works/chord";
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
-import { type Session, value } from "@earendil-works/pi-agent-core";
+import { type Session, value } from "@ultron/agent-core";
+import type { Context, JsonValue } from "@ultron/chord";
+import { BACKGROUND_CONTEXT } from "@ultron/chord/context";
 import Type from "typebox";
 import { Check } from "typebox/value";
 import { type NativeJevClient, projectIdentity } from "./jev.ts";

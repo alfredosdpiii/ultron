@@ -6,12 +6,12 @@ import test from "node:test";
 import { installCodingAgentConsumer, packReleasePackages, smokeTestCodingAgentConsumer } from "./coding-agent-consumer.mjs";
 
 const codingAgentName = "@earendil-works/pi-coding-agent";
-const devPackages = ["pi-client", "pi-protocol", "pi-server"].map((name) => `@earendil-works/${name}`);
+const devPackages = ["client", "protocol", "server"].map((name) => `@ultron/${name}`);
 
 function createFixture(t, { importServer = false, declareServer = false } = {}) {
 	const root = mkdtempSync(join(tmpdir(), "pi-consumer-test-"));
 	t.after(() => rmSync(root, { recursive: true, force: true }));
-	const packages = [codingAgentName, "@earendil-works/chord", ...devPackages].map((name) => ({
+	const packages = [codingAgentName, "@ultron/chord", ...devPackages].map((name) => ({
 		name,
 		directory: join(root, "packages", name.split("/")[1]),
 	}));
@@ -29,8 +29,8 @@ function createFixture(t, { importServer = false, declareServer = false } = {}) 
 			...(isAgent ? {
 				bin: { pi: "dist/bundle/cli.js" },
 				dependencies: {
-					"@earendil-works/chord": "1.0.0",
-					...(declareServer ? { "@earendil-works/pi-server": "1.0.0" } : {}),
+					"@ultron/chord": "1.0.0",
+					...(declareServer ? { "@ultron/server": "1.0.0" } : {}),
 				},
 				devDependencies: Object.fromEntries(devPackages.map((name) => [name, "1.0.0"])),
 			} : {}),
@@ -38,8 +38,8 @@ function createFixture(t, { importServer = false, declareServer = false } = {}) 
 		const files = {
 			"package.json": JSON.stringify(manifest),
 			"dist/index.js": isAgent ? `
-${importServer ? 'import "@earendil-works/pi-server";' : ""}
-import { marker } from "@earendil-works/chord";
+${importServer ? 'import "@ultron/server";' : ""}
+import { marker } from "@ultron/chord";
 if (marker !== "local tarball") throw new Error("Wrong Chord artifact");
 export function createAgentSession() {}
 export class SessionManager { static inMemory() {} }
@@ -72,10 +72,10 @@ test("installs only coding-agent directly and uses overrides only for declared r
 	}
 	smokeTestCodingAgentConsumer(directory);
 
-	const nested = join(directory, "node_modules", codingAgentName, "node_modules/@earendil-works/pi-server");
+	const nested = join(directory, "node_modules", codingAgentName, "node_modules/@ultron/server");
 	mkdirSync(nested, { recursive: true });
-	writeFileSync(join(nested, "package.json"), JSON.stringify({ name: "@earendil-works/pi-server", version: "1.0.0" }));
-	assert.throws(() => smokeTestCodingAgentConsumer(directory), /pi-server must not be installed/);
+	writeFileSync(join(nested, "package.json"), JSON.stringify({ name: "@ultron/server", version: "1.0.0" }));
+	assert.throws(() => smokeTestCodingAgentConsumer(directory), /@ultron\/server must not be installed/);
 	rmSync(nested, { recursive: true });
 
 	const experimental = join(directory, "node_modules", codingAgentName, "dist/experimental");
@@ -86,10 +86,10 @@ test("installs only coding-agent directly and uses overrides only for declared r
 // #9132: smoke-test the public SDK, not just a bundled CLI that hides missing imports.
 test("fails when the SDK imports an undeclared server despite a working CLI", (t) => {
 	const directory = createFixture(t, { importServer: true });
-	assert.throws(() => smokeTestCodingAgentConsumer(directory), /Cannot find package '@earendil-works\/pi-server'/);
+	assert.throws(() => smokeTestCodingAgentConsumer(directory), /Cannot find package '@ultron\/server'/);
 });
 
 test("fails if a development-only dependency is added back to the published dependency tree", (t) => {
 	const directory = createFixture(t, { declareServer: true });
-	assert.throws(() => smokeTestCodingAgentConsumer(directory), /pi-server must not be installed/);
+	assert.throws(() => smokeTestCodingAgentConsumer(directory), /@ultron\/server must not be installed/);
 });

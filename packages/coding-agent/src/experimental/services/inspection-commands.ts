@@ -1,4 +1,4 @@
-import type { JsonValue } from "@earendil-works/chord";
+import type { JsonValue } from "@ultron/chord";
 import type { PresentationUI } from "./presentation-ui.ts";
 import type { SessionControl } from "./session-control.ts";
 import type { SlashCommandContribution } from "./slash-commands.ts";

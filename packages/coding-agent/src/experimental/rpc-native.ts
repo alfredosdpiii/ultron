@@ -7,10 +7,10 @@
 
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { type Context, isJsonValue } from "@earendil-works/chord";
-import { awaitWithContext, BACKGROUND_CONTEXT, withAbortSignal } from "@earendil-works/chord/context";
-import type { LaneTranscriptSnapshot, LaneWatchEvent, ThinkingLevel } from "@earendil-works/pi-agent-core";
-import type { Api, ImageContent, Model } from "@earendil-works/pi-ai";
+import type { LaneTranscriptSnapshot, LaneWatchEvent, ThinkingLevel } from "@ultron/agent-core";
+import type { Api, ImageContent, Model } from "@ultron/ai";
+import { type Context, isJsonValue } from "@ultron/chord";
+import { awaitWithContext, BACKGROUND_CONTEXT, withAbortSignal } from "@ultron/chord/context";
 import { flushRawStdout, takeOverStdout, waitForRawStdoutBackpressure, writeRawStdout } from "../core/output-guard.ts";
 import { attachJsonlLineReader, serializeJsonLine } from "../modes/rpc/jsonl.ts";
 import { writeNativeSessionHtml } from "../ultron/native-export.ts";

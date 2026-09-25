@@ -322,15 +322,22 @@ async function materializeArtifact(directory: string, artifact: FacetBundleArtif
 	]);
 }
 
-function resolveExternalTarget(specifier: string, resolver?: FacetBundleExternalResolver): string {
-	const resolved = resolver?.(specifier);
+const LEGACY_CHORD_PACKAGE = "@ultron/chord";
+
+function resolveExternalTarget(requested: string, resolver?: FacetBundleExternalResolver): string {
+	const resolved = resolver?.(requested);
 	if (resolved !== undefined) return typeof resolved === "string" ? resolved : resolved.href;
 	const extension = import.meta.url.endsWith(".ts") ? "ts" : "js";
-	if (specifier === "@earendil-works/chord") return new URL(`../index.${extension}`, import.meta.url).href;
-	if (specifier === "@earendil-works/chord/context") {
+	// Facets built against the legacy package name resolve to this Chord instance.
+	const specifier =
+		requested === LEGACY_CHORD_PACKAGE || requested.startsWith(`${LEGACY_CHORD_PACKAGE}/`)
+			? `@ultron/chord${requested.slice(LEGACY_CHORD_PACKAGE.length)}`
+			: requested;
+	if (specifier === "@ultron/chord") return new URL(`../index.${extension}`, import.meta.url).href;
+	if (specifier === "@ultron/chord/context") {
 		return new URL(`../context/index.${extension}`, import.meta.url).href;
 	}
-	if (specifier === "@earendil-works/chord/node") return new URL(`../node.${extension}`, import.meta.url).href;
+	if (specifier === "@ultron/chord/node") return new URL(`../node.${extension}`, import.meta.url).href;
 	return import.meta.resolve(specifier);
 }
 

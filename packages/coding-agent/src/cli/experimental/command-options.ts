@@ -1,5 +1,5 @@
 import { posix } from "node:path";
-import { isServerId, type ServerId } from "@earendil-works/pi-protocol";
+import { isServerId, type ServerId } from "@ultron/protocol";
 import { type ParsedCommandInput, stringOption, valueOption } from "./command.ts";
 
 export type AuthInput =

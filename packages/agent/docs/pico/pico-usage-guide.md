@@ -111,7 +111,7 @@ are needed. Pure accessors, synchronous registrations and methods inside a trans
 
 ```typescript
 import type { Call } from '@earendil-works/pi-agent';
-import { BACKGROUND_CONTEXT, withCancel } from '@earendil-works/chord/context';
+import { BACKGROUND_CONTEXT, withCancel } from '@ultron/chord/context';
 
 const call: Call = BACKGROUND_CONTEXT; // host call, without cancellation
 const { context: waitingCall, cancel } = withCancel(call);
@@ -142,10 +142,10 @@ npm install @earendil-works/pi-agent
 
 ```typescript
 import { Harness, JsonlStorage, systemSections, type Call } from '@earendil-works/pi-agent';
-import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
+import { BACKGROUND_CONTEXT } from '@ultron/chord/context';
 import { readTool, writeTool, bashTool } from '@earendil-works/pi-agent/tools';
 import { generationKind } from '@earendil-works/pi-agent/kinds';
-import { builtinModels } from '@earendil-works/pi-ai/providers/all';
+import { builtinModels } from '@ultron/ai/providers/all';
 
 const call: Call = BACKGROUND_CONTEXT;
 

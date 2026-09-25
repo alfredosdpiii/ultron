@@ -17,8 +17,8 @@ import {
 	type JsonlSessionMetadata,
 	JsonlSessionRepo,
 	type Session,
-} from "@earendil-works/pi-agent-core";
-import { NodeExecutionEnv } from "@earendil-works/pi-agent-core/node";
+} from "@ultron/agent-core";
+import { NodeExecutionEnv } from "@ultron/agent-core/node";
 import { findInitialModel } from "../../../core/model-resolver.ts";
 import { ModelRuntime } from "../../../core/model-runtime.ts";
 import { Lane, Models, Worker } from "../shared/protocol.ts";

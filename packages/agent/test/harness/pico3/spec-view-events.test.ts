@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
-import type { Context } from "@earendil-works/chord";
-import type { AssistantMessage, AssistantMessageEvent } from "@earendil-works/pi-ai";
+import type { AssistantMessage, AssistantMessageEvent } from "@ultron/ai";
+import type { Context } from "@ultron/chord";
 import { onTestFinished, test } from "vitest";
 import type { ConversationHandle } from "../../../src/harness/pico3/harness.ts";
 import type { ConversationView, Envelope, Models, ViewEvent } from "../../../src/harness/pico3/types.ts";

@@ -1,5 +1,5 @@
-import type { Component, Terminal, TUI } from "@earendil-works/pi-tui";
-import { Container, getKeybindings, isViewportTUI, ScrollView, setKeybindings, Text } from "@earendil-works/pi-tui";
+import type { Component, Terminal, TUI } from "@ultron/tui";
+import { Container, getKeybindings, isViewportTUI, ScrollView, setKeybindings, Text } from "@ultron/tui";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { VirtualTerminal } from "../../tui/test/virtual-terminal.ts";
 import { KeybindingsManager } from "../src/core/keybindings.ts";

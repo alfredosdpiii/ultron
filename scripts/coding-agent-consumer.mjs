@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 import { getPublicWorkspacePackages } from "./release-packages.mjs";
 
 const codingAgentName = "@earendil-works/pi-coding-agent";
-const developmentPackages = new Set(["pi-client", "pi-protocol", "pi-server"].map((name) => `@earendil-works/${name}`));
+const developmentPackages = new Set(["client", "protocol", "server"].map((name) => `@ultron/${name}`));
 
 function run(command, args, options = {}) {
 	console.log(`$ ${[command, ...args].join(" ")}`);
@@ -105,8 +105,8 @@ import { createAgentSession, SessionManager, ModelRuntime } from "${codingAgentN
 assert.equal(typeof createAgentSession, "function");
 assert.equal(typeof SessionManager.inMemory, "function");
 assert.equal(typeof ModelRuntime.create, "function");
-for (const name of ["pi-client", "pi-protocol", "pi-server"]) {
-  assert.throws(() => import.meta.resolve("@earendil-works/" + name), /Cannot find|cannot find/, name + " must not be installed");
+for (const name of ["client", "protocol", "server"]) {
+  assert.throws(() => import.meta.resolve("@ultron/" + name), /Cannot find|cannot find/, name + " must not be installed");
 }
 for (const subpath of ["/client", "/experimental/plugin"]) {
   assert.throws(() => import.meta.resolve("${codingAgentName}" + subpath), /not exported|not defined|Cannot find|cannot find/);

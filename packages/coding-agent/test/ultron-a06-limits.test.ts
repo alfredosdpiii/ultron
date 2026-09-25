@@ -15,7 +15,7 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { Context, JsonValue } from "@earendil-works/chord";
+import type { Context, JsonValue } from "@ultron/chord";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { type DurableDocumentStorage, NativeLocalServices } from "../src/ultron/local-services.ts";
 import { RlmKernel } from "../src/ultron/rlm/kernel.ts";

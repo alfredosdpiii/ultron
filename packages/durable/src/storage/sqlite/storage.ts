@@ -1,5 +1,5 @@
-import type { Context, JsonValue } from "@earendil-works/chord";
-import { applyImmutable, type Op } from "@earendil-works/chord/delta";
+import type { Context, JsonValue } from "@ultron/chord";
+import { applyImmutable, type Op } from "@ultron/chord/delta";
 import type {
 	ConversationRecord,
 	Cursor,

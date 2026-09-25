@@ -1,4 +1,4 @@
-import type { Context, JsonValue } from "@earendil-works/chord";
+import type { Context, JsonValue } from "@ultron/chord";
 import { describe, expect, test } from "vitest";
 import {
 	type DurableDocumentStorage,

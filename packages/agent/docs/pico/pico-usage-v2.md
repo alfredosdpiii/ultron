@@ -41,8 +41,8 @@ wait removes the waiter; it never cancels durable work.
 
 ```typescript
 import { Harness, JsonlStorage, systemSections } from '@earendil-works/pi-agent/pico';
-import { builtinModels } from '@earendil-works/pi-ai/providers/all';
-import { BACKGROUND_CONTEXT as ctx } from '@earendil-works/chord/context';
+import { builtinModels } from '@ultron/ai/providers/all';
+import { BACKGROUND_CONTEXT as ctx } from '@ultron/chord/context';
 
 const storage = await JsonlStorage.open('./session.jsonl', ctx);
 const h = await Harness.open(storage, {
@@ -390,7 +390,7 @@ export interface PlanService {
 export const PlanService = defineService<PlanService>('myplugin.plan');
 
 // session.ts: runs beside the Harness; Pico is the durable truth, the replicated state is a projection
-import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
+import { BACKGROUND_CONTEXT } from '@ultron/chord/context';
 export default defineFacet({
   id: 'myplugin/session',
   setup(env) {

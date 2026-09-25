@@ -1,10 +1,5 @@
-import type { AgentMessage } from "@earendil-works/pi-agent-core";
-import {
-	fauxAssistantMessage,
-	getCurrentSystemPrompt,
-	getCurrentTools,
-	type TranscriptContext,
-} from "@earendil-works/pi-ai";
+import type { AgentMessage } from "@ultron/agent-core";
+import { fauxAssistantMessage, getCurrentSystemPrompt, getCurrentTools, type TranscriptContext } from "@ultron/ai";
 import { afterEach, describe, expect, it } from "vitest";
 import type { ExtensionFactory } from "../../../src/index.ts";
 import { createHarness, type Harness } from "../harness.ts";

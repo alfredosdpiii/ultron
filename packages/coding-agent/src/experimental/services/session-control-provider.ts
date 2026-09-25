@@ -1,5 +1,5 @@
-import type { Context, JsonValue } from "@earendil-works/chord";
-import type { AgentHarness, AgentLane, BashExecutionMessage, Session } from "@earendil-works/pi-agent-core";
+import type { AgentHarness, AgentLane, BashExecutionMessage, Session } from "@ultron/agent-core";
+import type { Context, JsonValue } from "@ultron/chord";
 import { executeBashWithOperations } from "../../core/bash-executor.ts";
 import type { SettingsManager } from "../../core/settings-manager.ts";
 import { createLocalBashOperations } from "../../core/tools/bash.ts";

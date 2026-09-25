@@ -1,13 +1,14 @@
-import * as bundledPiAgentCore from "@earendil-works/pi-agent-core";
-import * as bundledPiAiCompat from "@earendil-works/pi-ai/compat";
-import * as bundledPiAiOauth from "@earendil-works/pi-ai/oauth";
-import * as bundledPiAiProviders from "@earendil-works/pi-ai/providers/all";
-import * as bundledPiTui from "@earendil-works/pi-tui";
+import * as bundledPiAgentCore from "@ultron/agent-core";
+import * as bundledPiAiCompat from "@ultron/ai/compat";
+import * as bundledPiAiOauth from "@ultron/ai/oauth";
+import * as bundledPiAiProviders from "@ultron/ai/providers/all";
+import * as bundledPiTui from "@ultron/tui";
 import * as bundledTypebox from "typebox";
 import * as bundledTypeboxCompile from "typebox/compile";
 import * as bundledTypeboxValue from "typebox/value";
 // This import is safe because loader.ts exports are not re-exported from index.ts.
-// Extensions can therefore import from @earendil-works/pi-coding-agent.
+// Extensions can therefore import from @ultron/coding-agent (or the legacy
+// @earendil-works/pi-coding-agent and @mariozechner/pi-coding-agent names).
 import * as bundledPiCodingAgent from "../../index.ts";
 
 /** Modules available to extensions in source and compiled binary runtimes. */
@@ -18,6 +19,14 @@ export const VIRTUAL_MODULES: Record<string, unknown> = {
 	"@sinclair/typebox": bundledTypebox,
 	"@sinclair/typebox/compile": bundledTypeboxCompile,
 	"@sinclair/typebox/value": bundledTypeboxValue,
+	"@ultron/agent-core": bundledPiAgentCore,
+	"@ultron/tui": bundledPiTui,
+	"@ultron/ai": bundledPiAiCompat,
+	"@ultron/ai/compat": bundledPiAiCompat,
+	"@ultron/ai/oauth": bundledPiAiOauth,
+	"@ultron/ai/providers/all": bundledPiAiProviders,
+	"@ultron/coding-agent": bundledPiCodingAgent,
+	// Legacy Pi package names stay available so existing extensions keep loading.
 	"@earendil-works/pi-agent-core": bundledPiAgentCore,
 	"@earendil-works/pi-tui": bundledPiTui,
 	// Extensions resolve the pi-ai root to the compat entrypoint (a strict

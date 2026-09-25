@@ -28,7 +28,7 @@ function assertWorkspace(): void {
 	assertDirectoryEntries("/repo", ["node_modules", "package.json", "packages", "vitest.base.ts"]);
 	assertDirectoryEntries("/repo/packages", ["evals"]);
 	assertDirectoryEntries("/repo/packages/evals", ["docker", "evals", "package.json", "src", "vitest.evals.config.ts"]);
-	const codingAgentDir = "/repo/node_modules/@earendil-works/pi-coding-agent";
+	const codingAgentDir = "/repo/node_modules/@bryandlp/ultron-coding-agent";
 	for (const name of ["package.json", "npm-shrinkwrap.json", "dist/index.js"]) {
 		if (!existsSync(join(codingAgentDir, name))) throw new Error(`Installed coding-agent is missing ${name}.`);
 	}
@@ -99,8 +99,8 @@ for (const path of [
 	assertRootOnly(path);
 	assertSandboxCannotRead(path);
 }
-const codingAgentEntry = fileURLToPath(import.meta.resolve("@earendil-works/pi-coding-agent"));
-if (codingAgentEntry !== "/repo/node_modules/@earendil-works/pi-coding-agent/dist/index.js") {
+const codingAgentEntry = fileURLToPath(import.meta.resolve("@bryandlp/ultron-coding-agent"));
+if (codingAgentEntry !== "/repo/node_modules/@bryandlp/ultron-coding-agent/dist/index.js") {
 	throw new Error(`Eval does not resolve pi-coding-agent from dist: ${codingAgentEntry}`);
 }
 

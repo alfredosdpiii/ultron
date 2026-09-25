@@ -36,7 +36,6 @@ import { createHash } from "node:crypto";
 import { chmod, lstat, mkdir, readdir, readFile, readlink, rename, rm, symlink, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { isDeepStrictEqual } from "node:util";
-import type { Context } from "@earendil-works/chord";
 import {
 	type AgentMessage,
 	BACKGROUND_CONTEXT,
@@ -58,9 +57,10 @@ import {
 	type Value,
 	value,
 	type Write,
-} from "@earendil-works/pi-agent-core";
-import { NodeExecutionEnv } from "@earendil-works/pi-agent-core/node";
-import type { Usage } from "@earendil-works/pi-ai";
+} from "@ultron/agent-core";
+import { NodeExecutionEnv } from "@ultron/agent-core/node";
+import type { Usage } from "@ultron/ai";
+import type { Context } from "@ultron/chord";
 import { createCustomMessage } from "../core/messages.ts";
 import {
 	buildContextEntries,

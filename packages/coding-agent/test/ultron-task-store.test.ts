@@ -1,4 +1,4 @@
-import { isJsonValue, type JsonValue } from "@earendil-works/chord";
+import { isJsonValue, type JsonValue } from "@ultron/chord";
 import { describe, expect, test } from "vitest";
 import { type NativeHostStore, NativeTaskJournal, taskFingerprint } from "../src/ultron/rlm/task-store.ts";
 

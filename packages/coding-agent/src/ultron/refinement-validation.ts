@@ -1,4 +1,4 @@
-import type { JsonValue } from "@earendil-works/chord";
+import type { JsonValue } from "@ultron/chord";
 import type { RefinementKind } from "./local-services.ts";
 
 const MAX_SKILL_BYTES = 64 * 1024;

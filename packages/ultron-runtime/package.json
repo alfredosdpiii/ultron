@@ -1,9 +1,0 @@
-{
-  "name": "@bryandlp/ultron-runtime-compat",
-  "private": true,
-  "type": "module",
-  "description": "Reference compatibility services retained while Ultron moves them into the durable worker",
-  "scripts": {
-    "test": "node --test test/legacy/*.test.mjs"
-  }
-}

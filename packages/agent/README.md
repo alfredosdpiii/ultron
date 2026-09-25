@@ -1,23 +1,23 @@
-# @earendil-works/pi-agent-core
+# @ultron/agent-core
 
-Stateful agent with tool execution and event streaming. Built on `@earendil-works/pi-ai`.
+Stateful agent with tool execution and event streaming. Built on `@ultron/ai`.
 
 ## Installation
 
 ```bash
-npm install @earendil-works/pi-agent-core
+npm install @ultron/agent-core
 ```
 
 ### SQLite session backends
 
-The SQLite session backend and the `node:sqlite` adapter live in a separate package, `@earendil-works/pi-session-backend-sqlite-node`, so the core package does not pull in runtime builtins or native SQLite dependencies by default. The backend accepts a runtime-specific SQLite factory, allowing other session backends to ship as their own packages in the future.
+The SQLite session backend and the `node:sqlite` adapter live in a separate package, `@ultron/session-backend-sqlite-node`, so the core package does not pull in runtime builtins or native SQLite dependencies by default. The backend accepts a runtime-specific SQLite factory, allowing other session backends to ship as their own packages in the future.
 
 ## Quick Start
 
 ```typescript
-import { Agent } from "@earendil-works/pi-agent-core";
-import { createModels } from "@earendil-works/pi-ai";
-import { anthropicProvider } from "@earendil-works/pi-ai/providers/anthropic";
+import { Agent } from "@ultron/agent-core";
+import { createModels } from "@ultron/ai";
+import { anthropicProvider } from "@ultron/ai/providers/anthropic";
 
 const models = createModels();
 models.setProvider(anthropicProvider());
@@ -44,7 +44,7 @@ await agent.prompt("Hello!");
 
 ## Experimental facet services
 
-Transport-neutral facet-service primitives live in `@earendil-works/chord`. The agent core does not export the service runtime.
+Transport-neutral facet-service primitives live in `@ultron/chord`. The agent core does not export the service runtime.
 
 ## Core Concepts
 
@@ -434,7 +434,7 @@ Follow-up messages are checked only when there are no more tool calls and no ste
 Extend `AgentMessage` via declaration merging:
 
 ```typescript
-declare module "@earendil-works/pi-agent-core" {
+declare module "@ultron/agent-core" {
   interface CustomAgentMessages {
     notification: { role: "notification"; text: string; timestamp: number };
   }
@@ -516,7 +516,7 @@ Return `terminate: true` from `execute()`, a blocked `beforeToolCall`, or `after
 For browser apps that proxy through a backend:
 
 ```typescript
-import { Agent, streamProxy } from "@earendil-works/pi-agent-core";
+import { Agent, streamProxy } from "@ultron/agent-core";
 
 const agent = new Agent({
   streamFn: (model, context, options) =>
@@ -533,7 +533,7 @@ const agent = new Agent({
 For direct control without the Agent class:
 
 ```typescript
-import { agentLoop, agentLoopContinue } from "@earendil-works/pi-agent-core";
+import { agentLoop, agentLoopContinue } from "@ultron/agent-core";
 
 const context: AgentContext = {
   messages: [{ role: "system", content: "You are helpful.", timestamp: Date.now() }],

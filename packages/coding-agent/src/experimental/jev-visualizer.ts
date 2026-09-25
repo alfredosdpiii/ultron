@@ -3,7 +3,7 @@
  * memory recall gates, retention policy), plus availability and ledger activity. Input comes from
  * the read-only `jev.decisions` inspection request and the `agents.status` usage ledger.
  */
-import { truncateToWidth } from "@earendil-works/pi-tui";
+import { truncateToWidth } from "@ultron/tui";
 import { formatDuration, PLAIN_STYLE, type RlmStyle } from "./rlm-visualizer.ts";
 
 export interface JevDecisionView {

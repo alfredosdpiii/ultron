@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { isJsonValue, type JsonValue } from "@earendil-works/chord";
+import { isJsonValue, type JsonValue } from "@ultron/chord";
 import type { HostModuleStore, NativeHostApi, NativeHostModule } from "./rlm/host-module.ts";
 
 /**

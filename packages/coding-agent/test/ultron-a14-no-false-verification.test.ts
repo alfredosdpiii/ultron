@@ -1,4 +1,4 @@
-import type { JsonValue } from "@earendil-works/chord";
+import type { JsonValue } from "@ultron/chord";
 import { afterEach, describe, expect, test } from "vitest";
 import { checkGrant, createGrantModule } from "../src/ultron/grants.ts";
 import { createProgressModule } from "../src/ultron/progress.ts";

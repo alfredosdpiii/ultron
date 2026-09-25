@@ -1,5 +1,3 @@
-import { type Context, createFacetHost, defineFacet } from "@earendil-works/chord";
-import { withCancel } from "@earendil-works/chord/context";
 import {
 	type AgentLane,
 	BACKGROUND_CONTEXT,
@@ -9,7 +7,9 @@ import {
 	LaneBusy,
 	UnknownSkill,
 	UnknownTemplate,
-} from "@earendil-works/pi-agent-core";
+} from "@ultron/agent-core";
+import { type Context, createFacetHost, defineFacet } from "@ultron/chord";
+import { withCancel } from "@ultron/chord/context";
 import { describe, expect, test, vi } from "vitest";
 import { AgentController } from "../src/experimental/services/agent-controller.ts";
 import { createAgentController } from "../src/experimental/services/agent-controller-provider.ts";

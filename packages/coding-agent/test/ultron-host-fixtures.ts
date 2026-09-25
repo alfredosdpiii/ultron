@@ -1,5 +1,5 @@
-import type { JsonValue } from "@earendil-works/chord";
-import type { Context } from "@earendil-works/pi-agent-core";
+import type { Context } from "@ultron/agent-core";
+import type { JsonValue } from "@ultron/chord";
 import type { NativeDefinitionAdapter, NativeDefinitionStore } from "../src/ultron/rlm/definition-registry.ts";
 import type { NativeHostModule } from "../src/ultron/rlm/host-module.ts";
 import { NativeRlmHost } from "../src/ultron/rlm/native-host.ts";

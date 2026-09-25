@@ -37,7 +37,7 @@ done
 
 if [[ "$USE_DIST" == "true" ]]; then
   if [[ ! -f "$MINI_DIST" ]]; then
-    echo "No build found. Run: npm run build -w @earendil-works/pi-coding-agent" >&2
+    echo "No build found. Run: npm run build -w @bryandlp/ultron-coding-agent" >&2
     exit 1
   fi
   exec node "$MINI_DIST" ${ARGS[@]+"${ARGS[@]}"}

@@ -1,8 +1,8 @@
 import { mkdtemp, rm, symlink, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { BACKGROUND_CONTEXT, JsonlSessionRepo } from "@earendil-works/pi-agent-core";
-import { NodeExecutionEnv } from "@earendil-works/pi-agent-core/node";
+import { BACKGROUND_CONTEXT, JsonlSessionRepo } from "@ultron/agent-core";
+import { NodeExecutionEnv } from "@ultron/agent-core/node";
 import { afterEach, describe, expect, test } from "vitest";
 import { chooseInteractiveResumeSession, NativeSessionSelector } from "../src/ultron/session-selection.ts";
 

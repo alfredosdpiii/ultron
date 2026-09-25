@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
-import { isJsonValue, type JsonValue } from "@earendil-works/chord";
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
-import type { Context } from "@earendil-works/pi-agent-core";
+import type { Context } from "@ultron/agent-core";
+import { isJsonValue, type JsonValue } from "@ultron/chord";
+import { BACKGROUND_CONTEXT } from "@ultron/chord/context";
 import type {
 	HostModuleRequest,
 	HostModuleStore,

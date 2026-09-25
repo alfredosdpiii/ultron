@@ -1,4 +1,4 @@
-import { applyImmutable, type Op, type Tracker, track } from "@earendil-works/chord/delta";
+import { applyImmutable, type Op, type Tracker, track } from "@ultron/chord/delta";
 import type { CommitResult, Session } from "./session.ts";
 import type {
 	AnyKind,

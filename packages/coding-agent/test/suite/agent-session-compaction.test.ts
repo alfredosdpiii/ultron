@@ -1,4 +1,4 @@
-import type { AgentMessage, AgentTool } from "@earendil-works/pi-agent-core";
+import type { AgentMessage, AgentTool } from "@ultron/agent-core";
 import {
 	type AssistantMessage,
 	createAssistantMessageEventStream,
@@ -9,7 +9,7 @@ import {
 	type Model,
 	type SimpleStreamOptions,
 	type TranscriptContext,
-} from "@earendil-works/pi-ai";
+} from "@ultron/ai";
 import { Type } from "typebox";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { estimateTokens } from "../../src/core/compaction/index.ts";

@@ -1,6 +1,6 @@
-import { defineFacet, type Facet, type JsonValue } from "@earendil-works/chord";
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
-import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
+import type { ThinkingLevel } from "@ultron/agent-core";
+import { defineFacet, type Facet, type JsonValue } from "@ultron/chord";
+import { BACKGROUND_CONTEXT } from "@ultron/chord/context";
 import { AgentController } from "./agent-controller.ts";
 import { inspectionCommands } from "./inspection-commands.ts";
 import { LegacyExtensionCommands } from "./legacy-extensions.ts";

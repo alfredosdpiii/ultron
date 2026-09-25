@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { replicatedState } from "@earendil-works/chord";
+import { replicatedState } from "@ultron/chord";
 import { onTestFinished, test } from "vitest";
 import {
 	attachChordView,

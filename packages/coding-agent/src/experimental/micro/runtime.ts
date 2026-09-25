@@ -1,5 +1,4 @@
 import { randomUUID } from "node:crypto";
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
 import {
 	applyEnvelope,
 	type ConversationView,
@@ -12,8 +11,8 @@ import {
 	systemSections,
 	type ViewEvent,
 	type Watch,
-} from "@earendil-works/pi-agent-core/experimental/pico3";
-import { NodeExecutionEnv } from "@earendil-works/pi-agent-core/node";
+} from "@ultron/agent-core/experimental/pico3";
+import { NodeExecutionEnv } from "@ultron/agent-core/node";
 import {
 	type AssistantMessage,
 	type AuthEvent,
@@ -22,7 +21,8 @@ import {
 	getSupportedThinkingLevels,
 	type ModelThinkingLevel,
 	type Usage,
-} from "@earendil-works/pi-ai";
+} from "@ultron/ai";
+import { BACKGROUND_CONTEXT } from "@ultron/chord/context";
 import { findInitialModel } from "../../core/model-resolver.ts";
 import { ModelRuntime } from "../../core/model-runtime.ts";
 import { SettingsManager } from "../../core/settings-manager.ts";

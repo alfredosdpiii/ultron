@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
-import { isJsonValue, type JsonValue } from "@earendil-works/chord";
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
-import { type Session, value } from "@earendil-works/pi-agent-core";
+import { type Session, value } from "@ultron/agent-core";
+import { isJsonValue, type JsonValue } from "@ultron/chord";
+import { BACKGROUND_CONTEXT } from "@ultron/chord/context";
 import Type from "typebox";
 import { Check } from "typebox/value";
 

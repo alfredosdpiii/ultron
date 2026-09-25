@@ -7,8 +7,8 @@ import {
 	type FileSystem,
 	type JsonlSessionMetadata,
 	JsonlSessionRepo,
-} from "@earendil-works/pi-agent-core";
-import { NodeExecutionEnv } from "@earendil-works/pi-agent-core/node";
+} from "@ultron/agent-core";
+import { NodeExecutionEnv } from "@ultron/agent-core/node";
 
 const JSONL_FORMAT_VERSION = 4;
 const DEFAULT_MAX_HEADER_BYTES = 64 * 1024;

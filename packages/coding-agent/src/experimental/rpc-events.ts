@@ -1,5 +1,5 @@
-import type { AgentMessage, LaneQueuedItem, LaneWatchEvent } from "@earendil-works/pi-agent-core";
-import type { AssistantMessageFrame } from "@earendil-works/pi-ai";
+import type { AgentMessage, LaneQueuedItem, LaneWatchEvent } from "@ultron/agent-core";
+import type { AssistantMessageFrame } from "@ultron/ai";
 
 /** Pi RPC wire event, as emitted on stdout by `--mode rpc`. */
 export type RpcWireEvent = { readonly type: string } & Record<string, unknown>;

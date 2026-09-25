@@ -1,7 +1,7 @@
-import type { Context, JsonValue } from "@earendil-works/chord";
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
-import { AgentHarness, MemorySessionRepo } from "@earendil-works/pi-agent-core";
-import { createModels, fauxAssistantMessage, fauxProvider } from "@earendil-works/pi-ai";
+import { AgentHarness, MemorySessionRepo } from "@ultron/agent-core";
+import { createModels, fauxAssistantMessage, fauxProvider } from "@ultron/ai";
+import type { Context, JsonValue } from "@ultron/chord";
+import { BACKGROUND_CONTEXT } from "@ultron/chord/context";
 import { describe, expect, test } from "vitest";
 import {
 	type DurableDocumentStorage,

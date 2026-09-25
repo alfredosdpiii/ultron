@@ -1,5 +1,5 @@
-import type { AgentTool, AgentToolResult } from "@earendil-works/pi-agent-core";
-import { fauxAssistantMessage, fauxToolCall } from "@earendil-works/pi-ai";
+import type { AgentTool, AgentToolResult } from "@ultron/agent-core";
+import { fauxAssistantMessage, fauxToolCall } from "@ultron/ai";
 import { Type } from "typebox";
 import { afterEach, describe, expect, it } from "vitest";
 import {

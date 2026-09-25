@@ -1,13 +1,8 @@
 import { resolve } from "node:path";
-import type { Context } from "@earendil-works/chord";
-import {
-	awaitWithContext,
-	BACKGROUND_CONTEXT,
-	withAbortSignal,
-	withoutAbortSignal,
-} from "@earendil-works/chord/context";
-import type { LaneWatchEvent } from "@earendil-works/pi-agent-core";
-import type { AssistantMessage } from "@earendil-works/pi-ai";
+import type { LaneWatchEvent } from "@ultron/agent-core";
+import type { AssistantMessage } from "@ultron/ai";
+import type { Context } from "@ultron/chord";
+import { awaitWithContext, BACKGROUND_CONTEXT, withAbortSignal, withoutAbortSignal } from "@ultron/chord/context";
 import type { ClientCommand } from "../cli/experimental/commands/client.ts";
 import {
 	type ActivatedClientRuntimeServer,

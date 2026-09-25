@@ -1,4 +1,4 @@
-import { fauxProvider } from "@earendil-works/pi-ai";
+import { fauxProvider } from "@ultron/ai";
 import { describe, expect, it, vi } from "vitest";
 import {
 	BACKGROUND_CONTEXT,

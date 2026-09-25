@@ -1,4 +1,4 @@
-import type { JsonValue } from "@earendil-works/chord";
+import type { JsonValue } from "@ultron/chord";
 import { afterEach, describe, expect, test } from "vitest";
 import { inspectionDiscrepancies, reconcileRecords } from "../src/ultron/reconcile.ts";
 import { NativeRlmHost } from "../src/ultron/rlm/native-host.ts";

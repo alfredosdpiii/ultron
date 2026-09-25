@@ -1,10 +1,10 @@
 import { lstat, mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { type Context, createFacetHost, defineFacet, defineService } from "@earendil-works/chord";
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
-import { Client, ServerError as ClientServerError } from "@earendil-works/pi-client";
-import { createUnixTransportFactory } from "@earendil-works/pi-client/unix";
+import { type Context, createFacetHost, defineFacet, defineService } from "@ultron/chord";
+import { BACKGROUND_CONTEXT } from "@ultron/chord/context";
+import { Client, ServerError as ClientServerError } from "@ultron/client";
+import { createUnixTransportFactory } from "@ultron/client/unix";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { ExampleFacetService } from "../examples/plugins/pi-example-plugin/src/contract.ts";
 import { runClient } from "../src/experimental/client.ts";
@@ -422,12 +422,12 @@ describe("experimental durable server composition", () => {
 				`${JSON.stringify({
 					name: "@earendil-works/second-session-plugin",
 					version: "1.0.0",
-					peerDependencies: { "@earendil-works/chord": "^0.84.4" },
+					peerDependencies: { "@ultron/chord": "^0.84.4" },
 				})}\n`,
 			),
 			writeFile(
 				join(secondPackagePath, "src", "session.ts"),
-				'import { defineFacet, defineService } from "@earendil-works/chord"; const Service = defineService("test.second-plugin"); export default defineFacet({ id: "second-session-plugin", setup(env) { env.provide(Service, { async read() { return "second"; } }); } });\n',
+				'import { defineFacet, defineService } from "@ultron/chord"; const Service = defineService("test.second-plugin"); export default defineFacet({ id: "second-session-plugin", setup(env) { env.provide(Service, { async read() { return "second"; } }); } });\n',
 			),
 		]);
 		const runtime = await startServer({ ...sessionWorkerModel, directory });

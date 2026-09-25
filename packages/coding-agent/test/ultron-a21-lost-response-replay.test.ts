@@ -1,6 +1,6 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
-import type { JsonValue } from "@earendil-works/chord";
+import type { JsonValue } from "@ultron/chord";
 import { afterEach, describe, expect, test } from "vitest";
 import { NativeRlmHost } from "../src/ultron/rlm/native-host.ts";
 import { NativeUsageLedger } from "../src/ultron/usage.ts";

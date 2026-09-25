@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { isJsonValue, type JsonValue } from "@earendil-works/chord";
+import { isJsonValue, type JsonValue } from "@ultron/chord";
 import type { JevMemoryGate, JevMemoryPolicy, JevTriage, NativeJevClient } from "./jev.ts";
 
 /**

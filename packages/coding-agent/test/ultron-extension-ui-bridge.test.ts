@@ -1,4 +1,4 @@
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
+import { BACKGROUND_CONTEXT } from "@ultron/chord/context";
 import { describe, expect, test } from "vitest";
 import type { ExtensionUIContext } from "../src/core/extensions/types.ts";
 import { ExtensionUIBridge } from "../src/experimental/services/extension-ui-provider.ts";

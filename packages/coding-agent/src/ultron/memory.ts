@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
-import type { JsonValue } from "@earendil-works/chord";
+import type { JsonValue } from "@ultron/chord";
 
-export type { JsonValue } from "@earendil-works/chord";
+export type { JsonValue } from "@ultron/chord";
 
 /** One live service per store. Writes must atomically replace a durable document. */
 export interface MemoryStore {

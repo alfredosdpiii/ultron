@@ -4,8 +4,8 @@
  * so RPC clients get the shapes and numbers Pi would report for the same entries.
  */
 
-import type { AgentMessage } from "@earendil-works/pi-agent-core";
-import type { AssistantMessage } from "@earendil-works/pi-ai";
+import type { AgentMessage } from "@ultron/agent-core";
+import type { AssistantMessage } from "@ultron/ai";
 import type { SessionStats } from "../core/agent-session.ts";
 import { calculateContextTokens, estimateProjectedContextTokens } from "../core/compaction/compaction.ts";
 import type { ContextUsage } from "../core/extensions/types.ts";

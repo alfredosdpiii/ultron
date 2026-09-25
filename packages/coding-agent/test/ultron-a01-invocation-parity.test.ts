@@ -1,5 +1,5 @@
 import { fileURLToPath } from "node:url";
-import { withAbortSignal } from "@earendil-works/chord/context";
+import { withAbortSignal } from "@ultron/chord/context";
 import { afterEach, describe, expect, test } from "vitest";
 import { RlmKernel } from "../src/ultron/rlm/kernel.ts";
 import { context, definition, hostFixture, journal } from "./ultron-host-fixtures.ts";

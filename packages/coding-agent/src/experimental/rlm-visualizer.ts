@@ -5,7 +5,7 @@
  * `progress.assess`) and reads the root `rlm` tool cell from the replicated transcript. This module
  * turns that snapshot into width-bounded lines so the layout is unit-testable without a terminal.
  */
-import { truncateToWidth } from "@earendil-works/pi-tui";
+import { truncateToWidth } from "@ultron/tui";
 
 export type RlmTaskState = "admitted" | "running" | "completed" | "failed" | "cancelled" | "interrupted";
 

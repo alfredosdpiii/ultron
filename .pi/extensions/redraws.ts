@@ -5,7 +5,7 @@
  */
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { Text } from "@earendil-works/pi-tui";
+import { Text } from "@ultron/tui";
 
 export default function (pi: ExtensionAPI) {
 	pi.registerCommand("tui", {

@@ -1,4 +1,4 @@
-import type { AgentMessage } from "@earendil-works/pi-agent-core";
+import type { AgentMessage } from "@ultron/agent-core";
 import {
 	type AssistantMessage,
 	getCurrentSystemMessage,
@@ -10,7 +10,7 @@ import {
 	type Usage,
 	type UserMessage,
 	uuidv7,
-} from "@earendil-works/pi-ai";
+} from "@ultron/ai";
 import { randomUUID } from "crypto";
 import {
 	appendFileSync,

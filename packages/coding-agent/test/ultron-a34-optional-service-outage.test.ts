@@ -1,6 +1,6 @@
 import { fileURLToPath } from "node:url";
-import type { JsonValue } from "@earendil-works/chord";
-import { BACKGROUND_CONTEXT, withAbortSignal } from "@earendil-works/chord/context";
+import type { JsonValue } from "@ultron/chord";
+import { BACKGROUND_CONTEXT, withAbortSignal } from "@ultron/chord/context";
 import { describe, expect, test } from "vitest";
 import type { MemoryBackend } from "../src/ultron/memory.ts";
 import { createProgressModule } from "../src/ultron/progress.ts";

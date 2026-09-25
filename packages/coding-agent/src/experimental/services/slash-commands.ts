@@ -1,4 +1,4 @@
-import { type Context, defineService } from "@earendil-works/chord";
+import { type Context, defineService } from "@ultron/chord";
 import type { AgentOperationResponse, AgentQueueResponse } from "./agent-controller.ts";
 
 export interface SlashCommandCompletion {

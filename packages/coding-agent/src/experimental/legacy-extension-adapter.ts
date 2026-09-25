@@ -1,5 +1,3 @@
-import type { JsonValue } from "@earendil-works/chord";
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
 import type {
 	AgentHarness as AgentHarnessInstance,
 	AgentHarnessTool,
@@ -9,8 +7,10 @@ import type {
 	AgentToolUpdateCallback,
 	JsonlSessionMetadata,
 	Session,
-} from "@earendil-works/pi-agent-core";
-import type { Api, Model } from "@earendil-works/pi-ai";
+} from "@ultron/agent-core";
+import type { Api, Model } from "@ultron/ai";
+import type { JsonValue } from "@ultron/chord";
+import { BACKGROUND_CONTEXT } from "@ultron/chord/context";
 import { ExtensionRunner } from "../core/extensions/runner.ts";
 import type { ExtensionUIContext, ToolDefinition, ToolInfo } from "../core/extensions/types.ts";
 import { ModelRegistry } from "../core/model-registry.ts";

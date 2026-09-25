@@ -1,4 +1,4 @@
-import { visibleWidth } from "@earendil-works/pi-tui";
+import { visibleWidth } from "@ultron/tui";
 import { describe, expect, test } from "vitest";
 import {
 	buildTaskTree,
