@@ -898,6 +898,48 @@
       }
     },
     {
+      "id": "A51",
+      "behavior": "After 20 completed tasks the root's next request stays bounded (results collapse on return by context edit) while agents.result still returns full values",
+      "evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-a51-collapse-on-return.test.ts",
+          "tests": [
+            "20 completed tasks: bounded next request, full values through agents.result"
+          ]
+        },
+        {
+          "file": "packages/coding-agent/test/ultron-context-control.test.ts",
+          "tests": [
+            "omitting an assistant message omits the results of its calls",
+            "an omitted result whose call stays visible becomes a stub, keeping the pair",
+            "one line per task with definition, key, status, cost and handle; random keys are hidden"
+          ]
+        }
+      ],
+      "status_when_green": "passed",
+      "notes": "Scripted provider asserts every root request body; the durable transcript and task journal keep the full results."
+    },
+    {
+      "id": "A52",
+      "behavior": "ctx.forget never removes the current user turn or pinned items, an extension can observe the edit, and compaction keeps notes and pins",
+      "evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-a52-context-guards.test.ts",
+          "tests": [
+            "forget spares the current turn and pins, extensions observe it, compaction keeps notes and pins"
+          ]
+        },
+        {
+          "file": "packages/coding-agent/test/ultron-context-control.test.ts",
+          "tests": [
+            "history, summarize, guards, pin, note, and state follow the branch"
+          ]
+        }
+      ],
+      "status_when_green": "passed",
+      "notes": "Extensions observe edits on pi.events channel ultron:context_edit."
+    },
+    {
       "id": "A53",
       "behavior": "A proposed code skill whose test fails is never importable; a passing one is, survives worker restart, and rolls back cleanly",
       "evidence": [

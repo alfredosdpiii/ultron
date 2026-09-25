@@ -26,6 +26,7 @@ from instances_api import Instances
 from grants_api import Grants
 from release_gate_api import ReleaseGates
 import agent_class_api
+from context_api import Context
 
 @dataclass
 class SpawnHandle:
@@ -416,6 +417,7 @@ class RuntimeState:
         self.namespace["instances"] = Instances(self.bridge)
         self.namespace["grants"] = Grants(self.bridge)
         self.namespace["gates"] = ReleaseGates(self.bridge)
+        self.namespace["ctx"] = Context(self.bridge)
         self.namespace["preview"] = preview
         agent_class_api.configure(self.bridge, lambda: self.namespace, preview)
         self.namespace["agent"] = agent_class_api.agent

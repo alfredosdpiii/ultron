@@ -40,6 +40,7 @@ import Type, { type Static } from "typebox";
 import { Check } from "typebox/value";
 import { isValidThinkingLevel } from "../cli/args.ts";
 import { getAgentDir, getRlmRuntimePath } from "../config.ts";
+import { createEventBus } from "../core/event-bus.ts";
 import { configureHttpDispatcher } from "../core/http-dispatcher.ts";
 import { ModelRegistry } from "../core/model-registry.ts";
 import { findInitialModel, resolveCliModel } from "../core/model-resolver.ts";
@@ -60,6 +61,12 @@ import {
 	legacyBankFromEnv,
 } from "../ultron/auto-memory.ts";
 import { CodeSkills, codeSkillsDir, codeSkillsToolSection } from "../ultron/code-skills.ts";
+import {
+	CONTEXT_EDIT_EVENT,
+	CONTEXT_ENTRY_PROJECTORS,
+	CONTEXT_PROMPT,
+	ContextControl,
+} from "../ultron/context-control.ts";
 import { createFamilyModule } from "../ultron/family.ts";
 import { assertSessionFormatsReadable } from "../ultron/format-version.ts";
 import { createGrantModule } from "../ultron/grants.ts";
@@ -1227,7 +1234,10 @@ async function createCodingAgentHarness(
 	configureHttpDispatcher(settingsManager.getHttpIdleTimeoutMs());
 	// Extensions (tool renderers, headless UI contexts) read the theme; Pi always has one initialized.
 	initTheme(settingsManager.getTheme(), false);
+	// Pi's shared extension event bus (`pi.events`); the worker also publishes context edits on it.
+	const extensionEvents = createEventBus();
 	const resourceLoader = new DefaultResourceLoader({
+		eventBus: extensionEvents,
 		cwd: session.metadata.cwd,
 		agentDir: getAgentDir(),
 		settingsManager,
@@ -1415,6 +1425,7 @@ async function createCodingAgentHarness(
 				toolContext: { env: executionEnv },
 				resources,
 				systemPrompt,
+				entryProjectors: CONTEXT_ENTRY_PROJECTORS,
 				streamOptions: providerRequestOptions(settingsManager),
 				retry: settingsManager.getRetrySettings(),
 			},
@@ -1483,6 +1494,13 @@ async function createCodingAgentHarness(
 					? nativeServices.handle(type, payload, context, await mainBranch(context))
 					: nativeServices.handle(type, payload, context),
 		};
+		// Model-owned context (`ctx`) and collapse on return; edits are published to extensions on `pi.events`.
+		const contextControl = new ContextControl({
+			harness,
+			rootLane: lane,
+			observe: (event) => extensionEvents.emit(CONTEXT_EDIT_EVENT, event),
+		});
+		const removeContextControl = contextControl.install();
 		traceStartup("worker.host");
 		// Budgets apply per root turn; the turn and token limits (rootBudget settings, ULTRON_MAX_TOTAL_*) count
 		// every model turn of a root and its descendants.
@@ -1500,6 +1518,7 @@ async function createCodingAgentHarness(
 			rootTurns: true,
 			pinLane: (lane, holder) => rlmTool.pin(lane, holder),
 			unpinLane: (lane, holder) => rlmTool.unpin(lane, holder),
+			onTaskEnd: (task, info) => contextControl.taskEnded(task, info),
 			services: branchedServices,
 			beforeLaneReuse: (lane) => rlmTool.resetScratch(lane),
 			predict: createPredictAdapter({ models: modelRuntime, model: () => lane.getModel(TODO_CONTEXT) }),
@@ -1515,6 +1534,7 @@ async function createCodingAgentHarness(
 				return [{ id: current.id, version: current.version, text }];
 			},
 			modules: [
+				contextControl.module,
 				createFamilyModule({ store: createSessionModuleStore(session, "family") }),
 				createProgressModule({ store: createSessionModuleStore(session, "progress") }),
 				createScheduleModule({ store: createSessionModuleStore(session, "schedules") }),
@@ -1613,6 +1633,7 @@ async function createCodingAgentHarness(
 			harness,
 			closeRlm: async () => {
 				removeRootTurnListener();
+				removeContextControl();
 				removeAutoMemory();
 				await autoMemory?.settle();
 				removeNudgeTurnListener();
