@@ -12,7 +12,14 @@ import type { Api, Model } from "@ultron/ai";
 import type { JsonValue } from "@ultron/chord";
 import { BACKGROUND_CONTEXT } from "@ultron/chord/context";
 import { ExtensionRunner } from "../core/extensions/runner.ts";
-import type { ExtensionUIContext, ToolDefinition, ToolInfo } from "../core/extensions/types.ts";
+import type {
+	ExtensionMode,
+	ExtensionUIContext,
+	SessionShutdownEvent,
+	SessionStartEvent,
+	ToolDefinition,
+	ToolInfo,
+} from "../core/extensions/types.ts";
 import { ModelRegistry } from "../core/model-registry.ts";
 import type { ModelRuntime } from "../core/model-runtime.ts";
 import type { ResourceLoader } from "../core/resource-loader.ts";
@@ -33,7 +40,12 @@ export interface LegacyExtensionAdapterOptions {
 	readonly onShutdown?: () => void;
 	/** Routes extension dialogs and notifications to an attached presentation; headless without it. */
 	readonly ui?: ExtensionUIBridge;
+	/** Pi's `ctx.mode` for the client the worker was started for. Defaults to `"tui"`. */
+	readonly mode?: ExtensionMode;
 }
+
+/** Why the worker's Session started, as Pi's `session_start` reports it. */
+export type LegacySessionStart = Pick<SessionStartEvent, "reason" | "previousSessionFile">;
 
 /**
  * Compatibility bridge for ordinary Pi extensions inside the native worker.
@@ -52,6 +64,7 @@ export class LegacyExtensionAdapter {
 	readonly #onShutdown?: () => void;
 	readonly #sessionManager: SessionManager;
 	#activeTools: string[] = [];
+	#shutdown: Omit<SessionShutdownEvent, "type"> = { reason: "quit" };
 	#bound = false;
 
 	constructor(options: LegacyExtensionAdapterOptions) {
@@ -71,12 +84,16 @@ export class LegacyExtensionAdapter {
 			this.#cwd,
 			this.#sessionManager,
 			new ModelRegistry(options.modelRuntime),
-			// As in Pi, `ctx.hasUI` is true only while an interactive client (the TUI or an RPC client) is attached:
-			// it serves the extension UI by polling. Print and JSON runs never poll, so there it is false.
+			// As in Pi, `ctx.hasUI` is true only for an interactive client (the TUI or an RPC client): one that serves
+			// the extension UI by polling, or that the worker was started for and that has not arrived yet.
+			// Print and JSON runs never poll, so there it is false.
 			ui === undefined ? () => true : () => ui.serving,
 		);
 		const headless = createHeadlessExtensionUI();
-		this.#runner.setUIContext(options.ui === undefined ? headless : options.ui.createContext(headless), "tui");
+		this.#runner.setUIContext(
+			options.ui === undefined ? headless : options.ui.createContext(headless),
+			options.mode ?? "tui",
+		);
 		this.#runner.bindCommandContext();
 	}
 
@@ -117,7 +134,7 @@ export class LegacyExtensionAdapter {
 		return { notifications: [] };
 	}
 
-	bind(): void {
+	bind(start: LegacySessionStart = { reason: "startup" }): void {
 		if (this.#bound) return;
 		this.#bound = true;
 		this.#runner.bindCore(
@@ -180,17 +197,44 @@ export class LegacyExtensionAdapter {
 				getSystemPromptOptions: () => ({ cwd: this.#cwd }),
 			},
 		);
-		void this.#runner.emit({ type: "session_start", reason: "startup" });
+		void this.#runner.emit({
+			type: "session_start",
+			reason: start.reason,
+			...(start.previousSessionFile === undefined ? {} : { previousSessionFile: start.previousSessionFile }),
+		});
 		this.installHooks();
 	}
 
+	/**
+	 * Pi's `session_before_fork`: extensions may cancel a fork of this Session (`entryId`, `position` as in Pi).
+	 * As in Pi, it is emitted only when an extension handles it.
+	 */
+	async beforeFork(entryId: string, position: "before" | "at"): Promise<{ cancelled: boolean }> {
+		if (!this.#runner.hasHandlers("session_before_fork")) return { cancelled: false };
+		const result = await this.#runner.emit({ type: "session_before_fork", entryId, position });
+		return { cancelled: result?.cancel === true };
+	}
+
+	/**
+	 * The client moved on to a fork of this Session. As Pi's runtime is replaced on a fork, the worker's extensions
+	 * see `session_shutdown` with reason "fork" when the worker retires, unless the Session is used again first.
+	 */
+	forked(targetSessionFile: string | undefined): void {
+		this.#shutdown = {
+			reason: "fork",
+			...(targetSessionFile === undefined ? {} : { targetSessionFile }),
+		};
+	}
+
 	async close(): Promise<void> {
-		await this.#runner.emit({ type: "session_shutdown", reason: "quit" });
+		await this.#runner.emit({ type: "session_shutdown", ...this.#shutdown });
 		this.#runner.invalidate("Native extension worker is closed");
 	}
 
 	private installHooks(): void {
 		this.#harness.hooks.on("before_run", async (event) => {
+			// The Session is in use again: a later retirement is an ordinary quit.
+			this.#shutdown = { reason: "quit" };
 			const prompt = event.prompt.map(contentToText).join("\n");
 			const result = await this.#runner.emitBeforeAgentStart(prompt, undefined, {
 				cwd: this.#cwd,

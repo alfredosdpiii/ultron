@@ -22,7 +22,7 @@ import { type CommandSourceInfo, LegacyExtensionCommands } from "./legacy-extens
 import { createModelsServiceFacet } from "./models-provider.ts";
 import { SessionPlugins } from "./plugins.ts";
 import { SessionControl } from "./session-control.ts";
-import { createSessionControl } from "./session-control-provider.ts";
+import { createSessionControl, type ExtensionSessionEvents } from "./session-control-provider.ts";
 import { createTranscriptServiceFacet } from "./transcript-provider.ts";
 
 export interface SessionWorkerRuntime {
@@ -41,6 +41,8 @@ export interface SessionWorkerRuntime {
 	readonly bindActivity?: (hold: () => () => void) => void;
 	/** Read-only access to the RLM host, used by inspection commands. */
 	readonly inspect?: (request: string, payload: Record<string, unknown>, context: Context) => Promise<unknown>;
+	/** Pi's fork events in the worker's extensions. */
+	readonly extensionSessionEvents?: ExtensionSessionEvents;
 }
 
 export interface WorkerServiceScope {
@@ -73,6 +75,7 @@ export async function createSessionWorkerServices(options: {
 	readonly extensionUI?: ExtensionUIBridge;
 	readonly resourceSourceInfo?: SessionWorkerRuntime["resourceSourceInfo"];
 	readonly inspect?: SessionWorkerRuntime["inspect"];
+	readonly extensionSessionEvents?: ExtensionSessionEvents;
 	publish(scope: WorkerServiceScope, subscriptionId: string, update: ServiceProviderUpdate): Promise<void>;
 }): Promise<SessionWorkerServices> {
 	const agentControllerRuntimeFacet = defineFacet({
@@ -116,6 +119,7 @@ export async function createSessionWorkerServices(options: {
 					extensionCommands: options.legacyExtensionCommands,
 					resourceSourceInfo: options.resourceSourceInfo,
 					inspect: options.inspect,
+					extensionSessionEvents: options.extensionSessionEvents,
 				}),
 			);
 		},

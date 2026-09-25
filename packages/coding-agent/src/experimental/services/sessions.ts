@@ -9,6 +9,8 @@ export interface SessionAddress {
 export interface SessionSummary extends SessionAddress {
 	createdAt: number;
 	modifiedAt: number;
+	/** The Session file; reported by `SessionManagement.create` only. */
+	sessionFile?: string;
 }
 
 export interface SessionCreateOptions {

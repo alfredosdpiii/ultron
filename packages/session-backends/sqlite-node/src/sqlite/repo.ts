@@ -114,6 +114,10 @@ function readForkSourceEntries(
 		(stored) => stored.address.namespace === sourceAddress.namespace && stored.address.key === sourceAddress.key,
 	) as StoredValue<string | null> | undefined;
 	if (sourceTip === undefined) throw new Error(`Unknown source branch: ${options.branch}`);
+	// An entry anywhere in the tree forks along its own ancestry rather than the Branch tip's.
+	if (options.anyTreeEntry === true && options.entryId !== undefined) {
+		return scanBranchEntries(db, sessionId, { start: options.entryId, order: "oldestFirst" });
+	}
 	return sourceTip.value === null
 		? []
 		: scanBranchEntries(db, sessionId, { start: sourceTip.value, order: "oldestFirst" });

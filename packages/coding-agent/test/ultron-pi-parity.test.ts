@@ -9,7 +9,7 @@
  */
 import { type ChildProcess, spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
@@ -45,6 +45,34 @@ const ASK_EXTENSION = `export default function (pi) {
 }
 `;
 
+/** Logs Pi's session lifecycle events with ctx.hasUI and ctx.mode to lifecycle.jsonl in the cwd; blocks forks on request. */
+const LIFECYCLE_EXTENSION = `import { appendFileSync, existsSync } from "node:fs";
+import { join } from "node:path";
+export default function (pi) {
+	const log = (record) => appendFileSync(join(process.cwd(), "lifecycle.jsonl"), JSON.stringify(record) + "\\n");
+	pi.on("session_start", async (event, ctx) => {
+		log({ event: "session_start", reason: event.reason, previousSessionFile: event.previousSessionFile, hasUI: ctx.hasUI, mode: ctx.mode });
+		if (ctx.hasUI) ctx.ui.notify("started in " + ctx.mode, "info");
+	});
+	pi.on("session_before_fork", async (event) => {
+		log({ event: "session_before_fork", entryId: event.entryId, position: event.position });
+		if (existsSync(join(process.cwd(), "block-fork"))) return { cancel: true };
+	});
+	pi.on("session_shutdown", async (event) => {
+		log({ event: "session_shutdown", reason: event.reason, targetSessionFile: event.targetSessionFile });
+	});
+	pi.registerTool({
+		name: "probe",
+		label: "probe",
+		description: "Report hasUI and mode",
+		parameters: { type: "object", properties: {} },
+		async execute(_id, _params, _signal, _onUpdate, ctx) {
+			return { content: [{ type: "text", text: "hasUI=" + ctx.hasUI + " mode=" + ctx.mode }], details: {} };
+		},
+	});
+}
+`;
+
 const DISCOVERED_EXTENSION = `export default function (pi) {
 	pi.registerCommand("discovered", { description: "Found in the agent extensions dir", handler: async () => {} });
 }
@@ -75,6 +103,9 @@ function modelsJson(baseUrl: string): string {
 function script(request: ScriptedRequest): ScriptedReply {
 	if (request.lastUser.includes("use the ask tool")) {
 		return request.lastToolResult === undefined ? { tool: "ask", args: {} } : { text: request.lastToolResult };
+	}
+	if (request.lastUser.includes("use the probe tool")) {
+		return request.lastToolResult === undefined ? { tool: "probe", args: {} } : { text: request.lastToolResult };
 	}
 	if (request.lastUser.includes("use the bash tool")) {
 		return request.lastToolResult === undefined
@@ -172,6 +203,7 @@ describe("Pi parity through the real CLI", () => {
 	let agentDir: string;
 	let projectDir: string;
 	let askExtension: string;
+	let lifecycleExtension: string;
 	let provider: ScriptedProvider;
 	const clients: RpcClient[] = [];
 
@@ -184,6 +216,8 @@ describe("Pi parity through the real CLI", () => {
 		writeFileSync(join(agentDir, "extensions", "discovered.ts"), DISCOVERED_EXTENSION);
 		askExtension = join(projectDir, "exts", "ask.ts");
 		writeFileSync(askExtension, ASK_EXTENSION);
+		lifecycleExtension = join(projectDir, "exts", "lifecycle.ts");
+		writeFileSync(lifecycleExtension, LIFECYCLE_EXTENSION);
 		provider = new ScriptedProvider(script);
 		await provider.start();
 		writeFileSync(join(agentDir, "models.json"), modelsJson(provider.baseUrl));
@@ -438,6 +472,105 @@ describe("Pi parity through the real CLI", () => {
 		});
 		expect(JSON.stringify(events.at(-1)!.result)).toContain("second-chunk");
 	}, 90_000);
+
+	function lifecycle(): Array<Record<string, unknown>> {
+		const path = join(projectDir, "lifecycle.jsonl");
+		if (!existsSync(path)) return [];
+		return readFileSync(path, "utf8")
+			.split("\n")
+			.filter(Boolean)
+			.map((line) => JSON.parse(line) as Record<string, unknown>);
+	}
+
+	async function waitFor<T>(read: () => T | undefined, timeoutMs = 20_000): Promise<T> {
+		const deadline = Date.now() + timeoutMs;
+		while (true) {
+			const value = read();
+			if (value !== undefined) return value;
+			if (Date.now() > deadline) throw new Error("Timed out waiting for a condition");
+			await new Promise((resolveWait) => setTimeout(resolveWait, 100));
+		}
+	}
+
+	test("session_start sees Pi's hasUI and mode per client; its UI calls reach the client that is coming", async () => {
+		const notices: string[] = [];
+		const client = startClient(["--no-session", "-e", lifecycleExtension]);
+		client.onEvent((event) => {
+			const request = event as unknown as RpcExtensionUIRequest;
+			if (request.type === "extension_ui_request" && request.method === "notify") notices.push(request.message);
+		});
+		await client.start();
+		await client.promptAndWait("use the probe tool", undefined, 60_000);
+		expect(await client.getLastAssistantText()).toBe("hasUI=true mode=rpc");
+		expect(lifecycle()[0]).toMatchObject({ event: "session_start", reason: "startup", hasUI: true, mode: "rpc" });
+		// The notify from session_start, before the client attached, was queued for it.
+		expect(notices).toContain("started in rpc");
+
+		for (const [args, mode] of [
+			[["-p"], "print"],
+			[["--mode", "json", "-p"], "json"],
+		] as const) {
+			rmSync(join(projectDir, "lifecycle.jsonl"), { force: true });
+			const child = spawn(
+				"node",
+				[
+					cliPath,
+					"--provider",
+					"scripted",
+					"--model",
+					"scripted",
+					"--no-session",
+					"-e",
+					lifecycleExtension,
+					...args,
+					"use the probe tool",
+				],
+				{ cwd: projectDir, env: { ...process.env, ...env() }, stdio: ["ignore", "pipe", "pipe"] },
+			);
+			let stdout = "";
+			child.stdout!.on("data", (data: Buffer) => {
+				stdout += data.toString();
+			});
+			expect(await awaitExit(child, 60_000)).toBe(0);
+			expect(stdout).toContain(`hasUI=false mode=${mode}`);
+			expect(lifecycle()[0]).toMatchObject({ event: "session_start", reason: "startup", hasUI: false, mode });
+		}
+	}, 150_000);
+
+	test("forks emit Pi's session_before_fork (cancellable), session_start reason fork, and session_shutdown", async () => {
+		const client = startClient(["--no-session", "-e", lifecycleExtension]);
+		await client.start();
+		await client.promptAndWait("first", undefined, 60_000);
+		await client.promptAndWait("second", undefined, 60_000);
+		const source = await client.getState();
+		const second = (await client.getForkMessages()).find((message) => message.text === "second")!;
+
+		// An extension cancels: no new session, the client stays where it was.
+		writeFileSync(join(projectDir, "block-fork"), "");
+		expect(await client.fork(second.entryId)).toEqual({ cancelled: true });
+		expect(await client.clone()).toEqual({ cancelled: true });
+		expect((await client.getState()).sessionId).toBe(source.sessionId);
+		rmSync(join(projectDir, "block-fork"));
+
+		expect(await client.fork(second.entryId)).toEqual({ text: "second", cancelled: false });
+		const forked = await client.getState();
+		expect(forked.sessionId).not.toBe(source.sessionId);
+		const leafBeforeFork = source.sessionFile;
+		const events = lifecycle();
+		expect(events.filter((event) => event.event === "session_before_fork")).toEqual([
+			{ event: "session_before_fork", entryId: second.entryId, position: "before" },
+			expect.objectContaining({ event: "session_before_fork", position: "at" }),
+			{ event: "session_before_fork", entryId: second.entryId, position: "before" },
+		]);
+		// The fork's extensions start with reason "fork" and the source file; the source retires with reason "fork".
+		expect(
+			await waitFor(() => lifecycle().find((event) => event.event === "session_start" && event.reason === "fork")),
+		).toMatchObject({ previousSessionFile: leafBeforeFork, hasUI: true, mode: "rpc" });
+		expect(await waitFor(() => lifecycle().find((event) => event.event === "session_shutdown"))).toMatchObject({
+			reason: "fork",
+			targetSessionFile: forked.sessionFile,
+		});
+	}, 150_000);
 
 	test("print mode: with no client serving, extension dialogs get Pi's defaults", async () => {
 		const child = spawn(

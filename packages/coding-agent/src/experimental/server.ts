@@ -21,6 +21,7 @@ import { createUnixServer, getUnixSocketPath } from "@ultron/server/unix";
 import lockfile from "proper-lockfile";
 import type { AuthInput } from "../cli/experimental/command-options.ts";
 import { ENV_SESSION_DIR, getAgentDir } from "../config.ts";
+import type { ExtensionMode } from "../core/extensions/types.ts";
 import { resolvePath } from "../utils/paths.ts";
 import { CoordinatorConnection, type CoordinatorStartupLease, ensureCoordinator } from "./coordinator.ts";
 import { createPresentationFacetData } from "./plugins/bundled.ts";
@@ -42,6 +43,7 @@ import { RadiusRelayAuthResolver } from "./radius-auth.ts";
 import { RadiusRelayHost, type RadiusRelayHostStatus } from "./radius-relay.ts";
 import { createExperimentalServerServices } from "./services/server.ts";
 import type { SessionCreateOptions, SessionSummary } from "./services/sessions.ts";
+import { forkedSessionStart } from "./session-start.ts";
 import { SessionPluginSelectionConflictError, SessionWorkerManager } from "./session-worker-manager.ts";
 import { traceStartup } from "./startup-trace.ts";
 
@@ -353,6 +355,8 @@ export interface StartServerOptions {
 	readonly extensionPaths?: readonly string[];
 	/** Pi `--no-extensions` for new Session workers. */
 	readonly noExtensions?: boolean;
+	/** Pi's extension mode of this server's client ("tui", "rpc", "print", "json") for new Session workers. */
+	readonly extensionMode?: ExtensionMode;
 	/** Hold the server open without client or Session demand. Defaults to true for foreground servers. */
 	readonly keepAlive?: boolean;
 	/** Optional explicit Radius credential. Stored Radius auth is used when omitted. */
@@ -426,6 +430,9 @@ async function startServerBackend(
 				context,
 			);
 			try {
+				if (forkPath !== undefined) {
+					await session.setValue(forkedSessionStart, { previousSessionFile: source.path }, context);
+				}
 				if (createOptions.name !== undefined) await session.setName(createOptions.name, context);
 				return session.metadata;
 			} finally {
@@ -464,7 +471,10 @@ async function startServerBackend(
 			(await listSessions(context))
 				.map(summarize)
 				.sort((left, right) => left.sessionId.localeCompare(right.sessionId) || left.createdAt - right.createdAt),
-		create: async (createOptions, context) => summarize(await createSession(createOptions, context)),
+		create: async (createOptions, context) => {
+			const created = await createSession(createOptions, context);
+			return { ...summarize(created), sessionFile: created.path };
+		},
 		remove: async (sessionId, context) => {
 			const metadata = await resolveSession(sessionId, context);
 			await workers.closeSession(metadata, context);
@@ -592,7 +602,8 @@ export async function startServer(options: StartServerOptions = {}): Promise<Run
 		options.tools === undefined &&
 		options.excludeTools === undefined &&
 		options.extensionPaths === undefined &&
-		options.noExtensions === undefined
+		options.noExtensions === undefined &&
+		options.extensionMode === undefined
 			? undefined
 			: {
 					...(options.provider === undefined ? {} : { provider: options.provider }),
@@ -605,6 +616,7 @@ export async function startServer(options: StartServerOptions = {}): Promise<Run
 					...(options.excludeTools === undefined ? {} : { excludeTools: options.excludeTools }),
 					...(options.extensionPaths === undefined ? {} : { extensionPaths: options.extensionPaths }),
 					...(options.noExtensions === undefined ? {} : { noExtensions: options.noExtensions }),
+					...(options.extensionMode === undefined ? {} : { extensionMode: options.extensionMode }),
 				};
 	const directory = resolveServerDirectory(options.directory ?? process.env[LEGACY_ENV_SERVER_DIR]);
 	const { serverId, release } = await acquireServerProfile(

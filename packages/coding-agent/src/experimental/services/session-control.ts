@@ -57,6 +57,13 @@ export interface SessionControl {
 	readTree(context: Context): Promise<SessionTreeRead>;
 	/** Set or clear (`null`) an entry's label, as Pi's tree selector does. */
 	setLabel(entryId: string, label: string | null, context: Context): Promise<void>;
+	/**
+	 * Pi's `session_before_fork` in this Session's extensions, before a client forks or clones it. Extensions may
+	 * cancel; the client then creates no fork.
+	 */
+	beforeFork(entryId: string, position: "before" | "at", context: Context): Promise<{ cancelled: boolean }>;
+	/** The client moved on to `targetSessionFile`, a fork of this Session (Pi's `session_shutdown` reason "fork"). */
+	forked(targetSessionFile: string | null, context: Context): Promise<void>;
 }
 
 /** Read-only host requests the inspector may issue. None of them runs a search or starts work. */

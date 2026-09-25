@@ -359,24 +359,29 @@ export async function runNativeRpcMode(options: NativeRpcOptions): Promise<void>
 					if (entry?.type !== "message" || entry.message.role !== "user") {
 						throw new RpcCommandError(`Entry is not a user message: ${command.entryId}`);
 					}
+					// Pi's session_before_fork: the Session's extensions may cancel.
+					if ((await control.beforeFork(entry.id, "before", context)).cancelled) return ok({ cancelled: true });
 					// As in Pi, the new session holds only the path from the root to just before that message.
 					const created = await server.management.create(
 						{ forkFromSessionId: sessionId, forkPath: { entryId: entry.id, position: "before" } },
 						context,
 					);
 					if (options.noSession) createdSessions.add(created.sessionId);
+					await control.forked(created.sessionFile ?? null, context);
 					await switchTo(created.sessionId);
 					return ok({ text: messageText(entry.message), cancelled: false });
 				}
 				case "clone": {
 					// Pi's clone: a new session with the path from the root to the current leaf.
-					if ((await readView()).leafId === null)
-						throw new RpcCommandError("Cannot clone session: no current entry selected");
+					const leafId = (await readView()).leafId;
+					if (leafId === null) throw new RpcCommandError("Cannot clone session: no current entry selected");
+					if ((await control.beforeFork(leafId, "at", context)).cancelled) return ok({ cancelled: true });
 					const created = await server.management.create(
 						{ forkFromSessionId: sessionId, forkPath: { position: "at" } },
 						context,
 					);
 					if (options.noSession) createdSessions.add(created.sessionId);
+					await control.forked(created.sessionFile ?? null, context);
 					await switchTo(created.sessionId);
 					return ok({ cancelled: false });
 				}

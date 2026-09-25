@@ -1142,7 +1142,7 @@ export class ExperimentalClientTui implements Component {
 			(entryId) => {
 				close();
 				const text = messages.find((candidate) => candidate.id === entryId)?.text ?? "";
-				void this.#forkSession({ entryId, position: "before" }, text, "Forked to new session");
+				void this.#forkSession(entryId, { entryId, position: "before" }, text, "Forked to new session");
 			},
 			() => {
 				close();
@@ -1161,14 +1161,25 @@ export class ExperimentalClientTui implements Component {
 			this.#showStatus("Nothing to clone yet");
 			return;
 		}
-		await this.#forkSession({ position: "at" }, "", "Cloned to new session");
+		await this.#forkSession(view.leafId, { position: "at" }, "", "Cloned to new session");
 	}
 
-	async #forkSession(forkPath: SessionForkPath, editorText: string, done: string): Promise<void> {
+	async #forkSession(entryId: string, forkPath: SessionForkPath, editorText: string, done: string): Promise<void> {
 		const server = this.#server;
 		const sourceId = this.#sessionId;
-		if (server === undefined || sourceId === undefined) return;
+		const control = this.#control;
+		if (server === undefined || sourceId === undefined || control === undefined) return;
 		if (!(await this.#stopForSessionChange())) return;
+		// Pi's session_before_fork: the Session's extensions may cancel, and nothing changes.
+		try {
+			if ((await control.beforeFork(entryId, forkPath.position, BACKGROUND_CONTEXT)).cancelled) {
+				this.#requestRender();
+				return;
+			}
+		} catch (error) {
+			this.#showStatus(`Error: ${message(error)}`);
+			return;
+		}
 		const services = server.server.open({
 			services: [SessionManagement, PresentationPlugins],
 			assertAccess() {},
@@ -1179,6 +1190,7 @@ export class ExperimentalClientTui implements Component {
 			const management = services.use(SessionManagement);
 			const plugins = services.use(PresentationPlugins);
 			const created = await management.create({ forkFromSessionId: sourceId, forkPath }, BACKGROUND_CONTEXT);
+			await control.forked(created.sessionFile ?? null, BACKGROUND_CONTEXT);
 			const presentationPlugins = await plugins.prepareSession(
 				{ sessionId: created.sessionId, packagePaths: null },
 				BACKGROUND_CONTEXT,

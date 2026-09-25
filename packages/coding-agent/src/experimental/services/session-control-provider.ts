@@ -7,6 +7,12 @@ import { nativeSessionEntriesToPi } from "../../ultron/migration.ts";
 import type { CommandSourceInfo, LegacyExtensionCommands } from "./legacy-extensions.ts";
 import { INSPECTION_REQUESTS, type SessionCommandInfo, type SessionControl } from "./session-control.ts";
 
+/** Pi's session lifecycle events in the worker's extensions. */
+export interface ExtensionSessionEvents {
+	beforeFork(entryId: string, position: "before" | "at"): Promise<{ cancelled: boolean }>;
+	forked(targetSessionFile: string | undefined): void;
+}
+
 export function createSessionControl(options: {
 	readonly harness: AgentHarness;
 	readonly lane: AgentLane;
@@ -17,6 +23,7 @@ export function createSessionControl(options: {
 	/** Pi `SourceInfo` of prompt templates and skills by command name (`name`, `skill:name`). */
 	readonly resourceSourceInfo?: () => ReadonlyMap<string, CommandSourceInfo>;
 	readonly inspect?: (request: string, payload: Record<string, unknown>, context: Context) => Promise<unknown>;
+	readonly extensionSessionEvents?: ExtensionSessionEvents;
 }): SessionControl {
 	const { harness, lane } = options;
 	const bashAborts = new Set<AbortController>();
@@ -138,6 +145,11 @@ export function createSessionControl(options: {
 				labels: Object.fromEntries(converted.labels),
 				sessionFile: typeof path === "string" ? path : null,
 			};
+		},
+		beforeFork: async (entryId, position) =>
+			(await options.extensionSessionEvents?.beforeFork(entryId, position)) ?? { cancelled: false },
+		async forked(targetSessionFile) {
+			options.extensionSessionEvents?.forked(targetSessionFile ?? undefined);
 		},
 		async setLabel(entryId, label, context) {
 			const session = options.session;

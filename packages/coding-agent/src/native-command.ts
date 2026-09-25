@@ -225,6 +225,12 @@ export async function runNativeUltronCommand(parsed: Args, stdinContent: string 
 			.finally(() => process.exit(exitCode));
 	};
 	for (const name of Object.keys(signalExitCodes)) process.on(name, onSignal);
+	const runsTui =
+		parsed.mode !== "rpc" &&
+		command.prompt === undefined &&
+		!parsed.print &&
+		process.stdin.isTTY === true &&
+		process.stdout.isTTY === true;
 	try {
 		server = await startForegroundServer({
 			model: parsed.model,
@@ -245,6 +251,8 @@ export async function runNativeUltronCommand(parsed: Args, stdinContent: string 
 				? {}
 				: { extensionPaths: parsed.extensions.map((path) => (isLocalPath(path) ? resolvePath(path) : path)) }),
 			...(parsed.noExtensions ? { noExtensions: true } : {}),
+			// Pi's extension mode for this client: `ctx.mode`, and `ctx.hasUI` from the Session's start.
+			extensionMode: parsed.mode === "rpc" ? "rpc" : runsTui ? "tui" : parsed.mode === "json" ? "json" : "print",
 		});
 		traceStartup("cli.server-started");
 		if (parsed.mode === "rpc") {
@@ -258,7 +266,7 @@ export async function runNativeUltronCommand(parsed: Args, stdinContent: string 
 			});
 			return;
 		}
-		if (command.prompt === undefined && !parsed.print && process.stdin.isTTY && process.stdout.isTTY) {
+		if (runsTui) {
 			await runClientTui(forkSourceId === undefined ? command : { ...command, fork: forkSourceId }, { sessionDir });
 			return;
 		}

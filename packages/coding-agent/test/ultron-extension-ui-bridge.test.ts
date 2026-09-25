@@ -60,4 +60,27 @@ describe("ExtensionUIBridge", () => {
 		await expect(abandoned).resolves.toBe(false);
 		expect(bridge.serving).toBe(false);
 	});
+
+	test("a worker started for an interactive client queues UI for that client's first poll", async () => {
+		const bridge = new ExtensionUIBridge({ expectClient: true });
+		const ui = bridge.createContext(fallback);
+		// Before the client arrives (Pi's session_start in the TUI or RPC), the UI counts as served.
+		expect(bridge.serving).toBe(true);
+		ui.setStatus("ext", "ready");
+		const picked = ui.select("Early", ["a", "b"]);
+		const first = await bridge.service.poll(null, 1_000, BACKGROUND_CONTEXT);
+		expect(first.requests.map((item) => item.request.method)).toEqual(["setStatus", "select"]);
+		await bridge.service.respond(first.requests[1]!.request.id, { value: "a" }, BACKGROUND_CONTEXT);
+		await expect(picked).resolves.toBe("a");
+		bridge.close();
+	});
+
+	test("an expected client that never arrives leaves dialogs with Pi's defaults", async () => {
+		const bridge = new ExtensionUIBridge({ expectClient: true, expectedClientWaitMs: 50 });
+		const ui = bridge.createContext(fallback);
+		const confirmed = ui.confirm("Anyone?", "m");
+		await expect(confirmed).resolves.toBe(false);
+		expect(bridge.serving).toBe(false);
+		bridge.close();
+	});
 });

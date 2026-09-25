@@ -97,6 +97,7 @@ import {
 	type SessionWorkerServices,
 	type WorkerServiceScope,
 } from "./services/worker.ts";
+import { forkedSessionStart } from "./session-start.ts";
 import { traceStartup } from "./startup-trace.ts";
 
 export type { SessionWorkerRuntime } from "./services/worker.ts";
@@ -321,6 +322,13 @@ export const SessionWorkerOptionsSchema = StrictObject({
 	extensionPaths: Type.Optional(Type.Array(Type.String({ minLength: 1 }))),
 	/** Pi `--no-extensions`: skip extension discovery; explicit `extensionPaths` still load. */
 	noExtensions: Type.Optional(Type.Boolean()),
+	/**
+	 * Pi's extension mode for the client this worker is started for: `ctx.mode`, and whether `ctx.hasUI` is true
+	 * (and UI queued) before that client attaches. Absent, extensions see "tui" and UI only while a client serves it.
+	 */
+	extensionMode: Type.Optional(
+		Type.Union([Type.Literal("tui"), Type.Literal("rpc"), Type.Literal("print"), Type.Literal("json")]),
+	),
 	pluginManifestPaths: Type.Array(Type.String({ minLength: 1 })),
 });
 export type SessionWorkerOptions = Static<typeof SessionWorkerOptionsSchema>;
@@ -883,6 +891,7 @@ async function run(options: SessionWorkerRuntimeOptions, createHarness: CreateSe
 			extensionUI: runtime.extensionUI,
 			resourceSourceInfo: runtime.resourceSourceInfo,
 			inspect: runtime.inspect,
+			extensionSessionEvents: runtime.extensionSessionEvents,
 			modelRuntime: runtime.modelRuntime,
 			settingsManager: runtime.settingsManager,
 			facetLoader: runtime.facetLoader,
@@ -1386,11 +1395,18 @@ async function createCodingAgentHarness(
 		)
 	).harness;
 	let legacyExtensions: LegacyExtensionAdapter | undefined;
-	const extensionUI = new ExtensionUIBridge();
+	// A worker started for an interactive client (Pi's TUI or RPC mode) queues extension UI for it until it attaches.
+	const extensionUI = new ExtensionUIBridge({
+		expectClient: options.extensionMode === "tui" || options.extensionMode === "rpc",
+	});
 	try {
 		const lane = await harness.lane("main", TODO_CONTEXT);
+		// A Session the server just created as a fork starts with Pi's `session_start` reason "fork", once.
+		const forked = await session.getValue(forkedSessionStart, TODO_CONTEXT);
+		if (forked !== undefined) await session.deleteValue(forkedSessionStart, TODO_CONTEXT);
 		legacyExtensions = new LegacyExtensionAdapter({
 			ui: extensionUI,
+			...(options.extensionMode === undefined ? {} : { mode: options.extensionMode }),
 			session,
 			lane,
 			harness,
@@ -1400,7 +1416,11 @@ async function createCodingAgentHarness(
 			model: resolved.model,
 			systemPrompt,
 		});
-		legacyExtensions.bind();
+		legacyExtensions.bind(
+			forked === undefined
+				? { reason: "startup" }
+				: { reason: "fork", previousSessionFile: forked.value.previousSessionFile },
+		);
 		const extensionTools = legacyExtensions.tools;
 		await harness.setTools([...tools, ...extensionTools], TODO_CONTEXT);
 		const extensionToolNames = extensionTools.map((tool) => tool.name);
@@ -1558,6 +1578,11 @@ async function createCodingAgentHarness(
 				run: async (name, args) => legacyExtensions?.runCommand(name, args) ?? { notifications: [] },
 			},
 			extensionUI,
+			extensionSessionEvents: {
+				beforeFork: async (entryId, position) =>
+					(await legacyExtensions?.beforeFork(entryId, position)) ?? { cancelled: false },
+				forked: (targetSessionFile) => legacyExtensions?.forked(targetSessionFile),
+			},
 			resourceSourceInfo: () =>
 				new Map([
 					...resourceLoader.getPrompts().prompts.map((template) => [template.name, template.sourceInfo] as const),

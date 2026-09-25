@@ -9,6 +9,8 @@ const SERVING_GRACE_MS = 2_000;
 const MAX_POLL_MS = 30_000;
 /** Fire-and-forget requests kept for a client that is between polls. */
 const MAX_BUFFERED_EVENTS = 256;
+/** How long a worker started for an interactive client waits for its first poll before running headless. */
+const EXPECTED_CLIENT_WAIT_MS = 30_000;
 
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
 type RequestBody = DistributiveOmit<RpcExtensionUIRequest, "type" | "id">;
@@ -31,20 +33,40 @@ export class ExtensionUIBridge {
 	#lastPollEnd = Number.NEGATIVE_INFINITY;
 	#graceTimer: ReturnType<typeof setTimeout> | undefined;
 	readonly #now: () => number;
+	#polled = false;
+	/** Until then, a worker started for an interactive client counts as served before that client's first poll. */
+	readonly #expectedUntil: number;
 
-	constructor(options: { now?: () => number } = {}) {
+	/**
+	 * `expectClient`: the worker was started for an interactive client (the TUI or RPC) that has not polled yet.
+	 * Until it does (or `expectedClientWaitMs` passes), the UI counts as served: requests queue for it, and its first
+	 * poll receives them.
+	 */
+	constructor(options: { now?: () => number; expectClient?: boolean; expectedClientWaitMs?: number } = {}) {
 		this.#now = options.now ?? Date.now;
+		this.#expectedUntil =
+			options.expectClient === true
+				? this.#now() + (options.expectedClientWaitMs ?? EXPECTED_CLIENT_WAIT_MS)
+				: Number.NEGATIVE_INFINITY;
+		if (options.expectClient === true) this.#scheduleServingCheck(this.#expectedUntil - this.#now());
 	}
 
-	/** True while a presentation polls, or polled within the grace period. */
+	/** True while a presentation polls, polled within the grace period, or an expected client has not arrived yet. */
 	get serving(): boolean {
-		return this.#polls > 0 || this.#now() - this.#lastPollEnd < SERVING_GRACE_MS;
+		return (
+			this.#polls > 0 ||
+			this.#now() - this.#lastPollEnd < SERVING_GRACE_MS ||
+			(!this.#polled && this.#now() < this.#expectedUntil)
+		);
 	}
 
 	readonly service: ExtensionUIService = {
 		poll: async (requestedAfter, waitMs, context) => {
 			// A cursor from before this worker started (a reattached client) restarts from the beginning.
-			const after = requestedAfter !== null && requestedAfter > this.#seq ? 0 : requestedAfter;
+			let after = requestedAfter !== null && requestedAfter > this.#seq ? 0 : requestedAfter;
+			// The first client of a worker started for it also receives what was queued before it arrived.
+			if (after === null && !this.#polled && this.#expectedUntil !== Number.NEGATIVE_INFINITY) after = 0;
+			this.#polled = true;
 			this.#polls += 1;
 			try {
 				const collect = (): ExtensionUIRequestItem[] => {
@@ -185,14 +207,14 @@ export class ExtensionUIBridge {
 	}
 
 	/** Once nobody serves, open dialogs get Pi's defaults instead of waiting for an answer that cannot come. */
-	#scheduleServingCheck(): void {
+	#scheduleServingCheck(delayMs = SERVING_GRACE_MS): void {
 		if (this.#graceTimer !== undefined) clearTimeout(this.#graceTimer);
 		this.#graceTimer = setTimeout(() => {
 			this.#graceTimer = undefined;
 			if (this.serving) return;
 			this.#events = [];
 			for (const dialog of [...this.#dialogs.values()]) dialog.settle(undefined);
-		}, SERVING_GRACE_MS + 50);
+		}, delayMs + 50);
 		this.#graceTimer.unref?.();
 	}
 }

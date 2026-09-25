@@ -334,6 +334,7 @@ describe("experimental client TUI", () => {
 				sessionFile: null,
 			}));
 			const setLabel = vi.fn(async () => {});
+			const beforeFork = vi.fn(async () => ({ cancelled: false }));
 			const navigateTree = vi.fn(async () => ({
 				ok: true as const,
 				value: {
@@ -397,6 +398,8 @@ describe("experimental client TUI", () => {
 				inspect,
 				readTree,
 				setLabel,
+				beforeFork,
+				forked: async () => {},
 			});
 			sessionProvider.provide(LegacyExtensionCommands, {
 				list: async () => [],
@@ -697,6 +700,7 @@ describe("experimental client TUI", () => {
 					),
 				);
 				await vi.waitFor(() => expect(plain(component.render(80))).toContain("Forked to new session"));
+				expect(beforeFork).toHaveBeenCalledWith("entry-user", "before", expect.anything());
 				expect(attachment.value).toEqual({ status: "attached", sessionId: "three" });
 				expect(plain(component.render(80))).toContain("Session: three");
 				component.handleInput("\u0003");

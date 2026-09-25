@@ -12,6 +12,7 @@ import {
 } from "@ultron/chord";
 import { type RoutedSessionAttachment, type RoutedSessionHandle, ServerError } from "@ultron/server";
 import { Check } from "typebox/value";
+import type { ExtensionMode } from "../core/extensions/types.ts";
 import type { CoordinatorConnection, CoordinatorConnectionEvent } from "./coordinator.ts";
 import { spawnInternalProcess } from "./process.ts";
 import {
@@ -116,6 +117,7 @@ export class SessionWorkerManager {
 				readonly excludeTools?: readonly string[];
 				readonly extensionPaths?: readonly string[];
 				readonly noExtensions?: boolean;
+				readonly extensionMode?: ExtensionMode;
 		  }
 		| undefined;
 	readonly #workersBySession = new Map<string, WorkerRecord>();
@@ -150,6 +152,7 @@ export class SessionWorkerManager {
 			readonly excludeTools?: readonly string[];
 			readonly extensionPaths?: readonly string[];
 			readonly noExtensions?: boolean;
+			readonly extensionMode?: ExtensionMode;
 		},
 		onWorkerCountChanged?: (count: number) => void,
 	) {
@@ -568,6 +571,7 @@ export class SessionWorkerManager {
 				...(this.#model?.excludeTools === undefined ? {} : { excludeTools: [...this.#model.excludeTools] }),
 				...(this.#model?.extensionPaths === undefined ? {} : { extensionPaths: [...this.#model.extensionPaths] }),
 				...(this.#model?.noExtensions === true ? { noExtensions: true } : {}),
+				...(this.#model?.extensionMode === undefined ? {} : { extensionMode: this.#model.extensionMode }),
 			};
 			traceStartup("server.spawn-worker");
 			child = spawnInternalProcess("session-worker", [JSON.stringify(options)], {
