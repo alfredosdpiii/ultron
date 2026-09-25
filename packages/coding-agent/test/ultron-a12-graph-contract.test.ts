@@ -17,8 +17,9 @@ import { deferred, definition, hostFixture, journal, memoryDefinitionStore, wait
  * - A node whose dependency did not succeed is `skipped` with a reason naming it, transitively.
  * - A bound input that fails the node's schema, or refused admission, is an explicit `failed`
  *   node record; completed sibling results are preserved.
- * Not provided: any-of joins after exclusive routes (a join skips when either branch skipped),
- * bounded revision cycles, and per-workflow concurrency limits.
+ * - The default join is all-of: a join after exclusive routes skips when either branch skipped.
+ *   Any-of joins and bounded revision loops are covered in ultron-workflow-joins-loops.test.ts.
+ * Not provided: per-workflow concurrency limits.
  */
 
 const fixtures: Array<ReturnType<typeof hostFixture>> = [];

@@ -16,7 +16,7 @@ Ultron is a fork of Pi whose only agent runtime is the native RLM session worker
 - The host knows which lane issued each request, so tasks record their parent, child lanes can only query their own subtree, and cancelling a task stops its whole subtree.
 - Strategies: `deterministic`, `predict` (one tool-free model call with bounded repair), and `rlm` (a model lane). All share admission, idempotency, timeouts, usage accounting, and the durable journal. Results are always `verification: "unverified"`; only explicit checks (progress reassessment, goals, release gates) can say more.
 - `agents.spawn` and `rlm.spawn` tasks outlive the Python cell that started them; `agents.invoke` waits inside the cell. A child's deadline is capped at the root's remaining wall budget.
-- Workflows validate before any effect and support fan-in, conditional routes, explicit skips and failures, and keyed nodes.
+- Workflows validate before any effect and support fan-in, conditional routes, explicit skips and failures, and keyed nodes and workflows. Joins are all-of by default; `join: "any"` runs once every dependency is terminal and at least one succeeded (fan-in holds only succeeded dependencies). `revise: {from, until, max_rounds}` declares a bounded revision loop (at most 10 rounds): each round is its own task, admission, and `<key>:round-<n>` key, and the loop ends `converged`, `exhausted`, or `failed` with every round in the result. Arbitrary cycles are rejected.
 - Host modules (`src/ultron/*.ts`, Python classes in `src/ultron/rlm/*_api.py`):
   - `schedules` / `goals`: slot-keyed schedules that never double-fire, missed ticks coalesce, goals achieved only by passing required checks.
   - `skills`: version-pinned (content hash), explainable selection; frontmatter cannot grant capabilities.
@@ -38,5 +38,4 @@ All optional controls (permission prompts, risk blocking, capability enforcement
 - Without a sandbox, a model can read anything the user can, including test files outside the project. The live A46 run observed the model reading its own demonstration test; hostile-code or blind evaluation needs real isolation.
 - Snapshot checksums detect corruption, not a writer who recomputes the digest.
 - Quitting in the middle of a root turn still stops that turn; work started by earlier turns continues. A hard-killed client leaves idle work to a 30-second orphan grace.
-- Workflows have no any-of joins or bounded revision cycles.
 - Pi import brings in the active branch only; labels and model changes are reported as skipped.

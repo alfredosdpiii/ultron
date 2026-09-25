@@ -66,16 +66,54 @@ type WorkflowRoute = {
 	equals: JsonValue;
 };
 
+/** Hard upper bound on the rounds of any revision loop. */
+const WORKFLOW_MAX_ROUNDS = 10;
+
+type WorkflowRevision = {
+	/** Reviewer node: depends on the revised node and is re-run after every round of it. */
+	from: string;
+	/** Condition on the reviewer's result that ends the loop as converged. */
+	until: { field?: string; equals: JsonValue };
+	maxRounds: number;
+};
+
 type WorkflowNode = Omit<TaskRequest, "input"> & {
 	id: string;
 	input?: JsonValue;
 	dependsOn: string[];
-	/** One dependency (its value is the input) or several (fan-in: an object keyed by dependency ID). */
+	/**
+	 * One dependency (its value is the input) or several (fan-in: an object keyed by dependency ID; under an any-of
+	 * join it holds only the dependencies that succeeded).
+	 */
 	inputFrom?: string | string[];
 	when?: WorkflowRoute;
+	/** `all`: runs only when every dependency succeeded. `any`: runs when at least one did, once all are terminal. */
+	join: "all" | "any";
+	revise?: WorkflowRevision;
 };
 
-type WorkflowOutcome = NativeResult | { status: "skipped"; reason: string };
+type WorkflowRound = { round: number; work: WorkflowOutcome; review?: WorkflowOutcome };
+
+type WorkflowOutcome = (
+	| NativeResult
+	| { status: "skipped"; reason: string }
+	| { status: "exhausted"; value?: JsonValue; verification: "unverified" }
+) & {
+	/** Present on a revised node: how its loop ended and every round's work and review results. */
+	revision?: { outcome: "converged" | "exhausted" | "failed"; rounds: number; max_rounds: number };
+	rounds?: WorkflowRound[];
+};
+
+/** The compared value of a route or loop condition, or undefined when the field is absent. */
+function conditionMet(value: JsonValue | undefined, condition: { field?: string; equals: JsonValue }): boolean {
+	const actual =
+		condition.field === undefined
+			? value
+			: value !== null && typeof value === "object" && !Array.isArray(value)
+				? value[condition.field]
+				: undefined;
+	return actual !== undefined && canonicalJson(actual) === canonicalJson(condition.equals);
+}
 
 function canonicalJson(value: JsonValue): string {
 	if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
@@ -657,11 +695,33 @@ export class NativeRlmHost {
 	}
 
 	private workflow(payload: Payload): WorkflowNode[] {
-		fields(payload, ["nodes"]);
+		fields(payload, ["nodes", "key"]);
 		if (!Array.isArray(payload.nodes)) throw new Error("nodes must be an array");
+		const workflowKey = payload.key === undefined ? undefined : nonemptyString(payload.key, "Workflow key");
+		const condition = (value: unknown, name: string): { field?: string; equals: JsonValue } => {
+			const route = objectInput(value);
+			if (!Object.hasOwn(route, "equals") || !isJsonValue(route.equals))
+				throw new Error(`${name}.equals must be a JSON value`);
+			return {
+				...(route.field === undefined ? {} : { field: nonemptyString(route.field, `${name}.field`) }),
+				equals: route.equals,
+			};
+		};
 		const nodes: WorkflowNode[] = payload.nodes.map((value) => {
 			const node = objectInput(value);
-			fields(node, ["id", "definition", "input", "model", "key", "timeout_ms", "dependsOn", "inputFrom", "when"]);
+			fields(node, [
+				"id",
+				"definition",
+				"input",
+				"model",
+				"key",
+				"timeout_ms",
+				"dependsOn",
+				"inputFrom",
+				"when",
+				"join",
+				"revise",
+			]);
 			const id = nonemptyString(node.id, "Workflow node ID");
 			const definition = definitionKey(node.definition);
 			const item = this.definition(definition);
@@ -680,18 +740,39 @@ export class NativeRlmHost {
 				if (inputFrom.length === 0 || new Set(inputFrom).size !== inputFrom.length)
 					throw new Error("inputFrom must be a nonempty array of unique dependencies");
 			} else if (node.inputFrom !== undefined) inputFrom = nonemptyString(node.inputFrom, "inputFrom");
+			const join = node.join === undefined ? "all" : node.join;
+			if (join !== "all" && join !== "any") throw new Error('join must be "all" or "any"');
+			if (join === "any") {
+				// Any-of over a single dependency is an all-join; a single bound input may be absent.
+				if (dependsOn.length < 2) throw new Error('join "any" requires at least two dependencies');
+				if (typeof inputFrom === "string")
+					throw new Error('join "any" requires inputFrom to be an array (fan-in of succeeded dependencies)');
+			}
 			let when: WorkflowRoute | undefined;
 			if (node.when !== undefined) {
-				const route = objectInput(node.when);
-				fields(route, ["node", "field", "equals"]);
-				const routeNode = nonemptyString(route.node, "when.node");
+				fields(objectInput(node.when), ["node", "field", "equals"]);
+				const routeNode = nonemptyString((node.when as Payload).node, "when.node");
 				if (!dependsOn.includes(routeNode)) throw new Error("when.node must name a dependency");
-				if (!Object.hasOwn(route, "equals") || !isJsonValue(route.equals))
-					throw new Error("when.equals must be a JSON value");
-				when = {
-					node: routeNode,
-					...(route.field === undefined ? {} : { field: nonemptyString(route.field, "when.field") }),
-					equals: route.equals,
+				when = { node: routeNode, ...condition(node.when, "when") };
+			}
+			let revise: WorkflowRevision | undefined;
+			if (node.revise !== undefined) {
+				const loop = objectInput(node.revise);
+				fields(loop, ["from", "until", "max_rounds"]);
+				const maxRounds = loop.max_rounds;
+				if (
+					typeof maxRounds !== "number" ||
+					!Number.isSafeInteger(maxRounds) ||
+					maxRounds < 1 ||
+					maxRounds > WORKFLOW_MAX_ROUNDS
+				)
+					throw new Error(`revise.max_rounds must be an integer between 1 and ${WORKFLOW_MAX_ROUNDS}`);
+				if (loop.until === undefined) throw new Error("revise.until is required");
+				fields(objectInput(loop.until), ["field", "equals"]);
+				revise = {
+					from: nonemptyString(loop.from, "revise.from"),
+					until: condition(loop.until, "revise.until"),
+					maxRounds,
 				};
 			}
 			if (inputFrom !== undefined) {
@@ -703,14 +784,19 @@ export class NativeRlmHost {
 				if (!this.registry.isValidInput(item, node.input))
 					throw this.registry.validationError(item, node.input, "input");
 			}
+			const options = taskOptions(node);
 			return {
 				id,
 				definition,
 				input: node.input as JsonValue | undefined,
 				dependsOn,
 				inputFrom,
+				join,
 				...(when === undefined ? {} : { when }),
-				...taskOptions(node),
+				...(revise === undefined ? {} : { revise }),
+				...options,
+				// A keyed workflow gives every node a stable key; an explicit node key wins.
+				key: options.key ?? (workflowKey === undefined ? undefined : `${workflowKey}:${id}`),
 			};
 		});
 		const ids = new Set(nodes.map((node) => node.id));
@@ -718,6 +804,17 @@ export class NativeRlmHost {
 		for (const node of nodes) {
 			if (node.dependsOn.some((dependency) => !ids.has(dependency))) throw new Error("Unknown workflow dependency");
 		}
+		// Revision loops are declared constructs, not edges: the topology check below still sees a DAG.
+		const byId = new Map(nodes.map((node) => [node.id, node]));
+		const ancestors = (id: string, seen = new Set<string>()): Set<string> => {
+			for (const dependency of byId.get(id)?.dependsOn ?? [])
+				if (!seen.has(dependency)) {
+					seen.add(dependency);
+					ancestors(dependency, seen);
+				}
+			return seen;
+		};
+		const reviewers = new Set<string>();
 		const pending = new Set(ids);
 		while (pending.size) {
 			const ready = nodes.filter(
@@ -726,7 +823,225 @@ export class NativeRlmHost {
 			if (!ready.length) throw new Error("Workflow contains a cycle");
 			for (const node of ready) pending.delete(node.id);
 		}
+		for (const node of nodes) {
+			if (!node.revise) continue;
+			const reviewer = byId.get(node.revise.from);
+			if (!reviewer) throw new Error("revise.from must name a workflow node");
+			if (!reviewer.dependsOn.includes(node.id)) throw new Error("revise.from must depend on the revised node");
+			if (reviewer.revise) throw new Error("A revision reviewer cannot itself be revised");
+			if (reviewer.when) throw new Error("A revision reviewer cannot have a when route");
+			if (reviewers.has(reviewer.id)) throw new Error("A node can review only one revision loop");
+			reviewers.add(reviewer.id);
+			// The reviewer re-runs every round, so its other inputs must be settled before the loop starts.
+			const before = ancestors(node.id);
+			if (reviewer.dependsOn.some((dependency) => dependency !== node.id && !before.has(dependency)))
+				throw new Error("A revision reviewer may depend only on the revised node and its ancestors");
+		}
 		return nodes;
+	}
+
+	/**
+	 * Decides whether a ready node runs and with what input, from its dependencies' terminal outcomes.
+	 * Returns the input to run with, or the explicit outcome that replaces running it.
+	 */
+	private workflowInput(
+		node: WorkflowNode,
+		output: ReadonlyMap<string, WorkflowOutcome>,
+	): { input: JsonValue } | { outcome: WorkflowOutcome } {
+		const statusOf = (dependency: string) => output.get(dependency)!.status;
+		if (node.join === "all") {
+			const unmet = node.dependsOn.find((dependency) => statusOf(dependency) !== "succeeded");
+			if (unmet !== undefined)
+				return {
+					outcome: { status: "skipped", reason: `Dependency ${unmet} did not succeed (${statusOf(unmet)})` },
+				};
+		} else if (!node.dependsOn.some((dependency) => statusOf(dependency) === "succeeded"))
+			return {
+				outcome: {
+					status: "skipped",
+					reason: `No dependency succeeded (${node.dependsOn.map((dependency) => `${dependency}: ${statusOf(dependency)}`).join(", ")})`,
+				},
+			};
+		const succeeded = (dependency: string) => statusOf(dependency) === "succeeded";
+		const resultOf = (dependency: string) => (output.get(dependency) as NativeResult).value;
+		if (node.when) {
+			const label = `${node.when.node}${node.when.field === undefined ? "" : `.${node.when.field}`}`;
+			if (!succeeded(node.when.node))
+				return {
+					outcome: {
+						status: "skipped",
+						reason: `Route dependency ${node.when.node} did not succeed (${statusOf(node.when.node)})`,
+					},
+				};
+			if (!conditionMet(resultOf(node.when.node), node.when))
+				return { outcome: { status: "skipped", reason: `Route condition on ${label} not met` } };
+		}
+		const input =
+			node.inputFrom === undefined
+				? node.input
+				: Array.isArray(node.inputFrom)
+					? Object.fromEntries(
+							node.inputFrom.filter(succeeded).map((source) => [source, resultOf(source) ?? null]),
+						)
+					: resultOf(node.inputFrom);
+		return { input: input as JsonValue };
+	}
+
+	/** Validates a bound input, admits the node's task, and waits for its durable terminal result. */
+	private async workflowTask(
+		node: WorkflowNode,
+		input: JsonValue | undefined,
+		key: string | undefined,
+		context: Context,
+		parentId: string | undefined,
+	): Promise<WorkflowOutcome> {
+		const definition = this.definition(node.definition);
+		// A bound input that does not fit fails this node explicitly; nothing is spawned for it.
+		if (!isJsonValue(input) || !this.registry.isValidInput(definition, input))
+			return {
+				status: "failed",
+				error: `Bound input rejected: ${this.registry.validationError(definition, input, "input").message}`,
+				verification: "unverified",
+			};
+		let task: TaskRecord;
+		try {
+			task = await this.spawnTask({ ...node, input, key }, context, parentId);
+		} catch (error) {
+			// Refused admission (capacity, deadline, closed host) is an explicit node failure.
+			return {
+				status: "failed",
+				error: `Admission refused: ${error instanceof Error ? error.message : String(error)}`,
+				verification: "unverified",
+			};
+		}
+		return await (task.promise ?? task.result!);
+	}
+
+	/**
+	 * Runs a bounded revision loop: the revised node, then its reviewer, repeated with the review as input until the
+	 * reviewer's result meets `until` or `max_rounds` is reached. Every round is its own task (keyed
+	 * `<key>:round-<n>`) and its own admission. Returns the revised node's and the reviewer's outcomes.
+	 */
+	private async workflowLoop(
+		work: WorkflowNode,
+		reviewer: WorkflowNode,
+		firstInput: JsonValue,
+		output: ReadonlyMap<string, WorkflowOutcome>,
+		context: Context,
+		parentId: string | undefined,
+	): Promise<[WorkflowOutcome, WorkflowOutcome]> {
+		const revise = work.revise!;
+		const rounds: WorkflowRound[] = [];
+		const roundKey = (node: WorkflowNode, round: number) =>
+			node.key === undefined ? undefined : `${node.key}:round-${round}`;
+		const finish = (
+			outcome: "converged" | "exhausted" | "failed",
+			workResult: WorkflowOutcome,
+			reviewResult: WorkflowOutcome,
+		): [WorkflowOutcome, WorkflowOutcome] => [
+			{ ...workResult, revision: { outcome, rounds: rounds.length, max_rounds: revise.maxRounds }, rounds },
+			reviewResult,
+		];
+		let input = firstInput;
+		for (let round = 1; ; round++) {
+			const workResult = await this.workflowTask(work, input, roundKey(work, round), context, parentId);
+			if (workResult.status !== "succeeded") {
+				const skipped: WorkflowOutcome = {
+					status: "skipped",
+					reason: `Dependency ${work.id} did not succeed (${workResult.status})`,
+				};
+				rounds.push({ round, work: workResult });
+				return finish("failed", workResult, skipped);
+			}
+			const view = new Map(output).set(work.id, workResult);
+			const decided = this.workflowInput(reviewer, view);
+			const reviewResult =
+				"outcome" in decided
+					? decided.outcome
+					: await this.workflowTask(reviewer, decided.input, roundKey(reviewer, round), context, parentId);
+			rounds.push({ round, work: workResult, review: reviewResult });
+			if (reviewResult.status !== "succeeded")
+				return finish(
+					"failed",
+					{
+						status: "failed",
+						value: workResult.value,
+						error: `Reviewer ${reviewer.id} did not succeed in round ${round} (${reviewResult.status})`,
+						verification: "unverified",
+					},
+					reviewResult,
+				);
+			if (conditionMet((reviewResult as NativeResult).value, revise.until))
+				return finish("converged", workResult, reviewResult);
+			if (round === revise.maxRounds)
+				return finish(
+					"exhausted",
+					{ status: "exhausted", value: workResult.value, verification: "unverified" },
+					reviewResult,
+				);
+			input = {
+				input: firstInput,
+				previous: (workResult as NativeResult).value ?? null,
+				review: (reviewResult as NativeResult).value ?? null,
+				round: round + 1,
+			};
+		}
+	}
+
+	private async runWorkflow(
+		nodes: WorkflowNode[],
+		context: Context,
+		parentId: string | undefined,
+	): Promise<Record<string, WorkflowOutcome>> {
+		const output = new Map<string, WorkflowOutcome>();
+		const byId = new Map(nodes.map((node) => [node.id, node]));
+		// A reviewer runs inside its loop; its outcome is published when the loop ends.
+		const reviewers = new Set(nodes.flatMap((node) => (node.revise ? [node.revise.from] : [])));
+		// A dependency is satisfied only by its durable terminal result, never by admission.
+		while (output.size < nodes.length) {
+			const ready = nodes.filter(
+				(node) =>
+					!output.has(node.id) &&
+					!reviewers.has(node.id) &&
+					node.dependsOn.every((dependency) => output.has(dependency)),
+			);
+			const results = await Promise.all(
+				ready.map(async (node): Promise<Array<readonly [string, WorkflowOutcome]>> => {
+					const reviewer = node.revise ? byId.get(node.revise.from)! : undefined;
+					const decided = this.workflowInput(node, output);
+					if ("outcome" in decided) {
+						if (!reviewer) return [[node.id, decided.outcome]];
+						return [
+							[node.id, decided.outcome],
+							[
+								reviewer.id,
+								{
+									status: "skipped",
+									reason: `Dependency ${node.id} did not succeed (${decided.outcome.status})`,
+								},
+							],
+						];
+					}
+					if (reviewer) {
+						const [work, review] = await this.workflowLoop(
+							node,
+							reviewer,
+							decided.input,
+							output,
+							context,
+							parentId,
+						);
+						return [
+							[node.id, work],
+							[reviewer.id, review],
+						];
+					}
+					return [[node.id, await this.workflowTask(node, decided.input, node.key, context, parentId)]];
+				}),
+			);
+			for (const [id, result] of results.flat()) output.set(id, result);
+		}
+		return Object.fromEntries(output);
 	}
 
 	async handle(type: string, payload: Payload, context: Context, caller: HostCaller = ROOT_CALLER): Promise<unknown> {
@@ -910,79 +1225,7 @@ export class NativeRlmHost {
 		}
 		if (type === "workflows.run") {
 			const nodes = this.workflow(payload);
-			const output = new Map<string, WorkflowOutcome>();
-			// A dependency is satisfied only by its durable terminal result, never by admission.
-			while (output.size < nodes.length) {
-				const ready = nodes.filter(
-					(node) => !output.has(node.id) && node.dependsOn.every((dependency) => output.has(dependency)),
-				);
-				const results = await Promise.all(
-					ready.map(async (node): Promise<readonly [string, WorkflowOutcome]> => {
-						const unmet = node.dependsOn.find((dependency) => output.get(dependency)!.status !== "succeeded");
-						if (unmet !== undefined)
-							return [
-								node.id,
-								{
-									status: "skipped",
-									reason: `Dependency ${unmet} did not succeed (${output.get(unmet)!.status})`,
-								},
-							] as const;
-						const resultOf = (dependency: string) => (output.get(dependency) as NativeResult).value;
-						if (node.when) {
-							const routed = resultOf(node.when.node);
-							const actual =
-								node.when.field === undefined
-									? routed
-									: routed !== null && typeof routed === "object" && !Array.isArray(routed)
-										? routed[node.when.field]
-										: undefined;
-							if (actual === undefined || canonicalJson(actual) !== canonicalJson(node.when.equals))
-								return [
-									node.id,
-									{
-										status: "skipped",
-										reason: `Route condition on ${node.when.node}${node.when.field === undefined ? "" : `.${node.when.field}`} not met`,
-									},
-								] as const;
-						}
-						const input =
-							node.inputFrom === undefined
-								? node.input
-								: Array.isArray(node.inputFrom)
-									? Object.fromEntries(node.inputFrom.map((source) => [source, resultOf(source) ?? null]))
-									: resultOf(node.inputFrom);
-						const definition = this.definition(node.definition);
-						// A bound input that does not fit fails this node explicitly; nothing is spawned for it.
-						if (!isJsonValue(input) || !this.registry.isValidInput(definition, input))
-							return [
-								node.id,
-								{
-									status: "failed",
-									error: `Bound input rejected: ${this.registry.validationError(definition, input, "input").message}`,
-									verification: "unverified",
-								},
-							] as const;
-						let task: TaskRecord;
-						try {
-							task = await this.spawnTask({ ...node, input }, context, parentId);
-						} catch (error) {
-							// Refused admission (capacity, deadline, closed host) is an explicit node failure.
-							return [
-								node.id,
-								{
-									status: "failed",
-									error: `Admission refused: ${error instanceof Error ? error.message : String(error)}`,
-									verification: "unverified",
-								},
-							] as const;
-						}
-						const result = await (task.promise ?? task.result!);
-						return [node.id, result] as const;
-					}),
-				);
-				for (const [id, result] of results) output.set(id, result);
-			}
-			return structuredClone(Object.fromEntries(output));
+			return structuredClone(await this.runWorkflow(nodes, context, parentId));
 		}
 		throw new Error(`Ultron RLM host request is not wired: ${type}`);
 	}
