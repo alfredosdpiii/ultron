@@ -105,4 +105,49 @@ describe("Transcript service", () => {
 		await runtime.dispose();
 		expect(unsubscribe).toHaveBeenCalledOnce();
 	});
+
+	test("tool events with undefined fields still reach subscribers, as JSON", async () => {
+		let listener: EventListener | undefined;
+		const handle: WatchHandle<LaneSnapshot> = {
+			snapshot: laneSnapshot(),
+			start(next) {
+				listener = next;
+			},
+			resnapshot: async () => laneSnapshot(),
+			unsubscribe() {},
+		};
+		const runtime = createTranscriptService({ watch: async () => handle } as unknown as AgentLane, replicatedState);
+		const events: unknown[] = [];
+		runtime.service.state.subscribe((value, _context, delivery) => {
+			if (delivery.kind === "update" && value.event !== null) events.push(value.event);
+		});
+		await runtime.activate();
+		const base = { lane: "main", runId: "run-1", turnId: "turn-1", toolCallId: "call-1", toolName: "bash" };
+		await listener?.({ type: "run_start", lane: "main", runId: "run-1", startedAt: 1 }, BACKGROUND_CONTEXT);
+		await listener?.({ type: "tool_start", ...base, args: { command: "ls" } } as HarnessEvent, BACKGROUND_CONTEXT);
+		await listener?.(
+			{ type: "tool_update", ...base, partialResult: { content: [], details: undefined } } as HarnessEvent,
+			BACKGROUND_CONTEXT,
+		);
+		await listener?.(
+			{
+				type: "tool_end",
+				...base,
+				result: { content: [{ type: "text", text: "a.txt" }], details: undefined },
+				isError: false,
+				terminate: false,
+			} as HarnessEvent,
+			BACKGROUND_CONTEXT,
+		);
+		expect(events.map((event) => (event as { type: string }).type)).toEqual([
+			"run_start",
+			"tool_start",
+			"tool_update",
+			"tool_end",
+		]);
+		expect(events[2]).toMatchObject({ partialResult: { content: [] } });
+		expect(events[2]).not.toHaveProperty("partialResult.details");
+		expect(events[3]).toMatchObject({ result: { content: [{ type: "text", text: "a.txt" }] }, isError: false });
+		await runtime.dispose();
+	});
 });

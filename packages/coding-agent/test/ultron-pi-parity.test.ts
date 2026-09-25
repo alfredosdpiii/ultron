@@ -76,6 +76,11 @@ function script(request: ScriptedRequest): ScriptedReply {
 	if (request.lastUser.includes("use the ask tool")) {
 		return request.lastToolResult === undefined ? { tool: "ask", args: {} } : { text: request.lastToolResult };
 	}
+	if (request.lastUser.includes("use the bash tool")) {
+		return request.lastToolResult === undefined
+			? { tool: "bash", args: { command: "echo first-chunk; sleep 0.5; echo second-chunk" } }
+			: { text: "bash done" };
+	}
 	if (request.lastUser.includes("slow turn")) return { text: "SHOULD_NOT_APPEAR", delayMs: 4_000 };
 	return { text: `reply:${request.lastUser.slice(0, 60)}` };
 }
@@ -383,6 +388,45 @@ describe("Pi parity through the real CLI", () => {
 		await client.promptAndWait("fresh", undefined, 60_000);
 		expect(texts((await client.getTree()).tree)).toEqual(["fresh", "reply:fresh"]);
 	}, 120_000);
+
+	test("RPC streams Pi's tool execution lifecycle: start, updates, end", async () => {
+		const client = startClient(["--no-session"]);
+		await client.start();
+		const events: Array<Record<string, unknown>> = [];
+		client.onEvent((event) => {
+			const record = event as unknown as Record<string, unknown>;
+			if (typeof record.type === "string" && record.type.startsWith("tool_execution_")) events.push(record);
+		});
+		await client.promptAndWait("use the bash tool", undefined, 60_000);
+		expect(await client.getLastAssistantText()).toBe("bash done");
+		expect(events[0]).toMatchObject({
+			type: "tool_execution_start",
+			toolName: "bash",
+			args: { command: "echo first-chunk; sleep 0.5; echo second-chunk" },
+		});
+		const toolCallId = events[0]!.toolCallId;
+		expect(typeof toolCallId).toBe("string");
+		const updates = events.slice(1, -1);
+		expect(updates.length).toBeGreaterThan(0);
+		for (const update of updates) {
+			expect(update).toMatchObject({
+				type: "tool_execution_update",
+				toolCallId,
+				toolName: "bash",
+				args: { command: "echo first-chunk; sleep 0.5; echo second-chunk" },
+				partialResult: { content: expect.any(Array) },
+			});
+		}
+		expect(JSON.stringify(updates.at(-1)!.partialResult)).toContain("first-chunk");
+		expect(events.at(-1)).toMatchObject({
+			type: "tool_execution_end",
+			toolCallId,
+			toolName: "bash",
+			isError: false,
+			result: { content: [expect.objectContaining({ type: "text" })] },
+		});
+		expect(JSON.stringify(events.at(-1)!.result)).toContain("second-chunk");
+	}, 90_000);
 
 	test("print mode: with no client serving, extension dialogs get Pi's defaults", async () => {
 		const child = spawn(

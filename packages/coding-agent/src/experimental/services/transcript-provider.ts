@@ -50,8 +50,11 @@ export function createTranscriptService(
 		);
 	};
 
-	const onEvent = (event: HarnessEvent, context: Context): void => {
+	const onEvent = (sourceEvent: HarnessEvent, context: Context): void => {
 		if (rebaseError !== undefined) throw rebaseError;
+		// Replicated state holds JSON only: tool results, partial results, and streaming messages can carry
+		// `undefined` fields (`details: undefined`), which the draft rejects, losing the event for every client.
+		const event = withoutUndefined(sourceEvent);
 		const forwarded = toLaneWatchEvent(event);
 		if (forwarded === undefined) return;
 		if (state.value.snapshot === null) throw new Error("Transcript service is not active");
@@ -121,4 +124,38 @@ function toLaneWatchEvent(event: HarnessEvent): LaneWatchEvent | undefined {
 		default:
 			return event as LaneWatchEvent;
 	}
+}
+
+/** The value as JSON would carry it: `undefined` object fields dropped, `undefined` array items as `null`. Unchanged values are returned as is. */
+export function withoutUndefined<T>(value: T): T {
+	if (typeof value !== "object" || value === null) return value;
+	if (Array.isArray(value)) {
+		let copy: unknown[] | undefined;
+		for (let index = 0; index < value.length; index++) {
+			const item = value[index];
+			const next = item === undefined ? null : withoutUndefined(item);
+			if (next !== item) {
+				copy ??= value.slice();
+				copy[index] = next;
+			}
+		}
+		return (copy ?? value) as T;
+	}
+	const prototype = Object.getPrototypeOf(value);
+	if (prototype !== Object.prototype && prototype !== null) return value;
+	const record = value as Record<string, unknown>;
+	let copy: Record<string, unknown> | undefined;
+	for (const [key, item] of Object.entries(record)) {
+		if (item === undefined) {
+			copy ??= { ...record };
+			delete copy[key];
+			continue;
+		}
+		const next = withoutUndefined(item);
+		if (next !== item) {
+			copy ??= { ...record };
+			copy[key] = next;
+		}
+	}
+	return (copy ?? value) as T;
 }
