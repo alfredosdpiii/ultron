@@ -8,7 +8,7 @@ Ultron is an RLM-first fork of Pi. The fork starts from upstream Pi main and kee
 - Typed agent methods and optional workflow nodes use one task service.
 - Permission prompts, risk blocking, capability enforcement, budget enforcement, completion gates, refinement approval, and mandatory sandboxing are off by default.
 - Schema validation, cancellation, bounded protocol/output handling, and truthful `unverified` results remain active.
-- Pi session state remains authoritative until the Ultron session service proves a full replacement across branch, fork, resume, and restart.
+- Sessions use Ultron's native session format. Pi sessions are brought in explicitly with `ultron migrate import-pi` and can be exported back with `ultron migrate export-pi`.
 
 ## Planned runtime layers
 

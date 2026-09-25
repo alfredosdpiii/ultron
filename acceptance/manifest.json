@@ -318,10 +318,22 @@
             "a Jev skip decision sends no request of any kind to Hindsight, for every scope and entry point",
             "scope tags are pinned through retain, correction and Hindsight consolidation; a cross-scope merge is refused"
           ]
+        },
+        {
+          "file": "packages/coding-agent/test/ultron-a16-live-hindsight.test.ts",
+          "tests": [
+            "recall after a real consolidation returns only items carrying exactly the requested scope's tags"
+          ]
         }
       ],
-      "status_when_green": "unverified",
-      "notes": "Skip and scope pinning proven against the Hindsight HTTP adapter with a captured fake. Consolidation runs inside Hindsight and has not been exercised against a live backend."
+      "status_when_green": "passed",
+      "notes": "Skip and scope pinning against the Hindsight adapter by default; consolidation is proven by a recorded run against a live Hindsight 0.9.2 (ULTRON_LIVE_HINDSIGHT=1).",
+      "live_evidence": {
+        "kind": "demonstration",
+        "files": [
+          "acceptance/demonstrations/a16-live-hindsight.json"
+        ]
+      }
     },
     {
       "id": "A17",

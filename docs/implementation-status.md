@@ -1,66 +1,41 @@
 # Ultron implementation status
 
-## Native and tested
+Ultron is a fork of Pi whose only agent runtime is the native RLM session worker. This file describes what is built. Whether each A01-A46 row is proven is decided by the acceptance runner, not by this file: see [a01-a46-acceptance.md](a01-a46-acceptance.md).
 
-- Ultron is a separate fork with package and command identity `ultron`.
-- Ultron resolves its own configuration under `~/.ultron/agent`, while preserving project-local `.pi` resource compatibility.
-- The durable session worker owns the native `ipython` tool.
-- Python state persists across calls, output is bounded, and Python failures are returned as tool failures.
-- RLM host requests are routed through the session worker.
-- The worker has native typed-agent definitions for `identity@1`, `security-reviewer@1`, `correctness-reviewer@1`, and `tests-reviewer@1`.
-- Task admission, task state, task results, cancellation requests, workflow dependency ordering, and task records use one serialized session value document when the native host is wired into the worker.
-- Agent output is checked against the reviewer output contract. Failed checks return `verification: "unverified"`.
-- Restarted admitted or running task records become `interrupted`; Ultron does not replay them automatically.
-- Optional controls are reported disabled. They do not block routine work.
-- The source-level checks, native RLM tests, native host tests, and offline build pass.
-- The old host services and tests are copied to `packages/ultron-runtime` as a compatibility/reference package. The CLI does not import them.
+## Runtime
 
-## Not complete
+- Every agent run goes through the native session worker: the TUI, `-p`/`--mode json`, and `--mode rpc`. `--help`, `--list-models`, and `--export` never run the agent and use Pi's handlers. `--export` renders native session files.
+- `--mode rpc` speaks Pi's JSONL protocol (`src/experimental/rpc-native.ts`); Pi's `RpcClient` drives it in tests. Differences from Pi: model objects carry `provider`, `id`, `name`, `reasoning`; `get_tree` returns the active branch; entries use the native format; extensions run headless, so there are no `extension_ui_request` events. The Ultron-specific `inspect` command exposes the read-only inspector.
+- Extension slash commands are registered directly (`/name`, as in Pi) and via `/extension <name>`. `/agents`, `/memory`, `/skills`, `/experiments`, `/goals`, and `/progress` read recorded runtime state without starting work or searching.
+- Busy session workers survive the client exiting: background jobs and child lanes keep running, the next `ultron` reattaches, and idle workers retire.
+- `ultron migrate import-pi | export-pi | backup | restore` moves Pi sessions in and out and rehearses profile backup and restore.
 
-This is an implementation status file, not a claim that the full architecture plan is complete.
+## RLM host
 
-- Hindsight and Jev are connected when their configuration is present. Without a Jev key, memory retention fails closed and recall is skipped.
-- Refinements, artifacts, and experiments are connected to the native RLM worker. `createCodingAgentHarness` in `packages/coding-agent/src/experimental/session-worker.ts` creates `createWorkerServices`, passes it to `NativeRlmHost`, and the RLM Python host-request bridge reaches those handlers. `createWorkerServices` persists the data through the session value store.
-- Explicit background jobs now use the native task journal and `background-job@1`. They support start, list, inspect, result, stop, idempotency keys, cancellation, bounded prompts, and durable interruption on owner restart without automatic replay.
-- The native task journal now has restart recovery, idempotency-key conflict checks, commit-before-publish transitions, and terminal cancellation handling. It uses one session value document rather than a separate task database.
-- Cancellation is cooperative through the child lane. It does not undo effects already performed by a model or tool.
-- Native definitions support durable runtime registration with strict JSON Schema validation, immutable ID/version hashes, predict adapters, deterministic adapters, and bounded output repair.
-- The packaged CLI acceptance path now completes an API-backed prompt through the local `cliproxyapi/gpt-5.6-sol` provider. The response was verified in both text and JSON output modes.
-- The packed npm consumer acceptance test now installs the published tarballs into an isolated consumer and completes a native prompt against a deterministic local OpenAI-compatible provider. It verifies shipped worker entrypoints, runtime assets, request routing, and native CLI output.
-- The A01-A46 review is recorded in `docs/a01-a46-acceptance.md`. Rows are explicitly marked passed, unverified, blocked, or failed. The file is an acceptance instrument, not a claim that all rows pass.
-- Every agent run goes through the native RLM worker. `--help`, `--list-models`, and `--export` do not run the agent and keep Pi's handlers. `--export` renders native session files with Pi's HTML exporter.
-- `--mode rpc` runs natively (`src/experimental/rpc-native.ts`) and speaks Pi's JSONL protocol. Pi's `RpcClient` drives it in `test/ultron-native-rpc.test.ts`. Differences from Pi: model objects carry `provider`, `id`, `name`, and `reasoning` only; `get_tree` returns the active branch as a single path; entries use the native entry format; extensions run headless, so no `extension_ui_request` events are emitted.
-- Worker-side session settings (name, queue modes, auto-compaction, auto-retry), user `bash`, and command listing go through the `ultron.session-control` service.
-- Extension slash commands reach the native TUI and RPC. Before, the worker never received them.
-- `--name` names a new native Session and renames an existing one selected with `--session`, `--session-id`, `--continue`, or `--resume`. Renaming a Session that a worker currently holds is rejected.
-- Pi-format session files are rejected. Ultron sessions use the native JSONL format.
+- Each lane (the root and every task) has its own persistent Python kernel. Kernels receive no credential-like environment variables and no worker control channel (`ULTRON_RLM_ENV_ALLOW` passes named variables through). A pool caps live kernels (16), evicts idle ones after a snapshot, and never evicts a running cell. Snapshots use a checksummed, constrained JSON format.
+- The host knows which lane issued each request, so tasks record their parent, child lanes can only query their own subtree, and cancelling a task stops its whole subtree.
+- Strategies: `deterministic`, `predict` (one tool-free model call with bounded repair), and `rlm` (a model lane). All share admission, idempotency, timeouts, usage accounting, and the durable journal. Results are always `verification: "unverified"`; only explicit checks (progress reassessment, goals, release gates) can say more.
+- `agents.spawn` and `rlm.spawn` tasks outlive the Python cell that started them; `agents.invoke` waits inside the cell. A child's deadline is capped at the root's remaining wall budget.
+- Workflows validate before any effect and support fan-in, conditional routes, explicit skips and failures, and keyed nodes.
+- Host modules (`src/ultron/*.ts`, Python classes in `src/ultron/rlm/*_api.py`):
+  - `schedules` / `goals`: slot-keyed schedules that never double-fire, missed ticks coalesce, goals achieved only by passing required checks.
+  - `skills`: version-pinned (content hash), explainable selection; frontmatter cannot grant capabilities.
+  - `agent_message`: parent/child messaging with verified senders, deduplication, expiry, inbox caps, optional steering, and verifier isolation.
+  - `progress`: evidence receipts, progressing/busy/stalled/finished assessment, completion claims verified only by a passing verifier; budgets never extend.
+  - `instances`: retain a completed task and continue it on its own lane with fresh scratch and a persistent `state` dict.
+  - `grants`: scope/revision/policy/owner/expiry-bound approvals, rechecked on use; dormant by default.
+  - `gates`: frozen release-gate definitions and baseline/candidate comparison where required regressions block.
+- Refinements (versioned lessons) reach later task prompts, follow the conversation branch (a lesson from an abandoned branch never applies), refuse protected targets and capability requests, and are content-validated. Approval is off by default and recorded as `not_required`.
+- Memory (Hindsight via Jev gating) withholds forgotten and superseded items even when the backend still returns them, labels evidence classes, records scope denials, and reuses recorded decisions.
 
-## Current evidence
+## Controls
 
-```text
-npm run check                         PASS
-./test.sh                             PASS
-  scripts                            16 passed
-  agent                              934 passed, 1 skipped
-  ai                                 1107 passed, 855 skipped
-  chord                              282 passed
-  client                             27 passed
-  coding-agent                      2473 passed, 50 skipped
-  durable                             77 passed
-  evals                               55 passed
-  protocol                           133 passed
-  server                              44 passed
-  telemetry                           15 passed
-  session-backends/sqlite-node      105 passed
-npm run build:offline                 PASS
-ultron --version                      0.87.1
-packed native CLI consumer            PASS
-cliproxyapi/gpt-5.6-sol text smoke   PASS
-cliproxyapi/gpt-5.6-sol JSON smoke    PASS
+All optional controls (permission prompts, risk blocking, capability enforcement, budget enforcement beyond admission, completion gates, refinement approval, mandatory sandbox) are off by default, reported as off by `agents.status`, and never prompt.
 
-Focused native RLM local-services integration:
-cd packages/coding-agent && node "$(git rev-parse --show-toplevel)/node_modules/vitest/dist/cli.js" --run test/ultron-rlm-tool.test.ts
-  2 passed
-```
+## Known limits
 
-These results prove the repository checks, isolated workspace suite, packed native CLI consumer path, packaged build, local provider path, native RLM local-services path, and native background task dispatch listed above. The focused tests execute Python through `RlmKernel`, send local-service requests through `NativeRlmHost`, verify session-backed results, and run a background task through the same durable task host. They do not prove statistical experiment conclusions, automatic refinement activation, or the A01-A46 rows marked unverified or blocked.
+- Resource limits are the trusted-local profile: output, artifacts, wall time, admission, and process-group kills. There are no memory or CPU limits and no isolated sandbox profile.
+- Snapshot checksums detect corruption, not a writer who recomputes the digest.
+- Quitting in the middle of a root turn still stops that turn; work started by earlier turns continues. A hard-killed client leaves idle work to a 30-second orphan grace.
+- Workflows have no any-of joins or bounded revision cycles.
+- Pi import brings in the active branch only; labels and model changes are reported as skipped.

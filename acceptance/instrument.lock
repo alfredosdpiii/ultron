@@ -1,7 +1,7 @@
 {
 	"version": 1,
 	"algorithm": "sha256",
-	"manifest": "5bd5232481feec0d85afb310a7041e86c9b3808823e1231202d02cf52f37e8eb",
+	"manifest": "83c8cef8bc0c704ed9e1efd7d8bbf5973a73f3c4294a56a2945e17b21a404eb1",
 	"instrument": {
 		"acceptance/mutations.json": "1ff99ca3f89075496562a64bd2d5513c88e80c582d454125678f04bfc25fe23a",
 		"scripts/acceptance-lock.mjs": "0738f59da364f20af0634b28b9d32d70b2768f6d4cb6f2bf03cab13302923980",
@@ -22,6 +22,7 @@
 		"packages/coding-agent/test/ultron-a12-graph-contract.test.ts": "4c98a1f44f5677ede5c3b82ecbf18e5680cd94ade5145ae2477d1c02ab0134ec",
 		"packages/coding-agent/test/ultron-a13-admission-not-dependency.test.ts": "406e1a369c2fe30fe325d1057ab2805deca2b22c12b710b66c59fc49c6b54666",
 		"packages/coding-agent/test/ultron-a14-no-false-verification.test.ts": "5cb273aae5dc614a52229d84a0393e62b2335ef60efbd061e3f94d4d8e276e79",
+		"packages/coding-agent/test/ultron-a16-live-hindsight.test.ts": "b25c90ac44fd5b3c8bb2f7b02a57fb1bbe7f7d8fd2792e7ddf965f8133904568",
 		"packages/coding-agent/test/ultron-a16-memory-skip-scope.test.ts": "f634d1cb4f874636c35a65840567b6f7f3e735186c44b2d284d9a7ebab897c04",
 		"packages/coding-agent/test/ultron-a17-correction-supersedes.test.ts": "08466567b0763b3e5b78dc4e06b523a5b22c6efbe852f4764575d504e4d89a82",
 		"packages/coding-agent/test/ultron-a18-retention-forget.test.ts": "06369182984b4945faefa2379d23a0a4177c0e8139a2a435d54e8382d1ca600e",
