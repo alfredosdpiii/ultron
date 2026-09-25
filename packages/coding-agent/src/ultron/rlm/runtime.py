@@ -2,11 +2,15 @@ from __future__ import annotations
 
 import ast
 import asyncio
+import base64
 import contextlib
+import hashlib
 import io
 import json
 import os
+import signal
 import sys
+import threading
 import traceback
 from dataclasses import dataclass
 from pathlib import Path
@@ -20,12 +24,6 @@ from schedules_api import Goals, Schedules
 from instances_api import Instances
 from grants_api import Grants
 from release_gate_api import ReleaseGates
-
-try:
-    import dill as _dill
-except Exception:
-    _dill = None
-
 
 @dataclass
 class SpawnHandle:
@@ -192,6 +190,7 @@ class RuntimeState:
         self.namespace["instances"] = Instances(self.bridge)
         self.namespace["grants"] = Grants(self.bridge)
         self.namespace["gates"] = ReleaseGates(self.bridge)
+        self.namespace["preview"] = preview
         # Declared instance state survives reset_scratch; every other name is invocation scratch.
         self.namespace["state"] = {}
         self.bindings = {name: value for name, value in self.namespace.items() if name != "state"}
@@ -202,94 +201,178 @@ class RuntimeState:
         self.namespace.update(self.bindings)
         self.namespace["state"] = state
 
-_STATE = RuntimeState()
-
-
 def emit(event: str, **fields: Any) -> None:
     payload = {"event": event, **fields}
     sys.__stdout__.write(json.dumps(payload, default=str, separators=(",", ":")) + "\n")
     sys.__stdout__.flush()
 
 
-def _snapshot_value(value: Any) -> Any:
-    if isinstance(value, (str, int, float, bool)) or value is None:
-        return value
-    if isinstance(value, (list, tuple)) and all(_snapshot_value(v) is not _UNSERIALIZABLE for v in value):
-        return [_snapshot_value(v) for v in value]
-    if isinstance(value, dict):
-        converted = {}
-        for key, item in value.items():
-            if not isinstance(key, str):
-                return _UNSERIALIZABLE
-            converted[key] = _snapshot_value(item)
-            if converted[key] is _UNSERIALIZABLE:
-                return _UNSERIALIZABLE
-        return converted
-    return _UNSERIALIZABLE
+_SNAPSHOT_FORMAT = "ultron-rlm-snapshot"
+_SNAPSHOT_VERSION = 2
 
 
-class _Unserializable:
+class _NonRestorable(Exception):
     pass
 
 
-_UNSERIALIZABLE = _Unserializable()
+class SnapshotIntegrityError(Exception):
+    pass
 
 
-def _persistable_namespace() -> tuple[dict[str, Any], list[str]]:
-    serializable: dict[str, Any] = {}
-    failed: list[str] = []
-    excluded = {"rlm", "agent_message", "jev", "background", "bash", "SpawnHandle", "agents", "workflows", "memory", "refinements"}
-    for name, value in _STATE.namespace.items():
-        if name.startswith("__") or name in excluded:
+def _type_name(kind: type) -> str:
+    return f"{kind.__module__}.{kind.__qualname__}"
+
+
+def _encode_value(value: Any, mutable: set[int]) -> Any:
+    """Encode only exact builtin data types. Every JSON object in the encoding is a tag,
+    so tuples, sets, bytes and non-string dict keys round-trip as their own types."""
+    kind = type(value)
+    if value is None or kind in (bool, int, str, float):
+        return value
+    if kind in (bytes, bytearray):
+        if kind is bytearray:
+            if id(value) in mutable:
+                raise _NonRestorable("shared or cyclic mutable reference")
+            mutable.add(id(value))
+        return {"$" + kind.__name__: base64.b64encode(bytes(value)).decode("ascii")}
+    if kind in (list, dict, set):
+        if id(value) in mutable:
+            raise _NonRestorable("shared or cyclic mutable reference")
+        mutable.add(id(value))
+    if kind is list:
+        return [_encode_value(item, mutable) for item in value]
+    if kind is tuple:
+        return {"$tuple": [_encode_value(item, mutable) for item in value]}
+    if kind in (set, frozenset):
+        return {"$" + kind.__name__: [_encode_value(item, mutable) for item in value]}
+    if kind is dict:
+        return {"$dict": [[_encode_value(key, mutable), _encode_value(item, mutable)] for key, item in value.items()]}
+    raise _NonRestorable(f"unsupported type {_type_name(kind)}")
+
+
+def _decode_value(value: Any) -> Any:
+    kind = type(value)
+    if value is None or kind in (bool, int, str, float):
+        return value
+    if kind is list:
+        return [_decode_value(item) for item in value]
+    if kind is not dict or len(value) != 1:
+        raise SnapshotIntegrityError("snapshot contains a malformed value")
+    tag, body = next(iter(value.items()))
+    if tag in ("$bytes", "$bytearray") and type(body) is str:
+        raw = base64.b64decode(body.encode("ascii"), validate=True)
+        return raw if tag == "$bytes" else bytearray(raw)
+    if type(body) is not list:
+        raise SnapshotIntegrityError("snapshot contains a malformed value")
+    if tag == "$tuple":
+        return tuple(_decode_value(item) for item in body)
+    if tag == "$set":
+        return {_decode_value(item) for item in body}
+    if tag == "$frozenset":
+        return frozenset(_decode_value(item) for item in body)
+    if tag == "$dict":
+        result = {}
+        for pair in body:
+            if type(pair) is not list or len(pair) != 2:
+                raise SnapshotIntegrityError("snapshot contains a malformed dict")
+            result[_decode_value(pair[0])] = _decode_value(pair[1])
+        return result
+    raise SnapshotIntegrityError(f"snapshot contains an unknown tag: {_text_preview(str(tag))}")
+
+
+def _persistable_namespace() -> tuple[dict[str, Any], dict[str, str]]:
+    """Encode restorable names and give every other user name an explicit reason."""
+    encoded: dict[str, Any] = {}
+    reasons: dict[str, str] = {}
+    owners: dict[int, str] = {}
+    for name, value in list(_STATE.namespace.items()):
+        if name.startswith("__") or (name in _STATE.bindings and value is _STATE.bindings[name]):
             continue
-        if _dill is not None:
-            try:
-                _dill.dumps(value)
-                serializable[name] = value
-                continue
-            except Exception:
-                pass
-        converted = _snapshot_value(value)
-        if converted is _UNSERIALIZABLE:
-            failed.append(name)
-        else:
-            serializable[name] = converted
-    return serializable, failed
+        mutable: set[int] = set()
+        try:
+            candidate = _encode_value(value, mutable)
+            json.dumps(candidate, allow_nan=True)
+        except _NonRestorable as error:
+            reasons[name] = str(error)
+            continue
+        except Exception as error:
+            reasons[name] = f"not encodable: {type(error).__name__}"
+            continue
+        # Restoring separately encoded names would silently split an alias into copies.
+        shared = sorted({owners[item] for item in mutable if item in owners})
+        if shared:
+            reasons[name] = "aliases mutable data of " + ", ".join(shared)
+            for other in shared:
+                encoded.pop(other, None)
+                reasons.setdefault(other, "aliases mutable data of " + name)
+            continue
+        for item in mutable:
+            owners[item] = name
+        encoded[name] = candidate
+    return encoded, reasons
 
 
 def save_snapshot(path: str) -> dict[str, Any]:
+    """Write a constrained data-only snapshot: a sha256 header line, then a JSON body.
+
+    The digest detects corruption and naive edits, not a writer that can recompute it;
+    snapshots are still trusted host artifacts and must not come from users or repositories.
+    """
     target = Path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
-    serializable, failed = _persistable_namespace()
-    payload = {"version": 1, "names": serializable, "skipped": failed}
-    if _dill is not None:
-        with target.open("wb") as stream:
-            _dill.dump(payload, stream)
-    else:
-        target.write_text(json.dumps(payload), encoding="utf-8")
+    encoded, reasons = _persistable_namespace()
+    skipped = sorted(reasons)
+    body = json.dumps(
+        {"names": encoded, "skipped": skipped, "reasons": reasons}, separators=(",", ":"), allow_nan=True
+    ).encode("utf-8")
+    digest = hashlib.sha256(body).hexdigest()
+    header = json.dumps(
+        {"format": _SNAPSHOT_FORMAT, "version": _SNAPSHOT_VERSION, "sha256": digest, "bytes": len(body)},
+        separators=(",", ":"),
+    ).encode("utf-8")
+    temporary = target.with_name(f".{target.name}.{os.getpid()}.tmp")
+    temporary.write_bytes(header + b"\n" + body)
+    os.replace(temporary, target)
     _STATE.snapshot_path = target
-    return {"saved": sorted(serializable), "skipped": failed, "serializer": "dill" if _dill is not None else "json"}
+    return {"saved": sorted(encoded), "skipped": skipped, "reasons": reasons, "serializer": "json", "sha256": digest}
 
 
 def restore_snapshot(path: str) -> dict[str, Any]:
     target = Path(path)
     if not target.exists():
-        return {"restored": [], "missing": True}
+        return {"restored": [], "missing": True, "skipped": [], "reasons": {}}
+    raw = target.read_bytes()
+    header_line, separator, body = raw.partition(b"\n")
     try:
-        if _dill is not None:
-            with target.open("rb") as stream:
-                data = _dill.load(stream)
-        else:
-            data = json.loads(target.read_text(encoding="utf-8"))
-    except Exception:
-        data = json.loads(target.read_text(encoding="utf-8"))
-    restored = []
-    for name, value in (data.get("names") or {}).items():
-        if isinstance(name, str):
-            _STATE.namespace[name] = value
-            restored.append(name)
+        header = json.loads(header_line) if separator else None
+    except ValueError:
+        header = None
+    if (
+        type(header) is not dict
+        or header.get("format") != _SNAPSHOT_FORMAT
+        or header.get("version") != _SNAPSHOT_VERSION
+        or type(header.get("sha256")) is not str
+        or type(header.get("bytes")) is not int
+    ):
+        raise SnapshotIntegrityError("snapshot integrity check failed: missing or unsupported header")
+    if header["bytes"] != len(body) or hashlib.sha256(body).hexdigest() != header["sha256"]:
+        raise SnapshotIntegrityError("snapshot integrity check failed: digest mismatch")
+    data = json.loads(body.decode("utf-8"))
+    names = data.get("names") if type(data) is dict else None
+    skipped = data.get("skipped") if type(data) is dict else None
+    reasons = data.get("reasons") if type(data) is dict else None
+    if (
+        type(names) is not dict
+        or type(skipped) is not list
+        or type(reasons) is not dict
+        or any(type(name) is not str for name in [*names, *skipped, *reasons.values()])
+    ):
+        raise SnapshotIntegrityError("snapshot integrity check failed: malformed body")
+    # Decode everything before touching the namespace, so a bad snapshot changes nothing.
+    decoded = {name: _decode_value(value) for name, value in names.items()}
+    _STATE.namespace.update(decoded)
     _STATE.snapshot_path = target
-    return {"restored": sorted(restored), "missing": False}
+    return {"restored": sorted(decoded), "missing": False, "skipped": sorted(skipped), "reasons": reasons}
 
 
 def _prepare_code(source: str) -> Any:
@@ -311,8 +394,9 @@ _MARKER_BYTES = len(_TRUNCATION_MARKER.encode("utf-8"))
 class _BoundedTextIO(io.TextIOBase):
     """Keep a UTF-8 prefix, never retaining more than the preview budget."""
 
-    def __init__(self) -> None:
+    def __init__(self, limit: int = _PREVIEW_BYTES) -> None:
         super().__init__()
+        self._limit = limit
         self._buffer = bytearray()
         self.truncated = False
 
@@ -321,7 +405,7 @@ class _BoundedTextIO(io.TextIOBase):
 
     def truncate_preview(self) -> None:
         self.truncated = True
-        del self._buffer[_PREVIEW_BYTES - _MARKER_BYTES:]
+        del self._buffer[self._limit - _MARKER_BYTES:]
 
     def write(self, text: str) -> int:
         if self.closed:
@@ -329,7 +413,7 @@ class _BoundedTextIO(io.TextIOBase):
         if not isinstance(text, str):
             raise TypeError("write() argument must be str")
         if not self.truncated:
-            remaining = _PREVIEW_BYTES - len(self._buffer)
+            remaining = self._limit - len(self._buffer)
             # Slice before encoding so a huge write needs bounded temporary
             # space too. Escape lone surrogates to keep the preview valid UTF-8.
             encoded = text[:remaining + 1].encode("utf-8", errors="backslashreplace")
@@ -351,13 +435,77 @@ def _text_preview(text: str) -> str:
     return stream.getvalue()
 
 
-def _result_preview(value: Any) -> str:
+_PREVIEW_SECONDS = 2.0
+_deadline_active = False
+# Once a preview deadline fires, no further user __repr__/__str__ runs for that preview.
+_deadline_expired = False
+
+
+class _PreviewTimeout(BaseException):
+    pass
+
+
+@contextlib.contextmanager
+def _preview_deadline(seconds: float = _PREVIEW_SECONDS):
+    """Interrupt user __repr__/__str__ code that runs during preview rendering.
+
+    Uses SIGALRM on the main thread. Code that swallows BaseException can still
+    stall; host-side cell cancellation then terminates the kernel process group.
+    """
+    global _deadline_active, _deadline_expired
+    usable = (
+        not _deadline_active
+        and hasattr(signal, "setitimer")
+        and threading.current_thread() is threading.main_thread()
+    )
+    if not usable:
+        yield
+        return
+
+    def on_alarm(_signum: int, _frame: Any) -> None:
+        global _deadline_expired
+        _deadline_expired = True
+        raise _PreviewTimeout()
+
+    previous = signal.signal(signal.SIGALRM, on_alarm)
+    _deadline_active = True
+    _deadline_expired = False
+    signal.setitimer(signal.ITIMER_REAL, seconds)
+    try:
+        yield
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous)
+        _deadline_active = False
+        _deadline_expired = False
+
+
+def _safe_repr(item: Any) -> str:
+    if _deadline_expired:
+        raise _PreviewTimeout()
+    try:
+        text = repr(item)
+        if type(text) is not str:
+            raise TypeError("__repr__ returned non-string")
+        return text
+    except _PreviewTimeout:
+        raise
+    except BaseException as error:
+        return f"<{type(item).__qualname__} object; repr raised {type(error).__name__}>"
+
+
+def _result_preview(value: Any, limit: int = _PREVIEW_BYTES, max_depth: int = 20) -> str:
+    return _render_preview(value, limit, max_depth)[0]
+
+
+def _render_preview(value: Any, limit: int = _PREVIEW_BYTES, max_depth: int = 20) -> tuple[str, bool]:
     """Render builtins incrementally without copying or traversing whole values.
 
-    User-defined __repr__ methods still run normally. Their returned text is
-    bounded, but arbitrary code inside those methods cannot be memory-limited.
+    User-defined __repr__ methods run inside this worker, never on the host. Their
+    failures become placeholders, their text is bounded, and under a preview
+    deadline a stalled __repr__ ends the preview instead of the protocol.
     """
-    stream = _BoundedTextIO()
+    stream = _BoundedTextIO(limit)
     active: set[int] = set()
 
     def render(item: Any, depth: int = 0) -> None:
@@ -365,7 +513,7 @@ def _result_preview(value: Any) -> str:
             return
         kind = type(item)
         if kind in (str, bytes, bytearray):
-            prefix = item[:_PREVIEW_BYTES]
+            prefix = item[:limit]
             stream.write(repr(prefix))
             if len(item) > len(prefix):
                 stream.truncate_preview()
@@ -374,7 +522,7 @@ def _result_preview(value: Any) -> str:
             # Avoid both enormous decimal strings and Python's conversion limit.
             digits = item.bit_length() * 30103 // 100000 + 1
             int_limit = getattr(sys, "get_int_max_str_digits", lambda: 0)()
-            if digits + (item < 0) > _PREVIEW_BYTES or (int_limit and digits > int_limit):
+            if digits + (item < 0) > limit or (int_limit and digits > int_limit):
                 stream.write(f"<int with {item.bit_length()} bits>")
                 stream.truncate_preview()
             else:
@@ -383,12 +531,12 @@ def _result_preview(value: Any) -> str:
         containers = (list, tuple, dict, set, frozenset, range, slice)
         is_exception = isinstance(item, BaseException) and kind.__repr__ is BaseException.__repr__
         if kind not in containers and not is_exception:
-            stream.write(repr(item))
+            stream.write(_safe_repr(item))
             return
         if id(item) in active:
             stream.write("{...}" if kind is dict else "[...]" if kind is list else "(...)")
             return
-        if depth >= 20:
+        if depth >= max_depth:
             stream.truncate_preview()
             return
         active.add(id(item))
@@ -434,11 +582,39 @@ def _result_preview(value: Any) -> str:
         finally:
             active.remove(id(item))
 
-    render(value)
-    return stream.getvalue()
+    try:
+        render(value)
+    except _PreviewTimeout:
+        stream.write(" <preview timed out>")
+        stream.truncated = True
+    except RecursionError:
+        stream.write(" <preview recursion limit>")
+        stream.truncated = True
+    return stream.getvalue(), stream.truncated
+
+
+def preview(value: Any, depth: int = 20, max_bytes: int = _PREVIEW_BYTES) -> dict[str, Any]:
+    """Bounded, model-visible description of a value. The value itself is untouched."""
+    if type(depth) is not int or not 1 <= depth <= 100:
+        raise ValueError("preview depth must be an integer between 1 and 100")
+    if type(max_bytes) is not int or not 64 <= max_bytes <= 1024 * 1024:
+        raise ValueError("preview max_bytes must be an integer between 64 and 1048576")
+    kind = type(value)
+    sized = (str, bytes, bytearray, list, tuple, dict, set, frozenset, range)
+    with _preview_deadline():
+        text, truncated = _render_preview(value, max_bytes, depth)
+    return {
+        "type": _type_name(kind),
+        "length": len(value) if kind in sized else None,
+        "preview": text,
+        "truncated": truncated,
+        "max_bytes": max_bytes,
+    }
 
 
 def _exception_message(error: BaseException) -> str:
+    if _deadline_expired:
+        return "<exception str() timed out>"
     try:
         if type(error).__str__ is BaseException.__str__:
             if not error.args:
@@ -502,6 +678,9 @@ def _error_preview(error: BaseException) -> dict[str, Any]:
     }
 
 
+_STATE = RuntimeState()
+
+
 async def execute_cell(request_id: str, source: str) -> None:
     async with _STATE.execution_lock:
         stdout = _BoundedTextIO()
@@ -514,7 +693,8 @@ async def execute_cell(request_id: str, source: str) -> None:
                 if asyncio.iscoroutine(result):
                     await result
             if "_rlm_result" in _STATE.namespace:
-                result_text = _result_preview(_STATE.namespace.pop("_rlm_result"))
+                with _preview_deadline():
+                    result_text = _result_preview(_STATE.namespace.pop("_rlm_result"))
             else:
                 result_text = ""
             emit("stdout", id=request_id, text=stdout.getvalue())
@@ -524,7 +704,12 @@ async def execute_cell(request_id: str, source: str) -> None:
         except BaseException as error:
             emit("stdout", id=request_id, text=stdout.getvalue())
             emit("stderr", id=request_id, text=stderr.getvalue())
-            emit("error", id=request_id, **_error_preview(error))
+            try:
+                with _preview_deadline():
+                    details = _error_preview(error)
+            except BaseException:
+                details = {"ename": _text_preview(type(error).__name__), "evalue": "<error preview failed>", "traceback": []}
+            emit("error", id=request_id, **details)
             emit("done", id=request_id, status="error")
 
 

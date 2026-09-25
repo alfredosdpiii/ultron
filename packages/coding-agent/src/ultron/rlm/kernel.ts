@@ -1,6 +1,6 @@
 import { type ChildProcessWithoutNullStreams, spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { existsSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 
 const CREDENTIAL_NAME =
 	/(API_?KEY|ACCESS_?KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL|PRIVATE_?KEY|AUTH|COOKIE|SESSION_?KEY|WEBHOOK)/i;
@@ -34,12 +34,30 @@ export type KernelHostHandler = (
 	signal?: AbortSignal,
 ) => Promise<unknown> | unknown;
 
+/** Names are saved only as constrained data; every other user name is listed with a reason. */
+export type KernelSnapshotReport = {
+	saved: string[];
+	skipped: string[];
+	reasons: Record<string, string>;
+	sha256: string;
+};
+
+/** `skipped` repeats the names the snapshot could not restore; they are absent, not stale. */
+export type KernelRestoreReport = {
+	restored: string[];
+	missing: boolean;
+	skipped: string[];
+	reasons: Record<string, string>;
+};
+
 export type KernelExecutionResult = {
 	status: "ok" | "error";
 	stdout: string;
 	stderr: string;
 	result?: string;
 	error?: { ename: string; evalue: string; traceback: string[] };
+	snapshot?: KernelSnapshotReport;
+	restore?: KernelRestoreReport;
 };
 
 type Deferred<T> = {
@@ -128,6 +146,77 @@ function frameString(value: unknown): string {
 	} catch {
 		return String(value);
 	}
+}
+
+function stringList(value: unknown): string[] {
+	return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+}
+
+function stringRecord(value: unknown): Record<string, string> {
+	const result: Record<string, string> = {};
+	if (!value || typeof value !== "object" || Array.isArray(value)) return result;
+	for (const [key, item] of Object.entries(value)) if (typeof item === "string") result[key] = item;
+	return result;
+}
+
+function snapshotReport(value: unknown): KernelSnapshotReport | undefined {
+	if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+	const report = value as Record<string, unknown>;
+	return {
+		saved: stringList(report.saved),
+		skipped: stringList(report.skipped),
+		reasons: stringRecord(report.reasons),
+		sha256: typeof report.sha256 === "string" ? report.sha256 : "",
+	};
+}
+
+function restoreReport(value: unknown): KernelRestoreReport | undefined {
+	if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+	const report = value as Record<string, unknown>;
+	return {
+		restored: stringList(report.restored),
+		missing: report.missing === true,
+		skipped: stringList(report.skipped),
+		reasons: stringRecord(report.reasons),
+	};
+}
+
+/**
+ * Linux descendants of `root`, found before the group is killed so that children
+ * which left the kernel's process group (setsid, setpgid) are still terminated.
+ * A process that already reparented away (double-fork daemon) is not owned anymore.
+ */
+function descendantPids(root: number): number[] {
+	if (process.platform !== "linux") return [];
+	const children = new Map<number, number[]>();
+	let entries: string[];
+	try {
+		entries = readdirSync("/proc");
+	} catch {
+		return [];
+	}
+	for (const entry of entries) {
+		if (!/^[0-9]+$/.test(entry)) continue;
+		try {
+			const stat = readFileSync(`/proc/${entry}/stat`, "utf8");
+			// Field 4 (ppid) follows the parenthesized command name, which may contain spaces.
+			const parent = Number(stat.slice(stat.lastIndexOf(")") + 2).split(" ")[1]);
+			const list = children.get(parent) ?? [];
+			list.push(Number(entry));
+			children.set(parent, list);
+		} catch {
+			/* The process exited during the scan. */
+		}
+	}
+	const result: number[] = [];
+	const queue = [root];
+	while (queue.length > 0) {
+		for (const child of children.get(queue.shift()!) ?? []) {
+			result.push(child);
+			queue.push(child);
+		}
+	}
+	return result;
 }
 
 function encodeFrame(frame: Frame): string {
@@ -473,6 +562,10 @@ export class RlmKernel {
 			if (state.status === "error" && !state.error && frame.error != null) {
 				state.error = { ename: "RuntimeError", evalue: frameString(frame.error), traceback: [] };
 			}
+			const snapshot = snapshotReport(frame.snapshot);
+			if (snapshot) state.snapshot = snapshot;
+			const restore = restoreReport(frame.restore);
+			if (restore) state.restore = restore;
 			generation.pending.delete(requestId);
 			if (generation.activeCell === waiter) generation.activeCell = undefined;
 			waiter.controller.abort(new Error("RLM cell completed"));
@@ -554,6 +647,8 @@ export class RlmKernel {
 
 		// The detached child owns this group. SIGKILL also stops infinite loops and
 		// descendants that ignore SIGTERM, even if the group leader already exited.
+		// Descendants are collected first, while they are still linked to the kernel.
+		const descendants = generation.child.pid ? descendantPids(generation.child.pid) : [];
 		try {
 			if (generation.ownsProcessGroup && generation.child.pid) {
 				process.kill(-generation.child.pid, "SIGKILL");
@@ -564,6 +659,13 @@ export class RlmKernel {
 			// ESRCH is normal when the child exited before its exit event was handled.
 			try {
 				generation.child.kill("SIGKILL");
+			} catch {
+				/* Already gone. */
+			}
+		}
+		for (const pid of descendants) {
+			try {
+				process.kill(pid, "SIGKILL");
 			} catch {
 				/* Already gone. */
 			}
