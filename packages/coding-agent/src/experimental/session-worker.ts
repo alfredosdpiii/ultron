@@ -60,6 +60,7 @@ import { createSessionModuleStore, type HostCaller } from "../ultron/rlm/host-mo
 import { type KernelExecutionResult, type KernelHostHandler, RlmKernel } from "../ultron/rlm/kernel.ts";
 import { KernelPool, KernelPoolCapacityError } from "../ultron/rlm/kernel-pool.ts";
 import { NativeRlmHost } from "../ultron/rlm/native-host.ts";
+import { loadOrCreateSnapshotKey } from "../ultron/rlm/snapshot-auth.ts";
 import { createSessionTaskStore } from "../ultron/rlm/task-store.ts";
 import { createScheduleModule } from "../ultron/schedules.ts";
 import { createSkillModule } from "../ultron/skills.ts";
@@ -95,9 +96,14 @@ type RlmHostHandler = (
 export class UltronRlmKernel {
 	private readonly kernel: RlmKernel;
 
-	constructor(cwd: string, hostHandler: KernelHostHandler, snapshotPath?: string) {
+	constructor(cwd: string, hostHandler: KernelHostHandler, snapshotPath?: string, snapshotKey?: Uint8Array) {
 		this.kernel = new RlmKernel(
-			{ cwd, runtimePath: getRlmRuntimePath(), ...(snapshotPath === undefined ? {} : { snapshotPath }) },
+			{
+				cwd,
+				runtimePath: getRlmRuntimePath(),
+				...(snapshotPath === undefined ? {} : { snapshotPath }),
+				...(snapshotKey === undefined ? {} : { snapshotKey }),
+			},
 			hostHandler,
 		);
 	}
@@ -149,6 +155,8 @@ export function createUltronRlmTool(
 	resolveLane: (invocation: AgentHarnessToolInvocation, context: Context) => Promise<string> = async () => "main",
 	options: {
 		readonly snapshotDir?: string;
+		/** Host-held HMAC key for lane snapshots; see loadOrCreateSnapshotKey. */
+		readonly snapshotKey?: Uint8Array;
 		readonly maxLive?: number;
 		readonly maxPinned?: number;
 		readonly idleTtlMs?: number;
@@ -168,6 +176,7 @@ export function createUltronRlmTool(
 				cwd,
 				(type, payload, signal) => hostHandler(type, payload, signal, { lane }),
 				snapshotPath(lane),
+				options.snapshotKey,
 			),
 		maxLive,
 		maxPinned: options.maxPinned ?? Math.floor(maxLive / 2),
@@ -1181,7 +1190,8 @@ async function createCodingAgentHarness(
 			if (meta.value.lane === "main") host?.beginRootTurn(invocation.operationId);
 			return meta.value.lane;
 		},
-		{ snapshotDir },
+		// The signing key stays in this process; the kernel running model code never receives it.
+		{ snapshotDir, snapshotKey: loadOrCreateSnapshotKey(getAgentDir()) },
 	);
 	const tools = [createReadTool(), createEditTool(), createWriteTool(), createBashTool(), rlmTool];
 	const loadedSkills = await Promise.all(

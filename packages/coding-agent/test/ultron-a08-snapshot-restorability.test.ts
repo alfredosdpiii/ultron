@@ -5,11 +5,14 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, test } from "vitest";
 import { RlmKernel } from "../src/ultron/rlm/kernel.ts";
+import { signSnapshot } from "../src/ultron/rlm/snapshot-auth.ts";
 
 // A08: unsupported Python state reports non-restorable, never silently correct.
 const runtimePath = fileURLToPath(new URL("../src/ultron/rlm/runtime.py", import.meta.url));
 const directories: string[] = [];
 const kernels: RlmKernel[] = [];
+// The host-held signing key; every kernel in this file shares it, as kernels of one profile do.
+const snapshotKey = Buffer.alloc(32, 7);
 
 afterEach(async () => {
 	await Promise.all(kernels.splice(0).map((kernel) => kernel.shutdown()));
@@ -23,7 +26,7 @@ function snapshotFile(): string {
 }
 
 function kernel(snapshotPath?: string): RlmKernel {
-	const instance = new RlmKernel({ cwd: process.cwd(), runtimePath, snapshotPath }, () => {
+	const instance = new RlmKernel({ cwd: process.cwd(), runtimePath, snapshotPath, snapshotKey }, () => {
 		throw new Error("no host services in this fixture");
 	});
 	kernels.push(instance);
@@ -134,7 +137,8 @@ describe("A08 snapshot restorability and tamper rejection", () => {
 		expect(reasons.shared_a).toMatch(/aliases mutable data of shared_b/);
 		expect(reasons.huge).toMatch(/not encodable/);
 		// Nothing was written for skipped names, so nothing can come back silently wrong.
-		const body = JSON.parse(readFileSync(path, "utf8").split("\n")[1]) as { names: Record<string, unknown> };
+		// Line 1 is the host signature, line 2 the kernel's digest header, line 3 the body.
+		const body = JSON.parse(readFileSync(path, "utf8").split("\n")[2]) as { names: Record<string, unknown> };
 		expect(Object.keys(body.names).sort()).toEqual(RESTORED_NAMES);
 	});
 
@@ -183,7 +187,7 @@ describe("A08 snapshot restorability and tamper rejection", () => {
 		const restored = await target.restore(path);
 		expect(restored).toMatchObject({
 			status: "error",
-			error: { evalue: expect.stringContaining("integrity check failed: digest mismatch") },
+			error: { evalue: expect.stringContaining("integrity check failed: HMAC signature mismatch") },
 		});
 		expect(restored.restore).toBeUndefined();
 		expect(await target.execute("(marker, 'plain' in globals())")).toMatchObject({ result: "('kept', False)" });
@@ -210,9 +214,12 @@ describe("A08 snapshot restorability and tamper rejection", () => {
 		// A truncated snapshot fails the digest length check.
 		expect((await target.snapshot(path)).status).toBe("ok");
 		writeFileSync(path, readFileSync(path, "utf8").slice(0, -5));
-		expect(await target.restore(path)).toMatchObject({ status: "error", error: { evalue: /digest mismatch/ } });
+		expect(await target.restore(path)).toMatchObject({
+			status: "error",
+			error: { evalue: /HMAC signature mismatch/ },
+		});
 
-		// A writer that recomputes the digest still cannot smuggle non-data values past validation.
+		// Even a holder of the signing key cannot smuggle non-data values past validation.
 		const body = JSON.stringify({ names: { injected: { $object: ["os", "system"] } }, skipped: [], reasons: {} });
 		const header = JSON.stringify({
 			format: "ultron-rlm-snapshot",
@@ -220,7 +227,7 @@ describe("A08 snapshot restorability and tamper rejection", () => {
 			sha256: createHash("sha256").update(body).digest("hex"),
 			bytes: Buffer.byteLength(body),
 		});
-		writeFileSync(path, `${header}\n${body}`);
+		writeFileSync(path, signSnapshot(snapshotKey, Buffer.from(`${header}\n${body}`)));
 		expect(await target.restore(path)).toMatchObject({ status: "error", error: { evalue: /unknown tag/ } });
 		expect(await target.execute("('injected' in globals(), marker)")).toMatchObject({ result: "(False, 1)" });
 	});
