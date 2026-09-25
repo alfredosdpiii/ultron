@@ -1,0 +1,141 @@
+{
+  "suiteVersion": 1,
+  "model": "cliproxyapi/claude-sonnet-5-high",
+  "trialsPerCase": 2,
+  "passThreshold": 2,
+  "recordedAt": "2026-09-25T05:01:27.162Z",
+  "summary": [
+    {
+      "case": "large-object-inspection",
+      "passes": 0,
+      "trials": 2,
+      "qualified": false
+    },
+    {
+      "case": "exact-typed-return",
+      "passes": 0,
+      "trials": 2,
+      "qualified": false
+    },
+    {
+      "case": "programmatic-fan-out",
+      "passes": 0,
+      "trials": 2,
+      "qualified": false
+    },
+    {
+      "case": "event-retrieval",
+      "passes": 0,
+      "trials": 2,
+      "qualified": false
+    },
+    {
+      "case": "honest-failed-child",
+      "passes": 0,
+      "trials": 2,
+      "qualified": false
+    }
+  ],
+  "trials": [
+    {
+      "model": "cliproxyapi/claude-sonnet-5-high",
+      "case": "large-object-inspection",
+      "trial": 1,
+      "passed": false,
+      "usedRlm": false,
+      "answer": "",
+      "expected": "24645201",
+      "durationMs": 13299
+    },
+    {
+      "model": "cliproxyapi/claude-sonnet-5-high",
+      "case": "large-object-inspection",
+      "trial": 2,
+      "passed": false,
+      "usedRlm": false,
+      "answer": "",
+      "expected": "24645201",
+      "durationMs": 13169
+    },
+    {
+      "model": "cliproxyapi/claude-sonnet-5-high",
+      "case": "exact-typed-return",
+      "trial": 1,
+      "passed": false,
+      "usedRlm": false,
+      "answer": "",
+      "expected": "{\"answer\": 17, \"label\": \"typed\"}",
+      "durationMs": 12946
+    },
+    {
+      "model": "cliproxyapi/claude-sonnet-5-high",
+      "case": "exact-typed-return",
+      "trial": 2,
+      "passed": false,
+      "usedRlm": false,
+      "answer": "",
+      "expected": "{\"answer\": 17, \"label\": \"typed\"}",
+      "durationMs": 15652
+    },
+    {
+      "model": "cliproxyapi/claude-sonnet-5-high",
+      "case": "programmatic-fan-out",
+      "trial": 1,
+      "passed": false,
+      "usedRlm": false,
+      "answer": "",
+      "expected": "{\"n\": 3}",
+      "durationMs": 15362
+    },
+    {
+      "model": "cliproxyapi/claude-sonnet-5-high",
+      "case": "programmatic-fan-out",
+      "trial": 2,
+      "passed": false,
+      "usedRlm": false,
+      "answer": "",
+      "expected": "{\"n\": 3}",
+      "durationMs": 16401
+    },
+    {
+      "model": "cliproxyapi/claude-sonnet-5-high",
+      "case": "event-retrieval",
+      "trial": 1,
+      "passed": false,
+      "usedRlm": false,
+      "answer": "",
+      "expected": "3",
+      "durationMs": 13932
+    },
+    {
+      "model": "cliproxyapi/claude-sonnet-5-high",
+      "case": "event-retrieval",
+      "trial": 2,
+      "passed": false,
+      "usedRlm": false,
+      "answer": "",
+      "expected": "3",
+      "durationMs": 13635
+    },
+    {
+      "model": "cliproxyapi/claude-sonnet-5-high",
+      "case": "honest-failed-child",
+      "trial": 1,
+      "passed": false,
+      "usedRlm": false,
+      "answer": "",
+      "expected": "FAILED",
+      "durationMs": 12925
+    },
+    {
+      "model": "cliproxyapi/claude-sonnet-5-high",
+      "case": "honest-failed-child",
+      "trial": 2,
+      "passed": false,
+      "usedRlm": false,
+      "answer": "",
+      "expected": "FAILED",
+      "durationMs": 13595
+    }
+  ]
+}

@@ -37,6 +37,15 @@ class Agents:
     async def tasks(self):
         return await self._bridge.request('agents.tasks')
 
+    async def result(self, task_id):
+        return await self._bridge.request('agents.result', {'id': task_id})
+
+    async def inspect(self, task_id):
+        return await self._bridge.request('agents.inspect', {'id': task_id})
+
+    async def cancel(self, task_id):
+        return await self._bridge.request('agents.cancel', {'id': task_id})
+
     async def status(self):
         return await self._bridge.request('agents.status')
 
