@@ -17,13 +17,29 @@ const evidence = Type.Array(
 	{ minItems: 1 },
 );
 const scope = Type.Optional(Type.Union([Type.Literal("session"), Type.Literal("project"), Type.Literal("global")]));
+const evidenceClass = Type.Optional(
+	Type.Union([
+		Type.Literal("hypothesis"),
+		Type.Literal("user_statement"),
+		Type.Literal("tool_evidence"),
+		Type.Literal("verified"),
+	]),
+);
 const prepare = Type.Object(
-	{ query: Type.String({ minLength: 1 }), taskId: Type.String({ minLength: 1 }), scope },
+	{
+		query: Type.String({ minLength: 1 }),
+		taskId: Type.String({ minLength: 1 }),
+		scope,
+		refresh: Type.Optional(Type.Boolean()),
+	},
 	{ additionalProperties: false },
 );
-const propose = Type.Object({ text: Type.String({ minLength: 1 }), evidence, scope }, { additionalProperties: false });
+const propose = Type.Object(
+	{ text: Type.String({ minLength: 1 }), evidence, scope, evidenceClass },
+	{ additionalProperties: false },
+);
 const correct = Type.Object(
-	{ id: Type.String({ minLength: 1 }), text: Type.String({ minLength: 1 }), evidence },
+	{ id: Type.String({ minLength: 1 }), text: Type.String({ minLength: 1 }), evidence, evidenceClass },
 	{ additionalProperties: false },
 );
 const id = Type.Object({ id: Type.String({ minLength: 1 }) }, { additionalProperties: false });
