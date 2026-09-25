@@ -1,5 +1,5 @@
 {
-	"generated_at": "2026-09-25T14:47:00.947Z",
+	"generated_at": "2026-09-25T20:26:15.005Z",
 	"lock": {
 		"ok": true,
 		"lockMissing": false,
@@ -13,8 +13,8 @@
 		"exitCode": 0
 	},
 	"summary": {
-		"total": 46,
-		"passed": 46,
+		"total": 55,
+		"passed": 55,
 		"failed": 0,
 		"unverified": 0,
 		"blocked": 0
@@ -2428,6 +2428,404 @@
 					"file": "packages/coding-agent/test/ultron-a46-live-demo.test.ts",
 					"test": "fixes, reviews, retains, and improves through the typed RLM API",
 					"outcome": "skipped",
+					"matched": 1,
+					"infra": null
+				}
+			]
+		},
+		{
+			"id": "A47",
+			"behavior": "An input larger than the model's context window is processed to the exact answer through bounded inference frames; no request exceeds the window and the root transcript never contains the input",
+			"status": "passed",
+			"declared": "passed",
+			"evidence": {
+				"listed": 3,
+				"passed": 3,
+				"failed": 0,
+				"missing": 0,
+				"skipped": 0,
+				"infrastructure": 0
+			},
+			"reasons": [],
+			"checks": [
+				{
+					"file": "packages/coding-agent/test/ultron-a47-large-input.test.ts",
+					"test": "exact answer, no request above the window, and the root never sees the input",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-a47-a50-bounded-inference.test.ts",
+					"test": "handles never render content; views, search, lines and chunks slice it; reopen by digest",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-a47-a50-bounded-inference.test.ts",
+					"test": "the frame sees only its task and views under its own system prompt, with no tools",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				}
+			]
+		},
+		{
+			"id": "A48",
+			"behavior": "Contract repair: a malformed frame answer is re-asked within budget and returns a valid value; exhaustion yields an Incomplete with evidence and the root turn continues",
+			"status": "passed",
+			"declared": "passed",
+			"evidence": {
+				"listed": 4,
+				"passed": 4,
+				"failed": 0,
+				"missing": 0,
+				"skipped": 0,
+				"infrastructure": 0
+			},
+			"reasons": [],
+			"checks": [
+				{
+					"file": "packages/coding-agent/test/ultron-a47-a50-bounded-inference.test.ts",
+					"test": "a frame that first answers malformed JSON is re-asked and returns a valid value",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-a47-a50-bounded-inference.test.ts",
+					"test": "exhausted repairs yield an Incomplete with status, spent and remaining budget, trace id and outputs",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-a47-a50-bounded-inference.test.ts",
+					"test": "running out of calls mid-repair is an Incomplete, not an exception",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-a47-large-input.test.ts",
+					"test": "A48 end to end: repair returns a valid value, exhaustion is an Incomplete, and the root turn continues",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				}
+			]
+		},
+		{
+			"id": "A49",
+			"behavior": "Budget subtree: a map of 8 frames under calls=6 runs 6 and marks 2 incomplete; tranches never oversubscribe the token pool; provider failures are refunded",
+			"status": "passed",
+			"declared": "passed",
+			"evidence": {
+				"listed": 5,
+				"passed": 5,
+				"failed": 0,
+				"missing": 0,
+				"skipped": 0,
+				"infrastructure": 0
+			},
+			"reasons": [],
+			"checks": [
+				{
+					"file": "packages/coding-agent/test/ultron-a47-a50-bounded-inference.test.ts",
+					"test": "a map of 8 frames under calls=6 runs 6 and marks 2 incomplete, in order",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-a47-a50-bounded-inference.test.ts",
+					"test": "concurrent siblings hold tranches that never oversubscribe the token pool",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-a47-a50-bounded-inference.test.ts",
+					"test": "when the pool cannot cover a request the frame is incomplete and nothing is sent",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-a47-a50-bounded-inference.test.ts",
+					"test": "a provider failure refunds its tranche; cache reads are discounted",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-a47-a50-bounded-inference.test.ts",
+					"test": "nested frames draw on their parent's pool and one level less depth",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				}
+			]
+		},
+		{
+			"id": "A50",
+			"behavior": "Cancellation: aborting the root cancels every running inference frame within 2 s",
+			"status": "passed",
+			"declared": "passed",
+			"evidence": {
+				"listed": 2,
+				"passed": 2,
+				"failed": 0,
+				"missing": 0,
+				"skipped": 0,
+				"infrastructure": 0
+			},
+			"reasons": [],
+			"checks": [
+				{
+					"file": "packages/coding-agent/test/ultron-a47-a50-bounded-inference.test.ts",
+					"test": "all in-flight frames are cancelled within 2 s and the map returns per-item errors",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-a47-large-input.test.ts",
+					"test": "A50 end to end: aborting the root turn cancels every running frame within 2 s",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				}
+			]
+		},
+		{
+			"id": "A51",
+			"behavior": "After 20 completed tasks the root's next request stays bounded (results collapse on return by context edit) while agents.result still returns full values",
+			"status": "passed",
+			"declared": "passed",
+			"evidence": {
+				"listed": 4,
+				"passed": 4,
+				"failed": 0,
+				"missing": 0,
+				"skipped": 0,
+				"infrastructure": 0
+			},
+			"reasons": [],
+			"checks": [
+				{
+					"file": "packages/coding-agent/test/ultron-a51-collapse-on-return.test.ts",
+					"test": "20 completed tasks: bounded next request, full values through agents.result",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-context-control.test.ts",
+					"test": "omitting an assistant message omits the results of its calls",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-context-control.test.ts",
+					"test": "an omitted result whose call stays visible becomes a stub, keeping the pair",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-context-control.test.ts",
+					"test": "one line per task with definition, key, status, cost and handle; random keys are hidden",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				}
+			]
+		},
+		{
+			"id": "A52",
+			"behavior": "ctx.forget never removes the current user turn or pinned items, an extension can observe the edit, and compaction keeps notes and pins",
+			"status": "passed",
+			"declared": "passed",
+			"evidence": {
+				"listed": 2,
+				"passed": 2,
+				"failed": 0,
+				"missing": 0,
+				"skipped": 0,
+				"infrastructure": 0
+			},
+			"reasons": [],
+			"checks": [
+				{
+					"file": "packages/coding-agent/test/ultron-a52-context-guards.test.ts",
+					"test": "forget spares the current turn and pins, extensions observe it, compaction keeps notes and pins",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-context-control.test.ts",
+					"test": "history, summarize, guards, pin, note, and state follow the branch",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				}
+			]
+		},
+		{
+			"id": "A53",
+			"behavior": "A proposed code skill whose test fails is never importable; a passing one is, survives worker restart, and rolls back cleanly",
+			"status": "passed",
+			"declared": "passed",
+			"evidence": {
+				"listed": 6,
+				"passed": 6,
+				"failed": 0,
+				"missing": 0,
+				"skipped": 0,
+				"infrastructure": 0
+			},
+			"reasons": [],
+			"checks": [
+				{
+					"file": "packages/coding-agent/test/ultron-a53-code-skills.test.ts",
+					"test": "a proposed skill whose test fails is never importable",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-a53-code-skills.test.ts",
+					"test": "the test runs in a fresh isolated kernel without host capabilities",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-a53-code-skills.test.ts",
+					"test": "a passing skill is importable in every kernel, listed with its docstring, and survives worker restart",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-a53-code-skills.test.ts",
+					"test": "rollback follows refinement semantics and never leaves a stale import",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-a53-code-skills.test.ts",
+					"test": "Jev scores proposals: sensitive ones are refused, an outage never blocks",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-a53-code-skills.test.ts",
+					"test": "policy skills store any plan function with a test, filterable by task family",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				}
+			]
+		},
+		{
+			"id": "A54",
+			"behavior": "On a repeated task the second run uses the saved skill (tool use and skill import observed) and costs less than the first",
+			"status": "passed",
+			"declared": "passed",
+			"evidence": {
+				"listed": 1,
+				"passed": 1,
+				"failed": 0,
+				"missing": 0,
+				"skipped": 0,
+				"infrastructure": 0
+			},
+			"reasons": [],
+			"checks": [
+				{
+					"file": "packages/coding-agent/test/ultron-a54-skill-reuse.test.ts",
+					"test": "the second run imports the skill in its kernel and makes fewer, cheaper model calls",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				}
+			]
+		},
+		{
+			"id": "A55",
+			"behavior": "An agent class defined in a cell is invokable typed end to end, its state persists across cells and snapshots, and a bad return is rejected with the schema error",
+			"status": "passed",
+			"declared": "passed",
+			"evidence": {
+				"listed": 8,
+				"passed": 8,
+				"failed": 0,
+				"missing": 0,
+				"skipped": 0,
+				"infrastructure": 0
+			},
+			"reasons": [],
+			"checks": [
+				{
+					"file": "packages/coding-agent/test/ultron-a55-agent-classes.test.ts",
+					"test": "a class defined in a cell is invokable typed end to end, keeps state across cells, and rejects a bad return with the schema error",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-agent-classes.test.ts",
+					"test": "annotations become JSON schemas the host accepts",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-agent-classes.test.ts",
+					"test": "a model-driven method is one typed agents.invoke: docstrings are the prompt, arguments and fields are data",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-agent-classes.test.ts",
+					"test": "large arguments reach the model as bounded previews with a file holding the full value",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-agent-classes.test.ts",
+					"test": "a bad return is rejected with the schema error and never recorded as success (A14)",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-agent-classes.test.ts",
+					"test": "fields persist across cells and reset_scratch; assignments are type-checked",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-agent-classes.test.ts",
+					"test": "the class, its generation, and instance fields survive a snapshot and restore into a new kernel",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-agent-classes.test.ts",
+					"test": "redefinition makes a new generation; older generations stay invokable and roll back",
+					"outcome": "passed",
 					"matched": 1,
 					"infra": null
 				}

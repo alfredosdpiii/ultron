@@ -1,10 +1,10 @@
-# Ultron A01-A46 acceptance report
+# Ultron A01-A55 acceptance report
 
-Generated 2026-09-25T14:47:00.947Z by `npm run test:acceptance`. Unavailable is never passed; partial evidence is never a pass.
+Generated 2026-09-25T20:26:15.005Z by `npm run test:acceptance`. Unavailable is never passed; partial evidence is never a pass.
 
 - Instrument lock: instrument lock matches
 - Test runner: exit 0
-- Rows: 46 passed, 0 failed, 0 unverified, 0 blocked (of 46)
+- Rows: 55 passed, 0 failed, 0 unverified, 0 blocked (of 55)
 
 | Row | Status | Evidence (passed/listed) | Reasons |
 |---|---|---|---|
@@ -54,3 +54,12 @@ Generated 2026-09-25T14:47:00.947Z by `npm run test:acceptance`. Unavailable is 
 | A44 | passed | 7/7 | - |
 | A45 | passed | 2/2 | - |
 | A46 | passed | 3/4 (1 skipped) | recorded live evidence: acceptance/demonstrations/a46-live-cliproxyapi_gpt-6-sol.json: cliproxyapi/gpt-6-sol passed |
+| A47 | passed | 3/3 | - |
+| A48 | passed | 4/4 | - |
+| A49 | passed | 5/5 | - |
+| A50 | passed | 2/2 | - |
+| A51 | passed | 4/4 | - |
+| A52 | passed | 2/2 | - |
+| A53 | passed | 6/6 | - |
+| A54 | passed | 1/1 | - |
+| A55 | passed | 8/8 | - |
