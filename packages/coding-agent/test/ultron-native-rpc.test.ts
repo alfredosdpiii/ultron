@@ -157,6 +157,21 @@ describe("native RPC mode", () => {
 		);
 		expect(await client.getLastAssistantText()).toBe("NATIVE_RPC_OK");
 
+		const status = (await (
+			client as unknown as { send(command: object): Promise<{ success: boolean; data?: unknown }> }
+		).send({
+			type: "inspect",
+			request: "agents.status",
+		})) as { success: boolean; data?: { controls?: Record<string, boolean> } };
+		expect(status.success).toBe(true);
+		// Optional controls are reported, and all of them are off by default.
+		expect(Object.values(status.data?.controls ?? {}).every((enabled) => enabled === false)).toBe(true);
+		const refused = (await (client as unknown as { send(command: object): Promise<{ success: boolean }> }).send({
+			type: "inspect",
+			request: "agents.spawn",
+		})) as { success: boolean };
+		expect(refused.success).toBe(false);
+
 		const commands = await client.getCommands();
 		expect(commands).toContainEqual(expect.objectContaining({ name: "ultron-hello", source: "extension" }));
 

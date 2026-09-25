@@ -7,7 +7,7 @@
 
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import type { Context } from "@earendil-works/chord";
+import { type Context, isJsonValue } from "@earendil-works/chord";
 import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
 import type {
 	AgentMessage,
@@ -340,6 +340,13 @@ export async function runNativeRpcMode(options: NativeRpcOptions): Promise<void>
 							source: entry.source,
 						})),
 					});
+				}
+				case "inspect": {
+					// Ultron extension: the read-only inspector behind /agents, /memory why, /skills why, /experiments.
+					if (typeof command.request !== "string") throw new RpcCommandError("inspect requires a request type");
+					const payload = command.payload === undefined ? {} : command.payload;
+					if (!isJsonValue(payload)) throw new RpcCommandError("inspect payload must be JSON");
+					return ok(await control.inspect(command.request, payload, context));
 				}
 				case "export_html": {
 					const current = snapshot();
