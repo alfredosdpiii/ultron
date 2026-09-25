@@ -125,7 +125,7 @@ export function renderJevPanel(snapshot: JevSnapshot, width: number, options: Je
 			: style.fg("warning", "jev ✗ not configured (set TYPESAFE_API_KEY)");
 		const hindsight = available.hindsight
 			? style.fg("success", "hindsight ✓ configured")
-			: style.fg("warning", "hindsight ✗ not configured (set ULTRON_HINDSIGHT_URL)");
+			: style.fg("warning", "hindsight ✗ off (ULTRON_HINDSIGHT_URL=off)");
 		lines.push(`${jev}${style.fg("dim", " · ")}${hindsight}`);
 	}
 	const ordered = [...snapshot.decisions].sort((left, right) => left.at - right.at);

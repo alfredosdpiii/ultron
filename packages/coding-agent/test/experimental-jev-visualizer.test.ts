@@ -52,7 +52,7 @@ describe("Jev visualizer", () => {
 		const lines = renderJevPanel(fixture(), 120);
 		expect(lines).toEqual([
 			"Jev 2 triage · 1 recall (1 retrieved) · 1 retain · 1 failed · 4 ledger calls · 1 in flight",
-			"jev ✓ configured · hindsight ✗ not configured (set ULTRON_HINDSIGHT_URL)",
+			"jev ✓ configured · hindsight ✗ off (ULTRON_HINDSIGHT_URL=off)",
 			"  45s ago ◇ triage → powerful 82% · debugging · cx 1.4 · normal 120ms #aaaaaa",
 			"  30s ago ✓ recall retrieve p=0.71 90ms #bbbbbb",
 			"  12s ago + retain keep 90% 80ms",

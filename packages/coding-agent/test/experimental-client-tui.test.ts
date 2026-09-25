@@ -498,7 +498,7 @@ describe("experimental client TUI", () => {
 				component.handleInput("\r");
 				await vi.waitFor(() => {
 					const panel = plain(component.render(100));
-					expect(panel).toContain("jev ✓ configured · hindsight ✗ not configured");
+					expect(panel).toContain("jev ✓ configured · hindsight ✗ off");
 					expect(panel).toContain("◇ triage → powerful 80% · debugging");
 				});
 				expect(plain(component.render(80))).not.toContain("Jev ▸");

@@ -1416,7 +1416,7 @@ async function createCodingAgentHarness(
 					return {
 						available: {
 							jev: nativeJev !== undefined,
-							hindsight: Boolean(process.env.ULTRON_HINDSIGHT_URL?.trim()),
+							hindsight: hindsightUrl(process.env.ULTRON_HINDSIGHT_URL) !== undefined,
 						},
 						capacity: JEV_DECISION_CAPACITY,
 						decisions: await jevDecisions.list(),
