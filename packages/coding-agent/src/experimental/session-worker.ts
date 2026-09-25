@@ -47,7 +47,10 @@ import { ModelRuntime } from "../core/model-runtime.ts";
 import { DefaultResourceLoader } from "../core/resource-loader.ts";
 import { SettingsManager } from "../core/settings-manager.ts";
 import { buildSystemPrompt } from "../core/system-prompt.ts";
-import { createLocalBashOperations } from "../core/tools/bash.ts";
+import { bashToolSystemPromptContribution, createLocalBashOperations } from "../core/tools/bash.ts";
+import { editToolSystemPromptContribution } from "../core/tools/edit.ts";
+import { readToolSystemPromptContribution } from "../core/tools/read.ts";
+import { writeToolSystemPromptContribution } from "../core/tools/write.ts";
 import { initTheme } from "../modes/interactive/theme/theme.ts";
 import {
 	AutoMemory,
@@ -1291,8 +1294,8 @@ async function createCodingAgentHarness(
 			if (meta.value.lane === "main") host?.beginRootTurn(invocation.operationId);
 			return meta.value.lane;
 		},
-		// The signing key stays in this process; the kernel running model code never receives it. It is kept in the
-		// OS keyring when one is reachable, so it is not a file in the profile directory.
+		// The signing key stays in this process; the kernel running model code never receives it. It lives in the
+		// profile file unless ULTRON_RLM_SNAPSHOT_KEY_STORE opts into the OS keyring.
 		{ snapshotDir, snapshotKey: snapshotKey.key },
 	);
 	const tools = [createReadTool(), createEditTool(), createWriteTool(), createBashTool(), rlmTool];
@@ -1320,12 +1323,19 @@ async function createCodingAgentHarness(
 		buildSystemPrompt({
 			cwd: options.metadata.cwd,
 			selectedTools: selectedToolNames,
+			// Pi's own tool snippets and guidelines, and the profile's SYSTEM.md, as Pi's session builds them.
+			customPrompt: resourceLoader.getSystemPrompt(),
 			toolSnippets: {
-				read: "Read file contents",
-				edit: "Edit files with find/replace",
-				write: "Write files",
-				bash: "Execute shell commands",
+				read: readToolSystemPromptContribution.snippet,
+				edit: editToolSystemPromptContribution.snippet,
+				write: writeToolSystemPromptContribution.snippet,
+				bash: bashToolSystemPromptContribution.snippet,
 				rlm: "Run Python RLM code and recursive agents",
+			},
+			toolGuidelines: {
+				read: [...readToolSystemPromptContribution.guidelines],
+				edit: [...editToolSystemPromptContribution.guidelines],
+				write: [...writeToolSystemPromptContribution.guidelines],
 			},
 			contextFiles,
 			skills: resourceLoader.getSkills().skills,

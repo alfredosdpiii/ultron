@@ -189,6 +189,22 @@ describe("Pi parity through the real CLI", () => {
 		expect(bareCommands).not.toContain("discovered");
 	}, 120_000);
 
+	test("the system prompt has Pi's tool snippets and guidelines, and the profile's SYSTEM.md replaces it as in Pi", async () => {
+		const plain = startClient(["--no-session"]);
+		await plain.start();
+		await plain.promptAndWait("hello", undefined, 60_000);
+		const system = provider.requests.at(-1)!.system;
+		expect(system).toContain("Use read to examine files instead of cat or sed.");
+		expect(system).toContain("Use write only for new files or complete rewrites.");
+		expect(system).toContain("including multiple disjoint edits in one call");
+
+		writeFileSync(join(agentDir, "SYSTEM.md"), "You are the parity test prompt.");
+		const custom = startClient(["--no-session"]);
+		await custom.start();
+		await custom.promptAndWait("hello again", undefined, 60_000);
+		expect(provider.requests.at(-1)!.system.startsWith("You are the parity test prompt.")).toBe(true);
+	}, 120_000);
+
 	test("get_tree and get_entries cover every branch; models, stats, and compaction have Pi's shapes", async () => {
 		const client = startClient(["--no-session"]);
 		await client.start();
