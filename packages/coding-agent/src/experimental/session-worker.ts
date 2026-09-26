@@ -23,6 +23,7 @@ import {
 	withCancel,
 } from "@ultron/agent-core";
 import { NodeExecutionEnv } from "@ultron/agent-core/node";
+import type { Api, Model } from "@ultron/ai";
 import type { Context } from "@ultron/chord";
 import {
 	isJsonValue,
@@ -107,6 +108,7 @@ import {
 import { jobSummary, type ShellJobEnd, ShellJobs } from "../ultron/rlm/shell-jobs.ts";
 import { loadSnapshotKey } from "../ultron/rlm/snapshot-auth.ts";
 import { createSessionTaskStore } from "../ultron/rlm/task-store.ts";
+import { CellImages, VIEW_IMAGE_REQUEST, type ViewImageOptions } from "../ultron/rlm/view-image.ts";
 import { createScheduleModule } from "../ultron/schedules.ts";
 import { createSkillModule } from "../ultron/skills.ts";
 import {
@@ -158,8 +160,12 @@ export class RlmCellError extends Error {
 }
 
 /** Worker adapter around the shared, bounded Python protocol implementation. */
+/** One cell's tool result: its text and the images `view_image` attached. */
+export type UltronRlmCellOutput = { text: string; images: CellImages };
+
 export class UltronRlmKernel {
 	private readonly kernel: RlmKernel;
+	private readonly hostHandler: KernelHostHandler;
 
 	constructor(
 		cwd: string,
@@ -179,6 +185,7 @@ export class UltronRlmKernel {
 			},
 			hostHandler,
 		);
+		this.hostHandler = hostHandler;
 	}
 
 	snapshot(path?: string): Promise<KernelExecutionResult> {
@@ -194,7 +201,19 @@ export class UltronRlmKernel {
 	}
 
 	async execute(code: string, context: Context): Promise<string> {
-		const result = await this.kernel.execute(code, context.abortSignal);
+		return (await this.executeCell(code, context)).text;
+	}
+
+	/** Run a cell; images it attaches with `view_image` are normalized with `imageOptions` and returned beside the text. */
+	async executeCell(
+		code: string,
+		context: Context,
+		imageOptions: ViewImageOptions = {},
+	): Promise<UltronRlmCellOutput> {
+		const images = new CellImages(imageOptions);
+		const result = await this.kernel.execute(code, context.abortSignal, (type, payload, signal) =>
+			type === VIEW_IMAGE_REQUEST ? images.attach(payload) : this.hostHandler(type, payload, signal),
+		);
 		// The streams end with print()'s newline; the parts are joined by one, so drop it to avoid blank lines.
 		const stdout = result.stdout.replace(/\n$/, "");
 		const stderr = result.stderr.replace(/\n$/, "");
@@ -208,7 +227,7 @@ export class UltronRlmKernel {
 				result.error?.ename ?? "PythonError",
 			);
 		}
-		return truncateToolOutput([stdout, stderr, result.result].filter(Boolean).join("\n"));
+		return { text: truncateToolOutput([stdout, stderr, result.result].filter(Boolean).join("\n")), images };
 	}
 
 	async resetScratch(): Promise<void> {
@@ -272,6 +291,10 @@ export function createUltronRlmTool(
 		readonly now?: () => number;
 		/** Situational hints appended to cell results (see hints.ts). */
 		readonly hints?: CellHints;
+		/** The model a lane's tool results go to: `view_image` resizes for it and notes when it takes no images. */
+		readonly resolveModel?: (lane: string, context: Context) => Promise<Model<Api> | undefined>;
+		/** Pi's `images.autoResize` setting, read per cell. Default true. */
+		readonly autoResizeImages?: () => boolean;
 	} = {},
 ): UltronRlmTool {
 	const hints = options.hints;
@@ -388,14 +411,20 @@ export function createUltronRlmTool(
 			const lane = await resolveLane(invocation, context);
 			context.abortSignal?.throwIfAborted();
 			if (closed) throw new Error("Ultron RLM tool is closed");
+			const model = await options.resolveModel?.(lane, context).catch(() => undefined);
+			const imageOptions: ViewImageOptions = {
+				autoResizeImages: options.autoResizeImages?.() ?? true,
+				...(model === undefined ? {} : { model }),
+			};
+			const run = () => kernels.use(lane, (kernel) => kernel.executeCell(params.code, context, imageOptions));
 			if (hints === undefined) {
-				const result = await kernels.use(lane, (kernel) => kernel.execute(params.code, context));
-				return { content: [{ type: "text", text: result || "(no result)" }], details: {} };
+				const { text, images } = await run();
+				return { content: images.content(text || "(no result)"), details: {} };
 			}
 			hints.beginCell(lane, params.code);
-			let result: string;
+			let output: UltronRlmCellOutput;
 			try {
-				result = await kernels.use(lane, (kernel) => kernel.execute(params.code, context));
+				output = await run();
 			} catch (error) {
 				const message = error instanceof Error ? error.message : String(error);
 				const hint = await hints
@@ -404,9 +433,10 @@ export function createUltronRlmTool(
 				if (hint && error instanceof Error) error.message = `${message}\n${hint}`;
 				throw error;
 			}
+			const result = output.text;
 			const hint = await hints.endCell(lane, { text: result }).catch(() => undefined);
 			const text = result || "(no result)";
-			return { content: [{ type: "text", text: hint ? `${text}\n${hint}` : text }], details: {} };
+			return { content: output.images.content(hint ? `${text}\n${hint}` : text), details: {} };
 		},
 	};
 }
@@ -1419,6 +1449,7 @@ async function createCodingAgentHarness(
 		});
 	};
 	let host: NativeRlmHost | undefined;
+	let rlmHarness: AgentHarnessInstance<{ env: NodeExecutionEnv }> | undefined;
 	let holdActivity: (() => () => void) | undefined;
 	const hostHandler: RlmHostHandler = async (type, payload, signal, caller) => {
 		// A plain `bash` with a yield_after (ULTRON_BASH_YIELD_AFTER) runs as a shell job that detaches when slow.
@@ -1482,7 +1513,14 @@ async function createCodingAgentHarness(
 		},
 		// The signing key stays in this process; the kernel running model code never receives it. It lives in the
 		// profile file unless ULTRON_RLM_SNAPSHOT_KEY_STORE opts into the OS keyring.
-		{ snapshotDir, snapshotKey: snapshotKey.key, hints: cellHints },
+		{
+			snapshotDir,
+			snapshotKey: snapshotKey.key,
+			hints: cellHints,
+			// The lane's current model (it can change mid-session); the harness exists by the time a cell runs.
+			resolveModel: async (lane, context) => (await rlmHarness?.lane(lane, context))?.getModel(context),
+			autoResizeImages: () => settingsManager.getImageAutoResize(),
+		},
 	);
 	const tools = [createReadTool(), createEditTool(), createWriteTool(), createBashTool(), rlmTool];
 	const loadedSkills = await Promise.all(
@@ -1596,6 +1634,7 @@ async function createCodingAgentHarness(
 			TODO_CONTEXT,
 		)
 	).harness;
+	rlmHarness = harness;
 	// A worker started for an interactive client (Pi's TUI or RPC mode) queues extension UI for it until it attaches.
 	const extensionUI = new ExtensionUIBridge({
 		expectClient: options.extensionMode === "tui" || options.extensionMode === "rpc",

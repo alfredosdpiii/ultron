@@ -458,6 +458,13 @@ async def read(path: str | os.PathLike[str]) -> Any:
     if not filepath.is_absolute():
         filepath = Path.cwd() / filepath
     size = filepath.stat().st_size
+    with filepath.open("rb") as handle:
+        kind = _image_kind(handle.read(16))
+    if kind is not None:
+        return (
+            f"[read] {path} is a {kind.upper()} image ({size:,} bytes); read() returns text only. "
+            f"Use `await view_image({str(path)!r})` to look at it."
+        )
     if size <= _read_handle_bytes():
         return filepath.read_bytes().decode("utf-8", errors="replace")
     handle = await _STATE.namespace["rlm"].load(path=filepath)
@@ -466,6 +473,107 @@ async def read(path: str | os.PathLike[str]) -> Any:
         f"{handle!r}. Use h.search(regex), h.lines(a, b), h.chunks(n) or rlm.map(task, h.chunks(n)) on it."
     )
     return handle
+
+
+def _image_kind(head: bytes) -> str | None:
+    """The image format named by a file's magic bytes (png, jpeg, gif, webp), or None."""
+    if head.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "png"
+    if head.startswith(b"\xff\xd8\xff"):
+        return "jpeg"
+    if head.startswith((b"GIF87a", b"GIF89a")):
+        return "gif"
+    if len(head) >= 12 and head[:4] == b"RIFF" and head[8:12] == b"WEBP":
+        return "webp"
+    return None
+
+
+def _figure_png(source: Any) -> bytes | None:
+    """PNG bytes of a matplotlib figure (or pyplot, or an Axes), else None."""
+    figure = source
+    if not hasattr(figure, "savefig") and hasattr(figure, "get_figure"):
+        figure = figure.get_figure()
+    if not callable(getattr(figure, "savefig", None)):
+        return None
+    buffer = io.BytesIO()
+    figure.savefig(buffer, format="png", bbox_inches="tight")
+    return buffer.getvalue()
+
+
+def _pil_png(source: Any) -> bytes | None:
+    """PNG bytes of a PIL image when PIL is available, else None."""
+    try:
+        from PIL import Image as PILImage  # type: ignore[import-not-found]
+    except Exception:
+        return None
+    if not isinstance(source, PILImage.Image):
+        return None
+    image = source
+    if image.mode not in ("1", "L", "LA", "P", "RGB", "RGBA"):
+        image = image.convert("RGBA")
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+    return buffer.getvalue()
+
+
+async def view_image(path_or_bytes: Any, *, detail: str | None = None) -> str:
+    """Show an image to the model: it is attached to this cell's tool result as an image.
+
+    Accepts a path (png, jpeg, gif or webp, detected from the file's bytes, not its extension), raw image bytes,
+    a PIL image, or a matplotlib figure (rendered to PNG). Oversized images are downscaled to the model's limits;
+    ``detail="low"`` caps the long side at 512 px. At most 8 images per cell. Returns a short description
+    (dimensions, format, bytes). The image itself never appears in printed output.
+    """
+    if detail is not None and detail not in ("low", "high", "auto"):
+        raise ValueError("view_image detail must be None, 'low', 'high' or 'auto'")
+    data: bytes | None = None
+    if isinstance(path_or_bytes, (str, os.PathLike)):
+        if not str(path_or_bytes):
+            raise ValueError("view_image path must be a non-empty string")
+        filepath = Path(path_or_bytes)
+        if not filepath.is_absolute():
+            filepath = Path.cwd() / filepath
+        if not filepath.is_file():
+            raise FileNotFoundError(f"{path_or_bytes} not found")
+        with filepath.open("rb") as handle:
+            if _image_kind(handle.read(16)) is None:
+                raise ValueError(f"{path_or_bytes} is not a png, jpeg, gif or webp image")
+    elif isinstance(path_or_bytes, (bytes, bytearray, memoryview)):
+        data = bytes(path_or_bytes)
+    else:
+        data = _pil_png(path_or_bytes)
+        if data is None:
+            data = _figure_png(path_or_bytes)
+        if data is None:
+            raise TypeError(
+                "view_image takes a path, image bytes, a PIL image or a matplotlib figure, "
+                f"not {type(path_or_bytes).__name__}"
+            )
+    temporary: str | None = None
+    if data is not None:
+        kind = _image_kind(data[:16])
+        if kind is None:
+            raise ValueError("view_image bytes are not a png, jpeg, gif or webp image")
+        import tempfile
+
+        descriptor, temporary = tempfile.mkstemp(prefix="ultron-view-image-", suffix=f".{kind}")
+        with os.fdopen(descriptor, "wb") as handle:
+            handle.write(data)
+        filepath = Path(temporary)
+    payload: dict[str, Any] = {"path": str(filepath)}
+    if detail is not None:
+        payload["detail"] = detail
+    try:
+        reply = await _STATE.bridge.request("rlm.view_image", payload)
+    finally:
+        if temporary is not None:
+            with contextlib.suppress(OSError):
+                os.unlink(temporary)
+    if not isinstance(reply, dict):
+        return str(reply)
+    description = str(reply.get("description", "image attached"))
+    note = reply.get("note")
+    return f"{description}\n{note}" if note else description
 
 
 async def edit(path: str, old_str: str, new_str: str) -> str:
@@ -609,6 +717,7 @@ class RuntimeState:
         self.namespace["bash"] = bash
         self.namespace["edit"] = edit
         self.namespace["read"] = read
+        self.namespace["view_image"] = view_image
         self.namespace["hints"] = Hints(self.bridge)
         # Extension tools (the pi-mcp-adapter's `mcp` gateway among them) as async skills.
         self.namespace["tools"] = Tools(self.bridge)

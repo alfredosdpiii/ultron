@@ -129,7 +129,7 @@ export class ScriptedProvider {
 }
 
 /** models.json content pointing a `scripted` provider at this server. */
-export function scriptedModelsJson(baseUrl: string): string {
+export function scriptedModelsJson(baseUrl: string, options: { input?: readonly ("text" | "image")[] } = {}): string {
 	return JSON.stringify({
 		providers: {
 			scripted: {
@@ -141,7 +141,7 @@ export function scriptedModelsJson(baseUrl: string): string {
 						id: "scripted",
 						name: "scripted",
 						reasoning: false,
-						input: ["text"],
+						input: options.input ?? ["text"],
 						contextWindow: 128000,
 						maxTokens: 4096,
 					},

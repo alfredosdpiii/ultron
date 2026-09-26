@@ -153,10 +153,13 @@ type ExecutionWaiter = Deferred<KernelExecutionResult> & {
 	state: KernelExecutionResult;
 	controller: AbortController;
 	hostRequests: Set<string>;
+	/** Serves this cell's host requests instead of the kernel's handler (see {@link RlmKernel.execute}). */
+	hostHandler?: KernelHostHandler;
 };
 type Operation = Deferred<KernelExecutionResult> & {
 	running: boolean;
 	cell?: ExecutionWaiter;
+	hostHandler?: KernelHostHandler;
 };
 type Generation = {
 	child: ChildProcessWithoutNullStreams;
@@ -718,7 +721,7 @@ export class RlmKernel {
 		generation.hostRequests.set(id, cell);
 		cell.hostRequests.add(id);
 		try {
-			const result = await this.hostHandler(type, payload, cell.controller.signal);
+			const result = await (cell.hostHandler ?? this.hostHandler)(type, payload, cell.controller.signal);
 			if (this.isCurrent(generation) && !cell.controller.signal.aborted) {
 				this.sendHostReply(generation, id, { request: "host_reply", id, payload: result });
 			}
@@ -826,6 +829,7 @@ export class RlmKernel {
 			state: { status: "ok" as const, stdout: "", stderr: "" },
 			controller: new AbortController(),
 			hostRequests: new Set<string>(),
+			...(operation?.hostHandler === undefined ? {} : { hostHandler: operation.hostHandler }),
 		}) as ExecutionWaiter;
 		if (!this.isCurrent(generation)) {
 			waiter.reject(generation.failure ?? new Error("RLM kernel is not running"));
@@ -903,7 +907,11 @@ export class RlmKernel {
 		generation.child.stderr.destroy();
 	}
 
-	private enqueue(frame: Frame, signal?: AbortSignal): Promise<KernelExecutionResult> {
+	private enqueue(
+		frame: Frame,
+		signal?: AbortSignal,
+		hostHandler?: KernelHostHandler,
+	): Promise<KernelExecutionResult> {
 		if (this.closed) return Promise.reject(new Error("RLM kernel is shut down"));
 		if (signal?.aborted) return Promise.reject(abortError(signal));
 		try {
@@ -913,6 +921,7 @@ export class RlmKernel {
 		}
 		const operation = Object.assign(deferred<KernelExecutionResult>(), {
 			running: false,
+			...(hostHandler === undefined ? {} : { hostHandler }),
 		}) as Operation;
 		this.operations.add(operation);
 		const onAbort = () => {
@@ -1021,9 +1030,13 @@ export class RlmKernel {
 		return this.request(generation, { request: "restore", path, content_sha256: contentSha256 }, operation);
 	}
 
-	execute(code: string, signal?: AbortSignal): Promise<KernelExecutionResult> {
+	/**
+	 * Run a cell. `hostHandler`, when given, serves this cell's host requests in place of the kernel's handler, so
+	 * per-cell state (the images `view_image` attaches) stays with the cell even when cells are queued.
+	 */
+	execute(code: string, signal?: AbortSignal, hostHandler?: KernelHostHandler): Promise<KernelExecutionResult> {
 		if (typeof code !== "string") return Promise.reject(new Error("RLM execute code must be a string"));
-		return this.enqueue({ request: "execute", code }, signal);
+		return this.enqueue({ request: "execute", code }, signal, hostHandler);
 	}
 
 	/** Clear invocation scratch while keeping the API bindings and the declared `state` dict. */

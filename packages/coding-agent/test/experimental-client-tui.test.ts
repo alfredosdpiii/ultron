@@ -24,7 +24,7 @@ import {
 	FACET_BUNDLE_ARTIFACT_FORMAT_VERSION,
 	type FacetBundleArtifact,
 } from "@ultron/chord/node";
-import { ProcessTerminal, TuiMainScreen, visibleWidth } from "@ultron/tui";
+import { ProcessTerminal, resetCapabilitiesCache, setCapabilities, TuiMainScreen, visibleWidth } from "@ultron/tui";
 import { beforeAll, describe, expect, test, vi } from "vitest";
 import type { ClientCommand } from "../src/cli/experimental/commands/client.ts";
 import { APP_NAME } from "../src/config.ts";
@@ -1503,6 +1503,70 @@ describe("experimental client TUI parity with Pi's interactive mode", () => {
 		expect(expanded).toMatch(/20 │ x19 = 19/);
 		expect(expanded).toContain("out 0");
 		view.dispose();
+	});
+
+	test("an rlm result's view_image blocks render as images, or as Pi's fallback line without image support", () => {
+		// A 2x2 PNG, as view_image attaches it.
+		const data = "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAADklEQVR4nGM4AQYMEAoAQa4JYQOnncMAAAAASUVORK5CYII=";
+		const snapshot = laneSnapshot();
+		snapshot.transcript = [
+			{
+				id: "a1",
+				parentId: null,
+				seq: 1,
+				timestamp: 1,
+				type: "message",
+				message: {
+					role: "assistant",
+					content: [
+						{ type: "toolCall", id: "call-1", name: "rlm", arguments: { code: "await view_image('x.png')" } },
+					],
+					provider: "test",
+					model: "one",
+					api: "test",
+					usage: snapshot.stats.usage,
+					stopReason: "toolUse",
+					timestamp: 1,
+				},
+			},
+			{
+				id: "r1",
+				parentId: "a1",
+				seq: 2,
+				timestamp: 2,
+				type: "message",
+				message: {
+					role: "toolResult",
+					toolCallId: "call-1",
+					toolName: "rlm",
+					content: [
+						{ type: "text", text: "image 1: 2x2 PNG, 71 B" },
+						{ type: "image", data, mimeType: "image/png" },
+					],
+					isError: false,
+					timestamp: 2,
+				},
+			},
+		];
+		try {
+			setCapabilities({ images: null, trueColor: true, hyperlinks: false });
+			const textOnly = new ExperimentalChatView(new TuiMainScreen(new ProcessTerminal()), process.cwd());
+			textOnly.apply(snapshot);
+			const fallback = plain(textOnly.transcript.render(100));
+			expect(fallback).toContain("image 1: 2x2 PNG, 71 B");
+			expect(fallback).toContain("[Image: [image/png] 2x2]");
+			textOnly.dispose();
+
+			setCapabilities({ images: "iterm2", trueColor: true, hyperlinks: false });
+			const graphical = new ExperimentalChatView(new TuiMainScreen(new ProcessTerminal()), process.cwd());
+			graphical.apply(snapshot);
+			const rendered = graphical.transcript.render(100).join("\n");
+			expect(rendered).toContain("\x1b]1337;File=");
+			expect(rendered).toContain(data);
+			graphical.dispose();
+		} finally {
+			resetCapabilitiesCache();
+		}
 	});
 
 	test("the footer's context use counts the last response plus the messages after it", () => {

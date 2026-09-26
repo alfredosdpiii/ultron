@@ -63,6 +63,8 @@ const BASH_SKILL_WITH_TOOL = `Inside rlm you can also run shell with \`out = awa
 
 const READ_SKILL = `\`text = await read(path)\` returns a file's text; a file over 256 KiB comes back as a ContextHandle instead (a note gives its size and digest), so a huge file never lands in your context by accident: use \`h.search(regex)\`, \`h.lines(a, b)\`, \`h.chunks(n)\` or \`rlm.map\` on it (see Bounded inference).`;
 
+const VIEW_IMAGE_SKILL = `To look at an image (a screenshot, diagram, chart or plot), call \`await view_image(path_or_bytes, detail=None)\` with a path, image bytes, a PIL image or a matplotlib figure: the image is attached to this cell's result for you to see (at most 8 per cell; \`detail="low"\` for a small preview), and it returns a one-line description.`;
+
 const EDIT_SKILL = `Change existing files with the pre-imported async \`edit\` skill, not with \`str.replace\` + \`write_text\`: \`await edit(path="pkg/file.py", old_str=..., new_str=...)\` replaces exactly one occurrence and raises ValueError when old_str is absent or appears more than once, so a stale or ambiguous hunk cannot be applied silently. Several hunks go in one cell:
 \`\`\`python
 for old, new in [(OLD_IMPORTS, NEW_IMPORTS), (OLD_CALL, NEW_CALL)]:
@@ -185,9 +187,10 @@ export function rlmRuntimePrompt(
 	const nativeEdit = activeTools.includes("edit");
 	const skills = [
 		"## Skills",
-		"Pre-imported async skills: `bash`, `edit`, `read`. Use `help(bash)` for a signature.",
+		"Pre-imported async skills: `bash`, `edit`, `read`, `view_image`. Use `help(bash)` for a signature.",
 		nativeBash ? BASH_SKILL_WITH_TOOL : BASH_SKILL,
 		READ_SKILL,
+		VIEW_IMAGE_SKILL,
 		nativeEdit ? EDIT_SKILL_WITH_TOOL : EDIT_SKILL,
 		PROJECT_ENV,
 	];
