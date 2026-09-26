@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto";
-import { resolve } from "node:path";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import {
 	type AgentLane,
 	type LaneSnapshot,
@@ -23,10 +25,19 @@ import {
 } from "@ultron/chord/node";
 import { ProcessTerminal, TuiMainScreen } from "@ultron/tui";
 import { beforeAll, describe, expect, test, vi } from "vitest";
+import type { ClientCommand } from "../src/cli/experimental/commands/client.ts";
 import type { ExtensionUIContext } from "../src/core/extensions/types.ts";
 import { SettingsManager } from "../src/core/settings-manager.ts";
 import { type ClientTuiServer, ExperimentalClientTui } from "../src/experimental/client-tui.ts";
+import { ExperimentalChatView } from "../src/experimental/client-tui-chat.ts";
+import { laneContextUsage } from "../src/experimental/client-tui-footer.ts";
 import { createPresentationFacetData } from "../src/experimental/plugins/bundled.ts";
+import {
+	mergePromptHistory,
+	PromptHistoryStore,
+	searchPromptHistory,
+	sessionPromptHistory,
+} from "../src/experimental/prompt-history.ts";
 import { AgentController } from "../src/experimental/services/agent-controller.ts";
 import { createAgentController } from "../src/experimental/services/agent-controller-provider.ts";
 import type {
@@ -159,6 +170,428 @@ function laneSnapshot(): LaneSnapshot {
 	};
 }
 
+interface HarnessOptions {
+	/** The prompt history file; `null` (default) keeps history in memory. */
+	readonly historyPath?: string | null;
+	/** The main lane's transcript when the Session opens (a resumed Session). */
+	readonly transcript?: LaneSnapshot["transcript"];
+	readonly settingsManager?: SettingsManager;
+}
+
+async function openHarness(command: ClientCommand, options: HarnessOptions = {}) {
+	const directoryState = replicatedState<SessionDirectoryState>({ revision: 1, sessions: [session("one", 1)] });
+	const attachment = replicatedState<SessionAttachmentState>({ status: "detached" });
+	const connectionState = replicatedState<ServerConnectionState>({ status: "connected", since: "now" });
+	const modelsState = replicatedState<ModelsState>({
+		catalog: {
+			revision: 1,
+			availableModels: [
+				{ provider: "test", modelId: "one", name: "Model One", reasoning: false },
+				{ provider: "test", modelId: "two", name: "Model Two", reasoning: true },
+			],
+		},
+		configuration: { model: { provider: "test", modelId: "one" }, thinkingLevel: "off" },
+		refresh: { status: "idle" },
+	});
+	const create = vi.fn(async (options?: { forkFromSessionId?: string }) => {
+		const created = options?.forkFromSessionId === undefined ? session("two", 2) : session("three", 3);
+		directoryState.change(BACKGROUND_CONTEXT, (draft) => {
+			draft.revision = 2;
+			draft.sessions.push(created);
+		});
+		return created;
+	});
+	const select = vi.fn(async (model: { provider: string; modelId: string }) => {
+		modelsState.change(BACKGROUND_CONTEXT, (draft) => {
+			draft.configuration.model = model;
+		});
+	});
+	const selectThinking = vi.fn(async (thinkingLevel: "off" | "high") => {
+		modelsState.change(BACKGROUND_CONTEXT, (draft) => {
+			draft.configuration.thinkingLevel = thinkingLevel;
+		});
+	});
+	const transcriptState = replicatedState<TranscriptState>({
+		snapshot: { ...laneSnapshot(), transcript: [...(options.transcript ?? [])] } as LaneTranscriptSnapshot,
+		event: null,
+	});
+	const emitTranscriptEvent = (event: LaneWatchEvent): void => {
+		transcriptState.change(BACKGROUND_CONTEXT, (draft) => {
+			if (reduceLaneSnapshot(draft.snapshot as unknown as LaneSnapshot, event) === "rebase") {
+				throw new Error("Test transcript event unexpectedly requires a rebase");
+			}
+			draft.event = event;
+		});
+	};
+	let finishPrompt!: () => void;
+	const promptFinished = new Promise<void>((resolve) => {
+		finishPrompt = resolve;
+	});
+	const prompt = vi.fn(async () => {
+		emitTranscriptEvent({
+			type: "run_start",
+			lane: "main",
+			runId: "run-1",
+			startedAt: 1,
+		});
+		await promptFinished;
+		emitTranscriptEvent({
+			type: "entry_added",
+			lane: "main",
+			entry: {
+				id: "entry-user",
+				parentId: null,
+				seq: 1,
+				timestamp: 1,
+				type: "message",
+				message: { role: "user", content: [{ type: "text", text: "hello" }], timestamp: 1 },
+			},
+		});
+		emitTranscriptEvent({
+			type: "entry_added",
+			lane: "main",
+			entry: {
+				id: "entry-assistant",
+				parentId: "entry-user",
+				seq: 2,
+				timestamp: 2,
+				type: "message",
+				message: {
+					role: "assistant",
+					content: [{ type: "text", text: "remote answer" }],
+					provider: "test",
+					model: "one",
+					api: "test",
+					usage: transcriptState.value.snapshot!.stats.usage,
+					stopReason: "stop",
+					timestamp: 2,
+				},
+			},
+		});
+		emitTranscriptEvent({
+			type: "run_end",
+			lane: "main",
+			runId: "run-1",
+			status: "completed",
+			fromTipId: null,
+			tipId: "entry-assistant",
+			endedAt: 2,
+		});
+		return {
+			ok: true as const,
+			value: {
+				operationId: "run-1",
+				kind: "run" as const,
+				status: "completed" as const,
+				fromTipId: null,
+				tipId: "entry-assistant",
+				startedAt: 1,
+				endedAt: 2,
+			},
+		};
+	});
+
+	const reloadSource =
+		'"use strict";\nconst { defineFacet, defineService } = require("@ultron/chord");\nconst Models = defineService("pi.models");\nmodule.exports = { __esModule: true, default: defineFacet({ id: "test-tui-facet", setup(env) { env.use(Models); } }) };\n';
+	const reloadArtifact: FacetBundleArtifact = {
+		format: FACET_BUNDLE_ARTIFACT_FORMAT,
+		formatVersion: FACET_BUNDLE_ARTIFACT_FORMAT_VERSION,
+		plugin: { id: "test-tui-plugin" },
+		entryName: "tui",
+		entry: {
+			file: "tui.cjs",
+			integrity: `sha256-${createHash("sha256").update(reloadSource).digest("base64")}`,
+			externalImports: ["@ultron/chord"],
+		},
+		source: reloadSource,
+	};
+	const reloadData = createPresentationFacetData([reloadArtifact]);
+	const prepareSessionPlugins = vi.fn(async () => reloadData);
+	const reloadPresentationPlugins = vi.fn(async () => reloadData);
+	const reloadSessionPlugins = vi.fn(async () => {});
+	const inspect = vi.fn(async (request: string) => inspectFixture(request));
+	// The worker's tree after the prompt below, in Pi's entry format.
+	const readTree = vi.fn(async () => ({
+		entries: [
+			{
+				type: "message",
+				id: "entry-user",
+				parentId: null,
+				timestamp: new Date(1).toISOString(),
+				message: { role: "user", content: [{ type: "text", text: "hello" }], timestamp: 1 },
+			},
+			{
+				type: "message",
+				id: "entry-assistant",
+				parentId: "entry-user",
+				timestamp: new Date(2).toISOString(),
+				message: {
+					role: "assistant",
+					content: [{ type: "text", text: "remote answer" }],
+					provider: "test",
+					model: "one",
+					api: "test",
+					usage: laneSnapshot().stats.usage,
+					stopReason: "stop",
+					timestamp: 2,
+				},
+			},
+		] as JsonValue[],
+		leafId: "entry-assistant",
+		labels: {},
+		sessionFile: null,
+	}));
+	const setLabel = vi.fn(async () => {});
+	const beforeFork = vi.fn(async () => ({ cancelled: false }));
+	const navigateTree = vi.fn(async () => ({
+		ok: true as const,
+		value: {
+			navigation: {
+				operationId: "nav-1",
+				kind: "navigation" as const,
+				status: "completed" as const,
+				fromTipId: "entry-assistant",
+				tipId: null,
+				startedAt: 3,
+				endedAt: 3,
+			},
+		},
+	}));
+	const settingsManager = options.settingsManager ?? SettingsManager.inMemory();
+	const sessionSettings = { name: null as string | null };
+	const setName = vi.fn(async (name: string) => {
+		sessionSettings.name = name;
+	});
+	const bash = vi.fn(async (command: string, excludeFromContext: boolean) => {
+		const output = `ran ${command}`;
+		// The worker records the command in the lane, as the session-control provider does.
+		emitTranscriptEvent({
+			type: "entry_added",
+			lane: "main",
+			entry: {
+				id: `bash-${command}`,
+				parentId: null,
+				seq: 100,
+				timestamp: 100,
+				type: "message",
+				message: {
+					role: "bashExecution",
+					command,
+					output,
+					exitCode: 0,
+					cancelled: false,
+					truncated: false,
+					timestamp: 100,
+					...(excludeFromContext ? { excludeFromContext: true } : {}),
+				} as never,
+			},
+		});
+		return { output, exitCode: 0, cancelled: false, truncated: false, fullOutputPath: null };
+	});
+	const cycleThinking = vi.fn(async () => {
+		modelsState.change(BACKGROUND_CONTEXT, (draft) => {
+			draft.configuration.thinkingLevel = draft.configuration.thinkingLevel === "off" ? "high" : "off";
+		});
+	});
+	const steer = vi.fn(async () => ({ ok: true as const, value: { entryId: "queued-steer" } }));
+	const followUp = vi.fn(async () => ({ ok: true as const, value: { entryId: "queued-follow-up" } }));
+	const cancelQueued = vi.fn(async () => ({ ok: true as const, value: { kind: "cancelled" } }));
+	const serverProvider = new RemoteServiceProvider([SessionDirectory, SessionManagement, PresentationPlugins]);
+	serverProvider.provide(SessionDirectory, { state: directoryState });
+	serverProvider.provide(PresentationPlugins, {
+		prepareSession: prepareSessionPlugins,
+		reload: reloadPresentationPlugins,
+	});
+	serverProvider.provide(SessionManagement, {
+		create,
+		async remove() {},
+		async rename() {},
+		async attach(sessionId) {
+			publishReplacement(attachment, { status: "attaching", sessionId });
+		},
+		async detach() {
+			publishReplacement(attachment, { status: "detached" });
+		},
+	});
+	const sessionProvider = new RemoteServiceProvider([
+		Models,
+		AgentController,
+		SessionPlugins,
+		Transcript,
+		LegacyExtensionCommands,
+		SessionControl,
+		ExtensionUI,
+	]);
+	const extensionUIBridge = new ExtensionUIBridge();
+	sessionProvider.provide(ExtensionUI, extensionUIBridge.service);
+	sessionProvider.provide(SessionPlugins, { reload: reloadSessionPlugins });
+	sessionProvider.provide(SessionControl, {
+		getSettings: async () => ({
+			name: sessionSettings.name,
+			steeringMode: "all",
+			followUpMode: "all",
+			autoCompaction: true,
+			autoRetry: true,
+		}),
+		setName,
+		setSteeringMode: async () => {},
+		setFollowUpMode: async () => {},
+		setAutoCompaction: async () => {},
+		setAutoRetry: async () => {},
+		listCommands: async () => [],
+		bash,
+		abortBash: async () => {},
+		inspect,
+		readTree,
+		setLabel,
+		beforeFork,
+		forked: async () => {},
+	});
+	sessionProvider.provide(LegacyExtensionCommands, {
+		list: async () => [],
+		run: async () => ({ notifications: [] }),
+	});
+	sessionProvider.provide(Models, {
+		state: modelsState,
+		cycleThinking,
+		async getThinkingLevels() {
+			return ["off", "high"];
+		},
+		async refresh() {},
+		select,
+		selectThinking,
+	});
+	sessionProvider.provide(
+		AgentController,
+		createAgentController({ prompt, navigateTree, steer, followUp, cancelQueued } as unknown as AgentLane),
+	);
+	sessionProvider.provide(Transcript, { state: transcriptState });
+
+	const serverNamespace = createRemoteServiceBinding({
+		services: [SessionDirectory, SessionManagement, PresentationPlugins],
+		transport: createLoopbackServiceTransport(serverProvider),
+		bound: false,
+	});
+	const serverNamespaceReady = serverNamespace.ready.bind(serverNamespace);
+	const serverServices: ServerServiceSource = Object.assign(serverNamespace, {
+		acceptsUnavailableServices: false,
+		connection: connectionState,
+		async catalogue() {
+			return serverProvider.catalogue;
+		},
+		open() {
+			return {
+				use: serverNamespace.use.bind(serverNamespace),
+				observe: serverNamespace.observe.bind(serverNamespace),
+				async ready() {
+					await serverNamespace.rebind(true, BACKGROUND_CONTEXT);
+					await serverNamespaceReady(BACKGROUND_CONTEXT);
+				},
+				async dispose() {},
+			};
+		},
+		async ready() {
+			await serverNamespace.rebind(true, BACKGROUND_CONTEXT);
+			await serverNamespaceReady(BACKGROUND_CONTEXT);
+		},
+	});
+	const sessionNamespace = createRemoteServiceBinding({
+		services: [
+			Models,
+			AgentController,
+			SessionPlugins,
+			Transcript,
+			LegacyExtensionCommands,
+			SessionControl,
+			ExtensionUI,
+		],
+		transport: createLoopbackServiceTransport(sessionProvider),
+		bound: false,
+	});
+	const sessionServices: SessionServiceSource = Object.assign(sessionNamespace, {
+		acceptsUnavailableServices: true,
+		attachment,
+		async catalogue() {
+			return [];
+		},
+		open() {
+			return {
+				use: sessionNamespace.use.bind(sessionNamespace),
+				observe: sessionNamespace.observe.bind(sessionNamespace),
+				ready: sessionNamespace.ready.bind(sessionNamespace),
+				async dispose() {},
+			};
+		},
+		async whenAttached(sessionId: string) {
+			await sessionNamespace.rebind(true, BACKGROUND_CONTEXT);
+			await sessionNamespace.ready(BACKGROUND_CONTEXT);
+			publishReplacement(attachment, { status: "attached", sessionId });
+		},
+		async whenDetached() {
+			await sessionNamespace.rebind(false, BACKGROUND_CONTEXT);
+			publishReplacement(attachment, { status: "detached" });
+		},
+	});
+	const server: ClientTuiServer = {
+		serverId,
+		radius: true,
+		server: serverServices,
+		session: sessionServices,
+	};
+	const state = { finished: false };
+	const requestRender = vi.fn();
+	const ui = new TuiMainScreen(new ProcessTerminal());
+	const component = await ExperimentalClientTui.create({
+		command,
+		ui,
+		servers: [server],
+		settingsManager,
+		requestRender,
+		historyPath: options.historyPath === undefined ? null : options.historyPath,
+		finish() {
+			state.finished = true;
+		},
+	});
+	const dispose = async (): Promise<void> => {
+		await component.close();
+		await Promise.all([serverNamespace.dispose(BACKGROUND_CONTEXT), sessionNamespace.dispose(BACKGROUND_CONTEXT)]);
+		serverProvider.dispose();
+		sessionProvider.dispose();
+	};
+	return {
+		component,
+		state,
+		dispose,
+		directoryState,
+		attachment,
+		connectionState,
+		modelsState,
+		create,
+		select,
+		selectThinking,
+		cycleThinking,
+		transcriptState,
+		emitTranscriptEvent,
+		finishPrompt,
+		prompt,
+		prepareSessionPlugins,
+		reloadPresentationPlugins,
+		reloadSessionPlugins,
+		inspect,
+		beforeFork,
+		navigateTree,
+		settingsManager,
+		extensionUIBridge,
+		requestRender,
+		bash,
+		setName,
+		steer,
+		followUp,
+		cancelQueued,
+		extensionUIBridgeContext: () => extensionUIBridge.createContext({} as ExtensionUIContext),
+	};
+}
+
 describe("experimental client TUI", () => {
 	beforeAll(() => initTheme("dark"));
 
@@ -171,340 +604,29 @@ describe("experimental client TUI", () => {
 	] as const)(
 		"opens a %s Session directly and exercises the full lifecycle only for a new Session",
 		async (kind, command, sessionId, creates) => {
-			const directoryState = replicatedState<SessionDirectoryState>({ revision: 1, sessions: [session("one", 1)] });
-			const attachment = replicatedState<SessionAttachmentState>({ status: "detached" });
-			const connectionState = replicatedState<ServerConnectionState>({ status: "connected", since: "now" });
-			const modelsState = replicatedState<ModelsState>({
-				catalog: {
-					revision: 1,
-					availableModels: [
-						{ provider: "test", modelId: "one", name: "Model One", reasoning: false },
-						{ provider: "test", modelId: "two", name: "Model Two", reasoning: true },
-					],
-				},
-				configuration: { model: { provider: "test", modelId: "one" }, thinkingLevel: "off" },
-				refresh: { status: "idle" },
-			});
-			const create = vi.fn(async (options?: { forkFromSessionId?: string }) => {
-				const created = options?.forkFromSessionId === undefined ? session("two", 2) : session("three", 3);
-				directoryState.change(BACKGROUND_CONTEXT, (draft) => {
-					draft.revision = 2;
-					draft.sessions.push(created);
-				});
-				return created;
-			});
-			const select = vi.fn(async (model: { provider: string; modelId: string }) => {
-				modelsState.change(BACKGROUND_CONTEXT, (draft) => {
-					draft.configuration.model = model;
-				});
-			});
-			const selectThinking = vi.fn(async (thinkingLevel: "off" | "high") => {
-				modelsState.change(BACKGROUND_CONTEXT, (draft) => {
-					draft.configuration.thinkingLevel = thinkingLevel;
-				});
-			});
-			const transcriptState = replicatedState<TranscriptState>({
-				snapshot: laneSnapshot() as LaneTranscriptSnapshot,
-				event: null,
-			});
-			const emitTranscriptEvent = (event: LaneWatchEvent): void => {
-				transcriptState.change(BACKGROUND_CONTEXT, (draft) => {
-					if (reduceLaneSnapshot(draft.snapshot as unknown as LaneSnapshot, event) === "rebase") {
-						throw new Error("Test transcript event unexpectedly requires a rebase");
-					}
-					draft.event = event;
-				});
-			};
-			let finishPrompt!: () => void;
-			const promptFinished = new Promise<void>((resolve) => {
-				finishPrompt = resolve;
-			});
-			const prompt = vi.fn(async () => {
-				emitTranscriptEvent({
-					type: "run_start",
-					lane: "main",
-					runId: "run-1",
-					startedAt: 1,
-				});
-				await promptFinished;
-				emitTranscriptEvent({
-					type: "entry_added",
-					lane: "main",
-					entry: {
-						id: "entry-user",
-						parentId: null,
-						seq: 1,
-						timestamp: 1,
-						type: "message",
-						message: { role: "user", content: [{ type: "text", text: "hello" }], timestamp: 1 },
-					},
-				});
-				emitTranscriptEvent({
-					type: "entry_added",
-					lane: "main",
-					entry: {
-						id: "entry-assistant",
-						parentId: "entry-user",
-						seq: 2,
-						timestamp: 2,
-						type: "message",
-						message: {
-							role: "assistant",
-							content: [{ type: "text", text: "remote answer" }],
-							provider: "test",
-							model: "one",
-							api: "test",
-							usage: transcriptState.value.snapshot!.stats.usage,
-							stopReason: "stop",
-							timestamp: 2,
-						},
-					},
-				});
-				emitTranscriptEvent({
-					type: "run_end",
-					lane: "main",
-					runId: "run-1",
-					status: "completed",
-					fromTipId: null,
-					tipId: "entry-assistant",
-					endedAt: 2,
-				});
-				return {
-					ok: true as const,
-					value: {
-						operationId: "run-1",
-						kind: "run" as const,
-						status: "completed" as const,
-						fromTipId: null,
-						tipId: "entry-assistant",
-						startedAt: 1,
-						endedAt: 2,
-					},
-				};
-			});
-
-			const reloadSource =
-				'"use strict";\nconst { defineFacet, defineService } = require("@ultron/chord");\nconst Models = defineService("pi.models");\nmodule.exports = { __esModule: true, default: defineFacet({ id: "test-tui-facet", setup(env) { env.use(Models); } }) };\n';
-			const reloadArtifact: FacetBundleArtifact = {
-				format: FACET_BUNDLE_ARTIFACT_FORMAT,
-				formatVersion: FACET_BUNDLE_ARTIFACT_FORMAT_VERSION,
-				plugin: { id: "test-tui-plugin" },
-				entryName: "tui",
-				entry: {
-					file: "tui.cjs",
-					integrity: `sha256-${createHash("sha256").update(reloadSource).digest("base64")}`,
-					externalImports: ["@ultron/chord"],
-				},
-				source: reloadSource,
-			};
-			const reloadData = createPresentationFacetData([reloadArtifact]);
-			const prepareSessionPlugins = vi.fn(async () => reloadData);
-			const reloadPresentationPlugins = vi.fn(async () => reloadData);
-			const reloadSessionPlugins = vi.fn(async () => {});
-			const inspect = vi.fn(async (request: string) => inspectFixture(request));
-			// The worker's tree after the prompt below, in Pi's entry format.
-			const readTree = vi.fn(async () => ({
-				entries: [
-					{
-						type: "message",
-						id: "entry-user",
-						parentId: null,
-						timestamp: new Date(1).toISOString(),
-						message: { role: "user", content: [{ type: "text", text: "hello" }], timestamp: 1 },
-					},
-					{
-						type: "message",
-						id: "entry-assistant",
-						parentId: "entry-user",
-						timestamp: new Date(2).toISOString(),
-						message: {
-							role: "assistant",
-							content: [{ type: "text", text: "remote answer" }],
-							provider: "test",
-							model: "one",
-							api: "test",
-							usage: laneSnapshot().stats.usage,
-							stopReason: "stop",
-							timestamp: 2,
-						},
-					},
-				] as JsonValue[],
-				leafId: "entry-assistant",
-				labels: {},
-				sessionFile: null,
-			}));
-			const setLabel = vi.fn(async () => {});
-			const beforeFork = vi.fn(async () => ({ cancelled: false }));
-			const navigateTree = vi.fn(async () => ({
-				ok: true as const,
-				value: {
-					navigation: {
-						operationId: "nav-1",
-						kind: "navigation" as const,
-						status: "completed" as const,
-						fromTipId: "entry-assistant",
-						tipId: null,
-						startedAt: 3,
-						endedAt: 3,
-					},
-				},
-			}));
-			const settingsManager = SettingsManager.inMemory();
-			const serverProvider = new RemoteServiceProvider([SessionDirectory, SessionManagement, PresentationPlugins]);
-			serverProvider.provide(SessionDirectory, { state: directoryState });
-			serverProvider.provide(PresentationPlugins, {
-				prepareSession: prepareSessionPlugins,
-				reload: reloadPresentationPlugins,
-			});
-			serverProvider.provide(SessionManagement, {
+			const {
+				component,
+				state,
+				dispose,
+				directoryState,
+				attachment,
+				connectionState,
+				modelsState,
 				create,
-				async remove() {},
-				async rename() {},
-				async attach(sessionId) {
-					publishReplacement(attachment, { status: "attaching", sessionId });
-				},
-				async detach() {
-					publishReplacement(attachment, { status: "detached" });
-				},
-			});
-			const sessionProvider = new RemoteServiceProvider([
-				Models,
-				AgentController,
-				SessionPlugins,
-				Transcript,
-				LegacyExtensionCommands,
-				SessionControl,
-				ExtensionUI,
-			]);
-			const extensionUIBridge = new ExtensionUIBridge();
-			sessionProvider.provide(ExtensionUI, extensionUIBridge.service);
-			sessionProvider.provide(SessionPlugins, { reload: reloadSessionPlugins });
-			sessionProvider.provide(SessionControl, {
-				getSettings: async () => ({
-					name: null,
-					steeringMode: "all",
-					followUpMode: "all",
-					autoCompaction: true,
-					autoRetry: true,
-				}),
-				setName: async () => {},
-				setSteeringMode: async () => {},
-				setFollowUpMode: async () => {},
-				setAutoCompaction: async () => {},
-				setAutoRetry: async () => {},
-				listCommands: async () => [],
-				bash: async () => ({ output: "", exitCode: 0, cancelled: false, truncated: false, fullOutputPath: null }),
-				abortBash: async () => {},
-				inspect,
-				readTree,
-				setLabel,
-				beforeFork,
-				forked: async () => {},
-			});
-			sessionProvider.provide(LegacyExtensionCommands, {
-				list: async () => [],
-				run: async () => ({ notifications: [] }),
-			});
-			sessionProvider.provide(Models, {
-				state: modelsState,
-				async cycleThinking() {},
-				async getThinkingLevels() {
-					return ["off", "high"];
-				},
-				async refresh() {},
 				select,
 				selectThinking,
-			});
-			sessionProvider.provide(
-				AgentController,
-				createAgentController({ prompt, navigateTree } as unknown as AgentLane),
-			);
-			sessionProvider.provide(Transcript, { state: transcriptState });
-
-			const serverNamespace = createRemoteServiceBinding({
-				services: [SessionDirectory, SessionManagement, PresentationPlugins],
-				transport: createLoopbackServiceTransport(serverProvider),
-				bound: false,
-			});
-			const serverNamespaceReady = serverNamespace.ready.bind(serverNamespace);
-			const serverServices: ServerServiceSource = Object.assign(serverNamespace, {
-				acceptsUnavailableServices: false,
-				connection: connectionState,
-				async catalogue() {
-					return serverProvider.catalogue;
-				},
-				open() {
-					return {
-						use: serverNamespace.use.bind(serverNamespace),
-						observe: serverNamespace.observe.bind(serverNamespace),
-						async ready() {
-							await serverNamespace.rebind(true, BACKGROUND_CONTEXT);
-							await serverNamespaceReady(BACKGROUND_CONTEXT);
-						},
-						async dispose() {},
-					};
-				},
-				async ready() {
-					await serverNamespace.rebind(true, BACKGROUND_CONTEXT);
-					await serverNamespaceReady(BACKGROUND_CONTEXT);
-				},
-			});
-			const sessionNamespace = createRemoteServiceBinding({
-				services: [
-					Models,
-					AgentController,
-					SessionPlugins,
-					Transcript,
-					LegacyExtensionCommands,
-					SessionControl,
-					ExtensionUI,
-				],
-				transport: createLoopbackServiceTransport(sessionProvider),
-				bound: false,
-			});
-			const sessionServices: SessionServiceSource = Object.assign(sessionNamespace, {
-				acceptsUnavailableServices: true,
-				attachment,
-				async catalogue() {
-					return [];
-				},
-				open() {
-					return {
-						use: sessionNamespace.use.bind(sessionNamespace),
-						observe: sessionNamespace.observe.bind(sessionNamespace),
-						ready: sessionNamespace.ready.bind(sessionNamespace),
-						async dispose() {},
-					};
-				},
-				async whenAttached(sessionId: string) {
-					await sessionNamespace.rebind(true, BACKGROUND_CONTEXT);
-					await sessionNamespace.ready(BACKGROUND_CONTEXT);
-					publishReplacement(attachment, { status: "attached", sessionId });
-				},
-				async whenDetached() {
-					await sessionNamespace.rebind(false, BACKGROUND_CONTEXT);
-					publishReplacement(attachment, { status: "detached" });
-				},
-			});
-			const server: ClientTuiServer = {
-				serverId,
-				radius: true,
-				server: serverServices,
-				session: sessionServices,
-			};
-			let finished = false;
-			const requestRender = vi.fn();
-			const ui = new TuiMainScreen(new ProcessTerminal());
-			const component = await ExperimentalClientTui.create({
-				command,
-				ui,
-				servers: [server],
+				finishPrompt,
+				prompt,
+				prepareSessionPlugins,
+				reloadPresentationPlugins,
+				reloadSessionPlugins,
+				inspect,
+				beforeFork,
+				navigateTree,
 				settingsManager,
+				extensionUIBridge,
 				requestRender,
-				finish() {
-					finished = true;
-				},
-			});
+			} = await openHarness(command);
 			try {
 				expect(create).toHaveBeenCalledTimes(creates);
 				if ("fork" in command) {
@@ -524,7 +646,8 @@ describe("experimental client TUI", () => {
 				expect(select).not.toHaveBeenCalled();
 				expect(component.render(80).join("\n")).toContain(`Server: ${serverId}`);
 				expect(component.render(80).join("\n")).toContain(`Session: ${sessionId}`);
-				expect(component.render(80).join("\n")).toContain("test/one");
+				// Pi's footer: cwd with git branch, token/context stats, and the model on the right.
+				expect(plain(component.render(80))).toMatch(/0\.0%\/0 \(auto\) +one/);
 				expect(component.render(80).join("\n")).not.toContain("Experimental Sessions");
 				expect(component.render(80).join("\n")).not.toContain("Experimental Models");
 
@@ -600,13 +723,13 @@ describe("experimental client TUI", () => {
 				await vi.waitFor(() => expect(component.render(80).join("\n")).toContain("retrying"));
 				// Pi's Ctrl-C: the first press only clears the editor; a second press within 500 ms exits.
 				component.handleInput("\u0003");
-				expect(finished).toBe(false);
+				expect(state.finished).toBe(false);
 				component.handleInput("\u0003");
-				expect(finished).toBe(true);
-				finished = false;
+				expect(state.finished).toBe(true);
+				state.finished = false;
 				component.handleInput("\u0004");
-				expect(finished).toBe(true);
-				finished = false;
+				expect(state.finished).toBe(true);
+				state.finished = false;
 				publishReplacement(connectionState, { status: "connecting", attempt: 1 });
 				publishReplacement(connectionState, { status: "connected", since: "reconnected" });
 				publishReplacement(attachment, { status: "attached", sessionId });
@@ -710,16 +833,16 @@ describe("experimental client TUI", () => {
 				// Ctrl-C presses exit.
 				component.handleInput("draft");
 				component.handleInput("\u0004");
-				expect(finished).toBe(false);
+				expect(state.finished).toBe(false);
 				expect(component.render(80).join("\n")).toContain("draft");
 				component.handleInput("\u0003");
-				expect(finished).toBe(false);
+				expect(state.finished).toBe(false);
 				expect(component.render(80).join("\n")).not.toContain("draft");
 				await new Promise((resolveWait) => setTimeout(resolveWait, 600));
 				component.handleInput("\u0003");
-				expect(finished).toBe(false);
+				expect(state.finished).toBe(false);
 				component.handleInput("\u0003");
-				expect(finished).toBe(true);
+				expect(state.finished).toBe(true);
 
 				await component.close();
 				const rendersAfterClose = requestRender.mock.calls.length;
@@ -733,14 +856,489 @@ describe("experimental client TUI", () => {
 				});
 				expect(requestRender).toHaveBeenCalledTimes(rendersAfterClose);
 			} finally {
-				await component.close();
-				await Promise.all([
-					serverNamespace.dispose(BACKGROUND_CONTEXT),
-					sessionNamespace.dispose(BACKGROUND_CONTEXT),
-				]);
-				serverProvider.dispose();
-				sessionProvider.dispose();
+				await dispose();
 			}
 		},
 	);
+});
+
+function userEntry(id: string, text: string, seq: number): LaneSnapshot["transcript"][number] {
+	return {
+		id,
+		parentId: null,
+		seq,
+		timestamp: seq,
+		type: "message",
+		message: { role: "user", content: [{ type: "text", text }], timestamp: seq },
+	};
+}
+
+const UP = "\u001b[A";
+const DOWN = "\u001b[B";
+const ALT_R = "\u001br";
+
+function type(component: ExperimentalClientTui, text: string): void {
+	for (const character of text) component.handleInput(character);
+}
+
+describe("experimental client TUI prompt history", () => {
+	beforeAll(() => initTheme("dark"));
+
+	test("records prompts, steers and follow-ups; Up/Down browse them and keep the draft", async () => {
+		const directory = mkdtempSync(join(tmpdir(), "ultron-history-"));
+		const historyPath = join(directory, "prompt-history.jsonl");
+		const harness = await openHarness({ command: "client" }, { historyPath });
+		const { component, prompt, steer, followUp, finishPrompt } = harness;
+		try {
+			type(component, "hello");
+			component.handleInput("\r");
+			await vi.waitFor(() => expect(prompt).toHaveBeenCalledWith("hello", undefined, BACKGROUND_CONTEXT));
+			// While the turn runs, Enter steers and Alt+Enter queues a follow-up; both are recorded.
+			await vi.waitFor(() => expect(plain(component.render(80))).toContain("Working..."));
+			type(component, "steer this");
+			component.handleInput("\r");
+			await vi.waitFor(() => expect(steer).toHaveBeenCalledWith("steer this", undefined, expect.anything()));
+			type(component, "then this");
+			component.handleInput("\u001b\r");
+			await vi.waitFor(() => expect(followUp).toHaveBeenCalledWith("then this", undefined, expect.anything()));
+			// Whitespace-only input and an immediate repeat are not recorded.
+			type(component, "   ");
+			component.handleInput("\r");
+			finishPrompt();
+			await vi.waitFor(() => expect(plain(component.render(80))).not.toContain("Working..."));
+
+			type(component, "my draft");
+			// As in Pi, Up on a non-empty draft first moves the cursor to the start of the line; the next Up browses.
+			component.handleInput(UP);
+			expect(component.editorText).toBe("my draft");
+			component.handleInput(UP);
+			expect(component.editorText).toBe("then this");
+			component.handleInput(UP);
+			expect(component.editorText).toBe("steer this");
+			component.handleInput(UP);
+			expect(component.editorText).toBe("hello");
+			component.handleInput(UP);
+			expect(component.editorText).toBe("hello");
+			component.handleInput(DOWN);
+			component.handleInput(DOWN);
+			expect(component.editorText).toBe("then this");
+			component.handleInput(DOWN);
+			expect(component.editorText).toBe("my draft");
+
+			const lines = readFileSync(historyPath, "utf8").trim().split("\n");
+			const entries = lines.map((line) => JSON.parse(line) as { text: string; cwd: string; timestamp: number });
+			expect(entries.map((entry) => entry.text)).toEqual(["hello", "steer this", "then this"]);
+			for (const entry of entries) {
+				expect(entry.cwd).toBe(process.cwd());
+				expect(entry.timestamp).toBeGreaterThan(0);
+			}
+		} finally {
+			await harness.dispose();
+			rmSync(directory, { recursive: true, force: true });
+		}
+	});
+
+	test("history persists across restarts: the current project's prompts first, then other projects'", async () => {
+		const directory = mkdtempSync(join(tmpdir(), "ultron-history-"));
+		const historyPath = join(directory, "prompt-history.jsonl");
+		writeFileSync(
+			historyPath,
+			[
+				{ text: "old here", cwd: process.cwd(), timestamp: 1 },
+				{ text: "elsewhere", cwd: "/some/other/project", timestamp: 2 },
+				{ text: "  ", cwd: process.cwd(), timestamp: 3 },
+			]
+				.map((entry) => JSON.stringify(entry))
+				.join("\n")
+				.concat('\n{"torn line'),
+		);
+		const first = await openHarness({ command: "client" }, { historyPath });
+		try {
+			type(first.component, "/hotkeys");
+			first.component.handleInput("\u001b");
+			first.component.handleInput("\r");
+			await vi.waitFor(() => expect(plain(first.component.render(100))).toContain("Keyboard Shortcuts"));
+		} finally {
+			await first.dispose();
+		}
+		const second = await openHarness({ command: "client" }, { historyPath });
+		try {
+			const { component } = second;
+			component.handleInput(UP);
+			expect(component.editorText).toBe("/hotkeys");
+			component.handleInput(UP);
+			expect(component.editorText).toBe("old here");
+			component.handleInput(UP);
+			expect(component.editorText).toBe("elsewhere");
+		} finally {
+			await second.dispose();
+			rmSync(directory, { recursive: true, force: true });
+		}
+	});
+
+	test("a resumed Session seeds history from its user messages, deduplicated", async () => {
+		const harness = await openHarness(
+			{ command: "client", continue: true },
+			{
+				transcript: [
+					userEntry("u1", "first question", 1),
+					userEntry("u2", "second question", 2),
+					userEntry("u3", "first question", 3),
+				],
+			},
+		);
+		try {
+			const { component } = harness;
+			component.handleInput(UP);
+			expect(component.editorText).toBe("first question");
+			component.handleInput(UP);
+			expect(component.editorText).toBe("second question");
+			component.handleInput(UP);
+			expect(component.editorText).toBe("second question");
+		} finally {
+			await harness.dispose();
+		}
+	});
+
+	test("reverse search (Alt+R) filters history; Enter uses the match and Esc keeps the draft", async () => {
+		const harness = await openHarness(
+			{ command: "client", continue: true },
+			{
+				transcript: [
+					userEntry("u1", "deploy the staging cluster", 1),
+					userEntry("u2", "fix the flaky test", 2),
+					userEntry("u3", "deploy production", 3),
+				],
+			},
+		);
+		try {
+			const { component } = harness;
+			type(component, "draft");
+			component.handleInput(ALT_R);
+			expect(plain(component.render(80))).toContain("history search:");
+			type(component, "deploy");
+			const shown = plain(component.render(80));
+			expect(shown).toContain("1/2");
+			const results = shown.slice(shown.indexOf("history search:"));
+			expect(results).toContain("→ deploy production");
+			expect(results).not.toContain("fix the flaky test");
+			// Alt+R again (or Ctrl+R, or Up) moves to the next older match.
+			component.handleInput(ALT_R);
+			expect(plain(component.render(80))).toContain("2/2");
+			component.handleInput("\r");
+			expect(component.editorText).toBe("deploy the staging cluster");
+			expect(plain(component.render(80))).not.toContain("history search:");
+
+			component.handleInput("\u0003");
+			type(component, "keep me");
+			component.handleInput(ALT_R);
+			type(component, "flaky");
+			component.handleInput("\u001b");
+			expect(component.editorText).toBe("keep me");
+			expect(plain(component.render(80))).not.toContain("history search:");
+		} finally {
+			await harness.dispose();
+		}
+	});
+});
+
+describe("prompt history store", () => {
+	test("skips whitespace and consecutive duplicates, and merges groups without repeats", () => {
+		const store = new PromptHistoryStore({ path: null, cwd: "/project" });
+		expect(store.append("  ")).toBeUndefined();
+		expect(store.append(" a ")).toBe("a");
+		expect(store.append("a")).toBeUndefined();
+		expect(store.append("b")).toBe("b");
+		expect(store.append("a")).toBe("a");
+		expect(
+			mergePromptHistory([
+				["a", "b"],
+				["b", "c", " "],
+			]),
+		).toEqual(["a", "b", "c"]);
+		expect(mergePromptHistory([["a", "b", "c"]], 2)).toEqual(["a", "b"]);
+		expect(searchPromptHistory(["Deploy prod", "fix deploy script", "other"], "DEPLOY scr")).toEqual([
+			"fix deploy script",
+		]);
+	});
+
+	test("a Session's prompts join the current project's by time, ahead of other projects'", () => {
+		const directory = mkdtempSync(join(tmpdir(), "ultron-history-"));
+		try {
+			const path = join(directory, "prompt-history.jsonl");
+			writeFileSync(
+				path,
+				[
+					{ text: "typed at 10", cwd: "/project", timestamp: 10 },
+					{ text: "other project at 40", cwd: "/elsewhere", timestamp: 40 },
+					{ text: "typed at 30", cwd: "/project", timestamp: 30 },
+				]
+					.map((entry) => `${JSON.stringify(entry)}\n`)
+					.join(""),
+			);
+			const store = new PromptHistoryStore({ path, cwd: "/project" });
+			store.load();
+			const session = sessionPromptHistory([
+				userEntry("u1", "session at 20", 20),
+				userEntry("u2", "typed at 30", 30),
+			]);
+			expect(store.history(session)).toEqual(["typed at 30", "session at 20", "typed at 10", "other project at 40"]);
+			store.append("new one", 50);
+			expect(store.history(session)[0]).toBe("new one");
+		} finally {
+			rmSync(directory, { recursive: true, force: true });
+		}
+	});
+
+	test("loads at most the limit, newest first", () => {
+		const directory = mkdtempSync(join(tmpdir(), "ultron-history-"));
+		try {
+			const path = join(directory, "prompt-history.jsonl");
+			const writer = new PromptHistoryStore({ path, cwd: "/project" });
+			for (let index = 0; index < 20; index++) writer.append(`prompt ${index}`, index + 1);
+			const loaded = new PromptHistoryStore({ path, cwd: "/project", limit: 5 }).load();
+			expect(loaded).toEqual(["prompt 19", "prompt 18", "prompt 17", "prompt 16", "prompt 15"]);
+		} finally {
+			rmSync(directory, { recursive: true, force: true });
+		}
+	});
+});
+
+function runCommand(component: ExperimentalClientTui, text: string): void {
+	type(component, text);
+	// Esc closes the slash-command autocomplete so Enter submits the text as typed.
+	component.handleInput("\u001b");
+	component.handleInput("\r");
+}
+
+describe("experimental client TUI parity with Pi's interactive mode", () => {
+	beforeAll(() => initTheme("dark"));
+
+	test("model and thinking keys, display toggles, clipboard and queue keys", async () => {
+		const settingsManager = SettingsManager.inMemory();
+		const harness = await openHarness({ command: "client" }, { settingsManager });
+		const { component, select, cycleThinking, modelsState, transcriptState, cancelQueued } = harness;
+		try {
+			// Shift+Tab on a model without reasoning explains why nothing changes.
+			component.handleInput("\u001b[Z");
+			await vi.waitFor(() => expect(plain(component.render(80))).toContain("does not support thinking"));
+			expect(cycleThinking).not.toHaveBeenCalled();
+			// Ctrl+P cycles to the next available model, then Shift+Tab cycles its thinking level.
+			component.handleInput("\u0010");
+			await vi.waitFor(() =>
+				expect(select).toHaveBeenCalledWith({ provider: "test", modelId: "two" }, expect.anything()),
+			);
+			await vi.waitFor(() => expect(plain(component.render(80))).toContain("Switched to Model Two"));
+			component.handleInput("\u001b[Z");
+			await vi.waitFor(() => expect(cycleThinking).toHaveBeenCalledOnce());
+			await vi.waitFor(() => expect(plain(component.render(80))).toContain("Thinking level: high"));
+			expect(modelsState.value.configuration.thinkingLevel).toBe("high");
+			// Pi's footer shows the model and its thinking level.
+			await vi.waitFor(() => expect(plain(component.render(80))).toMatch(/two • high/));
+
+			// Ctrl+O expands tool output and the startup help; Ctrl+T hides thinking blocks (saved to settings).
+			expect(plain(component.render(80))).not.toContain("to search prompt history");
+			component.handleInput("\u000f");
+			expect(plain(component.render(80))).toContain("Tool output: expanded");
+			expect(plain(component.render(80))).toContain("to search prompt history");
+			component.handleInput("\u0014");
+			expect(settingsManager.getHideThinkingBlock()).toBe(true);
+			expect(plain(component.render(80))).toContain("Thinking blocks: hidden");
+
+			// /copy and Ctrl+X with no assistant message yet.
+			runCommand(component, "/copy");
+			await vi.waitFor(() => expect(plain(component.render(80))).toContain("No agent messages to copy yet."));
+
+			// Alt+Up with nothing queued; then with queued messages shown Pi's way, it restores them to the editor.
+			component.handleInput("\u001b[1;3A");
+			expect(plain(component.render(80))).toContain("No queued messages to restore");
+			transcriptState.change(BACKGROUND_CONTEXT, (draft) => {
+				draft.snapshot!.queues = [
+					{
+						entryId: "q1",
+						kind: "followUp",
+						type: "message",
+						message: { role: "user", content: [{ type: "text", text: "later please" }], timestamp: 5 },
+					},
+					{
+						entryId: "q2",
+						kind: "steer",
+						type: "message",
+						message: { role: "user", content: [{ type: "text", text: "now please" }], timestamp: 6 },
+					},
+				] as never;
+			});
+			await vi.waitFor(() => {
+				const shown = plain(component.render(80));
+				expect(shown).toMatch(/Steering: now please\s+Follow-up: later please/);
+				expect(shown).toContain("to edit all queued messages");
+			});
+			component.handleInput("\u001b[1;3A");
+			expect(component.editorText).toBe("now please\n\nlater please");
+			await vi.waitFor(() => expect(cancelQueued).toHaveBeenCalledTimes(2));
+			expect(plain(component.render(80))).toContain("Restored 2 queued messages to editor");
+		} finally {
+			await harness.dispose();
+		}
+	});
+
+	test("! and !! run shell commands in the Session and draw them in the transcript", async () => {
+		const harness = await openHarness({ command: "client" });
+		const { component, bash } = harness;
+		try {
+			runCommand(component, "!echo hi");
+			await vi.waitFor(() => expect(bash).toHaveBeenCalledWith("echo hi", false, expect.anything()));
+			await vi.waitFor(() => expect(plain(component.render(80))).toContain("ran echo hi"));
+			expect(plain(component.render(80))).toContain("$ echo hi");
+			runCommand(component, "!!secret");
+			await vi.waitFor(() => expect(bash).toHaveBeenCalledWith("secret", true, expect.anything()));
+			// Recorded in history like any prompt.
+			component.handleInput(UP);
+			expect(component.editorText).toBe("!!secret");
+		} finally {
+			await harness.dispose();
+		}
+	});
+
+	test("/name, /session, /export, /hotkeys, /new, extension statuses and long statuses", async () => {
+		const directory = mkdtempSync(join(tmpdir(), "ultron-export-"));
+		const harness = await openHarness({ command: "client" });
+		const { component, setName, create } = harness;
+		try {
+			runCommand(component, "/name Refactor");
+			await vi.waitFor(() => expect(setName).toHaveBeenCalledWith("Refactor", expect.anything()));
+			await vi.waitFor(() => expect(plain(component.render(100))).toContain("Session name set: Refactor"));
+			// Pi's footer shows the session name after the cwd.
+			expect(plain(component.render(200))).toContain("• Refactor");
+
+			runCommand(component, "/session");
+			await vi.waitFor(() => expect(plain(component.render(100))).toContain("Session Info"));
+			expect(plain(component.render(100))).toContain("ID: two");
+			expect(plain(component.render(100))).toMatch(/User: 1/);
+
+			const exported = join(directory, "out.html");
+			runCommand(component, `/export ${exported}`);
+			await vi.waitFor(() => expect(plain(component.render(200))).toContain(`Session exported to: ${exported}`));
+			expect(readFileSync(exported, "utf8")).toContain("<html");
+			const jsonl = join(directory, "out.jsonl");
+			runCommand(component, `/export ${jsonl}`);
+			await vi.waitFor(() => expect(readFileSync(jsonl, "utf8").split("\n")[0]).toContain('"type":"session"'));
+
+			runCommand(component, "/hotkeys");
+			await vi.waitFor(() => expect(plain(component.render(120))).toContain("Keyboard Shortcuts"));
+			expect(plain(component.render(120))).toContain("Reverse-search prompt history");
+
+			// Extension status goes to the footer's status line; a widget renders above the editor.
+			const context = harness.extensionUIBridgeContext();
+			await vi.waitFor(() => expect(harness.extensionUIBridge.serving).toBe(true));
+			context.setStatus("ext", "indexing 3/9");
+			await vi.waitFor(() => expect(plain(component.render(100))).toContain("indexing 3/9"));
+			context.setWidget("todo", ["- [ ] ship it"]);
+			await vi.waitFor(() => expect(plain(component.render(100))).toContain("- [ ] ship it"));
+			// A multi-line notification (like an inspection) lands in the transcript, not the status line.
+			context.notify("line 1\nline 2\nline 3\nline 4", "info");
+			await vi.waitFor(() => expect(plain(component.render(100))).toContain("line 4"));
+
+			create.mockClear();
+			runCommand(component, "/new");
+			await vi.waitFor(() => expect(create).toHaveBeenCalledWith({}, expect.anything()));
+			await vi.waitFor(() => expect(plain(component.render(100))).toContain("New session started"));
+		} finally {
+			await harness.dispose();
+			rmSync(directory, { recursive: true, force: true });
+		}
+	});
+
+	test("rlm cells render highlighted Python and a collapsed output tail that Ctrl+O expands", () => {
+		const ui = new TuiMainScreen(new ProcessTerminal());
+		const view = new ExperimentalChatView(ui, process.cwd());
+		const code = Array.from({ length: 20 }, (_, index) => `x${index} = ${index}`).join("\n");
+		const output = Array.from({ length: 30 }, (_, index) => `out ${index}`).join("\n");
+		const snapshot = laneSnapshot();
+		snapshot.transcript = [
+			{
+				id: "a1",
+				parentId: null,
+				seq: 1,
+				timestamp: 1,
+				type: "message",
+				message: {
+					role: "assistant",
+					content: [{ type: "toolCall", id: "call-1", name: "rlm", arguments: { code } }],
+					provider: "test",
+					model: "one",
+					api: "test",
+					usage: snapshot.stats.usage,
+					stopReason: "toolUse",
+					timestamp: 1,
+				},
+			},
+			{
+				id: "r1",
+				parentId: "a1",
+				seq: 2,
+				timestamp: 2,
+				type: "message",
+				message: {
+					role: "toolResult",
+					toolCallId: "call-1",
+					toolName: "rlm",
+					content: [{ type: "text", text: output }],
+					isError: false,
+					timestamp: 2,
+				},
+			},
+		];
+		view.apply(snapshot);
+		const collapsed = plain(view.transcript.render(100));
+		expect(collapsed).toContain("rlm python · 20 lines");
+		expect(collapsed).toMatch(/ 1 │ x0 = 0/);
+		expect(collapsed).toMatch(/12 │ x11 = 11/);
+		expect(collapsed).not.toContain("x12 = 12");
+		expect(collapsed).toContain("... (8 more lines, ctrl+o to expand)");
+		expect(collapsed).toContain("out 29");
+		expect(collapsed).not.toContain("out 5\n");
+		expect(collapsed).toContain("earlier lines, ctrl+o to expand)");
+		view.setToolsExpanded(true);
+		const expanded = plain(view.transcript.render(100));
+		expect(expanded).toMatch(/20 │ x19 = 19/);
+		expect(expanded).toContain("out 0");
+		view.dispose();
+	});
+
+	test("the footer's context use counts the last response plus the messages after it", () => {
+		const usage = { ...laneSnapshot().stats.usage, input: 1000, output: 200, totalTokens: 1200 };
+		const transcript: LaneSnapshot["transcript"] = [
+			userEntry("u1", "hi", 1),
+			{
+				id: "a1",
+				parentId: "u1",
+				seq: 2,
+				timestamp: 2,
+				type: "message",
+				message: {
+					role: "assistant",
+					content: [{ type: "text", text: "hello" }],
+					provider: "test",
+					model: "one",
+					api: "test",
+					usage,
+					stopReason: "stop",
+					timestamp: 2,
+				},
+			},
+			userEntry("u2", "x".repeat(400), 3),
+		];
+		const context = laneContextUsage(transcript, 10_000);
+		expect(context?.tokens).toBeGreaterThan(1200);
+		expect(context?.percent).toBeCloseTo((context!.tokens! / 10_000) * 100);
+		expect(
+			laneContextUsage([...transcript, { ...transcript[0]!, id: "c", type: "compaction" } as never], 10_000),
+		).toEqual({
+			tokens: null,
+			contextWindow: 10_000,
+			percent: null,
+		});
+		expect(laneContextUsage(transcript, undefined)).toBeUndefined();
+	});
 });

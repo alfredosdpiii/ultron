@@ -25,6 +25,7 @@ export interface AppKeybindings {
 	"app.thinking.toggle": true;
 	"app.rlm.toggle": true;
 	"app.jev.toggle": true;
+	"app.history.search": true;
 	"app.session.toggleNamedFilter": true;
 	"app.editor.external": true;
 	"app.message.copy": true;
@@ -128,6 +129,11 @@ export const KEYBINDINGS = {
 	"app.jev.toggle": {
 		defaultKeys: "alt+j",
 		description: "Toggle the Jev decisions panel (native TUI)",
+	},
+	// Ctrl+R is the RLM panel's; Alt+R ("reverse") is free in Pi's editor and every dialog.
+	"app.history.search": {
+		defaultKeys: "alt+r",
+		description: "Reverse-search prompt history (native TUI)",
 	},
 	"app.session.toggleNamedFilter": {
 		defaultKeys: "ctrl+n",

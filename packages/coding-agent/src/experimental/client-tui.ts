@@ -1,4 +1,4 @@
-import { resolve } from "node:path";
+import { basename, resolve } from "node:path";
 import {
 	combineFacetLoaders,
 	createFacetHost,
@@ -21,11 +21,12 @@ import {
 	type TUI,
 } from "@ultron/tui";
 import type { ClientCommand } from "../cli/experimental/commands/client.ts";
-import { getAgentDir } from "../config.ts";
+import { APP_TITLE, getAgentDir } from "../config.ts";
 import { KeybindingsManager } from "../core/keybindings.ts";
 import { DefaultResourceLoader } from "../core/resource-loader.ts";
 import { SettingsManager } from "../core/settings-manager.ts";
 import { createChatViewport } from "../modes/interactive/chat-viewport.ts";
+import { BashExecutionComponent } from "../modes/interactive/components/bash-execution.ts";
 import { CustomEditor } from "../modes/interactive/components/custom-editor.ts";
 import { ExtensionEditorComponent } from "../modes/interactive/components/extension-editor.ts";
 import { ExtensionInputComponent } from "../modes/interactive/components/extension-input.ts";
@@ -38,7 +39,15 @@ import type { RpcExtensionUIRequest } from "../modes/rpc/rpc-types.ts";
 import { copyToClipboard } from "../utils/clipboard.ts";
 import { ensureTool } from "../utils/tools-manager.ts";
 import { type OpenClientRuntimeOptions, openClientRuntime } from "./client-runtime.ts";
+import { clipboardPasteText, editExternally, nextModel, suspendTui } from "./client-tui-actions.ts";
 import { ExperimentalChatView } from "./client-tui-chat.ts";
+import {
+	copyLastAssistantMessage,
+	type NativeCommandHost,
+	nativeCommands,
+	StartupHeader,
+} from "./client-tui-commands.ts";
+import { NativeFooter } from "./client-tui-footer.ts";
 import {
 	type JevSnapshot,
 	parseJevDecisions,
@@ -48,6 +57,8 @@ import {
 } from "./jev-visualizer.ts";
 import { PiSessionView } from "./pi-session-view.ts";
 import { createPresentationFacetLoaders } from "./plugins/bundled.ts";
+import { PROMPT_HISTORY_LIMIT, PromptHistoryStore, promptHistoryPath, sessionPromptHistory } from "./prompt-history.ts";
+import { PromptHistorySearchComponent } from "./prompt-history-search.ts";
 import {
 	extractRootCell,
 	isActiveState,
@@ -81,6 +92,7 @@ import type {
 	SessionServiceSource,
 } from "./services/connection.ts";
 import { ExtensionUI } from "./services/extension-ui.ts";
+import { type ModelSummary, Models, type Models as ModelsService } from "./services/models.ts";
 import { PresentationPlugins } from "./services/plugins.ts";
 import { PresentationUI } from "./services/presentation-ui.ts";
 import { SessionControl } from "./services/session-control.ts";
@@ -95,6 +107,9 @@ import { Transcript, type Transcript as TranscriptService } from "./services/tra
 export interface RunClientTuiOptions extends OpenClientRuntimeOptions {
 	readonly facetLoader?: FacetLoader;
 }
+
+/** Status text with more lines than this goes to the transcript instead of the status line. */
+const MAX_STATUS_LINES = 3;
 
 export interface ClientTuiServer {
 	readonly serverId: string;
@@ -174,12 +189,22 @@ export class ExperimentalClientTui implements Component {
 	readonly #requestRender: () => void;
 	readonly #finish: () => void;
 	readonly #documentContainer = new Container();
-	readonly #sessionHeading = new Text("", 1, 0);
+	readonly #sessionHeading = new StartupHeader();
 	readonly #pendingMessagesContainer = new Container();
 	readonly #statusContainer = new Container();
 	readonly #editorContainer = new Container();
 	readonly #footerComponent = new Container();
-	readonly #footerText = new Text("", 1, 0);
+	readonly #footer: NativeFooter;
+	readonly #widgetsAbove = new Container();
+	readonly #widgetsBelow = new Container();
+	readonly #widgets = new Map<string, { readonly lines: readonly string[]; readonly below: boolean }>();
+	readonly #history: PromptHistoryStore;
+	#models: ModelsService | undefined;
+	#sessionName: string | undefined;
+	#toolsExpanded = false;
+	#bashRunning = false;
+	/** Finished `!` commands shown until the running turn ends and the transcript has their entries. */
+	#pendingBash: BashExecutionComponent[] = [];
 	readonly #rlmPanel: Component = {
 		render: (width) => this.#renderRlm(width, "panel"),
 		invalidate() {},
@@ -254,6 +279,7 @@ export class ExperimentalClientTui implements Component {
 		loadedFacets: LoadedFacets,
 		fdPath: string | null,
 		settingsManager: SettingsManager,
+		historyPath: string | null,
 	) {
 		this.#fdPath = fdPath;
 		this.#settingsManager = settingsManager;
@@ -262,7 +288,22 @@ export class ExperimentalClientTui implements Component {
 		this.#finish = finish;
 		this.#sharedFacets = loadedFacets;
 		setKeybindings(this.#keybindings);
-		this.#chatInput = new CustomEditor(ui, getEditorTheme(), this.#keybindings, { paddingX: 1 });
+		this.#chatInput = new CustomEditor(ui, getEditorTheme(), this.#keybindings, {
+			paddingX: 1,
+			historyLimit: PROMPT_HISTORY_LIMIT,
+		});
+		// Up/Down browse prompts from earlier runs too: the current project's first, then other projects'.
+		this.#history = new PromptHistoryStore({ path: historyPath, cwd: process.cwd() });
+		this.#chatInput.setHistory(this.#history.load());
+		this.#footer = new NativeFooter(
+			process.cwd(),
+			{
+				snapshot: () => this.#laneSnapshot(),
+				models: () => this.#models?.state.value,
+				sessionName: () => this.#sessionName,
+			},
+			() => this.#requestRender(),
+		);
 		this.#chatInput.onSubmit = (message) => void this.#runPrompt(message);
 		// Pi's keys: Esc aborts a running turn, Ctrl-C clears the editor and exits when pressed twice within 500 ms,
 		// Ctrl-D exits on an empty editor. Exiting leaves a running turn to finish in the worker; only Esc aborts.
@@ -276,15 +317,30 @@ export class ExperimentalClientTui implements Component {
 		this.#chatInput.onAction("app.session.tree", () => void this.#showTreeSelector());
 		this.#chatInput.onAction("app.session.fork", () => void this.#showUserMessageSelector());
 		this.#chatInput.onAction("app.message.followUp", () => {
-			const text = this.#chatInput.getText().trim();
+			// Pasted text collapses into a marker in the editor; the follow-up carries the pasted text.
+			const text = this.#chatInput.getExpandedText().trim();
 			if (text.length === 0) return;
 			this.#chatInput.setText("");
+			this.#recordHistory(text);
 			void this.#queueFollowUp(text);
 		});
+		this.#chatInput.onAction("app.history.search", () => this.#showHistorySearch());
+		this.#chatInput.onAction("app.message.dequeue", () => this.#dequeue());
+		this.#chatInput.onAction("app.thinking.cycle", () => void this.#cycleThinking());
+		this.#chatInput.onAction("app.model.cycleForward", () => void this.#cycleModel(1));
+		this.#chatInput.onAction("app.model.cycleBackward", () => void this.#cycleModel(-1));
+		this.#chatInput.onAction("app.tools.expand", () => this.#toggleToolsExpanded());
+		this.#chatInput.onAction("app.thinking.toggle", () => this.#toggleThinkingBlocks());
+		this.#chatInput.onAction("app.editor.external", () => void this.#openExternalEditor());
+		this.#chatInput.onAction("app.message.copy", () => void copyLastAssistantMessage(this.#commandHost()));
+		this.#chatInput.onAction("app.suspend", () => this.#suspend());
+		this.#chatInput.onPasteImage = () => void this.#pasteFromClipboard();
+		this.#chatInput.onChange = () => this.#updateEditorBorder();
 		this.#editorContainer.addChild(this.#chatInput);
+		this.#footerComponent.addChild(this.#widgetsBelow);
 		this.#footerComponent.addChild(this.#rlmFooterLine);
 		this.#footerComponent.addChild(this.#jevFooterLine);
-		this.#footerComponent.addChild(this.#footerText);
+		this.#footerComponent.addChild(this.#footer);
 		this.#layoutRoot = createChatViewport({
 			document: this.#documentContainer,
 			pendingMessages: this.#pendingMessagesContainer,
@@ -305,6 +361,8 @@ export class ExperimentalClientTui implements Component {
 		readonly fdPath?: string | null;
 		/** Pi's settings (double-Esc action, tree filter, branch summary prompt, external editor). */
 		readonly settingsManager?: SettingsManager;
+		/** The prompt history file (default `<agentDir>/prompt-history.jsonl`); `null` keeps history in memory. */
+		readonly historyPath?: string | null;
 		requestRender(): void;
 		finish(): void;
 	}): Promise<ExperimentalClientTui> {
@@ -319,6 +377,7 @@ export class ExperimentalClientTui implements Component {
 			loadedFacets,
 			options.fdPath ?? null,
 			options.settingsManager ?? SettingsManager.inMemory(),
+			options.historyPath === undefined ? promptHistoryPath(getAgentDir()) : options.historyPath,
 		);
 		try {
 			await component.#start(prepared);
@@ -336,6 +395,11 @@ export class ExperimentalClientTui implements Component {
 
 	get layoutRoot(): Component {
 		return this.#layoutRoot;
+	}
+
+	/** The editor's text (with pasted text expanded), for callers that drive the TUI programmatically. */
+	get editorText(): string {
+		return this.#chatInput.getExpandedText();
 	}
 
 	render(width: number): string[] {
@@ -433,16 +497,14 @@ export class ExperimentalClientTui implements Component {
 							items.map((item) => ({ ...item })),
 							selectedValue,
 						),
-					showStatus: (status) => {
-						this.#status = status;
-						this.#rebuild();
-					},
+					showStatus: (status) => this.#showStatus(status),
 				});
 				const commands = env.use(SlashCommands);
 				const controller = env.use(AgentController);
 				const transcript = env.use(Transcript);
 				const control = env.use(SessionControl);
 				const extensionUI = env.use(ExtensionUI);
+				const models = env.use(Models);
 				const sessionFeature: SessionFeature = {
 					serverId: server.serverId,
 					session: server.session,
@@ -456,13 +518,35 @@ export class ExperimentalClientTui implements Component {
 					this.#slashCommands = commands;
 					this.#controller = controller;
 					this.#control = control ?? undefined;
+					this.#models = models ?? undefined;
 					if (extensionUI) env.own(this.#serveExtensionUI(extensionUI));
 					env.own(() => {
 						if (this.#session === sessionFeature) this.#session = undefined;
 						if (this.#slashCommands === commands) this.#slashCommands = undefined;
 						if (this.#controller === controller) this.#controller = undefined;
 						if (this.#control === control) this.#control = undefined;
+						if (this.#models === models) this.#models = undefined;
 					});
+					if (models) {
+						env.own(
+							models.state.subscribe(() => {
+								this.#updateEditorBorder();
+								this.#requestRender();
+							}),
+						);
+					}
+					// Pi's interactive-mode commands over the native Session.
+					for (const command of nativeCommands(this.#commandHost())) env.own(commands.replace(command));
+					env.own(
+						commands.replace({
+							name: "new",
+							description: "Start a new session",
+							run: () => {
+								void this.#newSession();
+								return undefined;
+							},
+						}),
+					);
 					env.own(
 						commands.replace({
 							name: "rlm",
@@ -556,6 +640,7 @@ export class ExperimentalClientTui implements Component {
 
 	async #close(): Promise<void> {
 		this.#closed = true;
+		this.#footer.dispose();
 		if (this.#rlmTimer !== undefined) clearInterval(this.#rlmTimer);
 		this.#rlmTimer = undefined;
 		this.#completeSelection(undefined);
@@ -587,19 +672,20 @@ export class ExperimentalClientTui implements Component {
 	}
 
 	#rebuild(): void {
-		this.#sessionHeading.setText(
+		this.#sessionHeading.setDetails(
 			this.#sessionId === undefined || this.#selectedServerId === undefined
 				? ""
 				: theme.fg("dim", `Server: ${this.#selectedServerId}\nSession: ${this.#sessionId}`),
 		);
+		this.#updateEditorBorder();
 		this.#statusContainer.clear();
+		this.#statusContainer.addChild(this.#widgetsAbove);
 		if (this.#status.length > 0) {
 			this.#statusContainer.addChild(new Text(theme.fg("dim", this.#status), 1, 0));
 		}
 		if (this.#rlmVisible) this.#statusContainer.addChild(this.#rlmPanel);
 		if (this.#jevVisible) this.#statusContainer.addChild(this.#jevPanel);
 		if (this.#chatView !== undefined) this.#statusContainer.addChild(this.#chatView.status);
-		this.#footerText.setText(theme.fg("dim", this.#footer()));
 		this.#editorContainer.clear();
 		if (this.#screen === "select" && this.#selection !== undefined) {
 			this.#chatInput.focused = false;
@@ -723,7 +809,10 @@ export class ExperimentalClientTui implements Component {
 
 	async #openLane(feature: SessionFeature): Promise<void> {
 		await this.#closeLane();
-		const view = new ExperimentalChatView(this.#ui, process.cwd());
+		const view = new ExperimentalChatView(this.#ui, process.cwd(), {
+			hideThinkingBlock: this.#settingsManager.getHideThinkingBlock(),
+			toolsExpanded: this.#toolsExpanded,
+		});
 		this.#chatView = view;
 		this.#documentContainer.addChild(this.#sessionHeading);
 		this.#documentContainer.addChild(view.transcript);
@@ -735,12 +824,17 @@ export class ExperimentalClientTui implements Component {
 			extractRootCell(value.snapshot, this.#rlmClock, Date.now());
 			const event = value.event;
 			if (event !== null && (event.type === "tool_start" || event.type === "tool_end")) void this.#refreshRlm();
+			this.#flushPendingBash();
 			this.#rebuild();
 		});
-		if (feature.transcript.state.value?.snapshot === null || feature.transcript.state.value?.snapshot === undefined) {
+		const snapshot = feature.transcript.state.value?.snapshot;
+		if (snapshot === null || snapshot === undefined) {
 			await this.#closeLane();
 			throw new Error("Transcript has no initialized snapshot");
 		}
+		// A resumed or forked Session's own prompts join this project's history by time.
+		this.#chatInput.setHistory(this.#history.history(sessionPromptHistory(snapshot.transcript)));
+		void this.#refreshSessionName();
 	}
 
 	async #closeLane(): Promise<void> {
@@ -750,12 +844,23 @@ export class ExperimentalClientTui implements Component {
 		this.#chatView = undefined;
 		this.#documentContainer.clear();
 		this.#pendingMessagesContainer.clear();
+		this.#pendingBash = [];
 		this.#statusContainer.clear();
 	}
 
 	async #runPrompt(messageText: string): Promise<void> {
 		const prompt = messageText.trim();
 		if (prompt.length === 0) return;
+		this.#recordHistory(prompt);
+		// Pi's `!command` runs in the Session cwd and is recorded for the model; `!!command` is not.
+		if (prompt.startsWith("!")) {
+			const excluded = prompt.startsWith("!!");
+			const command = prompt.slice(excluded ? 2 : 1).trim();
+			if (command.length > 0) {
+				await this.#runBash(command, excluded);
+				return;
+			}
+		}
 		if (prompt.startsWith("/")) {
 			const separator = prompt.indexOf(" ");
 			const name = prompt.slice(1, separator === -1 ? undefined : separator);
@@ -872,8 +977,17 @@ export class ExperimentalClientTui implements Component {
 					return;
 				}
 				case "notify":
-					this.#status = request.message;
-					this.#rebuild();
+					this.#showStatus(request.message);
+					return;
+				case "setStatus":
+					this.#footer.setExtensionStatus(request.statusKey, request.statusText);
+					this.#requestRender();
+					return;
+				case "setWidget":
+					this.#setWidget(request.widgetKey, request.widgetLines, request.widgetPlacement === "belowEditor");
+					return;
+				case "setTitle":
+					this.#ui.terminal.setTitle(request.title);
 					return;
 				case "set_editor_text":
 					this.#chatInput.setText(request.text);
@@ -980,6 +1094,10 @@ export class ExperimentalClientTui implements Component {
 
 	/** Pi's Esc: abort a running operation; idle, a double Esc on an empty editor runs `doubleEscapeAction`. */
 	#handleEscape(): void {
+		if (this.#bashRunning) {
+			void this.#control?.abortBash(BACKGROUND_CONTEXT).catch(() => {});
+			return;
+		}
 		const operation = this.#laneSnapshot()?.operation;
 		if (operation !== null && operation !== undefined) {
 			this.#interrupt();
@@ -998,8 +1116,14 @@ export class ExperimentalClientTui implements Component {
 		}
 	}
 
+	/** Short text in the status line; long output (an inspection, a report) goes to the transcript instead. */
 	#showStatus(status: string): void {
-		this.#status = status;
+		if (status.split("\n").length > MAX_STATUS_LINES && this.#chatView !== undefined) {
+			this.#chatView.appendNotice(new Text(status, 1, 0));
+			this.#status = "";
+		} else {
+			this.#status = status;
+		}
 		this.#rebuild();
 	}
 
@@ -1201,21 +1325,52 @@ export class ExperimentalClientTui implements Component {
 			const plugins = services.use(PresentationPlugins);
 			const created = await management.create({ forkFromSessionId: sourceId, forkPath }, BACKGROUND_CONTEXT);
 			await control.forked(created.sessionFile ?? null, BACKGROUND_CONTEXT);
-			const presentationPlugins = await plugins.prepareSession(
-				{ sessionId: created.sessionId, packagePaths: null },
-				BACKGROUND_CONTEXT,
-			);
-			await this.#closeLane();
-			this.#uiGeneration += 1;
-			await management.attach(created.sessionId, BACKGROUND_CONTEXT);
-			await server.session.whenAttached(created.sessionId, BACKGROUND_CONTEXT);
-			this.#sessionId = created.sessionId;
-			await this.#reloadPresentationPlugins?.(presentationPlugins);
-			const feature = this.#session;
-			if (feature === undefined) throw new Error("No Session service is available after the fork");
-			await this.#openLane(feature);
+			await this.#switchSession(server, management, plugins, created.sessionId);
 			this.#chatInput.setText(editorText);
 			this.#showStatus(done);
+		} catch (error) {
+			this.#showStatus(`Error: ${message(error)}`);
+		} finally {
+			await services.dispose(BACKGROUND_CONTEXT).catch(() => {});
+		}
+	}
+
+	/** Attach another Session of the same server and move the presentation (lane, plugins, dialogs) to it. */
+	async #switchSession(
+		server: ClientTuiServer,
+		management: SessionManagement,
+		plugins: PresentationPlugins,
+		sessionId: string,
+	): Promise<void> {
+		const presentationPlugins = await plugins.prepareSession({ sessionId, packagePaths: null }, BACKGROUND_CONTEXT);
+		await this.#closeLane();
+		this.#uiGeneration += 1;
+		await management.attach(sessionId, BACKGROUND_CONTEXT);
+		await server.session.whenAttached(sessionId, BACKGROUND_CONTEXT);
+		this.#sessionId = sessionId;
+		await this.#reloadPresentationPlugins?.(presentationPlugins);
+		const feature = this.#session;
+		if (feature === undefined) throw new Error("No Session service is available after the switch");
+		await this.#openLane(feature);
+	}
+
+	/** Pi's `/new`: a fresh Session on the same server; the old one stays on disk. */
+	async #newSession(): Promise<void> {
+		const server = this.#server;
+		if (server === undefined) return;
+		if (!(await this.#stopForSessionChange())) return;
+		const services = server.server.open({
+			services: [SessionManagement, PresentationPlugins],
+			assertAccess() {},
+			onError() {},
+		});
+		try {
+			await services.ready(BACKGROUND_CONTEXT);
+			const management = services.use(SessionManagement);
+			const plugins = services.use(PresentationPlugins);
+			const created = await management.create({}, BACKGROUND_CONTEXT);
+			await this.#switchSession(server, management, plugins, created.sessionId);
+			this.#showStatus("✓ New session started");
 		} catch (error) {
 			this.#showStatus(`Error: ${message(error)}`);
 		} finally {
@@ -1257,26 +1412,284 @@ export class ExperimentalClientTui implements Component {
 		const operation = snapshot?.operation;
 		const controller = this.#selectedController();
 		if (operation === null || operation === undefined || controller === undefined) return;
-		// Only what the user typed returns to the editor; queued host messages (completion events) are not theirs.
-		const queued = snapshot!.queues.flatMap((item) =>
-			item.type === "message" && item.message.role === "user" ? [item] : [],
-		);
-		const restored = [
-			...queued.filter((item) => item.kind === "steer"),
-			...queued.filter((item) => item.kind !== "steer"),
-		];
-		if (restored.length > 0) {
-			const queuedText = restored.map((item) => messageText(item.message)).join("\n\n");
-			const combined = [queuedText, this.#chatInput.getText()].filter((text) => text.trim()).join("\n\n");
-			this.#chatInput.setText(combined);
-			for (const item of restored) void controller.cancelQueued(item.entryId, BACKGROUND_CONTEXT).catch(() => {});
-		}
+		this.#restoreQueuedToEditor();
 		this.#status = `Aborting ${operation.id}…`;
 		this.#rebuild();
 		void controller.requestAbort(operation.id, BACKGROUND_CONTEXT).catch((error: unknown) => {
 			this.#status = `Error: ${message(error)}`;
 			this.#rebuild();
 		});
+	}
+
+	/** Move the user's queued steering and follow-up messages back into the editor; returns how many. */
+	#restoreQueuedToEditor(): number {
+		const snapshot = this.#laneSnapshot();
+		const controller = this.#selectedController();
+		if (snapshot === undefined || controller === undefined) return 0;
+		// Only what the user typed returns to the editor; queued host messages (completion events) are not theirs.
+		const queued = snapshot.queues.flatMap((item) =>
+			item.type === "message" && item.message.role === "user" ? [item] : [],
+		);
+		const restored = [
+			...queued.filter((item) => item.kind === "steer"),
+			...queued.filter((item) => item.kind !== "steer"),
+		];
+		if (restored.length === 0) return 0;
+		const queuedText = restored.map((item) => messageText(item.message)).join("\n\n");
+		const combined = [queuedText, this.#chatInput.getText()].filter((text) => text.trim()).join("\n\n");
+		this.#chatInput.setText(combined);
+		for (const item of restored) void controller.cancelQueued(item.entryId, BACKGROUND_CONTEXT).catch(() => {});
+		return restored.length;
+	}
+
+	/** Pi's Alt+Up: restore queued messages to the editor without aborting the turn. */
+	#dequeue(): void {
+		const restored = this.#restoreQueuedToEditor();
+		this.#showStatus(
+			restored === 0
+				? "No queued messages to restore"
+				: `Restored ${restored} queued message${restored > 1 ? "s" : ""} to editor`,
+		);
+	}
+
+	/** Pi's editor border: the bash color while the text starts with `!`, else the thinking level's color. */
+	#updateEditorBorder(): void {
+		const bashMode = this.#chatInput.getText().trimStart().startsWith("!");
+		const level =
+			this.#models?.state.value?.configuration.thinkingLevel ?? this.#laneSnapshot()?.configuration.thinkingLevel;
+		this.#chatInput.borderColor = bashMode
+			? theme.getBashModeBorderColor()
+			: theme.getThinkingBorderColor(level ?? "off");
+	}
+
+	#recordHistory(text: string): void {
+		this.#history.append(text);
+		this.#chatInput.addToHistory(text);
+	}
+
+	/** Reverse incremental search over prompt history; the pick replaces the editor text, Esc keeps the draft. */
+	#showHistorySearch(): void {
+		const history = this.#chatInput.getHistory();
+		if (history.length === 0) {
+			this.#showStatus("No prompt history yet");
+			return;
+		}
+		let close = (): void => {};
+		const search = new PromptHistorySearchComponent(
+			history,
+			(text) => {
+				close();
+				this.#chatInput.setText(text);
+				this.#requestRender();
+			},
+			() => {
+				close();
+				this.#requestRender();
+			},
+		);
+		close = this.#showComponent({ component: search, focus: search, cancel: () => close() });
+	}
+
+	/** Pi's Shift+Tab. */
+	async #cycleThinking(): Promise<void> {
+		const models = this.#models;
+		if (models === undefined) return;
+		if (this.#currentModel()?.reasoning === false) {
+			this.#showStatus("Current model does not support thinking");
+			return;
+		}
+		try {
+			await models.cycleThinking(BACKGROUND_CONTEXT);
+			this.#showStatus(`Thinking level: ${models.state.value?.configuration.thinkingLevel ?? "off"}`);
+		} catch (error) {
+			this.#showStatus(`Error: ${message(error)}`);
+		}
+	}
+
+	/** Pi's Ctrl+P / Shift+Ctrl+P: the next model in `enabledModels` scope, else among all available models. */
+	async #cycleModel(direction: 1 | -1): Promise<void> {
+		const models = this.#models;
+		const state = models?.state.value;
+		if (models === undefined || state === undefined) return;
+		const current = state.configuration.model ?? this.#laneSnapshot()?.configuration.model;
+		const next = nextModel(
+			state.catalog.availableModels,
+			current,
+			direction,
+			this.#settingsManager.getEnabledModels(),
+		);
+		if ("error" in next) {
+			this.#showStatus(next.error);
+			return;
+		}
+		try {
+			await models.select({ provider: next.model.provider, modelId: next.model.modelId }, BACKGROUND_CONTEXT);
+			const thinking = models.state.value?.configuration.thinkingLevel ?? "off";
+			const suffix = next.model.reasoning && thinking !== "off" ? ` (thinking: ${thinking})` : "";
+			this.#showStatus(`Switched to ${next.model.name || next.model.modelId}${suffix}`);
+		} catch (error) {
+			this.#showStatus(`Error: ${message(error)}`);
+		}
+	}
+
+	#currentModel(): ModelSummary | undefined {
+		const state = this.#models?.state.value;
+		const ref = state?.configuration.model ?? this.#laneSnapshot()?.configuration.model;
+		if (ref === undefined || ref === null) return undefined;
+		return state?.catalog.availableModels.find(
+			(model) => model.provider === ref.provider && model.modelId === ref.modelId,
+		);
+	}
+
+	/** Pi's Ctrl+O: every tool output, `!` output and the startup help expand or collapse together. */
+	#toggleToolsExpanded(): void {
+		this.#toolsExpanded = !this.#toolsExpanded;
+		this.#chatView?.setToolsExpanded(this.#toolsExpanded);
+		this.#sessionHeading.setExpanded(this.#toolsExpanded);
+		this.#showStatus(`Tool output: ${this.#toolsExpanded ? "expanded" : "collapsed"}`);
+	}
+
+	/** Pi's Ctrl+T, saved to settings as Pi does. */
+	#toggleThinkingBlocks(): void {
+		const hide = !this.#settingsManager.getHideThinkingBlock();
+		this.#settingsManager.setHideThinkingBlock(hide);
+		this.#chatView?.setHideThinkingBlock(hide);
+		this.#showStatus(`Thinking blocks: ${hide ? "hidden" : "visible"}`);
+	}
+
+	/** Pi's Ctrl+G: edit the prompt in `$VISUAL`/`$EDITOR` (or the configured command). */
+	async #openExternalEditor(): Promise<void> {
+		const command = this.#settingsManager.getExternalEditorCommand();
+		if (!command) {
+			this.#showStatus("No editor configured. Set $VISUAL or $EDITOR environment variable.");
+			return;
+		}
+		try {
+			const edited = await editExternally(this.#ui, command, this.#chatInput.getExpandedText());
+			if (edited !== undefined) this.#chatInput.setText(edited);
+			this.#rebuild();
+		} catch (error) {
+			this.#showStatus(`Error: ${message(error)}`);
+		}
+	}
+
+	#suspend(): void {
+		try {
+			suspendTui(this.#ui);
+		} catch (error) {
+			this.#showStatus(message(error));
+		}
+	}
+
+	async #pasteFromClipboard(): Promise<void> {
+		const text = await clipboardPasteText();
+		if (text === undefined) return;
+		this.#chatInput.insertTextAtCursor(text);
+		this.#requestRender();
+	}
+
+	/** Pi's `!` command: output shows while it runs; the recorded result joins the transcript. */
+	async #runBash(command: string, excludeFromContext: boolean): Promise<void> {
+		const control = this.#control;
+		if (control === undefined) {
+			this.#showStatus("Error: No Session is attached");
+			return;
+		}
+		if (this.#bashRunning) {
+			this.#showStatus("A bash command is already running. Press Esc to cancel it first.");
+			this.#chatInput.setText(`${excludeFromContext ? "!!" : "!"}${command}`);
+			return;
+		}
+		this.#bashRunning = true;
+		const component = new BashExecutionComponent(command, this.#ui, excludeFromContext);
+		component.setExpanded(this.#toolsExpanded);
+		this.#pendingMessagesContainer.addChild(component);
+		this.#rebuild();
+		try {
+			const result = await control.bash(command, excludeFromContext, BACKGROUND_CONTEXT);
+			// The worker records the command in the lane, where the transcript draws it; during a turn the entry
+			// lands at the next turn boundary, so the finished output stays in the pending area until then.
+			if (this.#laneSnapshot()?.operation != null) {
+				if (result.output) component.appendOutput(result.output);
+				component.setComplete(
+					result.exitCode ?? undefined,
+					result.cancelled,
+					undefined,
+					result.fullOutputPath ?? undefined,
+				);
+				this.#pendingBash.push(component);
+				return;
+			}
+			this.#pendingMessagesContainer.removeChild(component);
+		} catch (error) {
+			this.#pendingMessagesContainer.removeChild(component);
+			this.#status = `Error: ${message(error)}`;
+		} finally {
+			this.#bashRunning = false;
+			this.#rebuild();
+		}
+	}
+
+	#flushPendingBash(): void {
+		if (this.#pendingBash.length === 0 || this.#laneSnapshot()?.operation != null) return;
+		for (const component of this.#pendingBash) this.#pendingMessagesContainer.removeChild(component);
+		this.#pendingBash = [];
+	}
+
+	/** Pi's extension widgets (`ctx.ui.setWidget`), above or below the editor. */
+	#setWidget(key: string, lines: readonly string[] | undefined, below: boolean): void {
+		if (lines === undefined) this.#widgets.delete(key);
+		else this.#widgets.set(key, { lines: [...lines], below });
+		this.#widgetsAbove.clear();
+		this.#widgetsBelow.clear();
+		for (const [, widget] of [...this.#widgets].sort(([left], [right]) => left.localeCompare(right))) {
+			(widget.below ? this.#widgetsBelow : this.#widgetsAbove).addChild(new Text(widget.lines.join("\n"), 1, 0));
+		}
+		this.#rebuild();
+	}
+
+	async #refreshSessionName(): Promise<void> {
+		try {
+			const settings = await this.#control?.getSettings(BACKGROUND_CONTEXT);
+			this.#sessionName = settings?.name ?? undefined;
+			if (settings !== undefined) this.#footer.setAutoCompactEnabled(settings.autoCompaction);
+		} catch {
+			this.#sessionName = undefined;
+		}
+		this.#updateTerminalTitle();
+		this.#requestRender();
+	}
+
+	/** Pi's terminal title: app, session name, cwd. */
+	#updateTerminalTitle(): void {
+		if (this.#closed) return;
+		const cwd = basename(process.cwd());
+		this.#ui.terminal.setTitle(
+			this.#sessionName ? `${APP_TITLE} - ${this.#sessionName} - ${cwd}` : `${APP_TITLE} - ${cwd}`,
+		);
+	}
+
+	#commandHost(): NativeCommandHost {
+		return {
+			showStatus: (text) => this.#showStatus(text),
+			notice: (component) => {
+				if (this.#chatView === undefined) return;
+				this.#chatView.appendNotice(component);
+				this.#rebuild();
+			},
+			snapshot: () => this.#laneSnapshot(),
+			sessionId: () => this.#sessionId,
+			control: () => this.#control,
+			readSessionView: () => this.#readSessionView(),
+			currentModel: () => this.#currentModel(),
+			sessionName: () => this.#sessionName,
+			setSessionName: (name) => {
+				this.#sessionName = name;
+				this.#updateTerminalTitle();
+				this.#requestRender();
+			},
+			quit: () => this.#finish(),
+		};
 	}
 
 	#selectedController(): AgentController | undefined {
@@ -1422,12 +1835,6 @@ export class ExperimentalClientTui implements Component {
 		if (this.#jevVisible) return [];
 		const line = renderJevStatusLine(snapshot, inner, { style: rlmStyle });
 		return line === undefined ? [] : [` ${line}`];
-	}
-
-	#footer(): string {
-		const snapshot = this.#laneSnapshot();
-		if (!snapshot) return "/model · /thinking · /compact · /reload · /rlm · /jev";
-		return `${snapshot.configuration.model.provider}/${snapshot.configuration.model.modelId} · thinking:${snapshot.configuration.thinkingLevel} · ${snapshot.stats.messageCount} messages · /model · /thinking · /compact · /reload · /rlm · /jev`;
 	}
 }
 

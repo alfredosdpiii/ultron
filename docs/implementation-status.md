@@ -13,6 +13,50 @@ Ultron is a fork of Pi whose only agent runtime is the native RLM session worker
 - `ultron migrate import-pi | export-pi | backup | restore` moves whole Pi session trees in and out (every branch, labels, model and thinking-level history, context edits applied per branch, Pi-reported usage imported into the usage ledger as a marked historical root; Pi-only entry types kept as `pi-session:<type>` custom entries) and rehearses profile backup and restore.
 - `/rlm` (Ctrl+R) shows a live RLM panel: the task tree with states and results, the root kernel's current cell, admitted tasks, wall time and cost, and the kernel pool. `/jev` (Alt+J) shows Jev's recent decisions (triage routes, recall gates, retention) from a bounded, hashed decision log, and whether Jev and Hindsight are available. Both collapse to a footer line.
 
+## Native TUI parity with Pi's interactive mode
+
+The TUI (`src/experimental/client-tui.ts`) is a client of the session worker, not Pi's `interactive-mode.ts`. It reuses Pi's components (editor, autocomplete, footer, selectors, tool, bash and assistant message components) over the replicated lane snapshot. New logic lives beside it: `prompt-history.ts` and `prompt-history-search.ts` (history), `client-tui-footer.ts` (Pi's `FooterComponent` fed from the snapshot), `client-tui-commands.ts` (Pi's commands, `/hotkeys`, the startup header) and `rlm-tool-renderer.ts` (the `rlm` cell).
+
+Prompt history is appended to `<agentDir>/prompt-history.jsonl` (`{text, cwd, timestamp}` per line; whitespace-only input and an immediate repeat are skipped; a torn last line is tolerated). On start the newest 500 entries are loaded: this project's first, merged by time with the resumed Session's own user messages (deduplicated), then other projects'. Every prompt, steer, follow-up, `!` command and slash command is recorded. Keybinding choice: Ctrl+R stays the `/rlm` panel toggle. Pi has no history search, so its mapping gives no reason to move `/rlm`. Reverse search is `app.history.search` on Alt+R, which no Pi editor or dialog binding uses. Inside the search, Ctrl+R, Alt+R and Up move to older matches, Down (or Ctrl+S) to newer ones, Enter or Tab uses the match, and Esc keeps the draft.
+
+| Feature | Pi | Ultron before | Ultron now |
+|---|---|---|---|
+| Up/Down prompt history | yes (in memory, 100) | no (never recorded) | yes: persistent across sessions and restarts, 500 entries, resumed-session seed, draft restored |
+| Reverse history search | no | no | Alt+R (list of matches, all terms must match) |
+| `@file` and path completion | yes | yes (same provider, `fd`) | yes |
+| Slash-command autocomplete with descriptions | yes | yes | yes |
+| Large paste collapses to a marker | yes | yes for Enter; Alt+Enter sent the marker text | yes (follow-ups send the pasted text) |
+| Image paste (Ctrl+V) | yes (saved to a temp file, path inserted) | no (the key was swallowed) | yes, as Pi |
+| Footer: cwd, git branch, session name, tokens, cost, context %, model, thinking | yes | one line: model, thinking, message count, command hints | Pi's `FooterComponent`; extension statuses on its third line |
+| Session name | `/name`, footer, terminal title | `--name` only | `/name`, footer, terminal title |
+| Queued steer/follow-up display | "Steering:"/"Follow-up:" and Alt+Up hint | `[steer] text` | as Pi |
+| Alt+Enter follow-up | yes | yes | yes |
+| Alt+Up restore queued messages | yes | no | yes |
+| Thinking-block toggle (Ctrl+T) | yes | no | yes (saved to settings) |
+| Tool output expand/collapse (Ctrl+O) | yes | no | yes (tools, `!` output, startup help) |
+| Model cycling (Ctrl+P / Shift+Ctrl+P) | yes (`enabledModels` scope) | no | yes (`enabledModels` scope, else all available) |
+| Thinking-level cycling (Shift+Tab) | yes | no | yes |
+| Editor border colored by thinking level / bash mode | yes | no | yes |
+| Status indicator (working, compaction, retry countdown) | yes | "Working..." only | yes |
+| `/model`, `/thinking`, Ctrl+L | yes | yes | yes |
+| `/settings` | yes | no | no (Pi's selector is bound to an in-process `AgentSession`) |
+| `/session` | yes | no | yes (Pi's stats over the worker's tree) |
+| `/copy`, Ctrl+X | yes | no | yes (last assistant message) |
+| `/export [path.html\|path.jsonl]` | yes | no (CLI `--export` only) | yes (Pi's HTML exporter over the worker's tree) |
+| `/name`, `/hotkeys`, `/changelog`, `/quit`, `/new` | yes | no | yes |
+| `/tree`, `/fork`, `/clone`, double Esc | yes | yes | yes |
+| `/compact`, `/reload` | yes | yes | yes |
+| `/resume` | yes | no (CLI `--resume`/`--continue`/`--session`) | no |
+| `/login`, `/logout`, `/share`, `/import`, `/trust`, `/scoped-models`, `/debug` | yes | no | no |
+| External editor (Ctrl+G) | yes | only in extension editor dialogs | yes |
+| Suspend (Ctrl+Z) | yes | no | yes |
+| `!` / `!!` shell commands | yes | no (sent to the model as text) | yes (worker runs and records them; Esc cancels; Pi's bash component) |
+| Startup header with keybinding hints | yes | server and session ids only | Pi's header (compact, Ctrl+O for all hints) plus the ids |
+| Extension `setStatus`, `setWidget`, `setTitle` | yes | ignored | yes |
+| Long command output (inspections) | chat | status line | transcript when longer than three lines |
+| `rlm` tool call rendering | n/a | the word "rlm" and the first 10 output lines; no code | syntax-highlighted Python with line numbers (first 12 lines), output tail (last 10 lines), error color, Ctrl+O expands both |
+| `/rlm` (Ctrl+R), `/jev` (Alt+J) panels | n/a | yes | yes |
+
 ## Model tools
 
 - The RLM REPL (`rlm`) is the root agent's only built-in tool by default, following Prime Intellect's nano-rlm (`DEFAULT_TOOLS = ("ipython",)`): Pi's `read`, `edit`, `write` and `bash` stay registered but inactive. Shell and edits are pre-imported async Python skills in the kernel: `out = await bash('''cmd''', timeout=None)` returns the combined output as a `str` subclass with `[exit code N]`, `[timed out after Ns]` or `[cancelled]` appended and `.exit_code`, `.ok`, `.output`, `.timed_out`, `.truncated`, `.full_output_path`, `.running`, `.job` attributes (the earlier dict shape still works via `out["exit_code"]`); a command still running after `ULTRON_BASH_YIELD_AFTER` seconds (default 30) continues as a host job and the call returns the output so far with `.running` True (see Asynchronous execution); `yield_after=None` blocks until the command ends; `job = await bash(cmd, yield_after=s)` returns a host-owned `ShellJob` instead; `await read(path)` returns a file's text up to `ULTRON_READ_HANDLE_BYTES` (default 256 KiB) and above it a `ContextHandle` from `rlm.load`, printing one line with its size and digest and how to use it (`h.search`, `h.lines`, `h.chunks`, `rlm.map`); `await edit(path, old_str, new_str)` replaces exactly one occurrence and raises `ValueError("old_str must appear exactly once in <path> (found N)")` or `FileNotFoundError`; files are created with ordinary Python. Extension tools registered by Pi extensions stay model tools, and child task lanes get the same set as the root (the harness seed). `ULTRON_TOOLS=native` restores Pi's four tools next to `rlm` (the parity and nudge test suites run this way); Pi's `--tools`/`--exclude-tools` still apply when given.
