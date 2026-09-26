@@ -17,6 +17,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { FROZEN_AT } from "../evals/quality/tasks.mjs";
+import { allRowsPassed } from "./acceptance-report.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const results = [];
@@ -33,7 +34,7 @@ const report = join(root, "acceptance/report.json");
 if (existsSync(report)) {
 	const { summary } = JSON.parse(readFileSync(report, "utf8"));
 	// Every row in the manifest, not a fixed count: new rows must pass too.
-	const complete = summary.total > 0 && summary.passed === summary.total;
+	const complete = allRowsPassed(summary);
 	results.push({ name: "acceptance rows", ok: complete, detail: `${summary.passed} passed of ${summary.total}` });
 }
 

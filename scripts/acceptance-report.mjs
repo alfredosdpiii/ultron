@@ -228,6 +228,11 @@ export function computeRows({ manifest, run, lock, root, mutation = null, mutati
 	});
 }
 
+/** The release gate's rule: every manifest row passed, and there is at least one row (never a fixed count). */
+export function allRowsPassed(summary) {
+	return summary.total > 0 && summary.passed === summary.total;
+}
+
 /** "A01-A55" for the rows in the report, so the label follows the manifest. */
 export function rowRange(rows) {
 	return rows.length === 0 ? "no rows" : `${rows[0].id}-${rows.at(-1).id}`;
