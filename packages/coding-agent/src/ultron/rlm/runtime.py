@@ -28,6 +28,7 @@ from release_gate_api import ReleaseGates
 import agent_class_api
 from context_api import Context
 from infer_api import install as install_inference
+from hints_api import Hints
 
 @dataclass
 class SpawnHandle:
@@ -121,6 +122,17 @@ class RLMNamespace:
     async def host_request(self, request_type: str, payload: dict[str, Any] | None = None) -> Any:
         return await self._bridge.request(request_type, payload)
 
+    async def jobs(self) -> list["ShellJob"]:
+        """Shell jobs started with bash(..., yield_after=...), newest first (without their text)."""
+        result = await self._bridge.request("shell.list", {})
+        return [ShellJob(self._bridge, item) for item in (result if isinstance(result, list) else [])]
+
+    async def job(self, job_id: str) -> "ShellJob":
+        """Recover a shell job's handle by id (after the variable was lost or the kernel restarted)."""
+        if not isinstance(job_id, str) or not job_id:
+            raise ValueError("job id must be a non-empty string")
+        return ShellJob(self._bridge, await self._bridge.request("shell.get", {"id": job_id}))
+
 class BackgroundNamespace:
     def __init__(self, bridge: HostBridge) -> None:
         self._bridge = bridge
@@ -176,6 +188,10 @@ class BashOutput(str):
     printing the string always shows whether the command failed. The details are attributes:
     .output (raw output), .exit_code, .ok, .timed_out, .cancelled, .truncated (output cut
     short), .full_output_path. Earlier cells used a dict; ``out["exit_code"]`` still works.
+
+    A command still running when ``bash`` stopped waiting (the default ``yield_after``) keeps
+    running as a host job: then .running is True, .job is its ShellJob, .exit_code is None,
+    .ok is False, the text is the output so far plus a note, and its end arrives as an event.
     """
 
     output: str
@@ -184,11 +200,24 @@ class BashOutput(str):
     cancelled: bool
     truncated: bool
     full_output_path: str | None
+    running: bool
+    job: "ShellJob | None"
 
     def __new__(cls, output: str, exit_code: int | None, *, timed_out: bool = False, cancelled: bool = False,
-                truncated: bool = False, full_output_path: str | None = None, timeout: float | None = None) -> "BashOutput":
+                truncated: bool = False, full_output_path: str | None = None, timeout: float | None = None,
+                job: "ShellJob | None" = None, waited: float | None = None) -> "BashOutput":
         text = output.strip()
-        if timed_out:
+        running = job is not None and job.running
+        if running:
+            events = _async_events_enabled()
+            waited_text = f" after {waited:g} s" if waited is not None else ""
+            text += (
+                f"\n[still running as job {job.id}{waited_text}; its completion will arrive as a runtime event, "
+                "or `await <result>.job.result()` to wait]"
+                if events
+                else f"\n[still running as job {job.id}{waited_text}; `await <result>.job.result()` waits for it]"
+            )
+        elif timed_out:
             text += f"\n[timed out after {timeout:g}s]"
         elif cancelled:
             text += "\n[cancelled]"
@@ -203,15 +232,17 @@ class BashOutput(str):
         self.cancelled = cancelled
         self.truncated = truncated
         self.full_output_path = full_output_path
+        self.running = running
+        self.job = job
         return self
 
     @property
     def ok(self) -> bool:
-        return self.exit_code == 0 and not self.timed_out and not self.cancelled
+        return self.exit_code == 0 and not self.timed_out and not self.cancelled and not self.running
 
     def __getitem__(self, key: Any) -> Any:
         if isinstance(key, str):
-            if key in ("output", "exit_code", "timed_out", "cancelled", "truncated", "full_output_path", "ok"):
+            if key in ("output", "exit_code", "timed_out", "cancelled", "truncated", "full_output_path", "ok", "running", "job"):
                 return getattr(self, key)
             raise KeyError(key)
         return str.__getitem__(self, key)
@@ -223,31 +254,162 @@ class BashOutput(str):
             return default
 
 
-async def bash(command: str, timeout: float | None = None) -> BashOutput:
-    """Run a shell command in the working directory and return its output as a string.
+class ShellJob:
+    """A shell command owned by the Ultron host (started with ``bash(cmd, yield_after=...)``).
+
+    It keeps running after the cell ends, across kernel restarts and eviction; an Esc abort of the
+    turn that started it, ``timeout=``, or ``await job.cancel()`` stops it. When it ends while you
+    are not waiting on it, a ``<runtime_event kind="job_done">`` message arrives on its own: do not poll.
+
+    Attributes: .id, .running, .status, .exit_code, .ok (clean exit 0), .text (combined output,
+    at most 16 KiB: head and tail around a marker), .truncated, .timed_out, .cancelled,
+    .output_path, .output_bytes, .elapsed_seconds, .error.
+    """
+
+    def __init__(self, bridge: "HostBridge", data: Any) -> None:
+        self._bridge = bridge
+        self._update(data)
+
+    def _update(self, data: Any) -> None:
+        if not isinstance(data, dict) or not isinstance(data.get("id"), str):
+            raise RuntimeError("bash: the host returned no job")
+        self.id: str = data["id"]
+        self.command: str = str(data.get("command") or "")
+        self.status: str = str(data.get("status") or "")
+        self.running: bool = bool(data.get("running"))
+        exit_code = data.get("exit_code")
+        self.exit_code: int | None = exit_code if isinstance(exit_code, int) else None
+        self.ok: bool = bool(data.get("ok"))
+        text = data.get("text")
+        self.text: str | None = text if isinstance(text, str) else None
+        self.truncated: bool = bool(data.get("truncated"))
+        self.timed_out: bool = bool(data.get("timed_out"))
+        self.cancelled: bool = bool(data.get("cancelled"))
+        self.output_path: str = str(data.get("output_path") or "")
+        self.output_bytes: int = int(data.get("output_bytes") or 0)
+        self.elapsed_seconds: float = float(data.get("elapsed_seconds") or 0)
+        error = data.get("error")
+        self.error: str | None = error if isinstance(error, str) else None
+
+    async def result(self, wait: float | None = None) -> "ShellJob":
+        """Wait for the job to end (at most ``wait`` seconds) and return this handle, refreshed."""
+        if wait is not None and (isinstance(wait, bool) or not isinstance(wait, (int, float)) or wait < 0):
+            raise ValueError("wait must be a non-negative number of seconds")
+        payload: dict[str, Any] = {"id": self.id}
+        if wait is not None:
+            payload["wait"] = wait
+        self._update(await self._bridge.request("shell.result", payload))
+        return self
+
+    async def cancel(self) -> "ShellJob":
+        """Stop the job (its whole process tree) and return this handle, refreshed."""
+        self._update(await self._bridge.request("shell.cancel", {"id": self.id}))
+        return self
+
+    async def read(self, cursor: int = 0, max_bytes: int = 65536) -> dict[str, Any]:
+        """Read retained output from byte ``cursor``: {text, next_cursor, done, truncated}."""
+        return await self._bridge.request("shell.read", {"id": self.id, "cursor": cursor, "max_bytes": max_bytes})
+
+    def _status_line(self) -> str:
+        if self.running:
+            return f"[job {self.id} running {self.elapsed_seconds:g}s: completion arrives as a <runtime_event>; await job.result() to wait]"
+        if self.status == "completed":
+            return f"[job {self.id} exit code {self.exit_code} after {self.elapsed_seconds:g}s]"
+        detail = f": {self.error}" if self.error else ""
+        return f"[job {self.id} {self.status}{detail}]"
+
+    def __str__(self) -> str:
+        body = (self.text or "").strip()
+        return f"{body}\n{self._status_line()}" if body else self._status_line()
+
+    def __repr__(self) -> str:
+        if self.text is None:
+            return f"ShellJob(id={self.id!r}, status={self.status!r}, exit_code={self.exit_code!r}, command={self.command[:60]!r})"
+        return str(self)
+
+
+_JOB_MAX_WAIT_SECONDS = 3600
+# How long a plain `await bash(cmd)` waits before a slow command continues as a host job (ULTRON_BASH_YIELD_AFTER).
+_DEFAULT_BASH_YIELD_AFTER = 30.0
+
+
+class _Default:
+    """Marker for an argument left out (distinct from an explicit None)."""
+
+    def __repr__(self) -> str:
+        return "default"
+
+
+_DEFAULT = _Default()
+
+
+def _async_events_enabled() -> bool:
+    return os.environ.get("ULTRON_ASYNC_EVENTS", "").strip().lower() not in ("off", "0", "false", "no")
+
+
+def _default_yield_after() -> float | None:
+    """ULTRON_BASH_YIELD_AFTER seconds (default 30); 0 or "off" makes plain bash block until the command ends."""
+    raw = os.environ.get("ULTRON_BASH_YIELD_AFTER", "").strip().lower()
+    if raw == "":
+        return _DEFAULT_BASH_YIELD_AFTER
+    if raw in ("off", "none", "false", "no"):
+        return None
+    try:
+        value = float(raw)
+    except ValueError:
+        return _DEFAULT_BASH_YIELD_AFTER
+    if not math.isfinite(value) or value < 0:
+        return _DEFAULT_BASH_YIELD_AFTER
+    return None if value == 0 else min(value, _JOB_MAX_WAIT_SECONDS)
+
+
+async def bash(command: str, timeout: float | None = None, yield_after: Any = _DEFAULT) -> Any:
+    """Run a shell command in the working directory.
 
     Args:
         command: The command, run by the user's shell (bash).
         timeout: Seconds before the command is killed (default: no limit).
+        yield_after: Left out: wait up to ULTRON_BASH_YIELD_AFTER seconds (default 30) and return
+            the output as a string; a command still running then keeps running as a host job and
+            the string says so (.running True, .job its ShellJob; its completion arrives as a
+            <runtime_event>). None: wait for the command however long it takes. A number of
+            seconds: start the command as a host job and return a ShellJob after at most that
+            long, finished (.running False) or still running; 0 returns at once.
 
     Returns:
-        A BashOutput: stdout and stderr combined, with "[exit code N]" appended when the
-        command failed. Its .exit_code and .ok attributes carry the status.
+        Without a yield_after number, a BashOutput: stdout and stderr combined, with "[exit code N]"
+        appended when the command failed; .exit_code and .ok carry the status. With a number, a
+        ShellJob (see help(ShellJob)).
     """
     if not isinstance(command, str) or not command.strip():
         raise ValueError("bash command must be a non-empty string")
     if timeout is not None and (isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or timeout <= 0):
         raise ValueError("bash timeout must be a positive number of seconds")
+    auto: float | None = None
+    if yield_after is _DEFAULT:
+        auto = _default_yield_after()
+    elif yield_after is not None:
+        if isinstance(yield_after, bool) or not isinstance(yield_after, (int, float)) or yield_after < 0:
+            raise ValueError("bash yield_after must be a non-negative number of seconds")
+        job_payload: dict[str, Any] = {"command": command, "yield_after": min(float(yield_after), _JOB_MAX_WAIT_SECONDS)}
+        if timeout is not None:
+            job_payload["timeout"] = timeout
+        return ShellJob(_STATE.bridge, await _STATE.bridge.request("shell.run", job_payload))
     payload: dict[str, Any] = {"command": command}
     if timeout is not None:
         payload["timeout"] = timeout
+    if auto is not None:
+        payload["yield_after"] = auto
     result = await _STATE.bridge.request("bash", payload)
     if not isinstance(result, dict):
         raise RuntimeError("bash: the host returned no result")
     output = str(result.get("output") or "")
     truncated = bool(result.get("truncated"))
     path = result.get("full_output_path")
-    if truncated and isinstance(path, str) and path:
+    job_data = result.get("job")
+    job = ShellJob(_STATE.bridge, job_data) if result.get("running") and isinstance(job_data, dict) else None
+    # A job's spill file may hold only the head of a very long output (partial_file): the text is better then.
+    if truncated and isinstance(path, str) and path and job is None and not result.get("partial_file"):
         # The host keeps only the tail; the whole output is in its spill file.
         with contextlib.suppress(OSError):
             with open(path, "rb") as handle:
@@ -264,7 +426,45 @@ async def bash(command: str, timeout: float | None = None) -> BashOutput:
         truncated=truncated,
         full_output_path=path if isinstance(path, str) else None,
         timeout=timeout,
+        job=job,
+        waited=auto,
     )
+
+
+# `read` returns a file's text up to this size and a ContextHandle above it (ULTRON_READ_HANDLE_BYTES).
+_DEFAULT_READ_HANDLE_BYTES = 256 * 1024
+
+
+def _read_handle_bytes() -> int:
+    try:
+        value = int(os.environ.get("ULTRON_READ_HANDLE_BYTES", "").strip())
+    except ValueError:
+        return _DEFAULT_READ_HANDLE_BYTES
+    return value if value > 0 else _DEFAULT_READ_HANDLE_BYTES
+
+
+async def read(path: str | os.PathLike[str]) -> Any:
+    """Read a text file (relative to the working directory, or absolute).
+
+    Returns the text (a str) for a file up to ULTRON_READ_HANDLE_BYTES (default 256 KiB). A larger
+    file is loaded with ``rlm.load`` and returned as a ContextHandle, with a one-line note naming its
+    size and digest: program over it with ``h.search(regex)``, ``h.lines(a, b)``, ``h.chunks(n)``,
+    ``h.count(regex)`` or ``rlm.map(task, h.chunks(n))`` instead of reading it whole.
+    """
+    if not isinstance(path, (str, os.PathLike)) or not str(path):
+        raise ValueError("read path must be a non-empty string")
+    filepath = Path(path)
+    if not filepath.is_absolute():
+        filepath = Path.cwd() / filepath
+    size = filepath.stat().st_size
+    if size <= _read_handle_bytes():
+        return filepath.read_bytes().decode("utf-8", errors="replace")
+    handle = await _STATE.namespace["rlm"].load(path=filepath)
+    print(
+        f"[read] {path} is {size:,} bytes (over {_read_handle_bytes():,}), so it was loaded as a handle, not text: "
+        f"{handle!r}. Use h.search(regex), h.lines(a, b), h.chunks(n) or rlm.map(task, h.chunks(n)) on it."
+    )
+    return handle
 
 
 async def edit(path: str, old_str: str, new_str: str) -> str:
@@ -399,14 +599,18 @@ class RuntimeState:
         self.cell_active = False
         self.execution_lock = asyncio.Lock()
         self.snapshot_path: Path | None = None
-        self.namespace: dict[str, Any] = {"__name__": "__main__"}
+        # asyncio is pre-imported: the guide batches independent work with asyncio.gather.
+        self.namespace: dict[str, Any] = {"__name__": "__main__", "asyncio": asyncio}
         self.namespace["rlm"] = RLMNamespace(self.bridge)
         self.namespace["agent_message"] = AgentMessages(self.bridge)
         self.namespace["jev"] = JevNamespace(self.bridge)
         self.namespace["background"] = BackgroundNamespace(self.bridge)
         self.namespace["bash"] = bash
         self.namespace["edit"] = edit
+        self.namespace["read"] = read
+        self.namespace["hints"] = Hints(self.bridge)
         self.namespace["SpawnHandle"] = SpawnHandle
+        self.namespace["ShellJob"] = ShellJob
         self.namespace["agents"] = Agents(self.bridge)
         self.namespace["workflows"] = Workflows(self.bridge)
         self.namespace["memory"] = Memory(self.bridge)

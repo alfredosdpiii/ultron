@@ -302,7 +302,7 @@ async function chat(model, content, { maxTokens = 12000, temperature = 0.9 } = {
 			if (!response.ok) {
 				lastError = new Error(`${model} HTTP ${response.status}: ${JSON.stringify(body.error ?? body).slice(0, 200)}`);
 				stats.httpFailures += 1;
-				if (response.status === 429 && /usage_limit|cooldown/.test(JSON.stringify(body))) throw Object.assign(lastError, { fatal: true });
+				if (response.status === 429 && /usage_limit|cooldown|auth_unavailable/.test(JSON.stringify(body))) throw Object.assign(lastError, { fatal: true });
 				await new Promise((wait) => setTimeout(wait, 2000 * 2 ** attempt));
 				continue;
 			}

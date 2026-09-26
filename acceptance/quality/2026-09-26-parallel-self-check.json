@@ -1,0 +1,63 @@
+{
+  "taskSet": "parallel",
+  "frozenAt": "2026-09-26-parallel",
+  "passed": true,
+  "results": [
+    {
+      "task": "slow-suite-and-fixes",
+      "category": "parallel",
+      "ok": true,
+      "durationMs": 258389,
+      "outcomes": [
+        {
+          "trial": "unsolved",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 129
+        },
+        {
+          "trial": "solved",
+          "expect": "pass, within budget",
+          "ok": true,
+          "verifyMs": 135,
+          "solveMs": 162070,
+          "timeBudgetMs": 240000,
+          "withinBudget": true
+        },
+        {
+          "trial": "sequential: suite blocking, then the fixes",
+          "expect": "pass, over budget",
+          "ok": true,
+          "verifyMs": 126,
+          "solveMs": 258131,
+          "timeBudgetMs": 240000,
+          "withinBudget": false
+        },
+        {
+          "trial": "skips the suite and guesses the line",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 131
+        },
+        {
+          "trial": "without the dates.py fix",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 130
+        },
+        {
+          "trial": "without the pricing.py fix",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 135
+        },
+        {
+          "trial": "pricing fix special-cases the tested quantity",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 135
+        }
+      ]
+    }
+  ]
+}

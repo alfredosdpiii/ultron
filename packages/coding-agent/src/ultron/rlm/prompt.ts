@@ -30,10 +30,10 @@ export function defaultBuiltinToolNames(env: NodeJS.ProcessEnv = process.env): s
 
 export const RLM_TOOL_DESCRIPTION = [
 	"Run a Python cell in your persistent RLM REPL. Variables, imports and functions persist across calls; top-level `await` works; the value of the last expression is shown along with anything printed, and stays available as `_`.",
-	"Pre-imported, nothing to import: `bash`, `edit`, `rlm`, `agents`, `workflows`, `background`, `memory`, `ctx`, `skills`, `agent`/`Agent`, `Budget`, `state`, `jev`, `preview`.",
-	"- `out = await bash('''command''')` runs a shell command in the working directory and returns its output as a string, with `[exit code N]` appended on failure (`out.exit_code`, `out.ok`).",
+	"Pre-imported, nothing to import: `bash`, `edit`, `read`, `rlm`, `agents`, `workflows`, `background`, `memory`, `ctx`, `skills`, `hints`, `agent`/`Agent`, `Budget`, `state`, `jev`, `preview`, `asyncio`.",
+	"- `out = await bash('''command''')` runs a shell command in the working directory and returns its output as a string, with `[exit code N]` appended on failure (`out.exit_code`, `out.ok`). A command still running after 30 s keeps running as a job (`out.running`, `out.job`) and its completion arrives later as a `<runtime_event>` message, so never wait or poll for it; `yield_after=0` detaches at once, `yield_after=None` blocks.",
 	'- `await edit(path="file.py", old_str=..., new_str=...)` replaces exactly one occurrence and raises ValueError when old_str is absent or appears more than once. Create new files with ordinary Python (`Path(p).write_text(...)`).',
-	"- Large inputs stay out of your context: `h = await rlm.load(path)` returns a handle (size, digest; `h.search`, `h.lines`, `h.chunks`), and `await rlm.infer(task, context=[views], contract=...)` / `await rlm.map(...)` run bounded sub-model frames that return validated values.",
+	"- `await read(path)` returns a file's text, or a handle for a file over 256 KiB. Large inputs stay out of your context: `h = await rlm.load(path_or_text)` returns a handle (size, digest; `h.search`, `h.lines`, `h.chunks`), and `await rlm.infer(task, context=[views], contract=...)` / `await rlm.map(...)` run bounded sub-model frames that return validated values.",
 	'- `h = await rlm.spawn(task, name="short-name")` starts a subagent with its own REPL; `await rlm.collect([h.rlm_child_id])` waits for results. `await agents.invoke(definition, input)` runs a typed agent; `await workflows.run(nodes)` runs an agent graph.',
 	"- `state` is a dict for data that must survive kernel restarts. Output over about 20 KB is cut in the middle and a large last value is shown by reference (type, size, head, tail): keep data in variables and print what you need.",
 ].join("\n");
@@ -50,14 +50,17 @@ export function rlmToolGuidelines(activeTools: readonly string[]): string[] {
 		];
 	}
 	return [
-		"Do all work through the rlm tool: read files with Python or `await bash('''sed -n 1,120p path''')`, search with `await bash('''rg -n pattern path''')`, change files with `await edit(...)`, and create files with Python",
+		"Do all work through the rlm tool: read files with `await read(path)` or `await bash('''sed -n 1,120p path''')`, search with `await bash('''rg -n pattern path''')`, change files with `await edit(...)`, and create files with Python",
 		"Batch related steps into one cell and keep intermediate results in Python variables instead of printing them",
 	];
 }
 
-const BASH_SKILL = `For shell work, use \`out = await bash('''command here''')\`: always triple-quote the command so shell quotes and multi-line scripts never need escaping (use \`r'''...'''\` when it contains backslashes). It runs in the working directory with the user's shell and returns the combined stdout and stderr as a string, useful for further Python processing: \`out.splitlines()\`, \`json.loads(out)\`, regexes. A failed command has \`[exit code N]\` appended; branch on \`out.ok\` / \`out.exit_code\` rather than only printing the text. \`timeout=\` (seconds) kills a command that runs too long. Run independent commands concurrently with \`await asyncio.gather(bash(a), bash(b))\`. Prefer \`rg -n\`, \`sed -n 'A,Bp'\` and \`head\` over printing whole files. A command runs only while its cell runs: for a long-lived process (a server), start it detached (\`nohup cmd > /tmp/server.log 2>&1 &\`) and read its log in later cells.`;
+const BASH_SKILL = `For shell work, use \`out = await bash('''command here''')\`: always triple-quote the command so shell quotes and multi-line scripts never need escaping (use \`r'''...'''\` when it contains backslashes). It runs in the working directory with the user's shell and returns the combined stdout and stderr as a string, useful for further Python processing: \`out.splitlines()\`, \`json.loads(out)\`, regexes. A failed command has \`[exit code N]\` appended; branch on \`out.ok\` / \`out.exit_code\` rather than only printing the text. \`timeout=\` (seconds) kills a command that runs too long. Run independent commands concurrently with \`await asyncio.gather(bash(a), bash(b))\`. Prefer \`rg -n\`, \`sed -n 'A,Bp'\` and \`head\` over printing whole files.
+Slow commands never hold you: a plain \`bash\` still running after 30 s returns with \`out.running\` True, \`out.job\` its handle, the output so far and a note, and the command keeps running as a host-owned job whose completion arrives as a \`<runtime_event>\`. \`yield_after=None\` waits however long it takes; \`job = await bash('''cmd''', yield_after=s)\` returns a \`ShellJob\` after at most \`s\` seconds (0 returns at once: the way to start a known-long test suite, build or install). A handle has \`.id\`, \`.running\`, \`.exit_code\`, \`.ok\`, \`.text\` (head and tail, at most 16 KiB; \`.truncated\`, \`await job.read(cursor, max_bytes)\` for the rest) and \`.timed_out\`; \`await job.result(wait=None)\` waits for it, \`await job.cancel()\` stops it. A job outlives its cell and kernel restarts (\`await rlm.job(id)\` recovers a handle, \`await rlm.jobs()\` lists them); Esc on the turn stops it. A server that must outlive everything is started detached (\`nohup cmd > /tmp/server.log 2>&1 &\`).`;
 
-const BASH_SKILL_WITH_TOOL = `Inside rlm you can also run shell with \`out = await bash('''command''')\`: it returns the output as a string (\`[exit code N]\` appended on failure; \`out.exit_code\`, \`out.ok\`), useful when mixing shell and Python in one cell or avoiding shell quoting.`;
+const BASH_SKILL_WITH_TOOL = `Inside rlm you can also run shell with \`out = await bash('''command''')\`: it returns the output as a string (\`[exit code N]\` appended on failure; \`out.exit_code\`, \`out.ok\`; a command still running after 30 s continues as a job, \`out.running\` and \`out.job\`), useful when mixing shell and Python in one cell or avoiding shell quoting.`;
+
+const READ_SKILL = `\`text = await read(path)\` returns a file's text; a file over 256 KiB comes back as a ContextHandle instead (a note gives its size and digest), so a huge file never lands in your context by accident: use \`h.search(regex)\`, \`h.lines(a, b)\`, \`h.chunks(n)\` or \`rlm.map\` on it (see Bounded inference).`;
 
 const EDIT_SKILL = `Change existing files with the pre-imported async \`edit\` skill, not with \`str.replace\` + \`write_text\`: \`await edit(path="pkg/file.py", old_str=..., new_str=...)\` replaces exactly one occurrence and raises ValueError when old_str is absent or appears more than once, so a stale or ambiguous hunk cannot be applied silently. Several hunks go in one cell:
 \`\`\`python
@@ -80,14 +83,21 @@ out = await bash('''python3 /tmp/repro/check.py''')
 \`\`\``;
 
 const RUNTIME = `## Runtime
-You have a persistent Python REPL as your execution environment: the \`rlm\` tool. Each call runs a cell in the same kernel, so variables, imports and functions remain available to later cells. Use Python to program over files, shell commands and agents: read and transform data in Python, keep intermediate results in variables, and print only what the next decision needs. The value of a cell's last expression is shown along with anything printed and stays available as \`_\`. Output over about 20 KB is cut in the middle (the marker says how much was cut), and a large last value (a long string, a big list or dict, a DataFrame) is shown by reference: its type, size, head and tail, while the object itself stays in the kernel. So read large files and outputs into variables and show slices, counts or matches (\`preview(x)\` gives a bounded view of any value) instead of dumping them.
+You have a persistent Python REPL as your execution environment: the \`rlm\` tool. Each call runs a cell in the same kernel, so variables, imports and functions remain available to later cells. Use Python to program over files, shell commands and agents: read and transform data in Python, keep intermediate results in variables, and print only what the next decision needs. The value of a cell's last expression is shown along with anything printed and stays available as \`_\`. Output over about 20 KB is cut in the middle (the marker says how much was cut), and a large last value (a long string, a big list or dict, a DataFrame) is shown by reference: its type, size, head and tail, while the object itself stays in the kernel. So keep large files and outputs in variables and show slices, counts or matches (\`preview(x)\` gives a bounded view of any value) instead of dumping them.
+A result may end with one \`[hint:<tag>] ...\` line from the runtime about how the cell used it (a detached job, a long wait, polling, cut output, a repeated error). Act on it; once you have understood a hint, \`await hints.mute("<tag>")\` stops it (\`hints.unmute\`, \`hints.muted()\`).
 
 The APIs are pre-imported (nothing to import) and async: use top-level \`await\`. An exception ends the cell and its traceback is shown after anything printed before it; fix the cause rather than repeating the cell, since writes and started agents from the failed cell may already have happened.
 
 Every lane (you, and each subagent) has its own kernel. A supervisor outside the kernel (the Ultron host) owns subagents, tasks and their results: handles in Python variables are references to supervisor-owned work, and losing a variable or restarting the kernel does not cancel it (\`await rlm.list_subagents()\` and \`await agents.tasks()\` recover them). If a cell fails because the kernel was stopped (a memory or CPU limit), the next cell starts a fresh kernel: re-create imports, functions and variables. Idle kernels may be evicted and restored later with plain data variables (numbers, strings, lists, dicts) intact but not functions, modules or objects; the \`state\` dict is the place for data that must survive.`;
 
+/** How completion events reach the model (ULTRON_ASYNC_EVENTS, on by default). */
+const ASYNC_EVENTS = `Nothing needs polling. When a job (a detached \`bash\`), a subagent, a spawned task or a background job finishes while you are not waiting on it, a \`<runtime_event kind="job_done|child_done|task_done" id=... status=... summary=... fetch=...>\` message is added to your conversation, and if you had already ended your turn it starts a new one. So start long work, continue with other work (or end your turn), and act on the event when it arrives; never sleep, poll or loop waiting for results. Batch independent operations into one cell with \`await asyncio.gather(...)\` instead of one cell each.`;
+
+const ASYNC_EVENTS_OFF =
+	"Completions are not announced in this session (ULTRON_ASYNC_EVENTS=off): when you need a result, wait for it with `await job.result()`, `await rlm.collect(...)` or `await agents.result(id)`. Batch independent operations into one cell with `await asyncio.gather(...)` instead of one cell each.";
+
 const DELEGATION = `## Delegation
-\`h = await rlm.spawn(task, name="researcher")\` starts a subagent and returns a handle (\`h.rlm_child_id\`, \`h.name\`) at once; the child gets its own REPL and these same tools. Give it a self-contained brief: the goal, relevant paths and constraints, and exactly what to return (it cannot see your conversation). Children share your filesystem. \`results = await rlm.collect([h.rlm_child_id])\` waits for the listed children (all of yours when called with no argument) and returns \`[{"id": ..., "result": {"status": "succeeded", "value": <the child's final answer>}}]\`; check each status. Start several children before collecting them to run them in parallel, and work on another part yourself meanwhile. \`await rlm.list_subagents()\` lists them; \`await rlm.delete_subagent(id)\` cancels one.
+\`h = await rlm.spawn(task, name="researcher")\` starts a subagent and returns a handle (\`h.rlm_child_id\`, \`h.name\`) at once; the child gets its own REPL and these same tools. Give it a self-contained brief: the goal, relevant paths and constraints, and exactly what to return (it cannot see your conversation). Children share your filesystem. \`results = await rlm.collect([h.rlm_child_id])\` waits for the listed children (all of yours when called with no argument) and returns \`[{"id": ..., "result": {"status": "succeeded", "value": <the child's final answer>}}]\`; check each status. Start several children before collecting them to run them in parallel, and work on another part yourself meanwhile: each child's completion arrives as a \`<runtime_event kind="child_done">\`, so collect only when you need a result now. \`await rlm.list_subagents()\` lists them; \`await rlm.delete_subagent(id)\` cancels one.
 Delegate when a task has independent parts (separate modules, separate questions) or an input too large to read in one context (slice it and give each child its slice); do small, sequential work yourself. Reconcile children's reports with your own evidence before answering.
 Typed agents: \`await agents.list()\` shows definitions (for example "rlm-child@1" with input \`{"prompt": ...}\`); \`await agents.invoke(definition, input)\` runs one and returns \`{"status": ..., "value": ...}\`; \`t = await agents.spawn(definition, input)\` starts one in the background and \`await t.result()\` collects it. \`await workflows.run(nodes)\` runs a validated agent graph. \`await background.start(prompt)\` starts a long-running background agent job that outlives the turn (\`background.list()\`, \`background.inspect(id)\`, \`background.result(id)\`, \`background.stop(id)\`).
 If you are a subagent, your final reply (with no tool call) is your result for the parent: make it self-contained, with the evidence, paths and uncertainties it needs.`;
@@ -107,19 +117,23 @@ const MEMORY = `## Memory and other APIs
  * The runtime guide for the system prompt when `rlm` is among the active tools. It tells the model how to
  * work in the REPL; when Pi's native bash or edit tools are active too, the skill lines say so.
  */
-export function rlmRuntimePrompt(activeTools: readonly string[]): string | undefined {
+export function rlmRuntimePrompt(
+	activeTools: readonly string[],
+	options: { asyncEvents?: boolean } = {},
+): string | undefined {
 	if (!activeTools.includes("rlm")) return undefined;
 	const nativeBash = activeTools.includes("bash");
 	const nativeEdit = activeTools.includes("edit");
 	const skills = [
 		"## Skills",
-		"Pre-imported async skills: `bash`, `edit`. Use `help(bash)` for a signature.",
+		"Pre-imported async skills: `bash`, `edit`, `read`. Use `help(bash)` for a signature.",
 		nativeBash ? BASH_SKILL_WITH_TOOL : BASH_SKILL,
+		READ_SKILL,
 		nativeEdit ? EDIT_SKILL_WITH_TOOL : EDIT_SKILL,
 		PROJECT_ENV,
 	];
 	return [
-		RUNTIME,
+		`${RUNTIME}\n\n${options.asyncEvents === false ? ASYNC_EVENTS_OFF : ASYNC_EVENTS}`,
 		BOUNDED_INFERENCE,
 		skills.join("\n\n"),
 		DELEGATION,

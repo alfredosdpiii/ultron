@@ -39,6 +39,27 @@ type TaskRecord = NativeTask & {
 	usageSettled?: boolean;
 	/** Provider-reported cost of the task's own model run, when known. */
 	cost?: number;
+	/** Detached work whose end is announced as a completion event (`rlm.spawn`, `agents.spawn`, `background.start`). */
+	notify?: DetachedEndKind;
+	/** Requests currently waiting on this task's result (a cell that is waiting already gets the result). */
+	waiters?: number;
+};
+
+export type DetachedEndKind = "child_done" | "task_done";
+
+/** A detached task reached its durable terminal result. */
+export type DetachedTaskEnd = {
+	task: NativeTask;
+	kind: DetachedEndKind;
+	/** Lane that started the task: "main" for root-owned work, else the parent task's lane. */
+	ownerLane: string;
+	/** Usage root the task was admitted under (a root turn, or a chain of turns it continues). */
+	rootId: string | undefined;
+	/** A request was waiting on the result when it ended. */
+	awaited: boolean;
+	/** How the owner fetches the full result. */
+	fetch: string;
+	cost: number | null;
 };
 
 type TaskRequest = {
@@ -172,6 +193,13 @@ function definitionKey(value: unknown): string {
 	return value;
 }
 
+/** The kernel call that returns a detached task's full result. */
+function fetchHint(task: TaskRecord): string {
+	if (task.definition === "rlm-child@1") return `await rlm.collect(["${task.id}"])`;
+	if (task.definition === "background-job@1") return `await background.result("${task.id}")`;
+	return `await agents.result("${task.id}")`;
+}
+
 function publicRecord(task: TaskRecord): NativeTask {
 	return {
 		id: task.id,
@@ -266,6 +294,10 @@ export type NativeHostOptions = {
 	unpinLane?: (lane: string, holder: string) => void;
 	/** Called once a task's terminal result is durable (context control collapses returned results on it). */
 	onTaskEnd?: (task: NativeTask, info: { cost: number | null }) => void;
+	/** Called once a detached task's terminal result is durable (completion events). */
+	onDetachedEnd?: (end: DetachedTaskEnd) => void;
+	/** Extra fields for `agents.status` (for example shell jobs), per calling lane. */
+	statusExtras?: (caller: HostCaller) => Record<string, JsonValue>;
 	now?: () => number;
 };
 
@@ -296,6 +328,10 @@ export class NativeRlmHost {
 	private readonly pinLane: NativeHostOptions["pinLane"];
 	private readonly unpinLane: NativeHostOptions["unpinLane"];
 	private readonly onTaskEnd: NativeHostOptions["onTaskEnd"];
+	private readonly onDetachedEnd: NativeHostOptions["onDetachedEnd"];
+	private readonly statusExtras: NativeHostOptions["statusExtras"];
+	/** Root-lane runs that continue an earlier root (a completion event re-invoking the model): run id -> root. */
+	private readonly rootAliases = new Map<string, string>();
 
 	constructor(harness: AgentHarness, _rootLane: AgentLane, options: NativeHostOptions) {
 		if (!options?.store) throw new Error("NativeRlmHost requires options.store");
@@ -313,6 +349,8 @@ export class NativeRlmHost {
 		this.pinLane = options.pinLane;
 		this.unpinLane = options.unpinLane;
 		this.onTaskEnd = options.onTaskEnd;
+		this.onDetachedEnd = options.onDetachedEnd;
+		this.statusExtras = options.statusExtras;
 		this.registry = new NativeDefinitionRegistry(options.definitionStore, {
 			deterministic: options.deterministic,
 			predict: options.predict,
@@ -325,13 +363,40 @@ export class NativeRlmHost {
 	 */
 	beginRootTurn(runId: string): void {
 		if (!runId) throw new Error("Root turn id must be nonempty");
-		this.rootTurn = `turn:${runId}`;
+		this.rootTurn = this.rootIdOfRun(runId);
 		this.rootTurnActive = true;
 	}
 
 	/** The root-lane run ended; work it started keeps running under its own root. */
 	endRootTurn(runId: string): void {
-		if (this.rootTurn === `turn:${runId}`) this.rootTurnActive = false;
+		if (this.rootTurn === this.rootIdOfRun(runId)) this.rootTurnActive = false;
+	}
+
+	/**
+	 * Charge root-lane run `runId` to an earlier root instead of a fresh one: a run started by a completion event
+	 * continues the request that started the work, so its turn, token, wall and cost limits keep counting.
+	 */
+	continueRootTurn(runId: string, rootId: string): void {
+		if (!runId || !rootId) throw new Error("Root turn continuation needs a run id and a root id");
+		this.rootAliases.set(runId, rootId);
+		// Kept after the run ends (abort handling reads it); bounded to the most recent continuations.
+		while (this.rootAliases.size > 256) this.rootAliases.delete(this.rootAliases.keys().next().value!);
+	}
+
+	/** Detached root-owned tasks still running whose end will be announced (roots in `excluded` do not count). */
+	pendingRootNotifications(excluded: (rootId: string | undefined) => boolean = () => false): number {
+		return [...this.tasks.values()].filter(
+			(task) =>
+				task.notify !== undefined &&
+				task.parentId === undefined &&
+				task.result === undefined &&
+				!excluded(task.usageReservation?.rootId),
+		).length;
+	}
+
+	/** Usage root of a root-lane run. */
+	rootIdOfRun(runId: string): string {
+		return this.rootAliases.get(runId) ?? `turn:${runId}`;
 	}
 
 	/** Usage root that new work of `parentId` is charged to; undefined means the ledger's default root. */
@@ -350,7 +415,7 @@ export class NativeRlmHost {
 	 * default root.
 	 */
 	usageRootForLane(lane: string, runId: string): string | undefined {
-		if (lane === "main") return this.rootTurns ? `turn:${runId}` : undefined;
+		if (lane === "main") return this.rootTurns ? this.rootIdOfRun(runId) : undefined;
 		const taskId = this.laneTasks.get(lane);
 		return taskId === undefined ? undefined : this.tasks.get(taskId)?.usageReservation?.rootId;
 	}
@@ -413,7 +478,7 @@ export class NativeRlmHost {
 		result: async (taskId) => {
 			const task = this.tasks.get(taskId);
 			if (!task) throw new Error("Unknown Ultron task");
-			return structuredClone(await (task.promise ?? task.result!));
+			return structuredClone(await this.awaitTask(task));
 		},
 		cancel: async (taskId, reason) => {
 			const task = this.tasks.get(taskId);
@@ -428,6 +493,12 @@ export class NativeRlmHost {
 		usage: async () =>
 			this.usage ? ((await this.usage.status(this.statusRoot(null))) as unknown as JsonValue) : null,
 		pinLane: (lane, holder) => this.pinLane?.(lane, holder) ?? false,
+		rootOf: (caller) => {
+			if (!this.rootTurns) return undefined;
+			if (caller.lane === "main") return this.rootTurnActive ? this.rootTurn : undefined;
+			const taskId = this.laneTasks.get(caller.lane);
+			return taskId === undefined ? undefined : this.tasks.get(taskId)?.usageReservation?.rootId;
+		},
 		unpinLane: (lane, holder) => this.unpinLane?.(lane, holder),
 		now: () => this.now(),
 	};
@@ -629,11 +700,28 @@ export class NativeRlmHost {
 					});
 					task.usageSettled = true;
 				}
+				const awaited = (task.waiters ?? 0) > 0;
 				task.resolve?.(committed.result);
 				try {
 					this.onTaskEnd?.(publicRecord(task), { cost: task.cost ?? null });
 				} catch {
 					// Observers never affect a task's durable result.
+				}
+				if (task.notify && !this.closed) {
+					try {
+						this.onDetachedEnd?.({
+							task: publicRecord(task),
+							kind: task.notify,
+							ownerLane:
+								task.parentId === undefined ? "main" : (this.tasks.get(task.parentId)?.laneName ?? "main"),
+							rootId: task.usageReservation?.rootId,
+							awaited,
+							fetch: fetchHint(task),
+							cost: task.cost ?? null,
+						});
+					} catch {
+						// Observers never affect a task's durable result.
+					}
 				}
 				return committed.result;
 			} catch (error) {
@@ -695,7 +783,24 @@ export class NativeRlmHost {
 	 * job must outlive the RLM cell (and the client) that started it, stopping only on its own stop, timeout, or
 	 * host close.
 	 */
-	private spawnTask(request: TaskRequest, context: Context, parentId?: string, detached = false): Promise<TaskRecord> {
+	/** Wait for a task's result, marking it awaited so its end is not also announced as an event. */
+	private async awaitTask(task: TaskRecord): Promise<NativeResult> {
+		if (!task.promise) return task.result!;
+		task.waiters = (task.waiters ?? 0) + 1;
+		try {
+			return await task.promise;
+		} finally {
+			task.waiters -= 1;
+		}
+	}
+
+	private spawnTask(
+		request: TaskRequest,
+		context: Context,
+		parentId?: string,
+		detached = false,
+		notify?: DetachedEndKind,
+	): Promise<TaskRecord> {
 		// Serialize through installation of the live promise, not through execution.
 		const pending = this.admissions.then(async () => {
 			if (this.closed) throw new Error("Ultron task host is closed");
@@ -742,7 +847,12 @@ export class NativeRlmHost {
 				this.tasks.set(admitted.task.id, admitted.task);
 				return admitted.task;
 			}
-			const task: TaskRecord = { ...admitted.task, controller: new AbortController(), usageReservation };
+			const task: TaskRecord = {
+				...admitted.task,
+				controller: new AbortController(),
+				usageReservation,
+				...(notify === undefined ? {} : { notify }),
+			};
 			task.promise = new Promise<NativeResult>((resolve, reject) => {
 				task.resolve = resolve;
 				task.reject = reject;
@@ -1186,6 +1296,7 @@ export class NativeRlmHost {
 				tasks: journal.filter((task) => visible(task.id)).map(publicTask),
 				usage,
 				limits: usage?.limits ?? null,
+				...(this.statusExtras?.(caller) ?? {}),
 				controls: Object.fromEntries(
 					[
 						"permissionPrompts",
@@ -1215,7 +1326,7 @@ export class NativeRlmHost {
 				timeoutMs: typeof payload.timeout_ms === "number" ? payload.timeout_ms : 30 * 60 * 1000,
 			};
 			if (request.key !== undefined && request.key.length > 264) throw new Error("Background key is too long");
-			const task = await this.spawnTask(request, context, parentId, true);
+			const task = await this.spawnTask(request, context, parentId, true, "task_done");
 			return publicTask(task);
 		}
 		if (type === "background.list") {
@@ -1232,7 +1343,7 @@ export class NativeRlmHost {
 			if (type === "background.stop")
 				return { cancelled: (await this.cancel(task, "Background job stopped")).status === "cancelled" };
 			const liveTask = this.tasks.get(id);
-			return structuredClone(await (liveTask?.promise ?? task.result));
+			return structuredClone(liveTask ? await this.awaitTask(liveTask) : task.result);
 		}
 		if (type === "rlm.spawn") {
 			fields(payload, ["prompt", "kwargs"]);
@@ -1249,7 +1360,7 @@ export class NativeRlmHost {
 			if (!Number.isSafeInteger(request.timeoutMs) || request.timeoutMs < 1 || request.timeoutMs > 60 * 60 * 1000)
 				throw new Error("timeout_ms must be an integer between 1 and 3600000");
 			// A spawned child outlives the cell that started it; its subtree still stops with its parent task.
-			const task = await this.spawnTask(request, context, parentId, true);
+			const task = await this.spawnTask(request, context, parentId, true, "child_done");
 			return {
 				rlm_child_id: task.id,
 				name,
@@ -1280,7 +1391,7 @@ export class NativeRlmHost {
 					(selectors.length === 0 || selectors.includes(task.id)),
 			);
 			const results = await Promise.all(
-				tasks.map(async (task) => ({ id: task.id, result: await (task.promise ?? task.result) })),
+				tasks.map(async (task) => ({ id: task.id, result: await this.awaitTask(task) })),
 			);
 			return { results };
 		}
@@ -1294,7 +1405,14 @@ export class NativeRlmHost {
 		if (type === "agents.spawn" || type === "agents.invoke") {
 			// invoke waits inside the cell, so the cell's cancellation applies; spawn hands the task back to be
 			// collected later, so it must not die when the cell ends. Parent-task cancellation cascades either way.
-			const task = await this.spawnTask(this.request(payload), context, parentId, type === "agents.spawn");
+			const spawn = type === "agents.spawn";
+			const task = await this.spawnTask(
+				this.request(payload),
+				context,
+				parentId,
+				spawn,
+				spawn ? "task_done" : undefined,
+			);
 			if (type === "agents.spawn") return { id: task.id, state: task.state };
 			return structuredClone(await (task.promise ?? task.result));
 		}
@@ -1310,7 +1428,7 @@ export class NativeRlmHost {
 				const result = await this.cancel(task, "Ultron task cancelled");
 				return { cancelled: result.status === "cancelled" };
 			}
-			return structuredClone(await (task.promise ?? stored.result));
+			return structuredClone(task.promise ? await this.awaitTask(task) : stored.result);
 		}
 		if (
 			type.startsWith("memory.") ||

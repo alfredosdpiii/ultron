@@ -1,5 +1,5 @@
 {
-	"generated_at": "2026-09-26T01:28:55.288Z",
+	"generated_at": "2026-09-26T04:31:08.241Z",
 	"lock": {
 		"ok": true,
 		"lockMissing": false,
@@ -13,8 +13,8 @@
 		"exitCode": 0
 	},
 	"summary": {
-		"total": 55,
-		"passed": 55,
+		"total": 56,
+		"passed": 56,
 		"failed": 0,
 		"unverified": 0,
 		"blocked": 0
@@ -2825,6 +2825,240 @@
 				{
 					"file": "packages/coding-agent/test/ultron-agent-classes.test.ts",
 					"test": "redefinition makes a new generation; older generations stay invokable and roll back",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				}
+			]
+		},
+		{
+			"id": "A56",
+			"behavior": "Long-running work does not block the turn and completion is delivered without polling",
+			"status": "passed",
+			"declared": "passed",
+			"evidence": {
+				"listed": 31,
+				"passed": 31,
+				"failed": 0,
+				"missing": 0,
+				"skipped": 0,
+				"infrastructure": 0
+			},
+			"reasons": [],
+			"checks": [
+				{
+					"file": "packages/coding-agent/test/ultron-shell-jobs.test.ts",
+					"test": "yield_after returns a running handle that outlives the cell; result() waits and reports once",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-shell-jobs.test.ts",
+					"test": "an unawaited job reports its end once, with a bounded summary; a quick one finishes inline",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-shell-jobs.test.ts",
+					"test": "a job survives a kernel restart and is recovered by id; rlm.jobs() lists it",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-shell-jobs.test.ts",
+					"test": "cancel() stops the process tree; timeout= reports timed_out; wait= returns a running snapshot",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-shell-jobs.test.ts",
+					"test": "output is bounded: head and tail with a marker, the rest readable, retention capped",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-shell-jobs.test.ts",
+					"test": "an aborted root turn cancels its jobs and announces nothing; other roots' jobs keep running",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-shell-jobs.test.ts",
+					"test": "a child lane sees only its own jobs; plain bash still blocks and returns a string",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-shell-jobs.test.ts",
+					"test": "the journal stays small and survives a worker restart: finished jobs keep their text, running ones read as interrupted",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-shell-jobs.test.ts",
+					"test": "plain bash auto-detaches a slow command: a running string with its job and a note, then one event",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-shell-jobs.test.ts",
+					"test": "plain bash that finishes within the window returns the whole output and announces nothing",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-shell-jobs.test.ts",
+					"test": "yield_after=None and ULTRON_BASH_YIELD_AFTER=off block until the command ends; no job is made",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-async-events.test.ts",
+					"test": "an idle root is re-invoked once per coalesced batch, charged to the root that started the work",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-async-events.test.ts",
+					"test": "a mid-turn event is steered to the next boundary and never starts a second run",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-async-events.test.ts",
+					"test": "a steer that the run did not consume (it ended first) is taken back and re-invokes the idle root",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-async-events.test.ts",
+					"test": "the turn budget, cost cap and chain cap turn re-invocation into quiet delivery",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-async-events.test.ts",
+					"test": "after an abort, the root never restarts: its jobs stop and later completions wait quietly",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-async-events.test.ts",
+					"test": "children's events go to their own lane, which is steered when running and never re-invoked",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-async-events.test.ts",
+					"test": "ULTRON_ASYNC_EVENTS=off disables events",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-async-events.test.ts",
+					"test": "the event text is one bounded, escaped line per completion",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-async-cli.test.ts",
+					"test": "a slow job started with yield_after=0 does not block the turn; its completion event re-invokes the model",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-async-cli.test.ts",
+					"test": "a plain bash that runs past ULTRON_BASH_YIELD_AFTER detaches with a hint; its completion event re-invokes the model",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-async-cli.test.ts",
+					"test": "print mode (-p) follows the run a completion event starts and prints its answer",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-async-cli.test.ts",
+					"test": "prompt-cache prefix: each root request extends the previous one byte for byte, events included",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-async-cli.test.ts",
+					"test": "collapse on return rewrites only the newest cell output, so the cached prefix before it survives",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-async-cli.test.ts",
+					"test": "a completion during a running turn is delivered at the next boundary, without a second run",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-async-cli.test.ts",
+					"test": "a subagent's completion arrives as a child_done event that re-invokes the idle root",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-async-cli.test.ts",
+					"test": "a spent turn budget turns the re-invocation into quiet delivery with the next prompt",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-async-cli.test.ts",
+					"test": "Esc on the turn stops its job and the completion never restarts the model",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-hints.test.ts",
+					"test": "job-detached: a plain bash that came back running",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-hints.test.ts",
+					"test": "blocked-on-job: over 60 s awaiting job.result / rlm.collect / agents.result while events are on",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-hints.test.ts",
+					"test": "poll-loop: repeated status calls in a cell or across cells, or sleeping in a loop around a check",
 					"outcome": "passed",
 					"matched": 1,
 					"infra": null

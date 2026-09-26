@@ -54,6 +54,13 @@ import { readToolSystemPromptContribution } from "../core/tools/read.ts";
 import { writeToolSystemPromptContribution } from "../core/tools/write.ts";
 import { initTheme } from "../modes/interactive/theme/theme.ts";
 import {
+	AsyncEventDispatcher,
+	asyncEventsEnabled,
+	boundedSummary,
+	maxEventRunsFromEnv,
+	type RuntimeEvent,
+} from "../ultron/async-events.ts";
+import {
 	AutoMemory,
 	autoMemoryModeFromEnv,
 	autoMemoryScopeFromEnv,
@@ -73,12 +80,13 @@ import { createPredictAdapter } from "../ultron/predict-adapter.ts";
 import { createProgressModule } from "../ultron/progress.ts";
 import { createReleaseGateModule } from "../ultron/release-gate.ts";
 import { createSessionDefinitionStore } from "../ultron/rlm/definition-registry.ts";
+import { CellHints, hintMaxPerTag, hintsEnabled, readHandleBytes } from "../ultron/rlm/hints.ts";
 import { runHostBash } from "../ultron/rlm/host-bash.ts";
 import { createSessionModuleStore, type HostCaller } from "../ultron/rlm/host-module.ts";
 import { createInferenceRuntime, createSessionFrameStore } from "../ultron/rlm/inference.ts";
 import { type KernelExecutionResult, type KernelHostHandler, RlmKernel } from "../ultron/rlm/kernel.ts";
 import { KernelPool, KernelPoolCapacityError } from "../ultron/rlm/kernel-pool.ts";
-import { NativeRlmHost } from "../ultron/rlm/native-host.ts";
+import { type DetachedTaskEnd, NativeRlmHost } from "../ultron/rlm/native-host.ts";
 import { truncateToolOutput } from "../ultron/rlm/output-truncation.ts";
 import {
 	defaultBuiltinToolNames,
@@ -87,6 +95,7 @@ import {
 	rlmRuntimePrompt,
 	rlmToolGuidelines,
 } from "../ultron/rlm/prompt.ts";
+import { jobSummary, type ShellJobEnd, ShellJobs } from "../ultron/rlm/shell-jobs.ts";
 import { loadSnapshotKey } from "../ultron/rlm/snapshot-auth.ts";
 import { createSessionTaskStore } from "../ultron/rlm/task-store.ts";
 import { createScheduleModule } from "../ultron/schedules.ts";
@@ -127,6 +136,16 @@ type RlmHostHandler = (
 	signal: AbortSignal | undefined,
 	caller: HostCaller,
 ) => Promise<unknown> | unknown;
+
+/** A cell that raised: the message is the (truncated) output and traceback; `ename` is the exception type. */
+export class RlmCellError extends Error {
+	readonly ename: string;
+	constructor(message: string, ename: string) {
+		super(message);
+		this.name = "RlmCellError";
+		this.ename = ename;
+	}
+}
 
 /** Worker adapter around the shared, bounded Python protocol implementation. */
 export class UltronRlmKernel {
@@ -170,7 +189,10 @@ export class UltronRlmKernel {
 			const summary = `${result.error?.ename ?? "PythonError"}: ${result.error?.evalue ?? "Execution failed"}`;
 			const traceback = (result.error?.traceback ?? []).join("\n");
 			const failure = !traceback ? summary : traceback.endsWith(summary) ? traceback : `${traceback}\n${summary}`;
-			throw new Error(truncateToolOutput([stdout, stderr, failure].filter(Boolean).join("\n")));
+			throw new RlmCellError(
+				truncateToolOutput([stdout, stderr, failure].filter(Boolean).join("\n")),
+				result.error?.ename ?? "PythonError",
+			);
 		}
 		return truncateToolOutput([stdout, stderr, result.result].filter(Boolean).join("\n"));
 	}
@@ -227,8 +249,25 @@ export function createUltronRlmTool(
 		readonly maxPinned?: number;
 		readonly idleTtlMs?: number;
 		readonly now?: () => number;
+		/** Situational hints appended to cell results (see hints.ts). */
+		readonly hints?: CellHints;
 	} = {},
 ): UltronRlmTool {
+	const hints = options.hints;
+	// Host requests are observed per lane so the hints can see what a cell waited on, polled or detached.
+	const observedHandler = (lane: string): KernelHostHandler =>
+		hints === undefined || !hints.enabled
+			? (type, payload, signal) => hostHandler(type, payload, signal, { lane })
+			: async (type, payload, signal) => {
+					const startedAt = Date.now();
+					let result: unknown;
+					try {
+						result = await hostHandler(type, payload, signal, { lane });
+						return result;
+					} finally {
+						hints.observe(lane, type, payload, result, startedAt);
+					}
+				};
 	// Idle kernels are evicted after a snapshot, so a lane's declared state survives and a crowded session
 	// cannot keep unbounded Python processes alive (A43). Running cells are never evicted.
 	const snapshotPath = (lane: string): string | undefined =>
@@ -237,13 +276,7 @@ export function createUltronRlmTool(
 			: join(options.snapshotDir, `${lane.replace(/[^A-Za-z0-9._-]/g, "_")}.snapshot`);
 	const maxLive = options.maxLive ?? 16;
 	const kernels = new KernelPool<UltronRlmKernel>({
-		create: (lane) =>
-			new UltronRlmKernel(
-				cwd,
-				(type, payload, signal) => hostHandler(type, payload, signal, { lane }),
-				snapshotPath(lane),
-				options.snapshotKey,
-			),
+		create: (lane) => new UltronRlmKernel(cwd, observedHandler(lane), snapshotPath(lane), options.snapshotKey),
 		maxLive,
 		maxPinned: options.maxPinned ?? Math.floor(maxLive / 2),
 		idleTtlMs: options.idleTtlMs ?? 30 * 60 * 1000,
@@ -301,8 +334,25 @@ export function createUltronRlmTool(
 			const lane = await resolveLane(invocation, context);
 			context.abortSignal?.throwIfAborted();
 			if (closed) throw new Error("Ultron RLM tool is closed");
-			const result = await kernels.use(lane, (kernel) => kernel.execute(params.code, context));
-			return { content: [{ type: "text", text: result || "(no result)" }], details: {} };
+			if (hints === undefined) {
+				const result = await kernels.use(lane, (kernel) => kernel.execute(params.code, context));
+				return { content: [{ type: "text", text: result || "(no result)" }], details: {} };
+			}
+			hints.beginCell(lane, params.code);
+			let result: string;
+			try {
+				result = await kernels.use(lane, (kernel) => kernel.execute(params.code, context));
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				const hint = await hints
+					.endCell(lane, { text: message, ename: error instanceof RlmCellError ? error.ename : "Error" })
+					.catch(() => undefined);
+				if (hint && error instanceof Error) error.message = `${message}\n${hint}`;
+				throw error;
+			}
+			const hint = await hints.endCell(lane, { text: result }).catch(() => undefined);
+			const text = result || "(no result)";
+			return { content: [{ type: "text", text: hint ? `${text}\n${hint}` : text }], details: {} };
 		},
 	};
 }
@@ -1314,6 +1364,14 @@ async function createCodingAgentHarness(
 	let host: NativeRlmHost | undefined;
 	let holdActivity: (() => () => void) | undefined;
 	const hostHandler: RlmHostHandler = async (type, payload, signal, caller) => {
+		// A plain `bash` with a yield_after (ULTRON_BASH_YIELD_AFTER) runs as a shell job that detaches when slow.
+		if (type === "bash" && payload.yield_after !== undefined && host)
+			return host.handle(
+				"shell.bash",
+				payload,
+				signal ? withAbortSignal(signal, TODO_CONTEXT) : TODO_CONTEXT,
+				caller,
+			);
 		if (type === "bash") {
 			return runHostBash(
 				payload,
@@ -1346,6 +1404,14 @@ async function createCodingAgentHarness(
 	const snapshotKey = loadSnapshotKey(getAgentDir());
 	if (snapshotKey.warning) console.error(snapshotKey.warning);
 	mkdirSync(snapshotDir, { recursive: true, mode: 0o700 });
+	// Situational hints on cell results (ULTRON_HINTS=off disables them); mutes and counts are a session value.
+	const cellHints = new CellHints({
+		store: createSessionModuleStore(session, "hints"),
+		enabled: hintsEnabled(),
+		maxPerTag: hintMaxPerTag(),
+		asyncEvents: asyncEventsEnabled(process.env.ULTRON_ASYNC_EVENTS),
+		readHandleBytes: readHandleBytes(),
+	});
 	const rlmTool = createUltronRlmTool(
 		options.metadata.cwd,
 		hostHandler,
@@ -1359,7 +1425,7 @@ async function createCodingAgentHarness(
 		},
 		// The signing key stays in this process; the kernel running model code never receives it. It lives in the
 		// profile file unless ULTRON_RLM_SNAPSHOT_KEY_STORE opts into the OS keyring.
-		{ snapshotDir, snapshotKey: snapshotKey.key },
+		{ snapshotDir, snapshotKey: snapshotKey.key, hints: cellHints },
 	);
 	const tools = [createReadTool(), createEditTool(), createWriteTool(), createBashTool(), rlmTool];
 	const loadedSkills = await Promise.all(
@@ -1415,7 +1481,12 @@ async function createCodingAgentHarness(
 				rlm: rlmToolGuidelines(effectiveActiveToolNames),
 			},
 			// The REPL runtime guide (kernel, skills, delegation) as its own section after Pi's tool list and rules.
-			sections: sectionIfPresent("runtime", rlmRuntimePrompt(effectiveActiveToolNames)),
+			sections: sectionIfPresent(
+				"runtime",
+				rlmRuntimePrompt(effectiveActiveToolNames, {
+					asyncEvents: asyncEventsEnabled(process.env.ULTRON_ASYNC_EVENTS),
+				}),
+			),
 			contextFiles,
 			skills: resourceLoader.getSkills().skills,
 			appendSystemPrompt: resourceLoader.getAppendSystemPrompt().join("\n\n"),
@@ -1525,6 +1596,20 @@ async function createCodingAgentHarness(
 			usage,
 		});
 		const removeInferenceHooks = inference.install(harness);
+		// Host-owned shell jobs (`bash(cmd, yield_after=...)`) and completion events for detached work
+		// (ULTRON_ASYNC_EVENTS=off disables the events; jobs still work and can be waited on).
+		let events: AsyncEventDispatcher | undefined;
+		const shellJobs = new ShellJobs({
+			cwd: options.metadata.cwd,
+			dir: join(dirname(options.metadata.path), "rlm-jobs", options.metadata.id),
+			operations: () => createLocalBashOperations({ shellPath: settingsManager.getShellPath() }),
+			store: createSessionModuleStore(session, "jobs"),
+			holdActivity: () => holdActivity?.() ?? (() => {}),
+			onEnd: (end) => {
+				const event = jobEvent(end);
+				if (event) events?.publish(event);
+			},
+		});
 		host = new NativeRlmHost(harness, lane, {
 			store: createSessionTaskStore(session),
 			definitionStore: createSessionDefinitionStore(session),
@@ -1535,6 +1620,25 @@ async function createCodingAgentHarness(
 			pinLane: (lane, holder) => rlmTool.pin(lane, holder),
 			unpinLane: (lane, holder) => rlmTool.unpin(lane, holder),
 			onTaskEnd: (task, info) => contextControl.taskEnded(task, info),
+			onDetachedEnd: (end) => {
+				if (!end.awaited) events?.publish(taskEvent(end));
+			},
+			statusExtras: (caller) => ({
+				jobs: shellJobs
+					.list()
+					.filter((job) => caller.lane === "main" || job.lane === caller.lane)
+					.slice(0, 20)
+					.map((job) => ({
+						id: job.id,
+						lane: job.lane,
+						command: job.command.slice(0, 200),
+						status: job.status,
+						exitCode: job.exitCode,
+						startedAt: job.startedAt,
+						endedAt: job.endedAt,
+						outputBytes: job.outputBytes,
+					})),
+			}),
 			services: branchedServices,
 			beforeLaneReuse: (lane) => rlmTool.resetScratch(lane),
 			predict: createPredictAdapter({ models: modelRuntime, model: () => lane.getModel(TODO_CONTEXT) }),
@@ -1550,6 +1654,8 @@ async function createCodingAgentHarness(
 				return [{ id: current.id, version: current.version, text }];
 			},
 			modules: [
+				shellJobs.module,
+				cellHints.module,
 				contextControl.module,
 				inference.module,
 				createFamilyModule({ store: createSessionModuleStore(session, "family") }),
@@ -1589,6 +1695,28 @@ async function createCodingAgentHarness(
 				}),
 			],
 		});
+		const activeHost = host;
+		events = new AsyncEventDispatcher({
+			harness,
+			host: activeHost,
+			enabled: asyncEventsEnabled(process.env.ULTRON_ASYNC_EVENTS),
+			maxRuns: maxEventRunsFromEnv(process.env.ULTRON_ASYNC_EVENTS_MAX_RUNS),
+			holdActivity: () => holdActivity?.() ?? (() => {}),
+			// A completion re-invokes the root only within the budget of the request that started the work.
+			refuse: async (rootId) => {
+				const exhausted = await usage.turnBudgetExhausted(rootId);
+				if (exhausted) return exhausted;
+				const status = await usage.status(rootId);
+				if (status.remainingWallMs === 0) return `wall budget of ${rootId} exhausted`;
+				const cap = status.cost.maxCostUsd;
+				if (cap !== null && (status.cost.spentUsd >= cap || status.cost.unknownPricedCalls > 0))
+					return `cost cap of ${rootId} reached or unenforceable`;
+				return undefined;
+			},
+			// Esc on a root turn stops the shell jobs it started.
+			onRootAborted: (rootId) => shellJobs.cancelRoot(rootId),
+		});
+		const removeAsyncEvents = events.install();
 		// Top-level work admitted after the turn ends (a schedule firing) gets a root of its own.
 		const removeRootTurnListener = harness.events.on("run_end", (event) => {
 			if (event.lane === "main") host?.endRootTurn(event.runId);
@@ -1662,6 +1790,8 @@ async function createCodingAgentHarness(
 			harness,
 			closeRlm: async () => {
 				removeRootTurnListener();
+				removeAsyncEvents();
+				await events?.close();
 				removeContextControl();
 				removeInferenceHooks();
 				removeAutoMemory();
@@ -1683,6 +1813,19 @@ async function createCodingAgentHarness(
 			},
 			inspect: async (request, payload, context) => {
 				if (request === "rlm.pool") return rlmTool.poolStats();
+				// Root-owned work whose completion may still re-invoke the root (print clients wait for it).
+				if (request === "async.pending") {
+					if (!events?.enabled) return { pending: false, jobs: 0, tasks: 0, events: 0 };
+					const aborted = (rootId: string | undefined) => events?.rootAborted(rootId) ?? false;
+					const counts = {
+						jobs: shellJobs.running("main", aborted),
+						tasks: host?.pendingRootNotifications(aborted) ?? 0,
+						events: events.pendingFor("main"),
+						// A run an event just started, before its start reaches the client.
+						running: (await lane.inspectExecution(context)).current === null ? 0 : 1,
+					};
+					return { pending: counts.jobs + counts.tasks + counts.events + counts.running > 0, ...counts };
+				}
 				if (request === "jev.decisions") {
 					return {
 						available: {
@@ -1733,6 +1876,41 @@ function legacyRecallOption(): { legacyRecall?: ReturnType<typeof createLegacyRe
 	const url = hindsightUrl(process.env.ULTRON_HINDSIGHT_URL);
 	const bank = legacyBankFromEnv(process.env.ULTRON_HINDSIGHT_LEGACY_BANK);
 	return url && bank ? { legacyRecall: createLegacyRecall(url, bank) } : {};
+}
+
+/** The completion event of a shell job the model is not already waiting on; undefined when none is due. */
+function jobEvent(end: ShellJobEnd): RuntimeEvent | undefined {
+	if (end.awaited || end.rootAborted) return undefined;
+	return {
+		kind: "job_done",
+		id: end.job.id,
+		status: end.job.status,
+		summary: jobSummary(end.job),
+		fetch: `await rlm.job("${end.job.id}")`,
+		lane: end.job.lane,
+		...(end.job.rootId === null ? {} : { rootId: end.job.rootId }),
+	};
+}
+
+/** The completion event of a detached task (`rlm.spawn`, `agents.spawn`, `background.start`). */
+function taskEvent(end: DetachedTaskEnd): RuntimeEvent {
+	const result = end.task.result;
+	const value = result?.value;
+	const detail =
+		result?.status === "succeeded"
+			? typeof value === "string"
+				? value
+				: JSON.stringify(value ?? null)
+			: (result?.error ?? "");
+	return {
+		kind: end.kind,
+		id: end.task.id,
+		status: result?.status ?? end.task.state,
+		summary: boundedSummary(`${end.task.definition}: ${detail}`),
+		fetch: end.fetch,
+		lane: end.ownerLane,
+		...(end.rootId === undefined ? {} : { rootId: end.rootId }),
+	};
 }
 
 /** Promises still running, awaitable as a group (for records a later check must see). */

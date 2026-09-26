@@ -274,7 +274,7 @@ export async function runNativeUltronCommand(parsed: Args, stdinContent: string 
 			sessionDir,
 			forkFromSessionId: forkSourceId,
 			noSession: parsed.noSession,
-			...(command.prompt === undefined ? {} : { interrupt: interrupt.signal }),
+			...(command.prompt === undefined ? {} : { interrupt: interrupt.signal, followEvents: true }),
 			onEvent:
 				parsed.mode === "json" || parsed.print
 					? undefined

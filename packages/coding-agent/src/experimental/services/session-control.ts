@@ -91,6 +91,7 @@ export const INSPECTION_REQUESTS: readonly string[] = [
 	"rlm.frames",
 	"jev.decisions",
 	"ctx.state",
+	"async.pending",
 ];
 
 export const SessionControl = defineService<SessionControl>("ultron.session-control");

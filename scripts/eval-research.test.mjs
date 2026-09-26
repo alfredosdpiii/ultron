@@ -5,16 +5,16 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
 import { incidentMeta, incidentReports, RESEARCH_THRESHOLD, tasks, trueIncidentIds } from "../evals/quality/tasks-research.mjs";
-import { countsForGate, verifyMetrics } from "./eval-quality.mjs";
+import { isGatedComparison, verifyMetrics } from "./eval-quality.mjs";
 
 const fullComparison = (taskSet) => ({ taskSet, summary: { gate: [{ check: "pass rate", ok: true }] } });
 
 test("the release gate reads only full comparisons of the default set", () => {
-	assert.equal(countsForGate(fullComparison(undefined)), true);
-	assert.equal(countsForGate(fullComparison("default")), true);
-	for (const taskSet of ["hard", "judged", "research"]) assert.equal(countsForGate(fullComparison(taskSet)), false, taskSet);
-	assert.equal(countsForGate({ taskSet: "default", summary: { gate: [] } }), false);
-	assert.equal(countsForGate({ taskSet: "research", passed: true, results: [] }), false);
+	assert.equal(isGatedComparison(fullComparison(undefined)), true);
+	assert.equal(isGatedComparison(fullComparison("default")), true);
+	for (const taskSet of ["hard", "judged", "parallel", "research"]) assert.equal(isGatedComparison(fullComparison(taskSet)), false, taskSet);
+	assert.equal(isGatedComparison({ taskSet: "default", summary: { gate: [] } }), false);
+	assert.equal(isGatedComparison({ taskSet: "research", passed: true, results: [] }), false);
 });
 
 test("self-check metrics come from the hidden check's last JSON line", () => {

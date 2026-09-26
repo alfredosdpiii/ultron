@@ -1078,6 +1078,65 @@
       ],
       "status_when_green": "passed",
       "notes": "The real CLI (scripted provider) runs a class defined in an rlm cell; kernel-level tests with the real host cover schema derivation, bounded previews, snapshot/restore, reset_scratch, and generations with rollback. Bad returns fail typed and stay unverified (A14)."
+    },
+    {
+      "id": "A56",
+      "behavior": "Long-running work does not block the turn and completion is delivered without polling",
+      "evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-shell-jobs.test.ts",
+          "tests": [
+            "yield_after returns a running handle that outlives the cell; result() waits and reports once",
+            "an unawaited job reports its end once, with a bounded summary; a quick one finishes inline",
+            "a job survives a kernel restart and is recovered by id; rlm.jobs() lists it",
+            "cancel() stops the process tree; timeout= reports timed_out; wait= returns a running snapshot",
+            "output is bounded: head and tail with a marker, the rest readable, retention capped",
+            "an aborted root turn cancels its jobs and announces nothing; other roots' jobs keep running",
+            "a child lane sees only its own jobs; plain bash still blocks and returns a string",
+            "the journal stays small and survives a worker restart: finished jobs keep their text, running ones read as interrupted",
+            "plain bash auto-detaches a slow command: a running string with its job and a note, then one event",
+            "plain bash that finishes within the window returns the whole output and announces nothing",
+            "yield_after=None and ULTRON_BASH_YIELD_AFTER=off block until the command ends; no job is made"
+          ]
+        },
+        {
+          "file": "packages/coding-agent/test/ultron-async-events.test.ts",
+          "tests": [
+            "an idle root is re-invoked once per coalesced batch, charged to the root that started the work",
+            "a mid-turn event is steered to the next boundary and never starts a second run",
+            "a steer that the run did not consume (it ended first) is taken back and re-invokes the idle root",
+            "the turn budget, cost cap and chain cap turn re-invocation into quiet delivery",
+            "after an abort, the root never restarts: its jobs stop and later completions wait quietly",
+            "children's events go to their own lane, which is steered when running and never re-invoked",
+            "ULTRON_ASYNC_EVENTS=off disables events",
+            "the event text is one bounded, escaped line per completion"
+          ]
+        },
+        {
+          "file": "packages/coding-agent/test/ultron-async-cli.test.ts",
+          "tests": [
+            "a slow job started with yield_after=0 does not block the turn; its completion event re-invokes the model",
+            "a plain bash that runs past ULTRON_BASH_YIELD_AFTER detaches with a hint; its completion event re-invokes the model",
+            "print mode (-p) follows the run a completion event starts and prints its answer",
+            "prompt-cache prefix: each root request extends the previous one byte for byte, events included",
+            "collapse on return rewrites only the newest cell output, so the cached prefix before it survives",
+            "a completion during a running turn is delivered at the next boundary, without a second run",
+            "a subagent's completion arrives as a child_done event that re-invokes the idle root",
+            "a spent turn budget turns the re-invocation into quiet delivery with the next prompt",
+            "Esc on the turn stops its job and the completion never restarts the model"
+          ]
+        },
+        {
+          "file": "packages/coding-agent/test/ultron-hints.test.ts",
+          "tests": [
+            "job-detached: a plain bash that came back running",
+            "blocked-on-job: over 60 s awaiting job.result / rlm.collect / agents.result while events are on",
+            "poll-loop: repeated status calls in a cell or across cells, or sleeping in a loop around a check"
+          ]
+        }
+      ],
+      "status_when_green": "passed",
+      "notes": "Host-owned shell jobs (bash yield_after) are tested with a real kernel and the real bash executor; the dispatcher's delivery rules (one run per coalesced batch, steer at the boundary and reclaim, turn budget and chain cap, no restart after an abort, child lanes, off) against a fake lane with the harness's queue semantics; and the real CLI (scripted provider, RPC and -p) for re-invocation by a job's and a child's completion, boundary delivery, Esc cancelling the job, the turn budget, the byte-identical request prefix, and collapse rewriting only the newest cell output. A plain bash still running after ULTRON_BASH_YIELD_AFTER (30 s) continues as a job and returns a running string with its handle; job-detached, blocked-on-job and poll-loop hints point the model at events instead of waiting or polling."
     }
   ]
 }
