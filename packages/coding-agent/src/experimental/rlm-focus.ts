@@ -140,7 +140,9 @@ export function renderFocusView(
 		? style.fg("accent", `${spinner} running`)
 		: graph.status === "failed"
 			? style.fg("error", "✗ failed")
-			: style.fg("success", "✓ settled");
+			: graph.children.length === 0
+				? style.fg("dim", "idle")
+				: style.fg("success", "✓ settled");
 	const head: string[] = [
 		`${style.bold(style.fg("accent", "RLM graph"))} ${status} ${style.fg("muted", `${totals.nodes - 1} nodes${totals.running > 0 ? ` · ${totals.running} active` : ""}${totals.failed > 0 ? ` · ${totals.failed} failed` : ""}`)}`,
 	];

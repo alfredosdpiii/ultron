@@ -34,6 +34,7 @@ export interface AppKeybindings {
 	"app.rlm.graph.details": true;
 	"app.rlm.graph.collapse": true;
 	"app.rlm.graph.exit": true;
+	"app.history.search": true;
 	"app.session.toggleNamedFilter": true;
 	"app.editor.external": true;
 	"app.message.copy": true;
@@ -143,7 +144,7 @@ export const KEYBINDINGS = {
 		description: "Expand or fold Jev's memory notes in the transcript (native TUI)",
 	},
 	"app.rlm.focus": {
-		defaultKeys: "alt+r",
+		defaultKeys: "alt+g",
 		description: "Open the full-screen RLM graph (native TUI)",
 	},
 	"app.rlm.graph.up": { defaultKeys: ["up", "k"], description: "RLM graph: select the previous node" },
@@ -153,6 +154,11 @@ export const KEYBINDINGS = {
 	"app.rlm.graph.details": { defaultKeys: "enter", description: "RLM graph: show or hide the node's details" },
 	"app.rlm.graph.collapse": { defaultKeys: ["c", "space"], description: "RLM graph: collapse or expand the subtree" },
 	"app.rlm.graph.exit": { defaultKeys: ["escape", "q"], description: "RLM graph: leave the focus view" },
+	// Ctrl+R is the RLM panel's; Alt+R ("reverse") is free in Pi's editor and every dialog.
+	"app.history.search": {
+		defaultKeys: "alt+r",
+		description: "Reverse-search prompt history (native TUI)",
+	},
 	"app.session.toggleNamedFilter": {
 		defaultKeys: "ctrl+n",
 		description: "Toggle named session filter",

@@ -40,4 +40,16 @@ describe("Editor prompt history keybindings", () => {
 		assert.strictEqual(editor.getText(), "draft");
 		assert.deepStrictEqual(editor.getCursor(), { line: 0, col: 3 });
 	});
+
+	it("replaces history with setHistory and honors historyLimit", () => {
+		const editor = new Editor(new TuiMainScreen(new VirtualTerminal()), defaultEditorTheme, { historyLimit: 3 });
+		editor.setHistory(["newest", "  ", " middle ", "older", "oldest"]);
+		assert.deepStrictEqual(editor.getHistory(), ["newest", "middle", "older"]);
+		editor.addToHistory("latest");
+		assert.deepStrictEqual(editor.getHistory(), ["latest", "newest", "middle"]);
+		editor.handleInput("\x1b[A");
+		assert.strictEqual(editor.getText(), "latest");
+		editor.handleInput("\x1b[A");
+		assert.strictEqual(editor.getText(), "newest");
+	});
 });

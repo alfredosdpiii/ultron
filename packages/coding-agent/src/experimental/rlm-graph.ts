@@ -1075,7 +1075,7 @@ export function graphActive(root: GraphNode): boolean {
 export interface RlmViewOptions {
 	readonly style?: RlmStyle;
 	readonly spinnerFrame?: number;
-	/** Key hint for the focus view, e.g. "alt+r". */
+	/** Key hint for the focus view, e.g. "alt+g". */
 	readonly focusKey?: string;
 	readonly collapse?: CollapseState;
 }
@@ -1113,12 +1113,12 @@ export function renderRlmFooter(
 	if (totals.jobsRunning > 0) parts.push(`${totals.jobsRunning} job${totals.jobsRunning === 1 ? "" : "s"}`);
 	if (totals.failed > 0) parts.push(style.fg("error", `${totals.failed} failed`));
 	if (typeof graph.cost === "number" && graph.cost > 0) parts.push(formatCost(graph.cost));
+	const summary = `${style.fg("accent", `◆ rlm ${spinner}`)} ${style.fg("muted", parts.join(" · "))}`;
+	// The key hint is extra: it shows only when the whole summary still fits.
 	const hint = options.focusKey ? style.fg("dim", ` · ${options.focusKey} graph`) : "";
-	return truncateToWidth(
-		`${style.fg("accent", `◆ rlm ${spinner}`)} ${style.fg("muted", parts.join(" · "))}${hint}`,
-		Math.max(1, width),
-		"…",
-	);
+	const bound = Math.max(1, width);
+	if (hint && visibleWidth(summary) + visibleWidth(hint) <= bound) return `${summary}${hint}`;
+	return truncateToWidth(summary, bound, "…");
 }
 
 function headerLine(graph: GraphNode, snapshot: RlmSnapshot, style: RlmStyle, spinner: string, suffix: string): string {

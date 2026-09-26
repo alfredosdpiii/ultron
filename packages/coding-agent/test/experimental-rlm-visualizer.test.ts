@@ -36,6 +36,7 @@ import {
 	type RlmSnapshot,
 	type RlmTask,
 } from "../src/experimental/rlm-visualizer.ts";
+import { combineRuntimeStatus } from "../src/experimental/runtime-status.ts";
 
 const NOW = 1_000_000;
 
@@ -776,5 +777,24 @@ describe("RLM inspection parsing", () => {
 		expect(formatDuration(75_000)).toBe("1m15s");
 		expect(formatDuration(18 * 60_000)).toBe("18m");
 		expect(formatDuration(3 * 3_600_000 + 5 * 60_000)).toBe("3h5m");
+	});
+});
+
+describe("runtime line under Pi's footer", () => {
+	const rlm = (w: number) => renderRlmFooter(fixture(), w, { focusKey: "alt+g" });
+	const jev = (w: number) => plain(`⌁ jev: recalled 3 (0.83)`.slice(0, Math.max(0, w)));
+
+	test("puts the RLM summary and Jev side by side, trimming the RLM summary first", () => {
+		const wide = combineRuntimeStatus({ rlm, jev }, 200)!;
+		expect(wide).toBe(
+			"◆ rlm ⠋ turn 1m12s · cell 2 14s · map ▰▰▰▰▱ 80/99 · 6 tasks (2 active) · 2 jobs · $0.04 · alt+g graph │ ⌁ jev: recalled 3 (0.83)",
+		);
+		const at80 = plain(combineRuntimeStatus({ rlm, jev }, 80)!);
+		expect(visibleWidth(at80)).toBeLessThanOrEqual(80);
+		expect(at80).toMatch(/^◆ rlm ⠋ turn 1m12s · cell 2 14s .*… │ ⌁ jev: recalled 3 \(0\.83\)$/);
+		expect(combineRuntimeStatus({ jev }, 80)).toBe("⌁ jev: recalled 3 (0.83)");
+		expect(combineRuntimeStatus({ rlm: () => undefined, jev: () => undefined }, 80)).toBeUndefined();
+		for (const width of [40, 20])
+			expect(visibleWidth(combineRuntimeStatus({ rlm, jev }, width)!)).toBeLessThanOrEqual(width);
 	});
 });

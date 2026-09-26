@@ -242,6 +242,8 @@ export interface EditorTheme {
 export interface EditorOptions {
 	paddingX?: number;
 	autocompleteMaxVisible?: number;
+	/** Maximum number of prompt history entries kept for up/down navigation (default 100). */
+	historyLimit?: number;
 }
 
 const SLASH_COMMAND_SELECT_LIST_LAYOUT: SelectListLayoutOptions = {
@@ -343,6 +345,7 @@ export class Editor implements Component, Focusable {
 	private history: string[] = [];
 	private historyIndex: number = -1; // -1 = not browsing, 0 = most recent, 1 = older, etc.
 	private historyDraft: EditorState | null = null;
+	private historyLimit: number;
 
 	// Kill ring for Emacs-style kill/yank operations
 	private killRing = new KillRing();
@@ -376,6 +379,8 @@ export class Editor implements Component, Focusable {
 		this.paddingX = Number.isFinite(paddingX) ? Math.max(0, Math.floor(paddingX)) : 0;
 		const maxVisible = options.autocompleteMaxVisible ?? 5;
 		this.autocompleteMaxVisible = Number.isFinite(maxVisible) ? Math.max(3, Math.min(20, Math.floor(maxVisible))) : 5;
+		const historyLimit = options.historyLimit ?? 100;
+		this.historyLimit = Number.isFinite(historyLimit) ? Math.max(1, Math.floor(historyLimit)) : 100;
 	}
 
 	/** Set of currently valid paste IDs, for marker-aware segmentation. */
@@ -429,9 +434,26 @@ export class Editor implements Component, Focusable {
 		if (this.history.length > 0 && this.history[0] === trimmed) return;
 		this.history.unshift(trimmed);
 		// Limit history size
-		if (this.history.length > 100) {
+		if (this.history.length > this.historyLimit) {
 			this.history.pop();
 		}
+	}
+
+	/** Prompt history, most recent first. */
+	getHistory(): readonly string[] {
+		return [...this.history];
+	}
+
+	/**
+	 * Replace the prompt history (most recent first), e.g. with entries loaded from disk.
+	 * Whitespace-only entries are dropped and entries are trimmed; any history browsing is ended.
+	 */
+	setHistory(entries: readonly string[]): void {
+		this.history = entries
+			.map((entry) => entry.trim())
+			.filter((entry) => entry.length > 0)
+			.slice(0, this.historyLimit);
+		this.exitHistoryBrowsing();
 	}
 
 	private isEditorEmpty(): boolean {
