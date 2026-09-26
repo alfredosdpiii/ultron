@@ -201,6 +201,8 @@ export async function activateBuiltinClientServices(
 	const directory = serverServices.use(SessionDirectory);
 	const remoteManagement = serverServices.use(SessionManagement);
 	const management: SessionManagement = {
+		describe: (options, context) => remoteManagement.describe(options, context),
+		importPi: (source, context) => remoteManagement.importPi(source, context),
 		create: (options, context) => remoteManagement.create(options, context),
 		async remove(sessionId, context) {
 			const removesCurrentAttachment = server.client.attachment?.sessionId === sessionId;

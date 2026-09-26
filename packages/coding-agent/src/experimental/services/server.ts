@@ -9,9 +9,12 @@ import { BACKGROUND_CONTEXT } from "@ultron/chord/context";
 import type { RoutedServerServiceAttachment, RoutedServerServiceHost } from "@ultron/server";
 import { PresentationPlugins } from "./plugins.ts";
 import {
+	type PiSessionImport,
+	type PiSessionImportResult,
 	type SessionCreateOptions,
 	SessionDirectory,
 	type SessionDirectoryState,
+	type SessionListing,
 	SessionManagement,
 	type SessionSummary,
 } from "./sessions.ts";
@@ -24,6 +27,8 @@ export interface ExperimentalServerServices {
 
 export async function createExperimentalServerServices(options: {
 	list(context: Context): Promise<SessionSummary[]>;
+	describe?(cwd: string | null, context: Context): Promise<SessionListing[]>;
+	importPi?(source: PiSessionImport, context: Context): Promise<PiSessionImportResult>;
 	create(createOptions: SessionCreateOptions, context: Context): Promise<SessionSummary>;
 	remove(sessionId: string, context: Context): Promise<void>;
 	rename(sessionId: string, name: string, context: Context): Promise<void>;
@@ -89,6 +94,17 @@ export async function createExperimentalServerServices(options: {
 						}),
 				});
 				provider.provide(SessionManagement, {
+					describe: async ({ cwd }, context) => {
+						if (options.describe === undefined) throw new Error("This server cannot list Session details");
+						return options.describe(cwd, context);
+					},
+					importPi: (source, context) =>
+						serialize(async () => {
+							if (options.importPi === undefined) throw new Error("This server cannot import Pi sessions");
+							const result = await options.importPi(source, context);
+							await refreshNow(context);
+							return result;
+						}),
 					create: (createOptions, context) =>
 						serialize(async () => {
 							const created = await options.create(createOptions, context);

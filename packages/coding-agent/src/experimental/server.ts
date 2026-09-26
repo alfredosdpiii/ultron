@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
-import { chmod, lstat, mkdir, readdir, readFile, unlink, writeFile } from "node:fs/promises";
+import { chmod, lstat, mkdir, mkdtemp, readdir, readFile, rm, unlink, writeFile } from "node:fs/promises";
 import { createConnection } from "node:net";
-import { homedir } from "node:os";
-import { isAbsolute, join } from "node:path";
+import { homedir, tmpdir } from "node:os";
+import { isAbsolute, join, resolve } from "node:path";
 import { BACKGROUND_CONTEXT, type JsonlSessionMetadata, JsonlSessionRepo, TODO_CONTEXT } from "@ultron/agent-core";
 import { NodeExecutionEnv } from "@ultron/agent-core/node";
 import type { Context } from "@ultron/chord";
@@ -22,6 +22,7 @@ import lockfile from "proper-lockfile";
 import type { AuthInput } from "../cli/experimental/command-options.ts";
 import { ENV_SESSION_DIR, getAgentDir } from "../config.ts";
 import type { ExtensionMode } from "../core/extensions/types.ts";
+import { importPiSession, PiSessionAlreadyImportedError } from "../ultron/migration.ts";
 import { resolvePath } from "../utils/paths.ts";
 import { CoordinatorConnection, type CoordinatorStartupLease, ensureCoordinator } from "./coordinator.ts";
 import { createPresentationFacetData } from "./plugins/bundled.ts";
@@ -43,7 +44,8 @@ import { RadiusRelayAuthResolver } from "./radius-auth.ts";
 import { RadiusRelayHost, type RadiusRelayHostStatus } from "./radius-relay.ts";
 import { recordServerError, serverErrorLogPath } from "./server-log.ts";
 import { createExperimentalServerServices } from "./services/server.ts";
-import type { SessionCreateOptions, SessionSummary } from "./services/sessions.ts";
+import type { PiSessionImport, SessionCreateOptions, SessionListing, SessionSummary } from "./services/sessions.ts";
+import { readNativeSessionDetails } from "./session-listing.ts";
 import { forkedSessionStart } from "./session-start.ts";
 import { SessionPluginSelectionConflictError, SessionWorkerManager } from "./session-worker-manager.ts";
 import { traceStartup } from "./startup-trace.ts";
@@ -474,6 +476,51 @@ async function startServerBackend(
 			(await listSessions(context))
 				.map(summarize)
 				.sort((left, right) => left.sessionId.localeCompare(right.sessionId) || left.createdAt - right.createdAt),
+		describe: async (cwd, context) => {
+			const wanted = cwd === null ? undefined : resolve(cwd);
+			const sessions = (await listSessions(context)).filter(
+				(metadata) => wanted === undefined || resolve(metadata.cwd) === wanted,
+			);
+			return Promise.all(
+				sessions.map(async (metadata): Promise<SessionListing> => {
+					const details = await readNativeSessionDetails(metadata.path);
+					return {
+						...summarize(metadata),
+						cwd: metadata.cwd,
+						sessionFile: metadata.path,
+						name: details.name,
+						firstMessage: details.firstMessage,
+						messageCount: details.messageCount,
+						parentSessionId: metadata.parentSessionId ?? null,
+					};
+				}),
+			);
+		},
+		importPi: async (source: PiSessionImport, context) => {
+			// The client sends the file's text: it may live on another machine than this server.
+			const directory = await mkdtemp(join(tmpdir(), "ultron-pi-import-"));
+			try {
+				const piSessionPath = join(directory, "session.jsonl");
+				await writeFile(piSessionPath, source.content, { mode: 0o600 });
+				try {
+					const result = await importPiSession({ piSessionPath, sessionsRoot: sessionDir });
+					return {
+						session: summarize(await resolveSession(result.sessionId, context)),
+						alreadyImported: false,
+						imported: result.imported,
+					};
+				} catch (error) {
+					if (!(error instanceof PiSessionAlreadyImportedError)) throw error;
+					return {
+						session: summarize(await resolveSession(error.sessionId, context)),
+						alreadyImported: true,
+						imported: 0,
+					};
+				}
+			} finally {
+				await rm(directory, { recursive: true, force: true });
+			}
+		},
 		create: async (createOptions, context) => {
 			const created = await createSession(createOptions, context);
 			return { ...summarize(created), sessionFile: created.path };

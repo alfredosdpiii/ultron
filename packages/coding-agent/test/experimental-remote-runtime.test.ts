@@ -115,6 +115,60 @@ describe("experimental durable server composition", () => {
 		});
 	});
 
+	test("describes Sessions for /resume and imports a Pi session for /import", async () => {
+		const { runtime } = await makeServer();
+		const client = await Client.connect({
+			serverId: runtime.serverId,
+			transportFactory: createUnixTransportFactory({ path: runtime.socketPath }),
+		});
+		clients.add(client);
+		const services = createServerServiceBinding(client, { services: [SessionManagement] });
+		try {
+			await services.ready(BACKGROUND_CONTEXT);
+			const management = services.use(SessionManagement);
+			await management.rename("demo-1", "Named demo", BACKGROUND_CONTEXT);
+			const listed = await management.describe({ cwd: process.cwd() }, BACKGROUND_CONTEXT);
+			expect(listed.map((listing) => listing.sessionId).sort()).toEqual(["demo-1", "demo-2"]);
+			expect(listed.find((listing) => listing.sessionId === "demo-1")).toMatchObject({
+				name: "Named demo",
+				cwd: process.cwd(),
+				messageCount: 0,
+				firstMessage: "",
+			});
+			expect(await management.describe({ cwd: "/nonexistent/project" }, BACKGROUND_CONTEXT)).toEqual([]);
+
+			const content = `${[
+				{
+					type: "session",
+					version: 3,
+					id: "pi-import-1",
+					timestamp: "2026-01-01T00:00:00.000Z",
+					cwd: process.cwd(),
+				},
+				{
+					type: "message",
+					id: "m1",
+					parentId: null,
+					timestamp: "2026-01-01T00:00:01.000Z",
+					message: { role: "user", content: "hello from pi", timestamp: 1 },
+				},
+			]
+				.map((line) => JSON.stringify(line))
+				.join("\n")}\n`;
+			const imported = await management.importPi({ sourcePath: "/client/pi.jsonl", content }, BACKGROUND_CONTEXT);
+			expect(imported).toMatchObject({ alreadyImported: false, imported: 1 });
+			const again = await management.importPi({ sourcePath: "/client/pi.jsonl", content }, BACKGROUND_CONTEXT);
+			expect(again).toMatchObject({ alreadyImported: true, session: { sessionId: imported.session.sessionId } });
+			const after = await management.describe({ cwd: null }, BACKGROUND_CONTEXT);
+			expect(after.find((listing) => listing.sessionId === imported.session.sessionId)).toMatchObject({
+				firstMessage: "hello from pi",
+				messageCount: 1,
+			});
+		} finally {
+			await services.dispose(BACKGROUND_CONTEXT);
+		}
+	});
+
 	test("rejects a provider without a model", async () => {
 		const directory = await mkdtemp(join("/tmp", "pes-"));
 		directories.add(directory);

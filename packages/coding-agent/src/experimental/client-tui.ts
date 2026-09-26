@@ -1,4 +1,4 @@
-import { basename, resolve } from "node:path";
+import { basename, join, resolve } from "node:path";
 import {
 	combineFacetLoaders,
 	createFacetHost,
@@ -23,6 +23,7 @@ import {
 import type { ClientCommand } from "../cli/experimental/commands/client.ts";
 import { APP_TITLE, getAgentDir } from "../config.ts";
 import { KeybindingsManager } from "../core/keybindings.ts";
+import { ModelRuntime } from "../core/model-runtime.ts";
 import { DefaultResourceLoader } from "../core/resource-loader.ts";
 import { SettingsManager } from "../core/settings-manager.ts";
 import { createChatViewport } from "../modes/interactive/chat-viewport.ts";
@@ -40,6 +41,7 @@ import { copyToClipboard } from "../utils/clipboard.ts";
 import { ensureTool } from "../utils/tools-manager.ts";
 import { type OpenClientRuntimeOptions, openClientRuntime } from "./client-runtime.ts";
 import { clipboardPasteText, editExternally, nextModel, suspendTui } from "./client-tui-actions.ts";
+import type { LoginRuntime } from "./client-tui-auth.ts";
 import { ExperimentalChatView } from "./client-tui-chat.ts";
 import {
 	copyLastAssistantMessage,
@@ -48,6 +50,15 @@ import {
 	StartupHeader,
 } from "./client-tui-commands.ts";
 import { NativeFooter } from "./client-tui-footer.ts";
+import {
+	type CommandRunner,
+	type PiCommandHost,
+	piCommands,
+	spawnCommand,
+	type ThemeHooks,
+} from "./client-tui-pi-commands.ts";
+import { piAgentDir } from "./client-tui-sessions.ts";
+import { ClientSettingsMirror } from "./client-tui-settings.ts";
 import { collectKnownMemories, type JevNoteSource, parseMemoryMessage } from "./jev-annotations.ts";
 import {
 	JEV_PULSE_MS,
@@ -120,6 +131,21 @@ export interface ClientTuiServer {
 	readonly radius: boolean;
 	readonly server: ServerServiceSource;
 	readonly session: SessionServiceSource;
+	/** The server's Unix socket, when reached over one (shown by `/debug`). */
+	readonly socketPath?: string;
+}
+
+/** Hooks for Pi's commands that reach outside the TUI (theme, login providers, programs, profiles). */
+export interface ClientTuiEnvironment {
+	readonly theme?: ThemeHooks;
+	/** The client's model runtime for `/login` and `/logout` (default: Pi's, over `<agentDir>/auth.json`). */
+	readonly loginRuntime?: () => Promise<LoginRuntime>;
+	/** Runs `gh` for `/share`. */
+	readonly runCommand?: CommandRunner;
+	/** The client profile directory (default `getAgentDir()`). */
+	readonly agentDir?: string;
+	/** Pi's profile directory, read by `/import` (default `PI_CODING_AGENT_DIR` or `~/.pi/agent`). */
+	readonly piAgentDir?: string;
 }
 
 interface SessionFeature {
@@ -269,6 +295,11 @@ export class ExperimentalClientTui implements Component {
 	#screen: "select" | "component" | "chat" = "chat";
 	#lastEscapeTime = 0;
 	readonly #settingsManager: SettingsManager;
+	readonly #settingsMirror: ClientSettingsMirror;
+	readonly #environment: ClientTuiEnvironment;
+	#loginRuntime: Promise<LoginRuntime> | undefined;
+	/** Pi's session-only Ctrl+P scope from `/scoped-models`; undefined follows `enabledModels`. */
+	#scopedModelIds: readonly string[] | undefined;
 	#server: ClientTuiServer | undefined;
 	#reloadPresentationPlugins: ((data: JsonValue) => Promise<void>) | undefined;
 	/** Bumped on a Session switch so the extension UI poll restarts against the new worker. */
@@ -293,9 +324,12 @@ export class ExperimentalClientTui implements Component {
 		fdPath: string | null,
 		settingsManager: SettingsManager,
 		historyPath: string | null,
+		environment: ClientTuiEnvironment,
 	) {
 		this.#fdPath = fdPath;
 		this.#settingsManager = settingsManager;
+		this.#settingsMirror = new ClientSettingsMirror(settingsManager);
+		this.#environment = environment;
 		this.#ui = ui;
 		this.#requestRender = requestRender;
 		this.#finish = finish;
@@ -381,6 +415,7 @@ export class ExperimentalClientTui implements Component {
 		readonly settingsManager?: SettingsManager;
 		/** The prompt history file (default `<agentDir>/prompt-history.jsonl`); `null` keeps history in memory. */
 		readonly historyPath?: string | null;
+		readonly environment?: ClientTuiEnvironment;
 		requestRender(): void;
 		finish(): void;
 	}): Promise<ExperimentalClientTui> {
@@ -396,6 +431,7 @@ export class ExperimentalClientTui implements Component {
 			options.fdPath ?? null,
 			options.settingsManager ?? SettingsManager.inMemory(),
 			options.historyPath === undefined ? promptHistoryPath(getAgentDir()) : options.historyPath,
+			options.environment ?? {},
 		);
 		try {
 			await component.#start(prepared);
@@ -555,6 +591,7 @@ export class ExperimentalClientTui implements Component {
 					}
 					// Pi's interactive-mode commands over the native Session.
 					for (const command of nativeCommands(this.#commandHost())) env.own(commands.replace(command));
+					for (const command of piCommands(this.#piCommandHost())) env.own(commands.replace(command));
 					env.own(
 						commands.replace({
 							name: "new",
@@ -1538,7 +1575,7 @@ export class ExperimentalClientTui implements Component {
 			state.catalog.availableModels,
 			current,
 			direction,
-			this.#settingsManager.getEnabledModels(),
+			this.#scopedModelIds === undefined ? this.#settingsManager.getEnabledModels() : [...this.#scopedModelIds],
 		);
 		if ("error" in next) {
 			this.#showStatus(next.error);
@@ -1712,6 +1749,138 @@ export class ExperimentalClientTui implements Component {
 			},
 			quit: () => this.#finish(),
 		};
+	}
+
+	/** The host for Pi's settings, auth, session and diagnostic commands. */
+	#piCommandHost(): PiCommandHost {
+		const agentDir = this.#environment.agentDir ?? getAgentDir();
+		const loginRuntime = this.#environment.loginRuntime ?? (() => createLoginRuntime(agentDir));
+		return {
+			...this.#commandHost(),
+			ui: this.#ui,
+			keybindings: this.#keybindings,
+			settingsManager: this.#settingsManager,
+			settingsMirror: this.#settingsMirror,
+			agentDir,
+			authPath: join(agentDir, "auth.json"),
+			piAgentDir: this.#environment.piAgentDir ?? piAgentDir(),
+			theme: this.#environment.theme,
+			models: () => this.#models,
+			showComponent: (component, focus, options) => {
+				let close = (): void => {};
+				close = this.#showComponent({
+					component,
+					focus,
+					cancel: () => {
+						options?.cancel?.();
+						close();
+					},
+					...(options?.dispose === undefined ? {} : { dispose: options.dispose }),
+				});
+				return close;
+			},
+			select: (title, options) =>
+				this.#select(
+					title,
+					options.map((option) => ({ value: option, label: option })),
+				),
+			requestRender: () => this.#requestRender(),
+			withManagement: (operation) => this.#withManagement(operation),
+			switchSession: (sessionId) => this.#switchToSession(sessionId),
+			applySettingLocally: (key, value) => this.#applySettingLocally(key, value),
+			scopedModels: () => this.#scopedModelIds,
+			setScopedModels: (ids) => {
+				this.#scopedModelIds = ids === undefined ? undefined : [...ids];
+			},
+			loginRuntime: () => {
+				this.#loginRuntime ??= loginRuntime().catch((error: unknown) => {
+					this.#loginRuntime = undefined;
+					throw error;
+				});
+				return this.#loginRuntime;
+			},
+			runCommand: this.#environment.runCommand ?? spawnCommand,
+			serverInfo: () => ({
+				serverId: this.#selectedServerId,
+				transport: this.#server === undefined ? undefined : this.#server.radius ? "radius" : "unix",
+				socketPath: this.#server?.socketPath,
+			}),
+			renderedLines: () => {
+				const width = this.#ui.terminal.columns;
+				return { width, height: this.#ui.terminal.rows, lines: this.render(width) };
+			},
+		};
+	}
+
+	/** Apply a presentation setting changed in `/settings` to the running TUI, where Pi applies it live. */
+	#applySettingLocally(key: string, value: JsonValue): void {
+		switch (key) {
+			case "hideThinkingBlock":
+				this.#chatView?.setHideThinkingBlock(value === true);
+				break;
+			case "theme":
+				if (typeof value === "string") {
+					void this.#environment.theme?.setThemeSetting(value).catch((error: unknown) => {
+						this.#showStatus(`Error: ${message(error)}`);
+					});
+				}
+				break;
+			case "showHardwareCursor":
+				this.#ui.setShowHardwareCursor(value === true);
+				break;
+			case "terminal.clearOnShrink":
+				this.#ui.setClearOnShrink(value === true);
+				break;
+			case "editorPaddingX":
+				if (typeof value === "number") this.#chatInput.setPaddingX(value);
+				break;
+			case "autocompleteMaxVisible":
+				if (typeof value === "number") this.#chatInput.setAutocompleteMaxVisible(value);
+				break;
+			case "compaction.enabled":
+				this.#footer.setAutoCompactEnabled(value === true);
+				break;
+			default:
+				// Double-escape action, tree filter and enabledModels are read from settings when used.
+				break;
+		}
+		this.#rebuild();
+	}
+
+	/** Run `operation` with the selected server's `SessionManagement`. */
+	async #withManagement<T>(operation: (management: SessionManagement) => Promise<T>): Promise<T> {
+		const server = this.#server;
+		if (server === undefined) throw new Error("No server is connected");
+		const services = server.server.open({ services: [SessionManagement], assertAccess() {}, onError() {} });
+		try {
+			await services.ready(BACKGROUND_CONTEXT);
+			return await operation(services.use(SessionManagement));
+		} finally {
+			await services.dispose(BACKGROUND_CONTEXT).catch(() => {});
+		}
+	}
+
+	/** Pi's `/resume` switch: stop the running turn, then attach the other Session (as `/new` and `/fork` do). */
+	async #switchToSession(sessionId: string): Promise<void> {
+		const server = this.#server;
+		if (server === undefined) throw new Error("No server is connected");
+		if (!(await this.#stopForSessionChange())) throw new Error("the running turn did not stop");
+		const services = server.server.open({
+			services: [SessionManagement, PresentationPlugins],
+			assertAccess() {},
+			onError() {},
+		});
+		try {
+			await services.ready(BACKGROUND_CONTEXT);
+			await this.#switchSession(
+				server,
+				services.use(SessionManagement),
+				services.use(PresentationPlugins),
+				sessionId,
+			);
+		} finally {
+			await services.dispose(BACKGROUND_CONTEXT).catch(() => {});
+		}
 	}
 
 	#selectedController(): AgentController | undefined {
@@ -2117,10 +2286,39 @@ export async function runClientTui(command: ClientCommand, options: RunClientTui
 				radius: server.route.transport === "radius",
 				server: server.server,
 				session: server.session,
+				...(server.route.transport === "unix" ? { socketPath: server.route.path } : {}),
 			})),
 			facetLoader: options.facetLoader,
 			fdPath,
 			settingsManager,
+			environment: {
+				theme: {
+					getThemeSelection: () => themeController.getThemeSelection(),
+					getTerminalTheme: () => themeController.getTerminalTheme(),
+					setThemeSetting: (themeSetting) => themeController.setThemeSetting(themeSetting),
+					preview: (themeSettingOrName) => themeController.preview(themeSettingOrName),
+				},
+				loginRuntime: async () => {
+					const runtime = await createLoginRuntime(agentDir);
+					// Providers the client's extensions register can be logged in to as well (Pi registers them too).
+					const extensions = resourceLoader.getExtensions().runtime;
+					for (const registration of extensions.pendingProviderRegistrations) {
+						try {
+							runtime.registerProvider(registration.name, registration.config);
+						} catch {
+							// The worker reports a broken registration; login offers the other providers.
+						}
+					}
+					for (const registration of extensions.pendingNativeProviderRegistrations) {
+						try {
+							runtime.registerNativeProvider(registration.provider);
+						} catch {
+							// As above.
+						}
+					}
+					return runtime;
+				},
+			},
 			requestRender: () => tui.requestRender(),
 			finish,
 		});
@@ -2138,6 +2336,18 @@ export async function runClientTui(command: ClientCommand, options: RunClientTui
 		await component?.close();
 		await runtime.dispose();
 	}
+}
+
+/** Pi's model runtime over the profile's `auth.json`, for the client's `/login` and `/logout`. */
+async function createLoginRuntime(agentDir: string): Promise<ModelRuntime> {
+	const runtime = await ModelRuntime.create({
+		refreshOnCreate: false,
+		allowModelNetwork: false,
+		authPath: join(agentDir, "auth.json"),
+		modelsPath: join(agentDir, "models.json"),
+	});
+	await runtime.refresh({ allowNetwork: false });
+	return runtime;
 }
 
 function requireSingleServer<T>(features: readonly T[]): T {

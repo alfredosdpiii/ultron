@@ -15,7 +15,7 @@ Ultron is a fork of Pi whose only agent runtime is the native RLM session worker
 
 ## Native TUI parity with Pi's interactive mode
 
-The TUI (`src/experimental/client-tui.ts`) is a client of the session worker, not Pi's `interactive-mode.ts`. It reuses Pi's components (editor, autocomplete, footer, selectors, tool, bash and assistant message components) over the replicated lane snapshot. New logic lives beside it: `prompt-history.ts` and `prompt-history-search.ts` (history), `client-tui-footer.ts` (Pi's `FooterComponent` fed from the snapshot), `client-tui-commands.ts` (Pi's commands, `/hotkeys`, the startup header) and `rlm-tool-renderer.ts` (the `rlm` cell).
+The TUI (`src/experimental/client-tui.ts`) is a client of the session worker, not Pi's `interactive-mode.ts`. It reuses Pi's components (editor, autocomplete, footer, selectors, tool, bash and assistant message components) over the replicated lane snapshot. New logic lives beside it: `prompt-history.ts` and `prompt-history-search.ts` (history), `client-tui-footer.ts` (Pi's `FooterComponent` fed from the snapshot), `client-tui-commands.ts` (Pi's commands, `/hotkeys`, the startup header), `client-tui-pi-commands.ts` with `client-tui-settings.ts`, `client-tui-auth.ts` and `client-tui-sessions.ts` (`/settings`, `/login`, `/logout`, `/share`, `/resume`, `/import`, `/trust`, `/scoped-models`, `/debug`) and `rlm-tool-renderer.ts` (the `rlm` cell).
 
 Prompt history is appended to `<agentDir>/prompt-history.jsonl` (`{text, cwd, timestamp}` per line; whitespace-only input and an immediate repeat are skipped; a torn last line is tolerated). On start the newest 500 entries are loaded: this project's first, merged by time with the resumed Session's own user messages (deduplicated), then other projects'. Every prompt, steer, follow-up, `!` command and slash command is recorded. Keybinding choice: Ctrl+R stays the `/rlm` panel toggle. Pi has no history search, so its mapping gives no reason to move `/rlm`. Reverse search is `app.history.search` on Alt+R, which no Pi editor or dialog binding uses. Inside the search, Ctrl+R, Alt+R and Up move to older matches, Down (or Ctrl+S) to newer ones, Enter or Tab uses the match, and Esc keeps the draft.
 
@@ -39,15 +39,21 @@ Prompt history is appended to `<agentDir>/prompt-history.jsonl` (`{text, cwd, ti
 | Editor border colored by thinking level / bash mode | yes | no | yes |
 | Status indicator (working, compaction, retry countdown) | yes | "Working..." only | yes |
 | `/model`, `/thinking`, Ctrl+L | yes | yes | yes |
-| `/settings` | yes | no | no (Pi's selector is bound to an in-process `AgentSession`) |
+| `/settings` | yes | no | yes: Pi's selector. Values come from the worker's `SettingsManager` (profile and project), and each change goes through `SessionControl.setSetting`, which persists it there. Compaction, queue modes, transport, HTTP idle timeout and the current model's thinking level apply live in the worker. Theme, thinking visibility, editor padding, autocomplete size, hardware cursor and clear-on-shrink apply live in the client. Default project trust and default thinking level say they apply on restart. Settings that neither the native TUI nor the worker reads (image display, Mermaid, changelog, telemetry, TUI mode, fullscreen options, cache warming) are saved for Pi, and the status line says so |
 | `/session` | yes | no | yes (Pi's stats over the worker's tree) |
 | `/copy`, Ctrl+X | yes | no | yes (last assistant message) |
 | `/export [path.html\|path.jsonl]` | yes | no (CLI `--export` only) | yes (Pi's HTML exporter over the worker's tree) |
 | `/name`, `/hotkeys`, `/changelog`, `/quit`, `/new` | yes | no | yes |
 | `/tree`, `/fork`, `/clone`, double Esc | yes | yes | yes |
 | `/compact`, `/reload` | yes | yes | yes |
-| `/resume` | yes | no (CLI `--resume`/`--continue`/`--session`) | no |
-| `/login`, `/logout`, `/share`, `/import`, `/trust`, `/scoped-models`, `/debug` | yes | no | no |
+| `/resume` | yes | no (CLI `--resume`/`--continue`/`--session`) | yes: Pi's session selector over the server's native Sessions (`SessionManagement.describe`: name, time, first message; this project, Tab for all). The pick switches the TUI as `/new` and `/fork` do. Rename goes through the server; delete goes through `SessionManagement.remove`, and the current Session cannot be deleted |
+| `/login`, `/logout` | yes | no | yes: Pi's flow (account/API-key choice, provider selector, login dialog with browser, device code and prompts) runs in the client with Pi's `ModelRuntime` over `<agentDir>/auth.json`. Afterwards `SessionControl.reloadAuth` rebuilds the worker's availability and the model catalog is refreshed, with no restart. Pi's automatic default-model pick after a first login is not ported (use `/model`) |
+| `/share` | yes (Radius artifact, else secret gist) | no | secret gist only: HTML from the `/export` path, then `gh gist create --public=false`. It shows the viewer URL and the gist URL, and refuses clearly when `gh` is missing or not logged in. Pi's Radius artifact upload is not ported |
+| `/import` | yes (replaces the session with a JSONL file) | no (CLI `ultron migrate import-pi`) | yes: `/import <path>`, or a picker of Pi's sessions for this cwd (`PI_CODING_AGENT_DIR` or `~/.pi/agent`, read-only; Tab for all). The client sends the file to the server's `SessionManagement.importPi` (`importPiSession`) and offers to switch to the new native Session. An already imported file maps to its existing Session |
+| `/trust` | yes | no | yes: Pi's trust selector over the worker's cwd and `trust.json` (`SessionControl.setProjectTrust`). It applies on restart: Session workers now honour a saved decision, or `defaultProjectTrust: "never"`. "ask" cannot prompt in a worker and trusts, as before |
+| `/scoped-models` | yes | no | yes: Pi's selector sets the Session-only Ctrl+P scope in the client. Ctrl+S saves `enabledModels` through the worker, and catalogs refresh through `Models.refresh` |
+| `/debug` | yes | no | yes: Pi's dump (rendered lines, messages) plus client, server (id, transport, socket directory) and worker facts (`SessionControl.debugInfo`: pid, versions, Session file, kernel pool, model, `ULTRON_*`/`PI_*` variables with secret-looking values redacted), written to `<agentDir>/ultron-debug.log` |
+| `/bug` | yes (reports to Pi's developers) | no | not ported: its reports go to Pi's developers, so it does not apply to Ultron |
 | External editor (Ctrl+G) | yes | only in extension editor dialogs | yes |
 | Suspend (Ctrl+Z) | yes | no | yes |
 | `!` / `!!` shell commands | yes | no (sent to the model as text) | yes (worker runs and records them; Esc cancels; Pi's bash component) |

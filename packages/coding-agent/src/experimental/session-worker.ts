@@ -124,6 +124,7 @@ import {
 	type SessionWorkerServices,
 	type WorkerServiceScope,
 } from "./services/worker.ts";
+import { workerProjectTrusted } from "./services/worker-settings.ts";
 import { forkedSessionStart } from "./session-start.ts";
 import { traceStartup } from "./startup-trace.ts";
 
@@ -1330,7 +1331,10 @@ async function createCodingAgentHarness(
 ): Promise<SessionWorkerRuntime> {
 	traceStartup("worker.harness");
 	const modelRuntime = await ModelRuntime.create({ refreshOnCreate: false, allowModelNetwork: false });
-	const settingsManager = SettingsManager.create(session.metadata.cwd);
+	// A project the user distrusted with `/trust` (or `defaultProjectTrust: "never"`) loads no project settings or resources.
+	const settingsManager = SettingsManager.create(session.metadata.cwd, getAgentDir(), {
+		projectTrusted: workerProjectTrusted(session.metadata.cwd, getAgentDir()),
+	});
 	// Model requests leave from this process: use Pi's HTTP stack (npm undici fetch, Pi's idle timeout, env proxy)
 	// rather than Node's bundled fetch, so requests match what stock Pi sends.
 	configureHttpDispatcher(settingsManager.getHttpIdleTimeoutMs());
