@@ -1,99 +1,189 @@
 # Ultron
 
-Ultron is a terminal coding agent whose only built-in tool is a persistent Python REPL. The model reads files,
-runs commands, edits code, processes data and delegates to sub-agents by writing Python, instead of choosing from a
-menu of tools. It is a fork of [Pi](https://github.com/badlogic/pi-mono) and keeps Pi's interface: the same TUI,
-`-p` print mode, `--mode json`, and `--mode rpc`, the same providers, extensions, skills and prompt templates.
+**A terminal coding agent that programs its way through your work instead of picking tools from a menu.**
 
-The design takes ideas from Prime Intellect's RLM harness (the REPL as the sole tool), NVIDIA's NOOA (bounded
-previews and typed agent objects), Autolith (bounded inference over large inputs), LLM-as-Code (context that
-collapses when work returns), Unreal Agent (long work that never blocks the turn) and waku-agent (gated memory).
-[`supremeplan.md`](supremeplan.md) describes how each one landed.
+Most coding agents give the model a list of tools (read a file, run a command, edit, search) and let it call
+them one at a time, pasting every result into its context. Ultron gives the model one thing: a persistent Python
+REPL. Shell commands, edits, file reads, your MCP servers, sub-agents and sub-model calls are all Python functions
+inside it. The model writes a cell that loops, filters, fans out and keeps the results in variables, and only what
+it prints comes back into its context.
+
+It is a fork of [Pi](https://github.com/badlogic/pi-mono) and keeps Pi's interface, so the TUI, `-p` print mode,
+`--mode json`, `--mode rpc`, providers, extensions, skills and prompt templates all work the same.
+
+```bash
+npm install -g --ignore-scripts https://github.com/alfredosdpiii/ultron/releases/latest/download/ultron.tgz
+```
+
+## What makes Ultron different
+
+### 1. The REPL is the only tool
+
+The model's tool list is exactly one entry, `rlm`. Everything else is a pre-imported async function:
+
+```python
+out = await bash('''pytest -q tests/test_parser.py''')          # shell, output as a Python string
+await edit("src/parser.py", old_str=OLD, new_str=NEW)           # exact edit that fails loudly if stale
+runs = await asyncio.gather(*(mcp.call("exa-agent_exa_agent_create_run", query=q)   # your MCP servers
+                              for q in questions))
+```
+
+With separate tools available, models take the familiar route (a shell call, a file write) and never use the REPL.
+Measured on our hard task set, REPL use went from 0 of 16 runs to 29 of 30 once the REPL was the only door. This is
+the design of Prime Intellect's RLM harness, including its choice to expose MCP tools as Python skills.
+
+### 2. Big inputs never enter the model's context
+
+```python
+h = await rlm.load("logs/app.log")                    # a handle: size, digest, never the text itself
+hits = h.search(r"ERROR .*timeout", limit=50)
+causes = await rlm.map("Root cause in 10 words.",      # one bounded sub-model call per slice
+                       [h.lines(m["line"] - 20, m["line"] + 5) for m in hits],
+                       contract=str, budget=Budget(calls=60))
+```
+
+`rlm.infer` and `rlm.map` run private sub-model frames that see only the slices you pass them, return values
+validated against a JSON-schema contract (malformed answers are re-asked), and draw on one shared budget of calls,
+tokens and depth. Running out returns an `Incomplete` with its evidence rather than an exception. On a research task
+over 157 incident reports, Ultron chose 99 of these frames on its own and finished 20% faster than stock Pi.
+
+### 3. Long work never blocks the turn
+
+A shell command or tool call still running after 30 seconds becomes a background job with a handle. When it
+finishes, a short `<runtime_event>` message wakes the model. It never polls, sleeps or stares at a progress bar,
+and a test suite can run while it fixes something else.
+
+### 4. It has a runtime, not just a loop
+
+- **Sub-agents with their own kernels** (`rlm.spawn`), typed agents with validated inputs and outputs
+  (`agents.invoke`), and agent graphs with joins and bounded revision loops (`workflows.run`).
+- **Agents as Python classes**: the docstring is the prompt, `...` methods are model-driven with typed returns
+  checked by the host, and fields are durable state.
+- **Code skills**: a procedure that worked is saved as Python with a test, and only goes live when the test passes.
+  Versions roll back.
+- **The model manages its own context** (`ctx.forget`, `ctx.summarize`, `ctx.pin`, `ctx.note`), and finished task
+  results collapse to one line after the model has seen them.
+- **Durable state**: a task journal, per-turn budgets for tokens, turns, wall time and cost, a memory cap over the
+  kernel's whole process tree, and kernel snapshots that survive restarts.
+
+### 5. Memory with judgement
+
+Automatic memory through Hindsight is gated by Jev: before each turn
+it decides whether memory is needed at all, and after each turn whether it is worth keeping. A low score means no
+lookup, so unrelated memories never leak into answers.
+
+### 6. You can see it think
+
+- **The RLM graph** draws the run as a live tree: turn, cells, tool calls, sub-agents, `rlm.map` fan-outs with
+  progress bars, workflows and jobs, with budget gauges and a kernel strip. Ctrl+R docks it and Alt+G opens it
+  full screen, where you can step into any node and see its input, result and the Python call that fetches it.
+- **Jev's presence**: a footer indicator that pulses when Jev decides, one-line notes in the transcript showing what
+  memory was used and whether the turn was kept, and a `/jev` view with a decision timeline and threshold gauges.
+
+## How it compares
+
+| | Typical tool-calling agent | Ultron |
+|---|---|---|
+| Model's interface | a menu of tools, one call per step | one persistent Python REPL |
+| Large files and outputs | pasted into context | handles; only printed slices come back |
+| Many independent steps | many model turns | one cell with a loop or `asyncio.gather` |
+| MCP servers | separate tools | Python functions in the REPL |
+| Slow commands | the turn waits | background jobs, completion events |
+| Reading lots of text | the model reads it all | bounded sub-model frames under a budget |
+| Delegation | sub-agent tools, if any | sub-agents, typed agents, workflows, agent classes |
+
+## Results so far
+
+Measured with [`scripts/eval-quality.mjs`](scripts/eval-quality.mjs) against stock Pi on the same model
+(glm-5.3-flash, thinking `max`). Every result file is in [`acceptance/quality/`](acceptance/quality).
+
+| Task set | Pi | Ultron |
+|---|---|---|
+| Hard set: 15 tasks (multi-file bugs, refactors, large data, log forensics), 2 trials | 27/30 | **29/30**, a third fewer tool calls, same speed |
+| Research pilot: find expired-certificate incidents among 157 reports, 1 trial | pass, 342 s | pass, **273 s**, 99 sub-model frames |
+| Parallel work: a 150 s test suite plus two bug fixes, 2 trials | 2/2 | 2/2, same speed |
+
+These are small samples on one model. Treat them as early evidence, not benchmarks. Behaviour is also covered by
+56 acceptance rows (A01-A56) judged by a runner, not by hand.
 
 ## Install
 
-Requirements: **Node.js 22.19 or newer** and **Python 3** on your `PATH` (the REPL runs the system `python3`).
+Requirements: **Node.js 22.19 or newer** and **Python 3** on your `PATH` (the REPL uses the system `python3`).
 
 ```bash
 npm install -g --ignore-scripts https://github.com/alfredosdpiii/ultron/releases/latest/download/ultron.tgz
 ultron --version
 ```
 
-The same command updates an existing install to the latest release. `--ignore-scripts` is intended: nothing Ultron depends on needs lifecycle scripts. Ultron keeps its settings and
-sessions in `~/.ultron/agent`, separate from Pi's `~/.pi/agent`, so both can be installed side by side.
+The same command updates an existing install. Nothing Ultron depends on needs lifecycle scripts, hence
+`--ignore-scripts`. Settings and sessions live in `~/.ultron/agent`, separate from Pi's `~/.pi/agent`, so both
+can be installed side by side.
 
 ## Quick start
 
 ```bash
 cd your-project
-ultron                                   # interactive TUI; /login or an API key env var to pick a provider
+ultron                                   # interactive TUI
 ultron -p "why does test_parser fail?"   # one-shot print mode
 ultron --mode rpc                        # Pi-compatible JSONL RPC
 ```
 
-Providers work as in Pi: `/login` for subscription providers, or the usual environment variables
-(`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, ...). Custom OpenAI-compatible endpoints go in
-`~/.ultron/agent/models.json` with the same format as Pi's `models.json`.
+Pick a provider as in Pi: `/login` for subscription providers, or `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`,
+`GEMINI_API_KEY` and the like. Custom OpenAI-compatible endpoints go in `~/.ultron/agent/models.json`.
 
-## What the model gets
+Useful keys: Up/Down and Alt+R for prompt history, Ctrl+R for the RLM panel, Alt+G for the full-screen graph,
+Alt+J for Jev, Ctrl+O to expand cells and help. `/hotkeys` lists them all.
 
-One tool, `rlm`: a Python cell that runs in a kernel that persists for the whole session. Pre-imported, all async:
+## The REPL at a glance
 
 | | |
 |---|---|
-| `await bash('''cmd''')` | shell in the working directory; slow commands turn into background jobs after 30 s |
-| `await edit(path, old_str, new_str)` | exact single-occurrence edits that fail loudly when stale or ambiguous |
-| `read(path)` | text for normal files, a handle for large ones |
-| `h = await rlm.load(path)` | a handle to a large input the model never reads whole (`h.search`, `h.lines`, `h.chunks`) |
-| `await rlm.infer(task, context=[...], contract=...)` / `rlm.map(...)` | bounded sub-model calls over explicit slices, validated against a JSON-schema contract, under a shared budget |
-| `await rlm.spawn(task)`, `agents.invoke(...)`, `workflows.run(...)` | sub-agents, typed agents and agent graphs |
-| `@agent class ...` | agents defined as Python classes: docstring is the prompt, `...` methods are model-driven, fields are durable state |
-| `ctx.history / forget / summarize / pin / note` | the model manages its own context |
-| `skills.propose_code(...)` | procedures saved as tested Python skills, activated only when their tests pass |
-| `memory.prepare / propose` | long-term memory through Hindsight, gated by Jev (optional) |
+| `await bash('''cmd''')`, `await edit(...)`, `await read(path)` | shell, exact edits, file text (a handle for large files) |
+| `await view_image(path_or_figure)` | show the model a screenshot, diagram or matplotlib figure |
+| `await mcp.call(tool, **args)`, `await tools.call(name, {...})` | MCP servers and any Pi extension tool |
+| `await rlm.load(...)`, `rlm.infer(...)`, `rlm.map(...)` | handles and bounded sub-model frames |
+| `await rlm.spawn(task)`, `agents.invoke(...)`, `workflows.run(...)` | sub-agents, typed agents, agent graphs |
+| `@agent class ...` | agents as Python classes |
+| `ctx.*`, `skills.propose_code(...)`, `memory.*` | context control, tested code skills, memory |
+| `state` | a dict that survives kernel restarts |
 
-Output over about 20 KB is cut in the middle and large values are shown by reference, so data stays in the kernel.
-When background work finishes, a short `<runtime_event>` message wakes the model instead of making it poll.
-Set `ULTRON_TOOLS=native` to give the model Pi's `read`, `edit`, `write` and `bash` tools again.
-
-The `/rlm` panel (Ctrl+R) shows the task tree, running kernels, jobs and sub-model frames; `/jev` (Alt+J) shows
-memory and routing decisions.
+Opt-outs: `ULTRON_TOOLS=native` gives the model Pi's `read`, `edit`, `write` and `bash` tools again, and
+`ULTRON_EXTENSION_TOOLS=native` makes extension and MCP tools separate model tools again.
 
 ## Optional services
 
-- **Hindsight** memory: Ultron uses `http://localhost:8888` when it is running (`ULTRON_HINDSIGHT_URL` to change,
+- **Hindsight** memory is used at `http://localhost:8888` when it is running (`ULTRON_HINDSIGHT_URL` to change,
   `off` to disable). Without it, memory calls fail quietly and turns are unaffected.
-- **Jev** decides whether a turn needs memory and whether to keep it; it needs `TYPESAFE_API_KEY`. Without Jev,
-  automatic memory stays off.
-
-## Results so far
-
-Measured with [`scripts/eval-quality.mjs`](scripts/eval-quality.mjs) against stock Pi on the same model
-(glm-5.3-flash, thinking `max`); every result file is in [`acceptance/quality/`](acceptance/quality).
-
-| Task set | Pi | Ultron |
-|---|---|---|
-| Hard set: 15 tasks (multi-file bugs, refactors, large data, log forensics), 2 trials | 27/30 | **29/30**, a third fewer tool calls, same speed |
-| Research pilot: find expired-certificate incidents among 157 reports (1 trial) | pass, 342 s | pass, **273 s**, 99 sub-model frames chosen unprompted |
-| Parallel work: 150 s test suite plus two bug fixes (2 trials) | 2/2 | 2/2, same speed |
-
-These are small samples on one model; treat them as early evidence, not benchmarks.
+- **Jev** gates memory and needs `TYPESAFE_API_KEY`. Without it, automatic memory stays off.
 
 ## Safety
 
 There is no sandbox. Model-written Python runs with your user's permissions, like Pi's `bash` tool. Resource limits
-apply (a memory cap over the kernel's whole process tree, CPU and wall-time budgets, per-turn token and turn limits),
-but they are not isolation. Run Ultron in a container or VM if you need a boundary; Pi's
+apply (the process-tree memory cap, CPU and wall-time budgets, per-turn token and turn limits), but they are not
+isolation. Run Ultron in a container or VM if you need a boundary; Pi's
 [containerization guide](packages/coding-agent/docs/containerization.md) applies.
+
+## Where the ideas come from
+
+Ultron combines ideas from several projects and papers:
+
+- **Prime Intellect's RLM harness**: the REPL as the sole tool, shell and MCP as Python skills, output truncation.
+- **NVIDIA's NOOA**: bounded previews instead of dumps, and agents as typed Python classes.
+- **Autolith**: bounded inference over inputs the root never reads, with contracts, repair and budget trees.
+- **LLM-as-Code**: context that collapses when work returns, and self-improvement committed as tested code.
+- **Unreal Agent**: long work that never blocks the turn.
+- **waku-agent**: memory behind a retrieval gate.
+
+[`supremeplan.md`](supremeplan.md) records how each one landed and what was measured.
 
 ## Development
 
 ```bash
 npm install --ignore-scripts
-npm run build:offline      # build all packages without refreshing model data
-npm run check              # lint, format, type check
-./test.sh                  # all tests
-npm run test:acceptance    # acceptance rows A01-A56, judged by the runner
+npm run build:offline           # build all packages without refreshing model data
+npm run check                   # lint, format, type check
+./test.sh                       # all tests
+npm run test:acceptance         # acceptance rows A01-A56, judged by the runner
 node scripts/pack-release.mjs   # build the self-contained release tarball (after a build)
 ```
 
@@ -103,5 +193,5 @@ Design and status: [`docs/implementation-status.md`](docs/implementation-status.
 ## Credits and license
 
 Ultron is built on [Pi](https://github.com/badlogic/pi-mono) by Mario Zechner and contributors, and keeps Pi's
-MIT license (see [LICENSE](LICENSE)). Pi's own documentation at [pi.dev](https://pi.dev) covers the interface,
+MIT license (see [LICENSE](LICENSE)). Pi's documentation at [pi.dev](https://pi.dev) covers the interface,
 providers, extensions and settings that Ultron shares.
