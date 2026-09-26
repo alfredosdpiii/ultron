@@ -28,8 +28,11 @@ test("extension tools that use the theme run in the session worker", async () =>
 }
 `,
 	);
+	// Extension tools are Python skills in the REPL by default: the tool runs in the worker with its context.
 	const provider = new ScriptedProvider((request) =>
-		request.turn === 0 ? { tool: "themed", args: {} } : { text: request.lastToolResult ?? "no result" },
+		request.turn === 0
+			? { tool: "rlm", args: { code: "print(await tools.themed())" } }
+			: { text: request.lastToolResult ?? "no result" },
 	);
 	await provider.start();
 	writeFileSync(join(agentDir, "models.json"), scriptedModelsJson(provider.baseUrl));

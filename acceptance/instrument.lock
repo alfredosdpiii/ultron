@@ -1,7 +1,7 @@
 {
 	"version": 1,
 	"algorithm": "sha256",
-	"manifest": "ca12c6fff78a7d43093bb7f2fce297a49fe7d5c8874c3d8766ba8ceeec85b515",
+	"manifest": "2955b4b94a419f1b28a3c8a794c93a1a6804c6e43b642cc4a521faf3f1089f5d",
 	"instrument": {
 		"acceptance/mutations.json": "1ff99ca3f89075496562a64bd2d5513c88e80c582d454125678f04bfc25fe23a",
 		"scripts/acceptance-lock.mjs": "0738f59da364f20af0634b28b9d32d70b2768f6d4cb6f2bf03cab13302923980",
@@ -60,6 +60,8 @@
 		"packages/coding-agent/test/ultron-async-cli.test.ts": "bd71b13099da5aa954af169315f5fc8d395c56d3940a3e8e7d208af8c4bf437d",
 		"packages/coding-agent/test/ultron-async-events.test.ts": "8d112c861e15c8a816dbe6c492e6b7ad215ff2f37af7ef6e0751237c3d819185",
 		"packages/coding-agent/test/ultron-context-control.test.ts": "7e181c53d0dca2157a94e295597a5380bfc698108cba434c5a5cdef5be797211",
+		"packages/coding-agent/test/ultron-extension-tools-cli.test.ts": "f15e8d21252f02f4ddb9eb6026fc2bdf27b031a1ca66b08f6c37c08f3bd5d117",
+		"packages/coding-agent/test/ultron-extension-tools.test.ts": "46c3e0531449242ca4a30c170689cde1376936ff6a9d5e069e78e2b740b1de69",
 		"packages/coding-agent/test/ultron-family.test.ts": "1e6b0106a2e450ba05458d80e8d5000d3098231230d919d614cfb561e94598b8",
 		"packages/coding-agent/test/ultron-grants.test.ts": "fc673e68e0c9418f8f202fad757f3020e218755730e412ccc54a1ca79d1a9a2f",
 		"packages/coding-agent/test/ultron-hints.test.ts": "220e54ec405a31dce10cc031ff9a081d1f0ebe5fabcd7336ec54a54a250e382b",

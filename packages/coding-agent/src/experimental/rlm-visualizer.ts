@@ -118,6 +118,25 @@ export interface RlmJob {
 	readonly tail?: string;
 }
 
+/**
+ * One tool call recorded by the worker, from `agents.status`: an extension or MCP tool called from the REPL
+ * (`source: "repl"`), or a tool the model called directly (`"native"`: native extension tools, Pi's tools).
+ */
+export interface RlmToolCall {
+	readonly id: string;
+	readonly name: string;
+	readonly label: string;
+	readonly status: string;
+	readonly source: "repl" | "native";
+	readonly lane?: string;
+	readonly startedAt?: number;
+	readonly endedAt?: number | null;
+	/** Bounded previews of the arguments and the result (or the last progress update). */
+	readonly input?: string;
+	readonly preview?: string;
+	readonly error?: string;
+}
+
 export interface RlmRootCell {
 	readonly toolCallId: string;
 	readonly code: string;
@@ -153,6 +172,8 @@ export interface RlmSnapshot {
 	readonly frames?: readonly RlmFrame[];
 	/** Host-owned shell jobs, newest first. */
 	readonly jobs?: readonly RlmJob[];
+	/** Extension/MCP tool calls from the REPL and tools the model called directly, newest first. */
+	readonly toolCalls?: readonly RlmToolCall[];
 	/** Last inspection failure, shown instead of stale data being mistaken for live data. */
 	readonly error?: string;
 	/** What the root model forgot, pinned, or noted in its own context (`ctx.state`). */
@@ -274,6 +295,7 @@ export function parseAgentsStatus(value: unknown): {
 	usage: RlmUsage | null;
 	limits: RlmLimits | null;
 	jobs: RlmJob[];
+	toolCalls: RlmToolCall[];
 } {
 	const body = record(value);
 	const tasks: RlmTask[] = [];
@@ -329,12 +351,29 @@ export function parseAgentsStatus(value: unknown): {
 			...pickStrings(job, ["lane", "tail"]),
 		});
 	}
+	const toolCalls: RlmToolCall[] = [];
+	for (const item of Array.isArray(body?.toolCalls) ? body.toolCalls : []) {
+		const call = record(item);
+		if (call === undefined || typeof call.id !== "string" || typeof call.status !== "string") continue;
+		const name = typeof call.name === "string" ? call.name : "tool";
+		toolCalls.push({
+			id: call.id,
+			name,
+			label: typeof call.label === "string" ? call.label : name,
+			status: call.status,
+			source: call.source === "native" ? "native" : "repl",
+			...(typeof call.startedAt === "number" ? { startedAt: call.startedAt } : {}),
+			...(typeof call.endedAt === "number" ? { endedAt: call.endedAt } : {}),
+			...pickStrings(call, ["lane", "input", "preview", "error"]),
+		});
+	}
 	return {
 		...(typeof body?.truncatedTasks === "number" ? { truncatedTasks: body.truncatedTasks } : {}),
 		tasks,
 		usage: (usage as RlmUsage | undefined) ?? null,
 		limits: (limits as RlmLimits | undefined) ?? null,
 		jobs,
+		toolCalls,
 	};
 }
 

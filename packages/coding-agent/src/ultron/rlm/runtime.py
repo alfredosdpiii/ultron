@@ -29,6 +29,7 @@ import agent_class_api
 from context_api import Context
 from infer_api import install as install_inference
 from hints_api import Hints
+from tools_api import Mcp, McpError, ToolCall, ToolError, ToolResult, Tools
 
 @dataclass
 class SpawnHandle:
@@ -609,6 +610,13 @@ class RuntimeState:
         self.namespace["edit"] = edit
         self.namespace["read"] = read
         self.namespace["hints"] = Hints(self.bridge)
+        # Extension tools (the pi-mcp-adapter's `mcp` gateway among them) as async skills.
+        self.namespace["tools"] = Tools(self.bridge)
+        self.namespace["mcp"] = Mcp(self.namespace["tools"])
+        self.namespace["ToolCall"] = ToolCall
+        self.namespace["ToolResult"] = ToolResult
+        self.namespace["ToolError"] = ToolError
+        self.namespace["McpError"] = McpError
         self.namespace["SpawnHandle"] = SpawnHandle
         self.namespace["ShellJob"] = ShellJob
         self.namespace["agents"] = Agents(self.bridge)

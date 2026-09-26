@@ -22,7 +22,7 @@ The asynchronous-execution work (Unreal Agent's model) added:
 
 | Row | Behavior |
 |---|---|
-| A56 | Long-running work does not block the turn and completion is delivered without polling: `bash(cmd, yield_after=)` jobs run in the host and survive the cell and kernel restarts; a completion is appended as a `<runtime_event>` that re-invokes an idle root once per batch or reaches a running turn at its next boundary, within the turn budget, never after an abort; root requests keep a byte-identical prefix |
+| A56 | Long-running work does not block the turn and completion is delivered without polling: `bash(cmd, yield_after=)` jobs and slow extension/MCP tool calls from the REPL run in the host and survive the cell and kernel restarts; a completion is appended as a `<runtime_event>` that re-invokes an idle root once per batch or reaches a running turn at its next boundary, within the turn budget, never after an abort; root requests keep a byte-identical prefix |
 
 ## How a row is judged
 

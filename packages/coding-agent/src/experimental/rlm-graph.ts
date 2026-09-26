@@ -1,6 +1,7 @@
 /**
  * The RLM run as a live graph: the root turn, its `rlm` cells, and everything the cells started (typed agent tasks,
- * `rlm.spawn` children, `rlm.infer` frames, `rlm.map` fan-outs, workflows with joins, shell jobs), with status glyphs,
+ * `rlm.spawn` children, `rlm.infer` frames, `rlm.map` fan-outs, workflows with joins, shell jobs, extension and MCP
+ * tool calls), plus tools the model called directly, with status glyphs,
  * elapsed time, spend, budget gauges and a kernel-pool strip.
  *
  * Pure and width-bounded: `buildRlmGraph` turns an inspection snapshot into nodes, `layoutGraph` flattens them with
@@ -17,6 +18,7 @@ import {
 	type RlmSnapshot,
 	type RlmStyle,
 	type RlmTask,
+	type RlmToolCall,
 	renderContextLines,
 	shortId,
 } from "./rlm-visualizer.ts";
@@ -31,6 +33,7 @@ export type GraphKind =
 	| "infer"
 	| "fanout"
 	| "job"
+	| "tool"
 	| "workflow"
 	| "earlier";
 
@@ -174,6 +177,8 @@ interface Mutable {
 	/** Where it attaches: a task id, a fan-out key, or a root-lane time for cell matching. */
 	parentTask?: string;
 	at?: number;
+	/** A tool the model called directly: it belongs to the turn, never to a cell running at the same time. */
+	outsideCells?: boolean;
 }
 
 function taskKind(task: RlmTask): GraphKind {
@@ -330,6 +335,54 @@ function jobNode(job: RlmJob, now: number): GraphNode {
 		...(endedAt === undefined ? (status === "running" ? {} : { endedAt: now }) : { endedAt }),
 		...(job.status === "completed" && job.exitCode !== 0 ? { note: `exit ${job.exitCode}` } : {}),
 		...(job.status !== "completed" && job.status !== "running" ? { note: job.status } : {}),
+		children: [],
+		details,
+	};
+}
+
+function toolCallStatus(call: RlmToolCall): GraphStatus {
+	switch (call.status) {
+		case "running":
+			return "running";
+		case "completed":
+			return "done";
+		case "cancelled":
+			return "cancelled";
+		case "interrupted":
+			return "incomplete";
+		default:
+			return "failed";
+	}
+}
+
+function toolCallNode(call: RlmToolCall, now: number): GraphNode {
+	const status = toolCallStatus(call);
+	const details: [string, string][] = [
+		["id", call.id],
+		["tool", call.name],
+		["via", call.source === "repl" ? "rlm cell (Python)" : "model tool call"],
+		["status", call.status],
+	];
+	if (call.lane) details.push(["lane", call.lane]);
+	if (call.input) details.push(["input", flat(call.input, 400)]);
+	if (call.error) details.push(["error", flat(call.error, 400)]);
+	else if (call.preview) details.push([status === "running" ? "progress" : "result", flat(call.preview, 400)]);
+	if (call.source === "repl") details.push(["fetch", `await tools.result("${call.id}")`]);
+	const endedAt = call.endedAt ?? undefined;
+	const note =
+		call.error !== undefined
+			? flat(call.error, 100)
+			: status === "done" && call.preview
+				? `→ ${flat(call.preview, 100)}`
+				: undefined;
+	return {
+		key: `tool:${call.id}`,
+		kind: "tool",
+		label: flat(call.label, 80),
+		status,
+		...(call.startedAt === undefined ? {} : { startedAt: call.startedAt }),
+		...(endedAt === undefined ? (status === "running" ? {} : { endedAt: now }) : { endedAt }),
+		...(note === undefined ? {} : { note }),
 		children: [],
 		details,
 	};
@@ -515,6 +568,19 @@ export function buildRlmGraph(snapshot: RlmSnapshot): GraphNode {
 		});
 	}
 
+	// Tool calls: from a cell (attached to the cell running when they started, like jobs), or made by the model
+	// directly (attached to the turn, or to the child task whose lane made them).
+	for (const call of snapshot.toolCalls ?? []) {
+		const node = toolCallNode(call, now);
+		const owner = call.lane && call.lane !== "main" ? laneTask.get(call.lane) : undefined;
+		items.push({
+			node,
+			...(owner ? { parentTask: owner } : {}),
+			...(call.startedAt === undefined ? {} : { at: call.startedAt }),
+			...(call.source === "native" ? { outsideCells: true } : {}),
+		});
+	}
+
 	// A parent chain that loops (a corrupt journal) is cut: its tasks attach as if their parent were unknown.
 	const parentOf = new Map(tasks.map((task) => [task.id, task.parentId]));
 	const inCycle = (id: string): boolean => {
@@ -548,7 +614,7 @@ export function buildRlmGraph(snapshot: RlmSnapshot): GraphNode {
 		}
 		const at = item.at;
 		const cell =
-			at === undefined
+			at === undefined || item.outsideCells
 				? undefined
 				: cells.find(
 						({ cell }) =>
@@ -1028,6 +1094,7 @@ export interface GraphTotals {
 	readonly tasks: number;
 	readonly failed: number;
 	readonly jobsRunning: number;
+	readonly toolsRunning: number;
 	readonly fanouts: readonly GraphNode[];
 	readonly cell?: GraphNode;
 	readonly nodes: number;
@@ -1038,6 +1105,7 @@ export function graphTotals(root: GraphNode): GraphTotals {
 	let tasks = 0;
 	let failed = 0;
 	let jobsRunning = 0;
+	let toolsRunning = 0;
 	let nodes = 0;
 	const fanouts: GraphNode[] = [];
 	const visit = (node: GraphNode): void => {
@@ -1047,13 +1115,23 @@ export function graphTotals(root: GraphNode): GraphTotals {
 		if (node.kind === "task" || node.kind === "child" || node.kind === "background") tasks++;
 		if (node.status === "failed" && node.kind !== "earlier") failed++;
 		if (node.kind === "job" && node.status === "running") jobsRunning++;
+		if (node.kind === "tool" && node.status === "running") toolsRunning++;
 		if (node.kind === "fanout") fanouts.push(node);
 		for (const child of node.children) if (node.kind !== "earlier") visit(child);
 	};
 	visit(root);
 	const cells = root.children.filter((child) => child.kind === "cell");
 	const cell = [...cells].reverse().find((child) => child.status === "running") ?? cells.at(-1);
-	return { running, tasks, failed, jobsRunning, fanouts, nodes, ...(cell === undefined ? {} : { cell }) };
+	return {
+		running,
+		tasks,
+		failed,
+		jobsRunning,
+		toolsRunning,
+		fanouts,
+		nodes,
+		...(cell === undefined ? {} : { cell }),
+	};
 }
 
 function countActiveTasks(root: GraphNode): number {
@@ -1111,6 +1189,7 @@ export function renderRlmFooter(
 		);
 	}
 	if (totals.jobsRunning > 0) parts.push(`${totals.jobsRunning} job${totals.jobsRunning === 1 ? "" : "s"}`);
+	if (totals.toolsRunning > 0) parts.push(`${totals.toolsRunning} tool call${totals.toolsRunning === 1 ? "" : "s"}`);
 	if (totals.failed > 0) parts.push(style.fg("error", `${totals.failed} failed`));
 	if (typeof graph.cost === "number" && graph.cost > 0) parts.push(formatCost(graph.cost));
 	const summary = `${style.fg("accent", `◆ rlm ${spinner}`)} ${style.fg("muted", parts.join(" · "))}`;

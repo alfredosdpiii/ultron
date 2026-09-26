@@ -25,6 +25,7 @@ import type { ModelRuntime } from "../core/model-runtime.ts";
 import type { ResourceLoader } from "../core/resource-loader.ts";
 import { SessionManager } from "../core/session-manager.ts";
 import { theme } from "../modes/interactive/theme/theme.ts";
+import { type ExtensionToolInfo, prepareToolArguments } from "../ultron/rlm/extension-tools.ts";
 import type { ExtensionUIBridge } from "./services/extension-ui-provider.ts";
 import type { LegacyExtensionCommandInfo, LegacyExtensionCommandResult } from "./services/legacy-extensions.ts";
 
@@ -42,6 +43,11 @@ export interface LegacyExtensionAdapterOptions {
 	readonly ui?: ExtensionUIBridge;
 	/** Pi's `ctx.mode` for the client the worker was started for. Defaults to `"tui"`. */
 	readonly mode?: ExtensionMode;
+	/**
+	 * Filters the active tool list an extension sets with `pi.setActiveTools` (extension tools that live in the REPL
+	 * stay out of the model's tool list).
+	 */
+	readonly filterActiveTools?: (names: readonly string[]) => string[];
 }
 
 /** Why the worker's Session started, as Pi's `session_start` reports it. */
@@ -63,6 +69,7 @@ export class LegacyExtensionAdapter {
 	readonly #systemPrompt: string;
 	readonly #onShutdown?: () => void;
 	readonly #sessionManager: SessionManager;
+	readonly #filterActiveTools: (names: readonly string[]) => string[];
 	#activeTools: string[] = [];
 	#shutdown: Omit<SessionShutdownEvent, "type"> = { reason: "quit" };
 	#bound = false;
@@ -75,6 +82,7 @@ export class LegacyExtensionAdapter {
 		this.#model = options.model;
 		this.#systemPrompt = options.systemPrompt;
 		this.#onShutdown = options.onShutdown;
+		this.#filterActiveTools = options.filterActiveTools ?? ((names) => [...names]);
 		this.#sessionManager = createSessionManagerFacade(options.session, options.cwd);
 		const extensions = options.resourceLoader.getExtensions();
 		const ui = options.ui;
@@ -106,6 +114,54 @@ export class LegacyExtensionAdapter {
 			.getAllRegisteredTools()
 			.map(({ definition }) => this.#wrapTool(definition))
 			.filter((tool) => tool.name !== "rlm" && tool.name !== "ipython");
+	}
+
+	/** Extension tools callable from the REPL (every registered tool except the REPL itself), read live. */
+	get replTools(): ExtensionToolInfo[] {
+		return this.#runner
+			.getAllRegisteredTools()
+			.filter(({ definition }) => definition.name !== "rlm" && definition.name !== "ipython")
+			.map(({ definition }) => ({
+				name: definition.name,
+				...(definition.label === undefined ? {} : { label: definition.label }),
+				description: definition.description,
+				parameters: definition.parameters,
+			}));
+	}
+
+	/**
+	 * Run extension tool `name` for a REPL call, as the harness would for a model call: arguments prepared and
+	 * validated against the tool's schema, the extension context with the UI bridge, and the cell's abort signal.
+	 */
+	async executeTool(
+		name: string,
+		toolCallId: string,
+		params: Record<string, unknown>,
+		signal: AbortSignal,
+		onUpdate: (partial: AgentToolResult<unknown>) => void,
+	): Promise<AgentToolResult<unknown>> {
+		const registered = this.#runner.getAllRegisteredTools().find(({ definition }) => definition.name === name);
+		if (!registered) throw new Error(`Unknown extension tool "${name}"`);
+		const definition = registered.definition;
+		const args = prepareToolArguments(
+			{
+				name: definition.name,
+				description: definition.description,
+				parameters: definition.parameters,
+				...(definition.prepareArguments === undefined
+					? {}
+					: { prepareArguments: definition.prepareArguments as (args: unknown) => unknown }),
+			},
+			params,
+		);
+		signal.throwIfAborted();
+		return (await definition.execute(
+			toolCallId,
+			args,
+			signal,
+			onUpdate as AgentToolUpdateCallback<unknown>,
+			this.#runner.createContext(),
+		)) as AgentToolResult<unknown>;
 	}
 
 	get toolInfos(): ToolInfo[] {
@@ -164,8 +220,8 @@ export class LegacyExtensionAdapter {
 				getActiveTools: () => [...this.#activeTools],
 				getAllTools: () => this.toolInfos,
 				setActiveTools: (names) => {
-					this.#activeTools = [...names];
-					void this.#lane.setActiveTools(names, BACKGROUND_CONTEXT);
+					this.#activeTools = this.#filterActiveTools(names);
+					void this.#lane.setActiveTools(this.#activeTools, BACKGROUND_CONTEXT);
 				},
 				refreshTools: () => {},
 				getCommands: () => [],

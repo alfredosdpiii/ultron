@@ -161,6 +161,17 @@ export interface Settings {
 	fullscreenScrollbar?: ScrollViewScrollbar; // default: "auto"; no effect in regular TUI mode
 	fullscreenCopyOnSelect?: boolean; // default: true; no effect in regular TUI mode
 	rootBudget?: RootBudgetSettings; // Ultron: per-root max_total_tokens / max_total_turns (nano-rlm policy knobs)
+	extensionTools?: ExtensionToolsSettings; // Ultron: extension tools in the REPL (default) or as native model tools
+}
+
+/**
+ * Ultron: where tools registered by extensions live. `mode: "repl"` (default) makes them Python skills in the RLM
+ * REPL only; `"native"` restores them as model tools. `native` lists tools that stay model tools in REPL mode.
+ * ULTRON_EXTENSION_TOOLS and ULTRON_NATIVE_EXTENSION_TOOLS override them.
+ */
+export interface ExtensionToolsSettings {
+	mode?: "repl" | "native";
+	native?: string[];
 }
 
 /** Ultron per-root policy knobs; `ULTRON_MAX_TOTAL_TOKENS` / `ULTRON_MAX_TOTAL_TURNS` override them. Unset: no limit. */
@@ -954,6 +965,19 @@ export class SettingsManager {
 		return {
 			...(maxTotalTokens === undefined ? {} : { maxTotalTokens }),
 			...(maxTotalTurns === undefined ? {} : { maxTotalTurns }),
+		};
+	}
+
+	/** Ultron's extension tool placement from settings; the environment applies on top. */
+	getExtensionToolsSettings(): ExtensionToolsSettings {
+		const configured = this.settings.extensionTools;
+		const mode = configured?.mode === "native" || configured?.mode === "repl" ? configured.mode : undefined;
+		const native = Array.isArray(configured?.native)
+			? configured.native.filter((name): name is string => typeof name === "string" && name.trim().length > 0)
+			: undefined;
+		return {
+			...(mode === undefined ? {} : { mode }),
+			...(native === undefined ? {} : { native }),
 		};
 	}
 

@@ -1,6 +1,7 @@
 /**
  * The RLM REPL as the root agent's only built-in tool (nano-rlm's design):
- * - the default tool set is [rlm] plus extension tools; ULTRON_TOOLS=native restores Pi's read/edit/write/bash;
+ * - the default tool set is [rlm] (extension tools are Python skills in the REPL); ULTRON_TOOLS=native restores Pi's
+ *   read/edit/write/bash and the extension tools as native tools;
  * - `bash` and `edit` are pre-imported async skills in the kernel, with nano-rlm's edit semantics;
  * - tool results are middle-truncated at a byte budget and a large last value is shown by reference;
  * - the system prompt carries the runtime guide, and a scripted model edits a file through `rlm` + `edit`.
@@ -280,7 +281,9 @@ describe("CLI with the RLM-only tool set", () => {
 	/** The model reads greet.py, fixes it with the edit skill, runs it through bash, and reports the output. */
 	function script(request: ScriptedRequest): ScriptedReply {
 		if (request.lastUser.includes("use the probe tool")) {
-			return request.lastToolResult === undefined ? { tool: "probe", args: {} } : { text: request.lastToolResult };
+			return request.lastToolResult === undefined
+				? { tool: "rlm", args: { code: "print(await tools.probe())" } }
+				: { text: request.lastToolResult };
 		}
 		if (request.lastUser.includes("fix greet.py")) {
 			if (request.lastToolResult === undefined)
@@ -349,18 +352,19 @@ describe("CLI with the RLM-only tool set", () => {
 		return client;
 	}
 
-	test("the model gets rlm plus extension tools, and edits and runs a file through the skills", async () => {
+	test("the model gets only rlm, calls an extension tool from Python, and edits and runs a file through the skills", async () => {
 		const client = startClient(["--no-session"]);
 		await client.start();
 		await client.promptAndWait("use the probe tool", undefined, 60_000);
 		expect(await client.getLastAssistantText()).toBe("probed");
-		expect(toolNames(provider.requests[0]!)).toEqual(["rlm", "probe"]);
+		expect(toolNames(provider.requests[0]!)).toEqual(["rlm"]);
 		const system = provider.requests[0]!.system;
 		expect(system).toContain("- rlm: Run Python in your persistent REPL");
 		expect(system).not.toContain("- bash:");
 		expect(system).toContain("<runtime>");
 		expect(system).toContain("## Delegation");
 		expect(system).toContain("Do all work through the rlm tool");
+		expect(system).toContain("- probe: An extension tool");
 
 		const events = await client.promptAndWait("fix greet.py", undefined, 120_000);
 		const started = events.filter((event) => event.type === "tool_execution_start");

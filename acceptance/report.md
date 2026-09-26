@@ -1,6 +1,6 @@
 # Ultron A01-A56 acceptance report
 
-Generated 2026-09-26T14:27:49.354Z by `npm run test:acceptance`. Unavailable is never passed; partial evidence is never a pass.
+Generated 2026-09-26T16:16:28.739Z by `npm run test:acceptance`. Unavailable is never passed; partial evidence is never a pass.
 
 - Instrument lock: instrument lock matches
 - Test runner: exit 0
@@ -63,4 +63,4 @@ Generated 2026-09-26T14:27:49.354Z by `npm run test:acceptance`. Unavailable is 
 | A53 | passed | 6/6 | - |
 | A54 | passed | 1/1 | - |
 | A55 | passed | 8/8 | - |
-| A56 | passed | 31/31 | - |
+| A56 | passed | 35/35 | - |

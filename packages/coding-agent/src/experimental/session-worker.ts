@@ -45,7 +45,7 @@ import { configureHttpDispatcher } from "../core/http-dispatcher.ts";
 import { ModelRegistry } from "../core/model-registry.ts";
 import { findInitialModel, resolveCliModel } from "../core/model-resolver.ts";
 import { ModelRuntime } from "../core/model-runtime.ts";
-import { DefaultResourceLoader } from "../core/resource-loader.ts";
+import { DefaultResourceLoader, type ResourceLoader } from "../core/resource-loader.ts";
 import { SettingsManager } from "../core/settings-manager.ts";
 import { buildSystemPrompt } from "../core/system-prompt.ts";
 import { bashToolSystemPromptContribution, createLocalBashOperations } from "../core/tools/bash.ts";
@@ -80,6 +80,15 @@ import { createPredictAdapter } from "../ultron/predict-adapter.ts";
 import { createProgressModule } from "../ultron/progress.ts";
 import { createReleaseGateModule } from "../ultron/release-gate.ts";
 import { createSessionDefinitionStore } from "../ultron/rlm/definition-registry.ts";
+import {
+	ExtensionToolCalls,
+	type ExtensionToolInfo,
+	extensionToolMode,
+	modelExtensionToolNames,
+	nativeExtensionToolAllowlist,
+	type ToolCallEnd,
+	toolCallSummary,
+} from "../ultron/rlm/extension-tools.ts";
 import { CellHints, hintMaxPerTag, hintsEnabled, readHandleBytes } from "../ultron/rlm/hints.ts";
 import { runHostBash } from "../ultron/rlm/host-bash.ts";
 import { createSessionModuleStore, type HostCaller } from "../ultron/rlm/host-module.ts";
@@ -1507,8 +1516,22 @@ async function createCodingAgentHarness(
 	const effectiveActiveToolNames =
 		options.noTools === "builtin" ? activeToolNames.filter((name) => name === "rlm") : activeToolNames;
 	const contextFiles = resourceLoader.getAgentsFiles().agentsFiles;
-	const systemPrompt =
-		options.systemPrompt ??
+	// Extension tools live in the REPL by default (ULTRON_EXTENSION_TOOLS=native, ULTRON_TOOLS=native or the
+	// `extensionTools` setting restore them as model tools; ULTRON_NATIVE_EXTENSION_TOOLS keeps some native).
+	const extensionToolSettings = settingsManager.getExtensionToolsSettings();
+	const extensionMode = extensionToolMode(process.env, extensionToolSettings);
+	const extensionAllowlist = nativeExtensionToolAllowlist(process.env, extensionToolSettings);
+	let legacyExtensions: LegacyExtensionAdapter | undefined;
+	/** Extension tools as registered now: live once the adapter exists, else as the extensions loaded them. */
+	const currentExtensionTools = (): ExtensionToolInfo[] =>
+		legacyExtensions?.replTools ?? loadedExtensionTools(resourceLoader);
+	const nativeExtensionTools = (names: readonly string[]): string[] =>
+		modelExtensionToolNames(names, {
+			mode: extensionMode,
+			allowlist: extensionAllowlist,
+			...(options.tools === undefined ? {} : { explicit: options.tools }),
+		});
+	const renderSystemPrompt = (extensionTools: readonly ExtensionToolInfo[]): string =>
 		buildSystemPrompt({
 			cwd: options.metadata.cwd,
 			// Only the tools the model can call, as Pi lists them: `--tools`/`--exclude-tools` drop their snippets too.
@@ -1533,12 +1556,26 @@ async function createCodingAgentHarness(
 				"runtime",
 				rlmRuntimePrompt(effectiveActiveToolNames, {
 					asyncEvents: asyncEventsEnabled(process.env.ULTRON_ASYNC_EVENTS),
+					extensionTools,
+					mcpServers: mcpServerNames(extensionTools),
+					nativeExtensionTools: nativeExtensionTools(extensionTools.map((tool) => tool.name)),
 				}),
 			),
 			contextFiles,
 			skills: resourceLoader.getSkills().skills,
 			appendSystemPrompt: resourceLoader.getAppendSystemPrompt().join("\n\n"),
 		});
+	// Rendered again only when the extension tool list changes (the guide lists them), so the prompt-cache prefix
+	// stays stable.
+	let promptCache: { key: string; text: string } | undefined;
+	const currentSystemPrompt = (): string => {
+		if (options.systemPrompt !== undefined) return options.systemPrompt;
+		const extensionTools = currentExtensionTools();
+		const key = JSON.stringify(extensionTools.map((tool) => [tool.name, tool.description]));
+		if (promptCache?.key !== key) promptCache = { key, text: renderSystemPrompt(extensionTools) };
+		return promptCache.text;
+	};
+	const systemPrompt = currentSystemPrompt();
 	traceStartup("worker.harness-create");
 	const harness = (
 		await AgentHarness.create(
@@ -1551,7 +1588,7 @@ async function createCodingAgentHarness(
 				activeToolNames: effectiveActiveToolNames,
 				toolContext: { env: executionEnv },
 				resources,
-				systemPrompt,
+				systemPrompt: () => currentSystemPrompt(),
 				entryProjectors: CONTEXT_ENTRY_PROJECTORS,
 				streamOptions: providerRequestOptions(settingsManager),
 				retry: settingsManager.getRetrySettings(),
@@ -1559,7 +1596,6 @@ async function createCodingAgentHarness(
 			TODO_CONTEXT,
 		)
 	).harness;
-	let legacyExtensions: LegacyExtensionAdapter | undefined;
 	// A worker started for an interactive client (Pi's TUI or RPC mode) queues extension UI for it until it attaches.
 	const extensionUI = new ExtensionUIBridge({
 		expectClient: options.extensionMode === "tui" || options.extensionMode === "rpc",
@@ -1580,6 +1616,12 @@ async function createCodingAgentHarness(
 			cwd: options.metadata.cwd,
 			model: resolved.model,
 			systemPrompt,
+			// Extension tools that live in the REPL stay out of the model's tool list whatever an extension activates.
+			filterActiveTools: (names) => {
+				const registered = new Set(legacyExtensions?.replTools.map((tool) => tool.name) ?? []);
+				const native = new Set(nativeExtensionTools([...registered]));
+				return names.filter((name) => !registered.has(name) || native.has(name));
+			},
 		});
 		legacyExtensions.bind(
 			forked === undefined
@@ -1588,7 +1630,8 @@ async function createCodingAgentHarness(
 		);
 		const extensionTools = legacyExtensions.tools;
 		await harness.setTools([...tools, ...extensionTools], TODO_CONTEXT);
-		const extensionToolNames = extensionTools.map((tool) => tool.name);
+		// By default the model's tool list stays [rlm]: extension tools are Python skills (`tools`, `mcp`).
+		const extensionToolNames = nativeExtensionTools(extensionTools.map((tool) => tool.name));
 		const extensionActiveToolNames =
 			options.noTools === "all"
 				? []
@@ -1658,6 +1701,23 @@ async function createCodingAgentHarness(
 				if (event) events?.publish(event);
 			},
 		});
+		// Extension tool calls from the REPL (`tools.call`, `mcp.call`), and every non-rlm tool the model calls
+		// directly, recorded for the graph; a detached REPL call's end is announced like a job's.
+		const adapter = legacyExtensions;
+		const toolCalls = new ExtensionToolCalls({
+			runner: () => ({
+				tools: () => adapter.replTools,
+				execute: (name, toolCallId, params, signal, onUpdate) =>
+					adapter.executeTool(name, toolCallId, params, signal, onUpdate),
+			}),
+			store: createSessionModuleStore(session, "tool-calls"),
+			holdActivity: () => holdActivity?.() ?? (() => {}),
+			onEnd: (end) => {
+				const event = toolEvent(end);
+				if (event) events?.publish(event);
+			},
+		});
+		const removeToolCallListeners = recordNativeToolCalls(harness, toolCalls);
 		host = new NativeRlmHost(harness, lane, {
 			store: createSessionTaskStore(session),
 			definitionStore: createSessionDefinitionStore(session),
@@ -1688,6 +1748,24 @@ async function createCodingAgentHarness(
 						// Last output, bounded, for the TUI graph's job details.
 						tail: job.tail.slice(-160),
 					})),
+				// Extension and native tool calls, for the graph's tool nodes.
+				toolCalls: toolCalls
+					.list()
+					.filter((call) => caller.lane === "main" || call.lane === caller.lane)
+					.slice(0, 40)
+					.map((call) => ({
+						id: call.id,
+						lane: call.lane,
+						source: call.source,
+						name: call.name,
+						label: call.label,
+						status: call.status,
+						startedAt: call.startedAt,
+						endedAt: call.endedAt,
+						input: call.input,
+						...(call.preview === undefined ? {} : { preview: call.preview }),
+						...(call.error === undefined ? {} : { error: call.error }),
+					})),
 			}),
 			services: branchedServices,
 			beforeLaneReuse: (lane) => rlmTool.resetScratch(lane),
@@ -1705,6 +1783,7 @@ async function createCodingAgentHarness(
 			},
 			modules: [
 				shellJobs.module,
+				toolCalls.module,
 				cellHints.module,
 				contextControl.module,
 				inference.module,
@@ -1763,8 +1842,9 @@ async function createCodingAgentHarness(
 					return `cost cap of ${rootId} reached or unenforceable`;
 				return undefined;
 			},
-			// Esc on a root turn stops the shell jobs it started.
-			onRootAborted: (rootId) => shellJobs.cancelRoot(rootId),
+			// Esc on a root turn stops the shell jobs and extension tool calls it started.
+			onRootAborted: (rootId) =>
+				Promise.all([shellJobs.cancelRoot(rootId), toolCalls.cancelRoot(rootId)]).then(() => {}),
 		});
 		const removeAsyncEvents = events.install();
 		// Top-level work admitted after the turn ends (a schedule firing) gets a root of its own.
@@ -1840,6 +1920,7 @@ async function createCodingAgentHarness(
 			harness,
 			closeRlm: async () => {
 				removeRootTurnListener();
+				removeToolCallListeners();
 				removeAsyncEvents();
 				await events?.close();
 				removeContextControl();
@@ -1869,12 +1950,16 @@ async function createCodingAgentHarness(
 					const aborted = (rootId: string | undefined) => events?.rootAborted(rootId) ?? false;
 					const counts = {
 						jobs: shellJobs.running("main", aborted),
+						tools: toolCalls.running("main", aborted),
 						tasks: host?.pendingRootNotifications(aborted) ?? 0,
 						events: events.pendingFor("main"),
 						// A run an event just started, before its start reaches the client.
 						running: (await lane.inspectExecution(context)).current === null ? 0 : 1,
 					};
-					return { pending: counts.jobs + counts.tasks + counts.events + counts.running > 0, ...counts };
+					return {
+						pending: counts.jobs + counts.tools + counts.tasks + counts.events + counts.running > 0,
+						...counts,
+					};
 				}
 				if (request === "jev.decisions") {
 					return {
@@ -1942,6 +2027,66 @@ function jobEvent(end: ShellJobEnd): RuntimeEvent | undefined {
 		lane: end.job.lane,
 		...(end.job.rootId === null ? {} : { rootId: end.job.rootId }),
 	};
+}
+
+/** The completion event of a detached REPL tool call the model is not already waiting on. */
+function toolEvent(end: ToolCallEnd): RuntimeEvent | undefined {
+	if (end.awaited || end.rootAborted || end.call.source !== "repl") return undefined;
+	return {
+		kind: "tool_done",
+		id: end.call.id,
+		status: end.call.status,
+		summary: toolCallSummary(end.call),
+		fetch: `await tools.result("${end.call.id}")`,
+		lane: end.call.lane,
+		...(end.call.rootId === null ? {} : { rootId: end.call.rootId }),
+	};
+}
+
+/** Record every tool the model calls directly, except the REPL itself, for the graph. */
+function recordNativeToolCalls(harness: AgentHarnessInstance, calls: ExtensionToolCalls): () => void {
+	const removers = [
+		harness.events.on("tool_start", (event) => {
+			if (event.toolName !== "rlm") calls.nativeStarted(event);
+		}),
+		harness.events.on("tool_update", (event) => {
+			if (event.toolName !== "rlm") calls.nativeUpdated(event);
+		}),
+		harness.events.on("tool_end", (event) => {
+			if (event.toolName !== "rlm") calls.nativeEnded(event);
+		}),
+		harness.events.on("run_end", (event) => calls.nativeInterrupted(event.lane)),
+	];
+	return () => {
+		for (const remove of removers) remove();
+	};
+}
+
+/** Extension tools as the extensions registered them while loading (before the worker's adapter exists). */
+function loadedExtensionTools(resourceLoader: ResourceLoader): ExtensionToolInfo[] {
+	const byName = new Map<string, ExtensionToolInfo>();
+	for (const extension of resourceLoader.getExtensions().extensions)
+		for (const { definition } of extension.tools.values())
+			if (!byName.has(definition.name) && definition.name !== "rlm" && definition.name !== "ipython")
+				byName.set(definition.name, {
+					name: definition.name,
+					...(definition.label === undefined ? {} : { label: definition.label }),
+					description: definition.description,
+					parameters: definition.parameters,
+				});
+	return [...byName.values()];
+}
+
+/** MCP server names from the pi-mcp-adapter's gateway description ("Servers: a, b"). */
+function mcpServerNames(tools: readonly ExtensionToolInfo[]): string[] {
+	const gateway = tools.find((tool) => tool.name === "mcp");
+	const line = gateway?.description.match(/^Servers: (.+)$/m)?.[1];
+	return line === undefined
+		? []
+		: line
+				.split(",")
+				.map((name) => name.trim())
+				.filter(Boolean);
 }
 
 /** The completion event of a detached task (`rlm.spawn`, `agents.spawn`, `background.start`). */

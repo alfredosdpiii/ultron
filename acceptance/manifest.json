@@ -1133,10 +1133,24 @@
             "blocked-on-job: over 60 s awaiting job.result / rlm.collect / agents.result while events are on",
             "poll-loop: repeated status calls in a cell or across cells, or sleeping in a loop around a check"
           ]
+        },
+        {
+          "file": "packages/coding-agent/test/ultron-extension-tools.test.ts",
+          "tests": [
+            "aborting the cell cancels a call it is waiting on, and nothing is announced",
+            "a slow call detaches after the yield time; its end is reported for a completion event",
+            "yield_after returns a handle: result() waits, cancel() stops, a root abort cancels"
+          ]
+        },
+        {
+          "file": "packages/coding-agent/test/ultron-extension-tools-cli.test.ts",
+          "tests": [
+            "a wait that outlives ULTRON_TOOL_YIELD_AFTER detaches, and its tool_done event re-invokes the model"
+          ]
         }
       ],
       "status_when_green": "passed",
-      "notes": "Host-owned shell jobs (bash yield_after) are tested with a real kernel and the real bash executor; the dispatcher's delivery rules (one run per coalesced batch, steer at the boundary and reclaim, turn budget and chain cap, no restart after an abort, child lanes, off) against a fake lane with the harness's queue semantics; and the real CLI (scripted provider, RPC and -p) for re-invocation by a job's and a child's completion, boundary delivery, Esc cancelling the job, the turn budget, the byte-identical request prefix, and collapse rewriting only the newest cell output. A plain bash still running after ULTRON_BASH_YIELD_AFTER (30 s) continues as a job and returns a running string with its handle; job-detached, blocked-on-job and poll-loop hints point the model at events instead of waiting or polling."
+      "notes": "Host-owned shell jobs (bash yield_after) are tested with a real kernel and the real bash executor; the dispatcher's delivery rules (one run per coalesced batch, steer at the boundary and reclaim, turn budget and chain cap, no restart after an abort, child lanes, off) against a fake lane with the harness's queue semantics; and the real CLI (scripted provider, RPC and -p) for re-invocation by a job's and a child's completion, boundary delivery, Esc cancelling the job, the turn budget, the byte-identical request prefix, and collapse rewriting only the newest cell output. A plain bash still running after ULTRON_BASH_YIELD_AFTER (30 s) continues as a job and returns a running string with its handle; job-detached, blocked-on-job and poll-loop hints point the model at events instead of waiting or polling. Extension and MCP tool calls from the REPL (`tools.call`, `mcp.call`) follow the same model: a call still running after ULTRON_TOOL_YIELD_AFTER (else ULTRON_BASH_YIELD_AFTER, 30 s) keeps running in the worker, returns a running result with its ToolCall handle, and its end arrives as a `tool_done` event (real kernel with a fake pi-mcp-adapter-shaped extension, and the real CLI)."
     }
   ]
 }

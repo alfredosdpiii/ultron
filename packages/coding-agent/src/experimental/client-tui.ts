@@ -95,6 +95,7 @@ import {
 	type RlmStyle,
 	type RlmTask,
 	type RlmTiming,
+	type RlmToolCall,
 	type RlmUsage,
 } from "./rlm-visualizer.ts";
 import { messageText } from "./rpc-events.ts";
@@ -206,6 +207,7 @@ interface RlmPollState {
 	context?: RlmContextState | null;
 	frames: RlmFrame[];
 	jobs: RlmJob[];
+	toolCalls?: RlmToolCall[];
 	truncatedTasks?: number;
 	error?: string;
 }
@@ -1950,6 +1952,7 @@ export class ExperimentalClientTui implements Component {
 				next.usage = parsed.usage;
 				next.limits = parsed.limits;
 				next.jobs = parsed.jobs;
+				next.toolCalls = parsed.toolCalls;
 				if (parsed.truncatedTasks === undefined) delete next.truncatedTasks;
 				else next.truncatedTasks = parsed.truncatedTasks;
 				next.timing = this.#rlmClock.timings(parsed.tasks, parsed.usage, Date.now());
@@ -2013,6 +2016,7 @@ export class ExperimentalClientTui implements Component {
 			context: state.context ?? null,
 			frames: state.frames,
 			jobs: state.jobs,
+			...(state.toolCalls === undefined ? {} : { toolCalls: state.toolCalls }),
 			cells,
 			turn,
 			...(state.truncatedTasks === undefined ? {} : { truncatedTasks: state.truncatedTasks }),

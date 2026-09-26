@@ -30,10 +30,11 @@ export function defaultBuiltinToolNames(env: NodeJS.ProcessEnv = process.env): s
 
 export const RLM_TOOL_DESCRIPTION = [
 	"Run a Python cell in your persistent RLM REPL. Variables, imports and functions persist across calls; top-level `await` works; the value of the last expression is shown along with anything printed, and stays available as `_`.",
-	"Pre-imported, nothing to import: `bash`, `edit`, `read`, `rlm`, `agents`, `workflows`, `background`, `memory`, `ctx`, `skills`, `hints`, `agent`/`Agent`, `Budget`, `state`, `jev`, `preview`, `asyncio`.",
+	"Pre-imported, nothing to import: `bash`, `edit`, `read`, `tools`, `mcp`, `rlm`, `agents`, `workflows`, `background`, `memory`, `ctx`, `skills`, `hints`, `agent`/`Agent`, `Budget`, `state`, `jev`, `preview`, `asyncio`.",
 	"- `out = await bash('''command''')` runs a shell command in the working directory and returns its output as a string, with `[exit code N]` appended on failure (`out.exit_code`, `out.ok`). A command still running after 30 s keeps running as a job (`out.running`, `out.job`) and its completion arrives later as a `<runtime_event>` message, so never wait or poll for it; `yield_after=0` detaches at once, `yield_after=None` blocks.",
 	'- `await edit(path="file.py", old_str=..., new_str=...)` replaces exactly one occurrence and raises ValueError when old_str is absent or appears more than once. Create new files with ordinary Python (`Path(p).write_text(...)`).',
 	"- `await read(path)` returns a file's text, or a handle for a file over 256 KiB. Large inputs stay out of your context: `h = await rlm.load(path_or_text)` returns a handle (size, digest; `h.search`, `h.lines`, `h.chunks`), and `await rlm.infer(task, context=[views], contract=...)` / `await rlm.map(...)` run bounded sub-model frames that return validated values.",
+	'- Extension tools and MCP servers are Python skills too: `await tools.call(name, {...})`, `await mcp.call("server_tool", key=value)`; a call still running after 30 s continues in the host and its completion arrives as a `<runtime_event>`.',
 	'- `h = await rlm.spawn(task, name="short-name")` starts a subagent with its own REPL; `await rlm.collect([h.rlm_child_id])` waits for results. `await agents.invoke(definition, input)` runs a typed agent; `await workflows.run(nodes)` runs an agent graph.',
 	"- `state` is a dict for data that must survive kernel restarts. Output over about 20 KB is cut in the middle and a large last value is shown by reference (type, size, head, tail): keep data in variables and print what you need.",
 ].join("\n");
@@ -91,7 +92,7 @@ The APIs are pre-imported (nothing to import) and async: use top-level \`await\`
 Every lane (you, and each subagent) has its own kernel. A supervisor outside the kernel (the Ultron host) owns subagents, tasks and their results: handles in Python variables are references to supervisor-owned work, and losing a variable or restarting the kernel does not cancel it (\`await rlm.list_subagents()\` and \`await agents.tasks()\` recover them). If a cell fails because the kernel was stopped (a memory or CPU limit), the next cell starts a fresh kernel: re-create imports, functions and variables. Idle kernels may be evicted and restored later with plain data variables (numbers, strings, lists, dicts) intact but not functions, modules or objects; the \`state\` dict is the place for data that must survive.`;
 
 /** How completion events reach the model (ULTRON_ASYNC_EVENTS, on by default). */
-const ASYNC_EVENTS = `Nothing needs polling. When a job (a detached \`bash\`), a subagent, a spawned task or a background job finishes while you are not waiting on it, a \`<runtime_event kind="job_done|child_done|task_done" id=... status=... summary=... fetch=...>\` message is added to your conversation, and if you had already ended your turn it starts a new one. So start long work, continue with other work (or end your turn), and act on the event when it arrives; never sleep, poll or loop waiting for results. Batch independent operations into one cell with \`await asyncio.gather(...)\` instead of one cell each.`;
+const ASYNC_EVENTS = `Nothing needs polling. When a job (a detached \`bash\`), a detached extension or MCP tool call, a subagent, a spawned task or a background job finishes while you are not waiting on it, a \`<runtime_event kind="job_done|tool_done|child_done|task_done" id=... status=... summary=... fetch=...>\` message is added to your conversation, and if you had already ended your turn it starts a new one. So start long work, continue with other work (or end your turn), and act on the event when it arrives; never sleep, poll or loop waiting for results. Batch independent operations into one cell with \`await asyncio.gather(...)\` instead of one cell each.`;
 
 const ASYNC_EVENTS_OFF =
 	"Completions are not announced in this session (ULTRON_ASYNC_EVENTS=off): when you need a result, wait for it with `await job.result()`, `await rlm.collect(...)` or `await agents.result(id)`. Batch independent operations into one cell with `await asyncio.gather(...)` instead of one cell each.";
@@ -113,13 +114,71 @@ const AGENT_CLASSES = `## Agents as classes\n${AGENT_CLASS_PROMPT}`;
 const MEMORY = `## Memory and other APIs
 \`await memory.prepare(query)\` recalls long-term memory relevant to a query; \`await memory.propose(text, evidence)\` retains a durable fact. \`await jev.triage(prompt)\` rates a request. \`preview(value)\` gives a bounded preview of a large object. \`state\` survives kernel restarts. Use \`help(obj)\` to see a signature before guessing.`;
 
+/** An extension tool as the runtime guide lists it. */
+export interface ExtensionToolSummary {
+	readonly name: string;
+	readonly description: string;
+}
+
+/** At most this many extension tools are listed by name in the guide; `tools.list()` shows the rest. */
+export const EXTENSION_TOOLS_LISTED = 12;
+
+/**
+ * How to call extension tools (and MCP servers through the pi-mcp-adapter's `mcp` gateway) from Python. Bounded:
+ * a dozen tools, one line each, and the server names.
+ */
+export function extensionToolsPrompt(
+	tools: readonly ExtensionToolSummary[],
+	options: { mcpServers?: readonly string[]; native?: readonly string[] } = {},
+): string | undefined {
+	const repl = tools.filter((tool) => !options.native?.includes(tool.name));
+	if (repl.length === 0) return undefined;
+	const line = (text: string) => {
+		const flat = text.replace(/\s+/g, " ").trim();
+		return flat.length > 120 ? `${flat.slice(0, 119)}…` : flat;
+	};
+	const listed = repl
+		.slice(0, EXTENSION_TOOLS_LISTED)
+		.map((tool) => `- ${tool.name}: ${line(tool.description) || "(no description)"}`);
+	if (repl.length > EXTENSION_TOOLS_LISTED)
+		listed.push(`- … ${repl.length - EXTENSION_TOOLS_LISTED} more: \`await tools.list()\``);
+	const hasMcp = repl.some((tool) => tool.name === "mcp");
+	const servers = (options.mcpServers ?? []).slice(0, 12);
+	const parts = [
+		"## Extension tools",
+		`Tools from Pi extensions are pre-imported async skills in the REPL, not separate tools. \`r = await tools.call("name", {"key": value})\` or \`await tools.<name>(key=value)\` runs one in the host with its real context and returns a ToolResult: the text as a string (kept whole up to 256 KiB, so keep it in a variable and print only what you need), \`.details\` (structured, or None) and \`.json()\` to parse a JSON reply; a failing tool raises ToolError. \`await tools.list()\` and \`await tools.describe(name)\` give names, descriptions and JSON-schema parameters. Available:\n${listed.join("\n")}`,
+	];
+	if (hasMcp)
+		parts.push(
+			`MCP servers${servers.length > 0 ? ` (${servers.join(", ")})` : ""} are reached through the \`mcp\` namespace: \`await mcp.servers()\`, \`await mcp.tools("server")\` (tool names), \`await mcp.describe("tool")\` (its parameters), \`await mcp.search("query")\`, and \`r = await mcp.call("tool", key=value, ...)\`, whose keyword arguments are the MCP tool's arguments (or \`await mcp.<server>.<tool>(...)\`, with \`-\` in the server name written as \`_\`). Gateway errors (unknown tool, server not connected, auth required) raise McpError.`,
+		);
+	parts.push(
+		`Slow calls never hold you: a plain call still running after 30 s keeps running in the host (\`r.running\` True, \`r.call\` its ToolCall) and its completion arrives as a \`<runtime_event kind="tool_done">\` whose fetch returns the result (\`await tools.result(id)\`). \`yield_after=0\` returns a ToolCall handle at once (\`await call.result()\` waits, \`await call.cancel()\` stops it); \`yield_after=None\` waits however long it takes. Run independent calls together in one cell with \`asyncio.gather\` and keep ids and results in variables. For a start-run/wait-run pair (such as Exa's \`exa_agent_create_run\` and \`exa_agent_wait_run\`), start every run in one cell, then leave the waits running as calls instead of blocking the turn:
+\`\`\`python
+queries = ["first question", "second question"]
+runs = await asyncio.gather(*(mcp.call("exa-agent_exa_agent_create_run", query=q, effort="medium") for q in queries))
+run_ids = [r.json()["id"] for r in runs]  # the id field as the reply names it: print(runs[0]) once if unsure
+waits = await asyncio.gather(*(mcp.call("exa-agent_exa_agent_wait_run", run_id=i, yield_after=0) for i in run_ids))
+\`\`\`
+Then do other work or end your turn: each wait's completion arrives as a runtime event.`,
+	);
+	return parts.join("\n\n");
+}
+
 /**
  * The runtime guide for the system prompt when `rlm` is among the active tools. It tells the model how to
  * work in the REPL; when Pi's native bash or edit tools are active too, the skill lines say so.
  */
 export function rlmRuntimePrompt(
 	activeTools: readonly string[],
-	options: { asyncEvents?: boolean } = {},
+	options: {
+		asyncEvents?: boolean;
+		/** Extension tools callable from the REPL, and MCP servers behind the `mcp` gateway. */
+		extensionTools?: readonly ExtensionToolSummary[];
+		mcpServers?: readonly string[];
+		/** Extension tools that are native model tools as well (they are still callable from Python). */
+		nativeExtensionTools?: readonly string[];
+	} = {},
 ): string | undefined {
 	if (!activeTools.includes("rlm")) return undefined;
 	const nativeBash = activeTools.includes("bash");
@@ -132,10 +191,15 @@ export function rlmRuntimePrompt(
 		nativeEdit ? EDIT_SKILL_WITH_TOOL : EDIT_SKILL,
 		PROJECT_ENV,
 	];
+	const extensionTools = extensionToolsPrompt(options.extensionTools ?? [], {
+		...(options.mcpServers === undefined ? {} : { mcpServers: options.mcpServers }),
+		...(options.nativeExtensionTools === undefined ? {} : { native: options.nativeExtensionTools }),
+	});
 	return [
 		`${RUNTIME}\n\n${options.asyncEvents === false ? ASYNC_EVENTS_OFF : ASYNC_EVENTS}`,
 		BOUNDED_INFERENCE,
 		skills.join("\n\n"),
+		...(extensionTools === undefined ? [] : [extensionTools]),
 		DELEGATION,
 		CONTEXT,
 		CODE_SKILLS,

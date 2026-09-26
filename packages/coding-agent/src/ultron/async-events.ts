@@ -1,7 +1,8 @@
 /**
  * Completion events instead of polling (Unreal Agent's asynchronous execution). When detached work ends (a shell
- * job started with `yield_after`, an `rlm.spawn` child, an `agents.spawn` task or a background job), the host
- * appends one short `ultron-runtime-event` custom message to the transcript of the lane that owns the work:
+ * job started with `yield_after`, a detached extension/MCP tool call, an `rlm.spawn` child, an `agents.spawn` task or a
+ * background job), the host appends one short `ultron-runtime-event` custom message to the transcript of the lane
+ * that owns the work:
  *
  *   <runtime_event kind="job_done" id="job-1a2b" status="completed" summary="exit 0; 12 passed" fetch="await rlm.job('job-1a2b')" />
  *
@@ -30,7 +31,7 @@ export const DEFAULT_COALESCE_MS = 500;
 export const DEFAULT_MAX_EVENT_RUNS = 16;
 const SUMMARY_CHARS = 240;
 
-export type RuntimeEventKind = "job_done" | "child_done" | "task_done";
+export type RuntimeEventKind = "job_done" | "tool_done" | "child_done" | "task_done";
 
 export interface RuntimeEvent {
 	readonly kind: RuntimeEventKind;
@@ -299,7 +300,9 @@ export class AsyncEventDispatcher {
 			}
 			if (cancelled.value.kind === "cancelled" || (aborted && cancelled.value.kind === "not_found")) {
 				this.#steered.delete(item.entryId);
-				const kept = item.events.filter((event) => !(event.kind === "job_done" && event.status === "cancelled"));
+				const kept = item.events.filter(
+					(event) => !((event.kind === "job_done" || event.kind === "tool_done") && event.status === "cancelled"),
+				);
 				if (kept.length > 0) await this.#deliver(lane.name, kept, context);
 			}
 		}
