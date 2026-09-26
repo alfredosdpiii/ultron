@@ -48,6 +48,11 @@ export interface NativeHostApi {
 	 */
 	pinLane?(lane: string, holder: string): boolean;
 	unpinLane?(lane: string, holder: string): void;
+	/**
+	 * Usage root that work started from `caller` belongs to: the running root turn for the root lane, the task's
+	 * root for a task lane; undefined when there is none (no turn running, or a host without root turns).
+	 */
+	rootOf?(caller: HostCaller): string | undefined;
 	now(): number;
 }
 

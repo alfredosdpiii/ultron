@@ -121,6 +121,17 @@ class RLMNamespace:
     async def host_request(self, request_type: str, payload: dict[str, Any] | None = None) -> Any:
         return await self._bridge.request(request_type, payload)
 
+    async def jobs(self) -> list["ShellJob"]:
+        """Shell jobs started with bash(..., yield_after=...), newest first (without their text)."""
+        result = await self._bridge.request("shell.list", {})
+        return [ShellJob(self._bridge, item) for item in (result if isinstance(result, list) else [])]
+
+    async def job(self, job_id: str) -> "ShellJob":
+        """Recover a shell job's handle by id (after the variable was lost or the kernel restarted)."""
+        if not isinstance(job_id, str) or not job_id:
+            raise ValueError("job id must be a non-empty string")
+        return ShellJob(self._bridge, await self._bridge.request("shell.get", {"id": job_id}))
+
 class BackgroundNamespace:
     def __init__(self, bridge: HostBridge) -> None:
         self._bridge = bridge
@@ -223,21 +234,109 @@ class BashOutput(str):
             return default
 
 
-async def bash(command: str, timeout: float | None = None) -> BashOutput:
-    """Run a shell command in the working directory and return its output as a string.
+class ShellJob:
+    """A shell command owned by the Ultron host (started with ``bash(cmd, yield_after=...)``).
+
+    It keeps running after the cell ends, across kernel restarts and eviction; an Esc abort of the
+    turn that started it, ``timeout=``, or ``await job.cancel()`` stops it. When it ends while you
+    are not waiting on it, a ``<runtime_event kind="job_done">`` message arrives on its own: do not poll.
+
+    Attributes: .id, .running, .status, .exit_code, .ok (clean exit 0), .text (combined output,
+    at most 16 KiB: head and tail around a marker), .truncated, .timed_out, .cancelled,
+    .output_path, .output_bytes, .elapsed_seconds, .error.
+    """
+
+    def __init__(self, bridge: "HostBridge", data: Any) -> None:
+        self._bridge = bridge
+        self._update(data)
+
+    def _update(self, data: Any) -> None:
+        if not isinstance(data, dict) or not isinstance(data.get("id"), str):
+            raise RuntimeError("bash: the host returned no job")
+        self.id: str = data["id"]
+        self.command: str = str(data.get("command") or "")
+        self.status: str = str(data.get("status") or "")
+        self.running: bool = bool(data.get("running"))
+        exit_code = data.get("exit_code")
+        self.exit_code: int | None = exit_code if isinstance(exit_code, int) else None
+        self.ok: bool = bool(data.get("ok"))
+        text = data.get("text")
+        self.text: str | None = text if isinstance(text, str) else None
+        self.truncated: bool = bool(data.get("truncated"))
+        self.timed_out: bool = bool(data.get("timed_out"))
+        self.cancelled: bool = bool(data.get("cancelled"))
+        self.output_path: str = str(data.get("output_path") or "")
+        self.output_bytes: int = int(data.get("output_bytes") or 0)
+        self.elapsed_seconds: float = float(data.get("elapsed_seconds") or 0)
+        error = data.get("error")
+        self.error: str | None = error if isinstance(error, str) else None
+
+    async def result(self, wait: float | None = None) -> "ShellJob":
+        """Wait for the job to end (at most ``wait`` seconds) and return this handle, refreshed."""
+        if wait is not None and (isinstance(wait, bool) or not isinstance(wait, (int, float)) or wait < 0):
+            raise ValueError("wait must be a non-negative number of seconds")
+        payload: dict[str, Any] = {"id": self.id}
+        if wait is not None:
+            payload["wait"] = wait
+        self._update(await self._bridge.request("shell.result", payload))
+        return self
+
+    async def cancel(self) -> "ShellJob":
+        """Stop the job (its whole process tree) and return this handle, refreshed."""
+        self._update(await self._bridge.request("shell.cancel", {"id": self.id}))
+        return self
+
+    async def read(self, cursor: int = 0, max_bytes: int = 65536) -> dict[str, Any]:
+        """Read retained output from byte ``cursor``: {text, next_cursor, done, truncated}."""
+        return await self._bridge.request("shell.read", {"id": self.id, "cursor": cursor, "max_bytes": max_bytes})
+
+    def _status_line(self) -> str:
+        if self.running:
+            return f"[job {self.id} running {self.elapsed_seconds:g}s: completion arrives as a <runtime_event>; await job.result() to wait]"
+        if self.status == "completed":
+            return f"[job {self.id} exit code {self.exit_code} after {self.elapsed_seconds:g}s]"
+        detail = f": {self.error}" if self.error else ""
+        return f"[job {self.id} {self.status}{detail}]"
+
+    def __str__(self) -> str:
+        body = (self.text or "").strip()
+        return f"{body}\n{self._status_line()}" if body else self._status_line()
+
+    def __repr__(self) -> str:
+        if self.text is None:
+            return f"ShellJob(id={self.id!r}, status={self.status!r}, exit_code={self.exit_code!r}, command={self.command[:60]!r})"
+        return str(self)
+
+
+_JOB_MAX_WAIT_SECONDS = 3600
+
+
+async def bash(command: str, timeout: float | None = None, yield_after: float | None = None) -> Any:
+    """Run a shell command in the working directory.
 
     Args:
         command: The command, run by the user's shell (bash).
         timeout: Seconds before the command is killed (default: no limit).
+        yield_after: None (default) waits for the command and returns its output as a string.
+            A number of seconds starts the command as a host-owned job and returns a ShellJob
+            after at most that long: finished (.running False) or still running. 0 returns at once.
 
     Returns:
-        A BashOutput: stdout and stderr combined, with "[exit code N]" appended when the
-        command failed. Its .exit_code and .ok attributes carry the status.
+        Without yield_after, a BashOutput: stdout and stderr combined, with "[exit code N]"
+        appended when the command failed; .exit_code and .ok carry the status. With
+        yield_after, a ShellJob (see help(ShellJob)).
     """
     if not isinstance(command, str) or not command.strip():
         raise ValueError("bash command must be a non-empty string")
     if timeout is not None and (isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or timeout <= 0):
         raise ValueError("bash timeout must be a positive number of seconds")
+    if yield_after is not None:
+        if isinstance(yield_after, bool) or not isinstance(yield_after, (int, float)) or yield_after < 0:
+            raise ValueError("bash yield_after must be a non-negative number of seconds")
+        job_payload: dict[str, Any] = {"command": command, "yield_after": min(float(yield_after), _JOB_MAX_WAIT_SECONDS)}
+        if timeout is not None:
+            job_payload["timeout"] = timeout
+        return ShellJob(_STATE.bridge, await _STATE.bridge.request("shell.run", job_payload))
     payload: dict[str, Any] = {"command": command}
     if timeout is not None:
         payload["timeout"] = timeout
@@ -399,7 +498,8 @@ class RuntimeState:
         self.cell_active = False
         self.execution_lock = asyncio.Lock()
         self.snapshot_path: Path | None = None
-        self.namespace: dict[str, Any] = {"__name__": "__main__"}
+        # asyncio is pre-imported: the guide batches independent work with asyncio.gather.
+        self.namespace: dict[str, Any] = {"__name__": "__main__", "asyncio": asyncio}
         self.namespace["rlm"] = RLMNamespace(self.bridge)
         self.namespace["agent_message"] = AgentMessages(self.bridge)
         self.namespace["jev"] = JevNamespace(self.bridge)
@@ -407,6 +507,7 @@ class RuntimeState:
         self.namespace["bash"] = bash
         self.namespace["edit"] = edit
         self.namespace["SpawnHandle"] = SpawnHandle
+        self.namespace["ShellJob"] = ShellJob
         self.namespace["agents"] = Agents(self.bridge)
         self.namespace["workflows"] = Workflows(self.bridge)
         self.namespace["memory"] = Memory(self.bridge)

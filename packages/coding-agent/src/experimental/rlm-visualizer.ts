@@ -47,6 +47,16 @@ export interface RlmFrame {
 	readonly endedAt?: number;
 }
 
+/** One host-owned shell job (`bash(cmd, yield_after=...)`), from `agents.status`. */
+export interface RlmJob {
+	readonly id: string;
+	readonly status: string;
+	readonly command: string;
+	readonly exitCode: number | null;
+	readonly startedAt?: number;
+	readonly endedAt?: number | null;
+}
+
 export interface RlmRootCell {
 	readonly toolCallId: string;
 	readonly code: string;
@@ -80,6 +90,8 @@ export interface RlmSnapshot {
 	readonly timing?: ReadonlyMap<string, RlmTiming>;
 	/** Recent inference frames, newest first. */
 	readonly frames?: readonly RlmFrame[];
+	/** Host-owned shell jobs, newest first. */
+	readonly jobs?: readonly RlmJob[];
 	/** Last inspection failure, shown instead of stale data being mistaken for live data. */
 	readonly error?: string;
 	/** What the root model forgot, pinned, or noted in its own context (`ctx.state`). */
@@ -299,6 +311,7 @@ export function renderRlmPanel(snapshot: RlmSnapshot, width: number, options: Rl
 
 	lines.push(...renderContextLines(snapshot.context, style));
 	lines.push(...renderFrames(snapshot, style, frame, Math.max(0, options.maxFrames ?? 4)));
+	lines.push(...renderJobs(snapshot, style, frame, 4));
 
 	const pool = snapshot.pool;
 	if (pool) {
@@ -311,6 +324,31 @@ export function renderRlmPanel(snapshot: RlmSnapshot, width: number, options: Rl
 
 	const bound = Math.max(1, width);
 	return lines.map((line) => truncateToWidth(line, bound, "…"));
+}
+
+/** "jobs 1 running · 3 completed", then the newest shell jobs with their status and command. */
+function renderJobs(snapshot: RlmSnapshot, style: RlmStyle, spinner: string, maxJobs: number): string[] {
+	const jobs = snapshot.jobs ?? [];
+	if (jobs.length === 0) return [];
+	const counts = new Map<string, number>();
+	for (const job of jobs) counts.set(job.status, (counts.get(job.status) ?? 0) + 1);
+	const summary = [...counts].map(([status, count]) => `${count} ${status}`).join(" · ");
+	const lines = [`${style.fg("toolTitle", style.bold("jobs"))} ${style.fg("muted", summary)}`];
+	for (const job of jobs.slice(0, maxJobs)) {
+		const running = job.status === "running";
+		const ok = job.status === "completed" && job.exitCode === 0;
+		const color = running ? "accent" : ok ? "success" : job.status === "cancelled" ? "dim" : "error";
+		const glyph = running ? spinner : ok ? "✓" : "✗";
+		const end = job.endedAt ?? (running ? snapshot.now : undefined);
+		const duration =
+			job.startedAt !== undefined && end !== undefined ? ` ${formatDuration(Math.max(0, end - job.startedAt))}` : "";
+		const status = job.status === "completed" ? `exit ${job.exitCode}` : job.status;
+		lines.push(
+			`${style.fg("dim", "│ ")}${style.fg(color, glyph)} ${style.fg("dim", job.id)} ${style.fg(color, status)}${style.fg("dim", duration)} ${style.fg("muted", oneLine(job.command))}`,
+		);
+	}
+	if (jobs.length > maxJobs) lines.push(style.fg("dim", `│ +${jobs.length - maxJobs} more`));
+	return lines;
 }
 
 /** "frames 2 running · 14 complete · 1 incomplete", then the newest frames with spend and task. */
@@ -522,6 +560,7 @@ export function parseAgentsStatus(value: unknown): {
 	tasks: RlmTask[];
 	usage: RlmUsage | null;
 	limits: RlmLimits | null;
+	jobs: RlmJob[];
 } {
 	const body = record(value);
 	const tasks: RlmTask[] = [];
@@ -547,10 +586,24 @@ export function parseAgentsStatus(value: unknown): {
 	}
 	const usage = record(body?.usage);
 	const limits = record(body?.limits) ?? record(usage?.limits);
+	const jobs: RlmJob[] = [];
+	for (const item of Array.isArray(body?.jobs) ? body.jobs : []) {
+		const job = record(item);
+		if (job === undefined || typeof job.id !== "string" || typeof job.status !== "string") continue;
+		jobs.push({
+			id: job.id,
+			status: job.status,
+			command: typeof job.command === "string" ? job.command : "",
+			exitCode: typeof job.exitCode === "number" ? job.exitCode : null,
+			...(typeof job.startedAt === "number" ? { startedAt: job.startedAt } : {}),
+			...(typeof job.endedAt === "number" ? { endedAt: job.endedAt } : {}),
+		});
+	}
 	return {
 		tasks,
 		usage: (usage as RlmUsage | undefined) ?? null,
 		limits: (limits as RlmLimits | undefined) ?? null,
+		jobs,
 	};
 }
 

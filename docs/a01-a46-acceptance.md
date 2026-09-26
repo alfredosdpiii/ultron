@@ -1,4 +1,4 @@
-# Ultron acceptance (A01-A55)
+# Ultron acceptance (A01-A56)
 
 The acceptance matrix comes from the plan's section 13. Row status is not written by hand: it is computed by the acceptance runner from `acceptance/manifest.json`, and the latest result is in [acceptance/report.md](../acceptance/report.md).
 
@@ -17,6 +17,12 @@ A01-A46 are the original acceptance rows. The supreme plan (`supremeplan.md`) ad
 | A53 | 4 | A code skill whose test fails is never importable; a passing one is, survives restart, and rolls back cleanly |
 | A54 | 4 | A repeated task reuses a saved code skill and costs less the second time |
 | A55 | 6 | An agent class defined in a cell is invokable typed end to end, keeps state across cells and snapshots, and rejects a bad return with the schema error |
+
+The asynchronous-execution work (Unreal Agent's model) added:
+
+| Row | Behavior |
+|---|---|
+| A56 | Long-running work does not block the turn and completion is delivered without polling: `bash(cmd, yield_after=)` jobs run in the host and survive the cell and kernel restarts; a completion is appended as a `<runtime_event>` that re-invokes an idle root once per batch or reaches a running turn at its next boundary, within the turn budget, never after an abort; root requests keep a byte-identical prefix |
 
 ## How a row is judged
 

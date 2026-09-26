@@ -54,6 +54,13 @@ import { readToolSystemPromptContribution } from "../core/tools/read.ts";
 import { writeToolSystemPromptContribution } from "../core/tools/write.ts";
 import { initTheme } from "../modes/interactive/theme/theme.ts";
 import {
+	AsyncEventDispatcher,
+	asyncEventsEnabled,
+	boundedSummary,
+	maxEventRunsFromEnv,
+	type RuntimeEvent,
+} from "../ultron/async-events.ts";
+import {
 	AutoMemory,
 	autoMemoryModeFromEnv,
 	autoMemoryScopeFromEnv,
@@ -78,7 +85,7 @@ import { createSessionModuleStore, type HostCaller } from "../ultron/rlm/host-mo
 import { createInferenceRuntime, createSessionFrameStore } from "../ultron/rlm/inference.ts";
 import { type KernelExecutionResult, type KernelHostHandler, RlmKernel } from "../ultron/rlm/kernel.ts";
 import { KernelPool, KernelPoolCapacityError } from "../ultron/rlm/kernel-pool.ts";
-import { NativeRlmHost } from "../ultron/rlm/native-host.ts";
+import { type DetachedTaskEnd, NativeRlmHost } from "../ultron/rlm/native-host.ts";
 import { truncateToolOutput } from "../ultron/rlm/output-truncation.ts";
 import {
 	defaultBuiltinToolNames,
@@ -87,6 +94,7 @@ import {
 	rlmRuntimePrompt,
 	rlmToolGuidelines,
 } from "../ultron/rlm/prompt.ts";
+import { jobSummary, type ShellJobEnd, ShellJobs } from "../ultron/rlm/shell-jobs.ts";
 import { loadSnapshotKey } from "../ultron/rlm/snapshot-auth.ts";
 import { createSessionTaskStore } from "../ultron/rlm/task-store.ts";
 import { createScheduleModule } from "../ultron/schedules.ts";
@@ -1415,7 +1423,12 @@ async function createCodingAgentHarness(
 				rlm: rlmToolGuidelines(effectiveActiveToolNames),
 			},
 			// The REPL runtime guide (kernel, skills, delegation) as its own section after Pi's tool list and rules.
-			sections: sectionIfPresent("runtime", rlmRuntimePrompt(effectiveActiveToolNames)),
+			sections: sectionIfPresent(
+				"runtime",
+				rlmRuntimePrompt(effectiveActiveToolNames, {
+					asyncEvents: asyncEventsEnabled(process.env.ULTRON_ASYNC_EVENTS),
+				}),
+			),
 			contextFiles,
 			skills: resourceLoader.getSkills().skills,
 			appendSystemPrompt: resourceLoader.getAppendSystemPrompt().join("\n\n"),
@@ -1525,6 +1538,20 @@ async function createCodingAgentHarness(
 			usage,
 		});
 		const removeInferenceHooks = inference.install(harness);
+		// Host-owned shell jobs (`bash(cmd, yield_after=...)`) and completion events for detached work
+		// (ULTRON_ASYNC_EVENTS=off disables the events; jobs still work and can be waited on).
+		let events: AsyncEventDispatcher | undefined;
+		const shellJobs = new ShellJobs({
+			cwd: options.metadata.cwd,
+			dir: join(dirname(options.metadata.path), "rlm-jobs", options.metadata.id),
+			operations: () => createLocalBashOperations({ shellPath: settingsManager.getShellPath() }),
+			store: createSessionModuleStore(session, "jobs"),
+			holdActivity: () => holdActivity?.() ?? (() => {}),
+			onEnd: (end) => {
+				const event = jobEvent(end);
+				if (event) events?.publish(event);
+			},
+		});
 		host = new NativeRlmHost(harness, lane, {
 			store: createSessionTaskStore(session),
 			definitionStore: createSessionDefinitionStore(session),
@@ -1535,6 +1562,25 @@ async function createCodingAgentHarness(
 			pinLane: (lane, holder) => rlmTool.pin(lane, holder),
 			unpinLane: (lane, holder) => rlmTool.unpin(lane, holder),
 			onTaskEnd: (task, info) => contextControl.taskEnded(task, info),
+			onDetachedEnd: (end) => {
+				if (!end.awaited) events?.publish(taskEvent(end));
+			},
+			statusExtras: (caller) => ({
+				jobs: shellJobs
+					.list()
+					.filter((job) => caller.lane === "main" || job.lane === caller.lane)
+					.slice(0, 20)
+					.map((job) => ({
+						id: job.id,
+						lane: job.lane,
+						command: job.command.slice(0, 200),
+						status: job.status,
+						exitCode: job.exitCode,
+						startedAt: job.startedAt,
+						endedAt: job.endedAt,
+						outputBytes: job.outputBytes,
+					})),
+			}),
 			services: branchedServices,
 			beforeLaneReuse: (lane) => rlmTool.resetScratch(lane),
 			predict: createPredictAdapter({ models: modelRuntime, model: () => lane.getModel(TODO_CONTEXT) }),
@@ -1550,6 +1596,7 @@ async function createCodingAgentHarness(
 				return [{ id: current.id, version: current.version, text }];
 			},
 			modules: [
+				shellJobs.module,
 				contextControl.module,
 				inference.module,
 				createFamilyModule({ store: createSessionModuleStore(session, "family") }),
@@ -1589,6 +1636,28 @@ async function createCodingAgentHarness(
 				}),
 			],
 		});
+		const activeHost = host;
+		events = new AsyncEventDispatcher({
+			harness,
+			host: activeHost,
+			enabled: asyncEventsEnabled(process.env.ULTRON_ASYNC_EVENTS),
+			maxRuns: maxEventRunsFromEnv(process.env.ULTRON_ASYNC_EVENTS_MAX_RUNS),
+			holdActivity: () => holdActivity?.() ?? (() => {}),
+			// A completion re-invokes the root only within the budget of the request that started the work.
+			refuse: async (rootId) => {
+				const exhausted = await usage.turnBudgetExhausted(rootId);
+				if (exhausted) return exhausted;
+				const status = await usage.status(rootId);
+				if (status.remainingWallMs === 0) return `wall budget of ${rootId} exhausted`;
+				const cap = status.cost.maxCostUsd;
+				if (cap !== null && (status.cost.spentUsd >= cap || status.cost.unknownPricedCalls > 0))
+					return `cost cap of ${rootId} reached or unenforceable`;
+				return undefined;
+			},
+			// Esc on a root turn stops the shell jobs it started.
+			onRootAborted: (rootId) => shellJobs.cancelRoot(rootId),
+		});
+		const removeAsyncEvents = events.install();
 		// Top-level work admitted after the turn ends (a schedule firing) gets a root of its own.
 		const removeRootTurnListener = harness.events.on("run_end", (event) => {
 			if (event.lane === "main") host?.endRootTurn(event.runId);
@@ -1662,6 +1731,8 @@ async function createCodingAgentHarness(
 			harness,
 			closeRlm: async () => {
 				removeRootTurnListener();
+				removeAsyncEvents();
+				await events?.close();
 				removeContextControl();
 				removeInferenceHooks();
 				removeAutoMemory();
@@ -1683,6 +1754,19 @@ async function createCodingAgentHarness(
 			},
 			inspect: async (request, payload, context) => {
 				if (request === "rlm.pool") return rlmTool.poolStats();
+				// Root-owned work whose completion may still re-invoke the root (print clients wait for it).
+				if (request === "async.pending") {
+					if (!events?.enabled) return { pending: false, jobs: 0, tasks: 0, events: 0 };
+					const aborted = (rootId: string | undefined) => events?.rootAborted(rootId) ?? false;
+					const counts = {
+						jobs: shellJobs.running("main", aborted),
+						tasks: host?.pendingRootNotifications(aborted) ?? 0,
+						events: events.pendingFor("main"),
+						// A run an event just started, before its start reaches the client.
+						running: (await lane.inspectExecution(context)).current === null ? 0 : 1,
+					};
+					return { pending: counts.jobs + counts.tasks + counts.events + counts.running > 0, ...counts };
+				}
 				if (request === "jev.decisions") {
 					return {
 						available: {
@@ -1733,6 +1817,41 @@ function legacyRecallOption(): { legacyRecall?: ReturnType<typeof createLegacyRe
 	const url = hindsightUrl(process.env.ULTRON_HINDSIGHT_URL);
 	const bank = legacyBankFromEnv(process.env.ULTRON_HINDSIGHT_LEGACY_BANK);
 	return url && bank ? { legacyRecall: createLegacyRecall(url, bank) } : {};
+}
+
+/** The completion event of a shell job the model is not already waiting on; undefined when none is due. */
+function jobEvent(end: ShellJobEnd): RuntimeEvent | undefined {
+	if (end.awaited || end.rootAborted) return undefined;
+	return {
+		kind: "job_done",
+		id: end.job.id,
+		status: end.job.status,
+		summary: jobSummary(end.job),
+		fetch: `await rlm.job("${end.job.id}")`,
+		lane: end.job.lane,
+		...(end.job.rootId === null ? {} : { rootId: end.job.rootId }),
+	};
+}
+
+/** The completion event of a detached task (`rlm.spawn`, `agents.spawn`, `background.start`). */
+function taskEvent(end: DetachedTaskEnd): RuntimeEvent {
+	const result = end.task.result;
+	const value = result?.value;
+	const detail =
+		result?.status === "succeeded"
+			? typeof value === "string"
+				? value
+				: JSON.stringify(value ?? null)
+			: (result?.error ?? "");
+	return {
+		kind: end.kind,
+		id: end.task.id,
+		status: result?.status ?? end.task.state,
+		summary: boundedSummary(`${end.task.definition}: ${detail}`),
+		fetch: end.fetch,
+		lane: end.ownerLane,
+		...(end.rootId === undefined ? {} : { rootId: end.rootId }),
+	};
 }
 
 /** Promises still running, awaitable as a group (for records a later check must see). */

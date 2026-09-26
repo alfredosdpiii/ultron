@@ -60,6 +60,7 @@ import {
 	RlmClock,
 	type RlmContextState,
 	type RlmFrame,
+	type RlmJob,
 	type RlmLimits,
 	type RlmPool,
 	type RlmProgress,
@@ -155,6 +156,7 @@ interface RlmPollState {
 	timing: Map<string, RlmTiming>;
 	context?: RlmContextState | null;
 	frames: RlmFrame[];
+	jobs: RlmJob[];
 	error?: string;
 }
 
@@ -210,6 +212,7 @@ export class ExperimentalClientTui implements Component {
 		progress: new Map(),
 		timing: new Map(),
 		frames: [],
+		jobs: [],
 	};
 	#control: SessionControl | undefined;
 	readonly #layoutRoot: Component;
@@ -1254,7 +1257,10 @@ export class ExperimentalClientTui implements Component {
 		const operation = snapshot?.operation;
 		const controller = this.#selectedController();
 		if (operation === null || operation === undefined || controller === undefined) return;
-		const queued = snapshot!.queues.flatMap((item) => (item.type === "message" ? [item] : []));
+		// Only what the user typed returns to the editor; queued host messages (completion events) are not theirs.
+		const queued = snapshot!.queues.flatMap((item) =>
+			item.type === "message" && item.message.role === "user" ? [item] : [],
+		);
 		const restored = [
 			...queued.filter((item) => item.kind === "steer"),
 			...queued.filter((item) => item.kind !== "steer"),
@@ -1332,6 +1338,7 @@ export class ExperimentalClientTui implements Component {
 				next.tasks = parsed.tasks;
 				next.usage = parsed.usage;
 				next.limits = parsed.limits;
+				next.jobs = parsed.jobs;
 				next.timing = this.#rlmClock.timings(parsed.tasks, parsed.usage, Date.now());
 				delete next.error;
 			} else {
@@ -1389,6 +1396,7 @@ export class ExperimentalClientTui implements Component {
 			timing: state.timing,
 			context: state.context ?? null,
 			frames: state.frames,
+			jobs: state.jobs,
 			...(state.error === undefined ? {} : { error: state.error }),
 		};
 	}

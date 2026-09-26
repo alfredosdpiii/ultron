@@ -10,6 +10,7 @@ import {
 	openClientRuntime,
 } from "./client-runtime.ts";
 import type { AgentOperationResponse } from "./services/agent-controller.ts";
+import { SessionControl } from "./services/session-control.ts";
 import type { SessionAddress } from "./services/sessions.ts";
 
 export type ClientResult =
@@ -39,6 +40,11 @@ export interface RunClientOptions {
 	readonly interrupt?: AbortSignal;
 	/** Receives snapshot-ordered main-lane events while a prompt is active. */
 	readonly onEvent?: (event: LaneWatchEvent) => void | Promise<void>;
+	/**
+	 * After the prompted turn, keep waiting while root-owned work (a `yield_after` job, a subagent, a spawned task)
+	 * can still re-invoke the model with a completion event, and return the last run's answer (print and json modes).
+	 */
+	readonly followEvents?: boolean;
 }
 
 /** Discover servers, then list Sessions, attach to one, or create one for a prompt. */
@@ -225,6 +231,8 @@ async function runClientOperation(
 	const agent = match.agent;
 	const completedText = new Map<string, string>();
 	const operationBoundaries = new Set<string>();
+	/** Runs in the order they ended, so a run an event started is found even if it ended before the prompt returned. */
+	const endedRuns: string[] = [];
 	const boundaryWaiters = new Map<string, () => void>();
 	// An interrupt aborts the turn this prompt started, as soon as its operation id is known.
 	let runningOperationId: string | undefined;
@@ -250,6 +258,7 @@ async function runClientOperation(
 			abortIfInterrupted();
 		}
 		if (event.type === "run_end" || event.type === "run_suspend") {
+			if (event.type === "run_end") endedRuns.push(event.runId);
 			if (runningOperationId === event.runId) runningOperationId = undefined;
 			operationBoundaries.add(event.runId);
 			boundaryWaiters.get(event.runId)?.();
@@ -263,20 +272,28 @@ async function runClientOperation(
 	}
 
 	let response: AgentOperationResponse | undefined;
+	let finalRunId: string | undefined;
 	let promptFailed = false;
 	let promptError: unknown;
+	const boundary = async (operationId: string): Promise<void> => {
+		if (operationBoundaries.has(operationId)) return;
+		await awaitOperation(
+			new Promise<void>((resolveBoundary) => boundaryWaiters.set(operationId, resolveBoundary)),
+			context,
+		);
+	};
 	try {
 		response = await awaitOperation(
 			agent.prompt({ message: command.prompt, images: command.images ?? null }, context),
 			context,
 		);
 		if (response.accepted) {
-			const operationId = response.operationId;
-			if (!operationBoundaries.has(operationId)) {
-				await awaitOperation(
-					new Promise<void>((resolveBoundary) => boundaryWaiters.set(operationId, resolveBoundary)),
-					context,
-				);
+			await boundary(response.operationId);
+			finalRunId = response.operationId;
+			if (options.followEvents === true && response.error === null) {
+				await followEventRuns(match, context, boundary, () => runningOperationId, options);
+				const after = endedRuns.slice(endedRuns.indexOf(response.operationId) + 1);
+				finalRunId = after.at(-1) ?? finalRunId;
 			}
 		}
 	} catch (error: unknown) {
@@ -302,8 +319,42 @@ async function runClientOperation(
 		kind: "prompted",
 		serverId: match.route.serverId,
 		sessionId,
-		text: completedText.get(response.operationId) ?? "",
+		text: completedText.get(finalRunId ?? response.operationId) ?? "",
 	};
+}
+
+/**
+ * Wait for the runs that completion events start after the prompted turn: while the worker reports root-owned work
+ * that can still re-invoke the model, or such a run is going on, keep waiting.
+ */
+async function followEventRuns(
+	server: ActivatedClientRuntimeServer,
+	context: Context,
+	boundary: (operationId: string) => Promise<void>,
+	running: () => string | undefined,
+	options: RunClientOptions,
+): Promise<void> {
+	const services = server.session.open({ services: [SessionControl], assertAccess() {}, onError() {} });
+	try {
+		const control = services.use(SessionControl);
+		await awaitOperation(services.ready(context), context);
+		while (options.interrupt?.aborted !== true) {
+			const current = running();
+			if (current !== undefined) {
+				await boundary(current);
+				continue;
+			}
+			const status = (await awaitOperation(control.inspect("async.pending", {}, context), context)) as {
+				pending?: unknown;
+			} | null;
+			if (status?.pending !== true && running() === undefined) break;
+			await awaitOperation(new Promise((resolveWait) => setTimeout(resolveWait, 200)), context);
+		}
+	} catch {
+		// A worker without the inspection (or a closed session) has nothing to follow.
+	} finally {
+		await services.dispose(withoutAbortSignal(context)).catch(() => {});
+	}
 }
 
 function awaitOperation<T>(promise: Promise<T>, context: Context): Promise<T> {

@@ -193,6 +193,22 @@ describe("RLM visualizer", () => {
 		expect(parsePool("nope")).toBeNull();
 	});
 
+	test("shows host-owned shell jobs from agents.status", () => {
+		const { jobs } = parseAgentsStatus({
+			tasks: [],
+			jobs: [
+				{ id: "job-2", status: "running", command: "npm test", exitCode: null, startedAt: 1000, endedAt: null },
+				{ id: "job-1", status: "completed", command: "make build", exitCode: 0, startedAt: 0, endedAt: 2000 },
+				{ bogus: true },
+			],
+		});
+		expect(jobs.map((job) => job.id)).toEqual(["job-2", "job-1"]);
+		const lines = renderRlmPanel({ now: 4000, tasks: [], jobs }, 100);
+		expect(lines).toContain("jobs 1 running · 1 completed");
+		expect(lines.find((line) => line.includes("job-2"))).toMatch(/job-2 running 3\.0s npm test$/);
+		expect(lines.find((line) => line.includes("job-1"))).toMatch(/✓ job-1 exit 0 2\.0s make build$/);
+	});
+
 	test("clock uses admission time, freezes on completion, and omits time for tasks first seen finished", () => {
 		const clock = new RlmClock();
 		const running = [task("a", "running"), task("b", "completed")];
