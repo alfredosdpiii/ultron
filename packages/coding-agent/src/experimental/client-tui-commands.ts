@@ -23,6 +23,7 @@ import type { PiSessionView } from "./pi-session-view.ts";
 import type { ModelSummary } from "./services/models.ts";
 import type { SessionControl } from "./services/session-control.ts";
 import type { SlashCommandContribution } from "./services/slash-commands.ts";
+import { splashLines } from "./ultron-logo.ts";
 
 /** What the commands need from the TUI. */
 export interface NativeCommandHost {
@@ -304,10 +305,23 @@ export function hotkeysMarkdown(): string {
 }
 
 /** Pi's startup header: compact hints, expanded to the full list by the tool expansion key. */
+/** Whether and how large to draw the splash logo; omitted means no splash (tests, embedded uses). */
+export interface SplashOptions {
+	/** Terminal height in rows, when known. */
+	rows(): number | undefined;
+	/** False when the user asked for a quiet startup. */
+	enabled(): boolean;
+}
+
 export class StartupHeader implements Component {
 	#expanded = false;
 	#details = "";
 	readonly #text = new Text("", 1, 0);
+	readonly #splash: SplashOptions | undefined;
+
+	constructor(splash?: SplashOptions) {
+		this.#splash = splash;
+	}
 
 	/** Lines under the hints (server and Session ids). */
 	setDetails(details: string): void {
@@ -322,7 +336,9 @@ export class StartupHeader implements Component {
 
 	render(width: number): string[] {
 		if (this.#text.render(width).length === 0) this.#update();
-		return this.#text.render(width);
+		const text = this.#text.render(width);
+		const splash = this.#splash?.enabled() ? splashLines(width, this.#splash.rows()) : [];
+		return splash.length === 0 ? text : [...splash.map((line) => theme.fg("accent", line)), "", ...text];
 	}
 
 	invalidate(): void {

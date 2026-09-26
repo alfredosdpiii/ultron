@@ -226,7 +226,13 @@ export class ExperimentalClientTui implements Component {
 	readonly #requestRender: () => void;
 	readonly #finish: () => void;
 	readonly #documentContainer = new Container();
-	readonly #sessionHeading = new StartupHeader();
+	// The splash shows unless the user asked for a quiet startup (quietStartup, or ULTRON_SPLASH=off).
+	readonly #sessionHeading = new StartupHeader({
+		rows: () => process.stdout.rows,
+		enabled: () =>
+			!["off", "0", "false"].includes((process.env.ULTRON_SPLASH ?? "").trim().toLowerCase()) &&
+			!this.#settingsManager.getQuietStartup(),
+	});
 	readonly #pendingMessagesContainer = new Container();
 	readonly #statusContainer = new Container();
 	readonly #editorContainer = new Container();
