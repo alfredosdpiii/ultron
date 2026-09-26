@@ -47,8 +47,8 @@ __pycache__/
 *.pyc
 
 # Research corpus generation cache and log (resumable; the frozen fixture is committed)
-evals/quality/fixtures/.incident-root-causes.cache.jsonl*
-evals/quality/fixtures/.generate.log
+evals/quality/fixtures/**/.incident-root-causes.cache.jsonl*
+evals/quality/fixtures/**/.generate.log
 
 # Release tarballs built by scripts/pack-release.mjs
 dist-release/

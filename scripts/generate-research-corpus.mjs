@@ -28,7 +28,7 @@ import { gzipSync } from "node:zlib";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const PROXY = "http://127.0.0.1:8317/v1/chat/completions";
 const GENERATOR_MODEL = "glm-5.3-flash";
-const VALIDATOR_MODELS = ["gpt-5.6-sol", "glm-5.3-flash"];
+const VALIDATOR_MODELS = ["gpt-5.6-sol", "gpt-6-luna", "glm-5.3-flash"];
 const TOTALS = { tp: 25, decoy: 40, other: 335 };
 const NO_KEYWORD_TP = 10;
 const MIN_CHARS = 3000;
