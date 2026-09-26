@@ -18,6 +18,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { FROZEN_AT } from "../evals/quality/tasks.mjs";
 import { allRowsPassed } from "./acceptance-report.mjs";
+import { countsForGate } from "./eval-quality.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const results = [];
@@ -42,12 +43,9 @@ const qualityDir = join(root, "acceptance/quality");
 const latest = existsSync(qualityDir)
 	? readdirSync(qualityDir)
 			.filter((file) => file.endsWith(".json"))
-			// The release gate reads the default frozen set; hard-set runs and self-checks are separate evidence.
-			.filter((file) => {
-				const recorded = JSON.parse(readFileSync(join(qualityDir, file), "utf8"));
-				// Partial reruns of one variant carry no gate entries; they supplement a full comparison.
-				return (recorded.taskSet ?? "default") === "default" && (recorded.summary?.gate?.length ?? 0) > 0;
-			})
+			// The release gate reads the default frozen set; hard, judged and research runs and self-checks are
+			// separate evidence (see countsForGate in eval-quality.mjs).
+			.filter((file) => countsForGate(JSON.parse(readFileSync(join(qualityDir, file), "utf8"))))
 			.map((file) => join(qualityDir, file))
 			.sort((a, b) => statSync(b).mtimeMs - statSync(a).mtimeMs)[0]
 	: undefined;

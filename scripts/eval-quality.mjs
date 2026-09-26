@@ -3,7 +3,7 @@
  * Quality comparison: stock Pi (baseline) vs Ultron (candidate) on the frozen tasks in
  * evals/quality/tasks.mjs, with matched model and settings. Metered: every run calls the model.
  *
- *   node scripts/eval-quality.mjs [--tasks default|hard] [--model cliproxyapi/gpt-6-sol] [--trials 2]
+ *   node scripts/eval-quality.mjs [--tasks default|hard|judged|research] [--model cliproxyapi/gpt-6-sol] [--trials 2]
  *                                 [--concurrency 3] [--only id,id] [--variants pi,ultron] [--out path]
  *                                 [--baseline recorded.json] [--thinking off|low|medium|high|xhigh|max]
  *                                 [--keep-failed dir] [--ultron-command "node --import ... cli.ts"]
@@ -12,10 +12,14 @@
  *   node scripts/eval-quality.mjs --tasks judged --self-check [--judge-live]
  *
  * `--tasks` picks the frozen set: default is evals/quality/tasks.mjs, `hard` is tasks-hard.mjs, `judged` is
- * tasks-judged.mjs (open-ended work scored by an LLM judge next to a light deterministic sanity check).
+ * tasks-judged.mjs (open-ended work scored by an LLM judge next to a light deterministic sanity check), `research` is
+ * tasks-research.mjs (semantic judgement over a frozen ~2 MB corpus of model-written reports, scored by precision and
+ * recall; the corpus is a committed fixture, so running or self-checking the set calls no generator model).
  * `--self-check` runs no model: for every task it checks that the hidden check fails on the
  * untouched task files, passes after applying the reference solution (tasks-<set>-solutions.mjs),
- * and, when the solution changes several files, fails if any one of those files is left unfixed.
+ * and, when the solution changes several files, fails if any one of those files is left unfixed. A solution's
+ * `negatives` (e.g. the research set's keyword baseline and empty answer) must each fail the hidden check; when the
+ * check's last output line is a JSON object (precision, recall, ...) the self-check records it as `metrics`.
  * For judged tasks it also validates the rubric wiring against the solved tree with a fake judge (see
  * scripts/eval-judge.mjs). `--judge-live` additionally scores each reference solution with the real judge
  * (one or two model calls per task) to calibrate the rubric.
@@ -92,7 +96,28 @@ const TASK_SETS = {
 	default: { tasks: "../evals/quality/tasks.mjs", solutions: null },
 	hard: { tasks: "../evals/quality/tasks-hard.mjs", solutions: "../evals/quality/tasks-hard-solutions.mjs" },
 	judged: { tasks: "../evals/quality/tasks-judged.mjs", solutions: "../evals/quality/tasks-judged-solutions.mjs" },
+	research: { tasks: "../evals/quality/tasks-research.mjs", solutions: "../evals/quality/tasks-research-solutions.mjs" },
 };
+
+/** The only set the release gate reads (scripts/gate.mjs); hard, judged and research runs are separate evidence. */
+export const GATE_TASK_SET = "default";
+
+/** Whether a recorded result file can be the gate's quality evidence: a full comparison of the gate's set. */
+export function countsForGate(recorded) {
+	// Partial reruns of one variant carry no gate entries; they supplement a full comparison.
+	return (recorded.taskSet ?? "default") === GATE_TASK_SET && (recorded.summary?.gate?.length ?? 0) > 0;
+}
+
+/** The hidden check's last output line when it is a JSON object (research checks print their metrics there). */
+export function verifyMetrics(output) {
+	const last = String(output ?? "").trim().split("\n").at(-1) ?? "";
+	try {
+		const parsed = JSON.parse(last);
+		return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : null;
+	} catch {
+		return null;
+	}
+}
 const JUDGE_TIMEOUT_MS = 5 * 60 * 1000;
 
 /** Task files and hidden files; hard tasks generate their (large) data on demand. */
@@ -519,11 +544,11 @@ async function checkTask(task, solution, liveJudge) {
 	if (!solution) return [{ trial: "solution", ok: false, detail: "no reference solution" }];
 	const { files, hidden } = materialize(task);
 	const work = mkdtempSync(join(tmpdir(), `ultron-selfcheck-${task.id}-`));
-	const trial = async (name, solutionFiles, expectPass, inspect) => {
+	const trial = async (name, solutionFiles, expectPass, inspect, spec = solution) => {
 		const dir = join(work, name.replace(/[^a-z0-9.-]+/gi, "_"));
 		mkdirSync(dir);
 		writeTree(dir, files);
-		const failure = solutionFiles ? await applySolution(dir, solution, solutionFiles) : null;
+		const failure = solutionFiles ? await applySolution(dir, spec, solutionFiles) : null;
 		// Judged tasks: the judge reads the solved tree as an agent would leave it, before the hidden files.
 		if (inspect) outcomes.push(...(await inspect(dir)));
 		writeTree(dir, hidden);
@@ -531,11 +556,13 @@ async function checkTask(task, solution, liveJudge) {
 		const verify = await runVerify(task, dir);
 		const passed = verify.status === 0;
 		const ok = !failure && passed === expectPass;
+		const metrics = verifyMetrics(verify.output);
 		outcomes.push({
 			trial: name,
 			expect: expectPass ? "pass" : "fail",
 			ok,
 			verifyMs: Date.now() - started,
+			...(metrics ? { metrics } : {}),
 			...(ok ? {} : { detail: failure ?? verify.output }),
 		});
 		rmSync(dir, { recursive: true, force: true });
@@ -571,6 +598,7 @@ async function checkTask(task, solution, liveJudge) {
 				}
 			: undefined;
 		await trial("solved", solutionFiles, true, judgeChecks);
+		for (const negative of solution.negatives ?? []) await trial(negative.name, negative.files ?? {}, false, undefined, negative);
 		const paths = Object.keys(solutionFiles);
 		if (paths.length > 1 && !solution.run)
 			for (const path of paths)
@@ -602,6 +630,8 @@ async function selfCheck(taskSet, selected, concurrency, liveJudge) {
 				console.log(
 					`${ok ? "OK  " : "BAD "} ${task.id} (${outcomes.length} trials, ${((Date.now() - started) / 1000).toFixed(0)}s)${judged ? ` judge ${judged.total ?? "?"}/${judged.max ?? "?"} ${JSON.stringify(judged.scores ?? judged.error)}` : ""}`,
 				);
+				for (const outcome of outcomes.filter((entry) => entry.metrics))
+					console.log(`     ${outcome.trial} (expected ${outcome.expect}): ${JSON.stringify(outcome.metrics)}`);
 				for (const outcome of outcomes.filter((entry) => !entry.ok))
 					console.log(`     ${outcome.trial}: expected ${outcome.expect}; ${String(outcome.detail).slice(-300)}`);
 			}
