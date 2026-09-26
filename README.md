@@ -15,11 +15,11 @@ collapses when work returns), Unreal Agent (long work that never blocks the turn
 Requirements: **Node.js 22.19 or newer** and **Python 3** on your `PATH` (the REPL runs the system `python3`).
 
 ```bash
-npm install -g --ignore-scripts https://github.com/alfredosdpiii/ultron/releases/download/v0.87.1/ultron-0.87.1.tgz
+npm install -g --ignore-scripts https://github.com/alfredosdpiii/ultron/releases/latest/download/ultron.tgz
 ultron --version
 ```
 
-`--ignore-scripts` is intended: nothing Ultron depends on needs lifecycle scripts. Ultron keeps its settings and
+The same command updates an existing install to the latest release. `--ignore-scripts` is intended: nothing Ultron depends on needs lifecycle scripts. Ultron keeps its settings and
 sessions in `~/.ultron/agent`, separate from Pi's `~/.pi/agent`, so both can be installed side by side.
 
 ## Quick start
