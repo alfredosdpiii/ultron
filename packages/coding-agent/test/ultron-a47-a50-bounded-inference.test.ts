@@ -9,8 +9,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Context } from "@ultron/agent-core";
+import { visibleWidth } from "@ultron/tui";
 import { afterEach, describe, expect, test } from "vitest";
-import { parseFrames, renderRlmPanel } from "../src/experimental/rlm-visualizer.ts";
+import { renderRlmDock } from "../src/experimental/rlm-graph.ts";
+import { parseFrames } from "../src/experimental/rlm-visualizer.ts";
 import { createInferenceRuntime, createMemoryFrameStore } from "../src/ultron/rlm/inference.ts";
 import { RlmKernel } from "../src/ultron/rlm/kernel.ts";
 import { NativeRlmHost } from "../src/ultron/rlm/native-host.ts";
@@ -562,8 +564,8 @@ describe("frame traces", () => {
 	});
 });
 
-describe("the /rlm panel shows frames", () => {
-	test("frame summaries from rlm.frames render as a bounded section", async () => {
+describe("the /rlm graph shows frames", () => {
+	test("frame summaries carry their call, batch and budget, and render as graph nodes", async () => {
 		const { call } = setup(({ message }) => ({ text: message.includes("bad") ? "nope" : "3" }));
 		await call("rlm.infer", { task: "good frame", context: [text("a")], contract: { type: "integer" } });
 		await call("rlm.infer", {
@@ -572,14 +574,25 @@ describe("the /rlm panel shows frames", () => {
 			contract: { type: "integer" },
 			max_repairs: 0,
 		});
-		const frames = parseFrames(await call("rlm.frames", { limit: 20 }));
-		expect(frames.map((frame) => frame.status)).toEqual(["incomplete", "complete"]);
-		const lines = renderRlmPanel({ now: Date.now(), tasks: [], frames }, 80);
-		const section = lines.slice(lines.findIndex((line) => line.startsWith("frames")));
-		expect(section[0]).toBe("frames 1 complete · 1 incomplete");
-		expect(section[1]).toMatch(/◐ \w{8} contract_unmet 1c \d+t .*bad frame/);
-		expect(section[2]).toMatch(/✓ \w{8} complete 1c \d+t .*good frame/);
-		expect(lines.every((line) => line.length <= 80)).toBe(true);
+		await call("rlm.map", {
+			frames: [1, 2, 3].map((n) => ({ task: `item ${n}`, context: [text(String(n))] })),
+			contract: { type: "integer" },
+			budget: { calls: 9 },
+		});
+		const raw = (await call("rlm.frames", { limit: 20 })) as { frames: Record<string, unknown>[] };
+		const mapped = raw.frames.filter((frame) => frame.kind === "map");
+		expect(mapped).toHaveLength(3);
+		expect(new Set(mapped.map((frame) => (frame.budget as { id: string }).id)).size).toBe(1);
+		expect(mapped[0]).toMatchObject({ batch: 3, callerTaskId: null, budget: { calls: 9, tokens: null, depth: 1 } });
+		expect(raw.frames.filter((frame) => frame.kind === "infer").map((frame) => frame.batch)).toEqual([1, 1]);
+
+		const frames = parseFrames(raw);
+		const lines = renderRlmDock({ now: Date.now(), tasks: [], frames }, 80);
+		const rendered = lines.join("\n");
+		expect(rendered).toMatch(/✓ rlm\.map 3 frames ▰▰▰▰▰▰▰▰▰▰ 3\/3 +item/);
+		expect(rendered).toMatch(/◐ rlm\.infer \w{8} contract_unmet/);
+		expect(rendered).toMatch(/✓ rlm\.infer \w{8} good frame/);
+		expect(lines.every((line) => visibleWidth(line) <= 80)).toBe(true);
 	});
 });
 

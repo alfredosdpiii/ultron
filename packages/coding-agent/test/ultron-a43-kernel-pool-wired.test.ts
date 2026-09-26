@@ -56,4 +56,45 @@ describe("A43 kernel pool in the rlm tool", () => {
 			rmSync(dir, { recursive: true, force: true });
 		}
 	});
+
+	test.skipIf(process.platform !== "linux")(
+		"rlm.pool reports each live kernel's tree memory and the cap",
+		async () => {
+			const dir = mkdtempSync(join(tmpdir(), "ultron-a43-memory-"));
+			const tool = createUltronRlmTool(
+				dir,
+				async () => {
+					throw new Error("No host requests expected");
+				},
+				async () => "main",
+			);
+			const env = new NodeExecutionEnv({ cwd: dir });
+			const invocation = {
+				invocationId: "mem-1",
+				operationId: "mem-op-1",
+				turnId: "mem-turn",
+				getMemo: async () => undefined,
+				setMemo: async () => undefined,
+			};
+			try {
+				expect(tool.poolStats().memoryBytes).toBeUndefined();
+				await tool.execute(
+					"mem-1",
+					{ code: "x = bytearray(8 * 1024 * 1024)" },
+					() => {},
+					{ env },
+					invocation,
+					BACKGROUND_CONTEXT,
+				);
+				const stats = tool.poolStats();
+				expect(stats.live).toBe(1);
+				expect(stats.lanes[0]!.memoryBytes).toBeGreaterThan(8 * 1024 * 1024);
+				expect(stats.memoryBytes).toBe(stats.lanes[0]!.memoryBytes);
+				expect(stats.memoryCapBytes).toBeGreaterThan(0);
+			} finally {
+				await tool.close();
+				rmSync(dir, { recursive: true, force: true });
+			}
+		},
+	);
 });

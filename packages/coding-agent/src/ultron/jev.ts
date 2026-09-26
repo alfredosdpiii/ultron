@@ -27,7 +27,9 @@ type JevOptions = {
 };
 
 const maxResponseBytes = 1_048_576;
-const memoryRecallThreshold = 0.65;
+/** Recall gate cut-off: a probability at or above it retrieves memory. */
+export const JEV_RECALL_THRESHOLD = 0.65;
+const memoryRecallThreshold = JEV_RECALL_THRESHOLD;
 
 const sensitivePatterns = [
 	/\b(?:sk|ghp|github_pat|xox[baprs]|AIza|AKIA)[A-Za-z0-9_-]{8,}\b/i,

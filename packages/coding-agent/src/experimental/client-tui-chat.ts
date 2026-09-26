@@ -7,6 +7,7 @@ import { type StatusIndicator, WorkingStatusIndicator } from "../modes/interacti
 import { ToolExecutionComponent, type ToolRenderers } from "../modes/interactive/components/tool-execution.ts";
 import { UserMessageComponent } from "../modes/interactive/components/user-message.ts";
 import { theme } from "../modes/interactive/theme/theme.ts";
+import { type JevNoteSource, JevTurnNotes, parseMemoryMessage } from "./jev-annotations.ts";
 
 function userMessageText(message: AgentMessage): string {
 	if (message.role !== "user") return "";
@@ -31,10 +32,14 @@ export class ExperimentalChatView {
 	#streaming: AssistantMessageComponent | undefined;
 	#indicator: StatusIndicator | undefined;
 	#working = false;
+	/** Jev's notes: set when the TUI can show what Jev recalled and kept per turn. */
+	readonly #jev: JevNoteSource | undefined;
+	#turn: { notes: JevTurnNotes; closed: boolean; answered: boolean } | undefined;
 
-	constructor(ui: TUI, cwd: string) {
+	constructor(ui: TUI, cwd: string, options: { readonly jev?: JevNoteSource } = {}) {
 		this.#ui = ui;
 		this.#cwd = cwd;
+		this.#jev = options.jev;
 	}
 
 	apply(snapshot: LaneSnapshot): void {
@@ -51,6 +56,8 @@ export class ExperimentalChatView {
 		}
 		this.#syncQueues(snapshot.queues);
 		this.#setWorking(snapshot.operation !== null);
+		// A settled turn gets its retention note after the answer.
+		if (snapshot.operation === null && this.#turn?.answered) this.#closeTurn();
 		this.transcript.invalidate();
 		this.pendingMessages.invalidate();
 		this.status.invalidate();
@@ -66,6 +73,7 @@ export class ExperimentalChatView {
 		this.#tools.clear();
 		this.#renderedEntryIds = [];
 		this.#streaming = undefined;
+		this.#turn = undefined;
 		this.apply(snapshot);
 	}
 
@@ -89,6 +97,7 @@ export class ExperimentalChatView {
 			this.#tools.clear();
 			this.#renderedEntryIds = [];
 			this.#streaming = undefined;
+			this.#turn = undefined;
 		}
 		for (const entry of transcript.slice(this.#renderedEntryIds.length)) {
 			this.#addEntry(entry);
@@ -111,16 +120,25 @@ export class ExperimentalChatView {
 			this.#addText(theme.fg("muted", `[${entry.customType}]`));
 			return;
 		}
-		this.#addMessage(entry.message);
+		this.#addMessage(entry.message, entry.timestamp);
 	}
 
-	#addMessage(message: AgentMessage): void {
+	#addMessage(message: AgentMessage, timestamp?: number): void {
 		if (message.role === "user") {
+			this.#closeTurn();
 			this.transcript.addChild(new Spacer(1));
 			this.transcript.addChild(new UserMessageComponent(userMessageText(message)));
+			if (this.#jev !== undefined) {
+				const at = timestamp ?? message.timestamp ?? Date.now();
+				if (this.#turn !== undefined) this.#turn.notes.nextAt = at;
+				const notes = new JevTurnNotes(this.#jev, at);
+				this.#turn = { notes, closed: false, answered: false };
+				this.transcript.addChild(notes.recall);
+			}
 			return;
 		}
 		if (message.role === "assistant") {
+			if (this.#turn !== undefined) this.#turn.answered = true;
 			const component = this.#streaming ?? new AssistantMessageComponent();
 			if (!this.#streaming) this.transcript.addChild(component);
 			this.#streaming = undefined;
@@ -131,7 +149,13 @@ export class ExperimentalChatView {
 			return;
 		}
 		if (message.role === "toolResult") this.#tool(message.toolName, message.toolCallId).updateResult(message);
-		// Injected context (automatic memory) is shown muted, so what reached the model is visible.
+		// Automatic memory joins the turn's Jev note (collapsed to one line, expandable).
+		const memory = this.#jev === undefined ? undefined : parseMemoryMessage(message);
+		if (memory !== undefined && this.#turn !== undefined && this.#turn.notes.memory === undefined) {
+			this.#turn.notes.memory = memory;
+			return;
+		}
+		// Other injected context is shown muted, so what reached the model is visible.
 		if (message.role === "custom" && message.display) {
 			const text =
 				typeof message.content === "string"
@@ -171,6 +195,14 @@ export class ExperimentalChatView {
 		this.transcript.addChild(component);
 		this.#tools.set(toolCallId, component);
 		return component;
+	}
+
+	/** Append the current turn's retention note once, after its answer. */
+	#closeTurn(): void {
+		const turn = this.#turn;
+		if (turn === undefined || turn.closed) return;
+		turn.closed = true;
+		this.transcript.addChild(turn.notes.retention);
 	}
 
 	#addText(text: string): void {

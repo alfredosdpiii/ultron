@@ -1,4 +1,5 @@
 import type { AgentHarness, AgentMessage, CustomMessage } from "@ultron/agent-core";
+import { withJevDecisionRef } from "./jev-decisions.ts";
 import type { MemoryPrepared, MemoryScope, NativeMemoryService } from "./memory.ts";
 
 /**
@@ -163,9 +164,12 @@ export class AutoMemory {
 		const taskId = `auto:${runId}`;
 		let prepared: MemoryPrepared;
 		try {
-			prepared = await this.#options.memory.prepare(
-				{ query: text.slice(0, MAX_EXCHANGE_CHARS), scope: this.#scope, taskId },
-				AbortSignal.timeout(this.#options.recallTimeoutMs ?? DEFAULT_RECALL_TIMEOUT_MS),
+			// The gate's decision is tagged with this run, so a view can pin it to the turn it shaped.
+			prepared = await withJevDecisionRef(taskId, () =>
+				this.#options.memory.prepare(
+					{ query: text.slice(0, MAX_EXCHANGE_CHARS), scope: this.#scope, taskId },
+					AbortSignal.timeout(this.#options.recallTimeoutMs ?? DEFAULT_RECALL_TIMEOUT_MS),
+				),
 			);
 		} catch (error) {
 			this.#options.onError?.("recall", error);
@@ -216,13 +220,14 @@ export class AutoMemory {
 		const release = this.#options.holdActivity?.() ?? (() => {});
 		const prompt = run.prompt.slice(0, MAX_EXCHANGE_CHARS);
 		const response = run.answer.slice(0, MAX_EXCHANGE_CHARS);
-		const task = this.#options.memory
-			.propose({
+		const task = withJevDecisionRef(`auto:${runId}`, () =>
+			this.#options.memory.propose({
 				text: `[User]\n${prompt}\n\n[Assistant]\n${response}`,
 				evidence: [{ ref: `session:${this.#options.sessionId}#run:${runId}` }],
 				scope: this.#scope,
 				source: { prompt, response },
-			})
+			}),
+		)
 			.then(
 				() => {},
 				(error: unknown) => this.#options.onError?.("retain", error),

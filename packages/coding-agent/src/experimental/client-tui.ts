@@ -39,17 +39,22 @@ import { copyToClipboard } from "../utils/clipboard.ts";
 import { ensureTool } from "../utils/tools-manager.ts";
 import { type OpenClientRuntimeOptions, openClientRuntime } from "./client-runtime.ts";
 import { ExperimentalChatView } from "./client-tui-chat.ts";
+import { collectKnownMemories, type JevNoteSource, parseMemoryMessage } from "./jev-annotations.ts";
 import {
+	JEV_PULSE_MS,
 	type JevSnapshot,
 	parseJevDecisions,
 	parseJevLedger,
 	renderJevPanel,
-	renderJevStatusLine,
+	renderJevPresence,
 } from "./jev-visualizer.ts";
 import { PiSessionView } from "./pi-session-view.ts";
 import { createPresentationFacetLoaders } from "./plugins/bundled.ts";
+import { RlmGraphFocus } from "./rlm-focus.ts";
+import { buildRlmGraph, graphActive, renderRlmDock, renderRlmFooter } from "./rlm-graph.ts";
 import {
 	extractRootCell,
+	extractTurn,
 	isActiveState,
 	parseAgentsStatus,
 	parseContextState,
@@ -69,8 +74,6 @@ import {
 	type RlmTask,
 	type RlmTiming,
 	type RlmUsage,
-	renderRlmPanel,
-	renderRlmStatusLine,
 } from "./rlm-visualizer.ts";
 import { messageText } from "./rpc-events.ts";
 import { AgentController, type AgentOperationResponse, type AgentQueueResponse } from "./services/agent-controller.ts";
@@ -140,6 +143,10 @@ interface PendingSelection {
 const RLM_POLL_VISIBLE_MS = 1000;
 const RLM_POLL_HIDDEN_MS = 5000;
 const RLM_MAX_ASSESSED = 8;
+/** Frame summaries fetched per poll: enough to fan out a wide `rlm.map` (the worker keeps at most 200). */
+const RLM_FRAME_LIMIT = 200;
+/** Redraw cadence for spinners and Jev's pulse, only while something animates. */
+const ANIMATION_MS = 150;
 
 const rlmStyle: RlmStyle = {
 	fg: (color, text) => theme.fg(color, text),
@@ -157,6 +164,7 @@ interface RlmPollState {
 	context?: RlmContextState | null;
 	frames: RlmFrame[];
 	jobs: RlmJob[];
+	truncatedTasks?: number;
 	error?: string;
 }
 
@@ -198,6 +206,13 @@ export class ExperimentalClientTui implements Component {
 	};
 	#rlmVisible = false;
 	#jevVisible = false;
+	/** The full-screen RLM graph, while open. */
+	#rlmFocus: RlmGraphFocus | undefined;
+	/** Jev's transcript notes show every recalled memory instead of one line. */
+	#jevNotesExpanded = false;
+	/** Older workers reject `agents.status {graph: true}`; fall back to the plain listing. */
+	#graphListing = true;
+	#animationTimer: ReturnType<typeof setInterval> | undefined;
 	#jevState: Omit<JevSnapshot, "now"> = { available: null, decisions: [] };
 	#rlmTimer: ReturnType<typeof setInterval> | undefined;
 	#rlmInFlight = false;
@@ -273,6 +288,12 @@ export class ExperimentalClientTui implements Component {
 		this.#chatInput.onAction("app.model.select", () => void this.#executeSlashCommand("model", ""));
 		this.#chatInput.onAction("app.rlm.toggle", () => this.#toggleRlm());
 		this.#chatInput.onAction("app.jev.toggle", () => this.#toggleJev());
+		this.#chatInput.onAction("app.rlm.focus", () => this.#openRlmFocus());
+		this.#chatInput.onAction("app.jev.notes.toggle", () => {
+			this.#jevNotesExpanded = !this.#jevNotesExpanded;
+			this.#layoutRoot.invalidate();
+			this.#requestRender();
+		});
 		this.#chatInput.onAction("app.session.tree", () => void this.#showTreeSelector());
 		this.#chatInput.onAction("app.session.fork", () => void this.#showUserMessageSelector());
 		this.#chatInput.onAction("app.message.followUp", () => {
@@ -466,9 +487,10 @@ export class ExperimentalClientTui implements Component {
 					env.own(
 						commands.replace({
 							name: "rlm",
-							description: "Toggle the live RLM panel (task tree, root kernel, budget)",
-							run: () => {
-								this.#toggleRlm();
+							description: "Toggle the live RLM graph panel; /rlm focus opens it full screen",
+							run: (args) => {
+								if (args.trim() === "focus") this.#openRlmFocus();
+								else this.#toggleRlm();
 								return undefined;
 							},
 						}),
@@ -558,6 +580,8 @@ export class ExperimentalClientTui implements Component {
 		this.#closed = true;
 		if (this.#rlmTimer !== undefined) clearInterval(this.#rlmTimer);
 		this.#rlmTimer = undefined;
+		if (this.#animationTimer !== undefined) clearInterval(this.#animationTimer);
+		this.#animationTimer = undefined;
 		this.#completeSelection(undefined);
 		this.#active?.cancel();
 		const errors: unknown[] = [];
@@ -723,7 +747,7 @@ export class ExperimentalClientTui implements Component {
 
 	async #openLane(feature: SessionFeature): Promise<void> {
 		await this.#closeLane();
-		const view = new ExperimentalChatView(this.#ui, process.cwd());
+		const view = new ExperimentalChatView(this.#ui, process.cwd(), { jev: this.#jevNoteSource });
 		this.#chatView = view;
 		this.#documentContainer.addChild(this.#sessionHeading);
 		this.#documentContainer.addChild(view.transcript);
@@ -1308,7 +1332,9 @@ export class ExperimentalClientTui implements Component {
 		if (this.#closed) return;
 		this.#rlmTimer = setInterval(
 			() => void this.#refreshRlm(),
-			this.#rlmVisible || this.#jevVisible ? RLM_POLL_VISIBLE_MS : RLM_POLL_HIDDEN_MS,
+			this.#rlmVisible || this.#jevVisible || this.#rlmFocus !== undefined
+				? RLM_POLL_VISIBLE_MS
+				: RLM_POLL_HIDDEN_MS,
 		);
 		this.#rlmTimer.unref?.();
 	}
@@ -1323,15 +1349,20 @@ export class ExperimentalClientTui implements Component {
 		}
 		this.#rlmInFlight = true;
 		try {
+			const graphListing = this.#graphListing;
 			const [status, instances, pool, jev, contextState, frames] = await Promise.allSettled([
-				control.inspect("agents.status", {}, BACKGROUND_CONTEXT),
+				control.inspect("agents.status", graphListing ? { graph: true } : {}, BACKGROUND_CONTEXT),
 				control.inspect("instances.list", {}, BACKGROUND_CONTEXT),
 				control.inspect("rlm.pool", {}, BACKGROUND_CONTEXT),
 				control.inspect("jev.decisions", {}, BACKGROUND_CONTEXT),
 				control.inspect("ctx.state", {}, BACKGROUND_CONTEXT),
-				control.inspect("rlm.frames", { limit: 20 }, BACKGROUND_CONTEXT),
+				control.inspect("rlm.frames", { limit: RLM_FRAME_LIMIT }, BACKGROUND_CONTEXT),
 			]);
 			if (this.#closed) return;
+			if (graphListing && status.status === "rejected" && /Unknown payload field/.test(message(status.reason))) {
+				this.#graphListing = false;
+				this.#rlmQueued = true;
+			}
 			const next: RlmPollState = { ...this.#rlmState };
 			if (status.status === "fulfilled") {
 				const parsed = parseAgentsStatus(status.value);
@@ -1339,6 +1370,8 @@ export class ExperimentalClientTui implements Component {
 				next.usage = parsed.usage;
 				next.limits = parsed.limits;
 				next.jobs = parsed.jobs;
+				if (parsed.truncatedTasks === undefined) delete next.truncatedTasks;
+				else next.truncatedTasks = parsed.truncatedTasks;
 				next.timing = this.#rlmClock.timings(parsed.tasks, parsed.usage, Date.now());
 				delete next.error;
 			} else {
@@ -1350,7 +1383,7 @@ export class ExperimentalClientTui implements Component {
 			if (frames.status === "fulfilled") next.frames = parseFrames(frames.value);
 			// Progress assessments are cheap host reads; only fetch them for a few running tasks while visible.
 			const progress = new Map<string, RlmProgress>();
-			if (this.#rlmVisible) {
+			if (this.#rlmVisible || this.#rlmFocus !== undefined) {
 				const running = next.tasks.filter((task) => isActiveState(task.state)).slice(0, RLM_MAX_ASSESSED);
 				const assessed = await Promise.allSettled(
 					running.map((task) => control.inspect("progress.assess", { task_id: task.id }, BACKGROUND_CONTEXT)),
@@ -1370,6 +1403,7 @@ export class ExperimentalClientTui implements Component {
 				...(status.status === "fulfilled" ? parseJevLedger(status.value) : {}),
 				...(jev.status === "rejected" && this.#jevState.available !== null ? { error: message(jev.reason) } : {}),
 			};
+			this.#updateAnimation();
 			this.#layoutRoot.invalidate();
 			this.#requestRender();
 		} finally {
@@ -1384,44 +1418,128 @@ export class ExperimentalClientTui implements Component {
 	#rlmSnapshot(): RlmSnapshot {
 		const now = Date.now();
 		const state = this.#rlmState;
+		const lane = this.#laneSnapshot();
+		const { turn, cells } = extractTurn(lane, this.#rlmClock, now);
 		return {
 			now,
 			tasks: state.tasks,
 			usage: state.usage,
 			limits: state.limits,
 			pool: state.pool,
-			rootCell: extractRootCell(this.#laneSnapshot(), this.#rlmClock, now),
+			rootCell: extractRootCell(lane, this.#rlmClock, now),
 			retained: state.retained,
 			progress: state.progress,
 			timing: state.timing,
 			context: state.context ?? null,
 			frames: state.frames,
 			jobs: state.jobs,
+			cells,
+			turn,
+			...(state.truncatedTasks === undefined ? {} : { truncatedTasks: state.truncatedTasks }),
 			...(state.error === undefined ? {} : { error: state.error }),
 		};
 	}
 
+	#keyHint(action: "app.rlm.focus" | "app.rlm.toggle" | "app.jev.notes.toggle"): string | undefined {
+		return this.#keybindings.getKeys(action)[0];
+	}
+
 	#renderRlm(width: number, mode: "panel" | "footer"): string[] {
 		const inner = Math.max(1, width - 2);
+		const focusKey = this.#keyHint("app.rlm.focus");
+		const options = {
+			style: rlmStyle,
+			spinnerFrame: Math.floor(Date.now() / 100),
+			...(focusKey === undefined ? {} : { focusKey }),
+		};
 		if (mode === "panel") {
-			const lines = renderRlmPanel(this.#rlmSnapshot(), inner, {
-				style: rlmStyle,
-				spinnerFrame: Math.floor(Date.now() / 100),
-			});
-			return lines.map((line) => ` ${line}`);
+			if (this.#rlmFocus !== undefined) return [];
+			return renderRlmDock(this.#rlmSnapshot(), inner, options).map((line) => ` ${line}`);
 		}
-		if (this.#rlmVisible) return [];
-		const line = renderRlmStatusLine(this.#rlmSnapshot(), inner, { style: rlmStyle });
+		if (this.#rlmVisible || this.#rlmFocus !== undefined) return [];
+		const line = renderRlmFooter(this.#rlmSnapshot(), inner, options);
 		return line === undefined ? [] : [` ${line}`];
+	}
+
+	#jevSnapshot(): JevSnapshot {
+		const transcript = this.#laneSnapshot()?.transcript ?? [];
+		const recalledCounts = new Map<string, number>();
+		for (const entry of transcript) {
+			const note = parseMemoryMessage((entry as { message?: unknown }).message);
+			if (note?.taskId !== undefined) recalledCounts.set(note.taskId, note.items.length);
+		}
+		return { now: Date.now(), ...this.#jevState, memories: collectKnownMemories(transcript), recalledCounts };
 	}
 
 	#renderJev(width: number, mode: "panel" | "footer"): string[] {
 		const inner = Math.max(1, width - 2);
-		const snapshot: JevSnapshot = { now: Date.now(), ...this.#jevState };
+		const snapshot = this.#jevSnapshot();
 		if (mode === "panel") return renderJevPanel(snapshot, inner, { style: rlmStyle }).map((line) => ` ${line}`);
 		if (this.#jevVisible) return [];
-		const line = renderJevStatusLine(snapshot, inner, { style: rlmStyle });
+		const line = renderJevPresence(snapshot, inner, { style: rlmStyle });
 		return line === undefined ? [] : [` ${line}`];
+	}
+
+	/** Live data for Jev's transcript notes. */
+	readonly #jevNoteSource: JevNoteSource = {
+		decisions: () => this.#jevState.decisions,
+		thresholds: () => this.#jevState.thresholds,
+		expanded: () => this.#jevNotesExpanded,
+		expandKey: () => this.#keyHint("app.jev.notes.toggle"),
+		style: () => rlmStyle,
+	};
+
+	/** The full-screen RLM graph in the editor slot; Esc (or the bound exit key) returns to the chat. */
+	#openRlmFocus(): void {
+		if (this.#rlmFocus !== undefined) return;
+		let close = (): void => {};
+		const focus = new RlmGraphFocus({
+			snapshot: () => this.#rlmSnapshot(),
+			// Full screen above the footer, which keeps Jev's presence and the model line visible.
+			height: () =>
+				Math.max(10, this.#ui.terminal.rows - this.#footerComponent.render(this.#ui.terminal.columns).length - 1),
+			keybindings: this.#keybindings,
+			style: rlmStyle,
+			onExit: () => close(),
+			requestRender: () => this.#requestRender(),
+			loadTrace: async (traceId) => {
+				const control = this.#control;
+				if (control === undefined) throw new Error("no Session control");
+				return control.inspect("rlm.frames", { id: traceId }, BACKGROUND_CONTEXT);
+			},
+		});
+		this.#rlmFocus = focus;
+		const closeComponent = this.#showComponent({ component: focus, focus, cancel: () => close() });
+		close = () => {
+			if (this.#rlmFocus === focus) this.#rlmFocus = undefined;
+			closeComponent();
+			this.#updateAnimation();
+			this.#requestRender();
+		};
+		this.#scheduleRlmPolling();
+		void this.#refreshRlm();
+		this.#updateAnimation();
+	}
+
+	/** Redraw briefly for spinners and Jev's pulse while something animates; idle views cost nothing. */
+	#updateAnimation(): void {
+		const jevLatest = this.#jevState.decisions.reduce((latest, decision) => Math.max(latest, decision.at), 0);
+		const pulsing = Date.now() - jevLatest < JEV_PULSE_MS || (this.#jevState.inFlight ?? 0) > 0;
+		const running =
+			this.#rlmState.tasks.some((task) => isActiveState(task.state)) ||
+			graphActive(buildRlmGraph(this.#rlmSnapshot()));
+		const animate = !this.#closed && (pulsing || running);
+		if (animate && this.#animationTimer === undefined) {
+			this.#animationTimer = setInterval(() => {
+				this.#layoutRoot.invalidate();
+				this.#requestRender();
+				this.#updateAnimation();
+			}, ANIMATION_MS);
+			this.#animationTimer.unref?.();
+		} else if (!animate && this.#animationTimer !== undefined) {
+			clearInterval(this.#animationTimer);
+			this.#animationTimer = undefined;
+		}
 	}
 
 	#footer(): string {

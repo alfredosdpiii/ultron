@@ -25,6 +25,15 @@ export interface AppKeybindings {
 	"app.thinking.toggle": true;
 	"app.rlm.toggle": true;
 	"app.jev.toggle": true;
+	"app.jev.notes.toggle": true;
+	"app.rlm.focus": true;
+	"app.rlm.graph.up": true;
+	"app.rlm.graph.down": true;
+	"app.rlm.graph.pageUp": true;
+	"app.rlm.graph.pageDown": true;
+	"app.rlm.graph.details": true;
+	"app.rlm.graph.collapse": true;
+	"app.rlm.graph.exit": true;
 	"app.session.toggleNamedFilter": true;
 	"app.editor.external": true;
 	"app.message.copy": true;
@@ -129,6 +138,21 @@ export const KEYBINDINGS = {
 		defaultKeys: "alt+j",
 		description: "Toggle the Jev decisions panel (native TUI)",
 	},
+	"app.jev.notes.toggle": {
+		defaultKeys: "alt+m",
+		description: "Expand or fold Jev's memory notes in the transcript (native TUI)",
+	},
+	"app.rlm.focus": {
+		defaultKeys: "alt+r",
+		description: "Open the full-screen RLM graph (native TUI)",
+	},
+	"app.rlm.graph.up": { defaultKeys: ["up", "k"], description: "RLM graph: select the previous node" },
+	"app.rlm.graph.down": { defaultKeys: ["down", "j"], description: "RLM graph: select the next node" },
+	"app.rlm.graph.pageUp": { defaultKeys: "pageUp", description: "RLM graph: page up" },
+	"app.rlm.graph.pageDown": { defaultKeys: "pageDown", description: "RLM graph: page down" },
+	"app.rlm.graph.details": { defaultKeys: "enter", description: "RLM graph: show or hide the node's details" },
+	"app.rlm.graph.collapse": { defaultKeys: ["c", "space"], description: "RLM graph: collapse or expand the subtree" },
+	"app.rlm.graph.exit": { defaultKeys: ["escape", "q"], description: "RLM graph: leave the focus view" },
 	"app.session.toggleNamedFilter": {
 		defaultKeys: "ctrl+n",
 		description: "Toggle named session filter",

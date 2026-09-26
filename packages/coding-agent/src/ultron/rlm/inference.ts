@@ -198,6 +198,9 @@ type FrameState = {
 	startedAt: number;
 	endedAt?: number;
 	finalized?: boolean;
+	/** `rlm.map` frames share one budget node; `batch` is the map's frame count (1 for `rlm.infer`). */
+	kind: "infer" | "map";
+	batch: number;
 };
 
 /** Where frame traces live: session values `ultron.rlm.frames/<id>` (and an index at `ultron.rlm.frames/index`). */
@@ -248,6 +251,12 @@ function optionalInteger(item: unknown, name: string, minimum: number, maximum: 
 	if (typeof item !== "number" || !Number.isSafeInteger(item) || item < minimum || item > maximum)
 		throw new Error(`${name} must be an integer between ${minimum} and ${maximum}`);
 	return item;
+}
+
+/** A budget node's id and limits (the frames' shared pool), for frame summaries. */
+function budgetSummary(node: BudgetNode | undefined): JsonValue {
+	if (node === undefined) return null;
+	return { id: node.id, calls: node.calls.limit, tokens: node.tokens.limit, depth: node.depth };
 }
 
 function bounded(text: string, limit: number): string {
@@ -699,6 +708,8 @@ export class InferenceRuntime {
 			attempts: [],
 			requests: [],
 			startedAt: this.now(),
+			kind: "infer",
+			batch: 1,
 		};
 		this.frames.set(id, frame);
 		if (options.depth < 1)
@@ -748,6 +759,10 @@ export class InferenceRuntime {
 		// Validate every item before any frame runs or any budget is touched.
 		const requests = payload.frames.map((item) => this.request(item, options.depth));
 		const frames = requests.map((request) => this.newFrame(request, options));
+		for (const frame of frames) {
+			frame.kind = "map";
+			frame.batch = frames.length;
+		}
 		let next = 0;
 		const worker = async () => {
 			while (next < frames.length) {
@@ -1038,6 +1053,12 @@ export class InferenceRuntime {
 			parentFrame: frame.parentFrame ?? null,
 			startedAt: frame.startedAt,
 			endedAt: frame.endedAt ?? null,
+			// Read-only grouping for the graph view: one `rlm.map` is one budget node shared by `batch` frames.
+			kind: frame.kind,
+			batch: frame.batch,
+			callerTaskId: frame.callerTaskId,
+			lane: frame.laneName ?? null,
+			budget: budgetSummary(frame.node.parent),
 		};
 	}
 

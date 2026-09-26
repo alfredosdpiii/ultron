@@ -73,7 +73,7 @@ import { createFamilyModule } from "../ultron/family.ts";
 import { assertSessionFormatsReadable } from "../ultron/format-version.ts";
 import { createGrantModule } from "../ultron/grants.ts";
 import { createInstanceModule } from "../ultron/instances.ts";
-import { createNativeJevClient } from "../ultron/jev.ts";
+import { createNativeJevClient, JEV_RECALL_THRESHOLD } from "../ultron/jev.ts";
 import { JEV_DECISION_CAPACITY, JevDecisionLog, recordingJevClient } from "../ultron/jev-decisions.ts";
 import type { RefinementBranch } from "../ultron/local-services.ts";
 import { createPredictAdapter } from "../ultron/predict-adapter.ts";
@@ -107,7 +107,7 @@ import {
 	toolRoundsNudgeFromEnv,
 } from "../ultron/tool-round-nudge.ts";
 import { createSessionUsageLedger, nativeUsageLimitsFromEnv } from "../ultron/usage.ts";
-import { createWorkerServices } from "../ultron/worker-services.ts";
+import { AUTOMATIC_KEEP_THRESHOLD, createWorkerServices } from "../ultron/worker-services.ts";
 import { COORDINATOR_PROTOCOL_VERSION } from "./coordinator.ts";
 import { LegacyExtensionAdapter } from "./legacy-extension-adapter.ts";
 import { createSessionPluginFacetLoader } from "./plugins/bundled.ts";
@@ -179,6 +179,10 @@ export class UltronRlmKernel {
 		return this.kernel.shutdown();
 	}
 
+	memoryUsage(): { bytes: number; capBytes: number | null } | undefined {
+		return this.kernel.memoryUsage();
+	}
+
 	async execute(code: string, context: Context): Promise<string> {
 		const result = await this.kernel.execute(code, context.abortSignal);
 		// The streams end with print()'s newline; the parts are joined by one, so drop it to avoid blank lines.
@@ -227,9 +231,16 @@ export type UltronRlmTool = AgentHarnessTool<{ env: NodeExecutionEnv }> & {
 export type RlmPoolStats = {
 	live: number;
 	maxLive: number;
-	lanes: { lane: string; running: number; pinnedBy: string[]; idleMs: number }[];
+	lanes: { lane: string; running: number; pinnedBy: string[]; idleMs: number; memoryBytes?: number }[];
 	evictions: number;
+	/** Summed tree memory of the live kernels, when readable (Linux). */
+	memoryBytes?: number;
+	/** Per-kernel tree memory cap, when one is set. */
+	memoryCapBytes?: number;
 };
+
+/** Tree memory is read from /proc; inspection polls reuse a reading this recent. */
+const POOL_MEMORY_TTL_MS = 3000;
 
 export { RLM_TOOL_DESCRIPTION } from "../ultron/rlm/prompt.ts";
 
@@ -286,6 +297,7 @@ export function createUltronRlmTool(
 	const sweeper = setInterval(() => void kernels.sweep().catch(() => {}), 60_000);
 	sweeper.unref();
 	let closed = false;
+	let memoryReading: { at: number; laneKey: string; byLane: Map<string, number>; cap: number | undefined } | undefined;
 	const schema = Type.Object({
 		code: Type.String({
 			description: "Python code for persistent RLM computation, typed agents, and data processing",
@@ -311,10 +323,42 @@ export function createUltronRlmTool(
 		},
 		unpin: (lane, holder) => kernels.unpin(lane, holder),
 		kernels,
-		poolStats: () => ({
-			...kernels.stats(),
-			evictions: kernels.evictions.filter((record) => record.evicted).length,
-		}),
+		poolStats: () => {
+			const stats = kernels.stats();
+			const now = Date.now();
+			const laneKey = stats.lanes.map((lane) => lane.lane).join("\n");
+			// Re-read when the reading is old or the set of live kernels changed.
+			if (
+				memoryReading === undefined ||
+				memoryReading.laneKey !== laneKey ||
+				now - memoryReading.at > POOL_MEMORY_TTL_MS
+			) {
+				const byLane = new Map<string, number>();
+				let cap: number | undefined;
+				for (const lane of stats.lanes) {
+					const usage = kernels.live(lane.lane)?.memoryUsage();
+					if (usage === undefined) continue;
+					byLane.set(lane.lane, usage.bytes);
+					if (usage.capBytes !== null) cap = usage.capBytes;
+				}
+				memoryReading = { at: now, laneKey, byLane, cap };
+			}
+			const reading = memoryReading;
+			const lanes = stats.lanes.map((lane) => {
+				const bytes = reading.byLane.get(lane.lane);
+				return bytes === undefined ? lane : { ...lane, memoryBytes: bytes };
+			});
+			const measured = lanes.filter((lane) => "memoryBytes" in lane);
+			return {
+				...stats,
+				lanes,
+				evictions: kernels.evictions.filter((record) => record.evicted).length,
+				...(measured.length === 0
+					? {}
+					: { memoryBytes: [...reading.byLane.values()].reduce((sum, bytes) => sum + bytes, 0) }),
+				...(reading.cap === undefined ? {} : { memoryCapBytes: reading.cap }),
+			};
+		},
 		name: "rlm",
 		label: "rlm",
 		// Read per request, so a skill activated mid-session is listed on the next model call.
@@ -1637,6 +1681,8 @@ async function createCodingAgentHarness(
 						startedAt: job.startedAt,
 						endedAt: job.endedAt,
 						outputBytes: job.outputBytes,
+						// Last output, bounded, for the TUI graph's job details.
+						tail: job.tail.slice(-160),
 					})),
 			}),
 			services: branchedServices,
@@ -1833,6 +1879,8 @@ async function createCodingAgentHarness(
 							hindsight: hindsightUrl(process.env.ULTRON_HINDSIGHT_URL) !== undefined,
 						},
 						capacity: JEV_DECISION_CAPACITY,
+						// The gates' cut-offs, so a view can show a score against the line it had to clear.
+						thresholds: { recall: JEV_RECALL_THRESHOLD, keep: AUTOMATIC_KEEP_THRESHOLD },
 						decisions: await jevDecisions.list(),
 					};
 				}

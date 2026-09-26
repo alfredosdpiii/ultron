@@ -43,7 +43,20 @@ type TaskRecord = NativeTask & {
 	notify?: DetachedEndKind;
 	/** Requests currently waiting on this task's result (a cell that is waiting already gets the result). */
 	waiters?: number;
+	/** In-memory timing and provenance for the read-only graph view (`agents.status {graph: true}`). */
+	startedAt?: number;
+	endedAt?: number;
+	tokens?: number;
+	inputPreview?: string;
+	workflow?: WorkflowMembership;
 };
+
+/** A task's place in a `workflows.run` graph: the run, its node id, and the dependencies it joined. */
+type WorkflowMembership = { run: string; node: string; dependsOn: string[]; join: "all" | "any" };
+
+/** Tasks listed by `agents.status {graph: true}` (the newest are kept). */
+const GRAPH_TASK_LIMIT = 300;
+const GRAPH_PREVIEW_CHARS = 240;
 
 export type DetachedEndKind = "child_done" | "task_done";
 
@@ -70,6 +83,8 @@ type TaskRequest = {
 	timeoutMs: number;
 	/** Run on this existing lane (a retained instance) instead of a fresh task lane. */
 	lane?: string;
+	/** Set for a workflow node's task (read-only provenance for the graph view). */
+	workflow?: WorkflowMembership;
 };
 
 type RlmChildHandle = {
@@ -219,6 +234,48 @@ function publicTask(task: TaskRecord): Record<string, unknown> {
 		state: task.state,
 		...(task.parentId === undefined ? {} : { parentId: task.parentId }),
 		...(task.result === undefined ? {} : { result: task.result }),
+	};
+}
+
+function preview(value: unknown, limit = GRAPH_PREVIEW_CHARS): string {
+	let text: string;
+	try {
+		text = typeof value === "string" ? value : (JSON.stringify(value) ?? String(value));
+	} catch {
+		text = String(value);
+	}
+	const flat = text.replace(/\s+/g, " ").trim();
+	return flat.length > limit ? `${flat.slice(0, limit - 1)}…` : flat;
+}
+
+/**
+ * Bounded, read-only graph view of a task for the TUI: lane, timing, spend, input and result previews, workflow
+ * membership, and how to fetch the full result from Python. Timing and spend exist only for tasks this process ran.
+ */
+function graphTask(task: TaskRecord): Record<string, unknown> {
+	const result = task.result;
+	return {
+		id: task.id,
+		definition: task.definition,
+		state: task.state,
+		...(task.parentId === undefined ? {} : { parentId: task.parentId }),
+		...(task.laneName === undefined ? {} : { lane: task.laneName }),
+		...(task.startedAt === undefined ? {} : { startedAt: task.startedAt }),
+		...(task.endedAt === undefined ? {} : { endedAt: task.endedAt }),
+		...(task.cost === undefined ? {} : { cost: task.cost }),
+		...(task.tokens === undefined ? {} : { tokens: task.tokens }),
+		...(task.inputPreview === undefined ? {} : { input: task.inputPreview }),
+		...(task.workflow === undefined ? {} : { workflow: structuredClone(task.workflow) }),
+		...(result === undefined
+			? {}
+			: {
+					result: {
+						status: result.status,
+						...(result.error === undefined ? {} : { error: preview(result.error) }),
+						...(result.value === undefined ? {} : { preview: preview(result.value) }),
+					},
+				}),
+		fetch: fetchHint(task),
 	};
 }
 
@@ -670,6 +727,7 @@ export class NativeRlmHost {
 			};
 		} finally {
 			if (typeof modelUsage?.cost === "number") task.cost = modelUsage.cost;
+			if (typeof modelUsage?.totalTokens === "number") task.tokens = modelUsage.totalTokens;
 			if (modelReservation)
 				await this.usage?.settle(modelReservation, {
 					status: modelStatus,
@@ -686,6 +744,7 @@ export class NativeRlmHost {
 				const state = result.status === "succeeded" ? "completed" : result.status;
 				const committed = await this.journal.transition(task.id, state, result);
 				Object.assign(task, committed);
+				task.endedAt ??= this.now();
 				if (!committed.result) throw new Error("Terminal task has no durable result");
 				if (task.usageReservation && !task.usageSettled) {
 					await this.usage?.settle(task.usageReservation, {
@@ -852,6 +911,9 @@ export class NativeRlmHost {
 				controller: new AbortController(),
 				usageReservation,
 				...(notify === undefined ? {} : { notify }),
+				startedAt: this.now(),
+				inputPreview: preview(request.input),
+				...(request.workflow === undefined ? {} : { workflow: request.workflow }),
 			};
 			task.promise = new Promise<NativeResult>((resolve, reject) => {
 				task.resolve = resolve;
@@ -1116,6 +1178,7 @@ export class NativeRlmHost {
 		key: string | undefined,
 		context: Context,
 		parentId: string | undefined,
+		run?: string,
 	): Promise<WorkflowOutcome> {
 		const definition = this.definition(node.definition);
 		// A bound input that does not fit fails this node explicitly; nothing is spawned for it.
@@ -1127,7 +1190,9 @@ export class NativeRlmHost {
 			};
 		let task: TaskRecord;
 		try {
-			task = await this.spawnTask({ ...node, input, key }, context, parentId);
+			const workflow =
+				run === undefined ? undefined : { run, node: node.id, dependsOn: [...node.dependsOn], join: node.join };
+			task = await this.spawnTask({ ...node, input, key, workflow }, context, parentId);
 		} catch (error) {
 			// Refused admission (capacity, deadline, closed host) is an explicit node failure.
 			return {
@@ -1151,6 +1216,7 @@ export class NativeRlmHost {
 		output: ReadonlyMap<string, WorkflowOutcome>,
 		context: Context,
 		parentId: string | undefined,
+		run?: string,
 	): Promise<[WorkflowOutcome, WorkflowOutcome]> {
 		const revise = work.revise!;
 		const rounds: WorkflowRound[] = [];
@@ -1166,7 +1232,7 @@ export class NativeRlmHost {
 		];
 		let input = firstInput;
 		for (let round = 1; ; round++) {
-			const workResult = await this.workflowTask(work, input, roundKey(work, round), context, parentId);
+			const workResult = await this.workflowTask(work, input, roundKey(work, round), context, parentId, run);
 			if (workResult.status !== "succeeded") {
 				const skipped: WorkflowOutcome = {
 					status: "skipped",
@@ -1180,7 +1246,7 @@ export class NativeRlmHost {
 			const reviewResult =
 				"outcome" in decided
 					? decided.outcome
-					: await this.workflowTask(reviewer, decided.input, roundKey(reviewer, round), context, parentId);
+					: await this.workflowTask(reviewer, decided.input, roundKey(reviewer, round), context, parentId, run);
 			rounds.push({ round, work: workResult, review: reviewResult });
 			if (reviewResult.status !== "succeeded")
 				return finish(
@@ -1217,6 +1283,8 @@ export class NativeRlmHost {
 	): Promise<Record<string, WorkflowOutcome>> {
 		const output = new Map<string, WorkflowOutcome>();
 		const byId = new Map(nodes.map((node) => [node.id, node]));
+		// Groups this run's tasks in the read-only graph view.
+		const run = `wf-${randomUUID().slice(0, 8)}`;
 		// A reviewer runs inside its loop; its outcome is published when the loop ends.
 		const reviewers = new Set(nodes.flatMap((node) => (node.revise ? [node.revise.from] : [])));
 		// A dependency is satisfied only by its durable terminal result, never by admission.
@@ -1252,13 +1320,14 @@ export class NativeRlmHost {
 							output,
 							context,
 							parentId,
+							run,
 						);
 						return [
 							[node.id, work],
 							[reviewer.id, review],
 						];
 					}
-					return [[node.id, await this.workflowTask(node, decided.input, node.key, context, parentId)]];
+					return [[node.id, await this.workflowTask(node, decided.input, node.key, context, parentId, run)]];
 				}),
 			);
 			for (const [id, result] of results.flat()) output.set(id, result);
@@ -1286,14 +1355,20 @@ export class NativeRlmHost {
 		};
 		const module = this.modules.find((candidate) => candidate.prefixes.some((prefix) => type.startsWith(prefix)));
 		if (module) return module.handle({ type, payload, caller, context }, this.api);
-		if (["ping", "agents.list", "agents.status", "agents.tasks"].includes(type)) fields(payload, []);
+		if (["ping", "agents.list", "agents.tasks"].includes(type)) fields(payload, []);
+		if (type === "agents.status") fields(payload, ["graph"]);
 		if (type === "ping") return { ok: true };
 		if (type === "agents.list") return this.list();
 		if (type === "agents.status" || type === "agents.tasks") {
 			const usage = this.usage ? await this.usage.status(this.statusRoot(parentId)) : null;
+			const shown = journal.filter((task) => visible(task.id));
+			// The graph view is bounded: the newest tasks with previews instead of whole results.
+			const graph = payload.graph === true;
+			const listed = graph ? shown.slice(-GRAPH_TASK_LIMIT) : shown;
 			return {
 				definitions: this.list(),
-				tasks: journal.filter((task) => visible(task.id)).map(publicTask),
+				tasks: graph ? listed.map((task) => graphTask(this.tasks.get(task.id) ?? task)) : listed.map(publicTask),
+				...(graph && shown.length > listed.length ? { truncatedTasks: shown.length - listed.length } : {}),
 				usage,
 				limits: usage?.limits ?? null,
 				...(this.statusExtras?.(caller) ?? {}),

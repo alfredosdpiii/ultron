@@ -363,6 +363,23 @@ export class RlmKernel {
 		return this.stderr;
 	}
 
+	/**
+	 * Proportional memory of the kernel's process tree (Linux, read from /proc), and the tree cap; undefined while
+	 * no kernel process runs. Read-only; used by the `rlm.pool` inspection.
+	 */
+	memoryUsage(): { bytes: number; capBytes: number | null } | undefined {
+		const pid = this.generation?.child.pid;
+		if (!pid || this.closed || process.platform !== "linux") return undefined;
+		try {
+			return {
+				bytes: treeMemoryUsage(pid).bytes,
+				capBytes: this.treeMemoryMb > 0 ? this.treeMemoryMb * 1024 * 1024 : null,
+			};
+		} catch {
+			return undefined;
+		}
+	}
+
 	start(): Promise<void> {
 		return this.ensureStarted();
 	}

@@ -11,7 +11,8 @@ import {
 import { createModels, fauxAssistantMessage, fauxProvider } from "@ultron/ai";
 import { BACKGROUND_CONTEXT } from "@ultron/chord/context";
 import { describe, expect, test } from "vitest";
-import { PLAIN_STYLE, parseContextState, renderRlmPanel } from "../src/experimental/rlm-visualizer.ts";
+import { renderRlmDock } from "../src/experimental/rlm-graph.ts";
+import { PLAIN_STYLE, parseContextState } from "../src/experimental/rlm-visualizer.ts";
 import {
 	CONTEXT_ENTRY_PROJECTORS,
 	CONTEXT_PROMPT,
@@ -232,7 +233,7 @@ describe("ctx host module on a real lane", () => {
 
 			const state = parseContextState(await call("ctx.state"));
 			expect(state).toMatchObject({ forgottenCount: 2, pinnedCount: 1, notes: 1 });
-			const panel = renderRlmPanel({ now: 0, tasks: [], context: state }, 120, { style: PLAIN_STYLE }).join("\n");
+			const panel = renderRlmDock({ now: 0, tasks: [], context: state }, 120, { style: PLAIN_STYLE }).join("\n");
 			expect(panel).toContain("context: 2 forgotten · 0 collapsed · 1 pinned · 1 notes");
 			expect(panel).toContain("pinned");
 

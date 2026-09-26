@@ -1,11 +1,10 @@
 /**
- * Pure rendering for the native TUI's live RLM panel.
+ * Data model and defensive parsing for the native TUI's live RLM views (see rlm-graph.ts for the rendering).
  *
- * The TUI polls read-only inspection requests (`agents.status`, `instances.list`, `rlm.pool`,
- * `rlm.frames`, `progress.assess`) and reads the root `rlm` tool cell from the replicated transcript. This module
- * turns that snapshot into width-bounded lines so the layout is unit-testable without a terminal.
+ * The TUI polls read-only inspection requests (`agents.status {graph: true}`, `instances.list`, `rlm.pool`,
+ * `rlm.frames`, `ctx.state`, `progress.assess`) and reads the root turn's `rlm` cells from the replicated
+ * transcript. This module parses those payloads into an `RlmSnapshot`.
  */
-import { truncateToWidth } from "@ultron/tui";
 
 export type RlmTaskState = "admitted" | "running" | "completed" | "failed" | "cancelled" | "interrupted";
 
@@ -14,26 +13,69 @@ export interface RlmTask {
 	readonly definition: string;
 	readonly state: string;
 	readonly parentId?: string;
-	readonly result?: { readonly status?: string; readonly value?: unknown; readonly error?: string };
+	readonly result?: {
+		readonly status?: string;
+		readonly value?: unknown;
+		readonly error?: string;
+		/** Bounded result preview (`agents.status {graph: true}`). */
+		readonly preview?: string;
+	};
+	/** Graph fields from `agents.status {graph: true}`; present only for tasks the worker ran this process. */
+	readonly lane?: string;
+	readonly startedAt?: number;
+	readonly endedAt?: number;
+	readonly cost?: number;
+	readonly tokens?: number;
+	readonly input?: string;
+	readonly fetch?: string;
+	readonly workflow?: RlmWorkflowMembership;
+}
+
+export interface RlmWorkflowMembership {
+	readonly run: string;
+	readonly node: string;
+	readonly dependsOn: readonly string[];
+	readonly join: string;
 }
 
 export interface RlmUsage {
+	readonly rootId?: string;
 	readonly admittedTasks?: number;
 	readonly remainingWallMs?: number | null;
-	readonly usage?: { readonly cost?: number | null; readonly totalTokens?: number | null };
+	readonly startedAt?: number | null;
+	readonly deadlineAt?: number | null;
+	readonly usage?: { readonly cost?: number | null; readonly totalTokens?: number | null; readonly calls?: number };
 	readonly reservations?: readonly { readonly taskId?: string; readonly admittedAt?: number }[];
+	readonly cost?: { readonly spentUsd?: number; readonly maxCostUsd?: number | null };
+	readonly turns?: {
+		readonly turns?: number;
+		readonly tokens?: number;
+		readonly maxTotalTurns?: number | null;
+		readonly maxTotalTokens?: number | null;
+	};
 }
 
 export interface RlmLimits {
 	readonly maxAdmittedTasks?: number | null;
 	readonly maxWallMs?: number | null;
+	readonly maxCostUsd?: number | null;
+	readonly maxTotalTokens?: number | null;
+	readonly maxTotalTurns?: number | null;
 }
 
 export interface RlmPool {
 	readonly live: number;
 	readonly maxLive: number;
-	readonly lanes: readonly { readonly lane: string; readonly running: number; readonly pinnedBy: readonly string[] }[];
+	readonly lanes: readonly {
+		readonly lane: string;
+		readonly running: number;
+		readonly pinnedBy: readonly string[];
+		readonly memoryBytes?: number;
+	}[];
 	readonly evictions?: number;
+	/** Summed kernel tree memory, when the worker can read it. */
+	readonly memoryBytes?: number;
+	readonly memoryCapBytes?: number;
 }
 
 /** One bounded inference frame (`rlm.infer`/`rlm.map`), from `rlm.frames`. */
@@ -45,6 +87,21 @@ export interface RlmFrame {
 	readonly spent: { readonly calls: number; readonly tokens: number };
 	readonly startedAt?: number;
 	readonly endedAt?: number;
+	/** The frame's `rlm-frame@1` task (null while queued behind the map's concurrency). */
+	readonly taskId?: string | null;
+	/** `rlm.map` or `rlm.infer`, and the map's frame count. */
+	readonly kind?: string;
+	readonly batch?: number;
+	/** Task whose cell asked for the frame (null: the root lane). */
+	readonly callerTaskId?: string | null;
+	readonly lane?: string | null;
+	/** The shared budget node (one per `rlm.map`/`rlm.infer` call) and its limits. */
+	readonly budget?: {
+		readonly id: string;
+		readonly calls: number | null;
+		readonly tokens: number | null;
+		readonly depth: number;
+	} | null;
 }
 
 /** One host-owned shell job (`bash(cmd, yield_after=...)`), from `agents.status`. */
@@ -55,6 +112,10 @@ export interface RlmJob {
 	readonly exitCode: number | null;
 	readonly startedAt?: number;
 	readonly endedAt?: number | null;
+	/** Lane that started the job ("main" for the root); a child task owns it through its lane. */
+	readonly lane?: string;
+	/** Last output, bounded. */
+	readonly tail?: string;
 }
 
 export interface RlmRootCell {
@@ -96,6 +157,12 @@ export interface RlmSnapshot {
 	readonly error?: string;
 	/** What the root model forgot, pinned, or noted in its own context (`ctx.state`). */
 	readonly context?: RlmContextState | null;
+	/** Root `rlm` cells of the current turn, oldest first (from the transcript). */
+	readonly cells?: readonly RlmRootCell[];
+	/** The current root turn: when its user message arrived, and a preview of it. */
+	readonly turn?: { readonly startedAt?: number; readonly prompt?: string } | null;
+	/** Tasks the worker left out of the bounded graph listing. */
+	readonly truncatedTasks?: number;
 }
 
 /** Color hooks; the TUI passes the theme, tests pass identity functions. */
@@ -107,382 +174,12 @@ export interface RlmStyle {
 	bold(text: string): string;
 }
 
-export interface RlmRenderOptions {
-	readonly style?: RlmStyle;
-	/** Maximum task rows before "+N more". */
-	readonly maxNodes?: number;
-	/** Maximum code lines shown for the root cell. */
-	readonly maxCodeLines?: number;
-	/** Maximum inference frame rows. */
-	readonly maxFrames?: number;
-	readonly spinnerFrame?: number;
-}
-
 export const PLAIN_STYLE: RlmStyle = { fg: (_color, text) => text, bold: (text) => text };
 
-const SPINNER = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 const TERMINAL = new Set(["completed", "failed", "cancelled", "interrupted"]);
-const ORDER: Record<string, number> = {
-	running: 0,
-	admitted: 1,
-	failed: 2,
-	interrupted: 3,
-	completed: 4,
-	cancelled: 5,
-};
 
 export function isActiveState(state: string): boolean {
 	return !TERMINAL.has(state);
-}
-
-export interface RlmTreeNode {
-	readonly task: RlmTask;
-	readonly children: RlmTreeNode[];
-	/** Parent id that is not visible in this snapshot. */
-	readonly orphanOf?: string;
-}
-
-/** Group tasks under their parents. Tasks whose parent is missing become roots marked as orphans. */
-export function buildTaskTree(tasks: readonly RlmTask[]): RlmTreeNode[] {
-	const nodes = new Map<string, RlmTreeNode>();
-	for (const task of tasks) {
-		if (nodes.has(task.id)) continue;
-		nodes.set(task.id, { task, children: [] });
-	}
-	const roots: RlmTreeNode[] = [];
-	for (const node of nodes.values()) {
-		const parentId = node.task.parentId;
-		const parent = parentId === undefined ? undefined : nodes.get(parentId);
-		if (parentId === undefined) roots.push(node);
-		else if (parent === undefined || parent === node || descendsFrom(parent, node.task.id, nodes)) {
-			// Missing parent (child-lane visibility, trimmed journal) or a corrupt cycle: surface it at the top.
-			roots.push({ ...node, orphanOf: parentId });
-		} else parent.children.push(node);
-	}
-	const sort = (list: RlmTreeNode[]): void => {
-		list.sort((left, right) => (ORDER[left.task.state] ?? 9) - (ORDER[right.task.state] ?? 9));
-		for (const node of list) sort(node.children);
-	};
-	sort(roots);
-	return roots;
-}
-
-function descendsFrom(node: RlmTreeNode, ancestorId: string, nodes: ReadonlyMap<string, RlmTreeNode>): boolean {
-	const seen = new Set<string>();
-	for (let current: RlmTreeNode | undefined = node; current !== undefined; ) {
-		if (current.task.id === ancestorId) return true;
-		if (seen.has(current.task.id)) return true;
-		seen.add(current.task.id);
-		const parentId: string | undefined = current.task.parentId;
-		current = parentId === undefined ? undefined : nodes.get(parentId);
-	}
-	return false;
-}
-
-export interface RlmCounts {
-	readonly running: number;
-	readonly done: number;
-	readonly failed: number;
-	readonly cancelled: number;
-}
-
-export function countTasks(tasks: readonly RlmTask[]): RlmCounts {
-	let running = 0;
-	let done = 0;
-	let failed = 0;
-	let cancelled = 0;
-	for (const task of tasks) {
-		if (isActiveState(task.state)) running++;
-		else if (task.state === "completed") done++;
-		else if (task.state === "cancelled") cancelled++;
-		else failed++;
-	}
-	return { running, done, failed, cancelled };
-}
-
-/** True when something is in flight: an active task or a running root cell. */
-export function hasRlmActivity(snapshot: Pick<RlmSnapshot, "tasks" | "rootCell">): boolean {
-	return snapshot.rootCell?.status === "running" || snapshot.tasks.some((task) => isActiveState(task.state));
-}
-
-/** "3 running · 5 done · 1 failed · 12/24 tasks · 18m left · $0.42" (zero counts are omitted). */
-export function summarizeRlm(snapshot: RlmSnapshot): string {
-	const counts = countTasks(snapshot.tasks);
-	const parts: string[] = [];
-	if (counts.running > 0) parts.push(`${counts.running} running`);
-	if (counts.done > 0) parts.push(`${counts.done} done`);
-	if (counts.failed > 0) parts.push(`${counts.failed} failed`);
-	if (counts.cancelled > 0) parts.push(`${counts.cancelled} cancelled`);
-	if (parts.length === 0) parts.push(snapshot.rootCell?.status === "running" ? "kernel busy" : "idle");
-	const admitted = snapshot.usage?.admittedTasks;
-	const maxTasks = snapshot.limits?.maxAdmittedTasks;
-	if (typeof admitted === "number") {
-		parts.push(typeof maxTasks === "number" ? `${admitted}/${maxTasks} tasks` : `${admitted} tasks`);
-	}
-	const remaining = snapshot.usage?.remainingWallMs;
-	if (typeof remaining === "number")
-		parts.push(remaining > 0 ? `${formatDuration(remaining)} left` : "wall budget spent");
-	const cost = snapshot.usage?.usage?.cost;
-	if (typeof cost === "number" && cost > 0) parts.push(`$${cost.toFixed(2)}`);
-	return parts.join(" · ");
-}
-
-/** Compact one-liner for the footer when the panel is hidden; undefined when nothing is in flight. */
-export function renderRlmStatusLine(
-	snapshot: RlmSnapshot,
-	width: number,
-	options: RlmRenderOptions = {},
-): string | undefined {
-	if (!hasRlmActivity(snapshot)) return undefined;
-	const style = options.style ?? PLAIN_STYLE;
-	return truncateToWidth(
-		`${style.fg("accent", "RLM ▸")} ${style.fg("muted", summarizeRlm(snapshot))}`,
-		Math.max(1, width),
-		"…",
-	);
-}
-
-/** Full panel: header, root kernel cell, task tree (bounded), and pool line. Every line fits `width`. */
-export function renderRlmPanel(snapshot: RlmSnapshot, width: number, options: RlmRenderOptions = {}): string[] {
-	const style = options.style ?? PLAIN_STYLE;
-	const maxNodes = Math.max(1, options.maxNodes ?? 15);
-	const maxCodeLines = Math.max(0, options.maxCodeLines ?? 3);
-	const frame = SPINNER[Math.abs(options.spinnerFrame ?? 0) % SPINNER.length]!;
-	const lines: string[] = [];
-
-	lines.push(`${style.bold(style.fg("accent", "RLM"))} ${style.fg("muted", summarizeRlm(snapshot))}`);
-	if (snapshot.error !== undefined) lines.push(style.fg("error", `inspection failed: ${oneLine(snapshot.error)}`));
-
-	const cell = snapshot.rootCell;
-	if (cell) {
-		const glyph =
-			cell.status === "running"
-				? style.fg("accent", frame)
-				: cell.status === "ok"
-					? style.fg("success", "✓")
-					: style.fg("error", "✗");
-		const end = cell.status === "running" ? snapshot.now : cell.endedAt;
-		const duration =
-			cell.startedAt !== undefined && end !== undefined
-				? ` ${formatDuration(Math.max(0, end - cell.startedAt))}`
-				: "";
-		const statusColor = cell.status === "running" ? "accent" : cell.status === "ok" ? "success" : "error";
-		let head = `${glyph} ${style.fg("toolTitle", style.bold("root kernel"))} ${style.fg(statusColor, cell.status)}${style.fg("dim", duration)}`;
-		if (cell.status === "error" && cell.output) head += `  ${style.fg("error", oneLine(cell.output))}`;
-		lines.push(head);
-		const codeLines = cell.code
-			.split("\n")
-			.map((line) => line.replace(/\t/g, "  ").trimEnd())
-			.filter((line) => line.trim().length > 0);
-		for (const line of codeLines.slice(0, maxCodeLines))
-			lines.push(style.fg("dim", "│ ") + style.fg("mdCodeBlock", line));
-		if (codeLines.length > maxCodeLines && maxCodeLines > 0) {
-			lines.push(style.fg("dim", `│ … ${codeLines.length - maxCodeLines} more lines`));
-		}
-	} else {
-		lines.push(style.fg("dim", "root kernel idle (no rlm cell yet)"));
-	}
-
-	const tree = buildTaskTree(snapshot.tasks);
-	if (tree.length === 0) {
-		lines.push(style.fg("dim", "no tasks"));
-	} else {
-		const rows: string[] = [];
-		let total = 0;
-		let hiddenActive = 0;
-		const walk = (nodes: readonly RlmTreeNode[], prefix: string, greyed: boolean): void => {
-			nodes.forEach((node, index) => {
-				const last = index === nodes.length - 1;
-				const grey = greyed || node.task.state === "cancelled";
-				total++;
-				if (rows.length < maxNodes) {
-					rows.push(renderNode(node, `${prefix}${last ? "└─ " : "├─ "}`, grey, snapshot, style, frame));
-				} else if (isActiveState(node.task.state)) hiddenActive++;
-				walk(node.children, `${prefix}${last ? "   " : "│  "}`, grey);
-			});
-		};
-		walk(tree, "", false);
-		lines.push(...rows);
-		if (total > rows.length) {
-			const more = total - rows.length;
-			lines.push(style.fg("dim", `+${more} more${hiddenActive > 0 ? ` (${hiddenActive} active)` : ""}`));
-		}
-	}
-
-	lines.push(...renderContextLines(snapshot.context, style));
-	lines.push(...renderFrames(snapshot, style, frame, Math.max(0, options.maxFrames ?? 4)));
-	lines.push(...renderJobs(snapshot, style, frame, 4));
-
-	const pool = snapshot.pool;
-	if (pool) {
-		const pinned = pool.lanes.filter((lane) => lane.pinnedBy.length > 0).length;
-		const busy = pool.lanes.filter((lane) => lane.running > 0).length;
-		const parts = [`kernels ${pool.live}/${pool.maxLive} live`, `${busy} busy`, `${pinned} pinned`];
-		if (typeof pool.evictions === "number") parts.push(`${pool.evictions} evicted`);
-		lines.push(style.fg("dim", parts.join(" · ")));
-	}
-
-	const bound = Math.max(1, width);
-	return lines.map((line) => truncateToWidth(line, bound, "…"));
-}
-
-/** "jobs 1 running · 3 completed", then the newest shell jobs with their status and command. */
-function renderJobs(snapshot: RlmSnapshot, style: RlmStyle, spinner: string, maxJobs: number): string[] {
-	const jobs = snapshot.jobs ?? [];
-	if (jobs.length === 0) return [];
-	const counts = new Map<string, number>();
-	for (const job of jobs) counts.set(job.status, (counts.get(job.status) ?? 0) + 1);
-	const summary = [...counts].map(([status, count]) => `${count} ${status}`).join(" · ");
-	const lines = [`${style.fg("toolTitle", style.bold("jobs"))} ${style.fg("muted", summary)}`];
-	for (const job of jobs.slice(0, maxJobs)) {
-		const running = job.status === "running";
-		const ok = job.status === "completed" && job.exitCode === 0;
-		const color = running ? "accent" : ok ? "success" : job.status === "cancelled" ? "dim" : "error";
-		const glyph = running ? spinner : ok ? "✓" : "✗";
-		const end = job.endedAt ?? (running ? snapshot.now : undefined);
-		const duration =
-			job.startedAt !== undefined && end !== undefined ? ` ${formatDuration(Math.max(0, end - job.startedAt))}` : "";
-		const status = job.status === "completed" ? `exit ${job.exitCode}` : job.status;
-		lines.push(
-			`${style.fg("dim", "│ ")}${style.fg(color, glyph)} ${style.fg("dim", job.id)} ${style.fg(color, status)}${style.fg("dim", duration)} ${style.fg("muted", oneLine(job.command))}`,
-		);
-	}
-	if (jobs.length > maxJobs) lines.push(style.fg("dim", `│ +${jobs.length - maxJobs} more`));
-	return lines;
-}
-
-/** "frames 2 running · 14 complete · 1 incomplete", then the newest frames with spend and task. */
-function renderFrames(snapshot: RlmSnapshot, style: RlmStyle, spinner: string, maxFrames: number): string[] {
-	const frames = snapshot.frames ?? [];
-	if (frames.length === 0) return [];
-	const counts = new Map<string, number>();
-	for (const item of frames) counts.set(item.status, (counts.get(item.status) ?? 0) + 1);
-	const order = ["running", "complete", "incomplete", "error"];
-	const summary = [...counts]
-		.sort((left, right) => order.indexOf(left[0]) - order.indexOf(right[0]))
-		.map(([status, count]) => `${count} ${status}`)
-		.join(" · ");
-	const lines = [`${style.fg("toolTitle", style.bold("frames"))} ${style.fg("muted", summary)}`];
-	for (const item of frames.slice(0, maxFrames)) {
-		const color =
-			item.status === "running"
-				? "accent"
-				: item.status === "complete"
-					? "success"
-					: item.status === "incomplete"
-						? "warning"
-						: "error";
-		const glyph =
-			item.status === "running"
-				? spinner
-				: item.status === "complete"
-					? "✓"
-					: item.status === "incomplete"
-						? "◐"
-						: "✗";
-		const end = item.endedAt ?? (item.status === "running" ? snapshot.now : undefined);
-		const duration =
-			item.startedAt !== undefined && end !== undefined
-				? ` ${formatDuration(Math.max(0, end - item.startedAt))}`
-				: "";
-		lines.push(
-			`${style.fg("dim", "│ ")}${style.fg(color, glyph)} ${style.fg("dim", item.id.replace(/^frame-/, "").slice(0, 8))} ${style.fg(color, item.reason ?? item.status)} ${style.fg("dim", `${item.spent.calls}c ${item.spent.tokens}t${duration}`)} ${style.fg("muted", oneLine(item.task))}`,
-		);
-	}
-	if (frames.length > maxFrames && maxFrames > 0) lines.push(style.fg("dim", `│ +${frames.length - maxFrames} more`));
-	return lines;
-}
-
-function renderNode(
-	node: RlmTreeNode,
-	branch: string,
-	grey: boolean,
-	snapshot: RlmSnapshot,
-	style: RlmStyle,
-	frame: string,
-): string {
-	const task = node.task;
-	const paint = grey ? (_color: Parameters<RlmStyle["fg"]>[0], text: string) => text : style.fg;
-	const glyph = stateGlyph(task.state, frame);
-	const segments: string[] = [
-		paint(stateColor(task.state), glyph),
-		paint("text", task.definition),
-		paint("dim", shortId(task.id)),
-		paint(stateColor(task.state), task.state),
-	];
-	const timing = snapshot.timing?.get(task.id);
-	if (timing?.startedAt !== undefined) {
-		const end = timing.endedAt ?? (isActiveState(task.state) ? snapshot.now : undefined);
-		if (end !== undefined) segments.push(paint("dim", formatDuration(Math.max(0, end - timing.startedAt))));
-	}
-	if (snapshot.retained?.has(task.id)) segments.push(paint("accent", "◆ retained"));
-	if (node.orphanOf !== undefined) segments.push(paint("warning", `↑${shortId(node.orphanOf)}?`));
-	const progress = snapshot.progress?.get(task.id);
-	if (progress !== undefined && isActiveState(task.state)) {
-		const color = progress.classification === "stalled" ? "warning" : "muted";
-		segments.push(paint(color, `${progress.classification}·${progress.receipts}r`));
-	}
-	const summary = resultSummary(task);
-	if (summary !== undefined) {
-		segments.push(
-			task.state === "completed" ? paint("muted", `→ ${summary}`) : paint(stateColor(task.state), summary),
-		);
-	}
-	const line = style.fg("dim", branch) + segments.join(" ");
-	return grey ? style.fg("dim", line) : line;
-}
-
-function stateGlyph(state: string, frame: string): string {
-	switch (state) {
-		case "running":
-			return frame;
-		case "admitted":
-			return "○";
-		case "completed":
-			return "✓";
-		case "failed":
-			return "✗";
-		case "interrupted":
-			return "!";
-		case "cancelled":
-			return "⊘";
-		default:
-			return "?";
-	}
-}
-
-function stateColor(state: string): "accent" | "muted" | "success" | "error" | "warning" | "dim" {
-	switch (state) {
-		case "running":
-			return "accent";
-		case "admitted":
-			return "muted";
-		case "completed":
-			return "success";
-		case "failed":
-			return "error";
-		case "interrupted":
-			return "warning";
-		default:
-			return "dim";
-	}
-}
-
-function resultSummary(task: RlmTask): string | undefined {
-	const result = task.result;
-	if (result === undefined) return undefined;
-	if (typeof result.error === "string" && result.error.length > 0) return oneLine(result.error);
-	if (result.value === undefined || result.value === null) return undefined;
-	const text = typeof result.value === "string" ? result.value : safeJson(result.value);
-	return oneLine(text);
-}
-
-function safeJson(value: unknown): string {
-	try {
-		return JSON.stringify(value) ?? String(value);
-	} catch {
-		return String(value);
-	}
 }
 
 function oneLine(text: string): string {
@@ -556,7 +253,23 @@ function record(value: unknown): Record<string, unknown> | undefined {
 		: undefined;
 }
 
+function pickStrings(source: Record<string, unknown>, keys: readonly string[]): Record<string, string> {
+	const picked: Record<string, string> = {};
+	for (const key of keys) if (typeof source[key] === "string") picked[key] = source[key] as string;
+	return picked;
+}
+
+function pickNumbers(source: Record<string, unknown>, keys: readonly string[]): Record<string, number> {
+	const picked: Record<string, number> = {};
+	for (const key of keys) {
+		const item = source[key];
+		if (typeof item === "number" && Number.isFinite(item)) picked[key] = item;
+	}
+	return picked;
+}
+
 export function parseAgentsStatus(value: unknown): {
+	truncatedTasks?: number;
 	tasks: RlmTask[];
 	usage: RlmUsage | null;
 	limits: RlmLimits | null;
@@ -568,6 +281,7 @@ export function parseAgentsStatus(value: unknown): {
 		const task = record(item);
 		if (task === undefined || typeof task.id !== "string" || typeof task.state !== "string") continue;
 		const result = record(task.result);
+		const workflow = record(task.workflow);
 		tasks.push({
 			id: task.id,
 			definition: typeof task.definition === "string" ? task.definition : "task",
@@ -580,8 +294,23 @@ export function parseAgentsStatus(value: unknown): {
 							...(typeof result.status === "string" ? { status: result.status } : {}),
 							...("value" in result ? { value: result.value } : {}),
 							...(typeof result.error === "string" ? { error: result.error } : {}),
+							...(typeof result.preview === "string" ? { preview: result.preview } : {}),
 						},
 					}),
+			...pickStrings(task, ["lane", "input", "fetch"]),
+			...pickNumbers(task, ["startedAt", "endedAt", "cost", "tokens"]),
+			...(workflow !== undefined && typeof workflow.run === "string" && typeof workflow.node === "string"
+				? {
+						workflow: {
+							run: workflow.run,
+							node: workflow.node,
+							dependsOn: Array.isArray(workflow.dependsOn)
+								? workflow.dependsOn.filter((item): item is string => typeof item === "string")
+								: [],
+							join: typeof workflow.join === "string" ? workflow.join : "all",
+						},
+					}
+				: {}),
 		});
 	}
 	const usage = record(body?.usage);
@@ -597,9 +326,11 @@ export function parseAgentsStatus(value: unknown): {
 			exitCode: typeof job.exitCode === "number" ? job.exitCode : null,
 			...(typeof job.startedAt === "number" ? { startedAt: job.startedAt } : {}),
 			...(typeof job.endedAt === "number" ? { endedAt: job.endedAt } : {}),
+			...pickStrings(job, ["lane", "tail"]),
 		});
 	}
 	return {
+		...(typeof body?.truncatedTasks === "number" ? { truncatedTasks: body.truncatedTasks } : {}),
 		tasks,
 		usage: (usage as RlmUsage | undefined) ?? null,
 		limits: (limits as RlmLimits | undefined) ?? null,
@@ -625,7 +356,7 @@ export function parseRetained(value: unknown): Set<string> {
 export function parsePool(value: unknown): RlmPool | null {
 	const body = record(value);
 	if (body === undefined || typeof body.live !== "number" || typeof body.maxLive !== "number") return null;
-	const lanes: { lane: string; running: number; pinnedBy: string[] }[] = [];
+	const lanes: { lane: string; running: number; pinnedBy: string[]; memoryBytes?: number }[] = [];
 	for (const item of Array.isArray(body.lanes) ? body.lanes : []) {
 		const lane = record(item);
 		if (lane === undefined || typeof lane.lane !== "string") continue;
@@ -633,6 +364,7 @@ export function parsePool(value: unknown): RlmPool | null {
 			lane: lane.lane,
 			running: typeof lane.running === "number" ? lane.running : 0,
 			pinnedBy: Array.isArray(lane.pinnedBy) ? lane.pinnedBy.filter((pin) => typeof pin === "string") : [],
+			...pickNumbers(lane, ["memoryBytes"]),
 		});
 	}
 	return {
@@ -640,6 +372,7 @@ export function parsePool(value: unknown): RlmPool | null {
 		maxLive: body.maxLive,
 		lanes,
 		...(typeof body.evictions === "number" ? { evictions: body.evictions } : {}),
+		...pickNumbers(body, ["memoryBytes", "memoryCapBytes"]),
 	};
 }
 
@@ -649,6 +382,7 @@ export function parseFrames(value: unknown): RlmFrame[] {
 		const frame = record(item);
 		if (frame === undefined || typeof frame.id !== "string" || typeof frame.status !== "string") continue;
 		const spent = record(frame.spent);
+		const budget = record(frame.budget);
 		frames.push({
 			id: frame.id,
 			status: frame.status,
@@ -660,6 +394,22 @@ export function parseFrames(value: unknown): RlmFrame[] {
 			},
 			...(typeof frame.startedAt === "number" ? { startedAt: frame.startedAt } : {}),
 			...(typeof frame.endedAt === "number" ? { endedAt: frame.endedAt } : {}),
+			...(typeof frame.taskId === "string" || frame.taskId === null ? { taskId: frame.taskId } : {}),
+			...(typeof frame.callerTaskId === "string" || frame.callerTaskId === null
+				? { callerTaskId: frame.callerTaskId }
+				: {}),
+			...pickStrings(frame, ["kind", "lane"]),
+			...pickNumbers(frame, ["batch"]),
+			...(budget !== undefined && typeof budget.id === "string"
+				? {
+						budget: {
+							id: budget.id,
+							calls: typeof budget.calls === "number" ? budget.calls : null,
+							tokens: typeof budget.tokens === "number" ? budget.tokens : null,
+							depth: typeof budget.depth === "number" ? budget.depth : 0,
+						},
+					}
+				: {}),
 		});
 	}
 	return frames;
@@ -762,6 +512,106 @@ export function extractRootCell(
 		};
 	}
 	return null;
+}
+
+/**
+ * The current root turn from the transcript: the last user message (its time and a preview) and every root `rlm`
+ * cell after it, oldest first, with running cells from the open operation. Bounded to the newest `maxCells`.
+ */
+export function extractTurn(
+	snapshot: TranscriptLike | undefined,
+	clock: RlmClock,
+	now: number,
+	maxCells = 30,
+): { turn: { startedAt?: number; prompt?: string } | null; cells: RlmRootCell[] } {
+	if (snapshot === undefined) return { turn: null, cells: [] };
+	const entries = snapshot.transcript;
+	let start = -1;
+	for (let index = entries.length - 1; index >= 0; index--) {
+		if (record(record(entries[index])?.message)?.role === "user") {
+			start = index;
+			break;
+		}
+	}
+	let turn: { startedAt?: number; prompt?: string } | null = null;
+	if (start >= 0) {
+		const entry = record(entries[start]);
+		const message = record(entry?.message);
+		const content = message?.content;
+		const text =
+			typeof content === "string"
+				? content
+				: Array.isArray(content)
+					? content
+							.map((part) => {
+								const item = record(part);
+								return item?.type === "text" && typeof item.text === "string" ? item.text : "";
+							})
+							.join(" ")
+					: "";
+		const at = typeof entry?.timestamp === "number" ? entry.timestamp : message?.timestamp;
+		turn = { ...(typeof at === "number" ? { startedAt: at } : {}), prompt: oneLine(text) };
+	}
+	const cells = new Map<string, RlmRootCell>();
+	for (const item of entries.slice(start + 1)) {
+		const message = record(record(item)?.message);
+		if (message?.role === "assistant" && Array.isArray(message.content)) {
+			for (const part of message.content.map(record)) {
+				if (part?.type !== "toolCall" || part.name !== "rlm" || typeof part.id !== "string") continue;
+				const observed = clock.mark(`cell:${part.id}`, false, now);
+				const startedAt =
+					observed.startedAt ?? (typeof message.timestamp === "number" ? message.timestamp : undefined);
+				cells.set(part.id, {
+					toolCallId: part.id,
+					code: codeOf(part.arguments),
+					status: "running",
+					...(startedAt === undefined ? {} : { startedAt }),
+				});
+			}
+		} else if (
+			message?.role === "toolResult" &&
+			message.toolName === "rlm" &&
+			typeof message.toolCallId === "string"
+		) {
+			const cell = cells.get(message.toolCallId);
+			const observed = clock.mark(`cell:${message.toolCallId}`, false, now);
+			const endedAt = observed.endedAt ?? (typeof message.timestamp === "number" ? message.timestamp : undefined);
+			const output = textOf(message);
+			cells.set(message.toolCallId, {
+				toolCallId: message.toolCallId,
+				code: cell?.code ?? "",
+				status: message.isError === true ? "error" : "ok",
+				...(cell?.startedAt === undefined ? {} : { startedAt: cell.startedAt }),
+				...(endedAt === undefined ? {} : { endedAt }),
+				...(output === undefined ? {} : { output }),
+			});
+		}
+	}
+	for (const tool of snapshot.operation?.runningTools ?? []) {
+		if (tool.toolName !== "rlm") continue;
+		const active = tool.status === "running";
+		const timing = clock.mark(`cell:${tool.toolCallId}`, active, now);
+		const known = cells.get(tool.toolCallId);
+		const output = active ? undefined : textOf(tool.result);
+		cells.set(tool.toolCallId, {
+			toolCallId: tool.toolCallId,
+			code: codeOf(tool.args) || (known?.code ?? ""),
+			status: active ? "running" : tool.isError ? "error" : "ok",
+			...((timing.startedAt ?? known?.startedAt) === undefined
+				? {}
+				: { startedAt: (timing.startedAt ?? known?.startedAt) as number }),
+			...(timing.endedAt === undefined ? {} : { endedAt: timing.endedAt }),
+			...(output === undefined ? {} : { output }),
+		});
+	}
+	// A call without a result after the operation ended was cut off (abort); it is no longer running.
+	const operationOpen = snapshot.operation !== null && snapshot.operation !== undefined;
+	const list = [...cells.values()].map((cell) =>
+		cell.status === "running" && !operationOpen
+			? { ...cell, status: "error" as const, output: cell.output ?? "interrupted" }
+			: cell,
+	);
+	return { turn, cells: list.slice(-maxCells) };
 }
 
 /** Root context control state (`ctx.state`): forgotten, pinned, and noted items. */

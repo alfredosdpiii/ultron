@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import { createHash, randomUUID } from "node:crypto";
 import { isJsonValue, type JsonValue } from "@ultron/chord";
 import { readVersioned } from "./format-version.ts";
@@ -31,7 +32,19 @@ export type JevDecision = {
 	confidence?: number;
 	/** Error code (`Jev UNAVAILABLE`, `Jev ABORTED`, …) or the reason Jev was unavailable. */
 	reason?: string;
+	/**
+	 * What the decision was made for: `auto:<runId>` for automatic memory around a root run (the same id as the
+	 * `ultron-memory` message's `taskId`), `skill:<name>` for a code skill proposal. Absent for direct calls.
+	 */
+	ref?: string;
 };
+
+const decisionRef = new AsyncLocalStorage<string>();
+
+/** Run `work` with every Jev decision it records tagged with `ref` (see `JevDecision.ref`). */
+export function withJevDecisionRef<T>(ref: string, work: () => T): T {
+	return decisionRef.run(ref.slice(0, 200), work);
+}
 
 export interface JevDecisionStore {
 	read(): Promise<JsonValue | undefined>;
@@ -96,11 +109,13 @@ export class JevDecisionLog {
 
 	/** Append a decision. Persistence failures never fail the Jev call being recorded. */
 	record(input: string, decision: Omit<JevDecision, "id" | "inputSha256" | "inputChars">): Promise<void> {
+		const ref = decision.ref ?? decisionRef.getStore();
 		const entry: JevDecision = {
 			id: `jev-${randomUUID()}`,
 			inputSha256: digest(input),
 			inputChars: input.length,
 			...decision,
+			...(ref === undefined ? {} : { ref }),
 		};
 		const operation = this.#tail.then(async () => {
 			const decisions = await this.#load();
@@ -178,11 +193,13 @@ export function recordingJevClient(client: RecordableJev, log: JevDecisionLog): 
 		...(client.skillPolicy
 			? {
 					skillPolicy: (name: string, evidence: string, source: string, signal?: AbortSignal) =>
-						timed(
-							"retain",
-							`${name}\n${evidence}\n${source}`,
-							() => client.skillPolicy!(name, evidence, source, signal),
-							(value: JevMemoryPolicy) => ({ action: value.action, confidence: value.confidence }),
+						withJevDecisionRef(`skill:${name}`, () =>
+							timed(
+								"retain",
+								`${name}\n${evidence}\n${source}`,
+								() => client.skillPolicy!(name, evidence, source, signal),
+								(value: JevMemoryPolicy) => ({ action: value.action, confidence: value.confidence }),
+							),
 						),
 				}
 			: {}),
