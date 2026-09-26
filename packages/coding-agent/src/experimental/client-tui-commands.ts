@@ -23,7 +23,7 @@ import type { PiSessionView } from "./pi-session-view.ts";
 import type { ModelSummary } from "./services/models.ts";
 import type { SessionControl } from "./services/session-control.ts";
 import type { SlashCommandContribution } from "./services/slash-commands.ts";
-import { splashLines } from "./ultron-logo.ts";
+import { colorLogoLine, splashLines } from "./ultron-logo.ts";
 
 /** What the commands need from the TUI. */
 export interface NativeCommandHost {
@@ -338,7 +338,15 @@ export class StartupHeader implements Component {
 		if (this.#text.render(width).length === 0) this.#update();
 		const text = this.#text.render(width);
 		const splash = this.#splash?.enabled() ? splashLines(width, this.#splash.rows()) : [];
-		return splash.length === 0 ? text : [...splash.map((line) => theme.fg("accent", line)), "", ...text];
+		if (splash.length === 0) return text;
+		const colored = splash.map((line) =>
+			colorLogoLine(
+				line,
+				(logo) => theme.bold(theme.fg("accent", logo)),
+				(background) => theme.fg("dim", background),
+			),
+		);
+		return [...colored, "", ...text];
 	}
 
 	invalidate(): void {
