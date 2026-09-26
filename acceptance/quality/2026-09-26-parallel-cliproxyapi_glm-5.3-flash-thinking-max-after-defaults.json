@@ -1,0 +1,252 @@
+{
+  "taskSet": "parallel",
+  "frozenAt": "2026-09-26-parallel",
+  "thresholds": {
+    "maxPassRateDropPoints": 10,
+    "maxMedianLatencyRatio": 2,
+    "maxCostRatio": 2
+  },
+  "model": "cliproxyapi/glm-5.3-flash",
+  "thinking": "max",
+  "trials": 2,
+  "summary": {
+    "byVariant": {
+      "pi": {
+        "runs": 2,
+        "infrastructure": 0,
+        "passRate": 1,
+        "categories": {
+          "parallel": {
+            "passed": 2,
+            "runs": 2
+          }
+        },
+        "medianDurationMs": 168761,
+        "totalCost": 0,
+        "uptake": {
+          "toolsByName": {
+            "bash": 14,
+            "edit": 4,
+            "write": 2,
+            "read": 4
+          },
+          "rlmRunShare": 0,
+          "framesSpawned": {
+            "runs": 0,
+            "total": null,
+            "median": null
+          },
+          "rootUnseenBytes": {
+            "runs": 0,
+            "total": null,
+            "median": null
+          }
+        },
+        "timing": {
+          "runs": 2,
+          "withinBudget": 2,
+          "passedWithinBudget": 2,
+          "passed": 2,
+          "medianDurationMs": 168761,
+          "perRun": [
+            {
+              "task": "slow-suite-and-fixes",
+              "trial": 2,
+              "durationMs": 166884,
+              "timeBudgetMs": 240000,
+              "withinBudget": true,
+              "passed": true
+            },
+            {
+              "task": "slow-suite-and-fixes",
+              "trial": 1,
+              "durationMs": 170638,
+              "timeBudgetMs": 240000,
+              "withinBudget": true,
+              "passed": true
+            }
+          ]
+        }
+      },
+      "ultron": {
+        "runs": 2,
+        "infrastructure": 0,
+        "passRate": 1,
+        "categories": {
+          "parallel": {
+            "passed": 2,
+            "runs": 2
+          }
+        },
+        "medianDurationMs": 181830.5,
+        "totalCost": 0,
+        "uptake": {
+          "toolsByName": {
+            "rlm": 23
+          },
+          "rlmRunShare": 1,
+          "framesSpawned": {
+            "runs": 2,
+            "total": 0,
+            "median": 0
+          },
+          "rootUnseenBytes": {
+            "runs": 0,
+            "total": null,
+            "median": null
+          }
+        },
+        "timing": {
+          "runs": 2,
+          "withinBudget": 2,
+          "passedWithinBudget": 2,
+          "passed": 2,
+          "medianDurationMs": 181830.5,
+          "perRun": [
+            {
+              "task": "slow-suite-and-fixes",
+              "trial": 1,
+              "durationMs": 175706,
+              "timeBudgetMs": 240000,
+              "withinBudget": true,
+              "passed": true
+            },
+            {
+              "task": "slow-suite-and-fixes",
+              "trial": 2,
+              "durationMs": 187955,
+              "timeBudgetMs": 240000,
+              "withinBudget": true,
+              "passed": true
+            }
+          ]
+        }
+      }
+    },
+    "gate": [
+      {
+        "check": "pass rate",
+        "ok": true,
+        "detail": "0.0 points below baseline"
+      },
+      {
+        "check": "median latency",
+        "ok": true,
+        "detail": "1.08x baseline"
+      },
+      {
+        "check": "cost",
+        "ok": null,
+        "detail": "cost not reported by both variants"
+      }
+    ],
+    "passed": true
+  },
+  "records": [
+    {
+      "task": "slow-suite-and-fixes",
+      "category": "parallel",
+      "variant": "pi",
+      "trial": 2,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolsByName": {
+        "bash": 8,
+        "edit": 2,
+        "write": 1
+      },
+      "framesSpawned": null,
+      "rootUnseenBytes": null,
+      "toolCalls": 11,
+      "cost": 0,
+      "tokens": 29689,
+      "durationMs": 166884,
+      "timeBudgetMs": 240000,
+      "withinBudget": true,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/slow-suite-and-fixes-pi-2-2026-09-26T04-37-29-052Z"
+    },
+    {
+      "task": "slow-suite-and-fixes",
+      "category": "parallel",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolsByName": {
+        "bash": 6,
+        "read": 4,
+        "edit": 2,
+        "write": 1
+      },
+      "framesSpawned": null,
+      "rootUnseenBytes": null,
+      "toolCalls": 13,
+      "cost": 0,
+      "tokens": 39910,
+      "durationMs": 170638,
+      "timeBudgetMs": 240000,
+      "withinBudget": true,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/slow-suite-and-fixes-pi-1-2026-09-26T04-37-29-048Z"
+    },
+    {
+      "task": "slow-suite-and-fixes",
+      "category": "parallel",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolsByName": {
+        "rlm": 11
+      },
+      "framesSpawned": 0,
+      "rootUnseenBytes": null,
+      "toolCalls": 11,
+      "tasksByDefinition": {},
+      "framesSource": "inspect",
+      "cost": 0,
+      "tokens": 89398,
+      "durationMs": 175706,
+      "timeBudgetMs": 240000,
+      "withinBudget": true,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/slow-suite-and-fixes-ultron-1-2026-09-26T04-40-16-082Z"
+    },
+    {
+      "task": "slow-suite-and-fixes",
+      "category": "parallel",
+      "variant": "ultron",
+      "trial": 2,
+      "model": "cliproxyapi/glm-5.3-flash",
+      "passed": true,
+      "toolsByName": {
+        "rlm": 12
+      },
+      "framesSpawned": 0,
+      "rootUnseenBytes": null,
+      "toolCalls": 12,
+      "tasksByDefinition": {},
+      "framesSource": "inspect",
+      "cost": 0,
+      "tokens": 99513,
+      "durationMs": 187955,
+      "timeBudgetMs": 240000,
+      "withinBudget": true,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/slow-suite-and-fixes-ultron-2-2026-09-26T04-40-19-831Z"
+    }
+  ]
+}
