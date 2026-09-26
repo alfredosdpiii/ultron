@@ -3,16 +3,27 @@
  * Quality comparison: stock Pi (baseline) vs Ultron (candidate) on the frozen tasks in
  * evals/quality/tasks.mjs, with matched model and settings. Metered: every run calls the model.
  *
- *   node scripts/eval-quality.mjs [--tasks default|hard] [--model cliproxyapi/gpt-6-sol] [--trials 2]
+ *   node scripts/eval-quality.mjs [--tasks default|hard|judged|parallel] [--model cliproxyapi/gpt-6-sol] [--trials 2]
  *                                 [--concurrency 3] [--only id,id] [--variants pi,ultron] [--out path]
  *                                 [--baseline recorded.json] [--thinking off|low|medium|high|xhigh|max]
  *                                 [--keep-failed dir] [--ultron-command "node --import ... cli.ts"]
  *                                 [--judge-model cliproxyapi/glm-5.3-flash] [--judge-thinking low] [--no-judge]
  *   node scripts/eval-quality.mjs --tasks hard --self-check [--only id,id] [--concurrency 4]
  *   node scripts/eval-quality.mjs --tasks judged --self-check [--judge-live]
+ *   node scripts/eval-quality.mjs --tasks parallel [--trials 2 --variants pi,ultron]   (prints wall time per run)
+ *   node scripts/eval-quality.mjs --tasks parallel --self-check                        (about 4.5 minutes, real sleeps)
  *
  * `--tasks` picks the frozen set: default is evals/quality/tasks.mjs, `hard` is tasks-hard.mjs, `judged` is
- * tasks-judged.mjs (open-ended work scored by an LLM judge next to a light deterministic sanity check).
+ * tasks-judged.mjs (open-ended work scored by an LLM judge next to a light deterministic sanity check), `parallel`
+ * is tasks-parallel.mjs (a slow suite to run and report while fixing two bugs: non-blocking work pays off).
+ *
+ * Wall time: a task with `timeBudgetMs` records `withinBudget` (durationMs <= budget) next to pass/fail, and the
+ * summary reports per variant how many runs (and passing runs) finished within budget, with every run's time. The
+ * budget is evidence only: `passed` stays correctness, and the gate below never reads it.
+ * Asynchronous work: after each prompt the driver keeps following the agent while Ultron reports root-owned work
+ * that can still re-invoke the model (`inspect async.pending`: a yield_after job, a spawned task, a queued
+ * completion event), so an agent that ends its turn while a job runs is not cut off. Stock Pi has no such
+ * inspection and is followed until idle, as before.
  * `--self-check` runs no model: for every task it checks that the hidden check fails on the
  * untouched task files, passes after applying the reference solution (tasks-<set>-solutions.mjs),
  * and, when the solution changes several files, fails if any one of those files is left unfixed.
@@ -92,8 +103,17 @@ const TASK_SETS = {
 	default: { tasks: "../evals/quality/tasks.mjs", solutions: null },
 	hard: { tasks: "../evals/quality/tasks-hard.mjs", solutions: "../evals/quality/tasks-hard-solutions.mjs" },
 	judged: { tasks: "../evals/quality/tasks-judged.mjs", solutions: "../evals/quality/tasks-judged-solutions.mjs" },
+	parallel: { tasks: "../evals/quality/tasks-parallel.mjs", solutions: "../evals/quality/tasks-parallel-solutions.mjs" },
 };
 const JUDGE_TIMEOUT_MS = 5 * 60 * 1000;
+
+/** The release gate (scripts/gate.mjs) reads only full comparisons of this set; hard, judged and parallel are evidence. */
+export const GATED_TASK_SET = "default";
+
+/** Whether a recorded result file is one the release gate reads: a full comparison (it has gate entries) of the gated set. */
+export function isGatedComparison(recorded) {
+	return (recorded?.taskSet ?? "default") === GATED_TASK_SET && (recorded?.summary?.gate?.length ?? 0) > 0;
+}
 
 /** Task files and hidden files; hard tasks generate their (large) data on demand. */
 function materialize(task) {
@@ -103,7 +123,9 @@ function materialize(task) {
 function writeTree(dir, files) {
 	for (const [path, content] of Object.entries(files)) {
 		mkdirSync(dirname(join(dir, path)), { recursive: true });
-		writeFileSync(join(dir, path), content);
+		// Scripts (a shebang line) are written executable, so `./run_integration.sh` works as in a real checkout.
+		const executable = String(content.subarray ? content.subarray(0, 2) : content.slice(0, 2)) === "#!";
+		writeFileSync(join(dir, path), content, executable ? { mode: 0o755 } : undefined);
 	}
 }
 
@@ -226,6 +248,30 @@ function rpcSession({ command, args, cwd, env, log }) {
 				await new Promise((resolveWait) => setTimeout(resolveWait, 200));
 			}
 			return settled;
+		},
+		/**
+		 * After a turn: while the agent reports root-owned asynchronous work that can still re-invoke the model
+		 * (Ultron's `inspect async.pending`), keep collecting the events of the runs it starts. Returns them. Agents
+		 * without the inspection (stock Pi) return at once.
+		 */
+		async followAsync(timeoutMs) {
+			const events = [];
+			const listener = (event) => events.push(event);
+			listeners.add(listener);
+			const deadline = Date.now() + timeoutMs;
+			try {
+				while (Date.now() < deadline) {
+					const status = await send({ type: "inspect", request: "async.pending", payload: {} }).catch(() => null);
+					const state = await send({ type: "get_state" }).catch(() => null);
+					const pending = status?.success === true && status.data?.pending === true;
+					if (!pending && !state?.data?.isStreaming) break;
+					await new Promise((resolveWait) => setTimeout(resolveWait, 500));
+				}
+				if (Date.now() >= deadline) throw new Error(`asynchronous work still pending after ${timeoutMs} ms`);
+			} finally {
+				listeners.delete(listener);
+			}
+			return events;
 		},
 		async close() {
 			child.stdin.end();
@@ -367,6 +413,7 @@ async function runOne({ task, variant, trial, model, thinking, keepDir, commands
 		let toolCalls = 0;
 		for (const prompt of task.prompts) {
 			const events = await session.turn(prompt, RUN_TIMEOUT_MS);
+			events.push(...(await session.followAsync(Math.max(0, RUN_TIMEOUT_MS - (Date.now() - started)))));
 			toolCalls += events.filter((event) => event.type === "tool_execution_start").length;
 			for (const event of events) {
 				if (event.type !== "tool_execution_start") continue;
@@ -395,6 +442,7 @@ async function runOne({ task, variant, trial, model, thinking, keepDir, commands
 		if (/agent exited/.test(record.error)) record.infrastructure = true;
 	} finally {
 		record.durationMs = Date.now() - started;
+		if (task.timeBudgetMs) Object.assign(record, { timeBudgetMs: task.timeBudgetMs, withinBudget: record.durationMs <= task.timeBudgetMs });
 		await session.close().catch(() => {});
 	}
 	// The judge reads the agent's files before the hidden check files are copied in; it never runs for
@@ -452,6 +500,41 @@ export function summarizeUptake(records) {
 	};
 }
 
+/**
+ * Wall time against per-task budgets (tasks with `timeBudgetMs`): runs and passing runs within budget, and every
+ * run's time. Null when no record has a budget. Reported only; never part of the gate.
+ */
+export function summarizeTiming(records) {
+	const timed = records.filter((record) => typeof record.timeBudgetMs === "number");
+	if (timed.length === 0) return null;
+	const passed = timed.filter((record) => record.passed);
+	return {
+		runs: timed.length,
+		withinBudget: timed.filter((record) => record.withinBudget).length,
+		passedWithinBudget: passed.filter((record) => record.withinBudget).length,
+		passed: passed.length,
+		medianDurationMs: median(timed.map((record) => record.durationMs)),
+		perRun: timed.map((record) => ({
+			task: record.task,
+			trial: record.trial,
+			durationMs: record.durationMs,
+			timeBudgetMs: record.timeBudgetMs,
+			withinBudget: record.withinBudget,
+			passed: record.passed,
+		})),
+	};
+}
+
+/** One line per run for the console: time first, then budget, outcome and tool use. */
+export function formatRunTime(record) {
+	const seconds = (ms) => `${(ms / 1000).toFixed(1)}s`;
+	const budget =
+		typeof record.timeBudgetMs === "number"
+			? ` / budget ${seconds(record.timeBudgetMs)} ${record.withinBudget ? "WITHIN" : "OVER"}`
+			: "";
+	return `TIME ${seconds(record.durationMs).padStart(7)}${budget}  ${record.passed ? "PASS" : record.infrastructure ? "INFRA" : "FAIL"} ${record.variant} ${record.task}#${record.trial}`;
+}
+
 export function summarize(records, variants) {
 	const byVariant = {};
 	for (const variant of variants) {
@@ -465,6 +548,7 @@ export function summarize(records, variants) {
 		}
 		const costs = measured.map((record) => record.cost).filter((cost) => typeof cost === "number");
 		const judged = summarizeJudged(measured);
+		const timing = summarizeTiming(measured);
 		byVariant[variant] = {
 			runs: own.length,
 			infrastructure: own.length - measured.length,
@@ -475,6 +559,7 @@ export function summarize(records, variants) {
 			uptake: summarizeUptake(measured),
 			// Reported next to passRate; never part of the gate below.
 			...(judged ? { judged } : {}),
+			...(timing ? { timing } : {}),
 		};
 	}
 	const baseline = byVariant.pi;
@@ -519,29 +604,49 @@ async function checkTask(task, solution, liveJudge) {
 	if (!solution) return [{ trial: "solution", ok: false, detail: "no reference solution" }];
 	const { files, hidden } = materialize(task);
 	const work = mkdtempSync(join(tmpdir(), `ultron-selfcheck-${task.id}-`));
-	const trial = async (name, solutionFiles, expectPass, inspect) => {
+	/**
+	 * One trial in its own copy of the task: apply `applied` ({files, run?, remove?}, or null for the untouched task),
+	 * run the hidden check and compare with the expectation. With `expectWithinBudget` and a task `timeBudgetMs`,
+	 * the time to apply the solution (its real run, e.g. a slow suite) must fall on the expected side of the budget.
+	 */
+	const trial = async (name, applied, expectPass, { inspect, expectWithinBudget } = {}) => {
+		const own = [];
 		const dir = join(work, name.replace(/[^a-z0-9.-]+/gi, "_"));
 		mkdirSync(dir);
 		writeTree(dir, files);
-		const failure = solutionFiles ? await applySolution(dir, solution, solutionFiles) : null;
+		const solveStarted = Date.now();
+		const failure = applied ? await applySolution(dir, applied, applied.files ?? {}) : null;
+		const solveMs = Date.now() - solveStarted;
 		// Judged tasks: the judge reads the solved tree as an agent would leave it, before the hidden files.
-		if (inspect) outcomes.push(...(await inspect(dir)));
+		if (inspect) own.push(...(await inspect(dir)));
 		writeTree(dir, hidden);
 		const started = Date.now();
 		const verify = await runVerify(task, dir);
 		const passed = verify.status === 0;
-		const ok = !failure && passed === expectPass;
-		outcomes.push({
+		const timed = typeof expectWithinBudget === "boolean" && typeof task.timeBudgetMs === "number";
+		const withinBudget = timed ? solveMs <= task.timeBudgetMs : undefined;
+		const ok = !failure && passed === expectPass && (!timed || withinBudget === expectWithinBudget);
+		own.push({
 			trial: name,
-			expect: expectPass ? "pass" : "fail",
+			expect: `${expectPass ? "pass" : "fail"}${timed ? (expectWithinBudget ? ", within budget" : ", over budget") : ""}`,
 			ok,
 			verifyMs: Date.now() - started,
-			...(ok ? {} : { detail: failure ?? verify.output }),
+			...(timed ? { solveMs, timeBudgetMs: task.timeBudgetMs, withinBudget } : {}),
+			...(ok
+				? {}
+				: {
+						detail:
+							failure ??
+							(passed !== expectPass
+								? verify.output
+								: `took ${(solveMs / 1000).toFixed(1)}s against a ${(task.timeBudgetMs / 1000).toFixed(0)}s budget`),
+					}),
 		});
 		rmSync(dir, { recursive: true, force: true });
+		return own;
 	};
 	try {
-		await trial("unsolved", null, false);
+		outcomes.push(...(await trial("unsolved", null, false)));
 		const solutionFiles = solution.files ?? {};
 		const judgeChecks = task.judge
 			? async (dir) => {
@@ -570,11 +675,26 @@ async function checkTask(task, solution, liveJudge) {
 					];
 				}
 			: undefined;
-		await trial("solved", solutionFiles, true, judgeChecks);
+		// Alternatives (other correct or wrong solutions) run concurrently with the reference: timed tasks sleep for real.
+		const concurrent = await Promise.all([
+			trial("solved", solution, true, { inspect: judgeChecks, expectWithinBudget: solution.expectWithinBudget }),
+			...(solution.alternatives ?? []).map((alternative) =>
+				trial(alternative.name, alternative, alternative.expect === "pass", {
+					expectWithinBudget: alternative.expectWithinBudget,
+				}),
+			),
+		]);
+		for (const own of concurrent) outcomes.push(...own);
 		const paths = Object.keys(solutionFiles);
 		if (paths.length > 1 && !solution.run)
 			for (const path of paths)
-				await trial(`without ${path}`, Object.fromEntries(Object.entries(solutionFiles).filter(([other]) => other !== path)), false);
+				outcomes.push(
+					...(await trial(
+						`without ${path}`,
+						{ ...solution, files: Object.fromEntries(Object.entries(solutionFiles).filter(([other]) => other !== path)) },
+						false,
+					)),
+				);
 	} finally {
 		rmSync(work, { recursive: true, force: true });
 	}
@@ -602,6 +722,10 @@ async function selfCheck(taskSet, selected, concurrency, liveJudge) {
 				console.log(
 					`${ok ? "OK  " : "BAD "} ${task.id} (${outcomes.length} trials, ${((Date.now() - started) / 1000).toFixed(0)}s)${judged ? ` judge ${judged.total ?? "?"}/${judged.max ?? "?"} ${JSON.stringify(judged.scores ?? judged.error)}` : ""}`,
 				);
+				for (const outcome of outcomes.filter((entry) => typeof entry.solveMs === "number"))
+					console.log(
+						`     TIME ${(outcome.solveMs / 1000).toFixed(1)}s / budget ${(outcome.timeBudgetMs / 1000).toFixed(0)}s ${outcome.withinBudget ? "WITHIN" : "OVER"}: ${outcome.trial}`,
+					);
 				for (const outcome of outcomes.filter((entry) => !entry.ok))
 					console.log(`     ${outcome.trial}: expected ${outcome.expect}; ${String(outcome.detail).slice(-300)}`);
 			}
@@ -687,7 +811,7 @@ async function main() {
 				const record = await runOne(job);
 				records.push(record);
 				console.log(
-					`${record.passed ? "PASS" : record.infrastructure ? "INFRA" : "FAIL"} ${record.variant} ${record.task}#${record.trial} ${(record.durationMs / 1000).toFixed(0)}s tools ${JSON.stringify(record.toolsByName ?? {})} frames ${record.framesSpawned ?? "n/a"}${record.judge ? ` judge ${record.judge.error ? `error (${record.judge.error.slice(0, 80)})` : `${record.judge.total}/${record.judge.max}`}` : ""}${record.error ? ` (${record.error.slice(0, 120)})` : ""}`,
+					`${formatRunTime(record)} tools ${JSON.stringify(record.toolsByName ?? {})} frames ${record.framesSpawned ?? "n/a"}${record.judge ? ` judge ${record.judge.error ? `error (${record.judge.error.slice(0, 80)})` : `${record.judge.total}/${record.judge.max}`}` : ""}${record.error ? ` (${record.error.slice(0, 120)})` : ""}`,
 				);
 			}
 		}),
@@ -709,6 +833,19 @@ async function main() {
 			if (!variants.includes(variant)) variants.push(variant);
 	}
 	const summary = summarize(records, variants);
+	if (records.some((record) => typeof record.timeBudgetMs === "number")) {
+		console.log("\nWall time per run:");
+		for (const variant of variants)
+			for (const record of records.filter((entry) => entry.variant === variant).sort((a, b) => a.trial - b.trial))
+				console.log(`  ${formatRunTime(record)}`);
+		for (const variant of variants) {
+			const timing = summary.byVariant[variant]?.timing;
+			if (timing)
+				console.log(
+					`  ${variant}: ${timing.withinBudget}/${timing.runs} runs within budget (${timing.passedWithinBudget} of them passed), median ${(timing.medianDurationMs / 1000).toFixed(1)}s`,
+				);
+		}
+	}
 	mkdirSync(dirname(out), { recursive: true });
 	const judgeConfig = judge ? { model: judgeModel, thinking: judgeThinking ?? null, command: judgeCommand.join(" ") } : undefined;
 	writeFileSync(out, `${JSON.stringify({ taskSet, frozenAt: FROZEN_AT, thresholds: THRESHOLDS, model, thinking, ultronCommand: ultronCommand || undefined, trials, judge: judgeConfig, summary, records }, null, 2)}\n`);
