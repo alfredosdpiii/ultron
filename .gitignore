@@ -45,3 +45,7 @@ collect.sh
 packages/agent/docs/extensions/pi-server-artifact/index.md
 __pycache__/
 *.pyc
+
+# Research corpus generation cache and log (resumable; the frozen fixture is committed)
+evals/quality/fixtures/.incident-root-causes.cache.jsonl*
+evals/quality/fixtures/.generate.log

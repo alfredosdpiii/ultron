@@ -3,7 +3,7 @@
  * Quality comparison: stock Pi (baseline) vs Ultron (candidate) on the frozen tasks in
  * evals/quality/tasks.mjs, with matched model and settings. Metered: every run calls the model.
  *
- *   node scripts/eval-quality.mjs [--tasks default|hard|judged|parallel] [--model cliproxyapi/gpt-6-sol] [--trials 2]
+ *   node scripts/eval-quality.mjs [--tasks default|hard|judged|parallel|research] [--model cliproxyapi/gpt-6-sol] [--trials 2]
  *                                 [--concurrency 3] [--only id,id] [--variants pi,ultron] [--out path]
  *                                 [--baseline recorded.json] [--thinking off|low|medium|high|xhigh|max]
  *                                 [--keep-failed dir] [--ultron-command "node --import ... cli.ts"]
@@ -15,7 +15,9 @@
  *
  * `--tasks` picks the frozen set: default is evals/quality/tasks.mjs, `hard` is tasks-hard.mjs, `judged` is
  * tasks-judged.mjs (open-ended work scored by an LLM judge next to a light deterministic sanity check), `parallel`
- * is tasks-parallel.mjs (a slow suite to run and report while fixing two bugs: non-blocking work pays off).
+ * is tasks-parallel.mjs (a slow suite to run and report while fixing two bugs: non-blocking work pays off), and
+ * `research` is tasks-research.mjs (semantic judgement over a frozen ~2 MB corpus of model-written reports, scored by
+ * precision and recall; the corpus is a committed fixture, so running or self-checking the set calls no model).
  *
  * Wall time: a task with `timeBudgetMs` records `withinBudget` (durationMs <= budget) next to pass/fail, and the
  * summary reports per variant how many runs (and passing runs) finished within budget, with every run's time. The
@@ -26,7 +28,9 @@
  * inspection and is followed until idle, as before.
  * `--self-check` runs no model: for every task it checks that the hidden check fails on the
  * untouched task files, passes after applying the reference solution (tasks-<set>-solutions.mjs),
- * and, when the solution changes several files, fails if any one of those files is left unfixed.
+ * and, when the solution changes several files, fails if any one of those files is left unfixed. A solution's
+ * `alternatives` ({name, files, run?, expect: "pass"|"fail"}, e.g. the research set's keyword baseline and empty
+ * answer) must meet their expectation. Whenever the hidden check's last output line is a JSON object (precision, recall, ...) the self-check records it as `metrics`.
  * For judged tasks it also validates the rubric wiring against the solved tree with a fake judge (see
  * scripts/eval-judge.mjs). `--judge-live` additionally scores each reference solution with the real judge
  * (one or two model calls per task) to calibrate the rubric.
@@ -104,7 +108,19 @@ const TASK_SETS = {
 	hard: { tasks: "../evals/quality/tasks-hard.mjs", solutions: "../evals/quality/tasks-hard-solutions.mjs" },
 	judged: { tasks: "../evals/quality/tasks-judged.mjs", solutions: "../evals/quality/tasks-judged-solutions.mjs" },
 	parallel: { tasks: "../evals/quality/tasks-parallel.mjs", solutions: "../evals/quality/tasks-parallel-solutions.mjs" },
+	research: { tasks: "../evals/quality/tasks-research.mjs", solutions: "../evals/quality/tasks-research-solutions.mjs" },
 };
+
+/** The hidden check's last output line when it is a JSON object (research checks print their metrics there). */
+export function verifyMetrics(output) {
+	const last = String(output ?? "").trim().split("\n").at(-1) ?? "";
+	try {
+		const parsed = JSON.parse(last);
+		return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : null;
+	} catch {
+		return null;
+	}
+}
 const JUDGE_TIMEOUT_MS = 5 * 60 * 1000;
 
 /** The release gate (scripts/gate.mjs) reads only full comparisons of this set; hard, judged and parallel are evidence. */
@@ -626,11 +642,13 @@ async function checkTask(task, solution, liveJudge) {
 		const timed = typeof expectWithinBudget === "boolean" && typeof task.timeBudgetMs === "number";
 		const withinBudget = timed ? solveMs <= task.timeBudgetMs : undefined;
 		const ok = !failure && passed === expectPass && (!timed || withinBudget === expectWithinBudget);
+		const metrics = verifyMetrics(verify.output);
 		own.push({
 			trial: name,
 			expect: `${expectPass ? "pass" : "fail"}${timed ? (expectWithinBudget ? ", within budget" : ", over budget") : ""}`,
 			ok,
 			verifyMs: Date.now() - started,
+			...(metrics ? { metrics } : {}),
 			...(timed ? { solveMs, timeBudgetMs: task.timeBudgetMs, withinBudget } : {}),
 			...(ok
 				? {}
@@ -722,6 +740,8 @@ async function selfCheck(taskSet, selected, concurrency, liveJudge) {
 				console.log(
 					`${ok ? "OK  " : "BAD "} ${task.id} (${outcomes.length} trials, ${((Date.now() - started) / 1000).toFixed(0)}s)${judged ? ` judge ${judged.total ?? "?"}/${judged.max ?? "?"} ${JSON.stringify(judged.scores ?? judged.error)}` : ""}`,
 				);
+				for (const outcome of outcomes.filter((entry) => entry.metrics))
+					console.log(`     ${outcome.trial} (expected ${outcome.expect}): ${JSON.stringify(outcome.metrics)}`);
 				for (const outcome of outcomes.filter((entry) => typeof entry.solveMs === "number"))
 					console.log(
 						`     TIME ${(outcome.solveMs / 1000).toFixed(1)}s / budget ${(outcome.timeBudgetMs / 1000).toFixed(0)}s ${outcome.withinBudget ? "WITHIN" : "OVER"}: ${outcome.trial}`,

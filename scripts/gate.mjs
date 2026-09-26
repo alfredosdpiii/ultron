@@ -44,7 +44,7 @@ const qualityDir = join(root, "acceptance/quality");
 const latest = existsSync(qualityDir)
 	? readdirSync(qualityDir)
 			.filter((file) => file.endsWith(".json"))
-			// The release gate reads the default frozen set; hard, judged and parallel (wall-time) runs and self-checks
+			// The release gate reads the default frozen set; hard, judged, parallel (wall-time) and research runs and self-checks
 			// are separate evidence. Partial reruns of one variant carry no gate entries; they supplement a full comparison.
 			.filter((file) => isGatedComparison(JSON.parse(readFileSync(join(qualityDir, file), "utf8"))))
 			.map((file) => join(qualityDir, file))
