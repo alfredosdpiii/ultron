@@ -1,5 +1,7 @@
 /**
  * Asynchronous execution in the real CLI (scripted provider, RPC mode):
+ * - a plain `bash` still running after ULTRON_BASH_YIELD_AFTER returns running, with a `[hint:job-detached]` line,
+ *   and its completion event re-invokes the model;
  * - the model starts a slow job with `yield_after=0` and ends its turn; the job's completion arrives as a
  *   `<runtime_event>` custom message that re-invokes the model, which fetches the result;
  * - a completion during a running turn is placed at the next turn boundary, without a second run;
@@ -132,6 +134,54 @@ describe("asynchronous execution in the real CLI", () => {
 			);
 			// Nothing loops: no further runs after the model answered the event.
 			await new Promise((resolveWait) => setTimeout(resolveWait, 1500));
+			expect(flow.agentStarts()).toBe(2);
+			expect(flow.provider.requests).toHaveLength(4);
+		} finally {
+			await flow.close();
+		}
+	}, 120_000);
+
+	test("a plain bash that runs past ULTRON_BASH_YIELD_AFTER detaches with a hint; its completion event re-invokes the model", async () => {
+		const DETACH = "DETACH: run the slow tests";
+		const flow = await startFlow(
+			"async-detach",
+			(request) => {
+				if (request.firstUser !== DETACH) return { text: "unexpected" };
+				const event = EVENT.exec(request.lastUser);
+				if (event && request.lastToolResult === undefined)
+					return {
+						tool: "rlm",
+						args: { code: `j = await rlm.job("${event[1]}")\nprint("RESULT", j.exit_code, j.text.strip())` },
+					};
+				if (request.lastToolResult?.startsWith("RESULT")) return { text: `DONE: ${request.lastToolResult}` };
+				if (request.turn === 0)
+					return {
+						tool: "rlm",
+						args: {
+							code: "out = await bash('''sleep 4; touch job.done; echo '3 passed' ''')\nprint('RUNNING', out.running, out.exit_code)\nout",
+						},
+					};
+				return { text: "THE TESTS ARE RUNNING; I will report when they finish." };
+			},
+			{ ULTRON_BASH_YIELD_AFTER: "1" },
+		);
+		try {
+			await flow.client.promptAndWait(DETACH, undefined, 60_000);
+			expect(existsSync(join(flow.projectDir, "job.done"))).toBe(false);
+			expect(await flow.client.getLastAssistantText()).toContain("THE TESTS ARE RUNNING");
+			const cell = flow.provider.requests[1]!.lastToolResult!;
+			expect(cell).toMatch(/^RUNNING True None\n/);
+			expect(cell).toMatch(
+				/\[still running as job job-[0-9a-f]+ after 1 s; its completion will arrive as a runtime event/,
+			);
+			// The runtime's one-line hint ends the result.
+			expect(cell.split("\n").at(-1)).toMatch(
+				/^\[hint:job-detached\] The command was still running after 1 s, so it continues as job job-[0-9a-f]+\. Do not wait for it/,
+			);
+			await expect.poll(flow.agentEnds, { timeout: 30_000, interval: 100 }).toBe(2);
+			expect(await flow.client.getLastAssistantText()).toBe("DONE: RESULT 0 3 passed");
+			const event = flow.provider.requests.map((request) => EVENT.exec(request.lastUser)).find(Boolean)!;
+			expect([event[2], event[3]]).toEqual(["completed", "exit 0; 3 passed"]);
 			expect(flow.agentStarts()).toBe(2);
 			expect(flow.provider.requests).toHaveLength(4);
 		} finally {

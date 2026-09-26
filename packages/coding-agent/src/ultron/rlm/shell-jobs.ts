@@ -180,6 +180,29 @@ export class ShellJobs {
 				await this.#wait(live, yieldAfter, signal);
 				return this.snapshot(live.record);
 			}
+			case "shell.bash": {
+				// Plain `await bash(cmd)`: wait up to `yield_after` like the blocking bash, then leave a slow command
+				// running as a job (its end is announced as an event) instead of holding the cell.
+				fields(payload, ["command", "timeout", "yield_after"]);
+				const command = payload.command;
+				if (typeof command !== "string" || !command.trim())
+					throw new Error("bash command must be a non-empty string");
+				const timeout = bashTimeoutSeconds(payload.timeout);
+				const yieldAfter = waitSeconds(payload.yield_after, "yield_after");
+				const live = this.start(caller.lane, host.rootOf?.(caller) ?? null, command, timeout);
+				await this.#wait(live, yieldAfter, signal);
+				if (live.record.status === "running" && signal?.aborted) {
+					// The cell was stopped while it waited: stop the command as the blocking bash would, and count the
+					// cell as its waiter so no completion is announced.
+					live.waiters += 1;
+					try {
+						await this.cancel(live.record.id, "cancelled");
+					} finally {
+						live.waiters -= 1;
+					}
+				}
+				return this.bashResult(live.record);
+			}
 			case "shell.result": {
 				fields(payload, ["id", "wait"]);
 				const record = this.#visible(payload.id, caller);
@@ -411,6 +434,28 @@ export class ShellJobs {
 			output_bytes: record.outputBytes,
 			elapsed_seconds: Math.round(((record.endedAt ?? this.#now) - record.startedAt) / 100) / 10,
 			error: record.error ?? null,
+		};
+	}
+
+	/**
+	 * The reply to a plain `bash` that ran as a job: the blocking bash's shape (the kernel makes a BashOutput of
+	 * it), plus `running` and the job's snapshot while the command is still running.
+	 */
+	bashResult(record: ShellJobRecord): JsonValue {
+		if (record.status === "failed") throw new Error(record.error ?? "bash command failed");
+		const snapshot = this.snapshot(record);
+		const running = record.status === "running";
+		return {
+			output: snapshot.text ?? "",
+			exit_code: record.exitCode,
+			cancelled: record.status === "cancelled" || record.status === "interrupted",
+			timed_out: record.status === "timed_out",
+			truncated: snapshot.truncated,
+			// The spill file holds the whole output when retention kept all of it; else only its head.
+			full_output_path: snapshot.truncated ? record.outputPath : null,
+			partial_file: record.retainedBytes < record.outputBytes,
+			running,
+			job: running ? snapshot : null,
 		};
 	}
 
