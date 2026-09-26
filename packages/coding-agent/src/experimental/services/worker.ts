@@ -120,6 +120,7 @@ export async function createSessionWorkerServices(options: {
 					resourceSourceInfo: options.resourceSourceInfo,
 					inspect: options.inspect,
 					extensionSessionEvents: options.extensionSessionEvents,
+					...(options.modelRuntime === undefined ? {} : { modelRuntime: options.modelRuntime }),
 				}),
 			);
 		},

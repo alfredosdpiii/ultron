@@ -39,6 +39,52 @@ export interface SessionTreeRead {
 	sessionFile: string | null;
 }
 
+/**
+ * The worker's profile and project settings as Pi's settings selector shows them (`SettingsManager` getters, plus
+ * the Session's live compaction and queue modes). Plain JSON; the worker's settings are the source of truth.
+ */
+export interface WorkerSettingsRead {
+	/** Effective values by setting key (see `WORKER_SETTING_KEYS`), as the worker's `SettingsManager` reports them. */
+	values: Record<string, JsonValue>;
+	/** The Session cwd whose project settings apply. */
+	cwd: string;
+	/** The profile directory holding `settings.json`, `auth.json` and `trust.json`. */
+	agentDir: string;
+	/** Whether this worker loaded the project's settings and resources. */
+	projectTrusted: boolean;
+	/** The saved trust decision that applies to `cwd` (it may be inherited from a parent directory). */
+	savedTrust: { path: string; decision: boolean } | null;
+}
+
+/** How the worker applied a setting change. */
+export interface WorkerSettingResult {
+	/**
+	 * `live`: saved and applied to the running Session; `restart`: saved, applies when the Session worker restarts;
+	 * `saved`: saved only (a presentation setting the client applies, or one the worker does not use).
+	 */
+	applied: "live" | "restart" | "saved";
+}
+
+/** Non-secret runtime facts about the Session worker for `/debug`. */
+export interface SessionDebugInfo {
+	pid: number;
+	parentPid: number;
+	nodeVersion: string;
+	version: string;
+	platform: string;
+	cwd: string;
+	agentDir: string;
+	sessionFile: string | null;
+	uptimeMs: number;
+	rssBytes: number;
+	model: string | null;
+	thinkingLevel: string;
+	/** `rlm.pool` inspection (live kernels, pins, evictions), or the error reading it. */
+	kernelPool: JsonValue;
+	/** `ULTRON_*`/`PI_*` environment names; values of secret-looking names are redacted. */
+	environment: Record<string, string>;
+}
+
 /** Session settings and user actions that act on the worker-owned harness directly. */
 export interface SessionControl {
 	getSettings(context: Context): Promise<SessionControlSettings>;
@@ -64,7 +110,66 @@ export interface SessionControl {
 	beforeFork(entryId: string, position: "before" | "at", context: Context): Promise<{ cancelled: boolean }>;
 	/** The client moved on to `targetSessionFile`, a fork of this Session (Pi's `session_shutdown` reason "fork"). */
 	forked(targetSessionFile: string | null, context: Context): Promise<void>;
+	/** Pi's `/settings` values from the worker's `SettingsManager` (profile and project). */
+	readSettings(context: Context): Promise<WorkerSettingsRead>;
+	/**
+	 * Persist one setting through the worker's `SettingsManager` and apply it to the running Session where Pi
+	 * applies it live. `key` is one of `WORKER_SETTING_KEYS`.
+	 */
+	setSetting(key: string, value: JsonValue, context: Context): Promise<WorkerSettingResult>;
+	/** Pi's `/trust`: save project trust decisions to the worker profile's `trust.json`. Applies on restart. */
+	setProjectTrust(updates: { path: string; decision: boolean | null }[], context: Context): Promise<void>;
+	/**
+	 * Re-read `<agentDir>/auth.json` after a client `/login` or `/logout` and rebuild model availability, so the next
+	 * request uses the new credentials. Returns how many models are available afterwards.
+	 */
+	reloadAuth(providerId: string | null, context: Context): Promise<{ availableModels: number }>;
+	/** Worker facts for `/debug`; never includes credentials. */
+	debugInfo(context: Context): Promise<SessionDebugInfo>;
 }
+
+/**
+ * Settings `setSetting` accepts. Keys name the `Settings` field (dotted for nested ones); `modelThinkingLevel`
+ * takes `{ provider, modelId, level | null }`.
+ */
+export const WORKER_SETTING_KEYS: readonly string[] = [
+	"compaction.enabled",
+	"retry.enabled",
+	"steeringMode",
+	"followUpMode",
+	"transport",
+	"httpIdleTimeoutMs",
+	"cacheWarming",
+	"modelThinkingLevel",
+	"defaultThinkingLevel",
+	"theme",
+	"hideThinkingBlock",
+	"terminal.showImages",
+	"terminal.imageWidthCells",
+	"images.autoResize",
+	"images.blockImages",
+	"enableSkillCommands",
+	"markdown.mermaid",
+	"showCacheMissNotices",
+	"collapseChangelog",
+	"enableInstallTelemetry",
+	"quietStartup",
+	"defaultProjectTrust",
+	"doubleEscapeAction",
+	"treeFilterMode",
+	"showHardwareCursor",
+	"editorPaddingX",
+	"outputPad",
+	"autocompleteMaxVisible",
+	"terminal.clearOnShrink",
+	"terminal.showTerminalProgress",
+	"tuiMode",
+	"fullscreenExitOutput",
+	"fullscreenScrollbar",
+	"fullscreenCopyOnSelect",
+	"warnings",
+	"enabledModels",
+];
 
 /** Read-only host requests the inspector may issue. None of them runs a search or starts work. */
 export const INSPECTION_REQUESTS: readonly string[] = [

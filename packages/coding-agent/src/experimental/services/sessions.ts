@@ -43,7 +43,40 @@ export interface SessionDirectory {
 
 export const SessionDirectory = defineService<SessionDirectory>("pi.session-directory");
 
+/** A stored Session with what Pi's session selector shows: name, times, first message. */
+export interface SessionListing extends SessionAddress {
+	createdAt: number;
+	modifiedAt: number;
+	cwd: string;
+	sessionFile: string;
+	name: string | null;
+	/** The first user message's text (empty when the Session has none). */
+	firstMessage: string;
+	messageCount: number;
+	/** The Session this one was forked from, when recorded. */
+	parentSessionId: string | null;
+}
+
+/** A Pi session file's contents, sent by a client for `importPi`. */
+export interface PiSessionImport {
+	/** Where the client read it (reported back; the server never opens it). */
+	sourcePath: string;
+	/** The Pi JSONL file's text. */
+	content: string;
+}
+
+export interface PiSessionImportResult {
+	session: SessionSummary;
+	/** The Pi session was imported before; `session` is that native copy and nothing was written. */
+	alreadyImported: boolean;
+	imported: number;
+}
+
 export interface SessionManagement {
+	/** Pi's session selector listing: this server's Sessions, of one cwd or (null) all, with names and first messages. */
+	describe(options: { cwd: string | null }, context: Context): Promise<SessionListing[]>;
+	/** Import a Pi session into a new native Session (the migration's `importPiSession`). */
+	importPi(source: PiSessionImport, context: Context): Promise<PiSessionImportResult>;
 	create(options: SessionCreateOptions, context: Context): Promise<SessionSummary>;
 	remove(sessionId: string, context: Context): Promise<void>;
 	rename(sessionId: string, name: string, context: Context): Promise<void>;

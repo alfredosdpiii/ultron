@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import {
@@ -9,6 +9,7 @@ import {
 	type LaneWatchEvent,
 	reduceLaneSnapshot,
 } from "@ultron/agent-core";
+import type { Provider } from "@ultron/ai";
 import {
 	createRemoteServiceBinding,
 	type JsonValue,
@@ -26,9 +27,15 @@ import {
 import { ProcessTerminal, TuiMainScreen } from "@ultron/tui";
 import { beforeAll, describe, expect, test, vi } from "vitest";
 import type { ClientCommand } from "../src/cli/experimental/commands/client.ts";
+import { APP_NAME } from "../src/config.ts";
 import type { ExtensionUIContext } from "../src/core/extensions/types.ts";
+import { ModelRuntime } from "../src/core/model-runtime.ts";
 import { SettingsManager } from "../src/core/settings-manager.ts";
-import { type ClientTuiServer, ExperimentalClientTui } from "../src/experimental/client-tui.ts";
+import {
+	type ClientTuiEnvironment,
+	type ClientTuiServer,
+	ExperimentalClientTui,
+} from "../src/experimental/client-tui.ts";
 import { ExperimentalChatView } from "../src/experimental/client-tui-chat.ts";
 import { laneContextUsage } from "../src/experimental/client-tui-footer.ts";
 import { createPresentationFacetData } from "../src/experimental/plugins/bundled.ts";
@@ -176,6 +183,28 @@ interface HarnessOptions {
 	/** The main lane's transcript when the Session opens (a resumed Session). */
 	readonly transcript?: LaneSnapshot["transcript"];
 	readonly settingsManager?: SettingsManager;
+	readonly environment?: ClientTuiEnvironment;
+}
+
+/** The worker's settings as the fake SessionControl reports them. */
+function workerSettingsValues(): Record<string, JsonValue> {
+	return {
+		"compaction.enabled": true,
+		steeringMode: "all",
+		followUpMode: "all",
+		transport: "auto",
+		httpIdleTimeoutMs: 300_000,
+		cacheWarming: "streaming",
+		modelThinkingLevels: {},
+		defaultThinkingLevel: "medium",
+		theme: "dark",
+		hideThinkingBlock: false,
+		doubleEscapeAction: "tree",
+		treeFilterMode: "default",
+		editorPaddingX: 0,
+		autocompleteMaxVisible: 5,
+		defaultProjectTrust: "ask",
+	};
 }
 
 async function openHarness(command: ClientCommand, options: HarnessOptions = {}) {
@@ -342,6 +371,58 @@ async function openHarness(command: ClientCommand, options: HarnessOptions = {})
 		sessionFile: null,
 	}));
 	const setLabel = vi.fn(async () => {});
+	const readSettings = vi.fn(async () => ({
+		values: workerSettingsValues(),
+		cwd: process.cwd(),
+		agentDir: "/worker/agent",
+		projectTrusted: true,
+		savedTrust: null,
+	}));
+	const setSetting = vi.fn(async (key: string, _value: JsonValue) => ({
+		applied: (key === "defaultProjectTrust" ? "restart" : key === "compaction.enabled" ? "live" : "saved") as
+			| "live"
+			| "restart"
+			| "saved",
+	}));
+	const setProjectTrust = vi.fn(async () => {});
+	const reloadAuth = vi.fn(async () => ({ availableModels: 2 }));
+	const debugInfo = vi.fn(async () => ({
+		pid: 4242,
+		parentPid: 4241,
+		nodeVersion: "v24.0.0",
+		version: "0.0.0-test",
+		platform: "linux-x64",
+		cwd: process.cwd(),
+		agentDir: "/worker/agent",
+		sessionFile: "/sessions/one.jsonl",
+		uptimeMs: 1000,
+		rssBytes: 1024,
+		model: "test/one",
+		thinkingLevel: "off",
+		kernelPool: { live: 2, maxLive: 16 },
+		environment: { ULTRON_TOOLS: "rlm", ULTRON_API_KEY: "<redacted>" },
+	}));
+	const listing = (sessionId: string, modifiedAt: number, name: string | null, firstMessage: string) => ({
+		serverId,
+		sessionId,
+		createdAt: modifiedAt,
+		modifiedAt,
+		cwd: process.cwd(),
+		sessionFile: `/sessions/${sessionId}.jsonl`,
+		name,
+		firstMessage,
+		messageCount: 2,
+		parentSessionId: null,
+	});
+	const describeSessions = vi.fn(async () => [
+		listing("one", 1_000, null, "hello"),
+		listing("older", 2_000, "Parser work", "fix the parser"),
+	]);
+	const importPi = vi.fn(async (_source: { sourcePath: string; content: string }) => ({
+		session: session("imported", 5),
+		alreadyImported: false,
+		imported: 3,
+	}));
 	const beforeFork = vi.fn(async () => ({ cancelled: false }));
 	const navigateTree = vi.fn(async () => ({
 		ok: true as const,
@@ -403,6 +484,8 @@ async function openHarness(command: ClientCommand, options: HarnessOptions = {})
 		reload: reloadPresentationPlugins,
 	});
 	serverProvider.provide(SessionManagement, {
+		describe: describeSessions,
+		importPi,
 		create,
 		async remove() {},
 		async rename() {},
@@ -446,6 +529,11 @@ async function openHarness(command: ClientCommand, options: HarnessOptions = {})
 		setLabel,
 		beforeFork,
 		forked: async () => {},
+		readSettings,
+		setSetting,
+		setProjectTrust,
+		reloadAuth,
+		debugInfo,
 	});
 	sessionProvider.provide(LegacyExtensionCommands, {
 		list: async () => [],
@@ -548,6 +636,7 @@ async function openHarness(command: ClientCommand, options: HarnessOptions = {})
 		settingsManager,
 		requestRender,
 		historyPath: options.historyPath === undefined ? null : options.historyPath,
+		...(options.environment === undefined ? {} : { environment: options.environment }),
 		finish() {
 			state.finished = true;
 		},
@@ -588,6 +677,13 @@ async function openHarness(command: ClientCommand, options: HarnessOptions = {})
 		steer,
 		followUp,
 		cancelQueued,
+		readSettings,
+		setSetting,
+		setProjectTrust,
+		reloadAuth,
+		debugInfo,
+		describeSessions,
+		importPi,
 		extensionUIBridgeContext: () => extensionUIBridge.createContext({} as ExtensionUIContext),
 	};
 }
@@ -1340,5 +1436,313 @@ describe("experimental client TUI parity with Pi's interactive mode", () => {
 			percent: null,
 		});
 		expect(laneContextUsage(transcript, undefined)).toBeUndefined();
+	});
+});
+
+function fakeOAuthProvider(id: string, name: string): Provider {
+	return {
+		id,
+		name,
+		auth: {
+			oauth: {
+				name: `${name} account`,
+				async login(interaction) {
+					interaction.notify({
+						type: "device_code",
+						userCode: "WXYZ-1234",
+						verificationUri: "https://example.invalid/device",
+					});
+					const code = await interaction.prompt({ type: "text", message: "Paste the confirmation code" });
+					return { type: "oauth", access: `token-${code}`, refresh: "refresh", expires: Date.now() + 3_600_000 };
+				},
+				refresh: async (credential) => credential,
+				toAuth: async (credential) => ({ apiKey: credential.access }),
+			},
+		},
+		getModels: () => [],
+		stream: () => {
+			throw new Error("unused");
+		},
+		streamSimple: () => {
+			throw new Error("unused");
+		},
+	};
+}
+
+describe("experimental client TUI: Pi's settings, auth, session and diagnostic commands", () => {
+	beforeAll(() => initTheme("dark"));
+
+	test("/settings reads the worker's values, writes changes through SessionControl and applies them", async () => {
+		const settingsManager = SettingsManager.inMemory();
+		const harness = await openHarness({ command: "client" }, { settingsManager });
+		const { component, readSettings, setSetting } = harness;
+		try {
+			runCommand(component, "/settings");
+			await vi.waitFor(() => expect(plain(component.render(120))).toContain("Auto-compact"));
+			expect(readSettings).toHaveBeenCalledOnce();
+			type(component, "hide thinking");
+			expect(plain(component.render(120))).toContain("Hide thinking");
+			component.handleInput("\r");
+			await vi.waitFor(() => expect(setSetting).toHaveBeenCalledWith("hideThinkingBlock", true, expect.anything()));
+			// The client mirrors the worker's value and applies it to the transcript at once (Pi's live setting).
+			await vi.waitFor(() => expect(settingsManager.getHideThinkingBlock()).toBe(true));
+			component.handleInput("\u001b");
+			await vi.waitFor(() => expect(plain(component.render(120))).not.toContain("Hide thinking"));
+
+			// Auto-compact applies live in the worker; a restart-only setting says so.
+			runCommand(component, "/settings");
+			await vi.waitFor(() => expect(plain(component.render(120))).toContain("Auto-compact"));
+			type(component, "auto-compact");
+			component.handleInput("\r");
+			await vi.waitFor(() =>
+				expect(setSetting).toHaveBeenCalledWith("compaction.enabled", false, expect.anything()),
+			);
+			component.handleInput("\u001b");
+			runCommand(component, "/settings");
+			await vi.waitFor(() => expect(plain(component.render(120))).toContain("Auto-compact"));
+			type(component, "default project trust");
+			expect(plain(component.render(120))).toContain("Default project trust");
+			component.handleInput("\r");
+			await vi.waitFor(() =>
+				expect(setSetting).toHaveBeenCalledWith("defaultProjectTrust", "always", expect.anything()),
+			);
+			await vi.waitFor(() =>
+				expect(plain(component.render(160))).toContain("takes effect when the Session worker restarts"),
+			);
+		} finally {
+			await harness.dispose();
+		}
+	});
+
+	test("/login runs the provider's flow in the client, saves to auth.json and reloads the worker; /logout removes it", async () => {
+		const agentDir = mkdtempSync(join(tmpdir(), "ultron-login-"));
+		const runtime = await ModelRuntime.create({
+			authPath: join(agentDir, "auth.json"),
+			modelsPath: null,
+			refreshOnCreate: false,
+			allowModelNetwork: false,
+		});
+		runtime.registerNativeProvider(fakeOAuthProvider("fake-cloud", "Fake Cloud"));
+		const harness = await openHarness(
+			{ command: "client" },
+			{ environment: { agentDir, loginRuntime: async () => runtime } },
+		);
+		const { component, reloadAuth } = harness;
+		try {
+			runCommand(component, "/login fake-cloud");
+			await vi.waitFor(() => expect(plain(component.render(120))).toContain("Enter code: WXYZ-1234"));
+			expect(plain(component.render(120))).toContain("Paste the confirmation code");
+			type(component, "abc");
+			component.handleInput("\r");
+			await vi.waitFor(() => expect(reloadAuth).toHaveBeenCalledWith("fake-cloud", expect.anything()));
+			await vi.waitFor(() => expect(plain(component.render(200))).toContain("Logged in to Fake Cloud"));
+			const saved = JSON.parse(readFileSync(join(agentDir, "auth.json"), "utf8")) as Record<string, unknown>;
+			expect(saved["fake-cloud"]).toMatchObject({ type: "oauth", access: "token-abc" });
+
+			runCommand(component, "/logout");
+			await vi.waitFor(() => expect(plain(component.render(120))).toContain("Select provider to logout"));
+			component.handleInput("\r");
+			await vi.waitFor(() => expect(reloadAuth).toHaveBeenCalledTimes(2));
+			await vi.waitFor(() => expect(plain(component.render(200))).toContain("Logged out of Fake Cloud"));
+			const after = JSON.parse(readFileSync(join(agentDir, "auth.json"), "utf8")) as Record<string, unknown>;
+			expect(after["fake-cloud"]).toBeUndefined();
+
+			// Esc cancels a login without saving or reloading anything.
+			runCommand(component, "/login fake-cloud");
+			await vi.waitFor(() => expect(plain(component.render(120))).toContain("Enter code: WXYZ-1234"));
+			component.handleInput("\u001b");
+			await vi.waitFor(() => expect(plain(component.render(120))).not.toContain("Enter code"));
+			expect(reloadAuth).toHaveBeenCalledTimes(2);
+		} finally {
+			await harness.dispose();
+			rmSync(agentDir, { recursive: true, force: true });
+		}
+	});
+
+	test("/share exports HTML and creates a secret gist with gh; it refuses clearly without gh", async () => {
+		const calls: string[][] = [];
+		let authCode = 0;
+		let installed = true;
+		let exported = "";
+		const runCommandFake = vi.fn(async (command: string, args: readonly string[]) => {
+			calls.push([command, ...args]);
+			if (!installed) return { code: null, stdout: "", stderr: "", error: new Error("spawn gh ENOENT") };
+			if (args[0] === "auth") return { code: authCode, stdout: "", stderr: "" };
+			exported = readFileSync(args[3]!, "utf8");
+			return { code: 0, stdout: "https://gist.github.com/someone/abc123\n", stderr: "" };
+		});
+		const harness = await openHarness({ command: "client" }, { environment: { runCommand: runCommandFake } });
+		const { component } = harness;
+		try {
+			runCommand(component, "/share");
+			await vi.waitFor(() => expect(plain(component.render(200))).toContain("Share URL:"));
+			expect(calls[1]?.slice(0, 4)).toEqual(["gh", "gist", "create", "--public=false"]);
+			expect(exported).toContain("<html");
+			const shown = plain(component.render(200));
+			expect(shown).toContain("#abc123");
+			expect(shown).toContain("Gist:");
+
+			authCode = 1;
+			runCommand(component, "/share");
+			await vi.waitFor(() => expect(plain(component.render(200))).toContain("GitHub CLI is not logged in"));
+			installed = false;
+			runCommand(component, "/share");
+			await vi.waitFor(() => expect(plain(component.render(200))).toContain("GitHub CLI (gh) is not installed"));
+			expect(calls.filter((call) => call[1] === "gist")).toHaveLength(1);
+		} finally {
+			await harness.dispose();
+		}
+	});
+
+	test("/resume lists this project's native Sessions and switches to the pick", async () => {
+		const harness = await openHarness({ command: "client" });
+		const { component, describeSessions, prepareSessionPlugins } = harness;
+		try {
+			runCommand(component, "/resume");
+			await vi.waitFor(() => expect(plain(component.render(160))).toContain("Parser work"));
+			expect(describeSessions).toHaveBeenCalledWith({ cwd: process.cwd() }, expect.anything());
+			type(component, "parser");
+			component.handleInput("\r");
+			await vi.waitFor(() =>
+				expect(prepareSessionPlugins).toHaveBeenCalledWith(
+					{ sessionId: "older", packagePaths: null },
+					expect.anything(),
+				),
+			);
+			await vi.waitFor(() => expect(plain(component.render(160))).toContain("Resumed session"));
+			expect(plain(component.render(160))).toContain("Session: older");
+		} finally {
+			await harness.dispose();
+		}
+	});
+
+	test("/import sends a Pi session to the server's migration and offers to switch; without a path it picks Pi sessions", async () => {
+		const piAgent = mkdtempSync(join(tmpdir(), "ultron-pi-agent-"));
+		const piSessions = join(
+			piAgent,
+			"sessions",
+			`--${resolve(process.cwd())
+				.replace(/^[/\\]/u, "")
+				.replace(/[/\\:]/gu, "-")}--`,
+		);
+		mkdirSync(piSessions, { recursive: true });
+		const piFile = join(piSessions, "2026-01-01T00-00-00-000Z_pi-abc.jsonl");
+		writeFileSync(
+			piFile,
+			`${[
+				{ type: "session", version: 3, id: "pi-abc", timestamp: "2026-01-01T00:00:00.000Z", cwd: process.cwd() },
+				{
+					type: "message",
+					id: "m1",
+					parentId: null,
+					timestamp: "2026-01-01T00:00:01.000Z",
+					message: { role: "user", content: "hello from pi", timestamp: 1 },
+				},
+			]
+				.map((line) => JSON.stringify(line))
+				.join("\n")}\n`,
+		);
+		const harness = await openHarness({ command: "client" }, { environment: { piAgentDir: piAgent } });
+		const { component, importPi, prepareSessionPlugins } = harness;
+		try {
+			runCommand(component, `/import ${piFile}`);
+			await vi.waitFor(() => expect(plain(component.render(200))).toContain("Switch to it?"));
+			expect(importPi).toHaveBeenCalledWith(
+				{ sourcePath: piFile, content: readFileSync(piFile, "utf8") },
+				expect.anything(),
+			);
+			component.handleInput("\r");
+			await vi.waitFor(() =>
+				expect(prepareSessionPlugins).toHaveBeenCalledWith(
+					{ sessionId: "imported", packagePaths: null },
+					expect.anything(),
+				),
+			);
+			await vi.waitFor(() => expect(plain(component.render(200))).toContain("Session imported from"));
+
+			importPi.mockClear();
+			runCommand(component, "/import");
+			await vi.waitFor(() => expect(plain(component.render(200))).toContain("hello from pi"));
+			component.handleInput("\r");
+			await vi.waitFor(() =>
+				expect(importPi).toHaveBeenCalledWith(expect.objectContaining({ sourcePath: piFile }), expect.anything()),
+			);
+			// Pi's file is only read.
+			expect(readFileSync(piFile, "utf8")).toContain("hello from pi");
+		} finally {
+			await harness.dispose();
+			rmSync(piAgent, { recursive: true, force: true });
+		}
+	});
+
+	test("/trust saves the decision in the worker's profile; /debug writes worker and server state", async () => {
+		const agentDir = mkdtempSync(join(tmpdir(), "ultron-debug-"));
+		const harness = await openHarness({ command: "client" }, { environment: { agentDir } });
+		const { component, setProjectTrust, debugInfo } = harness;
+		try {
+			runCommand(component, "/trust");
+			await vi.waitFor(() => expect(plain(component.render(160))).toContain("Trust"));
+			component.handleInput("\r");
+			await vi.waitFor(() =>
+				expect(setProjectTrust).toHaveBeenCalledWith(
+					[{ path: expect.any(String), decision: true }],
+					expect.anything(),
+				),
+			);
+			await vi.waitFor(() => expect(plain(component.render(200))).toContain("Saved trust decision: trusted"));
+
+			runCommand(component, "/debug");
+			await vi.waitFor(() => expect(plain(component.render(200))).toContain("Debug log written"));
+			expect(debugInfo).toHaveBeenCalledOnce();
+			const log = readFileSync(join(agentDir, `${APP_NAME}-debug.log`), "utf8");
+			expect(log).toContain("=== Session worker ===");
+			expect(log).toContain('"pid": 4242');
+			expect(log).toContain('"live": 2');
+			expect(log).toContain("Session: two");
+			expect(log).toContain("<redacted>");
+			expect(plain(component.render(200))).toContain("Worker: pid 4242");
+		} finally {
+			await harness.dispose();
+			rmSync(agentDir, { recursive: true, force: true });
+		}
+	});
+
+	test("/scoped-models scopes Ctrl+P for the Session and saves enabledModels through the worker", async () => {
+		const harness = await openHarness({ command: "client" });
+		const { component, modelsState, setSetting, select } = harness;
+		try {
+			modelsState.change(BACKGROUND_CONTEXT, (draft) => {
+				for (const summary of draft.catalog.availableModels) {
+					summary.model = {
+						id: summary.modelId,
+						name: summary.name,
+						api: "openai-completions",
+						provider: summary.provider,
+						baseUrl: "https://example.invalid",
+						reasoning: summary.reasoning,
+						input: ["text"],
+						cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+						contextWindow: 1000,
+						maxTokens: 100,
+					} as never;
+				}
+			});
+			runCommand(component, "/scoped-models");
+			await vi.waitFor(() => expect(plain(component.render(160))).toContain("Model catalogs refreshed"));
+			// Enter disables the first model; the other one is then the whole Ctrl+P scope.
+			component.handleInput("\r");
+			component.handleInput("\u0013");
+			await vi.waitFor(() =>
+				expect(setSetting).toHaveBeenCalledWith("enabledModels", [expect.any(String)], expect.anything()),
+			);
+			await vi.waitFor(() => expect(plain(component.render(160))).toContain("Model selection saved to settings"));
+			component.handleInput("\u001b");
+			// Without a scope Ctrl+P would switch models; the one-model scope keeps it.
+			component.handleInput("\u0010");
+			await vi.waitFor(() => expect(plain(component.render(160))).toContain("Only one model in scope"));
+			expect(select).not.toHaveBeenCalled();
+		} finally {
+			await harness.dispose();
+		}
 	});
 });
