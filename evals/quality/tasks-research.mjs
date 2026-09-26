@@ -20,15 +20,15 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { gunzipSync } from "node:zlib";
 
-export const FROZEN_AT = "2026-09-26-research";
+export const FROZEN_AT = "2026-09-26-research-pilot";
 
 /** Pass threshold for both precision and recall. */
 export const RESEARCH_THRESHOLD = 0.9;
 
 const FIXTURE = new URL("./fixtures/incident-root-causes.jsonl.gz", import.meta.url);
 const META = new URL("./fixtures/incident-root-causes.meta.json", import.meta.url);
-const FIXTURE_SHA256 = "PENDING";
-const META_SHA256 = "PENDING";
+const FIXTURE_SHA256 = "06c2fc527ba042fee207d287f4a6c6ba8def00e758f9b93c10ac15b2fb89c503";
+const META_SHA256 = "1e92b0d21f44c21a20f2ee134ea0c1d58d5b60d450c44a07fa49f1861fa3133c";
 
 function pinned(url, expected) {
 	const bytes = readFileSync(url);
@@ -109,7 +109,7 @@ export function tasks() {
 			category: "semantic-research",
 			build: buildIncidentRootCauses,
 			prompts: [
-				'incidents/ holds about 400 incident reports from our engineering teams (one file per incident, about 2 MB in total), written by different people in very different styles: formal postmortems, on-call notes, chat-log dumps, tickets, emails. There is no index of root causes. Find every incident whose ROOT CAUSE was an expired TLS/SSL certificate, meaning a certificate (leaf, intermediate or client) that genuinely reached the end of its validity period while still in use. Reports describe causes in their own words, so the same cause can be phrased in many ways. Be careful: many other incidents mention certificates (suspected and ruled out, revoked, misconfigured, expired somewhere irrelevant, and so on) without a certificate expiry being the root cause; those must not be listed. Write answer.json as {"incident_ids": ["INC-....", ...]} using the ids from the reports. Scoring uses precision and recall over the ids; both must be at least 0.9.',
+				'incidents/ holds 157 incident reports from our engineering teams (one file per incident, about 850 KB in total), written by different people in very different styles: formal postmortems, on-call notes, chat-log dumps, tickets, emails. There is no index of root causes. Find every incident whose ROOT CAUSE was an expired TLS/SSL certificate, meaning a certificate (leaf, intermediate or client) that genuinely reached the end of its validity period while still in use. Reports describe causes in their own words, so the same cause can be phrased in many ways. Be careful: many other incidents mention certificates (suspected and ruled out, revoked, misconfigured, expired somewhere irrelevant, and so on) without a certificate expiry being the root cause; those must not be listed. Write answer.json as {"incident_ids": ["INC-....", ...]} using the ids from the reports. Scoring uses precision and recall over the ids; both must be at least 0.9.',
 			],
 			verify: "python3 check_incidents_hidden.py",
 			verifyTimeoutMs: 120_000,
