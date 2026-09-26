@@ -2,7 +2,9 @@
  * Host-owned shell jobs: `await bash(cmd, yield_after=s)` runs the command in the host (the session worker), not in
  * the kernel. A running handle outlives the cell and a kernel restart, `result()` and `cancel()` work, the text is
  * bounded (head and tail around a marker, the rest readable from the spill file), an aborted root turn cancels its
- * jobs, and plain `await bash(cmd)` still blocks and returns a string.
+ * jobs. Plain `await bash(cmd)` returns a string: finished within ULTRON_BASH_YIELD_AFTER it is the whole output,
+ * else the command continues as a job (`.running`, `.job`, a note) and its end is announced; `yield_after=None` and
+ * ULTRON_BASH_YIELD_AFTER=off block.
  */
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -26,10 +28,11 @@ describe("host-owned shell jobs", () => {
 	const kernels: RlmKernel[] = [];
 	const store = createMemoryModuleStore();
 
-	/** A kernel wired like the worker: `bash` blocks in the host, `shell.*` goes to the jobs module. */
-	const kernel = (lane = "main"): RlmKernel => {
+	/** A kernel wired like the worker: `bash` with a yield_after runs as a job, else blocks; `shell.*` goes to the jobs module. */
+	const kernel = (lane = "main", env: Record<string, string> = {}): RlmKernel => {
 		const host = { rootOf: () => root } as unknown as NativeHostApi;
-		const created = new RlmKernel({ cwd, runtimePath }, async (type, payload, signal) => {
+		const created = new RlmKernel({ cwd, runtimePath, env }, async (requested, payload, signal) => {
+			const type = requested === "bash" && payload.yield_after !== undefined ? "shell.bash" : requested;
 			if (type === "bash") return runHostBash(payload, cwd, createLocalBashOperations({}), signal);
 			if (type.startsWith("shell."))
 				return jobs.module.handle(
@@ -179,6 +182,63 @@ describe("host-owned shell jobs", () => {
 			result: "('BashOutput', 'plain\\n[exit code 2]')",
 		});
 		expect(existsSync(join(cwd, ".jobs"))).toBe(true);
+	});
+
+	test("plain bash auto-detaches a slow command: a running string with its job and a note, then one event", async () => {
+		const k = kernel("main", { ULTRON_BASH_YIELD_AFTER: "0.5" });
+		const out = await k.execute(
+			"out = await bash('''echo early; sleep 1.5; echo late-$((40+2))''')\n(isinstance(out, str), type(out).__name__, out.running, out.ok, out.exit_code, out.job.id.startswith('job-'), out.job.running)",
+		);
+		expect(out).toMatchObject({ status: "ok", result: "(True, 'BashOutput', True, False, None, True, True)" });
+		const text = (await k.execute("print(out)")).stdout;
+		expect(text).toMatch(
+			/^early\n\[still running as job job-[0-9a-f]+ after 0\.5 s; its completion will arrive as a runtime event, or `await <result>\.job\.result\(\)` to wait\]\n$/,
+		);
+		expect(await k.execute("(out['running'], out.get('job') is out.job)")).toMatchObject({ result: "(True, True)" });
+		// Nobody waits on it: its end is announced once, as for any detached job.
+		await expect.poll(() => ends.length, { timeout: 5000 }).toBe(1);
+		expect(ends[0]).toMatchObject({ awaited: false, job: { status: "completed", exitCode: 0 } });
+		expect(jobSummary(ends[0]!.job)).toBe("exit 0; early | late-42");
+		expect(
+			await k.execute("j = await out.job.result(); (j.running, j.ok, j.exit_code, j.text.split())"),
+		).toMatchObject({ result: "(False, True, 0, ['early', 'late-42'])" });
+	});
+
+	test("plain bash that finishes within the window returns the whole output and announces nothing", async () => {
+		const k = kernel("main", { ULTRON_BASH_YIELD_AFTER: "20" });
+		expect(
+			await k.execute(
+				"out = await bash('''echo plain; exit 2'''); (str(out), out.exit_code, out.ok, out.running, out.job)",
+			),
+		).toMatchObject({ result: "('plain\\n[exit code 2]', 2, False, False, None)" });
+		// Output over the 16 KiB job text comes back whole from the spill file.
+		const big = await k.execute(
+			"big = await bash('''for i in $(seq 1 3000); do echo line-$i; done'''); (big.truncated, len(big.splitlines()), big.splitlines()[-1])",
+		);
+		expect(big).toMatchObject({ result: "(False, 3000, 'line-3000')" });
+		// A timeout still reports as the blocking bash did.
+		expect(
+			await k.execute(
+				"t = await bash('''sleep 5''', timeout=0.3); (t.timed_out, t.ok, str(t).endswith('[timed out after 0.3s]'))",
+			),
+		).toMatchObject({ result: "(True, False, True)" });
+		expect(ends).toHaveLength(3);
+		expect(ends.every((end) => end.awaited)).toBe(true);
+	});
+
+	test("yield_after=None and ULTRON_BASH_YIELD_AFTER=off block until the command ends; no job is made", async () => {
+		const k = kernel("main", { ULTRON_BASH_YIELD_AFTER: "0.2" });
+		const before = jobs.list().length;
+		const started = Date.now();
+		expect(
+			await k.execute("b = await bash('''sleep 0.8; echo blocked''', yield_after=None); (str(b), b.running, b.ok)"),
+		).toMatchObject({ result: "('blocked', False, True)" });
+		expect(Date.now() - started).toBeGreaterThanOrEqual(700);
+		const off = kernel("main", { ULTRON_BASH_YIELD_AFTER: "off" });
+		expect(await off.execute("b = await bash('''sleep 0.5; echo off'''); (str(b), b.running)")).toMatchObject({
+			result: "('off', False)",
+		});
+		expect(jobs.list()).toHaveLength(before);
 	});
 
 	test("the journal stays small and survives a worker restart: finished jobs keep their text, running ones read as interrupted", async () => {

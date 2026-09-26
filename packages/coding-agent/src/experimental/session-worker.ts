@@ -80,6 +80,7 @@ import { createPredictAdapter } from "../ultron/predict-adapter.ts";
 import { createProgressModule } from "../ultron/progress.ts";
 import { createReleaseGateModule } from "../ultron/release-gate.ts";
 import { createSessionDefinitionStore } from "../ultron/rlm/definition-registry.ts";
+import { CellHints, hintMaxPerTag, hintsEnabled, readHandleBytes } from "../ultron/rlm/hints.ts";
 import { runHostBash } from "../ultron/rlm/host-bash.ts";
 import { createSessionModuleStore, type HostCaller } from "../ultron/rlm/host-module.ts";
 import { createInferenceRuntime, createSessionFrameStore } from "../ultron/rlm/inference.ts";
@@ -136,6 +137,16 @@ type RlmHostHandler = (
 	caller: HostCaller,
 ) => Promise<unknown> | unknown;
 
+/** A cell that raised: the message is the (truncated) output and traceback; `ename` is the exception type. */
+export class RlmCellError extends Error {
+	readonly ename: string;
+	constructor(message: string, ename: string) {
+		super(message);
+		this.name = "RlmCellError";
+		this.ename = ename;
+	}
+}
+
 /** Worker adapter around the shared, bounded Python protocol implementation. */
 export class UltronRlmKernel {
 	private readonly kernel: RlmKernel;
@@ -178,7 +189,10 @@ export class UltronRlmKernel {
 			const summary = `${result.error?.ename ?? "PythonError"}: ${result.error?.evalue ?? "Execution failed"}`;
 			const traceback = (result.error?.traceback ?? []).join("\n");
 			const failure = !traceback ? summary : traceback.endsWith(summary) ? traceback : `${traceback}\n${summary}`;
-			throw new Error(truncateToolOutput([stdout, stderr, failure].filter(Boolean).join("\n")));
+			throw new RlmCellError(
+				truncateToolOutput([stdout, stderr, failure].filter(Boolean).join("\n")),
+				result.error?.ename ?? "PythonError",
+			);
 		}
 		return truncateToolOutput([stdout, stderr, result.result].filter(Boolean).join("\n"));
 	}
@@ -235,8 +249,25 @@ export function createUltronRlmTool(
 		readonly maxPinned?: number;
 		readonly idleTtlMs?: number;
 		readonly now?: () => number;
+		/** Situational hints appended to cell results (see hints.ts). */
+		readonly hints?: CellHints;
 	} = {},
 ): UltronRlmTool {
+	const hints = options.hints;
+	// Host requests are observed per lane so the hints can see what a cell waited on, polled or detached.
+	const observedHandler = (lane: string): KernelHostHandler =>
+		hints === undefined || !hints.enabled
+			? (type, payload, signal) => hostHandler(type, payload, signal, { lane })
+			: async (type, payload, signal) => {
+					const startedAt = Date.now();
+					let result: unknown;
+					try {
+						result = await hostHandler(type, payload, signal, { lane });
+						return result;
+					} finally {
+						hints.observe(lane, type, payload, result, startedAt);
+					}
+				};
 	// Idle kernels are evicted after a snapshot, so a lane's declared state survives and a crowded session
 	// cannot keep unbounded Python processes alive (A43). Running cells are never evicted.
 	const snapshotPath = (lane: string): string | undefined =>
@@ -245,13 +276,7 @@ export function createUltronRlmTool(
 			: join(options.snapshotDir, `${lane.replace(/[^A-Za-z0-9._-]/g, "_")}.snapshot`);
 	const maxLive = options.maxLive ?? 16;
 	const kernels = new KernelPool<UltronRlmKernel>({
-		create: (lane) =>
-			new UltronRlmKernel(
-				cwd,
-				(type, payload, signal) => hostHandler(type, payload, signal, { lane }),
-				snapshotPath(lane),
-				options.snapshotKey,
-			),
+		create: (lane) => new UltronRlmKernel(cwd, observedHandler(lane), snapshotPath(lane), options.snapshotKey),
 		maxLive,
 		maxPinned: options.maxPinned ?? Math.floor(maxLive / 2),
 		idleTtlMs: options.idleTtlMs ?? 30 * 60 * 1000,
@@ -309,8 +334,25 @@ export function createUltronRlmTool(
 			const lane = await resolveLane(invocation, context);
 			context.abortSignal?.throwIfAborted();
 			if (closed) throw new Error("Ultron RLM tool is closed");
-			const result = await kernels.use(lane, (kernel) => kernel.execute(params.code, context));
-			return { content: [{ type: "text", text: result || "(no result)" }], details: {} };
+			if (hints === undefined) {
+				const result = await kernels.use(lane, (kernel) => kernel.execute(params.code, context));
+				return { content: [{ type: "text", text: result || "(no result)" }], details: {} };
+			}
+			hints.beginCell(lane, params.code);
+			let result: string;
+			try {
+				result = await kernels.use(lane, (kernel) => kernel.execute(params.code, context));
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				const hint = await hints
+					.endCell(lane, { text: message, ename: error instanceof RlmCellError ? error.ename : "Error" })
+					.catch(() => undefined);
+				if (hint && error instanceof Error) error.message = `${message}\n${hint}`;
+				throw error;
+			}
+			const hint = await hints.endCell(lane, { text: result }).catch(() => undefined);
+			const text = result || "(no result)";
+			return { content: [{ type: "text", text: hint ? `${text}\n${hint}` : text }], details: {} };
 		},
 	};
 }
@@ -1322,6 +1364,14 @@ async function createCodingAgentHarness(
 	let host: NativeRlmHost | undefined;
 	let holdActivity: (() => () => void) | undefined;
 	const hostHandler: RlmHostHandler = async (type, payload, signal, caller) => {
+		// A plain `bash` with a yield_after (ULTRON_BASH_YIELD_AFTER) runs as a shell job that detaches when slow.
+		if (type === "bash" && payload.yield_after !== undefined && host)
+			return host.handle(
+				"shell.bash",
+				payload,
+				signal ? withAbortSignal(signal, TODO_CONTEXT) : TODO_CONTEXT,
+				caller,
+			);
 		if (type === "bash") {
 			return runHostBash(
 				payload,
@@ -1354,6 +1404,14 @@ async function createCodingAgentHarness(
 	const snapshotKey = loadSnapshotKey(getAgentDir());
 	if (snapshotKey.warning) console.error(snapshotKey.warning);
 	mkdirSync(snapshotDir, { recursive: true, mode: 0o700 });
+	// Situational hints on cell results (ULTRON_HINTS=off disables them); mutes and counts are a session value.
+	const cellHints = new CellHints({
+		store: createSessionModuleStore(session, "hints"),
+		enabled: hintsEnabled(),
+		maxPerTag: hintMaxPerTag(),
+		asyncEvents: asyncEventsEnabled(process.env.ULTRON_ASYNC_EVENTS),
+		readHandleBytes: readHandleBytes(),
+	});
 	const rlmTool = createUltronRlmTool(
 		options.metadata.cwd,
 		hostHandler,
@@ -1367,7 +1425,7 @@ async function createCodingAgentHarness(
 		},
 		// The signing key stays in this process; the kernel running model code never receives it. It lives in the
 		// profile file unless ULTRON_RLM_SNAPSHOT_KEY_STORE opts into the OS keyring.
-		{ snapshotDir, snapshotKey: snapshotKey.key },
+		{ snapshotDir, snapshotKey: snapshotKey.key, hints: cellHints },
 	);
 	const tools = [createReadTool(), createEditTool(), createWriteTool(), createBashTool(), rlmTool];
 	const loadedSkills = await Promise.all(
@@ -1597,6 +1655,7 @@ async function createCodingAgentHarness(
 			},
 			modules: [
 				shellJobs.module,
+				cellHints.module,
 				contextControl.module,
 				inference.module,
 				createFamilyModule({ store: createSessionModuleStore(session, "family") }),
