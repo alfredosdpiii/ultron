@@ -97,7 +97,7 @@
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/earendil-works/pi.git",
+		"url": "git+https://github.com/alfredosdpiii/ultron.git",
 		"directory": "packages/coding-agent"
 	},
 	"engines": {

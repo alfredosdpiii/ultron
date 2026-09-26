@@ -1,116 +1,107 @@
-<p align="center">
-  <a href="https://pi.dev">
-    <img alt="pi logo" src="https://pi.dev/logo-auto.svg" width="128">
-  </a>
-</p>
-<p align="center">
-  <a href="https://discord.com/invite/3cU7Bz4UPx"><img alt="Discord" src="https://img.shields.io/badge/discord-community-5865F2?style=flat-square&logo=discord&logoColor=white" /></a>
-  <a href="https://www.npmjs.com/package/@earendil-works/pi-coding-agent"><img alt="npm" src="https://img.shields.io/npm/v/@earendil-works/pi-coding-agent?style=flat-square" /></a>
-</p>
+# Ultron
 
-> New issues and PRs from new contributors are auto-closed by default. Maintainers review auto-closed issues daily. See [CONTRIBUTING.md](CONTRIBUTING.md).
+Ultron is a terminal coding agent whose only built-in tool is a persistent Python REPL. The model reads files,
+runs commands, edits code, processes data and delegates to sub-agents by writing Python, instead of choosing from a
+menu of tools. It is a fork of [Pi](https://github.com/badlogic/pi-mono) and keeps Pi's interface: the same TUI,
+`-p` print mode, `--mode json`, and `--mode rpc`, the same providers, extensions, skills and prompt templates.
 
-# Ultron agent harness
+The design takes ideas from Prime Intellect's RLM harness (the REPL as the sole tool), NVIDIA's NOOA (bounded
+previews and typed agent objects), Autolith (bounded inference over large inputs), LLM-as-Code (context that
+collapses when work returns), Unreal Agent (long work that never blocks the turn) and waku-agent (gated memory).
+[`supremeplan.md`](supremeplan.md) describes how each one landed.
 
-Ultron is a fork of the Pi agent harness focused on RLM-first execution, typed agents, durable task state, optional workflows, and explicit runtime controls.
+## Install
 
-* **[@earendil-works/pi-coding-agent](packages/coding-agent)**: Interactive coding agent CLI
-* **[@ultron/agent-core](packages/agent)**: Agent runtime with tool calling and state management
-* **[@ultron/ai](packages/ai)**: Unified multi-provider LLM API (OpenAI, Anthropic, Google, …)
+Requirements: **Node.js 22.19 or newer** and **Python 3** on your `PATH` (the REPL runs the system `python3`).
 
-To learn more about Ultron:
+```bash
+npm install -g --ignore-scripts https://github.com/alfredosdpiii/ultron/releases/download/v0.87.1/ultron-0.87.1.tgz
+ultron --version
+```
 
-* [Visit pi.dev](https://pi.dev), the upstream project website and documentation
-* [Read the upstream documentation](https://pi.dev/docs/latest), then see `docs/ultron-architecture.md` for Ultron-specific design
+`--ignore-scripts` is intended: nothing Ultron depends on needs lifecycle scripts. Ultron keeps its settings and
+sessions in `~/.ultron/agent`, separate from Pi's `~/.pi/agent`, so both can be installed side by side.
 
-## All Packages
+## Quick start
 
-| Package | Description |
-|---------|-------------|
-| **[@ultron/chord](packages/chord)** | Standalone application-composition runtime for services, replicated state, RPC, and plugins |
-| **[@ultron/telemetry](packages/telemetry)** | Vendor-neutral telemetry contracts, reference adapter, conformance tests, and typed schemas |
-| **[@ultron/ai](packages/ai)** | Unified multi-provider LLM API (OpenAI, Anthropic, Google, etc.) |
-| **[@ultron/durable](packages/durable)** | Durable conversation, task, and document runtime |
-| **[@ultron/agent-core](packages/agent)** | Agent runtime with tool calling and state management |
-| **[@earendil-works/pi-coding-agent](packages/coding-agent)** | Interactive coding agent CLI |
-| **[@ultron/tui](packages/tui)** | Terminal UI library with differential rendering |
+```bash
+cd your-project
+ultron                                   # interactive TUI; /login or an API key env var to pick a provider
+ultron -p "why does test_parser fail?"   # one-shot print mode
+ultron --mode rpc                        # Pi-compatible JSONL RPC
+```
 
-For Slack/chat automation and workflows see [earendil-works/pi-chat](https://github.com/earendil-works/pi-chat).
+Providers work as in Pi: `/login` for subscription providers, or the usual environment variables
+(`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, ...). Custom OpenAI-compatible endpoints go in
+`~/.ultron/agent/models.json` with the same format as Pi's `models.json`.
 
-## Permissions & Containerization
+## What the model gets
 
-Pi does not include a built-in permission system for restricting filesystem, process, network, or credential access. By default, it runs with the permissions of the user and process that launched it.
+One tool, `rlm`: a Python cell that runs in a kernel that persists for the whole session. Pre-imported, all async:
 
-If you need stronger boundaries, containerize or sandbox Pi. See [packages/coding-agent/docs/containerization.md](packages/coding-agent/docs/containerization.md) for three patterns:
+| | |
+|---|---|
+| `await bash('''cmd''')` | shell in the working directory; slow commands turn into background jobs after 30 s |
+| `await edit(path, old_str, new_str)` | exact single-occurrence edits that fail loudly when stale or ambiguous |
+| `read(path)` | text for normal files, a handle for large ones |
+| `h = await rlm.load(path)` | a handle to a large input the model never reads whole (`h.search`, `h.lines`, `h.chunks`) |
+| `await rlm.infer(task, context=[...], contract=...)` / `rlm.map(...)` | bounded sub-model calls over explicit slices, validated against a JSON-schema contract, under a shared budget |
+| `await rlm.spawn(task)`, `agents.invoke(...)`, `workflows.run(...)` | sub-agents, typed agents and agent graphs |
+| `@agent class ...` | agents defined as Python classes: docstring is the prompt, `...` methods are model-driven, fields are durable state |
+| `ctx.history / forget / summarize / pin / note` | the model manages its own context |
+| `skills.propose_code(...)` | procedures saved as tested Python skills, activated only when their tests pass |
+| `memory.prepare / propose` | long-term memory through Hindsight, gated by Jev (optional) |
 
-- **Gondolin extension**: keep `pi` and provider auth on the host while routing built-in tools and `!` commands into a local Linux micro-VM.
-- **Plain Docker**: run the whole `pi` process in a local container for simple isolation.
-- **OpenShell**: run the whole `pi` process in a policy-controlled sandbox.
+Output over about 20 KB is cut in the middle and large values are shown by reference, so data stays in the kernel.
+When background work finishes, a short `<runtime_event>` message wakes the model instead of making it poll.
+Set `ULTRON_TOOLS=native` to give the model Pi's `read`, `edit`, `write` and `bash` tools again.
 
-## Contributing
+The `/rlm` panel (Ctrl+R) shows the task tree, running kernels, jobs and sub-model frames; `/jev` (Alt+J) shows
+memory and routing decisions.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines and [AGENTS.md](AGENTS.md) for project-specific rules (for both humans and agents).  Longer term plans for Pi can also be found in [RFCs](https://rfc.earendil.com/keyword/pi/).
+## Optional services
+
+- **Hindsight** memory: Ultron uses `http://localhost:8888` when it is running (`ULTRON_HINDSIGHT_URL` to change,
+  `off` to disable). Without it, memory calls fail quietly and turns are unaffected.
+- **Jev** decides whether a turn needs memory and whether to keep it; it needs `TYPESAFE_API_KEY`. Without Jev,
+  automatic memory stays off.
+
+## Results so far
+
+Measured with [`scripts/eval-quality.mjs`](scripts/eval-quality.mjs) against stock Pi on the same model
+(glm-5.3-flash, thinking `max`); every result file is in [`acceptance/quality/`](acceptance/quality).
+
+| Task set | Pi | Ultron |
+|---|---|---|
+| Hard set: 15 tasks (multi-file bugs, refactors, large data, log forensics), 2 trials | 27/30 | **29/30**, a third fewer tool calls, same speed |
+| Research pilot: find expired-certificate incidents among 157 reports (1 trial) | pass, 342 s | pass, **273 s**, 99 sub-model frames chosen unprompted |
+| Parallel work: 150 s test suite plus two bug fixes (2 trials) | 2/2 | 2/2, same speed |
+
+These are small samples on one model; treat them as early evidence, not benchmarks.
+
+## Safety
+
+There is no sandbox. Model-written Python runs with your user's permissions, like Pi's `bash` tool. Resource limits
+apply (a memory cap over the kernel's whole process tree, CPU and wall-time budgets, per-turn token and turn limits),
+but they are not isolation. Run Ultron in a container or VM if you need a boundary; Pi's
+[containerization guide](packages/coding-agent/docs/containerization.md) applies.
 
 ## Development
 
 ```bash
-npm install --ignore-scripts  # Install all dependencies without running lifecycle scripts
-npm run build         # Refresh model data, then build all packages
-npm run build:offline # Rebuild using existing model data without network access
-npm run check         # Lint, format, and type check
-./test.sh            # Run tests (skips LLM-dependent tests without API keys)
-./pi-test.sh         # Run pi from sources (can be run from any directory)
+npm install --ignore-scripts
+npm run build:offline      # build all packages without refreshing model data
+npm run check              # lint, format, type check
+./test.sh                  # all tests
+npm run test:acceptance    # acceptance rows A01-A56, judged by the runner
+node scripts/pack-release.mjs   # build the self-contained release tarball (after a build)
 ```
 
-## Building standalone binaries from release source
+Design and status: [`docs/implementation-status.md`](docs/implementation-status.md),
+[`docs/ultron-architecture.md`](docs/ultron-architecture.md), [`supremeplan.md`](supremeplan.md).
 
-GitHub releases include a versioned source archive covered by the release's `SHA256SUMS` file. Extract it and run the same build script used for the official standalone binaries:
+## Credits and license
 
-```bash
-VERSION="<release-version>"
-tar -xzf "pi-${VERSION}-source.tar.gz"
-cd "pi-${VERSION}"
-./scripts/build-binaries.sh --offline-model-data --platform linux-x64 --out "$PWD/out"
-```
-
-The archive includes release model data and native prebuilds. `--offline-model-data` uses that model data without refreshing provider catalogs. The script installs dependencies and builds the executable with its runtime assets; pass `--skip-install` if dependencies are already provided.
-
-## Supply-chain hardening
-
-We treat npm dependency changes as reviewed code changes.
-
-- Direct external dependencies are pinned to exact versions. Internal workspace packages remain version-ranged.
-- `.npmrc` sets `save-exact=true` and `min-release-age=2` to avoid same-day dependency releases during npm resolution.
-- `package-lock.json` is the dependency ground truth. Pre-commit blocks accidental lockfile commits unless `PI_ALLOW_LOCKFILE_CHANGE=1` is set.
-- `npm run check` verifies pinned direct deps, native TypeScript import compatibility, and the generated coding-agent shrinkwrap.
-- The published CLI package includes `packages/coding-agent/npm-shrinkwrap.json`, generated from the root lockfile, to pin transitive deps for npm users.
-- Release smoke tests use `npm run release:local` to build, pack, and create isolated npm and Bun installs outside the repo before tagging a release.
-- Local release installs, documented npm installs, and `pi update --self` use `--ignore-scripts` where supported.
-- CI installs with `npm ci --ignore-scripts`, and a scheduled GitHub workflow runs `npm audit --omit=dev` plus `npm audit signatures --omit=dev`.
-- Shrinkwrap generation has an explicit allowlist for dependency lifecycle scripts; new lifecycle-script deps fail checks until reviewed.
-
-## Share your OSS coding agent sessions
-
-If you use Pi or other coding agents for open source work, please share your sessions.
-
-Public OSS session data helps improve coding agents with real-world tasks, tool use, failures, and fixes instead of toy benchmarks.
-
-For the full explanation, see [this post on X](https://x.com/badlogicgames/status/2037811643774652911).
-
-To publish sessions, use [`badlogic/pi-share-hf`](https://github.com/badlogic/pi-share-hf). Read its README.md for setup instructions. All you need is a Hugging Face account, the Hugging Face CLI, and `pi-share-hf`.
-
-You can also watch [this video](https://x.com/badlogicgames/status/2041151967695634619), where I show how I publish my `pi-mono` sessions.
-
-I regularly publish my own `pi-mono` work sessions here:
-
-- [badlogicgames/pi-mono on Hugging Face](https://huggingface.co/datasets/badlogicgames/pi-mono)
-
-## License
-
-MIT
-
-<p align="center">
-  <a href="https://pi.dev">pi.dev</a> domain graciously donated by
-  <br /><br />
-  <a href="https://exe.dev"><img src="packages/coding-agent/docs/images/exy.png" alt="Exy mascot" width="48" /><br />exe.dev</a>
-</p>
+Ultron is built on [Pi](https://github.com/badlogic/pi-mono) by Mario Zechner and contributors, and keeps Pi's
+MIT license (see [LICENSE](LICENSE)). Pi's own documentation at [pi.dev](https://pi.dev) covers the interface,
+providers, extensions and settings that Ultron shares.
