@@ -1,0 +1,1741 @@
+{
+  "taskSet": "hard",
+  "frozenAt": "2026-09-25-hard",
+  "thresholds": {
+    "maxPassRateDropPoints": 10,
+    "maxMedianLatencyRatio": 2,
+    "maxCostRatio": 2
+  },
+  "model": "cliproxyapi/gpt-6-sol",
+  "ultronCommand": "node ~/Projects/personal/ultron/packages/coding-agent/dist/bundle/cli.js",
+  "trials": 2,
+  "isolation": {
+    "home": "per-run empty HOME inside the run's work dir (no ~/.agents, ~/.pi, ~/.ultron or other user-global resources)",
+    "agentDir": "per-run agent dir holding only models.json and auth.json copied from ~/.ultron/agent",
+    "memory": "off (ULTRON_HINDSIGHT_URL=off)"
+  },
+  "judge": {
+    "model": "cliproxyapi/glm-5.3-flash",
+    "thinking": "low",
+    "command": "pi"
+  },
+  "summary": {
+    "byVariant": {
+      "pi": {
+        "runs": 30,
+        "infrastructure": 0,
+        "passRate": 1,
+        "categories": {
+          "multi-bug": {
+            "passed": 6,
+            "runs": 6
+          },
+          "refactor": {
+            "passed": 6,
+            "runs": 6
+          },
+          "large-data": {
+            "passed": 8,
+            "runs": 8
+          },
+          "log-forensics": {
+            "passed": 6,
+            "runs": 6
+          },
+          "huge-file": {
+            "passed": 4,
+            "runs": 4
+          }
+        },
+        "medianDurationMs": 33488,
+        "totalCost": 1.06953,
+        "uptake": {
+          "toolsByName": {
+            "bash": 109,
+            "read": 50,
+            "edit": 39,
+            "write": 17
+          },
+          "rlmRunShare": 0,
+          "framesSpawned": {
+            "runs": 0,
+            "total": null,
+            "median": null
+          },
+          "childrenSpawned": {
+            "runs": 0,
+            "total": null,
+            "median": null
+          },
+          "rootUnseenBytes": {
+            "runs": 0,
+            "total": null,
+            "median": null
+          }
+        }
+      },
+      "ultron": {
+        "runs": 30,
+        "infrastructure": 0,
+        "passRate": 1,
+        "categories": {
+          "multi-bug": {
+            "passed": 6,
+            "runs": 6
+          },
+          "refactor": {
+            "passed": 6,
+            "runs": 6
+          },
+          "large-data": {
+            "passed": 8,
+            "runs": 8
+          },
+          "log-forensics": {
+            "passed": 6,
+            "runs": 6
+          },
+          "huge-file": {
+            "passed": 4,
+            "runs": 4
+          }
+        },
+        "medianDurationMs": 40384.5,
+        "totalCost": 1.0591428000000003,
+        "uptake": {
+          "toolsByName": {
+            "rlm": 130
+          },
+          "rlmRunShare": 1,
+          "framesSpawned": {
+            "runs": 30,
+            "total": 0,
+            "median": 0
+          },
+          "childrenSpawned": {
+            "runs": 30,
+            "total": 0,
+            "median": 0
+          },
+          "rootUnseenBytes": {
+            "runs": 0,
+            "total": null,
+            "median": null
+          }
+        }
+      }
+    },
+    "gate": [
+      {
+        "check": "pass rate",
+        "ok": true,
+        "detail": "0.0 points below baseline"
+      },
+      {
+        "check": "median latency",
+        "ok": true,
+        "detail": "1.21x baseline"
+      },
+      {
+        "check": "cost",
+        "ok": true,
+        "detail": "0.99x baseline"
+      }
+    ],
+    "passed": true
+  },
+  "records": [
+    {
+      "task": "bugs-invoicing",
+      "category": "multi-bug",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "rlm": 5
+      },
+      "framesSpawned": 0,
+      "childrenSpawned": 0,
+      "childDepth": 0,
+      "rootUnseenBytes": null,
+      "toolCalls": 5,
+      "tasksByDefinition": {},
+      "framesSource": "inspect",
+      "cost": 0.0548256,
+      "tokens": 33144,
+      "durationMs": 79247,
+      "verify": {
+        "status": 0,
+        "output": "----------------------------------------------------------------------\nRan 7 tests in 0.016s\n\nOK\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/bugs-invoicing-ultron-1-2026-09-27T16-05-10-753Z"
+    },
+    {
+      "task": "bugs-invoicing",
+      "category": "multi-bug",
+      "variant": "pi",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "bash": 4,
+        "read": 10,
+        "edit": 9,
+        "write": 1
+      },
+      "framesSpawned": null,
+      "childrenSpawned": null,
+      "childDepth": null,
+      "rootUnseenBytes": null,
+      "toolCalls": 24,
+      "cost": 0.07693080000000001,
+      "tokens": 52447,
+      "durationMs": 110345,
+      "verify": {
+        "status": 0,
+        "output": "----------------------------------------------------------------------\nRan 7 tests in 0.014s\n\nOK\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/bugs-invoicing-pi-2-2026-09-27T16-05-10-751Z"
+    },
+    {
+      "task": "bugs-invoicing",
+      "category": "multi-bug",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "bash": 3,
+        "read": 10,
+        "edit": 7,
+        "write": 1
+      },
+      "framesSpawned": null,
+      "childrenSpawned": null,
+      "childDepth": null,
+      "rootUnseenBytes": null,
+      "toolCalls": 21,
+      "cost": 0.0796676,
+      "tokens": 61397,
+      "durationMs": 131312,
+      "verify": {
+        "status": 0,
+        "output": "----------------------------------------------------------------------\nRan 7 tests in 0.014s\n\nOK\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/bugs-invoicing-pi-1-2026-09-27T16-05-10-747Z"
+    },
+    {
+      "task": "bugs-invoicing",
+      "category": "multi-bug",
+      "variant": "ultron",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "rlm": 6
+      },
+      "framesSpawned": 0,
+      "childrenSpawned": 0,
+      "childDepth": 0,
+      "rootUnseenBytes": null,
+      "toolCalls": 6,
+      "tasksByDefinition": {},
+      "framesSource": "inspect",
+      "cost": 0.050997600000000004,
+      "tokens": 41474,
+      "durationMs": 63356,
+      "verify": {
+        "status": 0,
+        "output": "----------------------------------------------------------------------\nRan 7 tests in 0.015s\n\nOK\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/bugs-invoicing-ultron-2-2026-09-27T16-06-30-114Z"
+    },
+    {
+      "task": "bugs-scheduler",
+      "category": "multi-bug",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "rlm": 5
+      },
+      "framesSpawned": 0,
+      "childrenSpawned": 0,
+      "childDepth": 0,
+      "rootUnseenBytes": null,
+      "toolCalls": 5,
+      "tasksByDefinition": {},
+      "framesSource": "inspect",
+      "cost": 0.0547812,
+      "tokens": 30881,
+      "durationMs": 53581,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/bugs-scheduler-ultron-1-2026-09-27T16-07-33-578Z"
+    },
+    {
+      "task": "bugs-scheduler",
+      "category": "multi-bug",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "bash": 3,
+        "read": 9,
+        "edit": 8,
+        "write": 1
+      },
+      "framesSpawned": null,
+      "childrenSpawned": null,
+      "childDepth": null,
+      "rootUnseenBytes": null,
+      "toolCalls": 21,
+      "cost": 0.08024880000000001,
+      "tokens": 66842,
+      "durationMs": 99482,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/bugs-scheduler-pi-1-2026-09-27T16-07-01-178Z"
+    },
+    {
+      "task": "bugs-scheduler",
+      "category": "multi-bug",
+      "variant": "pi",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "bash": 4,
+        "read": 8,
+        "edit": 6,
+        "write": 1
+      },
+      "framesSpawned": null,
+      "childrenSpawned": null,
+      "childDepth": null,
+      "rootUnseenBytes": null,
+      "toolCalls": 19,
+      "cost": 0.07244279999999999,
+      "tokens": 52179,
+      "durationMs": 107907,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/bugs-scheduler-pi-2-2026-09-27T16-07-22-142Z"
+    },
+    {
+      "task": "bugs-ttl-cache",
+      "category": "multi-bug",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "read": 2,
+        "edit": 1,
+        "bash": 3
+      },
+      "framesSpawned": null,
+      "childrenSpawned": null,
+      "childDepth": null,
+      "rootUnseenBytes": null,
+      "toolCalls": 6,
+      "cost": 0.0261924,
+      "tokens": 19373,
+      "durationMs": 30589,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/bugs-ttl-cache-pi-1-2026-09-27T16-08-40-762Z"
+    },
+    {
+      "task": "bugs-scheduler",
+      "category": "multi-bug",
+      "variant": "ultron",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "rlm": 5
+      },
+      "framesSpawned": 0,
+      "childrenSpawned": 0,
+      "childDepth": 0,
+      "rootUnseenBytes": null,
+      "toolCalls": 5,
+      "tasksByDefinition": {},
+      "framesSource": "inspect",
+      "cost": 0.05317200000000001,
+      "tokens": 32198,
+      "durationMs": 63472,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/bugs-scheduler-ultron-2-2026-09-27T16-08-27-283Z"
+    },
+    {
+      "task": "bugs-ttl-cache",
+      "category": "multi-bug",
+      "variant": "pi",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "read": 1,
+        "edit": 1,
+        "bash": 3
+      },
+      "framesSpawned": null,
+      "childrenSpawned": null,
+      "childDepth": null,
+      "rootUnseenBytes": null,
+      "toolCalls": 5,
+      "cost": 0.026248399999999998,
+      "tokens": 17369,
+      "durationMs": 37282,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/bugs-ttl-cache-pi-2-2026-09-27T16-09-10-143Z"
+    },
+    {
+      "task": "bugs-ttl-cache",
+      "category": "multi-bug",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "rlm": 6
+      },
+      "framesSpawned": 0,
+      "childrenSpawned": 0,
+      "childDepth": 0,
+      "rootUnseenBytes": null,
+      "toolCalls": 6,
+      "tasksByDefinition": {},
+      "framesSource": "inspect",
+      "cost": 0.0425412,
+      "tokens": 26109,
+      "durationMs": 55460,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/bugs-ttl-cache-ultron-1-2026-09-27T16-09-11-474Z"
+    },
+    {
+      "task": "bugs-ttl-cache",
+      "category": "multi-bug",
+      "variant": "ultron",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "rlm": 5
+      },
+      "framesSpawned": 0,
+      "childrenSpawned": 0,
+      "childDepth": 0,
+      "rootUnseenBytes": null,
+      "toolCalls": 5,
+      "tasksByDefinition": {},
+      "framesSource": "inspect",
+      "cost": 0.0491964,
+      "tokens": 28975,
+      "durationMs": 56608,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/bugs-ttl-cache-ultron-2-2026-09-27T16-09-30-875Z"
+    },
+    {
+      "task": "refactor-intervals-fast",
+      "category": "refactor",
+      "variant": "pi",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "read": 1,
+        "bash": 3,
+        "write": 1
+      },
+      "framesSpawned": null,
+      "childrenSpawned": null,
+      "childDepth": null,
+      "rootUnseenBytes": null,
+      "toolCalls": 5,
+      "cost": 0.0429496,
+      "tokens": 16814,
+      "durationMs": 89351,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/refactor-intervals-fast-pi-2-2026-09-27T16-10-07-085Z"
+    },
+    {
+      "task": "refactor-intervals-fast",
+      "category": "refactor",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "read": 1,
+        "bash": 4,
+        "write": 1,
+        "edit": 3
+      },
+      "framesSpawned": null,
+      "childrenSpawned": null,
+      "childDepth": null,
+      "rootUnseenBytes": null,
+      "toolCalls": 9,
+      "cost": 0.07681280000000001,
+      "tokens": 31544,
+      "durationMs": 127912,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/refactor-intervals-fast-pi-1-2026-09-27T16-09-47-553Z"
+    },
+    {
+      "task": "refactor-shop-package",
+      "category": "refactor",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "bash": 4,
+        "read": 2,
+        "write": 5
+      },
+      "framesSpawned": null,
+      "childrenSpawned": null,
+      "childDepth": null,
+      "rootUnseenBytes": null,
+      "toolCalls": 11,
+      "cost": 0.044924,
+      "tokens": 33926,
+      "durationMs": 64804,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/refactor-shop-package-pi-1-2026-09-27T16-11-57-145Z"
+    },
+    {
+      "task": "refactor-intervals-fast",
+      "category": "refactor",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "rlm": 11
+      },
+      "framesSpawned": 0,
+      "childrenSpawned": 0,
+      "childDepth": 0,
+      "rootUnseenBytes": null,
+      "toolCalls": 11,
+      "tasksByDefinition": {},
+      "framesSource": "inspect",
+      "cost": 0.0977368,
+      "tokens": 59410,
+      "durationMs": 190293,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/refactor-intervals-fast-ultron-1-2026-09-27T16-10-27-633Z"
+    },
+    {
+      "task": "refactor-intervals-fast",
+      "category": "refactor",
+      "variant": "ultron",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "rlm": 7
+      },
+      "framesSpawned": 0,
+      "childrenSpawned": 0,
+      "childDepth": 0,
+      "rootUnseenBytes": null,
+      "toolCalls": 7,
+      "tasksByDefinition": {},
+      "framesSource": "inspect",
+      "cost": 0.08690120000000001,
+      "tokens": 42213,
+      "durationMs": 161359,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/refactor-intervals-fast-ultron-2-2026-09-27T16-11-37-804Z"
+    },
+    {
+      "task": "refactor-shop-package",
+      "category": "refactor",
+      "variant": "pi",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "bash": 4,
+        "read": 2,
+        "write": 5
+      },
+      "framesSpawned": null,
+      "childrenSpawned": null,
+      "childDepth": null,
+      "rootUnseenBytes": null,
+      "toolCalls": 11,
+      "cost": 0.04670560000000001,
+      "tokens": 34328,
+      "durationMs": 88160,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/refactor-shop-package-pi-2-2026-09-27T16-13-02-154Z"
+    },
+    {
+      "task": "refactor-shop-package",
+      "category": "refactor",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "rlm": 5
+      },
+      "framesSpawned": 0,
+      "childrenSpawned": 0,
+      "childDepth": 0,
+      "rootUnseenBytes": null,
+      "toolCalls": 5,
+      "tasksByDefinition": {},
+      "framesSource": "inspect",
+      "cost": 0.036961999999999995,
+      "tokens": 24341,
+      "durationMs": 57842,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/refactor-shop-package-ultron-1-2026-09-27T16-13-39-801Z"
+    },
+    {
+      "task": "refactor-streaming-records",
+      "category": "refactor",
+      "variant": "pi",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "bash": 3,
+        "read": 1,
+        "edit": 1
+      },
+      "framesSpawned": null,
+      "childrenSpawned": null,
+      "childDepth": null,
+      "rootUnseenBytes": null,
+      "toolCalls": 5,
+      "cost": 0.03506600000000001,
+      "tokens": 14397,
+      "durationMs": 43334,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/refactor-streaming-records-pi-2-2026-09-27T16-14-37-871Z"
+    },
+    {
+      "task": "refactor-shop-package",
+      "category": "refactor",
+      "variant": "ultron",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "rlm": 5
+      },
+      "framesSpawned": 0,
+      "childrenSpawned": 0,
+      "childDepth": 0,
+      "rootUnseenBytes": null,
+      "toolCalls": 5,
+      "tasksByDefinition": {},
+      "framesSource": "inspect",
+      "cost": 0.0502476,
+      "tokens": 25231,
+      "durationMs": 85299,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/refactor-shop-package-ultron-2-2026-09-27T16-14-21-163Z"
+    },
+    {
+      "task": "refactor-streaming-records",
+      "category": "refactor",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "bash": 4,
+        "read": 1,
+        "edit": 3
+      },
+      "framesSpawned": null,
+      "childrenSpawned": null,
+      "childDepth": null,
+      "rootUnseenBytes": null,
+      "toolCalls": 8,
+      "cost": 0.0527892,
+      "tokens": 28901,
+      "durationMs": 84277,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/refactor-streaming-records-pi-1-2026-09-27T16-14-30-524Z"
+    },
+    {
+      "task": "data-sessions",
+      "category": "large-data",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "bash": 4
+      },
+      "framesSpawned": null,
+      "childrenSpawned": null,
+      "childDepth": null,
+      "rootUnseenBytes": null,
+      "toolCalls": 4,
+      "cost": 0.025639600000000002,
+      "tokens": 17775,
+      "durationMs": 28843,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/data-sessions-pi-1-2026-09-27T16-16-01-255Z"
+    },
+    {
+      "task": "refactor-streaming-records",
+      "category": "refactor",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "rlm": 6
+      },
+      "framesSpawned": 0,
+      "childrenSpawned": 0,
+      "childDepth": 0,
+      "rootUnseenBytes": null,
+      "toolCalls": 6,
+      "tasksByDefinition": {},
+      "framesSource": "inspect",
+      "cost": 0.049041600000000005,
+      "tokens": 35708,
+      "durationMs": 69031,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/refactor-streaming-records-ultron-1-2026-09-27T16-15-27-251Z"
+    },
+    {
+      "task": "refactor-streaming-records",
+      "category": "refactor",
+      "variant": "ultron",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "rlm": 5
+      },
+      "framesSpawned": 0,
+      "childrenSpawned": 0,
+      "childDepth": 0,
+      "rootUnseenBytes": null,
+      "toolCalls": 5,
+      "tasksByDefinition": {},
+      "framesSource": "inspect",
+      "cost": 0.038991200000000004,
+      "tokens": 23798,
+      "durationMs": 62171,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/refactor-streaming-records-ultron-2-2026-09-27T16-15-46-681Z"
+    },
+    {
+      "task": "data-sessions",
+      "category": "large-data",
+      "variant": "pi",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "bash": 4
+      },
+      "framesSpawned": null,
+      "childrenSpawned": null,
+      "childDepth": null,
+      "rootUnseenBytes": null,
+      "toolCalls": 4,
+      "cost": 0.0265216,
+      "tokens": 17720,
+      "durationMs": 33739,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/data-sessions-pi-2-2026-09-27T16-16-30-638Z"
+    },
+    {
+      "task": "data-sessions",
+      "category": "large-data",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "rlm": 4
+      },
+      "framesSpawned": 0,
+      "childrenSpawned": 0,
+      "childDepth": 0,
+      "rootUnseenBytes": null,
+      "toolCalls": 4,
+      "tasksByDefinition": {},
+      "framesSource": "inspect",
+      "cost": 0.0301656,
+      "tokens": 19262,
+      "durationMs": 31561,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/data-sessions-ultron-1-2026-09-27T16-16-42-745Z"
+    },
+    {
+      "task": "data-ledger-reconcile",
+      "category": "large-data",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "bash": 3
+      },
+      "framesSpawned": null,
+      "childrenSpawned": null,
+      "childDepth": null,
+      "rootUnseenBytes": null,
+      "toolCalls": 3,
+      "cost": 0.0171296,
+      "tokens": 7312,
+      "durationMs": 20228,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/data-ledger-reconcile-pi-1-2026-09-27T16-17-04-749Z"
+    },
+    {
+      "task": "data-sessions",
+      "category": "large-data",
+      "variant": "ultron",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "rlm": 4
+      },
+      "framesSpawned": 0,
+      "childrenSpawned": 0,
+      "childDepth": 0,
+      "rootUnseenBytes": null,
+      "toolCalls": 4,
+      "tasksByDefinition": {},
+      "framesSource": "inspect",
+      "cost": 0.028022400000000003,
+      "tokens": 20012,
+      "durationMs": 28898,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/data-sessions-ultron-2-2026-09-27T16-16-55-383Z"
+    },
+    {
+      "task": "data-ledger-reconcile",
+      "category": "large-data",
+      "variant": "pi",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "bash": 3
+      },
+      "framesSpawned": null,
+      "childrenSpawned": null,
+      "childDepth": null,
+      "rootUnseenBytes": null,
+      "toolCalls": 3,
+      "cost": 0.0182872,
+      "tokens": 7470,
+      "durationMs": 20747,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/data-ledger-reconcile-pi-2-2026-09-27T16-17-17-356Z"
+    },
+    {
+      "task": "data-ledger-reconcile",
+      "category": "large-data",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "rlm": 3
+      },
+      "framesSpawned": 0,
+      "childrenSpawned": 0,
+      "childDepth": 0,
+      "rootUnseenBytes": null,
+      "toolCalls": 3,
+      "tasksByDefinition": {},
+      "framesSource": "inspect",
+      "cost": 0.01736,
+      "tokens": 12280,
+      "durationMs": 22379,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/data-ledger-reconcile-ultron-1-2026-09-27T16-17-25-348Z"
+    },
+    {
+      "task": "data-ledger-reconcile",
+      "category": "large-data",
+      "variant": "ultron",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "rlm": 2
+      },
+      "framesSpawned": 0,
+      "childrenSpawned": 0,
+      "childDepth": 0,
+      "rootUnseenBytes": null,
+      "toolCalls": 2,
+      "tasksByDefinition": {},
+      "framesSource": "inspect",
+      "cost": 0.019564,
+      "tokens": 8942,
+      "durationMs": 25421,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/data-ledger-reconcile-ultron-2-2026-09-27T16-17-27-275Z"
+    },
+    {
+      "task": "data-sensors",
+      "category": "large-data",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "bash": 4
+      },
+      "framesSpawned": null,
+      "childrenSpawned": null,
+      "childDepth": null,
+      "rootUnseenBytes": null,
+      "toolCalls": 4,
+      "cost": 0.018528,
+      "tokens": 10276,
+      "durationMs": 33237,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/data-sensors-pi-1-2026-09-27T16-17-38-583Z"
+    },
+    {
+      "task": "data-sensors",
+      "category": "large-data",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "rlm": 3
+      },
+      "framesSpawned": 0,
+      "childrenSpawned": 0,
+      "childDepth": 0,
+      "rootUnseenBytes": null,
+      "toolCalls": 3,
+      "tasksByDefinition": {},
+      "framesSource": "inspect",
+      "cost": 0.0228276,
+      "tokens": 12509,
+      "durationMs": 26080,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/data-sensors-ultron-1-2026-09-27T16-17-53-320Z"
+    },
+    {
+      "task": "data-sensors",
+      "category": "large-data",
+      "variant": "pi",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "bash": 4
+      },
+      "framesSpawned": null,
+      "childrenSpawned": null,
+      "childDepth": null,
+      "rootUnseenBytes": null,
+      "toolCalls": 4,
+      "cost": 0.03748560000000001,
+      "tokens": 27230,
+      "durationMs": 31079,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/data-sensors-pi-2-2026-09-27T16-17-50-773Z"
+    },
+    {
+      "task": "data-sensors",
+      "category": "large-data",
+      "variant": "ultron",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "rlm": 3
+      },
+      "framesSpawned": 0,
+      "childrenSpawned": 0,
+      "childDepth": 0,
+      "rootUnseenBytes": null,
+      "toolCalls": 3,
+      "tasksByDefinition": {},
+      "framesSource": "inspect",
+      "cost": 0.0172752,
+      "tokens": 12088,
+      "durationMs": 23300,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/data-sensors-ultron-2-2026-09-27T16-18-12-323Z"
+    },
+    {
+      "task": "data-dependencies",
+      "category": "large-data",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "bash": 3
+      },
+      "framesSpawned": null,
+      "childrenSpawned": null,
+      "childDepth": null,
+      "rootUnseenBytes": null,
+      "toolCalls": 3,
+      "cost": 0.0166496,
+      "tokens": 7464,
+      "durationMs": 24088,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/data-dependencies-pi-1-2026-09-27T16-18-19-984Z"
+    },
+    {
+      "task": "data-dependencies",
+      "category": "large-data",
+      "variant": "pi",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "bash": 3,
+        "read": 1
+      },
+      "framesSpawned": null,
+      "childrenSpawned": null,
+      "childDepth": null,
+      "rootUnseenBytes": null,
+      "toolCalls": 4,
+      "cost": 0.0206796,
+      "tokens": 9975,
+      "durationMs": 25420,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/data-dependencies-pi-2-2026-09-27T16-18-22-410Z"
+    },
+    {
+      "task": "data-dependencies",
+      "category": "large-data",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "rlm": 3
+      },
+      "framesSpawned": 0,
+      "childrenSpawned": 0,
+      "childDepth": 0,
+      "rootUnseenBytes": null,
+      "toolCalls": 3,
+      "tasksByDefinition": {},
+      "framesSource": "inspect",
+      "cost": 0.022626399999999998,
+      "tokens": 12006,
+      "durationMs": 25220,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/data-dependencies-ultron-1-2026-09-27T16-18-36-190Z"
+    },
+    {
+      "task": "logs-revoked-tokens",
+      "category": "log-forensics",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "bash": 3
+      },
+      "framesSpawned": null,
+      "childrenSpawned": null,
+      "childDepth": null,
+      "rootUnseenBytes": null,
+      "toolCalls": 3,
+      "cost": 0.017881599999999997,
+      "tokens": 7696,
+      "durationMs": 17785,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/logs-revoked-tokens-pi-1-2026-09-27T16-18-48-257Z"
+    },
+    {
+      "task": "data-dependencies",
+      "category": "large-data",
+      "variant": "ultron",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "rlm": 3
+      },
+      "framesSpawned": 0,
+      "childrenSpawned": 0,
+      "childDepth": 0,
+      "rootUnseenBytes": null,
+      "toolCalls": 3,
+      "tasksByDefinition": {},
+      "framesSource": "inspect",
+      "cost": 0.0246416,
+      "tokens": 11556,
+      "durationMs": 26445,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/data-dependencies-ultron-2-2026-09-27T16-18-44-636Z"
+    },
+    {
+      "task": "logs-revoked-tokens",
+      "category": "log-forensics",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "rlm": 3
+      },
+      "framesSpawned": 0,
+      "childrenSpawned": 0,
+      "childDepth": 0,
+      "rootUnseenBytes": null,
+      "toolCalls": 3,
+      "tasksByDefinition": {},
+      "framesSource": "inspect",
+      "cost": 0.0217544,
+      "tokens": 12810,
+      "durationMs": 23436,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/logs-revoked-tokens-ultron-1-2026-09-27T16-19-06-416Z"
+    },
+    {
+      "task": "logs-revoked-tokens",
+      "category": "log-forensics",
+      "variant": "pi",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "bash": 5
+      },
+      "framesSpawned": null,
+      "childrenSpawned": null,
+      "childDepth": null,
+      "rootUnseenBytes": null,
+      "toolCalls": 5,
+      "cost": 0.020381200000000002,
+      "tokens": 11893,
+      "durationMs": 37398,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/logs-revoked-tokens-pi-2-2026-09-27T16-19-02-796Z"
+    },
+    {
+      "task": "logs-revoked-tokens",
+      "category": "log-forensics",
+      "variant": "ultron",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "rlm": 4
+      },
+      "framesSpawned": 0,
+      "childrenSpawned": 0,
+      "childDepth": 0,
+      "rootUnseenBytes": null,
+      "toolCalls": 4,
+      "tasksByDefinition": {},
+      "framesSource": "inspect",
+      "cost": 0.026457599999999998,
+      "tokens": 16952,
+      "durationMs": 41144,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/logs-revoked-tokens-ultron-2-2026-09-27T16-19-12-549Z"
+    },
+    {
+      "task": "logs-deploy-asof",
+      "category": "log-forensics",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "bash": 3,
+        "read": 1
+      },
+      "framesSpawned": null,
+      "childrenSpawned": null,
+      "childDepth": null,
+      "rootUnseenBytes": null,
+      "toolCalls": 4,
+      "cost": 0.0333172,
+      "tokens": 24845,
+      "durationMs": 28329,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/logs-deploy-asof-pi-1-2026-09-27T16-19-30-333Z"
+    },
+    {
+      "task": "logs-deploy-asof",
+      "category": "log-forensics",
+      "variant": "pi",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "bash": 6
+      },
+      "framesSpawned": null,
+      "childrenSpawned": null,
+      "childDepth": null,
+      "rootUnseenBytes": null,
+      "toolCalls": 6,
+      "cost": 0.0403844,
+      "tokens": 29361,
+      "durationMs": 43623,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/logs-deploy-asof-pi-2-2026-09-27T16-19-40-622Z"
+    },
+    {
+      "task": "logs-deploy-asof",
+      "category": "log-forensics",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "rlm": 5
+      },
+      "framesSpawned": 0,
+      "childrenSpawned": 0,
+      "childDepth": 0,
+      "rootUnseenBytes": null,
+      "toolCalls": 5,
+      "tasksByDefinition": {},
+      "framesSource": "inspect",
+      "cost": 0.029154799999999998,
+      "tokens": 24899,
+      "durationMs": 42692,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/logs-deploy-asof-ultron-1-2026-09-27T16-19-54-228Z"
+    },
+    {
+      "task": "logs-deploy-asof",
+      "category": "log-forensics",
+      "variant": "ultron",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "rlm": 5
+      },
+      "framesSpawned": 0,
+      "childrenSpawned": 0,
+      "childDepth": 0,
+      "rootUnseenBytes": null,
+      "toolCalls": 5,
+      "tasksByDefinition": {},
+      "framesSource": "inspect",
+      "cost": 0.029330000000000002,
+      "tokens": 26397,
+      "durationMs": 39625,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/logs-deploy-asof-ultron-2-2026-09-27T16-19-59-114Z"
+    },
+    {
+      "task": "logs-bruteforce",
+      "category": "log-forensics",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "bash": 4
+      },
+      "framesSpawned": null,
+      "childrenSpawned": null,
+      "childDepth": null,
+      "rootUnseenBytes": null,
+      "toolCalls": 4,
+      "cost": 0.022018000000000003,
+      "tokens": 13089,
+      "durationMs": 28371,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/logs-bruteforce-pi-1-2026-09-27T16-20-25-187Z"
+    },
+    {
+      "task": "logs-bruteforce",
+      "category": "log-forensics",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "rlm": 4
+      },
+      "framesSpawned": 0,
+      "childrenSpawned": 0,
+      "childDepth": 0,
+      "rootUnseenBytes": null,
+      "toolCalls": 4,
+      "tasksByDefinition": {},
+      "framesSource": "inspect",
+      "cost": 0.0270116,
+      "tokens": 16269,
+      "durationMs": 31877,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/logs-bruteforce-ultron-1-2026-09-27T16-20-39-683Z"
+    },
+    {
+      "task": "logs-bruteforce",
+      "category": "log-forensics",
+      "variant": "pi",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "bash": 4,
+        "write": 1
+      },
+      "framesSpawned": null,
+      "childrenSpawned": null,
+      "childDepth": null,
+      "rootUnseenBytes": null,
+      "toolCalls": 5,
+      "cost": 0.028219199999999996,
+      "tokens": 15892,
+      "durationMs": 43598,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/logs-bruteforce-pi-2-2026-09-27T16-20-37-831Z"
+    },
+    {
+      "task": "logs-bruteforce",
+      "category": "log-forensics",
+      "variant": "ultron",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "rlm": 4
+      },
+      "framesSpawned": 0,
+      "childrenSpawned": 0,
+      "childDepth": 0,
+      "rootUnseenBytes": null,
+      "toolCalls": 4,
+      "tasksByDefinition": {},
+      "framesSource": "inspect",
+      "cost": 0.019972800000000002,
+      "tokens": 16080,
+      "durationMs": 28234,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/logs-bruteforce-ultron-2-2026-09-27T16-20-54-572Z"
+    },
+    {
+      "task": "huge-customer-dedupe",
+      "category": "huge-file",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "bash": 3
+      },
+      "framesSpawned": null,
+      "childrenSpawned": null,
+      "childDepth": null,
+      "rootUnseenBytes": null,
+      "toolCalls": 3,
+      "cost": 0.011056,
+      "tokens": 6284,
+      "durationMs": 16324,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/huge-customer-dedupe-pi-1-2026-09-27T16-21-13-068Z"
+    },
+    {
+      "task": "huge-customer-dedupe",
+      "category": "huge-file",
+      "variant": "pi",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "bash": 3
+      },
+      "framesSpawned": null,
+      "childrenSpawned": null,
+      "childDepth": null,
+      "rootUnseenBytes": null,
+      "toolCalls": 3,
+      "cost": 0.010960000000000001,
+      "tokens": 6300,
+      "durationMs": 16262,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/huge-customer-dedupe-pi-2-2026-09-27T16-21-22-789Z"
+    },
+    {
+      "task": "huge-customer-dedupe",
+      "category": "huge-file",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "rlm": 2
+      },
+      "framesSpawned": 0,
+      "childrenSpawned": 0,
+      "childDepth": 0,
+      "rootUnseenBytes": null,
+      "toolCalls": 2,
+      "tasksByDefinition": {},
+      "framesSource": "inspect",
+      "cost": 0.0124628,
+      "tokens": 7769,
+      "durationMs": 19122,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/huge-customer-dedupe-ultron-1-2026-09-27T16-21-24-264Z"
+    },
+    {
+      "task": "huge-customer-dedupe",
+      "category": "huge-file",
+      "variant": "ultron",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "rlm": 2
+      },
+      "framesSpawned": 0,
+      "childrenSpawned": 0,
+      "childDepth": 0,
+      "rootUnseenBytes": null,
+      "toolCalls": 2,
+      "tasksByDefinition": {},
+      "framesSource": "inspect",
+      "cost": 0.016116000000000002,
+      "tokens": 7658,
+      "durationMs": 16700,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/huge-customer-dedupe-ultron-2-2026-09-27T16-21-31-023Z"
+    },
+    {
+      "task": "huge-catalog-diff",
+      "category": "huge-file",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "rlm": 2
+      },
+      "framesSpawned": 0,
+      "childrenSpawned": 0,
+      "childDepth": 0,
+      "rootUnseenBytes": null,
+      "toolCalls": 2,
+      "tasksByDefinition": {},
+      "framesSource": "inspect",
+      "cost": 0.012302800000000001,
+      "tokens": 7905,
+      "durationMs": 16788,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/huge-catalog-diff-ultron-1-2026-09-27T16-21-48-474Z"
+    },
+    {
+      "task": "huge-catalog-diff",
+      "category": "huge-file",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "bash": 4
+      },
+      "framesSpawned": null,
+      "childrenSpawned": null,
+      "childDepth": null,
+      "rootUnseenBytes": null,
+      "toolCalls": 4,
+      "cost": 0.0209204,
+      "tokens": 9809,
+      "durationMs": 30165,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/huge-catalog-diff-pi-1-2026-09-27T16-21-39-816Z"
+    },
+    {
+      "task": "huge-catalog-diff",
+      "category": "huge-file",
+      "variant": "pi",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "bash": 4
+      },
+      "framesSpawned": null,
+      "childrenSpawned": null,
+      "childDepth": null,
+      "rootUnseenBytes": null,
+      "toolCalls": 4,
+      "cost": 0.0224932,
+      "tokens": 9957,
+      "durationMs": 32899,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/huge-catalog-diff-pi-2-2026-09-27T16-21-44-161Z"
+    },
+    {
+      "task": "huge-catalog-diff",
+      "category": "huge-file",
+      "variant": "ultron",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "rlm": 3
+      },
+      "framesSpawned": 0,
+      "childrenSpawned": 0,
+      "childDepth": 0,
+      "rootUnseenBytes": null,
+      "toolCalls": 3,
+      "tasksByDefinition": {},
+      "framesSource": "inspect",
+      "cost": 0.0167028,
+      "tokens": 11205,
+      "durationMs": 96551,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/huge-catalog-diff-ultron-2-2026-09-27T16-22-09-233Z"
+    }
+  ]
+}

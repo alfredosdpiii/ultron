@@ -1,0 +1,252 @@
+{
+  "taskSet": "research",
+  "frozenAt": "2026-09-27-research",
+  "thresholds": {
+    "maxPassRateDropPoints": 10,
+    "maxMedianLatencyRatio": 2,
+    "maxCostRatio": 2
+  },
+  "model": "cliproxyapi/gpt-6-sol",
+  "ultronCommand": "node ~/Projects/personal/ultron/packages/coding-agent/dist/bundle/cli.js",
+  "trials": 2,
+  "isolation": {
+    "home": "per-run empty HOME inside the run's work dir (no ~/.agents, ~/.pi, ~/.ultron or other user-global resources)",
+    "agentDir": "per-run agent dir holding only models.json and auth.json copied from ~/.ultron/agent",
+    "memory": "off (ULTRON_HINDSIGHT_URL=off)"
+  },
+  "judge": {
+    "model": "cliproxyapi/glm-5.3-flash",
+    "thinking": "low",
+    "command": "pi"
+  },
+  "summary": {
+    "byVariant": {
+      "pi": {
+        "runs": 2,
+        "infrastructure": 0,
+        "passRate": 1,
+        "categories": {
+          "semantic-research": {
+            "passed": 2,
+            "runs": 2
+          }
+        },
+        "medianDurationMs": 75915.5,
+        "totalCost": 0.3708676,
+        "uptake": {
+          "toolsByName": {
+            "bash": 19,
+            "write": 1
+          },
+          "rlmRunShare": 0,
+          "framesSpawned": {
+            "runs": 0,
+            "total": null,
+            "median": null
+          },
+          "childrenSpawned": {
+            "runs": 0,
+            "total": null,
+            "median": null
+          },
+          "rootUnseenBytes": {
+            "runs": 0,
+            "total": null,
+            "median": null
+          }
+        }
+      },
+      "ultron": {
+        "runs": 2,
+        "infrastructure": 0,
+        "passRate": 1,
+        "categories": {
+          "semantic-research": {
+            "passed": 2,
+            "runs": 2
+          }
+        },
+        "medianDurationMs": 73196,
+        "totalCost": 0.24700599999999998,
+        "uptake": {
+          "toolsByName": {
+            "rlm": 21
+          },
+          "rlmRunShare": 1,
+          "framesSpawned": {
+            "runs": 2,
+            "total": 0,
+            "median": 0
+          },
+          "childrenSpawned": {
+            "runs": 2,
+            "total": 0,
+            "median": 0
+          },
+          "rootUnseenBytes": {
+            "runs": 0,
+            "total": null,
+            "median": null
+          }
+        }
+      }
+    },
+    "gate": [
+      {
+        "check": "pass rate",
+        "ok": true,
+        "detail": "0.0 points below baseline"
+      },
+      {
+        "check": "median latency",
+        "ok": true,
+        "detail": "0.96x baseline"
+      },
+      {
+        "check": "cost",
+        "ok": true,
+        "detail": "0.67x baseline"
+      }
+    ],
+    "passed": true
+  },
+  "records": [
+    {
+      "task": "incident-root-causes-full",
+      "category": "semantic-research",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "rlm": 11
+      },
+      "framesSpawned": 0,
+      "childrenSpawned": 0,
+      "childDepth": 0,
+      "rootUnseenBytes": null,
+      "toolCalls": 11,
+      "tasksByDefinition": {},
+      "framesSource": "inspect",
+      "cost": 0.10226199999999999,
+      "tokens": 186539,
+      "durationMs": 64744,
+      "verify": {
+        "status": 0,
+        "output": "missed: \nextra: \n{\"precision\": 1.0, \"recall\": 1.0, \"passed\": true, \"answered\": 25, \"missed\": 0, \"extra\": 0}\n"
+      },
+      "metrics": {
+        "precision": 1,
+        "recall": 1,
+        "passed": true,
+        "answered": 25,
+        "missed": 0,
+        "extra": 0
+      },
+      "evidence": "/tmp/ultron-quality-failed/incident-root-causes-full-ultron-1-2026-09-27T16-29-16-315Z"
+    },
+    {
+      "task": "incident-root-causes-full",
+      "category": "semantic-research",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "bash": 8,
+        "write": 1
+      },
+      "framesSpawned": null,
+      "childrenSpawned": null,
+      "childDepth": null,
+      "rootUnseenBytes": null,
+      "toolCalls": 9,
+      "cost": 0.1717412,
+      "tokens": 273453,
+      "durationMs": 72250,
+      "verify": {
+        "status": 0,
+        "output": "missed: \nextra: \n{\"precision\": 1.0, \"recall\": 1.0, \"passed\": true, \"answered\": 25, \"missed\": 0, \"extra\": 0}\n"
+      },
+      "metrics": {
+        "precision": 1,
+        "recall": 1,
+        "passed": true,
+        "answered": 25,
+        "missed": 0,
+        "extra": 0
+      },
+      "evidence": "/tmp/ultron-quality-failed/incident-root-causes-full-pi-1-2026-09-27T16-29-16-253Z"
+    },
+    {
+      "task": "incident-root-causes-full",
+      "category": "semantic-research",
+      "variant": "pi",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "bash": 11
+      },
+      "framesSpawned": null,
+      "childrenSpawned": null,
+      "childDepth": null,
+      "rootUnseenBytes": null,
+      "toolCalls": 11,
+      "cost": 0.1991264,
+      "tokens": 364060,
+      "durationMs": 79581,
+      "verify": {
+        "status": 0,
+        "output": "missed: \nextra: \n{\"precision\": 1.0, \"recall\": 1.0, \"passed\": true, \"answered\": 25, \"missed\": 0, \"extra\": 0}\n"
+      },
+      "metrics": {
+        "precision": 1,
+        "recall": 1,
+        "passed": true,
+        "answered": 25,
+        "missed": 0,
+        "extra": 0
+      },
+      "evidence": "/tmp/ultron-quality-failed/incident-root-causes-full-pi-2-2026-09-27T16-29-16-283Z"
+    },
+    {
+      "task": "incident-root-causes-full",
+      "category": "semantic-research",
+      "variant": "ultron",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "rlm": 10
+      },
+      "framesSpawned": 0,
+      "childrenSpawned": 0,
+      "childDepth": 0,
+      "rootUnseenBytes": null,
+      "toolCalls": 10,
+      "tasksByDefinition": {},
+      "framesSource": "inspect",
+      "cost": 0.14474399999999998,
+      "tokens": 185612,
+      "durationMs": 81648,
+      "verify": {
+        "status": 0,
+        "output": "missed: \nextra: \n{\"precision\": 1.0, \"recall\": 1.0, \"passed\": true, \"answered\": 25, \"missed\": 0, \"extra\": 0}\n"
+      },
+      "metrics": {
+        "precision": 1,
+        "recall": 1,
+        "passed": true,
+        "answered": 25,
+        "missed": 0,
+        "extra": 0
+      },
+      "evidence": "/tmp/ultron-quality-failed/incident-root-causes-full-ultron-2-2026-09-27T16-30-21-184Z"
+    }
+  ]
+}

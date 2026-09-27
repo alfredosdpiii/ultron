@@ -1,0 +1,597 @@
+{
+  "taskSet": "delegation",
+  "frozenAt": "2026-09-27-delegation",
+  "thresholds": {
+    "maxPassRateDropPoints": 10,
+    "maxMedianLatencyRatio": 2,
+    "maxCostRatio": 2
+  },
+  "model": "cliproxyapi/gpt-6-sol",
+  "ultronCommand": "node ~/Projects/personal/ultron/packages/coding-agent/dist/bundle/cli.js",
+  "trials": 2,
+  "isolation": {
+    "home": "per-run empty HOME inside the run's work dir (no ~/.agents, ~/.pi, ~/.ultron or other user-global resources)",
+    "agentDir": "per-run agent dir holding only models.json and auth.json copied from ~/.ultron/agent",
+    "memory": "off (ULTRON_HINDSIGHT_URL=off)"
+  },
+  "judge": {
+    "model": "cliproxyapi/glm-5.3-flash",
+    "thinking": "low",
+    "command": "pi"
+  },
+  "summary": {
+    "byVariant": {
+      "pi": {
+        "runs": 4,
+        "infrastructure": 0,
+        "passRate": 0.5,
+        "categories": {
+          "delegation": {
+            "passed": 2,
+            "runs": 4
+          }
+        },
+        "medianDurationMs": 228311.5,
+        "totalCost": 0.9630024,
+        "uptake": {
+          "toolsByName": {
+            "bash": 45,
+            "edit": 43,
+            "write": 1,
+            "read": 4
+          },
+          "rlmRunShare": 0,
+          "framesSpawned": {
+            "runs": 0,
+            "total": null,
+            "median": null
+          },
+          "childrenSpawned": {
+            "runs": 0,
+            "total": null,
+            "median": null
+          },
+          "rootUnseenBytes": {
+            "runs": 0,
+            "total": null,
+            "median": null
+          }
+        },
+        "timing": {
+          "runs": 4,
+          "withinBudget": 2,
+          "passedWithinBudget": 2,
+          "passed": 2,
+          "medianDurationMs": 228311.5,
+          "perRun": [
+            {
+              "task": "six-services",
+              "trial": 2,
+              "durationMs": 119370,
+              "timeBudgetMs": 300000,
+              "withinBudget": true,
+              "passed": true
+            },
+            {
+              "task": "six-services",
+              "trial": 1,
+              "durationMs": 145015,
+              "timeBudgetMs": 300000,
+              "withinBudget": true,
+              "passed": true
+            },
+            {
+              "task": "six-services-deep",
+              "trial": 1,
+              "durationMs": 311608,
+              "timeBudgetMs": 300000,
+              "withinBudget": false,
+              "passed": false
+            },
+            {
+              "task": "six-services-deep",
+              "trial": 2,
+              "durationMs": 408259,
+              "timeBudgetMs": 300000,
+              "withinBudget": false,
+              "passed": false
+            }
+          ]
+        }
+      },
+      "ultron": {
+        "runs": 4,
+        "infrastructure": 0,
+        "passRate": 1,
+        "categories": {
+          "delegation": {
+            "passed": 4,
+            "runs": 4
+          }
+        },
+        "medianDurationMs": 129104.5,
+        "totalCost": 1.8795744,
+        "uptake": {
+          "toolsByName": {
+            "rlm": 41
+          },
+          "rlmRunShare": 1,
+          "framesSpawned": {
+            "runs": 4,
+            "total": 24,
+            "median": 6
+          },
+          "childrenSpawned": {
+            "runs": 4,
+            "total": 24,
+            "median": 6
+          },
+          "rootUnseenBytes": {
+            "runs": 0,
+            "total": null,
+            "median": null
+          }
+        },
+        "timing": {
+          "runs": 4,
+          "withinBudget": 4,
+          "passedWithinBudget": 4,
+          "passed": 4,
+          "medianDurationMs": 129104.5,
+          "perRun": [
+            {
+              "task": "six-services",
+              "trial": 1,
+              "durationMs": 113674,
+              "timeBudgetMs": 300000,
+              "withinBudget": true,
+              "passed": true
+            },
+            {
+              "task": "six-services",
+              "trial": 2,
+              "durationMs": 78243,
+              "timeBudgetMs": 300000,
+              "withinBudget": true,
+              "passed": true
+            },
+            {
+              "task": "six-services-deep",
+              "trial": 1,
+              "durationMs": 144535,
+              "timeBudgetMs": 300000,
+              "withinBudget": true,
+              "passed": true
+            },
+            {
+              "task": "six-services-deep",
+              "trial": 2,
+              "durationMs": 161913,
+              "timeBudgetMs": 300000,
+              "withinBudget": true,
+              "passed": true
+            }
+          ]
+        }
+      }
+    },
+    "gate": [
+      {
+        "check": "pass rate",
+        "ok": true,
+        "detail": "-50.0 points below baseline"
+      },
+      {
+        "check": "median latency",
+        "ok": true,
+        "detail": "0.57x baseline"
+      },
+      {
+        "check": "cost",
+        "ok": true,
+        "detail": "1.95x baseline"
+      }
+    ],
+    "passed": true
+  },
+  "records": [
+    {
+      "task": "six-services",
+      "category": "delegation",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "rlm": 8
+      },
+      "framesSpawned": 6,
+      "childrenSpawned": 6,
+      "childDepth": 1,
+      "rootUnseenBytes": null,
+      "toolCalls": 8,
+      "tasksByDefinition": {
+        "rlm-child": 6
+      },
+      "framesSource": "inspect",
+      "cost": 0.2973804000000001,
+      "tokens": 243923,
+      "durationMs": 113674,
+      "timeBudgetMs": 300000,
+      "withinBudget": true,
+      "verify": {
+        "status": 0,
+        "output": "alpha: pass\nbeta: pass\ngamma: pass\ndelta: pass\nepsilon: pass\nzeta: pass\n{\"passed\":6,\"total\":6,\"services\":{\"alpha\":true,\"beta\":true,\"gamma\":true,\"delta\":true,\"epsilon\":true,\"zeta\":true}}\n"
+      },
+      "metrics": {
+        "passed": 6,
+        "total": 6,
+        "services": {
+          "alpha": true,
+          "beta": true,
+          "gamma": true,
+          "delta": true,
+          "epsilon": true,
+          "zeta": true
+        }
+      },
+      "evidence": "/tmp/ultron-quality-failed/six-services-ultron-1-2026-09-27T16-31-43-050Z"
+    },
+    {
+      "task": "six-services",
+      "category": "delegation",
+      "variant": "pi",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "bash": 5,
+        "edit": 20,
+        "write": 1,
+        "read": 1
+      },
+      "framesSpawned": null,
+      "childrenSpawned": null,
+      "childDepth": null,
+      "rootUnseenBytes": null,
+      "toolCalls": 27,
+      "cost": 0.1233312,
+      "tokens": 136664,
+      "durationMs": 119370,
+      "timeBudgetMs": 300000,
+      "withinBudget": true,
+      "verify": {
+        "status": 0,
+        "output": "alpha: pass\nbeta: pass\ngamma: pass\ndelta: pass\nepsilon: pass\nzeta: pass\n{\"passed\":6,\"total\":6,\"services\":{\"alpha\":true,\"beta\":true,\"gamma\":true,\"delta\":true,\"epsilon\":true,\"zeta\":true}}\n"
+      },
+      "metrics": {
+        "passed": 6,
+        "total": 6,
+        "services": {
+          "alpha": true,
+          "beta": true,
+          "gamma": true,
+          "delta": true,
+          "epsilon": true,
+          "zeta": true
+        }
+      },
+      "evidence": "/tmp/ultron-quality-failed/six-services-pi-2-2026-09-27T16-31-43-048Z"
+    },
+    {
+      "task": "six-services",
+      "category": "delegation",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "bash": 5,
+        "edit": 19
+      },
+      "framesSpawned": null,
+      "childrenSpawned": null,
+      "childDepth": null,
+      "rootUnseenBytes": null,
+      "toolCalls": 24,
+      "cost": 0.1437696,
+      "tokens": 276560,
+      "durationMs": 145015,
+      "timeBudgetMs": 300000,
+      "withinBudget": true,
+      "verify": {
+        "status": 0,
+        "output": "alpha: pass\nbeta: pass\ngamma: pass\ndelta: pass\nepsilon: pass\nzeta: pass\n{\"passed\":6,\"total\":6,\"services\":{\"alpha\":true,\"beta\":true,\"gamma\":true,\"delta\":true,\"epsilon\":true,\"zeta\":true}}\n"
+      },
+      "metrics": {
+        "passed": 6,
+        "total": 6,
+        "services": {
+          "alpha": true,
+          "beta": true,
+          "gamma": true,
+          "delta": true,
+          "epsilon": true,
+          "zeta": true
+        }
+      },
+      "evidence": "/tmp/ultron-quality-failed/six-services-pi-1-2026-09-27T16-31-43-043Z"
+    },
+    {
+      "task": "six-services",
+      "category": "delegation",
+      "variant": "ultron",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "rlm": 11
+      },
+      "framesSpawned": 6,
+      "childrenSpawned": 6,
+      "childDepth": 1,
+      "rootUnseenBytes": null,
+      "toolCalls": 11,
+      "tasksByDefinition": {
+        "rlm-child": 6
+      },
+      "framesSource": "inspect",
+      "cost": 0.25170159999999997,
+      "tokens": 213902,
+      "durationMs": 78243,
+      "timeBudgetMs": 300000,
+      "withinBudget": true,
+      "verify": {
+        "status": 0,
+        "output": "alpha: pass\nbeta: pass\ngamma: pass\ndelta: pass\nepsilon: pass\nzeta: pass\n{\"passed\":6,\"total\":6,\"services\":{\"alpha\":true,\"beta\":true,\"gamma\":true,\"delta\":true,\"epsilon\":true,\"zeta\":true}}\n"
+      },
+      "metrics": {
+        "passed": 6,
+        "total": 6,
+        "services": {
+          "alpha": true,
+          "beta": true,
+          "gamma": true,
+          "delta": true,
+          "epsilon": true,
+          "zeta": true
+        }
+      },
+      "evidence": "/tmp/ultron-quality-failed/six-services-ultron-2-2026-09-27T16-33-37-643Z"
+    },
+    {
+      "task": "six-services-deep",
+      "category": "delegation",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "rlm": 12
+      },
+      "framesSpawned": 6,
+      "childrenSpawned": 6,
+      "childDepth": 1,
+      "rootUnseenBytes": null,
+      "toolCalls": 12,
+      "tasksByDefinition": {
+        "rlm-child": 6
+      },
+      "framesSource": "inspect",
+      "cost": 0.6283920000000002,
+      "tokens": 1190936,
+      "durationMs": 144535,
+      "timeBudgetMs": 300000,
+      "withinBudget": true,
+      "verify": {
+        "status": 0,
+        "output": "kvstore: pass\nscheduler: pass\npatch: pass\ncalendar: pass\nwire: pass\nbuilds: pass\n{\"passed\":6,\"total\":6,\"services\":{\"kvstore\":true,\"scheduler\":true,\"patch\":true,\"calendar\":true,\"wire\":true,\"builds\":true},\"evidence\":{\"kvstore\":true,\"scheduler\":true,\"patch\":true,\"calendar\":true,\"wire\":true,\"builds\":true},\"tests\":{\"kvstore\":true,\"scheduler\":true,\"patch\":true,\"calendar\":true,\"wire\":true,\"builds\":true}}\n"
+      },
+      "metrics": {
+        "passed": 6,
+        "total": 6,
+        "services": {
+          "kvstore": true,
+          "scheduler": true,
+          "patch": true,
+          "calendar": true,
+          "wire": true,
+          "builds": true
+        },
+        "evidence": {
+          "kvstore": true,
+          "scheduler": true,
+          "patch": true,
+          "calendar": true,
+          "wire": true,
+          "builds": true
+        },
+        "tests": {
+          "kvstore": true,
+          "scheduler": true,
+          "patch": true,
+          "calendar": true,
+          "wire": true,
+          "builds": true
+        }
+      },
+      "evidence": "/tmp/ultron-quality-failed/six-services-deep-ultron-1-2026-09-27T16-34-56-792Z"
+    },
+    {
+      "task": "six-services-deep",
+      "category": "delegation",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "homeIsolated": true,
+      "toolsByName": {
+        "bash": 15,
+        "read": 3
+      },
+      "framesSpawned": null,
+      "childrenSpawned": null,
+      "childDepth": null,
+      "rootUnseenBytes": null,
+      "toolCalls": 18,
+      "cost": 0.31800080000000003,
+      "tokens": 756670,
+      "durationMs": 311608,
+      "timeBudgetMs": 300000,
+      "withinBudget": false,
+      "verify": {
+        "status": 1,
+        "output": "st_fresh_attendees_are_not_confused (__main__.FindSlotTests.test_fresh_attendees_are_not_confused) | AssertionError: 548 != 555 : 555 | FAIL: test_rando)\nwire: pass\nbuilds: pass\n{\"passed\":5,\"total\":6,\"services\":{\"kvstore\":true,\"scheduler\":true,\"patch\":true,\"calendar\":false,\"wire\":true,\"builds\":true},\"evidence\":{\"kvstore\":true,\"scheduler\":true,\"patch\":true,\"calendar\":true,\"wire\":true,\"builds\":true},\"tests\":{\"kvstore\":true,\"scheduler\":true,\"patch\":true,\"calendar\":false,\"wire\":true,\"builds\":true}}\n"
+      },
+      "metrics": {
+        "passed": 5,
+        "total": 6,
+        "services": {
+          "kvstore": true,
+          "scheduler": true,
+          "patch": true,
+          "calendar": false,
+          "wire": true,
+          "builds": true
+        },
+        "evidence": {
+          "kvstore": true,
+          "scheduler": true,
+          "patch": true,
+          "calendar": true,
+          "wire": true,
+          "builds": true
+        },
+        "tests": {
+          "kvstore": true,
+          "scheduler": true,
+          "patch": true,
+          "calendar": false,
+          "wire": true,
+          "builds": true
+        }
+      },
+      "evidence": "/tmp/ultron-quality-failed/six-services-deep-pi-1-2026-09-27T16-33-43-282Z"
+    },
+    {
+      "task": "six-services-deep",
+      "category": "delegation",
+      "variant": "ultron",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "rlm": 10
+      },
+      "framesSpawned": 6,
+      "childrenSpawned": 6,
+      "childDepth": 1,
+      "rootUnseenBytes": null,
+      "toolCalls": 10,
+      "tasksByDefinition": {
+        "rlm-child": 6
+      },
+      "framesSource": "inspect",
+      "cost": 0.7021004000000001,
+      "tokens": 958999,
+      "durationMs": 161913,
+      "timeBudgetMs": 300000,
+      "withinBudget": true,
+      "verify": {
+        "status": 0,
+        "output": "kvstore: pass\nscheduler: pass\npatch: pass\ncalendar: pass\nwire: pass\nbuilds: pass\n{\"passed\":6,\"total\":6,\"services\":{\"kvstore\":true,\"scheduler\":true,\"patch\":true,\"calendar\":true,\"wire\":true,\"builds\":true},\"evidence\":{\"kvstore\":true,\"scheduler\":true,\"patch\":true,\"calendar\":true,\"wire\":true,\"builds\":true},\"tests\":{\"kvstore\":true,\"scheduler\":true,\"patch\":true,\"calendar\":true,\"wire\":true,\"builds\":true}}\n"
+      },
+      "metrics": {
+        "passed": 6,
+        "total": 6,
+        "services": {
+          "kvstore": true,
+          "scheduler": true,
+          "patch": true,
+          "calendar": true,
+          "wire": true,
+          "builds": true
+        },
+        "evidence": {
+          "kvstore": true,
+          "scheduler": true,
+          "patch": true,
+          "calendar": true,
+          "wire": true,
+          "builds": true
+        },
+        "tests": {
+          "kvstore": true,
+          "scheduler": true,
+          "patch": true,
+          "calendar": true,
+          "wire": true,
+          "builds": true
+        }
+      },
+      "evidence": "/tmp/ultron-quality-failed/six-services-deep-ultron-2-2026-09-27T16-37-23-262Z"
+    },
+    {
+      "task": "six-services-deep",
+      "category": "delegation",
+      "variant": "pi",
+      "trial": 2,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "homeIsolated": true,
+      "toolsByName": {
+        "bash": 20,
+        "edit": 4
+      },
+      "framesSpawned": null,
+      "childrenSpawned": null,
+      "childDepth": null,
+      "rootUnseenBytes": null,
+      "toolCalls": 24,
+      "cost": 0.37790080000000004,
+      "tokens": 961300,
+      "durationMs": 408259,
+      "timeBudgetMs": 300000,
+      "withinBudget": false,
+      "verify": {
+        "status": 1,
+        "output": "st_fresh_attendees_are_not_confused (__main__.FindSlotTests.test_fresh_attendees_are_not_confused) | AssertionError: 548 != 555 : 555 | FAIL: test_rando)\nwire: pass\nbuilds: pass\n{\"passed\":5,\"total\":6,\"services\":{\"kvstore\":true,\"scheduler\":true,\"patch\":true,\"calendar\":false,\"wire\":true,\"builds\":true},\"evidence\":{\"kvstore\":true,\"scheduler\":true,\"patch\":true,\"calendar\":true,\"wire\":true,\"builds\":true},\"tests\":{\"kvstore\":true,\"scheduler\":true,\"patch\":true,\"calendar\":false,\"wire\":true,\"builds\":true}}\n"
+      },
+      "metrics": {
+        "passed": 5,
+        "total": 6,
+        "services": {
+          "kvstore": true,
+          "scheduler": true,
+          "patch": true,
+          "calendar": false,
+          "wire": true,
+          "builds": true
+        },
+        "evidence": {
+          "kvstore": true,
+          "scheduler": true,
+          "patch": true,
+          "calendar": true,
+          "wire": true,
+          "builds": true
+        },
+        "tests": {
+          "kvstore": true,
+          "scheduler": true,
+          "patch": true,
+          "calendar": false,
+          "wire": true,
+          "builds": true
+        }
+      },
+      "evidence": "/tmp/ultron-quality-failed/six-services-deep-pi-2-2026-09-27T16-34-08-880Z"
+    }
+  ]
+}

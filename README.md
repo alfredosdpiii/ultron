@@ -110,28 +110,29 @@ result file is in [`acceptance/quality/`](acceptance/quality).
 | Research pilot: find expired-certificate incidents among 157 reports, 1 trial | pass, 342 s | pass, **273 s**, 99 sub-model frames |
 | Parallel work: a 150 s test suite plus two bug fixes, 2 trials | 2/2 | 2/2, same speed |
 
-**gpt-6-sol** (a strong model), default thinking, 1 trial, both agents with an isolated home (release 0.87.7):
+**gpt-6-sol** (a strong model), default thinking, 2 trials per task, both agents with an isolated home (release 0.87.10):
 
 | Task set | Pi | Ultron |
 |---|---|---|
-| Research: 400 reports, 2.1 MB | exact, 84 s, 172k tokens | exact, **75 s**, 238k tokens |
-| Hard set, 5 tasks | 5/5, 130k tokens, median 32 s | 5/5, 143k tokens (1.1x), median 60 s |
-| Parallel work | pass, 166 s | pass, 163 s |
-| Delegation: fix 3 bugs in each of 6 independent services, 300 s budget (0.87.8) | 6/6, 108 s, 118k tokens | 6/6, **75 s**, 187k tokens, 5 sub-agents |
+| Hard set: 15 tasks | 30/30, median 34 s, 670k tokens, $1.07 | 30/30, median 40 s, 660k tokens, $1.06 |
+| Research: 400 reports, 2.1 MB | 2/2, median 76 s, 638k tokens | 2/2, median **73 s**, **372k** tokens |
+| Parallel work | 2/2, median 162 s | 2/2, median 162 s |
+| Delegation: 6 services, bugs readable from the code, 300 s budget | 2/2, 119 s and 145 s | 2/2, **113 s and 78 s**, 6 sub-agents each |
+| Delegation, deep: 6 services, bugs only a slow harness reveals, 300 s budget | **0/2**, 311 s and 408 s, both over budget | **2/2**, 144 s and 161 s, 6 sub-agents each |
 
-On the delegation task Ultron spawned its sub-agents on its own, without any prompting, and fixed the sixth service
-itself while they ran. That was about 30% faster, at about 2.2x the cost. The budget did not separate the two
-strategies on this model: gpt-6-sol read all six services in a few batched turns, so Pi's sequential run also fit.
+The deep delegation task is where the runtime matters most: each service hides three bugs behind a 21-second test
+harness that stops at the first failure, so working through six services one at a time cannot fit the budget.
+Ultron split the work into one sub-agent per service on its own, without being told to, and finished in about half
+the time; Pi worked sequentially, ran out of time and left a service broken. Delegation costs more (about 2x the
+cost on the delegation set, $1.88 against $0.96), which is the price of doing six things at once.
 
-An earlier, full 15-task hard run on gpt-6-sol had Ultron at 15/15 and Pi at 14/15.
-
-Ultron has been at least as accurate as Pi on every set so far. Its cost is now close to Pi's: 1.1x the tokens on
-hard tasks. Before release 0.87.6, the same research task cost it 8.0M tokens and 369 s, because it handed the corpus
-to 24 nested sub-agents instead of searching first. The runtime guide now says to search in code and read the
-deciding passages before delegating, sub-agents nest at most two levels, and `rlm.map` has a default token budget
-([`docs/performance.md`](docs/performance.md) has the breakdown). On short tasks Ultron is still slower in wall
-time. These are single trials; treat them as early evidence, not benchmarks. Behaviour is also covered by 56
-acceptance rows (A01-A56) judged by a runner.
+Ultron has been at least as accurate as Pi on every set so far, at about the same token cost on hard tasks and 40%
+fewer tokens on research. Release 0.87.10 closed most of the short-task speed gap (median 60 s to 40 s against Pi's
+34 s): the extra time was extra model turns caused by shell text mangled by Python string escapes, which the kernel
+now passes to bash as written. Before release 0.87.6, the research task cost Ultron 8.0M tokens because it handed the
+corpus to nested sub-agents instead of searching first ([`docs/performance.md`](docs/performance.md) has the
+breakdown). Two trials is still a small sample; treat these as evidence, not benchmarks. Behaviour is also covered by
+56 acceptance rows (A01-A56) judged by a runner.
 
 ## Install
 
