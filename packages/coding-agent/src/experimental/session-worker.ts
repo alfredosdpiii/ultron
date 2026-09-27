@@ -1943,9 +1943,12 @@ async function createCodingAgentHarness(
 			const reason = await usage.turnBudgetExhausted(host?.usageRootForLane(event.lane, event.runId));
 			return reason === undefined ? undefined : { block: { reason } };
 		});
-		// Brake for open-ended research loops on the root agent (ULTRON_TOOL_ROUNDS_NUDGE, 0 disables).
-		const nudger = new ToolRoundNudger(toolRoundsNudgeFromEnv(process.env.ULTRON_TOOL_ROUNDS_NUDGE), (message) =>
-			lane.steer(message, undefined, BACKGROUND_CONTEXT),
+		// Brake for open-ended research loops on the root agent (ULTRON_TOOL_ROUNDS_NUDGE, 0 disables). While
+		// subagents or tasks the root started are running it says to wait for them instead of checking on them.
+		const nudger = new ToolRoundNudger(
+			toolRoundsNudgeFromEnv(process.env.ULTRON_TOOL_ROUNDS_NUDGE),
+			(message) => lane.steer(message, undefined, BACKGROUND_CONTEXT),
+			{ asyncEvents: asyncEventsEnabled(process.env.ULTRON_ASYNC_EVENTS) },
 		);
 		// After a long streak of successful tool rounds, suggest saving the procedure as a code skill
 		// (ULTRON_SKILL_NUDGE, 0 disables).
@@ -1955,8 +1958,15 @@ async function createCodingAgentHarness(
 		const removeNudgeTurnListener = harness.events.on("turn_end", (event) => {
 			if (event.lane !== "main") return;
 			const toolCalls = event.message.content.filter((part) => part.type === "toolCall").length;
-			nudger.turnEnded(event.runId, toolCalls);
-			skillNudger.turnEnded(event.runId, toolCalls, event.toolResults.filter((result) => result.isError).length);
+			// Root-started subagents and tasks still running (those of a root the user aborted are being cancelled).
+			const running = host?.pendingRootNotifications((rootId) => events?.rootAborted(rootId) ?? false) ?? 0;
+			nudger.turnEnded(event.runId, toolCalls, running);
+			skillNudger.turnEnded(
+				event.runId,
+				toolCalls,
+				event.toolResults.filter((result) => result.isError).length,
+				running,
+			);
 		});
 		const removeNudgeRunListener = harness.events.on("run_end", (event) => {
 			if (event.lane !== "main") return;

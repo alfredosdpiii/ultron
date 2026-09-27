@@ -1,7 +1,7 @@
 {
 	"version": 1,
 	"algorithm": "sha256",
-	"manifest": "2955b4b94a419f1b28a3c8a794c93a1a6804c6e43b642cc4a521faf3f1089f5d",
+	"manifest": "e0f9e40cee924bc0a6b0bf9b9889de9385280e8e7648d070c1c1b6219da55b79",
 	"instrument": {
 		"acceptance/mutations.json": "1ff99ca3f89075496562a64bd2d5513c88e80c582d454125678f04bfc25fe23a",
 		"scripts/acceptance-lock.mjs": "0738f59da364f20af0634b28b9d32d70b2768f6d4cb6f2bf03cab13302923980",
@@ -64,7 +64,7 @@
 		"packages/coding-agent/test/ultron-extension-tools.test.ts": "46c3e0531449242ca4a30c170689cde1376936ff6a9d5e069e78e2b740b1de69",
 		"packages/coding-agent/test/ultron-family.test.ts": "1e6b0106a2e450ba05458d80e8d5000d3098231230d919d614cfb561e94598b8",
 		"packages/coding-agent/test/ultron-grants.test.ts": "fc673e68e0c9418f8f202fad757f3020e218755730e412ccc54a1ca79d1a9a2f",
-		"packages/coding-agent/test/ultron-hints.test.ts": "220e54ec405a31dce10cc031ff9a081d1f0ebe5fabcd7336ec54a54a250e382b",
+		"packages/coding-agent/test/ultron-hints.test.ts": "6dfa99599a56380d33ef40adc3032d3adcfb58300d228ca4a9761c742466b223",
 		"packages/coding-agent/test/ultron-instances.test.ts": "740cffb33a17183701f88b27f3aca4f1268b28726ccbe736a93da6ac42765df4",
 		"packages/coding-agent/test/ultron-memory-inspection.test.ts": "6f066ccf662be2e44b98bd9fe7de387361dc3b58eeb52a65f82690cae8a9d9b4",
 		"packages/coding-agent/test/ultron-migration.test.ts": "84fb8b5321bcc1d9876c43535fe0a53ef1ea4872a1fbf2e2b7e84407f16e2001",

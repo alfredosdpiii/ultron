@@ -1,5 +1,5 @@
 {
-	"generated_at": "2026-09-27T15:43:12.354Z",
+	"generated_at": "2026-09-27T17:01:13.539Z",
 	"lock": {
 		"ok": true,
 		"lockMissing": false,
@@ -3051,7 +3051,7 @@
 				},
 				{
 					"file": "packages/coding-agent/test/ultron-hints.test.ts",
-					"test": "blocked-on-job: over 60 s awaiting job.result / rlm.collect / agents.result while events are on",
+					"test": "blocked-on-job: over 60 s awaiting job.result / background.result while events are on",
 					"outcome": "passed",
 					"matched": 1,
 					"infra": null

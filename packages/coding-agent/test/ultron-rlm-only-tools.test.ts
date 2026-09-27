@@ -76,7 +76,8 @@ describe("default tool set", () => {
 	test("the guide stays small, byte-stable and keeps the rules that matter", () => {
 		const guide = rlmRuntimePrompt(["rlm"])!;
 		// 13,976 characters and a 2,185-character tool description before the cost pass (2026-09-27); 9,462 and
-		// 1,117 before the compact guide (5,084 and 439 after, same day).
+		// 1,117 before the compact guide (5,084 and 439 after, same day); 5,318 before the wait-for-children wording
+		// replaced "keep working" (5,493 after, 2026-09-28).
 		expect(guide.length).toBeLessThan(5_500);
 		expect(RLM_TOOL_DESCRIPTION.length).toBeLessThan(600);
 		expect(rlmRuntimePrompt(["rlm"])).toBe(guide);
@@ -96,8 +97,19 @@ describe("default tool set", () => {
 			"help(ctx)",
 			"help(skills)",
 			"help(agent)",
+			"never check on children through their files, logs or progress",
+			"With nothing of your own left, `await rlm.collect(hs)` (the wait is free",
+			"or end your turn to hand back control: each end arrives as a `child_done` event",
 		])
 			expect(guide).toContain(rule);
+		expect(guide).not.toContain("keep working");
+		// Without completion events nothing wakes an idle root, so waiting means rlm.collect alone.
+		const quiet = rlmRuntimePrompt(["rlm"], { asyncEvents: false })!;
+		const delegation = quiet.slice(quiet.indexOf("## Delegation"), quiet.indexOf("## Other APIs"));
+		expect(delegation).toContain("With nothing of your own left, `await rlm.collect(hs)` (the wait is free");
+		expect(delegation).not.toContain("child_done");
+		expect(delegation).not.toContain("end your turn");
+		expect(quiet).toContain("ULTRON_ASYNC_EVENTS=off");
 		// Rarely needed detail lives in docstrings, not in every request.
 		expect(guide).not.toContain("Triage.generations()");
 		expect(guide).not.toContain("code_history");

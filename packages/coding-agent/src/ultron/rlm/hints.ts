@@ -1,7 +1,7 @@
 /**
  * Situational hints (nano-rlm's supervisor hints): the host watches how a lane uses the runtime and ends a cell's
  * result with at most one short tagged line, `[hint:<tag>] ...`, when something worth knowing happened in that cell
- * (a command detached into a job, a long wait on work whose completion would have arrived as an event, polling,
+ * (a command detached into a job, a long wait on a job whose completion would have arrived as an event, polling,
  * truncated output, a large file read into a string, the same exception three cells in a row). A hint is part of
  * the rlm tool result, which is appended, so it never changes an earlier message.
  *
@@ -32,8 +32,12 @@ const FAILURE_STREAK = 3;
 const POLL_REPEATS = 3;
 const JOURNAL_VERSION = 1;
 
-/** Waits that hold the cell until detached work ends. */
-const BLOCKING_WAITS = new Set(["shell.result", "rlm.collect", "agents.result", "background.result"]);
+/**
+ * Waits that hold the cell until detached work ends. Waiting for subagents (`rlm.collect`, `agents.result`) is
+ * not among them: once a root has no work of its own left, that wait is what the guide asks for (it costs no
+ * model turns), so it earns no hint.
+ */
+const BLOCKING_WAITS = new Set(["shell.result", "background.result"]);
 
 /** Status checks of running work; repeating one is polling. */
 const STATUS_CALLS = new Set([
@@ -327,13 +331,7 @@ export class CellHints {
 }
 
 function waitCall(type: string): string {
-	return type === "shell.result"
-		? "job.result()"
-		: type === "rlm.collect"
-			? "rlm.collect()"
-			: type === "agents.result"
-				? "agents.result()"
-				: "background.result()";
+	return type === "shell.result" ? "job.result()" : "background.result()";
 }
 
 /** Total length of possibly overlapping intervals (waits run concurrently under asyncio.gather). */

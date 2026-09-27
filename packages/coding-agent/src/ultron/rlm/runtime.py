@@ -120,7 +120,10 @@ class RLMNamespace:
 
         The child has its own REPL and your tools and shares your filesystem, but not your conversation: give
         a self-contained brief (goal, paths, constraints, what to return). Its final reply is its result.
-        Start several before collecting and keep working; each completion arrives as a `child_done` event.
+        Start several at once, then do only separate work of your own: never check on children through their
+        files, logs or progress, since their results come to you. With nothing of your own left, wait for free
+        with `await rlm.collect(handles)`, or (completion events on) end your turn: each end arrives as a
+        `child_done` event.
         `await rlm.collect([h])` returns `[{"id": ..., "result": {"status": "succeeded", "value": <answer>}}]`
         (check each status). Subagents nest at most two levels, and every response they make counts toward
         the root's turn, token and cost limits. Spawn for independent multi-step work, never to read or

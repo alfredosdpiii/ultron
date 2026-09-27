@@ -79,19 +79,27 @@ describe("situational hints", () => {
 		expect(off).not.toContain("runtime_event");
 	});
 
-	test("blocked-on-job: over 60 s awaiting job.result / rlm.collect / agents.result while events are on", async () => {
+	test("blocked-on-job: over 60 s awaiting job.result / background.result while events are on", async () => {
 		const hints = make();
 		expect(
 			await cell(hints, "await job.result()", [["shell.result", { id: "job-1" }, { running: false }, 59_000]]),
 		).toBe(undefined);
-		const hint = await cell(hints, "await rlm.collect()", [
-			["rlm.collect", { selectors: [] }, { results: [] }, 40_000],
-			["agents.result", { id: "t-1" }, {}, 25_000],
+		const hint = await cell(hints, "await job.result()", [
+			["shell.result", { id: "job-2" }, { running: false }, 40_000],
+			["background.result", { id: "t-1" }, {}, 25_000],
 		]);
 		expect(hint).toMatch(
-			/^\[hint:blocked-on-job\] This cell spent 65 s waiting in rlm\.collect\(\), agents\.result\(\)\./,
+			/^\[hint:blocked-on-job\] This cell spent 65 s waiting in job\.result\(\), background\.result\(\)\./,
 		);
 		expect(hint).toContain("You could have ended your turn");
+		// Waiting for subagents is what the guide asks once the root has nothing of its own left: no hint.
+		const collecting = make({ store: createMemoryModuleStore() });
+		expect(
+			await cell(collecting, "await rlm.collect(hs)", [
+				["rlm.collect", { selectors: [] }, { results: [] }, 120_000],
+				["agents.result", { id: "t-2" }, {}, 90_000],
+			]),
+		).toBe(undefined);
 		// Concurrent waits (asyncio.gather) count once.
 		const gathered = make({ store: createMemoryModuleStore() });
 		gathered.beginCell("main", "await asyncio.gather(a.result(), b.result())");

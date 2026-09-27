@@ -81,10 +81,16 @@ For many files or a large input, narrow with code first: 1. search the concept a
 
 const BOUNDED_INFERENCE = `## Bounded inference\n${INFERENCE_PROMPT}`;
 
-const DELEGATION = `## Delegation
-\`h = await rlm.spawn(brief, name=...)\` starts a subagent (its own REPL and your tools and files, not your conversation); \`await rlm.collect([h])\` waits and returns results (check each status). Spawn only for independent multi-step work, with a self-contained brief (goal, paths, constraints, what to return); start several, keep working (each ends with a \`child_done\` event), and reconcile their reports with your own evidence. \`help(rlm.spawn)\`.
+/** Delegation, with how to wait for children depending on whether their ends are announced (ULTRON_ASYNC_EVENTS). */
+function delegationPrompt(asyncEvents: boolean): string {
+	const wait = asyncEvents
+		? "`await rlm.collect(hs)` (the wait is free; check each status), or end your turn to hand back control: each end arrives as a `child_done` event"
+		: "`await rlm.collect(hs)` (the wait is free; check each status)";
+	return `## Delegation
+\`h = await rlm.spawn(brief, name=...)\` starts a subagent (own REPL, your tools and files, not your conversation). Spawn only for independent multi-step work, with a self-contained brief (goal, paths, constraints, what to return), several at once. Then do only your own work that no child owns; never check on children through their files, logs or progress: their results come to you. With nothing of your own left, ${wait}. Verify their reports against your evidence. \`help(rlm.spawn)\`.
 If you are a subagent, do the brief yourself (spawn only when it asks you to delegate); your final reply is your result: self-contained, with evidence, paths and uncertainties.
 Typed agents, agent graphs and jobs that outlive the turn: \`help(agents)\`, \`help(workflows)\`, \`help(background)\`.`;
+}
 
 const CONTEXT = `## Other APIs\n${CONTEXT_PROMPT}\n${CODE_SKILLS_PROMPT}\n${AGENT_CLASS_PROMPT}`;
 
@@ -177,7 +183,7 @@ export function rlmRuntimePrompt(
 		SEARCH_FIRST,
 		BOUNDED_INFERENCE,
 		...(extensionTools === undefined ? [] : [extensionTools]),
-		DELEGATION,
+		delegationPrompt(options.asyncEvents !== false),
 		`${CONTEXT}\n${MEMORY}`,
 	].join("\n\n");
 }
