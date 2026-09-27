@@ -1,0 +1,378 @@
+{
+  "taskSet": "hard",
+  "frozenAt": "2026-09-25-hard",
+  "thresholds": {
+    "maxPassRateDropPoints": 10,
+    "maxMedianLatencyRatio": 2,
+    "maxCostRatio": 2
+  },
+  "model": "cliproxyapi/gpt-6-sol",
+  "trials": 1,
+  "isolation": {
+    "home": "per-run empty HOME inside the run's work dir (no ~/.agents, ~/.pi, ~/.ultron or other user-global resources)",
+    "agentDir": "per-run agent dir holding only models.json and auth.json copied from ~/.ultron/agent",
+    "memory": "off (ULTRON_HINDSIGHT_URL=off)"
+  },
+  "summary": {
+    "byVariant": {
+      "pi": {
+        "runs": 5,
+        "infrastructure": 0,
+        "passRate": 1,
+        "categories": {
+          "multi-bug": {
+            "passed": 1,
+            "runs": 1
+          },
+          "large-data": {
+            "passed": 1,
+            "runs": 1
+          },
+          "refactor": {
+            "passed": 1,
+            "runs": 1
+          },
+          "log-forensics": {
+            "passed": 1,
+            "runs": 1
+          },
+          "huge-file": {
+            "passed": 1,
+            "runs": 1
+          }
+        },
+        "medianDurationMs": 32224,
+        "totalCost": 0.222612,
+        "uptake": {
+          "toolsByName": {
+            "bash": 20,
+            "read": 9,
+            "edit": 6,
+            "write": 4
+          },
+          "rlmRunShare": 0,
+          "framesSpawned": {
+            "runs": 0,
+            "total": null,
+            "median": null
+          },
+          "rootUnseenBytes": {
+            "runs": 0,
+            "total": null,
+            "median": null
+          }
+        }
+      },
+      "ultron": {
+        "runs": 5,
+        "infrastructure": 0,
+        "passRate": 1,
+        "categories": {
+          "multi-bug": {
+            "passed": 1,
+            "runs": 1
+          },
+          "large-data": {
+            "passed": 1,
+            "runs": 1
+          },
+          "log-forensics": {
+            "passed": 1,
+            "runs": 1
+          },
+          "huge-file": {
+            "passed": 1,
+            "runs": 1
+          },
+          "refactor": {
+            "passed": 1,
+            "runs": 1
+          }
+        },
+        "medianDurationMs": 60267,
+        "totalCost": 0.2676612,
+        "uptake": {
+          "toolsByName": {
+            "rlm": 28
+          },
+          "rlmRunShare": 1,
+          "framesSpawned": {
+            "runs": 5,
+            "total": 0,
+            "median": 0
+          },
+          "rootUnseenBytes": {
+            "runs": 0,
+            "total": null,
+            "median": null
+          }
+        }
+      }
+    },
+    "gate": [
+      {
+        "check": "pass rate",
+        "ok": true,
+        "detail": "0.0 points below baseline"
+      },
+      {
+        "check": "median latency",
+        "ok": true,
+        "detail": "1.87x baseline"
+      },
+      {
+        "check": "cost",
+        "ok": true,
+        "detail": "1.20x baseline"
+      }
+    ],
+    "passed": true
+  },
+  "records": [
+    {
+      "task": "bugs-scheduler",
+      "category": "multi-bug",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "rlm": 4
+      },
+      "framesSpawned": 0,
+      "rootUnseenBytes": null,
+      "toolCalls": 4,
+      "tasksByDefinition": {},
+      "framesSource": "inspect",
+      "cost": 0.04374,
+      "tokens": 24434,
+      "durationMs": 60563,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/bugs-scheduler-ultron-1-2026-09-27T06-44-50-441Z"
+    },
+    {
+      "task": "bugs-scheduler",
+      "category": "multi-bug",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "bash": 3,
+        "read": 8,
+        "edit": 6,
+        "write": 2
+      },
+      "framesSpawned": null,
+      "rootUnseenBytes": null,
+      "toolCalls": 19,
+      "cost": 0.0680916,
+      "tokens": 56657,
+      "durationMs": 114803,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/bugs-scheduler-pi-1-2026-09-27T06-44-50-437Z"
+    },
+    {
+      "task": "data-sessions",
+      "category": "large-data",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "bash": 5
+      },
+      "framesSpawned": null,
+      "rootUnseenBytes": null,
+      "toolCalls": 5,
+      "cost": 0.027424800000000003,
+      "tokens": 19142,
+      "durationMs": 29727,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/data-sessions-pi-1-2026-09-27T06-46-45-848Z"
+    },
+    {
+      "task": "data-sessions",
+      "category": "large-data",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "rlm": 7
+      },
+      "framesSpawned": 0,
+      "rootUnseenBytes": null,
+      "toolCalls": 7,
+      "tasksByDefinition": {},
+      "framesSource": "inspect",
+      "cost": 0.0400128,
+      "tokens": 34500,
+      "durationMs": 60267,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/data-sessions-ultron-1-2026-09-27T06-47-16-125Z"
+    },
+    {
+      "task": "refactor-intervals-fast",
+      "category": "refactor",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "read": 1,
+        "bash": 5,
+        "write": 2
+      },
+      "framesSpawned": null,
+      "rootUnseenBytes": null,
+      "toolCalls": 8,
+      "cost": 0.0863124,
+      "tokens": 33825,
+      "durationMs": 204839,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/refactor-intervals-fast-pi-1-2026-09-27T06-44-50-443Z"
+    },
+    {
+      "task": "logs-bruteforce",
+      "category": "log-forensics",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "bash": 3
+      },
+      "framesSpawned": null,
+      "rootUnseenBytes": null,
+      "toolCalls": 3,
+      "cost": 0.019273600000000002,
+      "tokens": 10252,
+      "durationMs": 28342,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/logs-bruteforce-pi-1-2026-09-27T06-48-17-467Z"
+    },
+    {
+      "task": "logs-bruteforce",
+      "category": "log-forensics",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "rlm": 4
+      },
+      "framesSpawned": 0,
+      "rootUnseenBytes": null,
+      "toolCalls": 4,
+      "tasksByDefinition": {},
+      "framesSource": "inspect",
+      "cost": 0.026792000000000003,
+      "tokens": 16400,
+      "durationMs": 36353,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/logs-bruteforce-ultron-1-2026-09-27T06-48-18-417Z"
+    },
+    {
+      "task": "huge-catalog-diff",
+      "category": "huge-file",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "bash": 4
+      },
+      "framesSpawned": null,
+      "rootUnseenBytes": null,
+      "toolCalls": 4,
+      "cost": 0.021509599999999997,
+      "tokens": 9790,
+      "durationMs": 32224,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/huge-catalog-diff-pi-1-2026-09-27T06-48-46-266Z"
+    },
+    {
+      "task": "huge-catalog-diff",
+      "category": "huge-file",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "rlm": 3
+      },
+      "framesSpawned": 0,
+      "rootUnseenBytes": null,
+      "toolCalls": 3,
+      "tasksByDefinition": {},
+      "framesSource": "inspect",
+      "cost": 0.022972799999999998,
+      "tokens": 11436,
+      "durationMs": 30948,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/huge-catalog-diff-ultron-1-2026-09-27T06-48-55-371Z"
+    },
+    {
+      "task": "refactor-intervals-fast",
+      "category": "refactor",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "rlm": 10
+      },
+      "framesSpawned": 0,
+      "rootUnseenBytes": null,
+      "toolCalls": 10,
+      "tasksByDefinition": {},
+      "framesSource": "inspect",
+      "cost": 0.1341436,
+      "tokens": 56299,
+      "durationMs": 238222,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/refactor-intervals-fast-ultron-1-2026-09-27T06-45-51-130Z"
+    }
+  ]
+}

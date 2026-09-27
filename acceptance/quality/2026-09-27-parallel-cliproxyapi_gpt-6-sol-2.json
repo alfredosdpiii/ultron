@@ -1,0 +1,190 @@
+{
+  "taskSet": "parallel",
+  "frozenAt": "2026-09-26-parallel",
+  "thresholds": {
+    "maxPassRateDropPoints": 10,
+    "maxMedianLatencyRatio": 2,
+    "maxCostRatio": 2
+  },
+  "model": "cliproxyapi/gpt-6-sol",
+  "trials": 1,
+  "isolation": {
+    "home": "per-run empty HOME inside the run's work dir (no ~/.agents, ~/.pi, ~/.ultron or other user-global resources)",
+    "agentDir": "per-run agent dir holding only models.json and auth.json copied from ~/.ultron/agent",
+    "memory": "off (ULTRON_HINDSIGHT_URL=off)"
+  },
+  "summary": {
+    "byVariant": {
+      "pi": {
+        "runs": 1,
+        "infrastructure": 0,
+        "passRate": 1,
+        "categories": {
+          "parallel": {
+            "passed": 1,
+            "runs": 1
+          }
+        },
+        "medianDurationMs": 166299,
+        "totalCost": 0.0168184,
+        "uptake": {
+          "toolsByName": {
+            "bash": 4,
+            "read": 3,
+            "edit": 2,
+            "write": 1
+          },
+          "rlmRunShare": 0,
+          "framesSpawned": {
+            "runs": 0,
+            "total": null,
+            "median": null
+          },
+          "rootUnseenBytes": {
+            "runs": 0,
+            "total": null,
+            "median": null
+          }
+        },
+        "timing": {
+          "runs": 1,
+          "withinBudget": 1,
+          "passedWithinBudget": 1,
+          "passed": 1,
+          "medianDurationMs": 166299,
+          "perRun": [
+            {
+              "task": "slow-suite-and-fixes",
+              "trial": 1,
+              "durationMs": 166299,
+              "timeBudgetMs": 240000,
+              "withinBudget": true,
+              "passed": true
+            }
+          ]
+        }
+      },
+      "ultron": {
+        "runs": 1,
+        "infrastructure": 0,
+        "passRate": 1,
+        "categories": {
+          "parallel": {
+            "passed": 1,
+            "runs": 1
+          }
+        },
+        "medianDurationMs": 162964,
+        "totalCost": 0.028569199999999996,
+        "uptake": {
+          "toolsByName": {
+            "rlm": 7
+          },
+          "rlmRunShare": 1,
+          "framesSpawned": {
+            "runs": 1,
+            "total": 0,
+            "median": 0
+          },
+          "rootUnseenBytes": {
+            "runs": 0,
+            "total": null,
+            "median": null
+          }
+        },
+        "timing": {
+          "runs": 1,
+          "withinBudget": 1,
+          "passedWithinBudget": 1,
+          "passed": 1,
+          "medianDurationMs": 162964,
+          "perRun": [
+            {
+              "task": "slow-suite-and-fixes",
+              "trial": 1,
+              "durationMs": 162964,
+              "timeBudgetMs": 240000,
+              "withinBudget": true,
+              "passed": true
+            }
+          ]
+        }
+      }
+    },
+    "gate": [
+      {
+        "check": "pass rate",
+        "ok": true,
+        "detail": "0.0 points below baseline"
+      },
+      {
+        "check": "median latency",
+        "ok": true,
+        "detail": "0.98x baseline"
+      },
+      {
+        "check": "cost",
+        "ok": true,
+        "detail": "1.70x baseline"
+      }
+    ],
+    "passed": true
+  },
+  "records": [
+    {
+      "task": "slow-suite-and-fixes",
+      "category": "parallel",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "rlm": 7
+      },
+      "framesSpawned": 0,
+      "rootUnseenBytes": null,
+      "toolCalls": 7,
+      "tasksByDefinition": {},
+      "framesSource": "inspect",
+      "cost": 0.028569199999999996,
+      "tokens": 26867,
+      "durationMs": 162964,
+      "timeBudgetMs": 240000,
+      "withinBudget": true,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/slow-suite-and-fixes-ultron-1-2026-09-27T06-42-03-957Z"
+    },
+    {
+      "task": "slow-suite-and-fixes",
+      "category": "parallel",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "bash": 4,
+        "read": 3,
+        "edit": 2,
+        "write": 1
+      },
+      "framesSpawned": null,
+      "rootUnseenBytes": null,
+      "toolCalls": 10,
+      "cost": 0.0168184,
+      "tokens": 18602,
+      "durationMs": 166299,
+      "timeBudgetMs": 240000,
+      "withinBudget": true,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/slow-suite-and-fixes-pi-1-2026-09-27T06-42-03-953Z"
+    }
+  ]
+}

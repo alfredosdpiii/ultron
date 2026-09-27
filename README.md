@@ -105,22 +105,23 @@ result file is in [`acceptance/quality/`](acceptance/quality).
 | Research pilot: find expired-certificate incidents among 157 reports, 1 trial | pass, 342 s | pass, **273 s**, 99 sub-model frames |
 | Parallel work: a 150 s test suite plus two bug fixes, 2 trials | 2/2 | 2/2, same speed |
 
-**gpt-6-sol** (a strong model), default thinking, 1 trial:
+**gpt-6-sol** (a strong model), default thinking, 1 trial, both agents with an isolated home (release 0.87.7):
 
 | Task set | Pi | Ultron |
 |---|---|---|
-| Hard set: 15 tasks | 14/15, median 31 s | **15/15**, median 45 s, 1.55x the cost |
-| Hard set, 5 tasks after the cost fixes below | 5/5, 191k tokens, median 33 s | 5/5, 217k tokens, median 39 s |
-| Research: 400 reports, 2.1 MB | exact, 71 s, 289k tokens | exact, **73 s, 287k tokens** (was 369 s, 8.0M) |
-| Parallel work | pass, 161 s | pass, 161 s |
+| Research: 400 reports, 2.1 MB | exact, 84 s, 172k tokens | exact, **75 s**, 238k tokens |
+| Hard set, 5 tasks | 5/5, 130k tokens, median 32 s | 5/5, 143k tokens (1.1x), median 60 s |
+| Parallel work | pass, 166 s | pass, 163 s |
 
-Ultron has been at least as accurate as Pi on every set, and ahead on the hard set with both models. The first
-gpt-6-sol runs showed it was slower and far more expensive on the research task: it handed the corpus to 24 nested
-sub-agents instead of searching first, spending 8.0M tokens. The runtime guide now says to search in code and read
-the deciding passages before delegating, sub-agents can nest at most two levels, and `rlm.map` has a default token
-budget. After those fixes Ultron matches Pi on the research task and is within about 1.1x of its tokens on the hard
-tasks ([`docs/performance.md`](docs/performance.md) has the breakdown). These are small samples; treat them as
-early evidence, not benchmarks. Behaviour is also covered by 56 acceptance rows (A01-A56) judged by a runner.
+An earlier, full 15-task hard run on gpt-6-sol had Ultron at 15/15 and Pi at 14/15.
+
+Ultron has been at least as accurate as Pi on every set so far. Its cost is now close to Pi's: 1.1x the tokens on
+hard tasks. Before release 0.87.6, the same research task cost it 8.0M tokens and 369 s, because it handed the corpus
+to 24 nested sub-agents instead of searching first. The runtime guide now says to search in code and read the
+deciding passages before delegating, sub-agents nest at most two levels, and `rlm.map` has a default token budget
+([`docs/performance.md`](docs/performance.md) has the breakdown). On short tasks Ultron is still slower in wall
+time. These are single trials; treat them as early evidence, not benchmarks. Behaviour is also covered by 56
+acceptance rows (A01-A56) judged by a runner.
 
 ## Install
 
