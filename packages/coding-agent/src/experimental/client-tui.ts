@@ -228,7 +228,8 @@ export class ExperimentalClientTui implements Component {
 	readonly #documentContainer = new Container();
 	// The splash shows unless the user asked for a quiet startup (quietStartup, or ULTRON_SPLASH=off).
 	readonly #sessionHeading = new StartupHeader({
-		rows: () => process.stdout.rows,
+		// The TUI's own terminal, so the size matches what is drawn (and tests use their virtual terminal).
+		rows: () => this.#ui?.terminal.rows,
 		enabled: () =>
 			!["off", "0", "false"].includes((process.env.ULTRON_SPLASH ?? "").trim().toLowerCase()) &&
 			!this.#settingsManager.getQuietStartup(),
