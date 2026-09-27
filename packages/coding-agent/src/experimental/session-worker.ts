@@ -1915,19 +1915,21 @@ async function createCodingAgentHarness(
 		// typed agents, background jobs) is charged, tokens and cost, to the root that admitted its lane. Once a
 		// root's tree is spent its tool calls are refused with the limit error, its runs stop, and no lane of the tree
 		// gets another model request (no-ops without a limit; the tally still feeds `agents.status`).
-		// A response is recorded asynchronously; the request check waits for records still in flight.
+		// A response is recorded in the after_response hook, which the drive awaits before it prepares the next
+		// request, so a spent tree can never slip another request through. (A message_end event listener raced the
+		// next request's check under load.) The request check still waits for any record in flight.
 		const pendingTurnRecords = pendingSet();
-		const removeBudgetTurnListener = harness.events.on("message_end", (event) => {
-			if (event.message.role !== "assistant" || event.runId === undefined || "recovery" in event) return;
+		const removeBudgetTurnListener = harness.hooks.on("after_response", async (event) => {
 			const reported = (event.message as { usage?: { totalTokens?: number; cost?: { total?: number } } }).usage;
-			pendingTurnRecords.track(
-				usage
-					.recordTurn(host?.usageRootForLane(event.lane, event.runId), {
-						totalTokens: reported?.totalTokens ?? null,
-						cost: reported?.cost?.total ?? null,
-					})
-					.catch(() => {}),
-			);
+			const record = usage
+				.recordTurn(host?.usageRootForLane(event.lane, event.runId), {
+					totalTokens: reported?.totalTokens ?? null,
+					cost: reported?.cost?.total ?? null,
+				})
+				.catch(() => {});
+			pendingTurnRecords.track(record);
+			await record;
+			return undefined;
 		});
 		const removeBudgetToolHook = harness.hooks.on("before_tool", async (event) => {
 			const reason = await usage.turnBudgetExhausted(host?.usageRootForLane(event.lane, event.runId));
