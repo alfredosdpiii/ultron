@@ -3,7 +3,7 @@
  * Quality comparison: stock Pi (baseline) vs Ultron (candidate) on the frozen tasks in
  * evals/quality/tasks.mjs, with matched model and settings. Metered: every run calls the model.
  *
- *   node scripts/eval-quality.mjs [--tasks default|hard|judged|parallel|research] [--model cliproxyapi/gpt-6-sol] [--trials 2]
+ *   node scripts/eval-quality.mjs [--tasks default|hard|judged|parallel|research|delegation] [--model cliproxyapi/gpt-6-sol] [--trials 2]
  *                                 [--concurrency 3] [--only id,id] [--variants pi,ultron] [--out path]
  *                                 [--baseline recorded.json] [--thinking off|low|medium|high|xhigh|max]
  *                                 [--keep-failed dir] [--keep-all] [--ultron-command "node --import ... cli.ts"]
@@ -12,12 +12,16 @@
  *   node scripts/eval-quality.mjs --tasks judged --self-check [--judge-live]
  *   node scripts/eval-quality.mjs --tasks parallel [--trials 2 --variants pi,ultron]   (prints wall time per run)
  *   node scripts/eval-quality.mjs --tasks parallel --self-check                        (about 4.5 minutes, real sleeps)
+ *   node scripts/eval-quality.mjs --tasks delegation --self-check                      (about 8.5 minutes, real sleeps)
  *
  * `--tasks` picks the frozen set: default is evals/quality/tasks.mjs, `hard` is tasks-hard.mjs, `judged` is
  * tasks-judged.mjs (open-ended work scored by an LLM judge next to a light deterministic sanity check), `parallel`
  * is tasks-parallel.mjs (a slow suite to run and report while fixing two bugs: non-blocking work pays off), and
  * `research` is tasks-research.mjs (semantic judgement over a frozen ~2 MB corpus of model-written reports, scored by
- * precision and recall; the corpus is a committed fixture, so running or self-checking the set calls no model).
+ * precision and recall; the corpus is a committed fixture, so running or self-checking the set calls no model), and
+ * `delegation` is tasks-delegation.mjs (six independent buggy services to fix under a wall-clock budget that one
+ * sequential agent is unlikely to meet: working on them in parallel pays off; the hidden check reports how many
+ * of the six passed as `metrics`).
  *
  * Wall time: a task with `timeBudgetMs` records `withinBudget` (durationMs <= budget) next to pass/fail, and the
  * summary reports per variant how many runs (and passing runs) finished within budget, with every run's time. The
@@ -44,7 +48,8 @@
  * Uptake metrics in every record: `toolsByName` (tool calls by tool, from `tool_execution_start` events),
  * `framesSpawned` (rlm.spawn/infer/map frames: tasks whose definition starts with `rlm-`, read from Ultron's
  * `inspect agents.status`; else counted from the rlm tool's code in the events; null when neither is available,
- * as for stock Pi), and `rootUnseenBytes` (bytes loaded through handles minus bytes printed to the root, reported
+ * as for stock Pi), `childrenSpawned` and `childDepth` (rlm.spawn subagents, definition `rlm-child`, and how deeply
+ * they nest, from the same inspection; null for stock Pi), `tasksByDefinition`, and `rootUnseenBytes` (bytes loaded through handles minus bytes printed to the root, reported
  * only when Ultron exposes it in `agents.status` as `uptake.rootUnseenBytes` or `uptake.handleBytesLoaded` and
  * `uptake.handleBytesPrinted`; otherwise null). Summaries aggregate them per variant.
  *
@@ -112,6 +117,7 @@ const TASK_SETS = {
 	judged: { tasks: "../evals/quality/tasks-judged.mjs", solutions: "../evals/quality/tasks-judged-solutions.mjs" },
 	parallel: { tasks: "../evals/quality/tasks-parallel.mjs", solutions: "../evals/quality/tasks-parallel-solutions.mjs" },
 	research: { tasks: "../evals/quality/tasks-research.mjs", solutions: "../evals/quality/tasks-research-solutions.mjs" },
+	delegation: { tasks: "../evals/quality/tasks-delegation.mjs", solutions: "../evals/quality/tasks-delegation-solutions.mjs" },
 };
 
 /** The hidden check's last output line when it is a JSON object (research checks print their metrics there). */
@@ -126,7 +132,10 @@ export function verifyMetrics(output) {
 }
 const JUDGE_TIMEOUT_MS = 5 * 60 * 1000;
 
-/** The release gate (scripts/gate.mjs) reads only full comparisons of this set; hard, judged and parallel are evidence. */
+/**
+ * The release gate (scripts/gate.mjs) reads only full comparisons of this set; hard, judged, parallel, research and
+ * delegation are evidence and never gated.
+ */
 export const GATED_TASK_SET = "default";
 
 /** Whether a recorded result file is one the release gate reads: a full comparison (it has gate entries) of the gated set. */
@@ -355,9 +364,30 @@ async function inspectUptake(session) {
 				: null;
 	return {
 		framesSpawned: tasks.filter((task) => /^rlm-/.test(String(task.definition))).length,
+		...childUptake(tasks),
 		tasksByDefinition,
 		rootUnseenBytes,
 	};
+}
+
+/**
+ * rlm.spawn subagents (definition `rlm-child`) among the inspected tasks, and how deeply they nest: a child of the
+ * root is depth 1, a child spawned by that child depth 2. `childDepth` is 0 when nothing was spawned.
+ */
+export function childUptake(tasks) {
+	const isChild = (task) => /^rlm-child(@\d+)?$/.test(String(task?.definition ?? ""));
+	const byId = new Map(tasks.map((task) => [task.id, task]));
+	let childDepth = 0;
+	for (const task of tasks.filter(isChild)) {
+		let depth = 0;
+		const seen = new Set();
+		for (let current = task; current && !seen.has(current.id); current = byId.get(current.parentId)) {
+			seen.add(current.id);
+			if (isChild(current)) depth += 1;
+		}
+		childDepth = Math.max(childDepth, depth);
+	}
+	return { childrenSpawned: tasks.filter(isChild).length, childDepth };
 }
 
 /** One judge call through stock Pi in RPC mode with no tools, extensions, skills or context files. */
@@ -460,6 +490,8 @@ async function runOne({ task, variant, trial, model, thinking, keepDir, keepAll,
 	});
 	record.toolsByName = {};
 	record.framesSpawned = null;
+	record.childrenSpawned = null;
+	record.childDepth = null;
 	record.rootUnseenBytes = null;
 	let frameCallsInCode = 0;
 	try {
@@ -512,6 +544,9 @@ async function runOne({ task, variant, trial, model, thinking, keepDir, keepAll,
 	}
 	writeTree(project, hidden);
 	record.verify = await runVerify(task, project);
+	// A hidden check whose last line is a JSON object reports metrics (the delegation set: services passed of six).
+	const metrics = verifyMetrics(record.verify.output);
+	if (metrics) record.metrics = metrics;
 	record.passed = !record.error && record.verify.status === 0;
 	if (!record.passed || keepAll) {
 		// Evidence for failed runs (and every run with --keep-all): the files the agent left, its session files, stderr and the hidden check output.
@@ -549,6 +584,7 @@ export function summarizeUptake(records) {
 		toolsByName,
 		rlmRunShare: records.length ? records.filter((record) => (record.toolsByName?.rlm ?? 0) > 0).length / records.length : null,
 		framesSpawned: aggregate("framesSpawned"),
+		childrenSpawned: aggregate("childrenSpawned"),
 		rootUnseenBytes: aggregate("rootUnseenBytes"),
 	};
 }
@@ -576,6 +612,26 @@ export function summarizeTiming(records) {
 			passed: record.passed,
 		})),
 	};
+}
+
+/**
+ * The console line for a finished run: time and outcome (formatRunTime), then subagents spawned (`children`, with
+ * their nesting depth), the hidden check's per-part score when it reports one, tool calls by name and frames.
+ */
+export function formatRunLine(record) {
+	const children =
+		typeof record.childrenSpawned === "number"
+			? `children ${record.childrenSpawned}${record.childrenSpawned > 0 ? ` (depth ${record.childDepth})` : ""}`
+			: "children n/a";
+	const metrics = record.metrics;
+	const parts =
+		metrics && typeof metrics.passed === "number" && typeof metrics.total === "number"
+			? ` services ${metrics.passed}/${metrics.total}`
+			: "";
+	const judge = record.judge
+		? ` judge ${record.judge.error ? `error (${record.judge.error.slice(0, 80)})` : `${record.judge.total}/${record.judge.max}`}`
+		: "";
+	return `${formatRunTime(record)}  ${children}${parts} tools ${JSON.stringify(record.toolsByName ?? {})} frames ${record.framesSpawned ?? "n/a"}${judge}${record.error ? ` (${record.error.slice(0, 120)})` : ""}`;
 }
 
 /** One line per run for the console: time first, then budget, outcome and tool use. */
@@ -873,9 +929,7 @@ async function main() {
 				const job = jobs[cursor++];
 				const record = await runOne(job);
 				records.push(record);
-				console.log(
-					`${formatRunTime(record)} tools ${JSON.stringify(record.toolsByName ?? {})} frames ${record.framesSpawned ?? "n/a"}${record.judge ? ` judge ${record.judge.error ? `error (${record.judge.error.slice(0, 80)})` : `${record.judge.total}/${record.judge.max}`}` : ""}${record.error ? ` (${record.error.slice(0, 120)})` : ""}`,
-				);
+				console.log(formatRunLine(record));
 			}
 		}),
 	);

@@ -1,0 +1,543 @@
+{
+  "taskSet": "delegation",
+  "frozenAt": "2026-09-27-delegation",
+  "passed": true,
+  "results": [
+    {
+      "task": "six-services",
+      "category": "delegation",
+      "ok": true,
+      "durationMs": 501494,
+      "outcomes": [
+        {
+          "trial": "unsolved",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 331,
+          "metrics": {
+            "passed": 0,
+            "total": 6,
+            "services": {
+              "alpha": false,
+              "beta": false,
+              "gamma": false,
+              "delta": false,
+              "epsilon": false,
+              "zeta": false
+            }
+          }
+        },
+        {
+          "trial": "solved",
+          "expect": "pass, within budget",
+          "ok": true,
+          "verifyMs": 790,
+          "metrics": {
+            "passed": 6,
+            "total": 6,
+            "services": {
+              "alpha": true,
+              "beta": true,
+              "gamma": true,
+              "delta": true,
+              "epsilon": true,
+              "zeta": true
+            }
+          },
+          "solveMs": 100081,
+          "timeBudgetMs": 300000,
+          "withinBudget": true
+        },
+        {
+          "trial": "sequential: one service after another",
+          "expect": "pass, over budget",
+          "ok": true,
+          "verifyMs": 767,
+          "metrics": {
+            "passed": 6,
+            "total": 6,
+            "services": {
+              "alpha": true,
+              "beta": true,
+              "gamma": true,
+              "delta": true,
+              "epsilon": true,
+              "zeta": true
+            }
+          },
+          "solveMs": 500389,
+          "timeBudgetMs": 300000,
+          "withinBudget": false
+        },
+        {
+          "trial": "five services fixed, alpha untouched",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 2016,
+          "metrics": {
+            "passed": 5,
+            "total": 6,
+            "services": {
+              "alpha": false,
+              "beta": true,
+              "gamma": true,
+              "delta": true,
+              "epsilon": true,
+              "zeta": true
+            }
+          }
+        },
+        {
+          "trial": "five services fixed, beta untouched",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 2209,
+          "metrics": {
+            "passed": 5,
+            "total": 6,
+            "services": {
+              "alpha": true,
+              "beta": false,
+              "gamma": true,
+              "delta": true,
+              "epsilon": true,
+              "zeta": true
+            }
+          }
+        },
+        {
+          "trial": "five services fixed, gamma untouched",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 2188,
+          "metrics": {
+            "passed": 5,
+            "total": 6,
+            "services": {
+              "alpha": true,
+              "beta": true,
+              "gamma": false,
+              "delta": true,
+              "epsilon": true,
+              "zeta": true
+            }
+          }
+        },
+        {
+          "trial": "five services fixed, delta untouched",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 2274,
+          "metrics": {
+            "passed": 5,
+            "total": 6,
+            "services": {
+              "alpha": true,
+              "beta": true,
+              "gamma": true,
+              "delta": false,
+              "epsilon": true,
+              "zeta": true
+            }
+          }
+        },
+        {
+          "trial": "five services fixed, epsilon untouched",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 2017,
+          "metrics": {
+            "passed": 5,
+            "total": 6,
+            "services": {
+              "alpha": true,
+              "beta": true,
+              "gamma": true,
+              "delta": true,
+              "epsilon": false,
+              "zeta": true
+            }
+          }
+        },
+        {
+          "trial": "five services fixed, zeta untouched",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 2191,
+          "metrics": {
+            "passed": 5,
+            "total": 6,
+            "services": {
+              "alpha": true,
+              "beta": true,
+              "gamma": true,
+              "delta": true,
+              "epsilon": true,
+              "zeta": false
+            }
+          }
+        },
+        {
+          "trial": "only the first bug fixed in every service",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 1193,
+          "metrics": {
+            "passed": 0,
+            "total": 6,
+            "services": {
+              "alpha": false,
+              "beta": false,
+              "gamma": false,
+              "delta": false,
+              "epsilon": false,
+              "zeta": false
+            }
+          }
+        },
+        {
+          "trial": "two of three bugs fixed in every service",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 1029,
+          "metrics": {
+            "passed": 0,
+            "total": 6,
+            "services": {
+              "alpha": false,
+              "beta": false,
+              "gamma": false,
+              "delta": false,
+              "epsilon": false,
+              "zeta": false
+            }
+          }
+        },
+        {
+          "trial": "alpha: all fixed but \"refill is not capped at capacity\"",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 2278,
+          "metrics": {
+            "passed": 5,
+            "total": 6,
+            "services": {
+              "alpha": false,
+              "beta": true,
+              "gamma": true,
+              "delta": true,
+              "epsilon": true,
+              "zeta": true
+            }
+          }
+        },
+        {
+          "trial": "alpha: all fixed but \"a backwards tick drains tokens and moves the bucket's clock back\"",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 2106,
+          "metrics": {
+            "passed": 5,
+            "total": 6,
+            "services": {
+              "alpha": false,
+              "beta": true,
+              "gamma": true,
+              "delta": true,
+              "epsilon": true,
+              "zeta": true
+            }
+          }
+        },
+        {
+          "trial": "alpha: all fixed but \"retry_after rounds the wait down instead of up (and must count ticks before the bucket's last tick)\"",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 2143,
+          "metrics": {
+            "passed": 5,
+            "total": 6,
+            "services": {
+              "alpha": false,
+              "beta": true,
+              "gamma": true,
+              "delta": true,
+              "epsilon": true,
+              "zeta": true
+            }
+          }
+        },
+        {
+          "trial": "beta: all fixed but \"rounds half to even instead of half up\"",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 2338,
+          "metrics": {
+            "passed": 5,
+            "total": 6,
+            "services": {
+              "alpha": true,
+              "beta": false,
+              "gamma": true,
+              "delta": true,
+              "epsilon": true,
+              "zeta": true
+            }
+          }
+        },
+        {
+          "trial": "beta: all fixed but \"tax is charged before the line's discount\"",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 2049,
+          "metrics": {
+            "passed": 5,
+            "total": 6,
+            "services": {
+              "alpha": true,
+              "beta": false,
+              "gamma": true,
+              "delta": true,
+              "epsilon": true,
+              "zeta": true
+            }
+          }
+        },
+        {
+          "trial": "beta: all fixed but \"leftover cents go to the smallest remainders first\"",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 2210,
+          "metrics": {
+            "passed": 5,
+            "total": 6,
+            "services": {
+              "alpha": true,
+              "beta": false,
+              "gamma": true,
+              "delta": true,
+              "epsilon": true,
+              "zeta": true
+            }
+          }
+        },
+        {
+          "trial": "gamma: all fixed but \"weeks start on Sunday instead of Monday\"",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 2170,
+          "metrics": {
+            "passed": 5,
+            "total": 6,
+            "services": {
+              "alpha": true,
+              "beta": true,
+              "gamma": false,
+              "delta": true,
+              "epsilon": true,
+              "zeta": true
+            }
+          }
+        },
+        {
+          "trial": "gamma: all fixed but \"a result in December becomes month 0\"",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 2199,
+          "metrics": {
+            "passed": 5,
+            "total": 6,
+            "services": {
+              "alpha": true,
+              "beta": true,
+              "gamma": false,
+              "delta": true,
+              "epsilon": true,
+              "zeta": true
+            }
+          }
+        },
+        {
+          "trial": "gamma: all fixed but \"kind names are case-sensitive\"",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 2279,
+          "metrics": {
+            "passed": 5,
+            "total": 6,
+            "services": {
+              "alpha": true,
+              "beta": true,
+              "gamma": false,
+              "delta": true,
+              "epsilon": true,
+              "zeta": true
+            }
+          }
+        },
+        {
+          "trial": "delta: all fixed but \"variable names are split on single underscores\"",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 2242,
+          "metrics": {
+            "passed": 5,
+            "total": 6,
+            "services": {
+              "alpha": true,
+              "beta": true,
+              "gamma": true,
+              "delta": false,
+              "epsilon": true,
+              "zeta": true
+            }
+          }
+        },
+        {
+          "trial": "delta: all fixed but \"merging into a nested dict modifies the base input\"",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 2289,
+          "metrics": {
+            "passed": 5,
+            "total": 6,
+            "services": {
+              "alpha": true,
+              "beta": true,
+              "gamma": true,
+              "delta": false,
+              "epsilon": true,
+              "zeta": true
+            }
+          }
+        },
+        {
+          "trial": "delta: all fixed but \"negative integers stay strings\"",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 2228,
+          "metrics": {
+            "passed": 5,
+            "total": 6,
+            "services": {
+              "alpha": true,
+              "beta": true,
+              "gamma": true,
+              "delta": false,
+              "epsilon": true,
+              "zeta": true
+            }
+          }
+        },
+        {
+          "trial": "epsilon: all fixed but \"an entry is still live at its expiry tick\"",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 1924,
+          "metrics": {
+            "passed": 5,
+            "total": 6,
+            "services": {
+              "alpha": true,
+              "beta": true,
+              "gamma": true,
+              "delta": true,
+              "epsilon": false,
+              "zeta": true
+            }
+          }
+        },
+        {
+          "trial": "epsilon: all fixed but \"rewriting a key keeps its old recency\"",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 1940,
+          "metrics": {
+            "passed": 5,
+            "total": 6,
+            "services": {
+              "alpha": true,
+              "beta": true,
+              "gamma": true,
+              "delta": true,
+              "epsilon": false,
+              "zeta": true
+            }
+          }
+        },
+        {
+          "trial": "epsilon: all fixed but \"a full cache evicts before removing expired entries\"",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 2048,
+          "metrics": {
+            "passed": 5,
+            "total": 6,
+            "services": {
+              "alpha": true,
+              "beta": true,
+              "gamma": true,
+              "delta": true,
+              "epsilon": false,
+              "zeta": true
+            }
+          }
+        },
+        {
+          "trial": "zeta: all fixed but \"the last duplicate is kept instead of the first\"",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 2174,
+          "metrics": {
+            "passed": 5,
+            "total": 6,
+            "services": {
+              "alpha": true,
+              "beta": true,
+              "gamma": true,
+              "delta": true,
+              "epsilon": true,
+              "zeta": false
+            }
+          }
+        },
+        {
+          "trial": "zeta: all fixed but \"accounting negatives in parentheses come out positive\"",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 1976,
+          "metrics": {
+            "passed": 5,
+            "total": 6,
+            "services": {
+              "alpha": true,
+              "beta": true,
+              "gamma": true,
+              "delta": true,
+              "epsilon": true,
+              "zeta": false
+            }
+          }
+        },
+        {
+          "trial": "zeta: all fixed but \"a leading byte order mark ends up in the first header name\"",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 2266,
+          "metrics": {
+            "passed": 5,
+            "total": 6,
+            "services": {
+              "alpha": true,
+              "beta": true,
+              "gamma": true,
+              "delta": true,
+              "epsilon": true,
+              "zeta": false
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

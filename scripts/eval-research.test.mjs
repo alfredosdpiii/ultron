@@ -19,7 +19,7 @@ const fullComparison = (taskSet) => ({ taskSet, summary: { gate: [{ check: "pass
 test("the release gate reads only full comparisons of the default set", () => {
 	assert.equal(isGatedComparison(fullComparison(undefined)), true);
 	assert.equal(isGatedComparison(fullComparison("default")), true);
-	for (const taskSet of ["hard", "judged", "parallel", "research"]) assert.equal(isGatedComparison(fullComparison(taskSet)), false, taskSet);
+	for (const taskSet of ["hard", "judged", "parallel", "research", "delegation"]) assert.equal(isGatedComparison(fullComparison(taskSet)), false, taskSet);
 	assert.equal(isGatedComparison({ taskSet: "default", summary: { gate: [] } }), false);
 	assert.equal(isGatedComparison({ taskSet: "research", passed: true, results: [] }), false);
 });
