@@ -172,7 +172,7 @@ On native Windows, `app.suspend` has no default because Windows terminals do not
 | `app.rlm.graph.details` | `enter` | RLM graph: show or hide the selected node's details |
 | `app.rlm.graph.collapse` | `c`, `space` | RLM graph: collapse or expand the subtree (on a leaf, fold its parent) |
 | `app.rlm.graph.exit` | `escape`, `q` | RLM graph: leave the focus view |
-| `app.rlm.pane` | `alt+w` | Open the RLM DAG side pane beside the chat (terminals of 140 columns or more; narrower, the full-screen graph opens); pressed again, move the focus between the pane and the chat (native TUI; same as `/rlm pane`). `alt+d` stays the editor's delete-word-forward |
+| `app.rlm.pane` | `alt+w` | Open the RLM DAG side pane beside the chat (terminals of 120 columns or more; narrower, the full-screen graph opens); pressed again, move the focus between the pane and the chat (native TUI; same as `/rlm pane`). `alt+d` stays the editor's delete-word-forward |
 | `app.rlm.pane.next` | `tab`, `n` | DAG pane: select the next node |
 | `app.rlm.pane.prev` | `shift+tab`, `p` | DAG pane: select the previous node |
 | `app.rlm.pane.fold` | `space`, `enter` | DAG pane: fold or unfold the selected node's box |

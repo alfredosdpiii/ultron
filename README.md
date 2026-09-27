@@ -77,7 +77,7 @@ lookup, so unrelated memories never leak into answers.
 - **The RLM graph** draws the run as a live tree: turn, cells, tool calls, sub-agents, `rlm.map` fan-outs with
   progress bars, workflows and jobs, with budget gauges and a kernel strip. Ctrl+R docks it and Alt+G opens it
   full screen, where you can step into any node and see its input, result and the Python call that fetches it.
-- **The DAG pane** (Alt+W on terminals 140 columns or wider) splits the screen: sub-agents and workflow nodes as
+- **The DAG pane** (Alt+W on terminals 120 columns or wider) splits the screen: sub-agents and workflow nodes as
   boxes in waves, with arrows to the nodes that depend on them, and cards showing each node's model, latest text, time,
   turns and tool calls. While nodes run, a wave summary sits above the input.
 - **Jev's presence**: a footer indicator that pulses when Jev decides, one-line notes in the transcript showing what

@@ -192,7 +192,7 @@ const RLM_MAX_ASSESSED = 8;
 /** Frame summaries fetched per poll: enough to fan out a wide `rlm.map` (the worker keeps at most 200). */
 const RLM_FRAME_LIMIT = 200;
 /** The DAG side pane opens beside the chat from this terminal width; narrower, the full-screen graph opens. */
-export const DAG_PANE_MIN_COLUMNS = 140;
+export const DAG_PANE_MIN_COLUMNS = 120;
 /** The pane takes about 40% of the width, at least this many columns (border excluded). */
 const DAG_PANE_MIN_WIDTH = 44;
 const DAG_PANE_RATIO = 0.4;
