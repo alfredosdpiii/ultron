@@ -67,6 +67,7 @@ from linediff import (  # noqa: E402
     format_hunks,
     format_unified,
     make_hunks,
+    offsets,
     parse_unified,
     reverse_hunks,
 )
@@ -217,19 +218,20 @@ def stage_reverse(rng):
 
 
 def expected_apply(lines, hunks):
-    """Brute-force model of the SPEC's placement rule."""
-    out, floor, offset = [], 0, 0
+    """Brute-force model of the SPEC's placement rule: (new lines, offsets), or the PatchError it must raise."""
+    out, floor, offset, moved = [], 0, 0, []
     for index, hunk in enumerate(hunks):
         old = [text for tag, text in hunk.lines if tag != "+"]
         anchor = hunk.old_start - 1 if hunk.old_count else hunk.old_start
         want = anchor + offset
         found = [p for p in range(floor, len(lines) - len(old) + 1) if lines[p:p + len(old)] == old]
         if not found:
-            return f"PatchError at hunk {index}"
+            return f"PatchError at hunk {index}", f"PatchError at hunk {index}"
         pos = min(found, key=lambda p: (abs(p - want), p))
         out += lines[floor:pos] + [text for tag, text in hunk.lines if tag != "-"]
         floor, offset = pos + len(old), pos - anchor
-    return out + lines[floor:]
+        moved.append(offset)
+    return out + lines[floor:], moved
 
 
 def stage_offset(rng):
@@ -237,24 +239,32 @@ def stage_offset(rng):
     for seed, r in cases(rng, 400):
         a = random_file(r, words, 2, 14)
         b = mutate(r, a, words)
-        context = r.randint(1, 2)
-        hunks = make_hunks(a, b, context)
         target = list(a)
         for _ in range(r.randint(1, 3)):
             if r.random() < 0.5 and target:
                 del target[r.randrange(len(target))]
             else:
                 target.insert(r.randint(0, len(target)), r.choice(words))
-        want = expected_apply(target, hunks)
-        try:
-            got = apply_hunks(target, hunks)
-        except PatchError as error:
-            got = f"PatchError at hunk {error.index}"
-        if got != want:
-            raise StageFailure(
-                f"seed {seed}: hunks of make_hunks(a, b, context={context}) applied to a moved copy of a\n"
-                f"  a={a!r}\n  b={b!r}\n  copy={target!r}\n  hunks={[h.header() for h in hunks]}\n  got={got!r}\n  expected={want!r}"
+        for context in (2, 1):
+            hunks = make_hunks(a, b, context)
+            want, want_offsets = expected_apply(target, hunks)
+            where = (
+                f"seed {seed}: hunks of make_hunks(a, b, context={context}) applied to a moved copy of a"
+                f"{' (after the context=2 hunks were applied to the same copy)' if context == 1 else ''}\n"
+                f"  a={a!r}\n  b={b!r}\n  copy={target!r}\n  hunks={[h.header() for h in hunks]}"
             )
+            try:
+                got = apply_hunks(target, hunks)
+            except PatchError as error:
+                got = f"PatchError at hunk {error.index}"
+            if got != want:
+                raise StageFailure(f"{where}\n  apply_hunks: got={got!r}\n  expected={want!r}")
+            try:
+                got = offsets(target, hunks)
+            except PatchError as error:
+                got = f"PatchError at hunk {error.index}"
+            if got != want_offsets:
+                raise StageFailure(f"{where}\n  offsets: got={got!r}\n  expected={want_offsets!r}")
 
 
 STAGES = [

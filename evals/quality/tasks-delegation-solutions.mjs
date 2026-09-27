@@ -152,7 +152,13 @@ export const solutions = {
  *
  * Measured (2026-09-27, gpt-6-sol, one trial each, rebuilt fixture): Ultron passed in 205.7 s with 7 subagents (one
  * per service, one grandchild); Pi batch-fixed what it could read, debugged the rest one service per turn and
- * finished at 326.7 s, over budget, failing calendar. Pilot and details: docs/implementation-status.md (Evals).
+ * finished at 326.7 s, over budget, failing calendar (its id()-keyed stage-5 cache, which Pi's harness runs did not
+ * always expose). Patch's and calendar's stage-5 bugs were then replaced (2026-09-28) with ones every harness run
+ * exposes: patch's locate trims the cached line index's own position list in place (shown by applying the
+ * context-2 and then the context-1 hunks of one change to the same moved copy, a check stage 5 gained), and
+ * calendar's per-day common-free cache stores only the part of the day before the first asking window's end.
+ * Self-check after the change: parallel reference 148.2 s, sequential floor 405.7 s. Pilot and details:
+ * docs/implementation-status.md (Evals).
  */
 export const DEEP = { turnSeconds: 10, turnsPerLayer: 2, orchestrationTurns: 2 };
 
