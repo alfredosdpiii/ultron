@@ -127,7 +127,10 @@ describe("sub-agent spend counts against the root's limits", () => {
 			const spent = provider.requests.reduce((sum, request) => sum + reportedTokens(request), 0) / 1e6;
 			expect(spent).toBeGreaterThanOrEqual(0.02);
 			expect(spent - reportedTokens(provider.requests.at(-1)!) / 1e6).toBeLessThan(0.02);
-			expect(child.length).toBeLessThan(10);
+			// The guarantee is the two lines above: nothing is sent once the cap is crossed. How many requests it takes
+			// to get there depends on request sizes, which vary with timing (runtime hints, elapsed times), so the
+			// count only has a loose bound, as in the token-limit test.
+			expect(child.length).toBeLessThan(20);
 			expect(toolResults(events)).toMatch(
 				/'error': 'Usage cost cap reached for root turn:[^:]+: spent \$[\d.]+ of \$0\.02/,
 			);
