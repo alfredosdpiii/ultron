@@ -1,0 +1,4031 @@
+{
+  "task": "incident-root-causes",
+  "generatorModel": "glm-5.3-flash",
+  "validatorModel": "gpt-6-luna",
+  "corpus": {
+    "reports": 400,
+    "bytes": 2140737,
+    "truePositives": 25,
+    "noKeywordTruePositives": 10,
+    "decoys": 40,
+    "other": 335
+  },
+  "stats": {
+    "httpCalls": 815,
+    "httpFailures": 7,
+    "generationCalls": 406,
+    "validationCalls": 400,
+    "promptTokens": 774928,
+    "completionTokens": 2544359,
+    "regenerations": 3,
+    "regenerationReasons": {
+      "programmatic: id missing": 2,
+      "programmatic: length N": 1
+    },
+    "dropped": [],
+    "cachedReused": 157,
+    "modelCalls": 815
+  },
+  "labels": {
+    "INC-1000": {
+      "label": "other",
+      "true_cause": "a misrouted network ACL change blocking the database subnet",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "vault-sidecar",
+      "style": "table",
+      "attempts": 1,
+      "validator_root_cause": "A scheduled netops policy sync mis-associated the batch-tier deny ACL (nacl-0f31a9c2) with the production database subnet, silently dropping all TCP 5432 traffic and breaking vault-sidecar secret refreshes."
+    },
+    "INC-1075": {
+      "label": "decoy",
+      "true_cause": "decoy:revoked_not_expired",
+      "decoy_type": "revoked_not_expired",
+      "no_keyword": false,
+      "service": "edge-proxy",
+      "style": "five_whys",
+      "attempts": 1,
+      "validator_root_cause": "The CA revoked the edge certificate (serial 04:9A:2C:1F) mid-validity following an intermediate key-compromise/mis-issuance event, and the team lacked revocation-status monitoring and a mid-life replacement runbook, so clients rejected the still-valid-until-2025-03-30 certificate during OCSP checks."
+    },
+    "INC-1144": {
+      "label": "tp",
+      "true_cause": "expired_certificate",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "loyalty-points",
+      "style": "table",
+      "attempts": 1,
+      "validator_root_cause": "The leaf TLS certificate for api.loyalty.lumendata.io served by both edge hosts (lp-edge-prod-01/02) genuinely expired at 2024-10-04T00:47:39Z because its manual yearly renewal was never reassigned after the sole owner left the company, and the expired certificate remained in use until replaced."
+    },
+    "INC-1166": {
+      "label": "other",
+      "true_cause": "cache entries with a TTL misconfigured to expire every second",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "search-indexer",
+      "style": "formal",
+      "attempts": 1,
+      "validator_root_cause": "A configuration migration set the document-metadata cache TTL to one second, causing cache misses that overwhelmed the primary datastore and degraded indexing."
+    },
+    "INC-1170": {
+      "label": "other",
+      "true_cause": "a split-brain in the Redis sentinel cluster",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "invoice-render",
+      "style": "exec_email",
+      "attempts": 1,
+      "validator_root_cause": "A zone link flap partitioned the Redis sentinel cluster, and due to misconfigured sentinel quorum (2 instead of 3) and min-replicas-to-write=0 config drift, two Redis nodes simultaneously acted as primary (split-brain), degrading invoice-render and dependent services."
+    },
+    "INC-1173": {
+      "label": "other",
+      "true_cause": "an integer overflow in an ID sequence",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "shipping-quotes",
+      "style": "five_whys",
+      "attempts": 1,
+      "validator_root_cause": "The REST facade truncated 64-bit quote IDs to signed 32-bit integers, causing them to wrap negative after the sequence crossed the 32-bit boundary."
+    },
+    "INC-1213": {
+      "label": "tp",
+      "true_cause": "expired_certificate",
+      "decoy_type": null,
+      "no_keyword": true,
+      "service": "status-page",
+      "style": "nonnative",
+      "attempts": 1,
+      "validator_root_cause": "The status-page X.509 leaf certificate (alias statuspage-tls) reached its notAfter time of 2024-05-22 06:41:07 UTC and remained in use because its renewal existed only as a calendar reminder that was lost in a mailbox migration, causing inbound TLS handshakes to be rejected."
+    },
+    "INC-1233": {
+      "label": "other",
+      "true_cause": "a rate limit on a third-party API being exceeded after a retry storm",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "checkout-gateway",
+      "style": "ticket",
+      "attempts": 1,
+      "validator_root_cause": "checkout-gateway's new retry behavior had no backoff or jitter, amplifying requests beyond PayPath's quota and triggering throttling."
+    },
+    "INC-1259": {
+      "label": "other",
+      "true_cause": "a GC pause storm after heap size was halved",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "tenant-admin",
+      "style": "formal",
+      "attempts": 1,
+      "validator_root_cause": "Halving the tenant-admin JVM heap below its peak working-set size caused sustained allocation failures and long Full GC pauses, triggering readiness failures and elevated latency and 5xx errors."
+    },
+    "INC-1263": {
+      "label": "other",
+      "true_cause": "a schema migration that locked a large table",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "chat-relay",
+      "style": "narrative",
+      "attempts": 1,
+      "validator_root_cause": "A long-running ETL transaction blocked an ALTER TABLE migration, creating a lock queue that saturated the connection pool and degraded message delivery."
+    },
+    "INC-1269": {
+      "label": "other",
+      "true_cause": "thread pool starvation from a blocking call in an async handler",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "feature-flags",
+      "style": "formal",
+      "attempts": 1,
+      "validator_root_cause": "A synchronous JDBC audit write introduced in v2.14.0 blocked feature-flag worker threads during audit database maintenance, saturating the worker pool and causing cascading timeouts."
+    },
+    "INC-1273": {
+      "label": "other",
+      "true_cause": "a runaway cron job saturating the database with full table scans",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "doc-signer",
+      "style": "exec_email",
+      "attempts": 1,
+      "validator_root_cause": "A scheduled archiving job was accidentally changed to run every 15 minutes, repeatedly full-scanning a large database table and saturating production database IOPS."
+    },
+    "INC-1324": {
+      "label": "other",
+      "true_cause": "a primary database failover that left replicas lagging",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "metrics-ingest",
+      "style": "handoff",
+      "attempts": 1,
+      "validator_root_cause": "A PostgreSQL failover exposed lagging read replicas because the old primary’s WAL archiver had been falling behind, causing stale reads and ingest backpressure."
+    },
+    "INC-1354": {
+      "label": "other",
+      "true_cause": "a Kerberos ticket-granting ticket that expired on a batch host",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "shipping-quotes",
+      "style": "exec_email",
+      "attempts": 1,
+      "validator_root_cause": "The Kerberos ticket-granting ticket on quote-batch-eu-02 expired after its renewal job failed, preventing carrier pricing-feed calls and causing quote failures; it was not an X.509 certificate expiry."
+    },
+    "INC-1364": {
+      "label": "other",
+      "true_cause": "an expired software license key for the search engine cluster",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "webhook-fanout",
+      "style": "exec_email",
+      "attempts": 1,
+      "validator_root_cause": "The web-qu search cluster’s license expired after auto-renewal failed, causing it to refuse route lookups and delaying webhook deliveries."
+    },
+    "INC-1373": {
+      "label": "other",
+      "true_cause": "a primary database failover that left replicas lagging",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "notif-dispatch",
+      "style": "exec_email",
+      "attempts": 1,
+      "validator_root_cause": "Automated database failover left read replicas lagging, causing stale reads, notification delays, and duplicate sends."
+    },
+    "INC-1418": {
+      "label": "other",
+      "true_cause": "an expired domain registration for a marketing domain that also served an API redirect",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "audit-log",
+      "style": "ticket",
+      "attempts": 1,
+      "validator_root_cause": "The fernwood.io domain registration lapsed, causing the registrar to suspend DNS resolution for go.fernwood.io, breaking export shortlinks and reconciler callbacks."
+    },
+    "INC-1421": {
+      "label": "decoy",
+      "true_cause": "decoy:rotation_ruled_out",
+      "decoy_type": "rotation_ruled_out",
+      "no_keyword": false,
+      "service": "chat-relay",
+      "style": "five_whys",
+      "attempts": 1,
+      "validator_root_cause": "A schema migration's ALTER TABLE on the 4.1B-row chat.messages table queued an unbounded ACCESS EXCLUSIVE lock request that blocked all new queries, exhausting chat-relay's 200-connection PostgreSQL pool."
+    },
+    "INC-1435": {
+      "label": "other",
+      "true_cause": "a disk filling up with unrotated debug logs",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "cdn-origin",
+      "style": "handoff",
+      "attempts": 1,
+      "validator_root_cause": "The 4.19.2 canary shipped a rewritten logrotate manifest that omitted the request-body tracing debug sink, allowing a 172 GB debug log to fill /var on origin nodes and drive 5xx errors on uncached routes."
+    },
+    "INC-1471": {
+      "label": "other",
+      "true_cause": "a service account password that expired under a 90-day rotation policy",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "payout-scheduler",
+      "style": "narrative",
+      "attempts": 1,
+      "validator_root_cause": "The shared service-account password expired because the rotation job’s static API token had expired and prevented it from renewing the password."
+    },
+    "INC-1482": {
+      "label": "other",
+      "true_cause": "an exhausted IP address pool in the VPC subnet",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "search-indexer",
+      "style": "five_whys",
+      "attempts": 1,
+      "validator_root_cause": "The primary root cause was exhaustion of the shared subnet's free IP addresses (10.42.16.0/20), driven by a feature-flags canary scaling replicas and export-worker's aggressive fixed-backoff retry churn converging on one unmonitored address pool, which prevented search-indexer pods from scheduling."
+    },
+    "INC-1486": {
+      "label": "other",
+      "true_cause": "a Kerberos ticket-granting ticket that expired on a batch host",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "export-worker",
+      "style": "chatlog",
+      "attempts": 1,
+      "validator_root_cause": "The Kerberos ticket for svc_export on batch-use1-04 expired after the automated renewal timer silently broke (status=203/EXEC) when an 08/17 automation change moved krb-renew.sh without updating the timer unit's script path, causing 100% export-worker authentication failures."
+    },
+    "INC-1496": {
+      "label": "other",
+      "true_cause": "a GC pause storm after heap size was halved",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "fraud-scorer",
+      "style": "terse",
+      "attempts": 1,
+      "validator_root_cause": "A cost-trim config change (pr-3121) halved the JVM heap from 16Gi to 8Gi, which could not fit the live set and put fraud-scorer into a continuous G1 full-GC stop-the-world treadmill, freezing pods and causing 504s."
+    },
+    "INC-1524": {
+      "label": "decoy",
+      "true_cause": "decoy:past_incident_action_items",
+      "decoy_type": "past_incident_action_items",
+      "no_keyword": false,
+      "service": "notif-dispatch",
+      "style": "narrative",
+      "attempts": 1,
+      "validator_root_cause": "The cloud provider's node pool upgrade evicted notif-dispatch, payout-scheduler, and image-resizer pods that had no PodDisruptionBudgets, collapsing capacity faster than replacements could start; TLS certificates were checked early and confirmed valid (notAfter Mar 2027, mTLS pair also valid), expli"
+    },
+    "INC-1565": {
+      "label": "other",
+      "true_cause": "a database connection pool exhaustion after a traffic spike",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "recommendations",
+      "style": "exec_email",
+      "attempts": 1,
+      "validator_root_cause": "An unexpectedly early marketing email drove a traffic spike that exhausted the recommendations service’s fixed database connection pool."
+    },
+    "INC-1572": {
+      "label": "other",
+      "true_cause": "an exhausted IP address pool in the VPC subnet",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "mobile-bff",
+      "style": "handoff",
+      "attempts": 1,
+      "validator_root_cause": "A failing ENI-sweeper left about 180 orphaned ENIs, exhausting subnet IP addresses and preventing mobile-bff pods from scaling or being replaced."
+    },
+    "INC-1602": {
+      "label": "other",
+      "true_cause": "a bad configuration push that set a timeout to 0",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "session-store",
+      "style": "handoff",
+      "attempts": 1,
+      "validator_root_cause": "A production config push rendered the session lease TTL as 0, causing newly created leases to expire immediately and session validation to reject requests."
+    },
+    "INC-1635": {
+      "label": "other",
+      "true_cause": "a schema migration that locked a large table",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "identity-graph",
+      "style": "handoff",
+      "attempts": 1,
+      "validator_root_cause": "A schema migration (ALTER TABLE identities ADD COLUMN ... NOT NULL DEFAULT plus a unique index build) acquired an ACCESS EXCLUSIVE lock on a ~1.4B-row Postgres table, blocking all reads and writes behind a lock queue until responders terminated the backend."
+    },
+    "INC-1644": {
+      "label": "decoy",
+      "true_cause": "decoy:expiry_alert_false_alarm",
+      "decoy_type": "expiry_alert_false_alarm",
+      "no_keyword": false,
+      "service": "carrier-sync",
+      "style": "narrative",
+      "attempts": 1,
+      "validator_root_cause": "A node pool upgrade drained nodes hosting carrier-sync without a PodDisruptionBudget, simultaneously evicting up to five of twelve replicas per zone and triggering cascading 5xx errors, retries, and backlogs."
+    },
+    "INC-1648": {
+      "label": "other",
+      "true_cause": "a cache stampede after a cache cluster restart",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "sso-bridge",
+      "style": "five_whys",
+      "attempts": 1,
+      "validator_root_cause": "A cache-shard restart evicted the session cache, and the uncoordinated cache refill overwhelmed the Postgres connection pool because production single-flight protection had not been enabled."
+    },
+    "INC-1656": {
+      "label": "decoy",
+      "true_cause": "decoy:renewal_missing_intermediate",
+      "decoy_type": "renewal_missing_intermediate",
+      "no_keyword": false,
+      "service": "shipping-quotes",
+      "style": "ticket",
+      "attempts": 1,
+      "validator_root_cause": "The TLS certificate renewal job deployed only the leaf certificate and skipped staging the intermediate chain file due to a manifest mismatch, causing gateways to serve a chain of length 1 that clients unable to fetch intermediates could not validate."
+    },
+    "INC-1670": {
+      "label": "other",
+      "true_cause": "a leap-second-like timestamp bug in a scheduler",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "tax-calculator",
+      "style": "five_whys",
+      "attempts": 1,
+      "validator_root_cause": "A bug in taiclock 2.3.1 incorrectly activated the leap-second smear guard on March 9, causing monotonicity violations that stalled the scheduler and prevented rate-table refreshes."
+    },
+    "INC-1684": {
+      "label": "other",
+      "true_cause": "a corrupted container image layer in the registry",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "webhook-fanout",
+      "style": "five_whys",
+      "attempts": 1,
+      "validator_root_cause": "A truncated container image layer blob (corrupted during an interrupted registry push accepted without checksum verification) was pulled by webhook-fanout pods, causing crash-loops that collapsed delivery capacity and degraded webhook delivery."
+    },
+    "INC-1783": {
+      "label": "other",
+      "true_cause": "a primary database failover that left replicas lagging",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "webhook-fanout",
+      "style": "ticket",
+      "attempts": 1,
+      "validator_root_cause": "An orders-database primary failover caused prolonged read-replica lag, starving webhook-fanout workers of fresh routing data and triggering immediate retries that amplified the backlog."
+    },
+    "INC-1785": {
+      "label": "other",
+      "true_cause": "a bad configuration push that set a timeout to 0",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "fraud-scorer",
+      "style": "exec_email",
+      "attempts": 1,
+      "validator_root_cause": "A configuration push set the fraud-scorer upstream timeout to zero, causing calls to tax-calculator to fail before being sent."
+    },
+    "INC-1787": {
+      "label": "other",
+      "true_cause": "an upstream payment provider outage",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "kyc-verifier",
+      "style": "table",
+      "attempts": 1,
+      "validator_root_cause": "PayNordic's identity-check API was unavailable because of a failure in its token-issuance layer, while our missing circuit breaker and untested fallback amplified the outage."
+    },
+    "INC-1788": {
+      "label": "other",
+      "true_cause": "a memory leak in a new release causing repeated OOM kills",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "fraud-scorer",
+      "style": "handoff",
+      "attempts": 1,
+      "validator_root_cause": "v2.14.0's feature cache lacked working eviction, causing unbounded memory growth and pod OOM kills."
+    },
+    "INC-1797": {
+      "label": "other",
+      "true_cause": "thread pool starvation from a blocking call in an async handler",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "identity-graph",
+      "style": "exec_email",
+      "attempts": 1,
+      "validator_root_cause": "A release introduced a synchronous feature-store lookup inside an async request handler, starving the identity-graph worker pool under load."
+    },
+    "INC-1839": {
+      "label": "other",
+      "true_cause": "cache entries with a TTL misconfigured to expire every second",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "recommendations",
+      "style": "exec_email",
+      "attempts": 1,
+      "validator_root_cause": "A configuration change set the recommendation cache TTL to one second instead of 3600 seconds, causing near-total cache misses and overloading the cache tier and feature store."
+    },
+    "INC-1842": {
+      "label": "other",
+      "true_cause": "a cache stampede after a cache cluster restart",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "status-page",
+      "style": "exec_email",
+      "attempts": 1,
+      "validator_root_cause": "A planned restart of all Redis cache nodes cleared the keyspace because AOF persistence was disabled, triggering a cache-miss stampede that saturated the origin database connection pool."
+    },
+    "INC-1923": {
+      "label": "other",
+      "true_cause": "a corrupted container image layer in the registry",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "sftp-drop",
+      "style": "table",
+      "attempts": 1,
+      "validator_root_cause": "A replication job copied a corrupted image layer to the secondary registry, causing new pods to fail when pulling and starting the image."
+    },
+    "INC-1926": {
+      "label": "other",
+      "true_cause": "a runaway cron job saturating the database with full table scans",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "sftp-drop",
+      "style": "terse",
+      "attempts": 1,
+      "validator_root_cause": "A recurring cron job ran overlapping full-table scans because the new `batch_id` column lacked an index, saturating the database and disrupting dependent services."
+    },
+    "INC-1939": {
+      "label": "other",
+      "true_cause": "a runaway cron job saturating the database with full table scans",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "carrier-sync",
+      "style": "handoff",
+      "attempts": 1,
+      "validator_root_cause": "A redeploy wiped the rollup job’s file-based lock, causing a duplicate run to scan shipments from the beginning without the missing index and saturate the primary database."
+    },
+    "INC-1958": {
+      "label": "other",
+      "true_cause": "a dependency upgrade that changed JSON serialization of decimals",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "checkout-gateway",
+      "style": "terse",
+      "attempts": 1,
+      "validator_root_cause": "A serialize library upgrade changed decimal encoding, causing checkout-gateway to send money amounts with excessive decimal precision that downstream APIs rejected."
+    },
+    "INC-1975": {
+      "label": "other",
+      "true_cause": "a split-brain in the Redis sentinel cluster",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "partner-webhooks",
+      "style": "table",
+      "attempts": 1,
+      "validator_root_cause": "A network flap on aggregation switch svc-agg-sw-03 partitioned the Redis sentinel fleet and isolated the cache master, producing a split-brain in which the old master kept accepting writes (min-replicas-to-write=1 satisfied by a stale replica link) and dedupe state diverged across two masters."
+    },
+    "INC-1976": {
+      "label": "other",
+      "true_cause": "a clock drift that broke token signature timestamps",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "media-transcoder",
+      "style": "terse",
+      "attempts": 1,
+      "validator_root_cause": "A firewall change blocked NTP for the NYC node pool, causing clock drift that made token validators reject tokens as not yet valid."
+    },
+    "INC-2004": {
+      "label": "other",
+      "true_cause": "an upstream payment provider outage",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "chat-relay",
+      "style": "formal",
+      "attempts": 1,
+      "validator_root_cause": "NorthPay’s entitlement verification API outage caused synchronous entitlement checks to time out and chat-relay to reject premium message sends."
+    },
+    "INC-2034": {
+      "label": "decoy",
+      "true_cause": "decoy:tls_version_disabled",
+      "decoy_type": "tls_version_disabled",
+      "no_keyword": false,
+      "service": "image-resizer",
+      "style": "nonnative",
+      "attempts": 1,
+      "validator_root_cause": "A security hardening change (CHG-88412) disabled TLS 1.0/1.1 on the edge tier, causing handshake failures for legacy partner SDKs that could only negotiate those protocol versions."
+    },
+    "INC-2043": {
+      "label": "other",
+      "true_cause": "a clock drift that broke token signature timestamps",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "ledger-api",
+      "style": "handoff",
+      "attempts": 1,
+      "validator_root_cause": "Clock skew on ledger-api hosts (chronyd unable to reach NTP after the Apr-19 pool config change, CHG-8812) caused valid JWTs to be rejected as not-yet-valid by the 60-second skew check."
+    },
+    "INC-2081": {
+      "label": "decoy",
+      "true_cause": "decoy:revoked_not_expired",
+      "decoy_type": "revoked_not_expired",
+      "no_keyword": false,
+      "service": "auth-broker",
+      "style": "table",
+      "attempts": 1,
+      "validator_root_cause": "The issuing CA revoked auth-broker's serving certificate mid-validity as part of a mis-issuance batch, and clients enforcing OCSP validation rejected handshakes, while the team's lifecycle tooling only monitored expiry and had no detection or response path for revocation."
+    },
+    "INC-2087": {
+      "label": "other",
+      "true_cause": "a Kerberos ticket-granting ticket that expired on a batch host",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "cluster-ingress",
+      "style": "terse",
+      "attempts": 1,
+      "validator_root_cause": "An expired Kerberos TGT on batch host etl-batch-07 triggered a shared-principal (`svc_warehouse`) retry storm, causing the KDC policer to throttle that principal and break SPNEGO auth for warehouse-scanner and mq-bridge; TLS certificates were explicitly ruled out early."
+    },
+    "INC-2132": {
+      "label": "other",
+      "true_cause": "an upstream payment provider outage",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "edge-proxy",
+      "style": "formal",
+      "attempts": 1,
+      "validator_root_cause": "VantaPay’s authorization API failure caused edge-proxy retries to exhaust shared connection pools and degrade other routes."
+    },
+    "INC-2140": {
+      "label": "decoy",
+      "true_cause": "decoy:rotation_ruled_out",
+      "decoy_type": "rotation_ruled_out",
+      "no_keyword": false,
+      "service": "mq-bridge",
+      "style": "table",
+      "attempts": 1,
+      "validator_root_cause": "A 4x traffic spike from a 13:00 UTC campaign batch saturated the mq-bridge database connection pool (pinned at 40/40 connections), causing acquire timeouts and consumer nacks — the morning TLS certificate rotation was explicitly verified as valid (notAfter Sep 2025) and ruled out."
+    },
+    "INC-2150": {
+      "label": "other",
+      "true_cause": "a Kerberos ticket-granting ticket that expired on a batch host",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "carrier-sync",
+      "style": "nonnative",
+      "attempts": 1,
+      "validator_root_cause": "The carrier-sync service account’s Kerberos ticket-granting ticket expired after its renewal process failed to survive a host reboot; this was not an expired TLS/SSL certificate."
+    },
+    "INC-2201": {
+      "label": "other",
+      "true_cause": "a split-brain in the Redis sentinel cluster",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "loyalty-points",
+      "style": "table",
+      "attempts": 1,
+      "validator_root_cause": "A flapping cross-rack network uplink triggered a Redis Sentinel split-brain with two simultaneously writable masters, enabled by a Feb 19 config regression that reverted sentinel quorum to 1 and left min-replicas-to-write at 0."
+    },
+    "INC-2228": {
+      "label": "other",
+      "true_cause": "a noisy neighbour exhausting IOPS on shared storage",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "tenant-admin",
+      "style": "chatlog",
+      "attempts": 1,
+      "validator_root_cause": "A retried analytics batch job on batch-worker-114 ran unthrottled (its QoS policy was not reapplied), saturating the shared storage volume vol-tenant-data-07 and causing database write timeouts and elevated latency across dependent services."
+    },
+    "INC-2251": {
+      "label": "other",
+      "true_cause": "thread pool starvation from a blocking call in an async handler",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "billing-exporter",
+      "style": "ticket",
+      "attempts": 1,
+      "validator_root_cause": "billing-exporter v4.12.0 introduced a blocking synchronous signing call into the async export handler, exhausting the shared thread pool and stalling exports."
+    },
+    "INC-2273": {
+      "label": "other",
+      "true_cause": "a database connection pool exhaustion after a traffic spike",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "vault-sidecar",
+      "style": "narrative",
+      "attempts": 1,
+      "validator_root_cause": "A sixfold traffic spike from the storefront config push, combined with transactions held open during slow upstream calls, exhausted the shared database connection pool and caused vault-sidecar timeouts and downstream errors."
+    },
+    "INC-2294": {
+      "label": "other",
+      "true_cause": "a noisy neighbour exhausting IOPS on shared storage",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "sms-gateway",
+      "style": "ticket",
+      "attempts": 1,
+      "validator_root_cause": "An archival backfill ran without throttling and saturated the shared storage volume, causing synchronous writes and SMS delivery to time out."
+    },
+    "INC-2310": {
+      "label": "other",
+      "true_cause": "a clock drift that broke token signature timestamps",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "metrics-ingest",
+      "style": "chatlog",
+      "attempts": 1,
+      "validator_root_cause": "A host-configuration change left chronyd disabled, allowing the auth signer’s clock to run about 23 minutes fast and causing freshly issued tokens to be rejected as not yet valid."
+    },
+    "INC-2357": {
+      "label": "other",
+      "true_cause": "a cloud provider zonal outage",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "shipping-quotes",
+      "style": "narrative",
+      "attempts": 1,
+      "validator_root_cause": "Provider-side packet loss in us-east-1b caused the zonal rate-card cache reads to time out; ineffective health checks kept the affected targets in rotation."
+    },
+    "INC-2403": {
+      "label": "other",
+      "true_cause": "a noisy neighbour exhausting IOPS on shared storage",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "session-store",
+      "style": "formal",
+      "attempts": 1,
+      "validator_root_cause": "A warehouse re-sync job on analytics-etl-03, with concurrency raised from 8 to 32 workers, consumed ~87% of the shared storage-pool-7's provisioned IOPS, starving session-store volumes and causing write timeouts that cascaded into login and checkout failures."
+    },
+    "INC-2451": {
+      "label": "other",
+      "true_cause": "a DNS record deleted by a Terraform change",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "tenant-admin",
+      "style": "table",
+      "attempts": 1,
+      "validator_root_cause": "A Terraform refactor deleted the production DNS A record and created a mistyped record, leaving the service hostname unresolvable."
+    },
+    "INC-2483": {
+      "label": "other",
+      "true_cause": "a clock drift that broke token signature timestamps",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "mobile-bff",
+      "style": "ticket",
+      "attempts": 1,
+      "validator_root_cause": "session-store-04 lost NTP synchronization after a hypervisor live migration (blocked by an NTP ACL change), letting its clock drift +13m42s ahead so it minted tokens with future iat values that validators rejected as NBF_FUTURE."
+    },
+    "INC-2489": {
+      "label": "other",
+      "true_cause": "an exhausted IP address pool in the VPC subnet",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "billing-exporter",
+      "style": "narrative",
+      "attempts": 1,
+      "validator_root_cause": "The eu-west-1 workload subnet ran out of free IP addresses, preventing pods from obtaining network interfaces and starting."
+    },
+    "INC-2504": {
+      "label": "tp",
+      "true_cause": "expired_certificate",
+      "decoy_type": null,
+      "no_keyword": true,
+      "service": "geo-router",
+      "style": "formal",
+      "attempts": 1,
+      "validator_root_cause": "The geo-router edge listener kept serving an X.509 identity whose notAfter (2024-09-30 23:59:59 GMT) had genuinely passed because the keymint-renewer rotation job stopped matching the deployment after PR #4821 removed its rotation label, so clients correctly rejected handshakes with alert 45 (expire"
+    },
+    "INC-2505": {
+      "label": "other",
+      "true_cause": "a corrupted container image layer in the registry",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "export-worker",
+      "style": "ticket",
+      "attempts": 1,
+      "validator_root_cause": "A corrupted container image layer served by registry cache reg-cache-03 caused export-worker pods to crash-loop, backing up the queue and degrading downstream services."
+    },
+    "INC-2531": {
+      "label": "other",
+      "true_cause": "a Kubernetes node pool upgrade that evicted pods without disruption budgets",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "billing-exporter",
+      "style": "handoff",
+      "attempts": 1,
+      "validator_root_cause": "A scheduled node pool upgrade ran inside the billing window, and its cordon-and-drain evicted billing-exporter and pricing-engine pods that had no PodDisruptionBudget, collapsing replica capacity and causing 5xx failures until pods rescheduled."
+    },
+    "INC-2543": {
+      "label": "other",
+      "true_cause": "a Kerberos ticket-granting ticket that expired on a batch host",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "warehouse-scanner",
+      "style": "narrative",
+      "attempts": 1,
+      "validator_root_cause": "A Kerberos ticket-granting ticket expired after its renewal service was left disabled following a host reimage, preventing rate-table updates and causing quote failures."
+    },
+    "INC-2572": {
+      "label": "other",
+      "true_cause": "a clock drift that broke token signature timestamps",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "cluster-ingress",
+      "style": "exec_email",
+      "attempts": 1,
+      "validator_root_cause": "Four EU ingress nodes had drifted more than eight minutes ahead after losing NTP synchronization, causing valid tokens to be rejected as not yet valid."
+    },
+    "INC-2579": {
+      "label": "other",
+      "true_cause": "a clock drift that broke token signature timestamps",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "sms-gateway",
+      "style": "chatlog",
+      "attempts": 1,
+      "validator_root_cause": "The token-signing host drifted about nine minutes ahead after its configured NTP source was decommissioned, causing newly issued tokens to appear not yet valid to verifiers."
+    },
+    "INC-2606": {
+      "label": "other",
+      "true_cause": "a misrouted network ACL change blocking the database subnet",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "email-relay",
+      "style": "chatlog",
+      "attempts": 1,
+      "validator_root_cause": "A staging network ACL change was mistakenly applied to the production data subnet, blocking egress on port 5432 and cutting services off from the database."
+    },
+    "INC-2624": {
+      "label": "other",
+      "true_cause": "a service account password that expired under a 90-day rotation policy",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "billing-exporter",
+      "style": "terse",
+      "attempts": 1,
+      "validator_root_cause": "The svc-billing-exporter account password expired under the 90-day rotation policy, causing ledger-api authentication failures until the password was rotated and exporter pods refreshed."
+    },
+    "INC-2645": {
+      "label": "other",
+      "true_cause": "a noisy neighbour exhausting IOPS on shared storage",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "geo-router",
+      "style": "terse",
+      "attempts": 1,
+      "validator_root_cause": "The media-transcoder ingest batch saturated the shared NVMe array, starving geo-router storage volumes and causing elevated latency and errors."
+    },
+    "INC-2646": {
+      "label": "decoy",
+      "true_cause": "decoy:rotation_ruled_out",
+      "decoy_type": "rotation_ruled_out",
+      "no_keyword": false,
+      "service": "session-store",
+      "style": "terse",
+      "attempts": 1,
+      "validator_root_cause": "A node pool upgrade (chg-51207) drained five nodes in parallel, evicting 7 of 12 session-store pods with no PodDisruptionBudget in place, crushing remaining capacity and causing 5xx errors; the newly rotated TLS certificate was verified valid and explicitly ruled out."
+    },
+    "INC-2659": {
+      "label": "decoy",
+      "true_cause": "decoy:renewal_missing_intermediate",
+      "decoy_type": "renewal_missing_intermediate",
+      "no_keyword": false,
+      "service": "pricing-engine",
+      "style": "formal",
+      "attempts": 1,
+      "validator_root_cause": "The 2025-03-12 renewal deployment shipped only the leaf certificate without the intermediate CA chain file, so clients without the intermediate cached could not build a valid trust path to a trusted root, causing TLS handshake failures."
+    },
+    "INC-2680": {
+      "label": "tp",
+      "true_cause": "expired_certificate",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "sms-gateway",
+      "style": "ticket",
+      "attempts": 1,
+      "validator_root_cause": "The serving TLS certificate for sms.halcyon-cloud.com on the production edge terminators expired at 2025-08-24T23:41:07Z and remained in use because the automated renewal job had been silently disabled during the June 12 load-balancer migration."
+    },
+    "INC-2705": {
+      "label": "other",
+      "true_cause": "a message queue backlog after a consumer deadlock",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "inventory-sync",
+      "style": "handoff",
+      "attempts": 1,
+      "validator_root_cause": "The v4.19.0 deploy inverted lock acquisition order in the reservation retry path, causing a deadlock that stalled Kafka consumers."
+    },
+    "INC-2738": {
+      "label": "other",
+      "true_cause": "an expired domain registration for a marketing domain that also served an API redirect",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "grpc-mesh",
+      "style": "table",
+      "attempts": 1,
+      "validator_root_cause": "The silverpine.dev domain registration lapsed after its renewal payment failed, causing the registrar to park its nameservers and break public DNS for the API and related endpoints."
+    },
+    "INC-2764": {
+      "label": "other",
+      "true_cause": "a split-brain in the Redis sentinel cluster",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "identity-graph",
+      "style": "five_whys",
+      "attempts": 1,
+      "validator_root_cause": "A rack-level network flap split the Redis Sentinel cluster into two quorums, allowing two masters to accept writes concurrently."
+    },
+    "INC-2823": {
+      "label": "other",
+      "true_cause": "a schema migration that locked a large table",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "cdn-origin",
+      "style": "narrative",
+      "attempts": 1,
+      "validator_root_cause": "A pending schema migration queued behind an idle reporting-ETL transaction, blocking queries on the asset_metadata table and degrading cdn-origin."
+    },
+    "INC-2864": {
+      "label": "other",
+      "true_cause": "a runaway cron job saturating the database with full table scans",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "export-worker",
+      "style": "terse",
+      "attempts": 1,
+      "validator_root_cause": "A late-replayed analytics cron ran unbounded full-table scans that saturated the primary database, causing export-worker and dependent service timeouts."
+    },
+    "INC-2883": {
+      "label": "other",
+      "true_cause": "a service account password that expired under a 90-day rotation policy",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "kyc-verifier",
+      "style": "handoff",
+      "attempts": 1,
+      "validator_root_cause": "The svc-kyc-app service account password expired because the credential rotation job silently failed, causing LDAP authentication failures."
+    },
+    "INC-2890": {
+      "label": "other",
+      "true_cause": "a database connection pool exhaustion after a traffic spike",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "orders-svc",
+      "style": "table",
+      "attempts": 1,
+      "validator_root_cause": "A flash-sale traffic surge exhausted the orders database connection pool, causing checkout and order-read requests to fail."
+    },
+    "INC-2895": {
+      "label": "other",
+      "true_cause": "a memory leak in a new release causing repeated OOM kills",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "email-relay",
+      "style": "terse",
+      "attempts": 1,
+      "validator_root_cause": "A memory leak introduced in email-relay v2.14.0 (mime::scan_attachments failing to free buffers on nested multipart messages) caused pods to hit their memory limit and OOM-restart in a loop, producing 5xx errors and downstream queue backlog until rollback."
+    },
+    "INC-2899": {
+      "label": "other",
+      "true_cause": "a bad configuration push that set a timeout to 0",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "grpc-mesh",
+      "style": "exec_email",
+      "attempts": 1,
+      "validator_root_cause": "A configuration change set the grpc-mesh RPC timeout to zero, causing calls to expire immediately and disrupting checkout."
+    },
+    "INC-2908": {
+      "label": "other",
+      "true_cause": "a primary database failover that left replicas lagging",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "session-store",
+      "style": "formal",
+      "attempts": 1,
+      "validator_root_cause": "A database failover left read replicas significantly behind, and session-store continued routing reads to them, causing stale session lookups to be treated as authentication failures; expired vault tokens caused only a secondary wave of errors."
+    },
+    "INC-2931": {
+      "label": "other",
+      "true_cause": "cache entries with a TTL misconfigured to expire every second",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "status-page",
+      "style": "exec_email",
+      "attempts": 1,
+      "validator_root_cause": "A production config template mistakenly bound the canary cache TTL variable (1 second) instead of the correct 300-second TTL, collapsing the cache hit ratio and overloading the aggregation database."
+    },
+    "INC-2940": {
+      "label": "other",
+      "true_cause": "a disk filling up with unrotated debug logs",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "ledger-reconciler",
+      "style": "ticket",
+      "attempts": 1,
+      "validator_root_cause": "The logrotate configuration missed the trace subdirectory, allowing debug.log to grow until it filled /var and caused reconciliation workers to fail on writes."
+    },
+    "INC-2944": {
+      "label": "other",
+      "true_cause": "a memory leak in a new release causing repeated OOM kills",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "sms-gateway",
+      "style": "handoff",
+      "attempts": 1,
+      "validator_root_cause": "A memory leak in v3.12.0’s recipient-pool refactor caused three gateway workers to exhaust memory and crash, leading to SMS send failures."
+    },
+    "INC-2949": {
+      "label": "tp",
+      "true_cause": "expired_certificate",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "invoice-render",
+      "style": "narrative",
+      "attempts": 1,
+      "validator_root_cause": "The intermediate CA certificate 'Bluepine Issuing CA G2' in the served TLS chain genuinely crossed its notAfter expiry at 14:02 UTC and remained in the served fullchain bundle because the renewal job only rotated the leaf, causing clients to reject connections with certificate validation errors."
+    },
+    "INC-2950": {
+      "label": "other",
+      "true_cause": "a disk filling up with unrotated debug logs",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "feature-flags",
+      "style": "ticket",
+      "attempts": 1,
+      "validator_root_cause": "Verbose debug tracing wrote unrotated logs until the nodes' disks filled, preventing the evaluation service from writing metrics and degrading requests."
+    },
+    "INC-2984": {
+      "label": "other",
+      "true_cause": "a runaway cron job saturating the database with full table scans",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "grpc-mesh",
+      "style": "narrative",
+      "attempts": 1,
+      "validator_root_cause": "Nine concurrent full-table scans from the entitlement-snapshot-sync job saturated database resources and connection pools, degrading grpc-mesh and downstream services."
+    },
+    "INC-3039": {
+      "label": "decoy",
+      "true_cause": "decoy:rotation_ruled_out",
+      "decoy_type": "rotation_ruled_out",
+      "no_keyword": false,
+      "service": "status-page",
+      "style": "five_whys",
+      "attempts": 1,
+      "validator_root_cause": "A configuration push at 08:02 set upstream_timeout_ms from 30000 to 0 ms, a value the config validator silently accepted as 'platform default', causing every status-page call to render-svc to abort instantly with a zero-millisecond context deadline; the freshly rotated certificates were verified val"
+    },
+    "INC-3060": {
+      "label": "other",
+      "true_cause": "a leap-second-like timestamp bug in a scheduler",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "fraud-scorer",
+      "style": "chatlog",
+      "attempts": 1,
+      "validator_root_cause": "A leap-second test fixture in payout-scheduler’s production time-smearing configuration made its clock run one second ahead of UTC, defeating trigger deduplication and causing duplicate scoring runs."
+    },
+    "INC-3084": {
+      "label": "other",
+      "true_cause": "an exhausted IP address pool in the VPC subnet",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "mobile-bff",
+      "style": "ticket",
+      "attempts": 1,
+      "validator_root_cause": "The subnet (subnet-0f3e91a7) exhausted its private IPv4 addresses due to the overnight scale-out of the audit-log archive fleet plus unreaped stale ENIs, preventing new pod sandbox creation and causing the 5xx errors."
+    },
+    "INC-3195": {
+      "label": "other",
+      "true_cause": "a service account password that expired under a 90-day rotation policy",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "status-page",
+      "style": "ticket",
+      "attempts": 1,
+      "validator_root_cause": "The status-page database service-account passwords reached their 90-day expiration limit, causing authentication failures; the credential-rotation job had failed because its CIAM token expired."
+    },
+    "INC-3202": {
+      "label": "other",
+      "true_cause": "an exhausted IP address pool in the VPC subnet",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "doc-signer",
+      "style": "formal",
+      "attempts": 1,
+      "validator_root_cause": "The production application subnet exhausted its available IP addresses due to workload growth and leaked network interfaces, preventing new pods from launching."
+    },
+    "INC-3210": {
+      "label": "other",
+      "true_cause": "a message queue backlog after a consumer deadlock",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "carrier-sync",
+      "style": "narrative",
+      "attempts": 1,
+      "validator_root_cause": "A lock-ordering deadlock between the carrier-sync resync job and consumers stalled processing, causing the queue backlog and downstream degradation."
+    },
+    "INC-3213": {
+      "label": "other",
+      "true_cause": "a schema migration that locked a large table",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "loyalty-points",
+      "style": "ticket",
+      "attempts": 1,
+      "validator_root_cause": "A scheduled ALTER TABLE migration (ADD COLUMN ... NOT NULL DEFAULT) on the 1.4-billion-row loyalty_ledger table ran without a lock_timeout, queued behind an analytics snapshot transaction and then held an ACCESS EXCLUSIVE lock for a full table rewrite with auto-retries, blocking all reads/writes on "
+    },
+    "INC-3220": {
+      "label": "other",
+      "true_cause": "a disk filling up with unrotated debug logs",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "chat-relay",
+      "style": "exec_email",
+      "attempts": 1,
+      "validator_root_cause": "Debug-level logging generated unrotated log files that filled the relay hosts’ disks, preventing message state from being written and stalling delivery."
+    },
+    "INC-3222": {
+      "label": "other",
+      "true_cause": "a schema migration that locked a large table",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "cluster-ingress",
+      "style": "nonnative",
+      "attempts": 1,
+      "validator_root_cause": "A schema migration rewrote the large route_bindings table while holding an ACCESS EXCLUSIVE lock, blocking tenant-admin queries and causing cluster-ingress 5xx errors."
+    },
+    "INC-3241": {
+      "label": "other",
+      "true_cause": "a feature flag rolled out to 100% by mistake",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "edge-proxy",
+      "style": "five_whys",
+      "attempts": 1,
+      "validator_root_cause": "An interactive Flagdeck rollout advanced the faulty v2 connection allocator from 5% to 100%, causing a socket leak that exhausted file descriptors and led to upstream failures."
+    },
+    "INC-3253": {
+      "label": "decoy",
+      "true_cause": "decoy:suspected_was_dns",
+      "decoy_type": "suspected_was_dns",
+      "no_keyword": false,
+      "service": "payments-core",
+      "style": "chatlog",
+      "attempts": 1,
+      "validator_root_cause": "A stale DNS A record for payments-core.prod.acmepay.internal retained the reimaged legacy host, which answered client connections with a self-signed bootstrap certificate on port 8443, causing x509 unknown-authority handshake failures."
+    },
+    "INC-3273": {
+      "label": "other",
+      "true_cause": "a cloud provider zonal outage",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "export-worker",
+      "style": "five_whys",
+      "attempts": 1,
+      "validator_root_cause": "A cloud-provider outage in eu-west-1c took down the zone where all export-worker replicas and their zone-pinned volumes were located, causing the export backlog and service outage."
+    },
+    "INC-3275": {
+      "label": "other",
+      "true_cause": "an exhausted IP address pool in the VPC subnet",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "tax-calculator",
+      "style": "exec_email",
+      "attempts": 1,
+      "validator_root_cause": "The production VPC subnet ran out of available IP addresses after a batch workload and orphaned network interfaces consumed the pool, preventing new pods from starting."
+    },
+    "INC-3298": {
+      "label": "other",
+      "true_cause": "a Kubernetes node pool upgrade that evicted pods without disruption budgets",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "webhook-fanout",
+      "style": "chatlog",
+      "attempts": 1,
+      "validator_root_cause": "The node-pool upgrade drained nodes in six-node batches without PodDisruptionBudgets, evicting too many service pods and reducing capacity."
+    },
+    "INC-3314": {
+      "label": "other",
+      "true_cause": "thread pool starvation from a blocking call in an async handler",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "warehouse-scanner",
+      "style": "exec_email",
+      "attempts": 1,
+      "validator_root_cause": "A release introduced a synchronous per-request vault token fetch in the asynchronous handler, causing worker-pool exhaustion when vault-sidecar latency increased."
+    },
+    "INC-3329": {
+      "label": "other",
+      "true_cause": "a schema migration that locked a large table",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "vault-sidecar",
+      "style": "exec_email",
+      "attempts": 1,
+      "validator_root_cause": "A production ALTER TABLE migration lacking a lock_timeout queued behind a long-running reporting query, saturating the PgBouncer connection pool and blocking vault-sidecar's short-lived Vault credential lease renewals, which degraded shipping-quotes and partner-webhooks."
+    },
+    "INC-3356": {
+      "label": "other",
+      "true_cause": "an expired software license key for the search engine cluster",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "image-resizer",
+      "style": "narrative",
+      "attempts": 1,
+      "validator_root_cause": "The search cluster’s commercial license expired, causing it to reject cluster state updates and disrupting dependent services."
+    },
+    "INC-3386": {
+      "label": "other",
+      "true_cause": "cache entries with a TTL misconfigured to expire every second",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "orders-svc",
+      "style": "formal",
+      "attempts": 1,
+      "validator_root_cause": "A misconfigured pricing_ttl value of 1 second (instead of 3600) shipped in orders-svc v4.18.0 caused pricing cache entries to expire almost immediately after being written, collapsing the cache hit ratio and overloading orders-db-primary-02 and fraud-scorer."
+    },
+    "INC-3401": {
+      "label": "other",
+      "true_cause": "a BGP route leak at the cloud provider",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "tax-calculator",
+      "style": "five_whys",
+      "attempts": 1,
+      "validator_root_cause": "The cloud provider accidentally announced the service prefix through a Frankfurt transit peer, blackholing traffic and causing the degradation."
+    },
+    "INC-3459": {
+      "label": "other",
+      "true_cause": "a GC pause storm after heap size was halved",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "session-store",
+      "style": "ticket",
+      "attempts": 1,
+      "validator_root_cause": "A fleet-wide config change (cfg-2025-06-02-114) halved the JVM heap from 12g to 6g on all 48 session-store nodes, so the ~7.8 GB/node resident session-cache working set no longer fit in old gen, causing stop-the-world Full GC storms, elevated 5xx, and multi-second latency."
+    },
+    "INC-3463": {
+      "label": "other",
+      "true_cause": "a noisy neighbour exhausting IOPS on shared storage",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "vault-sidecar",
+      "style": "formal",
+      "attempts": 1,
+      "validator_root_cause": "An unsampled nightly batch job (ml-embed-batch) generated ~12× its normal write volume on a shared NVMe volume with no per-tenant IOPS enforcement, saturating storage node store-ssd-07 and starving vault-sidecar's secret-fetch and lease-renewal operations."
+    },
+    "INC-3474": {
+      "label": "decoy",
+      "true_cause": "decoy:renewal_missing_intermediate",
+      "decoy_type": "renewal_missing_intermediate",
+      "no_keyword": false,
+      "service": "catalog-api",
+      "style": "formal",
+      "attempts": 1,
+      "validator_root_cause": "The certificate renewal deployment shipped a leaf-only bundle missing the intermediate chain (packaging fell back to the leaf after a repo refactor and the deploy gate never checked chain completeness), so clients that could not fetch the missing intermediate failed TLS verification."
+    },
+    "INC-3524": {
+      "label": "other",
+      "true_cause": "a rate limit on a third-party API being exceeded after a retry storm",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "kyc-verifier",
+      "style": "formal",
+      "attempts": 1,
+      "validator_root_cause": "The Identra client library in kyc-verifier shipped with default unbounded retries that amplified a transient provider latency spike into a synchronized ~5,400 req/min retry storm, exceeding Identra's 600 req/min quota and triggering provider-wide 429 rejections."
+    },
+    "INC-3563": {
+      "label": "other",
+      "true_cause": "a regex with catastrophic backtracking in request validation",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "geo-router",
+      "style": "chatlog",
+      "attempts": 1,
+      "validator_root_cause": "A new geo-router region-key regex caused catastrophic backtracking on malformed headers, saturating worker pools and producing elevated latency and 5xx errors."
+    },
+    "INC-3583": {
+      "label": "other",
+      "true_cause": "a primary database failover that left replicas lagging",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "payout-scheduler",
+      "style": "table",
+      "attempts": 1,
+      "validator_root_cause": "An automated database failover promoted a replication-lagged replica missing a WAL segment, and payout-scheduler's non-idempotent dispatch loop, lacking a replica-lag guard, re-read stale rows and re-enqueued already-executed batches."
+    },
+    "INC-3601": {
+      "label": "other",
+      "true_cause": "a memory leak in a new release causing repeated OOM kills",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "mobile-bff",
+      "style": "terse",
+      "attempts": 1,
+      "validator_root_cause": "The v4.19.0 release introduced a session-cache memory leak that caused mobile-bff pods to be OOM-killed and triggered downstream delays."
+    },
+    "INC-3621": {
+      "label": "tp",
+      "true_cause": "expired_certificate",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "recommendations",
+      "style": "narrative",
+      "attempts": 1,
+      "validator_root_cause": "The recommendations API's TLS server certificate, hand-built into its PKCS12 keystore and untracked by cert-manager automation, genuinely passed its notAfter expiry date (Nov 24 12:45:00 UTC 2025) and continued to be served, causing upstream TLS handshake failures."
+    },
+    "INC-3625": {
+      "label": "other",
+      "true_cause": "a Kubernetes node pool upgrade that evicted pods without disruption budgets",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "image-resizer",
+      "style": "handoff",
+      "attempts": 1,
+      "validator_root_cause": "The nightly maintenance job cordoned the entire dedicated node pool and evicted all image-resizer replicas at once; without a disruption budget or eligible fallback nodes, the service could not reschedule."
+    },
+    "INC-3639": {
+      "label": "other",
+      "true_cause": "a database connection pool exhaustion after a traffic spike",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "carrier-sync",
+      "style": "handoff",
+      "attempts": 1,
+      "validator_root_cause": "A 6.2× manifest replay overwhelmed the shared database connection limit, and an idle-in-transaction leak in carrier-sync held connections and prevented recovery."
+    },
+    "INC-3642": {
+      "label": "other",
+      "true_cause": "a cache stampede after a cache cluster restart",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "shipping-quotes",
+      "style": "terse",
+      "attempts": 1,
+      "validator_root_cause": "A cache-maint patch job restarted all six Redis nodes in parallel instead of rolling, flushing the cluster and causing a fleet-wide cache-miss stampede that exhausted carrier-sync connection pools and triggered upstream 429s/timeouts."
+    },
+    "INC-3706": {
+      "label": "other",
+      "true_cause": "a DNS record deleted by a Terraform change",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "payout-scheduler",
+      "style": "ticket",
+      "attempts": 1,
+      "validator_root_cause": "A Terraform DNS module change destroyed the payout database writer and statement-render origin records, leaving both endpoints unresolvable."
+    },
+    "INC-3724": {
+      "label": "other",
+      "true_cause": "a Kubernetes node pool upgrade that evicted pods without disruption budgets",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "carrier-sync",
+      "style": "exec_email",
+      "attempts": 1,
+      "validator_root_cause": "A Kubernetes node-pool upgrade drained eight carrier-sync replicas at once because the service had no PodDisruptionBudget to limit evictions."
+    },
+    "INC-3725": {
+      "label": "other",
+      "true_cause": "a clock drift that broke token signature timestamps",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "chat-relay",
+      "style": "five_whys",
+      "attempts": 1,
+      "validator_root_cause": "An April 24 network segmentation change blocked NTP egress, causing two chat-relay hosts to drift more than the JWT validator’s 60-second leeway and reject otherwise valid tokens as not yet valid."
+    },
+    "INC-3790": {
+      "label": "other",
+      "true_cause": "a Kerberos ticket-granting ticket that expired on a batch host",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "mobile-bff",
+      "style": "table",
+      "attempts": 1,
+      "validator_root_cause": "The reconcile job used an expired Kerberos ticket-granting ticket and retried without backoff, saturating ledger-api and causing cascading mobile-bff errors."
+    },
+    "INC-3824": {
+      "label": "other",
+      "true_cause": "a BGP route leak at the cloud provider",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "checkout-gateway",
+      "style": "table",
+      "attempts": 1,
+      "validator_root_cause": "The cloud provider leaked customer-prefix routes, causing inbound traffic to use1-prod-b to be dropped; the loyalty-points cache-key expirations were incidental."
+    },
+    "INC-3841": {
+      "label": "other",
+      "true_cause": "a noisy neighbour exhausting IOPS on shared storage",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "payout-scheduler",
+      "style": "narrative",
+      "attempts": 1,
+      "validator_root_cause": "A configuration change sent the inventory reconciliation job’s scratch-file writes to the shared NFS export, saturating storage and starving payout and other services."
+    },
+    "INC-3854": {
+      "label": "other",
+      "true_cause": "a leap-second-like timestamp bug in a scheduler",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "fraud-scorer",
+      "style": "formal",
+      "attempts": 1,
+      "validator_root_cause": "An unvalidated vendor leap-second table with a prematurely effective +1s offset was ingested and propagated to all scheduler nodes, stamping every job one second in the future so the workers' skew guard rejected the entire scoring workload."
+    },
+    "INC-3916": {
+      "label": "other",
+      "true_cause": "a dependency upgrade that changed JSON serialization of decimals",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "vault-sidecar",
+      "style": "exec_email",
+      "attempts": 1,
+      "validator_root_cause": "An acme-codec upgrade changed decimal serialization to scientific notation, which downstream services rejected and caused bundle failures."
+    },
+    "INC-3978": {
+      "label": "other",
+      "true_cause": "a Kerberos ticket-granting ticket that expired on a batch host",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "carrier-sync",
+      "style": "table",
+      "attempts": 1,
+      "validator_root_cause": "The host rebuild removed the renewal cron, so the carrier-sync job used an expired, non-renewable Kerberos ticket and could not authenticate."
+    },
+    "INC-3984": {
+      "label": "other",
+      "true_cause": "a split-brain in the Redis sentinel cluster",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "warehouse-scanner",
+      "style": "table",
+      "attempts": 1,
+      "validator_root_cause": "A flapping rack uplink caused Redis Sentinel split-brain: both the old and newly promoted primaries accepted writes because the old primary was not fenced."
+    },
+    "INC-4009": {
+      "label": "other",
+      "true_cause": "a DNS record deleted by a Terraform change",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "metrics-ingest",
+      "style": "narrative",
+      "attempts": 1,
+      "validator_root_cause": "A Terraform DNS hygiene apply deleted the live EU ingest load balancer alias, causing NXDOMAIN errors and degrading ingest."
+    },
+    "INC-4027": {
+      "label": "other",
+      "true_cause": "a DNS record deleted by a Terraform change",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "orders-svc",
+      "style": "exec_email",
+      "attempts": 1,
+      "validator_root_cause": "An automated Terraform zone-hygiene pipeline (PR-1187) deleted the internal DNS record for orders-svc.prod.internal.meridianapi.com, causing NXDOMAIN resolution failures and an order-placement outage."
+    },
+    "INC-4033": {
+      "label": "other",
+      "true_cause": "a misrouted network ACL change blocking the database subnet",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "payout-scheduler",
+      "style": "nonnative",
+      "attempts": 1,
+      "validator_root_cause": "A staging ACL change was misrouted to the production database subnet, blocking worker traffic to PostgreSQL on port 5432."
+    },
+    "INC-4046": {
+      "label": "other",
+      "true_cause": "a corrupted container image layer in the registry",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "export-worker",
+      "style": "handoff",
+      "attempts": 1,
+      "validator_root_cause": "An unclean shutdown left corrupted container-image layers in a registry cache, which continued serving them as valid and caused worker image extraction failures."
+    },
+    "INC-4105": {
+      "label": "other",
+      "true_cause": "an integer overflow in an ID sequence",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "identity-graph",
+      "style": "exec_email",
+      "attempts": 1,
+      "validator_root_cause": "The identity_edges 32-bit ID sequence reached its maximum value, causing subsequent identity-graph writes to fail with integer overflow."
+    },
+    "INC-4108": {
+      "label": "other",
+      "true_cause": "a database connection pool exhaustion after a traffic spike",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "ledger-reconciler",
+      "style": "narrative",
+      "attempts": 1,
+      "validator_root_cause": "A quarter-start traffic spike overwhelmed the Postgres connection limit, and unbounded reconciler pools, concurrency, and retries exhausted available connections."
+    },
+    "INC-4156": {
+      "label": "decoy",
+      "true_cause": "decoy:expiry_alert_false_alarm",
+      "decoy_type": "expiry_alert_false_alarm",
+      "no_keyword": false,
+      "service": "metrics-ingest",
+      "style": "narrative",
+      "attempts": 1,
+      "validator_root_cause": "An aggressive upstream retry policy (5 attempts per event, no jitter, Retry-After ignored) amplified a brief Verso vendor 503 blip ~3.4x, blew through the vendor API key quota, and triggered sustained 429 responses that the client kept retrying, causing the self-sustaining ingest failure; the TLS ex"
+    },
+    "INC-4175": {
+      "label": "tp",
+      "true_cause": "expired_certificate",
+      "decoy_type": null,
+      "no_keyword": true,
+      "service": "catalog-api",
+      "style": "five_whys",
+      "attempts": 1,
+      "validator_root_cause": "The mTLS client certificate on catalog-api-prod-07 genuinely passed its notAfter (expired 2026-01-02) and remained in use because its per-host renewal agent had been dead since 2025-12-16 (segfault with Restart=no), so the datastore refused TLS handshakes and cascading connection-pool exhaustion dro"
+    },
+    "INC-4228": {
+      "label": "other",
+      "true_cause": "a bad configuration push that set a timeout to 0",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "webhook-fanout",
+      "style": "narrative",
+      "attempts": 1,
+      "validator_root_cause": "A configuration rollout set the webhook HTTP timeout to zero, causing every request to fail immediately before leaving the worker."
+    },
+    "INC-4309": {
+      "label": "decoy",
+      "true_cause": "decoy:clock_skew",
+      "decoy_type": "clock_skew",
+      "no_keyword": false,
+      "service": "support-desk-api",
+      "style": "handoff",
+      "attempts": 1,
+      "validator_root_cause": "The ntp-config-2025.06 rollout made a single misconfigured internal NTP server (ntp-core-01, whose system clock was ~6 years fast) the fleet's only time source, causing hosts to step to 2031 so valid certificates with 2026 notAfter dates failed X.509 verification as 'expired' even though no certific"
+    },
+    "INC-4313": {
+      "label": "decoy",
+      "true_cause": "decoy:ca_bundle_update",
+      "decoy_type": "ca_bundle_update",
+      "no_keyword": false,
+      "service": "shipping-quotes",
+      "style": "nonnative",
+      "attempts": 1,
+      "validator_root_cause": "The OS base image os-base-2025.02 removed the legacy root CA 'Verisafe Root CA G2' from the system trust store, so pods could not build a validation chain to the vendor's fully valid QuoteHub certificate, causing outbound TLS handshake failures."
+    },
+    "INC-4351": {
+      "label": "other",
+      "true_cause": "a cache stampede after a cache cluster restart",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "geo-router",
+      "style": "chatlog",
+      "attempts": 1,
+      "validator_root_cause": "A rolling restart of the geo-cache-prod Redis cluster left the keyspace empty, causing a simultaneous cache-miss stampede that saturated the geo-primary Postgres connection pool, and geo-router's lack of request coalescing turned the herd into lookup timeouts and downstream 5xx errors."
+    },
+    "INC-4368": {
+      "label": "other",
+      "true_cause": "a message queue backlog after a consumer deadlock",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "payments-core",
+      "style": "handoff",
+      "attempts": 1,
+      "validator_root_cause": "PR-8812 introduced a lock-order inversion between the settlement path and the cursor-commit path in Postgres (advisory lock taken after ledger row locks vs. before), causing pairwise deadlocks that stalled all 24 consumers' commits and let the billing-events queue grow unbounded."
+    },
+    "INC-4392": {
+      "label": "other",
+      "true_cause": "a bad configuration push that set a timeout to 0",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "sso-bridge",
+      "style": "formal",
+      "attempts": 1,
+      "validator_root_cause": "A configuration template defaulted the upstream timeout to 0, causing sso-bridge to abort every identity-provider call immediately."
+    },
+    "INC-4444": {
+      "label": "other",
+      "true_cause": "a feature flag rolled out to 100% by mistake",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "checkout-gateway",
+      "style": "five_whys",
+      "attempts": 1,
+      "validator_root_cause": "A bulk rollout form's 'All users' mode silently overrode the planned staged percentage, serving the instant_grant_v2 flag to 100% of checkout sessions and doubling synchronous loyalty-points call volume, which saturated its worker and DB connection pools and caused checkout timeouts and errors."
+    },
+    "INC-4452": {
+      "label": "tp",
+      "true_cause": "expired_certificate",
+      "decoy_type": null,
+      "no_keyword": true,
+      "service": "loyalty-points",
+      "style": "narrative",
+      "attempts": 1,
+      "validator_root_cause": "The intermediate issuer certificate (Halyard Issuing CA G2) in the serving chain genuinely passed its notAfter date of Aug 31 23:59:59 2024 GMT and remained in use, causing TLS handshake chain validation failures for all clients."
+    },
+    "INC-4473": {
+      "label": "other",
+      "true_cause": "a database connection pool exhaustion after a traffic spike",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "sftp-drop",
+      "style": "table",
+      "attempts": 1,
+      "validator_root_cause": "An early 4× tenant upload surge exhausted the database connection pool because ingest transactions remained open during multipart object-store writes."
+    },
+    "INC-4475": {
+      "label": "decoy",
+      "true_cause": "decoy:oauth_secret_expired",
+      "decoy_type": "oauth_secret_expired",
+      "no_keyword": false,
+      "service": "webhook-fanout",
+      "style": "terse",
+      "attempts": 1,
+      "validator_root_cause": "The OAuth client secret used by auth-broker to mint tokens from idp.core.internal expired (vault exp 2025-08-23T09:00Z) because its rotation ticket was never picked up, causing 401 invalid_client failures that cascaded into webhook-fanout delivery failures; TLS certificates were checked three times "
+    },
+    "INC-4490": {
+      "label": "other",
+      "true_cause": "a schema migration that locked a large table",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "edge-proxy",
+      "style": "formal",
+      "attempts": 1,
+      "validator_root_cause": "A long-running inventory-sync reconciliation transaction blocked an exclusive-lock schema migration, causing PostgreSQL queries to queue and exhaust application connection pools."
+    },
+    "INC-4493": {
+      "label": "other",
+      "true_cause": "a clock drift that broke token signature timestamps",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "payments-core",
+      "style": "table",
+      "attempts": 1,
+      "validator_root_cause": "A network policy change blocked NTP egress, causing the clocks on two payments-core nodes to drift ~87 seconds ahead so that fresh auth tokens failed the ±60s iat/nbf skew validation window."
+    },
+    "INC-4494": {
+      "label": "other",
+      "true_cause": "a load balancer health check pointed at the wrong port",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "catalog-api",
+      "style": "exec_email",
+      "attempts": 1,
+      "validator_root_cause": "A Terraform change pointed the load balancer health check at the wrong port (9091), causing most backends to be marked unhealthy and production traffic to overload the remaining canaries."
+    },
+    "INC-4504": {
+      "label": "other",
+      "true_cause": "a disk filling up with unrotated debug logs",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "search-indexer",
+      "style": "five_whys",
+      "attempts": 1,
+      "validator_root_cause": "A production configuration error enabled TRACE logging, filling the indexer data volume because the debug logs were not covered by rotation."
+    },
+    "INC-4515": {
+      "label": "other",
+      "true_cause": "an expired domain registration for a marketing domain that also served an API redirect",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "media-transcoder",
+      "style": "handoff",
+      "attempts": 1,
+      "validator_root_cause": "The domain go.fairwave.tv expired and was suspended, causing DNS lookups for the preset redirect to return NXDOMAIN; no TLS certificate expiry caused the incident."
+    },
+    "INC-4563": {
+      "label": "other",
+      "true_cause": "a Kubernetes node pool upgrade that evicted pods without disruption budgets",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "recommendations",
+      "style": "five_whys",
+      "attempts": 1,
+      "validator_root_cause": "A config refactor made the Kubernetes node upgrade job drain five nodes in parallel with no PodDisruptionBudget on recommendations-api, so 14 of 16 replicas were evicted simultaneously and could not reschedule, collapsing capacity during peak traffic."
+    },
+    "INC-4582": {
+      "label": "other",
+      "true_cause": "a load balancer health check pointed at the wrong port",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "catalog-api",
+      "style": "ticket",
+      "attempts": 1,
+      "validator_root_cause": "A load-balancer module refactor defaulted the target group health-check port to 8080, where catalog-api was not listening, causing healthy targets to fail checks and be drained."
+    },
+    "INC-4607": {
+      "label": "other",
+      "true_cause": "a cloud provider zonal outage",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "catalog-api",
+      "style": "narrative",
+      "attempts": 1,
+      "validator_root_cause": "A cloud-provider outage in eu-west-2b made most workers in that zone unavailable, reducing cache capacity and causing catalog-api errors and timeouts."
+    },
+    "INC-4636": {
+      "label": "other",
+      "true_cause": "a disk filling up with unrotated debug logs",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "invoice-render",
+      "style": "nonnative",
+      "attempts": 1,
+      "validator_root_cause": "A 28 Nov config push left debug logging enabled, and because the logrotate rule only matched *.log.out, the debug-YYYYMMDD.log files grew unrotated until /var reached 100% capacity, causing temporary PDF writes to fail on invoice-render and its downstream services."
+    },
+    "INC-4644": {
+      "label": "decoy",
+      "true_cause": "decoy:clock_skew",
+      "decoy_type": "clock_skew",
+      "no_keyword": false,
+      "service": "sftp-drop",
+      "style": "narrative",
+      "attempts": 1,
+      "validator_root_cause": "A misconfigured internal NTP source (ntp-a01, a DR-drill clone with its clock frozen two years in the future) skewed the fleet's system time to 2027, making valid TLS certificates appear expired to every verifier — the certificates themselves never actually reached their notAfter dates."
+    },
+    "INC-4675": {
+      "label": "other",
+      "true_cause": "a primary database failover that left replicas lagging",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "status-page",
+      "style": "ticket",
+      "attempts": 1,
+      "validator_root_cause": "After an automated failover of the pg-eu1 Postgres cluster, replication slots were never recreated on the promoted primary, causing replicas to crash-loop on already-recycled WAL segments and producing replication lag and stale/failed reads for status-page and downstream services."
+    },
+    "INC-4681": {
+      "label": "other",
+      "true_cause": "a split-brain in the Redis sentinel cluster",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "mobile-bff",
+      "style": "nonnative",
+      "attempts": 1,
+      "validator_root_cause": "A flapping network switch port (rack-c-sw-03 ge-0/0/41) split the Redis sentinel quorum across two racks, causing a split-brain in which two cache nodes both operated as master and alternately accepted writes."
+    },
+    "INC-4683": {
+      "label": "other",
+      "true_cause": "a message queue backlog after a consumer deadlock",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "loyalty-points",
+      "style": "formal",
+      "attempts": 1,
+      "validator_root_cause": "Release v4.19.0 inverted the promotion and ledger mutex acquisition order, deadlocking all loyalty-points consumer workers."
+    },
+    "INC-4714": {
+      "label": "other",
+      "true_cause": "a load balancer health check pointed at the wrong port",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "reporting-etl",
+      "style": "chatlog",
+      "attempts": 1,
+      "validator_root_cause": "An ALB configuration rollout copied auth-broker’s health-check settings to reporting-etl, causing checks to use HTTPS on port 8443 even though workers served plain HTTP on port 8080; all targets were deregistered."
+    },
+    "INC-4716": {
+      "label": "other",
+      "true_cause": "thread pool starvation from a blocking call in an async handler",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "session-store",
+      "style": "five_whys",
+      "attempts": 1,
+      "validator_root_cause": "A blocking synchronous audit-log append on the session-validation request path tied up all session-store workers when audit-log writes slowed after a partition rebalance."
+    },
+    "INC-4762": {
+      "label": "other",
+      "true_cause": "a bad configuration push that set a timeout to 0",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "edge-proxy",
+      "style": "nonnative",
+      "attempts": 1,
+      "validator_root_cause": "A configuration change set edge-proxy’s shipping-quotes upstream read timeout to 0, causing requests to time out immediately; the failure was unrelated to certificates."
+    },
+    "INC-4780": {
+      "label": "other",
+      "true_cause": "an expired software license key for the search engine cluster",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "geo-router",
+      "style": "ticket",
+      "attempts": 1,
+      "validator_root_cause": "The geo-prod search cluster’s enterprise software license expired, forcing all seven nodes into degraded read-only mode and causing geo-router requests to fail."
+    },
+    "INC-4833": {
+      "label": "other",
+      "true_cause": "thread pool starvation from a blocking call in an async handler",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "reporting-etl",
+      "style": "terse",
+      "attempts": 1,
+      "validator_root_cause": "reporting-etl's emit_webhooks() made blocking synchronous HTTP calls with no timeouts on a small default executor (8 threads/pod), and webhook-fanout v2.14.0's latency regression held those threads ~10x longer, starving the executor and stalling the queue; the 'ssl read' stack frames and vault-sidec"
+    },
+    "INC-4938": {
+      "label": "other",
+      "true_cause": "a service account password that expired under a 90-day rotation policy",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "image-resizer",
+      "style": "chatlog",
+      "attempts": 1,
+      "validator_root_cause": "The image-resizer’s database password expired at the end of its 90-day rotation window, causing PostgreSQL authentication failures until the credential was rotated and the pods restarted."
+    },
+    "INC-4954": {
+      "label": "other",
+      "true_cause": "an expired software license key for the search engine cluster",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "doc-signer",
+      "style": "exec_email",
+      "attempts": 1,
+      "validator_root_cause": "The Corvex search cluster's vendor license key CX-88031 expired at 04:00 UTC, causing nodes to leave the cluster and reject queries, which degraded doc-signer."
+    },
+    "INC-4958": {
+      "label": "other",
+      "true_cause": "a primary database failover that left replicas lagging",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "search-indexer",
+      "style": "narrative",
+      "attempts": 1,
+      "validator_root_cause": "A storage-blip-triggered database failover left the read replicas unable to follow the new primary in time — pg-replica-eu1-04 diverged onto the old timeline and never re-attached while pg-replica-eu1-05 lagged behind on a vacuum-generated WAL replay backlog — causing stale search indexing and downs"
+    },
+    "INC-4992": {
+      "label": "decoy",
+      "true_cause": "decoy:ca_bundle_update",
+      "decoy_type": "ca_bundle_update",
+      "no_keyword": false,
+      "service": "fraud-scorer",
+      "style": "chatlog",
+      "attempts": 1,
+      "validator_root_cause": "The os-base-2025.10 base image shipped a slimmed CA trust bundle omitting the GlobalTrust Legacy Root CA G1, so TLS verification of vendor chains (Meridian, FiscalBridge, Northwind) failed with 'unable to get local issuer certificate'; certificate expiry was explicitly suspected and ruled out (leaf "
+    },
+    "INC-5038": {
+      "label": "other",
+      "true_cause": "an expired software license key for the search engine cluster",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "cluster-ingress",
+      "style": "narrative",
+      "attempts": 1,
+      "validator_root_cause": "An expired Solstice search cluster license key (expired at 2026-04-04T00:00:00Z) caused the restarted node search-3.fra1 to refuse rejoining, unassigning its shards and cascading into cluster-ingress 503s."
+    },
+    "INC-5060": {
+      "label": "other",
+      "true_cause": "a noisy neighbour exhausting IOPS on shared storage",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "cluster-ingress",
+      "style": "formal",
+      "attempts": 1,
+      "validator_root_cause": "A tenant-admin export job saturated the shared NVMe storage pool, blocking cluster-ingress workers on synchronous log writes and causing request failures."
+    },
+    "INC-5068": {
+      "label": "other",
+      "true_cause": "a runaway cron job saturating the database with full table scans",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "geo-router",
+      "style": "handoff",
+      "attempts": 1,
+      "validator_root_cause": "Migration 2024040112 dropped the delivery_zones region index, causing zones_recompute to repeatedly full-scan the table and saturate the database."
+    },
+    "INC-5071": {
+      "label": "other",
+      "true_cause": "a load balancer health check pointed at the wrong port",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "ledger-reconciler",
+      "style": "ticket",
+      "attempts": 1,
+      "validator_root_cause": "A net-infra refactor changed the load balancer health-check port to 9090, where no listener existed, causing all reconciler targets to be marked unhealthy and drained."
+    },
+    "INC-5136": {
+      "label": "other",
+      "true_cause": "a Kerberos ticket-granting ticket that expired on a batch host",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "reporting-etl",
+      "style": "handoff",
+      "attempts": 1,
+      "validator_root_cause": "The Kerberos TGT for svc_etl_runner on etl-batch-04 expired because the ticket-renewal cron entry was dropped when the host was rebuilt on the FleetBase image, causing all KDC-authenticated jobs to fail and stalling the pipeline."
+    },
+    "INC-5137": {
+      "label": "other",
+      "true_cause": "a noisy neighbour exhausting IOPS on shared storage",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "geo-router",
+      "style": "exec_email",
+      "attempts": 1,
+      "validator_root_cause": "A manually rerun warehouse-loader analytics backfill consumed nearly the entire IOPS budget of the shared NFS volume vol-shared-03, causing disk I/O queuing that degraded geo-router and co-tenant services."
+    },
+    "INC-5140": {
+      "label": "other",
+      "true_cause": "a message queue backlog after a consumer deadlock",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "status-page",
+      "style": "handoff",
+      "attempts": 1,
+      "validator_root_cause": "The notif-dispatch v2.14.3 deploy changed job_queue lock ordering, causing deadlocks that stalled consumers and left status-page data stale."
+    },
+    "INC-5160": {
+      "label": "other",
+      "true_cause": "a feature flag rolled out to 100% by mistake",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "notif-dispatch",
+      "style": "chatlog",
+      "attempts": 1,
+      "validator_root_cause": "The rollout flag was accidentally widened from 5% to 100%, saturating Redis and triggering timeouts and a retry storm that caused the delivery outage."
+    },
+    "INC-5174": {
+      "label": "other",
+      "true_cause": "an expired software license key for the search engine cluster",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "tenant-admin",
+      "style": "terse",
+      "attempts": 1,
+      "validator_root_cause": "The production search cluster’s enterprise license expired at 00:00 UTC, causing the engine to disable features required for search; renewal notices went to an unattended legacy distribution list."
+    },
+    "INC-5204": {
+      "label": "other",
+      "true_cause": "a Kubernetes node pool upgrade that evicted pods without disruption budgets",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "shipping-quotes",
+      "style": "narrative",
+      "attempts": 1,
+      "validator_root_cause": "The node pool upgrade evicted multiple quotes-api pods at once because the shipping namespace had no PodDisruptionBudget, reducing capacity and causing checkout failures."
+    },
+    "INC-5205": {
+      "label": "other",
+      "true_cause": "an expired domain registration for a marketing domain that also served an API redirect",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "loyalty-points",
+      "style": "nonnative",
+      "attempts": 1,
+      "validator_root_cause": "The domain registration for go.luminaclub.com (luminaclub.com) expired on 2025-12-18 and the registrar placed it on clientHold, removing DNS records and causing NXDOMAIN for the synchronous resolve dependency of loyalty-points."
+    },
+    "INC-5251": {
+      "label": "other",
+      "true_cause": "an expired domain registration for a marketing domain that also served an API redirect",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "feature-flags",
+      "style": "five_whys",
+      "attempts": 1,
+      "validator_root_cause": "The registration for the getkestrel.app domain lapsed after a silent auto-renewal payment failure (expired card) and unnoticed renewal emails, moving the zone to parking nameservers so sdk.getkestrel.app returned NXDOMAIN and legacy SDK bootstrap fetches failed."
+    },
+    "INC-5252": {
+      "label": "decoy",
+      "true_cause": "decoy:tls_version_disabled",
+      "decoy_type": "tls_version_disabled",
+      "no_keyword": false,
+      "service": "sftp-drop",
+      "style": "table",
+      "attempts": 1,
+      "validator_root_cause": "The hardening change netops#882 removed TLS 1.0/1.1 from the edge load balancers, breaking handshakes for five legacy partner SFTP clients that could not negotiate newer protocol versions; all certificates were verified valid and the initial certificate-rotation suspicion was ruled out."
+    },
+    "INC-5255": {
+      "label": "other",
+      "true_cause": "a schema migration that locked a large table",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "mobile-bff",
+      "style": "terse",
+      "attempts": 1,
+      "validator_root_cause": "A blocking ALTER TABLE migration queued behind a long-running reporting transaction, exhausting the database connection pool and causing widespread service failures."
+    },
+    "INC-5285": {
+      "label": "other",
+      "true_cause": "a corrupted container image layer in the registry",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "tax-calculator",
+      "style": "exec_email",
+      "attempts": 1,
+      "validator_root_cause": "A registry cache node served corrupted container-image layers, causing replacement pods to fail during extraction."
+    },
+    "INC-5324": {
+      "label": "other",
+      "true_cause": "a cloud provider zonal outage",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "email-relay",
+      "style": "table",
+      "attempts": 1,
+      "validator_root_cause": "A power-distribution failure at the cloud provider’s euw1-az2 facility took out the relay nodes, while stale load-balancer health and insufficient failover capacity prolonged the impact."
+    },
+    "INC-5339": {
+      "label": "other",
+      "true_cause": "a Kerberos ticket-granting ticket that expired on a batch host",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "edge-proxy",
+      "style": "narrative",
+      "attempts": 1,
+      "validator_root_cause": "An expired Kerberos ticket-granting ticket (TGT), a non-X.509 credential, triggered an unthrottled authentication retry storm that overwhelmed identity-graph and caused edge failures."
+    },
+    "INC-5381": {
+      "label": "other",
+      "true_cause": "a GC pause storm after heap size was halved",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "search-indexer",
+      "style": "table",
+      "attempts": 1,
+      "validator_root_cause": "A heap reduction from 16 GiB to 8 GiB left search-indexer unable to handle the weekly ingest burst, triggering repeated full GC pauses, missed heartbeats, and coordinator evictions."
+    },
+    "INC-5403": {
+      "label": "other",
+      "true_cause": "cache entries with a TTL misconfigured to expire every second",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "carrier-sync",
+      "style": "exec_email",
+      "attempts": 1,
+      "validator_root_cause": "A configuration change set the shipment-status cache TTL to one second instead of the intended five minutes, driving excessive carrier-gateway requests and rate limiting."
+    },
+    "INC-5408": {
+      "label": "other",
+      "true_cause": "a feature flag rolled out to 100% by mistake",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "recommendations",
+      "style": "table",
+      "attempts": 1,
+      "validator_root_cause": "A shared staging/prod configuration key caused the flag-sync job to roll out the new recommendations ranker to 100%, overwhelming image-resizer and webhook-fanout."
+    },
+    "INC-5441": {
+      "label": "other",
+      "true_cause": "a load balancer health check pointed at the wrong port",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "sms-gateway",
+      "style": "handoff",
+      "attempts": 1,
+      "validator_root_cause": "A load balancer module update pointed health checks at the metrics port instead of the application port, causing healthy targets to be marked unhealthy."
+    },
+    "INC-5461": {
+      "label": "other",
+      "true_cause": "an expired domain registration for a marketing domain that also served an API redirect",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "doc-signer",
+      "style": "handoff",
+      "attempts": 1,
+      "validator_root_cause": "The gosignloop.com domain registration expired, causing its DNS zone to be withdrawn and production links to resolve as NXDOMAIN; no TLS certificate expiry caused the incident."
+    },
+    "INC-5478": {
+      "label": "other",
+      "true_cause": "an integer overflow in an ID sequence",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "support-desk-api",
+      "style": "terse",
+      "attempts": 1,
+      "validator_root_cause": "The tickets.id int4 sequence reached its maximum value, exhausting IDs and causing ticket inserts to fail; no certificate was involved."
+    },
+    "INC-5485": {
+      "label": "other",
+      "true_cause": "a message queue backlog after a consumer deadlock",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "audit-log",
+      "style": "five_whys",
+      "attempts": 1,
+      "validator_root_cause": "A lock-order inversion introduced in release 2.31.0 deadlocked audit-log workers when coordination-service latency increased."
+    },
+    "INC-5512": {
+      "label": "decoy",
+      "true_cause": "decoy:staging_expired_unrelated",
+      "decoy_type": "staging_expired_unrelated",
+      "no_keyword": false,
+      "service": "geo-router",
+      "style": "narrative",
+      "attempts": 1,
+      "validator_root_cause": "A plain ALTER TABLE adding a column to the 1.9-billion-row geo_routes table queued behind autovacuum while holding an ACCESS EXCLUSIVE lock, blocking all subsequent reads, saturating the connection pool, and causing geo-router lookup failures and latency."
+    },
+    "INC-5531": {
+      "label": "other",
+      "true_cause": "a DNS record deleted by a Terraform change",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "feature-flags",
+      "style": "formal",
+      "attempts": 1,
+      "validator_root_cause": "A Terraform resource rename deleted the feature-flags DNS A record, and its replacement failed because it referenced a decommissioned hosted-zone ID, leaving the endpoint unresolvable."
+    },
+    "INC-5554": {
+      "label": "other",
+      "true_cause": "a DNS record deleted by a Terraform change",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "search-indexer",
+      "style": "chatlog",
+      "attempts": 1,
+      "validator_root_cause": "A Terraform provider upgrade caused the DNS record for search-indexer.prod.use1.internal to be destroyed, preventing indexer nodes from resolving the shard-coordination endpoint."
+    },
+    "INC-5573": {
+      "label": "decoy",
+      "true_cause": "decoy:tls_version_disabled",
+      "decoy_type": "tls_version_disabled",
+      "no_keyword": false,
+      "service": "feature-flags",
+      "style": "ticket",
+      "attempts": 1,
+      "validator_root_cause": "A hardening configuration bundle raised the edge load balancers' tls-min-version from TLS 1.0 to TLS 1.2, causing legacy partner stacks that could only negotiate TLS 1.0/1.1 to fail handshakes."
+    },
+    "INC-5575": {
+      "label": "tp",
+      "true_cause": "expired_certificate",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "webhook-fanout",
+      "style": "formal",
+      "attempts": 1,
+      "validator_root_cause": "The Let's Encrypt certificate serving webhooks.kestrel.io on the three fanout load balancers genuinely reached its notAfter time (2024-12-21 23:02:06 UTC, confirmed by openssl output and ERR_CERT_DATE_INVALID errors) and remained in service because its automated renewal had been silently failing sin"
+    },
+    "INC-5582": {
+      "label": "tp",
+      "true_cause": "expired_certificate",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "identity-graph",
+      "style": "formal",
+      "attempts": 1,
+      "validator_root_cause": "The manually managed TLS leaf certificate serving identity-graph on port 443 (CN=identity-graph.orchestra.io) genuinely reached its notAfter time of 2024-12-11T07:29:14 UTC and expired while still in use, causing TLS handshake failures."
+    },
+    "INC-5606": {
+      "label": "other",
+      "true_cause": "an expired software license key for the search engine cluster",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "ledger-reconciler",
+      "style": "handoff",
+      "attempts": 1,
+      "validator_root_cause": "The Vantage Search enterprise license expired, downgrading the cluster and disabling features required by the affected services; no TLS certificate expiry caused the incident."
+    },
+    "INC-5612": {
+      "label": "other",
+      "true_cause": "an expired domain registration for a marketing domain that also served an API redirect",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "payments-core",
+      "style": "table",
+      "attempts": 1,
+      "validator_root_cause": "The domain registration lapsed after auto-renew failed, causing the registrar to suspend DNS and the checkout attribution lookup to return NXDOMAIN."
+    },
+    "INC-5654": {
+      "label": "other",
+      "true_cause": "a primary database failover that left replicas lagging",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "cluster-ingress",
+      "style": "narrative",
+      "attempts": 1,
+      "validator_root_cause": "A database failover triggered a reconnect storm that starved replicas, causing upstream timeouts and elevated ingress errors."
+    },
+    "INC-5661": {
+      "label": "other",
+      "true_cause": "a Kerberos ticket-granting ticket that expired on a batch host",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "notif-dispatch",
+      "style": "formal",
+      "attempts": 1,
+      "validator_root_cause": "The batch host’s Kerberos ticket-granting ticket expired after the renewal daemon failed, preventing the accrual job from authenticating to the ledger and cascading into notification delivery failures."
+    },
+    "INC-5719": {
+      "label": "other",
+      "true_cause": "a cloud provider zonal outage",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "media-transcoder",
+      "style": "handoff",
+      "attempts": 1,
+      "validator_root_cause": "A cloud-provider networking impairment in eu-central-1c made the zone’s workers unreachable, while the GPU fleet was largely pinned there by a capacity reservation."
+    },
+    "INC-5780": {
+      "label": "other",
+      "true_cause": "a misrouted network ACL change blocking the database subnet",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "partner-webhooks",
+      "style": "nonnative",
+      "attempts": 1,
+      "validator_root_cause": "A staging network ACL was mistakenly attached to the production database subnet, blocking application-tier connections on port 5432."
+    },
+    "INC-5785": {
+      "label": "tp",
+      "true_cause": "expired_certificate",
+      "decoy_type": null,
+      "no_keyword": true,
+      "service": "payout-scheduler",
+      "style": "chatlog",
+      "attempts": 1,
+      "validator_root_cause": "The intermediate CA certificate (CN=Meridian Intermediate Issuing CA G3) in payout-scheduler's served TLS chain passed its notAfter date (Apr 17 23:59:59 2024 GMT) and remained in use, causing all full-chain-validating peers to reject handshakes with TLS alert 45 (expired)."
+    },
+    "INC-5858": {
+      "label": "other",
+      "true_cause": "an expired cloud billing payment card that suspended a storage bucket",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "cdn-origin",
+      "style": "ticket",
+      "attempts": 1,
+      "validator_root_cause": "The cloud provider suspended the backing object-store bucket after the account’s payment card expired, causing cdn-origin cache misses to fail."
+    },
+    "INC-5878": {
+      "label": "other",
+      "true_cause": "a schema migration that locked a large table",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "media-transcoder",
+      "style": "terse",
+      "attempts": 1,
+      "validator_root_cause": "An auto-run schema migration built a non-concurrent index on the hot `jobs` table, locking writes and saturating the database connection pool."
+    },
+    "INC-5897": {
+      "label": "other",
+      "true_cause": "a service account password that expired under a 90-day rotation policy",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "doc-signer",
+      "style": "exec_email",
+      "attempts": 1,
+      "validator_root_cause": "The doc-signer service account password expired after its scheduled rotation failed, causing LDAP authentication failures when a rolling deploy opened fresh connections."
+    },
+    "INC-5899": {
+      "label": "other",
+      "true_cause": "a cache stampede after a cache cluster restart",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "ledger-api",
+      "style": "exec_email",
+      "attempts": 1,
+      "validator_root_cause": "The node-repair job restarted all three cache primaries at once, emptying the cache and triggering a database-overloading cache-miss stampede."
+    },
+    "INC-5940": {
+      "label": "other",
+      "true_cause": "a service account password that expired under a 90-day rotation policy",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "chat-relay",
+      "style": "formal",
+      "attempts": 1,
+      "validator_root_cause": "The chat-relay service account password reached its 90-day maximum age and was locked after a failed credential rotation; no TLS/SSL certificate caused the incident."
+    },
+    "INC-5945": {
+      "label": "other",
+      "true_cause": "a DNS record deleted by a Terraform change",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "search-indexer",
+      "style": "ticket",
+      "attempts": 1,
+      "validator_root_cause": "A Terraform cleanup deleted the Route53 record for index-metadata.prod.internal, preventing search-indexer workers from resolving the metadata endpoint and refreshing shard maps."
+    },
+    "INC-6002": {
+      "label": "decoy",
+      "true_cause": "decoy:hostname_mismatch",
+      "decoy_type": "hostname_mismatch",
+      "no_keyword": false,
+      "service": "recommendations",
+      "style": "formal",
+      "attempts": 1,
+      "validator_root_cause": "A newly issued leaf certificate deployed during routine rotation omitted the SAN entry for the alias recommendations.api.nimbuscart.io, causing clients to fail hostname verification on every TLS handshake; expiry was explicitly checked and ruled out."
+    },
+    "INC-6023": {
+      "label": "other",
+      "true_cause": "a split-brain in the Redis sentinel cluster",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "orders-svc",
+      "style": "exec_email",
+      "attempts": 1,
+      "validator_root_cause": "A network partition split the Redis Sentinel cluster, causing two nodes to be promoted or retained as primary and accept divergent writes."
+    },
+    "INC-6059": {
+      "label": "other",
+      "true_cause": "a split-brain in the Redis sentinel cluster",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "carrier-sync",
+      "style": "formal",
+      "attempts": 2,
+      "validator_root_cause": "A flapping network switch partitioned the Redis sentinel cluster, letting a sentinel quorum promote a replica while the isolated original master kept accepting writes because its minimum-replica write floor defaulted to zero, producing a dual-master split-brain with divergent data and fragmented que"
+    },
+    "INC-6060": {
+      "label": "decoy",
+      "true_cause": "decoy:past_incident_action_items",
+      "decoy_type": "past_incident_action_items",
+      "no_keyword": false,
+      "service": "mq-bridge",
+      "style": "handoff",
+      "attempts": 1,
+      "validator_root_cause": "A Terraform pipeline apply (run 4471) silently deleted the Route53 private-zone A record for mq-broker.eu1.internal.example.net, causing NXDOMAIN resolution failures that client libraries misreported as TLS certificate verification errors."
+    },
+    "INC-6069": {
+      "label": "other",
+      "true_cause": "a load balancer health check pointed at the wrong port",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "metrics-ingest",
+      "style": "exec_email",
+      "attempts": 1,
+      "validator_root_cause": "A port-standardization change pointed metrics-ingest load-balancer health checks at unused port 9090, causing all healthy backends to be removed from rotation."
+    },
+    "INC-6075": {
+      "label": "tp",
+      "true_cause": "expired_certificate",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "tax-calculator",
+      "style": "terse",
+      "attempts": 1,
+      "validator_root_cause": "The edge fleet continued serving a TLS chain containing the intermediate 'Meridian Int CA G3' after it genuinely reached its notAfter expiry (2024-08-17 20:30 UTC) due to a silently failed chainbot rebuild, causing strict clients to reject handshakes at depth 1."
+    },
+    "INC-6078": {
+      "label": "other",
+      "true_cause": "a cache stampede after a cache cluster restart",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "cdn-origin",
+      "style": "handoff",
+      "attempts": 1,
+      "validator_root_cause": "A cache-cluster restart wiped its working set, sending a surge of uncached requests to the origin and saturating pricing-engine; no certificate expiry caused the incident."
+    },
+    "INC-6084": {
+      "label": "other",
+      "true_cause": "a database connection pool exhaustion after a traffic spike",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "partner-webhooks",
+      "style": "chatlog",
+      "attempts": 1,
+      "validator_root_cause": "A high-volume partner replay saturated the orders database connection pool, and webhook retries amplified the resulting connection pressure."
+    },
+    "INC-6087": {
+      "label": "other",
+      "true_cause": "a cloud provider zonal outage",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "ledger-api",
+      "style": "exec_email",
+      "attempts": 1,
+      "validator_root_cause": "A cloud availability-zone failure removed roughly a third of ledger-api capacity and stalled its database replica, causing service degradation while surviving zones were overloaded."
+    },
+    "INC-6110": {
+      "label": "other",
+      "true_cause": "a rate limit on a third-party API being exceeded after a retry storm",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "invoice-render",
+      "style": "nonnative",
+      "attempts": 1,
+      "validator_root_cause": "An aggressive retry policy (fixed attempts, no backoff/jitter, ignoring Retry-After, 429 treated as retryable) multiplied traffic into a retry storm that exceeded LedgerGrid's contracted rate limit and kept the third-party API returning 429s."
+    },
+    "INC-6137": {
+      "label": "other",
+      "true_cause": "an expired cloud billing payment card that suspended a storage bucket",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "sms-gateway",
+      "style": "handoff",
+      "attempts": 1,
+      "validator_root_cause": "The storage billing account’s payment card expired, causing the provider to suspend the template bucket and sms-gateway workers to fail on cache misses."
+    },
+    "INC-6175": {
+      "label": "other",
+      "true_cause": "a schema migration that locked a large table",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "notif-dispatch",
+      "style": "exec_email",
+      "attempts": 1,
+      "validator_root_cause": "A schema migration requesting an exclusive table lock was blocked by a long-running analytics transaction, stalling notification workers and creating a delivery backlog."
+    },
+    "INC-6185": {
+      "label": "decoy",
+      "true_cause": "decoy:revoked_not_expired",
+      "decoy_type": "revoked_not_expired",
+      "no_keyword": false,
+      "service": "session-store",
+      "style": "ticket",
+      "attempts": 1,
+      "validator_root_cause": "The session-store serving certificate was revoked by the issuing CA (NorvaCA) as part of a batch revocation of mis-issued certificates while still 74 days from expiry, and the organization lacked any procedure to detect and replace a revoked certificate out-of-band."
+    },
+    "INC-6243": {
+      "label": "tp",
+      "true_cause": "expired_certificate",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "billing-exporter",
+      "style": "formal",
+      "attempts": 1,
+      "validator_root_cause": "The TLS certificate served by billing-exporter.meridian.io genuinely passed its notAfter date (2026-04-16 01:14:37 UTC) and remained in use because its manual yearly renewal had no assigned owner, causing TLS handshake failures, confirmed by openssl output and 'x509: certificate has expired' errors."
+    },
+    "INC-6265": {
+      "label": "other",
+      "true_cause": "a database connection pool exhaustion after a traffic spike",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "edge-proxy",
+      "style": "exec_email",
+      "attempts": 1,
+      "validator_root_cause": "A 5x traffic spike from a partner batch sync and retry storm exhausted edge-proxy's database connection pool (oversubscribed across 28 pods against the Postgres max of 500 connections), causing cascading timeouts and 5xx errors."
+    },
+    "INC-6268": {
+      "label": "other",
+      "true_cause": "a memory leak in a new release causing repeated OOM kills",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "tenant-admin",
+      "style": "handoff",
+      "attempts": 1,
+      "validator_root_cause": "A v4.19.0 bug appended tenant locale-override entries to an unbounded config cache, causing memory growth, OOM kills, and 5xx errors."
+    },
+    "INC-6277": {
+      "label": "decoy",
+      "true_cause": "decoy:staging_expired_unrelated",
+      "decoy_type": "staging_expired_unrelated",
+      "no_keyword": false,
+      "service": "vault-sidecar",
+      "style": "formal",
+      "attempts": 1,
+      "validator_root_cause": "Release 2.14.0 introduced a lock-order inversion in vault-sidecar's dispatch pipeline, causing a Java-level deadlock between DispatchWorker and BrokerAckWorker that stalled all 12 consumers and grew the queue backlog."
+    },
+    "INC-6280": {
+      "label": "other",
+      "true_cause": "a feature flag rolled out to 100% by mistake",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "cdn-origin",
+      "style": "formal",
+      "attempts": 1,
+      "validator_root_cause": "The edge-direct-fetch feature flag was mistakenly rolled out to 100% instead of the intended 5% canary, bypassing the shield cache and saturating cdn-origin connection pools with an ~18x surge in direct origin traffic."
+    },
+    "INC-6289": {
+      "label": "other",
+      "true_cause": "a feature flag rolled out to 100% by mistake",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "image-resizer",
+      "style": "table",
+      "attempts": 1,
+      "validator_root_cause": "The v2 pipeline was promoted from 25% to 100% at once, exhausting worker memory and causing OOM crashes."
+    },
+    "INC-6316": {
+      "label": "other",
+      "true_cause": "a misrouted network ACL change blocking the database subnet",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "vault-sidecar",
+      "style": "ticket",
+      "attempts": 1,
+      "validator_root_cause": "A netguard-apply run at 07:12 UTC applied the staging database firewall template to the prod database subnets (tag db-tier matched both environments because env-match=ANY), installing a staging-only source CIDR in the ingress allow rule that blocked all prod application traffic, causing dial timeout"
+    },
+    "INC-6325": {
+      "label": "decoy",
+      "true_cause": "decoy:staging_expired_unrelated",
+      "decoy_type": "staging_expired_unrelated",
+      "no_keyword": false,
+      "service": "chat-relay",
+      "style": "nonnative",
+      "attempts": 1,
+      "validator_root_cause": "A terraform apply (PR-4482) deleted the DNS A record for relay-edge.chat-relay.prod.internal, leaving edge nodes unable to resolve the service-discovery target (NXDOMAIN) and draining connection pools, causing the handshake-error spike."
+    },
+    "INC-6349": {
+      "label": "other",
+      "true_cause": "a cloud provider zonal outage",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "tax-calculator",
+      "style": "chatlog",
+      "attempts": 1,
+      "validator_root_cause": "A cloud-provider networking degradation in eu-central-1b made worker nodes and the identity-graph read replica unreachable, degrading tax-calculator and payout-scheduler; draining the zone restored service."
+    },
+    "INC-6367": {
+      "label": "other",
+      "true_cause": "a memory leak in a new release causing repeated OOM kills",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "recommendations",
+      "style": "narrative",
+      "attempts": 1,
+      "validator_root_cause": "A memory leak in the unbounded embedding cache introduced in recommendations v2.14.0 caused pods to exceed their memory limits and be OOM-killed."
+    },
+    "INC-6373": {
+      "label": "other",
+      "true_cause": "an expired domain registration for a marketing domain that also served an API redirect",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "tenant-admin",
+      "style": "ticket",
+      "attempts": 1,
+      "validator_root_cause": "The registration of the domain gso.tenalink.io lapsed, the registrar parked the zone and DNS returned NXDOMAIN, breaking the legacy slug-redirect dependency in tenant-admin's resolve path."
+    },
+    "INC-6375": {
+      "label": "other",
+      "true_cause": "a corrupted container image layer in the registry",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "support-desk-api",
+      "style": "nonnative",
+      "attempts": 1,
+      "validator_root_cause": "A disk controller fault corrupted a shared container image layer in one registry replica, causing digest verification failures and pod start failures."
+    },
+    "INC-6393": {
+      "label": "other",
+      "true_cause": "a cache stampede after a cache cluster restart",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "fraud-scorer",
+      "style": "terse",
+      "attempts": 1,
+      "validator_root_cause": "A routine maintenance restart wiped all Redis shards cold with no warmup, and a regressed singleflight implementation failed to coalesce the resulting cache-miss refills, causing a thundering herd that exhausted the Postgres connection pool."
+    },
+    "INC-6398": {
+      "label": "decoy",
+      "true_cause": "decoy:suspected_was_dns",
+      "decoy_type": "suspected_was_dns",
+      "no_keyword": false,
+      "service": "status-page",
+      "style": "chatlog",
+      "attempts": 1,
+      "validator_root_cause": "A stale public DNS A record left status.copperleaf.io pointing at a decommissioned load balancer whose reassigned IP served an unrelated sandbox certificate, causing clients' TLS handshakes to fail."
+    },
+    "INC-6484": {
+      "label": "other",
+      "true_cause": "a runaway cron job saturating the database with full table scans",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "sftp-drop",
+      "style": "handoff",
+      "attempts": 1,
+      "validator_root_cause": "A maintenance job’s SQL change caused full-table scans, and overlapping runs stacked up until they saturated the database and disrupted dependent services."
+    },
+    "INC-6494": {
+      "label": "other",
+      "true_cause": "a DNS record deleted by a Terraform change",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "checkout-gateway",
+      "style": "handoff",
+      "attempts": 1,
+      "validator_root_cause": "A Terraform apply accidentally deleted the checkout-gateway DNS A record, causing NXDOMAIN failures after resolver caches expired."
+    },
+    "INC-6532": {
+      "label": "other",
+      "true_cause": "an expired software license key for the search engine cluster",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "auth-broker",
+      "style": "narrative",
+      "attempts": 1,
+      "validator_root_cause": "The vendor license key for the quartz-search-prod cluster expired on 2025-07-08, causing the search engine to enter restricted mode and refuse the entitlement lookups that auth-broker needed for token issuance."
+    },
+    "INC-6546": {
+      "label": "other",
+      "true_cause": "a cloud provider zonal outage",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "orders-svc",
+      "style": "chatlog",
+      "attempts": 1,
+      "validator_root_cause": "A cloud-provider compute and networking impairment in eu-north-1c caused widespread node and service failures; slow mesh failover prolonged the checkout outage."
+    },
+    "INC-6552": {
+      "label": "other",
+      "true_cause": "a load balancer health check pointed at the wrong port",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "fraud-scorer",
+      "style": "terse",
+      "attempts": 1,
+      "validator_root_cause": "A load balancer health-check port was changed from the app port (8081) to the admin port (9090), where /ready returned 404, causing the load balancers to mark all fraud-scorer targets unhealthy."
+    },
+    "INC-6593": {
+      "label": "other",
+      "true_cause": "a schema migration that locked a large table",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "vault-sidecar",
+      "style": "narrative",
+      "attempts": 1,
+      "validator_root_cause": "A scheduled ALTER TABLE migration held an ACCESS EXCLUSIVE lock on the lease_metadata table in prod-secrets-pg-01, blocking the vault-sidecars' lease renewal queries across all clusters so cached credentials expired and dependent services suffered authentication failures."
+    },
+    "INC-6594": {
+      "label": "other",
+      "true_cause": "a schema migration that locked a large table",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "doc-signer",
+      "style": "chatlog",
+      "attempts": 1,
+      "validator_root_cause": "A schema migration held an ACCESS EXCLUSIVE lock while queued behind a long-running analytics read, causing signature requests to pile up and time out."
+    },
+    "INC-6597": {
+      "label": "other",
+      "true_cause": "a memory leak in a new release causing repeated OOM kills",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "edge-proxy",
+      "style": "exec_email",
+      "attempts": 1,
+      "validator_root_cause": "The v4.18.0 release introduced an unbounded per-connection label map that leaked memory until edge-proxy pods were OOM-killed."
+    },
+    "INC-6619": {
+      "label": "tp",
+      "true_cause": "expired_certificate",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "search-indexer",
+      "style": "nonnative",
+      "attempts": 1,
+      "validator_root_cause": "All mesh sidecar mTLS certificates in prod-eu1, issued in a single batch with 90-day validity, genuinely reached their notAfter (2026-06-03T20:45:00Z) and remained in use because the cert-rotator renewal controller had been scaled to zero during the migration freeze and never re-enabled, causing mut"
+    },
+    "INC-6638": {
+      "label": "other",
+      "true_cause": "a leap-second-like timestamp bug in a scheduler",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "sms-gateway",
+      "style": "formal",
+      "attempts": 1,
+      "validator_root_cause": "A refurbished NTP appliance (ntp-edge-03) broadcast a leap-second insertion flag that caused scheduler hosts to compute an invalid second value of 60, crashing the cron evaluator and halting message dispatch."
+    },
+    "INC-6663": {
+      "label": "other",
+      "true_cause": "a split-brain in the Redis sentinel cluster",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "tax-calculator",
+      "style": "nonnative",
+      "attempts": 1,
+      "validator_root_cause": "A rack uplink failure partitioned the Redis Sentinel cluster, and the quorum was low enough for both sides to promote replicas and accept writes, causing split-brain and elevated errors."
+    },
+    "INC-6673": {
+      "label": "other",
+      "true_cause": "a bad configuration push that set a timeout to 0",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "shipping-quotes",
+      "style": "narrative",
+      "attempts": 1,
+      "validator_root_cause": "A configuration change set the carrier HTTP timeout to zero, causing outbound quote calls to fail immediately."
+    },
+    "INC-6674": {
+      "label": "decoy",
+      "true_cause": "decoy:revoked_not_expired",
+      "decoy_type": "revoked_not_expired",
+      "no_keyword": false,
+      "service": "inventory-sync",
+      "style": "five_whys",
+      "attempts": 1,
+      "validator_root_cause": "An out-of-band revocation of the mTLS client certificate (reason: keyCompromise) that the team neither monitored for nor had any replacement procedure for, despite the certificate having 172 days of validity remaining."
+    },
+    "INC-6683": {
+      "label": "other",
+      "true_cause": "a GC pause storm after heap size was halved",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "feature-flags",
+      "style": "exec_email",
+      "attempts": 1,
+      "validator_root_cause": "A deployment halved the feature-flags JVM heap, leaving insufficient headroom at peak traffic and causing prolonged garbage-collection pauses that cascaded into dependent services."
+    },
+    "INC-6687": {
+      "label": "decoy",
+      "true_cause": "decoy:suspected_was_dns",
+      "decoy_type": "suspected_was_dns",
+      "no_keyword": false,
+      "service": "partner-webhooks",
+      "style": "five_whys",
+      "attempts": 1,
+      "validator_root_cause": "The partner-facing external DNS record still pointed to a decommissioned legacy load balancer VIP serving a self-signed placeholder certificate, because the migration cutover's smoke tests ran only from the internal network where split-horizon DNS was already correct."
+    },
+    "INC-6692": {
+      "label": "other",
+      "true_cause": "a feature flag rolled out to 100% by mistake",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "geo-router",
+      "style": "table",
+      "attempts": 1,
+      "validator_root_cause": "The rollout bot svc-rollout-bot failed to validate target environment and applied a staging-built config bundle to production, setting geo-router/use-edge-affinity-v2 to 100% and disabling shard-health fallback."
+    },
+    "INC-6699": {
+      "label": "other",
+      "true_cause": "a dependency upgrade that changed JSON serialization of decimals",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "sms-gateway",
+      "style": "five_whys",
+      "attempts": 1,
+      "validator_root_cause": "An upgrade to hyperjson 2.4.0 changed decimal serialization to exponent notation, causing dispatch schema validation failures and queue buildup."
+    },
+    "INC-6721": {
+      "label": "decoy",
+      "true_cause": "decoy:oauth_secret_expired",
+      "decoy_type": "oauth_secret_expired",
+      "no_keyword": false,
+      "service": "recommendations",
+      "style": "five_whys",
+      "attempts": 1,
+      "validator_root_cause": "The OAuth client secret used by recommendations to mint access tokens at the corporate identity provider expired at 23:59 UTC on 2025-07-11, and the resulting authentication failures cascaded into the outage; all TLS/X.509 certificates were verified valid throughout the incident."
+    },
+    "INC-6722": {
+      "label": "other",
+      "true_cause": "a schema migration that locked a large table",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "doc-signer",
+      "style": "handoff",
+      "attempts": 1,
+      "validator_root_cause": "A schema migration (ALTER TABLE on the 412GB signature_events table) queued behind a long-running analytics query, and its ACCESS EXCLUSIVE lock request blocked all reads/writes on the table, exhausting doc-signer's database writer connection pool."
+    },
+    "INC-6744": {
+      "label": "other",
+      "true_cause": "a disk filling up with unrotated debug logs",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "loyalty-points",
+      "style": "formal",
+      "attempts": 1,
+      "validator_root_cause": "The loyalty-points workers’ local log volumes filled because DEBUG logs accumulated without rotation after a host-image rebuild dropped the logrotate configuration."
+    },
+    "INC-6797": {
+      "label": "other",
+      "true_cause": "a service account password that expired under a 90-day rotation policy",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "inventory-sync",
+      "style": "formal",
+      "attempts": 1,
+      "validator_root_cause": "The service account password expired after the automated rotation job failed, preventing inventory-sync from authenticating to its database."
+    },
+    "INC-6822": {
+      "label": "other",
+      "true_cause": "a BGP route leak at the cloud provider",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "payout-scheduler",
+      "style": "chatlog",
+      "attempts": 1,
+      "validator_root_cause": "The provider's eu-central route reflector accidentally re-announced customer more-specific routes to a transit peer (a BGP route leak), pulling traffic for the us-east-1 endpoints through a congested Frankfurt path where it was dropped."
+    },
+    "INC-6828": {
+      "label": "other",
+      "true_cause": "a cloud provider zonal outage",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "tax-calculator",
+      "style": "nonnative",
+      "attempts": 1,
+      "validator_root_cause": "Networking degradation in eu-central-1a disrupted tax-calculator workers and the PostgreSQL primary, with replication lag delaying failover and retries amplifying the outage."
+    },
+    "INC-6838": {
+      "label": "other",
+      "true_cause": "a cache stampede after a cache cluster restart",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "vault-sidecar",
+      "style": "nonnative",
+      "attempts": 1,
+      "validator_root_cause": "A parallel restart of all Redis cache nodes emptied the secret cache, triggering a synchronized surge of fetches that saturated Vault and caused downstream errors."
+    },
+    "INC-6851": {
+      "label": "other",
+      "true_cause": "a runaway cron job saturating the database with full table scans",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "ledger-api",
+      "style": "narrative",
+      "attempts": 1,
+      "validator_root_cause": "A schema migration changed ledger_entries.entry_date from timestamp to timestamptz, so the v2 cache-warm-cron's string-literal queries could no longer use the btree index and fell back to full sequential scans, whose unbounded 40-worker retry loop saturated the database primary."
+    },
+    "INC-6852": {
+      "label": "other",
+      "true_cause": "a regex with catastrophic backtracking in request validation",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "grpc-mesh",
+      "style": "ticket",
+      "attempts": 1,
+      "validator_root_cause": "An ambiguous backtracking regex in grpc-mesh caused exponential CPU use on long tenant-route headers, saturating validators and degrading gRPC traffic."
+    },
+    "INC-6862": {
+      "label": "other",
+      "true_cause": "a load balancer health check pointed at the wrong port",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "catalog-api",
+      "style": "formal",
+      "attempts": 1,
+      "validator_root_cause": "A Terraform module default silently changed the load balancer target group health check port from 8080 (application listener) to 9090 (metrics listener), causing all health checks to fail and the entire fleet to be ejected."
+    },
+    "INC-6883": {
+      "label": "tp",
+      "true_cause": "expired_certificate",
+      "decoy_type": null,
+      "no_keyword": true,
+      "service": "ledger-reconciler",
+      "style": "terse",
+      "attempts": 1,
+      "validator_root_cause": "The leaf mTLS certificate CN=ledger-reconciler.svc.internal genuinely passed its notAfter date (2025-01-11 00:00 UTC) and remained in use because its automated renewal loop had fatally failed in August 2024 and the renewal-failure alert was auto-muted, so mutual TLS handshakes were rejected by partn"
+    },
+    "INC-6890": {
+      "label": "other",
+      "true_cause": "a database connection pool exhaustion after a traffic spike",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "media-transcoder",
+      "style": "ticket",
+      "attempts": 1,
+      "validator_root_cause": "A query plan regression from deploy 2025.12.15 stretched the render_tags taxonomy join from ~40ms to 2–4s per job, causing the 6x campaign-driven job burst to exhaust all 40 pooled Postgres connections (idle in transaction) and produce 503 pool-acquire timeouts, mitigated by adding an index on rende"
+    },
+    "INC-6898": {
+      "label": "other",
+      "true_cause": "a BGP route leak at the cloud provider",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "support-desk-api",
+      "style": "exec_email",
+      "attempts": 1,
+      "validator_root_cause": "A cloud-provider BGP route leak diverted traffic for the affected edge prefix into a path where it was dropped."
+    },
+    "INC-6904": {
+      "label": "other",
+      "true_cause": "an expired software license key for the search engine cluster",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "sso-bridge",
+      "style": "formal",
+      "attempts": 1,
+      "validator_root_cause": "The production search cluster’s software license expired, disabling licensed query features and causing identity-graph entitlement queries to fail; no TLS/SSL certificate expired."
+    },
+    "INC-6940": {
+      "label": "other",
+      "true_cause": "a Kubernetes node pool upgrade that evicted pods without disruption budgets",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "reporting-etl",
+      "style": "ticket",
+      "attempts": 1,
+      "validator_root_cause": "The node-refresh automation drained pool-eu1-gen7 unchecked because the reporting namespace had no PodDisruptionBudgets (excluded from the drain policy's hardcoded namespace list), evicting all reporting-etl pods which then could not reschedule due to cordoned nodes and node affinity mismatch."
+    },
+    "INC-6953": {
+      "label": "other",
+      "true_cause": "a database connection pool exhaustion after a traffic spike",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "inventory-sync",
+      "style": "nonnative",
+      "attempts": 1,
+      "validator_root_cause": "Database connection pool exhaustion on db-inventory-prod-01, caused by a 4.8x traffic spike combined with a nightly reconciliation job holding long open transactions that consumed most of the 200 pool slots, with no backpressure to absorb the load."
+    },
+    "INC-6970": {
+      "label": "other",
+      "true_cause": "a Kerberos ticket-granting ticket that expired on a batch host",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "sso-bridge",
+      "style": "ticket",
+      "attempts": 1,
+      "validator_root_cause": "The dirsync refresh was skipped, so the Kerberos ticket-granting ticket in the shared credential cache expired after its 24-hour lifetime and LDAP binds failed."
+    },
+    "INC-6973": {
+      "label": "other",
+      "true_cause": "a schema migration that locked a large table",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "support-desk-api",
+      "style": "nonnative",
+      "attempts": 1,
+      "validator_root_cause": "A schema migration rewrote the large tickets table while holding an ACCESS EXCLUSIVE lock, blocking queries and exhausting the support-desk-api connection pools."
+    },
+    "INC-6975": {
+      "label": "other",
+      "true_cause": "a BGP route leak at the cloud provider",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "image-resizer",
+      "style": "five_whys",
+      "attempts": 1,
+      "validator_root_cause": "A provider BGP route leak diverted object-storage traffic onto a transit path with no return route, causing requests to time out."
+    },
+    "INC-6976": {
+      "label": "other",
+      "true_cause": "a database connection pool exhaustion after a traffic spike",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "reporting-etl",
+      "style": "exec_email",
+      "attempts": 1,
+      "validator_root_cause": "The delta-export-v2 retry path leaked database connections, saturating the reporting database connection pool and degrading reporting-etl."
+    },
+    "INC-6992": {
+      "label": "decoy",
+      "true_cause": "decoy:expiry_alert_false_alarm",
+      "decoy_type": "expiry_alert_false_alarm",
+      "no_keyword": false,
+      "service": "sftp-drop",
+      "style": "formal",
+      "attempts": 1,
+      "validator_root_cause": "A BGP route leak at the cloud provider propagated the sftp-drop prefix (203.0.113.0/24) with an invalid AS path to peer networks, drawing return traffic into a blackhole and causing connection timeouts, while the certificate-expiry alert was a false positive caused by a monitor bug reading the stagi"
+    },
+    "INC-7015": {
+      "label": "other",
+      "true_cause": "thread pool starvation from a blocking call in an async handler",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "ledger-reconciler",
+      "style": "five_whys",
+      "attempts": 1,
+      "validator_root_cause": "A metrics-ingest cache-removal rollout sharply increased latency, and ledger-reconciler's synchronous HTTP client had no timeout or bulkhead, exhausting its worker pool."
+    },
+    "INC-7017": {
+      "label": "other",
+      "true_cause": "a memory leak in a new release causing repeated OOM kills",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "export-worker",
+      "style": "narrative",
+      "attempts": 1,
+      "validator_root_cause": "An unbounded PricingSnapshotCache introduced in v2.14.0 grew until export-worker pods exceeded their memory limit and were OOM-killed."
+    },
+    "INC-7059": {
+      "label": "other",
+      "true_cause": "a feature flag rolled out to 100% by mistake",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "pricing-engine",
+      "style": "nonnative",
+      "attempts": 1,
+      "validator_root_cause": "A pricing feature flag was mistakenly rolled out to 100% of production, overwhelming quotes-api through unbounded concurrent lookups and retries and causing a cascading outage."
+    },
+    "INC-7105": {
+      "label": "other",
+      "true_cause": "a memory leak in a new release causing repeated OOM kills",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "export-worker",
+      "style": "ticket",
+      "attempts": 1,
+      "validator_root_cause": "Version 4.18.0 introduced a memory leak in which zstd encoder contexts were stored in a job-result cache keyed by unique job IDs and never evicted, causing export-worker pods to hit their 4 GiB cgroup limit and enter an OOMKilled restart loop."
+    },
+    "INC-7123": {
+      "label": "other",
+      "true_cause": "a cache stampede after a cache cluster restart",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "reporting-etl",
+      "style": "narrative",
+      "attempts": 1,
+      "validator_root_cause": "A cache cluster restart left the shared cache cold, and a silently dropped single-flight/request-coalescing lock from a config refactor allowed ~400 ETL workers to stampede the Postgres primary with duplicate aggregate queries."
+    },
+    "INC-7152": {
+      "label": "other",
+      "true_cause": "a bad configuration push that set a timeout to 0",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "loyalty-points",
+      "style": "exec_email",
+      "attempts": 1,
+      "validator_root_cause": "A shared configuration push set the partner ledger read timeout to zero, causing calls to fail immediately and degrading loyalty-points and media-transcoder."
+    },
+    "INC-7170": {
+      "label": "other",
+      "true_cause": "a database connection pool exhaustion after a traffic spike",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "shipping-quotes",
+      "style": "narrative",
+      "attempts": 1,
+      "validator_root_cause": "A flash-sale traffic spike combined with degraded OnTimeFreight carrier API latency amplified database connection hold times, exhausting the connection pool and causing quote request failures."
+    },
+    "INC-7179": {
+      "label": "other",
+      "true_cause": "a disk filling up with unrotated debug logs",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "reporting-etl",
+      "style": "terse",
+      "attempts": 1,
+      "validator_root_cause": "A production debug logging configuration generated an unrotated 412 GB log that filled the ETL worker’s disk and caused downstream delays and failures."
+    },
+    "INC-7236": {
+      "label": "other",
+      "true_cause": "a message queue backlog after a consumer deadlock",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "grpc-mesh",
+      "style": "exec_email",
+      "attempts": 1,
+      "validator_root_cause": "A lock-ordering change in pricing-engine v4.12.0 caused consumer deadlocks, and lock keys without a TTL persisted after the pods stopped, halting queue consumption and degrading quote lookups."
+    },
+    "INC-7246": {
+      "label": "other",
+      "true_cause": "a Kubernetes node pool upgrade that evicted pods without disruption budgets",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "catalog-api",
+      "style": "narrative",
+      "attempts": 1,
+      "validator_root_cause": "The node-pool maintenance job evicted catalog-api pods during an upgrade because the workloads had no PodDisruptionBudget, causing capacity loss and service degradation."
+    },
+    "INC-7263": {
+      "label": "other",
+      "true_cause": "an expired cloud billing payment card that suspended a storage bucket",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "chat-relay",
+      "style": "terse",
+      "attempts": 1,
+      "validator_root_cause": "The cloud provider suspended the storage account after the organization’s payment card expired and autopay retries failed, making the affected buckets return 403 errors."
+    },
+    "INC-7324": {
+      "label": "other",
+      "true_cause": "a DNS record deleted by a Terraform change",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "fraud-scorer",
+      "style": "formal",
+      "attempts": 1,
+      "validator_root_cause": "A Terraform module refactor deleted the production fraud-scorer DNS A record, causing endpoint resolution failures."
+    },
+    "INC-7337": {
+      "label": "tp",
+      "true_cause": "expired_certificate",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "billing-exporter",
+      "style": "ticket",
+      "attempts": 1,
+      "validator_root_cause": "The TLS certificate presented by the edge load balancers for billing-exporter.corp.net genuinely passed its notAfter date (Nov 7 23:58:02 2024 GMT) and remained in use because the ACME renewal job on cert-renew-03 had silently failed for 71 consecutive nights due to a stale DNS-01 credential."
+    },
+    "INC-7342": {
+      "label": "other",
+      "true_cause": "an exhausted IP address pool in the VPC subnet",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "media-transcoder",
+      "style": "five_whys",
+      "attempts": 1,
+      "validator_root_cause": "Subnet IP exhaustion prevented ECS tasks from attaching network interfaces, caused by autoscaling demand combined with 183 dangling ENIs and insufficient capacity monitoring."
+    },
+    "INC-7357": {
+      "label": "other",
+      "true_cause": "a database connection pool exhaustion after a traffic spike",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "ledger-api",
+      "style": "handoff",
+      "attempts": 1,
+      "validator_root_cause": "A 4.3x traffic spike from a campaign push exhausted the ledger-api database connection pool, compounded by a loyalty-points retry storm without backoff and a leaked idle-in-transaction reporting session."
+    },
+    "INC-7384": {
+      "label": "other",
+      "true_cause": "an upstream payment provider outage",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "checkout-gateway",
+      "style": "nonnative",
+      "attempts": 1,
+      "validator_root_cause": "ZentraPay’s EU production payment cluster failed, causing checkout authorization requests to time out or return 503; manual failover prolonged the impact."
+    },
+    "INC-7396": {
+      "label": "other",
+      "true_cause": "a misrouted network ACL change blocking the database subnet",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "mobile-bff",
+      "style": "exec_email",
+      "attempts": 1,
+      "validator_root_cause": "A network ACL change intended for staging was mistakenly applied to production, inserting a deny rule that blocked all traffic from application subnets to the database subnet on port 5432, causing connection pools to exhaust and mobile-bff to fail."
+    },
+    "INC-7410": {
+      "label": "other",
+      "true_cause": "a DNS record deleted by a Terraform change",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "cdn-origin",
+      "style": "formal",
+      "attempts": 1,
+      "validator_root_cause": "A Terraform apply refactoring the DNS module deleted the origin-eu1.cdn.northbay.io A record, and its replacement failed name validation, leaving the CDN origin unresolvable."
+    },
+    "INC-7430": {
+      "label": "other",
+      "true_cause": "a regex with catastrophic backtracking in request validation",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "sso-bridge",
+      "style": "narrative",
+      "attempts": 1,
+      "validator_root_cause": "A newly introduced displayName claim validator (auth-validators 2.7.0) used a regex with nested quantifiers that caused catastrophic backtracking on long partner profile names, exhausting worker threads and CPU across all sso-bridge pods."
+    },
+    "INC-7505": {
+      "label": "other",
+      "true_cause": "an exhausted IP address pool in the VPC subnet",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "payout-scheduler",
+      "style": "nonnative",
+      "attempts": 1,
+      "validator_root_cause": "The subnet ran out of free private IP addresses because task ENIs and other resources, including 63 stale ENIs and a second cluster, exhausted its capacity and prevented payout-scheduler from scaling."
+    },
+    "INC-7540": {
+      "label": "other",
+      "true_cause": "a clock drift that broke token signature timestamps",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "mobile-bff",
+      "style": "handoff",
+      "attempts": 1,
+      "validator_root_cause": "A firewall egress change removed the internal NTP pool, causing clocks on several mobile-bff worker nodes to drift ~90s slow, so freshly minted JWTs appeared not-yet-valid (nbf in the future) against the 30s leeway and triggered 401 refresh failures."
+    },
+    "INC-7546": {
+      "label": "other",
+      "true_cause": "a DNS record deleted by a Terraform change",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "ledger-api",
+      "style": "terse",
+      "attempts": 1,
+      "validator_root_cause": "A Terraform apply deleted ledger-api’s internal DNS A record, making the service unresolvable and degrading downstream services."
+    },
+    "INC-7564": {
+      "label": "other",
+      "true_cause": "thread pool starvation from a blocking call in an async handler",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "fraud-scorer",
+      "style": "exec_email",
+      "attempts": 1,
+      "validator_root_cause": "A deployment added a synchronous feature-flag lookup to the async scoring handler, blocking worker threads during elevated feature-flags latency until the worker pool was exhausted."
+    },
+    "INC-7573": {
+      "label": "other",
+      "true_cause": "a database connection pool exhaustion after a traffic spike",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "reporting-etl",
+      "style": "ticket",
+      "attempts": 1,
+      "validator_root_cause": "A dropped identity-graph index made enrichment queries hold PostgreSQL connections for minutes, and the extract traffic spike exhausted the primary’s connection limit."
+    },
+    "INC-7599": {
+      "label": "other",
+      "true_cause": "a clock drift that broke token signature timestamps",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "cluster-ingress",
+      "style": "table",
+      "attempts": 1,
+      "validator_root_cause": "A config release regenerated chrony.conf pointing gateway nodes at a decommissioned NTP pool, letting two nodes' clocks drift ~92 seconds fast so validly issued JWT tokens appeared 'not yet valid'/'used before issued' and were rejected."
+    },
+    "INC-7650": {
+      "label": "other",
+      "true_cause": "an expired software license key for the search engine cluster",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "sftp-drop",
+      "style": "ticket",
+      "attempts": 1,
+      "validator_root_cause": "The Corvus Search cluster’s license key expired at 00:00 UTC and triggered hard-reject mode, causing metadata queries to fail; this was a license expiry, not an X.509 certificate expiry."
+    },
+    "INC-7696": {
+      "label": "other",
+      "true_cause": "a primary database failover that left replicas lagging",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "export-worker",
+      "style": "table",
+      "attempts": 1,
+      "validator_root_cause": "A disk latency spike triggered database failover, and replica WAL replay lag combined with aggressive export-worker retries to overload reads and cause failures."
+    },
+    "INC-7705": {
+      "label": "other",
+      "true_cause": "a primary database failover that left replicas lagging",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "warehouse-scanner",
+      "style": "narrative",
+      "attempts": 1,
+      "validator_root_cause": "A storage controller flap triggered a primary database failover, and the replicas (especially pg-replica-3, with ~947s of WAL replay lag due to under-provisioned IOPS and write backlog) served severely stale data to the read pool, causing valid scanner devices to fail authorization and writes to be "
+    },
+    "INC-7706": {
+      "label": "other",
+      "true_cause": "a feature flag rolled out to 100% by mistake",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "reporting-etl",
+      "style": "handoff",
+      "attempts": 1,
+      "validator_root_cause": "An experiments-platform bot expanded the enhanced tax aggregation feature flag from a 5% canary to all tenants, triggering missing tax-rule errors that disrupted ETL, tax-calculator, and invoice-render services."
+    },
+    "INC-7708": {
+      "label": "other",
+      "true_cause": "a database connection pool exhaustion after a traffic spike",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "export-worker",
+      "style": "chatlog",
+      "attempts": 1,
+      "validator_root_cause": "A quarter-end export traffic surge combined with workers holding database connections for the full job lifecycle (including S3 uploads) exhausted all 300 pg-proxy upstream connections, causing HikariPool acquisition timeouts and a queue backlog."
+    },
+    "INC-7732": {
+      "label": "other",
+      "true_cause": "a schema migration that locked a large table",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "sftp-drop",
+      "style": "table",
+      "attempts": 1,
+      "validator_root_cause": "A non-concurrent index migration queued behind the retention job and caused a database lock queue that exhausted the connection pool."
+    },
+    "INC-7756": {
+      "label": "other",
+      "true_cause": "a regex with catastrophic backtracking in request validation",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "inventory-sync",
+      "style": "nonnative",
+      "attempts": 1,
+      "validator_root_cause": "An ambiguous regular expression caused catastrophic backtracking on a long malformed warehouse locator, blocking Node.js event loops and making inventory-sync unavailable."
+    },
+    "INC-7776": {
+      "label": "other",
+      "true_cause": "a database connection pool exhaustion after a traffic spike",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "vault-sidecar",
+      "style": "table",
+      "attempts": 1,
+      "validator_root_cause": "A promotion-driven traffic surge saturated the shared pgbouncer connection pool, causing vault-sidecar lease renewals to time out and downstream services to use expired credentials; no TLS/SSL certificate expiry caused the incident."
+    },
+    "INC-7783": {
+      "label": "other",
+      "true_cause": "an exhausted IP address pool in the VPC subnet",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "cdn-origin",
+      "style": "terse",
+      "attempts": 2,
+      "validator_root_cause": "The export batch scaled out into a shared subnet and exhausted its available IP addresses, preventing services from allocating ENIs and pods and causing capacity loss."
+    },
+    "INC-7827": {
+      "label": "tp",
+      "true_cause": "expired_certificate",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "media-transcoder",
+      "style": "narrative",
+      "attempts": 1,
+      "validator_root_cause": "The serving TLS leaf certificate on the media-transcoder pool genuinely reached its notAfter time (expired 2026-05-21 21:45 UTC) and stayed in use because its automated renewal job silently died when the host running it was decommissioned in March."
+    },
+    "INC-7835": {
+      "label": "decoy",
+      "true_cause": "decoy:clock_skew",
+      "decoy_type": "clock_skew",
+      "no_keyword": false,
+      "service": "sso-bridge",
+      "style": "terse",
+      "attempts": 1,
+      "validator_root_cause": "A bad chrony config pointed 118 hosts at ntp-edge-b-02, whose stale RTC served a time ~1210 days in the future, stepping host clocks to April 2029 so Go's x509 verifier (using local time) rejected certificates that were genuinely valid until 2027."
+    },
+    "INC-7845": {
+      "label": "tp",
+      "true_cause": "expired_certificate",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "kyc-verifier",
+      "style": "chatlog",
+      "attempts": 1,
+      "validator_root_cause": "The leaf certificate for kyc.eu-api.internal genuinely expired at 23:59:59 UTC on 2025-03-09 (confirmed by openssl probe and CertificateExpiredException) and remained in use because the keystore-sync job had been failing since 2025-02-18, so every restart reloaded the same expired certificate."
+    },
+    "INC-7871": {
+      "label": "other",
+      "true_cause": "a dependency upgrade that changed JSON serialization of decimals",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "vault-sidecar",
+      "style": "terse",
+      "attempts": 1,
+      "validator_root_cause": "A wire-codec upgrade changed lease TTLs from integers to decimal-formatted numbers, causing the sidecar to fail decoding and renewing leases; credentials then drained and dependent services failed."
+    },
+    "INC-7927": {
+      "label": "other",
+      "true_cause": "cache entries with a TTL misconfigured to expire every second",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "status-page",
+      "style": "five_whys",
+      "attempts": 1,
+      "validator_root_cause": "A cache TTL misconfiguration set Redis entries to expire after one second, overwhelming the database and degrading dependent services."
+    },
+    "INC-7944": {
+      "label": "decoy",
+      "true_cause": "decoy:suspected_was_dns",
+      "decoy_type": "suspected_was_dns",
+      "no_keyword": false,
+      "service": "export-worker",
+      "style": "nonnative",
+      "attempts": 1,
+      "validator_root_cause": "A stale DNS A record still resolved export.internal.halcyondata.io to the decommissioned host edge-export-03 (10.42.7.31), which was powered off at 16:45 UTC, so clients connecting to the dead address failed their TLS handshakes; the certificate was verified valid (notAfter Mar 30 2026) and ruled ou"
+    },
+    "INC-7947": {
+      "label": "other",
+      "true_cause": "a disk filling up with unrotated debug logs",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "carrier-sync",
+      "style": "table",
+      "attempts": 1,
+      "validator_root_cause": "A debug log introduced in the 2026-06-06 release grew unchecked because it was not covered by log rotation, filled the /var filesystem, and caused shipment writes to fail with ENOSPC."
+    },
+    "INC-7966": {
+      "label": "other",
+      "true_cause": "cache entries with a TTL misconfigured to expire every second",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "carrier-sync",
+      "style": "terse",
+      "attempts": 1,
+      "validator_root_cause": "A cache TTL configuration change from 3600s to 1s caused cache bypass, overwhelming the partner gateway and triggering downstream degradation."
+    },
+    "INC-7988": {
+      "label": "other",
+      "true_cause": "a dependency upgrade that changed JSON serialization of decimals",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "partner-webhooks",
+      "style": "terse",
+      "attempts": 1,
+      "validator_root_cause": "A transitive dependency bump (jsonkit 3.4.1 → 3.5.0, shipped via payments-svc-sdk 8.2.0) silently changed decimal serialization from JSON numbers to strings, causing strict-schema partners' endpoints and the audit-log consumer to reject payloads."
+    },
+    "INC-7996": {
+      "label": "decoy",
+      "true_cause": "decoy:staging_expired_unrelated",
+      "decoy_type": "staging_expired_unrelated",
+      "no_keyword": false,
+      "service": "auth-broker",
+      "style": "formal",
+      "attempts": 1,
+      "validator_root_cause": "A scheduled Terraform apply destroyed the auth-broker.internal DNS A record and then failed to recreate it due to missing zone permissions, leaving the name unresolvable (NXDOMAIN) to callers."
+    },
+    "INC-8019": {
+      "label": "other",
+      "true_cause": "a clock drift that broke token signature timestamps",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "cdn-origin",
+      "style": "five_whys",
+      "attempts": 1,
+      "validator_root_cause": "Three cdn-origin nodes drifted about 112 seconds ahead after losing NTP, causing strict JWT expiration checks to reject valid tokens as expired."
+    },
+    "INC-8025": {
+      "label": "other",
+      "true_cause": "a runaway cron job saturating the database with full table scans",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "payments-core",
+      "style": "exec_email",
+      "attempts": 1,
+      "validator_root_cause": "A rolled-back schema migration removed an index, and a reconciliation job repeatedly fell back to the primary database and ran full-table scans, saturating database resources."
+    },
+    "INC-8053": {
+      "label": "other",
+      "true_cause": "a split-brain in the Redis sentinel cluster",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "webhook-fanout",
+      "style": "five_whys",
+      "attempts": 1,
+      "validator_root_cause": "A flapping network interlink partitioned the Redis sentinel cluster, and a legacy quorum setting of 2 (below true majority) with aggressive failover tuning allowed a split-brain where two masters accepted writes, stalling webhook deliveries."
+    },
+    "INC-8055": {
+      "label": "decoy",
+      "true_cause": "decoy:past_incident_action_items",
+      "decoy_type": "past_incident_action_items",
+      "no_keyword": false,
+      "service": "image-resizer",
+      "style": "chatlog",
+      "attempts": 1,
+      "validator_root_cause": "Release v3.14.0 introduced a smart-crop thumbnail cache with its eviction TTL removed in code review, causing unbounded memory growth (~180KB per unique crop combo) that exhausted the 4GiB container limit every ~40 minutes and triggered repeated kernel OOM kills of image-resizer pods."
+    },
+    "INC-8063": {
+      "label": "other",
+      "true_cause": "a primary database failover that left replicas lagging",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "audit-log",
+      "style": "nonnative",
+      "attempts": 1,
+      "validator_root_cause": "Database failover caused replicas to fall behind on WAL replay, and retries combined with normal traffic exhausted the connection pool, disrupting audit-log writes."
+    },
+    "INC-8132": {
+      "label": "other",
+      "true_cause": "an upstream payment provider outage",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "email-relay",
+      "style": "formal",
+      "attempts": 1,
+      "validator_root_cause": "PayNorth's outage caused repeated billing retries to enqueue duplicate emails without idempotency, overwhelming the email-relay worker pool."
+    },
+    "INC-8134": {
+      "label": "other",
+      "true_cause": "a database connection pool exhaustion after a traffic spike",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "auth-broker",
+      "style": "narrative",
+      "attempts": 1,
+      "validator_root_cause": "A partner-driven traffic spike, amplified by retries, exhausted PostgreSQL connections because the per-pod pool limits were too high for the primary’s capacity."
+    },
+    "INC-8136": {
+      "label": "other",
+      "true_cause": "a service account password that expired under a 90-day rotation policy",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "search-indexer",
+      "style": "chatlog",
+      "attempts": 1,
+      "validator_root_cause": "The shared service-account password expired under the 90-day rotation policy, causing search-indexer authentication failures and export-worker job failures."
+    },
+    "INC-8157": {
+      "label": "other",
+      "true_cause": "thread pool starvation from a blocking call in an async handler",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "feature-flags",
+      "style": "terse",
+      "attempts": 1,
+      "validator_root_cause": "A release introduced a blocking synchronous audit push in the async evaluation handler, starving the audit thread pool and backing up request handlers."
+    },
+    "INC-8158": {
+      "label": "other",
+      "true_cause": "a split-brain in the Redis sentinel cluster",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "payments-core",
+      "style": "terse",
+      "attempts": 1,
+      "validator_root_cause": "A flapping network uplink split the Redis Sentinel cluster, causing split-brain and divergent writes across two Redis masters."
+    },
+    "INC-8186": {
+      "label": "other",
+      "true_cause": "an expired software license key for the search engine cluster",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "payments-core",
+      "style": "table",
+      "attempts": 1,
+      "validator_root_cause": "The production search cluster's enterprise license expired at 00:00 UTC and its renewal was never manually deployed, causing the enforcement sweep to disable the fraud-anomaly job that payments-core's fail-closed authorization path hard-depends on."
+    },
+    "INC-8189": {
+      "label": "other",
+      "true_cause": "a rate limit on a third-party API being exceeded after a retry storm",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "sftp-drop",
+      "style": "exec_email",
+      "attempts": 1,
+      "validator_root_cause": "A third-party latency spike at Northgate combined with sftp-drop's aggressive retry policy (5 immediate retries, no jitter, 429 treated as retryable) amplified request volume past the shared per-tenant API rate limit, causing a self-sustaining 429 retry storm that degraded auth and transfers."
+    },
+    "INC-8193": {
+      "label": "other",
+      "true_cause": "a regex with catastrophic backtracking in request validation",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "billing-exporter",
+      "style": "handoff",
+      "attempts": 1,
+      "validator_root_cause": "A tenant's long malformed invoice references triggered catastrophic backtracking in the billing-exporter's regular-expression validator, saturating CPU and causing export timeouts."
+    },
+    "INC-8226": {
+      "label": "decoy",
+      "true_cause": "decoy:hostname_mismatch",
+      "decoy_type": "hostname_mismatch",
+      "no_keyword": false,
+      "service": "metrics-ingest",
+      "style": "chatlog",
+      "attempts": 1,
+      "validator_root_cause": "A July config refactor moved ingest.polarismetrics.net into a 'legacy:' key that cert-rotate never reads, so the rotation job issued and deployed a new leaf certificate whose SAN list omitted the ingest hostname, causing strict clients to fail TLS verification with hostname-mismatch errors."
+    },
+    "INC-8267": {
+      "label": "tp",
+      "true_cause": "expired_certificate",
+      "decoy_type": null,
+      "no_keyword": true,
+      "service": "reporting-etl",
+      "style": "terse",
+      "attempts": 1,
+      "validator_root_cause": "The pinned intermediate CA certificate (Norrsken Issuing R3, notAfter 2025-10-10 23:59:59 UTC) genuinely reached its expiry and remained in use because the certificate sync process only refreshed end-entity certificates, so every TLS verification failed at depth 1."
+    },
+    "INC-8287": {
+      "label": "other",
+      "true_cause": "a dependency upgrade that changed JSON serialization of decimals",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "email-relay",
+      "style": "handoff",
+      "attempts": 1,
+      "validator_root_cause": "The encore-codec 5.12.0 upgrade serialized decimal values as JSON strings, which strict-number consumers rejected and sent to the DLQ."
+    },
+    "INC-8299": {
+      "label": "other",
+      "true_cause": "a bad configuration push that set a timeout to 0",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "mobile-bff",
+      "style": "nonnative",
+      "attempts": 1,
+      "validator_root_cause": "A config change set mobile-bff’s upstream timeout to 0, causing requests to be cancelled immediately and return 502 errors."
+    },
+    "INC-8375": {
+      "label": "other",
+      "true_cause": "cache entries with a TTL misconfigured to expire every second",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "tenant-admin",
+      "style": "table",
+      "attempts": 1,
+      "validator_root_cause": "A configuration change dropped the duration suffix from the entitlements cache TTL, causing entries to expire after one second and overwhelming the read replicas."
+    },
+    "INC-8400": {
+      "label": "tp",
+      "true_cause": "expired_certificate",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "cluster-ingress",
+      "style": "table",
+      "attempts": 1,
+      "validator_root_cause": "The mTLS client certificate presented by cluster-ingress to the partner gateway genuinely reached its notAfter time (expired 2026-02-09 17:30:44 UTC) after certmgr's automated renewal failed with an ACME 429 and its 24-hour retry backoff scheduled past expiry, so the fleet kept presenting the expire"
+    },
+    "INC-8441": {
+      "label": "other",
+      "true_cause": "a misrouted network ACL change blocking the database subnet",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "grpc-mesh",
+      "style": "terse",
+      "attempts": 1,
+      "validator_root_cause": "A netops automation change (chg-77310) resolved its target by VPC name tag and applied a deny NACL rule (rule 120 blocking tcp/5432) to the prod-app edge NACL instead of the staging VPC, cutting network connectivity between app subnets and the database tier."
+    },
+    "INC-8460": {
+      "label": "other",
+      "true_cause": "an expired domain registration for a marketing domain that also served an API redirect",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "geo-router",
+      "style": "table",
+      "attempts": 1,
+      "validator_root_cause": "The marketing domain’s registration expired after auto-renewal failed, causing its DNS to point to parking nameservers and breaking the redirect dependency; TLS certificates were valid and not the cause."
+    },
+    "INC-8461": {
+      "label": "other",
+      "true_cause": "a load balancer health check pointed at the wrong port",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "ledger-api",
+      "style": "exec_email",
+      "attempts": 1,
+      "validator_root_cause": "A load balancer health-check was misconfigured to probe port 8081 while ledger-api actually listened on 9443 following the TLS migration, so all twelve targets were marked unhealthy and removed from rotation despite being healthy."
+    },
+    "INC-8485": {
+      "label": "other",
+      "true_cause": "a dependency upgrade that changed JSON serialization of decimals",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "inventory-sync",
+      "style": "ticket",
+      "attempts": 1,
+      "validator_root_cause": "A major-version JSON serialization library update changed decimal formatting, causing downstream consumers to reject stock-delta events."
+    },
+    "INC-8495": {
+      "label": "other",
+      "true_cause": "a cloud provider zonal outage",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "loyalty-points",
+      "style": "five_whys",
+      "attempts": 1,
+      "validator_root_cause": "A provider networking impairment in eu-west-2c took worker nodes offline, and services were overly concentrated in that zone, causing the loyalty-points degradation."
+    },
+    "INC-8565": {
+      "label": "other",
+      "true_cause": "a cache stampede after a cache cluster restart",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "edge-proxy",
+      "style": "chatlog",
+      "attempts": 1,
+      "validator_root_cause": "A maintenance restart of the sesscache-prod Redis cluster left the cache cold while single-flight request coalescing was only enabled for /v1/* routes, so the /v2/* traffic (70% of requests) produced an uncoalesced thundering herd of origin fetches that saturated db-core-01."
+    },
+    "INC-8593": {
+      "label": "other",
+      "true_cause": "a feature flag rolled out to 100% by mistake",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "partner-webhooks",
+      "style": "five_whys",
+      "attempts": 1,
+      "validator_root_cause": "An unintended rollout of `wh_batch_coalescing` to 100% caused oversized batches that stalled webhook delivery workers."
+    },
+    "INC-8600": {
+      "label": "other",
+      "true_cause": "a primary database failover that left replicas lagging",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "edge-proxy",
+      "style": "exec_email",
+      "attempts": 1,
+      "validator_root_cause": "Automated database failover caused both read replicas to fall nearly 10 minutes behind, leading edge-proxy session and feature-flag reads to fail."
+    },
+    "INC-8622": {
+      "label": "other",
+      "true_cause": "a primary database failover that left replicas lagging",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "payout-scheduler",
+      "style": "narrative",
+      "attempts": 1,
+      "validator_root_cause": "A long-running VACUUM generated WAL faster than the read replicas could replay it after failover, leaving them too stale for the payout scheduler to use."
+    },
+    "INC-8629": {
+      "label": "decoy",
+      "true_cause": "decoy:oauth_secret_expired",
+      "decoy_type": "oauth_secret_expired",
+      "no_keyword": false,
+      "service": "export-worker",
+      "style": "exec_email",
+      "attempts": 1,
+      "validator_root_cause": "The OAuth client secret used by export-worker to authenticate with the identity provider reached its 18-month expiry, causing token requests to fail with 401 invalid_client after the cached access tokens lapsed."
+    },
+    "INC-8642": {
+      "label": "other",
+      "true_cause": "a GC pause storm after heap size was halved",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "fraud-scorer",
+      "style": "table",
+      "attempts": 1,
+      "validator_root_cause": "A config rollout reduced fraud-scorer’s JVM heap from 4Gi to 2Gi, causing near-continuous full-GC pauses and cascading request timeouts."
+    },
+    "INC-8644": {
+      "label": "other",
+      "true_cause": "a schema migration that locked a large table",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "catalog-api",
+      "style": "table",
+      "attempts": 1,
+      "validator_root_cause": "A schema migration queued for an exclusive table lock behind a long-running analytics read, causing database requests to queue and exhaust connection pools."
+    },
+    "INC-8735": {
+      "label": "other",
+      "true_cause": "a noisy neighbour exhausting IOPS on shared storage",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "media-transcoder",
+      "style": "table",
+      "attempts": 1,
+      "validator_root_cause": "A tenant's high-concurrency re-encode campaign saturated shared NVMe storage because there were no per-tenant IOPS limits, starving media-transcoder and neighboring services."
+    },
+    "INC-8766": {
+      "label": "other",
+      "true_cause": "an expired cloud billing payment card that suspended a storage bucket",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "edge-proxy",
+      "style": "formal",
+      "attempts": 1,
+      "validator_root_cause": "An expired payment card caused the cloud billing account to be suspended, disabling access to the storage bucket required by upstream services."
+    },
+    "INC-8768": {
+      "label": "tp",
+      "true_cause": "expired_certificate",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "cdn-origin",
+      "style": "ticket",
+      "attempts": 1,
+      "validator_root_cause": "The edge load balancers continued serving the wildcard certificate *.relay9-cdn.net after it genuinely passed its notAfter expiry at 22:58:41 UTC (renewed cert existed in vault but was never deployed), causing TLS handshake failures for all new sessions."
+    },
+    "INC-8820": {
+      "label": "other",
+      "true_cause": "an expired software license key for the search engine cluster",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "cdn-origin",
+      "style": "handoff",
+      "attempts": 1,
+      "validator_root_cause": "The RavenFind Enterprise license key on prod-search-eu expired and its 14-day grace window ended, causing all query nodes to close their listeners, which degraded cdn-origin, image-resizer, and invoice-render that depended on search lookups."
+    },
+    "INC-8821": {
+      "label": "other",
+      "true_cause": "a service account password that expired under a 90-day rotation policy",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "inventory-sync",
+      "style": "formal",
+      "attempts": 1,
+      "validator_root_cause": "The service account password expired because its rotation job had been unable to renew its revoked vault token; database authentication failures halted inventory synchronization."
+    },
+    "INC-8859": {
+      "label": "other",
+      "true_cause": "a split-brain in the Redis sentinel cluster",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "orders-svc",
+      "style": "terse",
+      "attempts": 1,
+      "validator_root_cause": "An asymmetric BGP change partitioned the data centers, splitting Redis Sentinel quorum and allowing both sides to promote a master, causing split-brain and divergent writes."
+    },
+    "INC-8865": {
+      "label": "decoy",
+      "true_cause": "decoy:ca_bundle_update",
+      "decoy_type": "ca_bundle_update",
+      "no_keyword": false,
+      "service": "kyc-verifier",
+      "style": "exec_email",
+      "attempts": 1,
+      "validator_root_cause": "A routine OS base-image update (hardened-base:2026.05.2) removed the legacy root CA 'Legacy Commerce Root CA 2005' from the trust store, so the unexpired VeridiaID certificate chain failed validation with 'certificate signed by unknown authority' on all TLS handshakes."
+    },
+    "INC-8909": {
+      "label": "other",
+      "true_cause": "a clock drift that broke token signature timestamps",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "identity-graph",
+      "style": "ticket",
+      "attempts": 1,
+      "validator_root_cause": "A config rollout re-pointed the identity-graph validators' chrony to a decommissioned NTP server, leaving their clocks ~211s behind so freshly minted tokens appeared to have future issued-at timestamps and were rejected with future_iat."
+    },
+    "INC-8951": {
+      "label": "other",
+      "true_cause": "a database connection pool exhaustion after a traffic spike",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "recommendations",
+      "style": "terse",
+      "attempts": 1,
+      "validator_root_cause": "An unbounded gRPC retry loop opened database transactions and abandoned connections, exhausting the PostgreSQL connection pool during a traffic spike."
+    },
+    "INC-8956": {
+      "label": "other",
+      "true_cause": "a regex with catastrophic backtracking in request validation",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "invoice-render",
+      "style": "narrative",
+      "attempts": 1,
+      "validator_root_cause": "A catastrophic-backtracking regex in the new purchase-order validation saturated invoice-render CPU and caused request timeouts and downstream email delays."
+    },
+    "INC-8985": {
+      "label": "other",
+      "true_cause": "a misrouted network ACL change blocking the database subnet",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "media-transcoder",
+      "style": "ticket",
+      "attempts": 1,
+      "validator_root_cause": "A misrouted network ACL change added a deny rule for database traffic from the application subnets, blocking media-transcoder workers from connecting to the database."
+    },
+    "INC-9027": {
+      "label": "other",
+      "true_cause": "a dependency upgrade that changed JSON serialization of decimals",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "payments-core",
+      "style": "handoff",
+      "attempts": 1,
+      "validator_root_cause": "The money-json 3.2.0 update narrowed BigDecimal amounts to doubles, producing malformed decimal values that triggered payment, invoice-render, and doc-signer failures."
+    },
+    "INC-9080": {
+      "label": "other",
+      "true_cause": "a memory leak in a new release causing repeated OOM kills",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "reporting-etl",
+      "style": "chatlog",
+      "attempts": 1,
+      "validator_root_cause": "An unbounded aggregation cache in reporting-etl v4.19.0 grew during backfill replays until workers exceeded their memory limit and were OOM-killed."
+    },
+    "INC-9107": {
+      "label": "other",
+      "true_cause": "a DNS record deleted by a Terraform change",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "fraud-scorer",
+      "style": "terse",
+      "attempts": 1,
+      "validator_root_cause": "A Terraform DNS module migration deleted the fraud-graph primary’s Route 53 A record, causing NXDOMAIN errors and degrading the fraud scorer."
+    },
+    "INC-9111": {
+      "label": "other",
+      "true_cause": "a DNS record deleted by a Terraform change",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "cdn-origin",
+      "style": "five_whys",
+      "attempts": 1,
+      "validator_root_cause": "A Terraform drift-cleanup apply (PR #4821) destroyed the manually created, never-imported Route 53 A record for cdn-origin-edge.northbeam.io, causing NXDOMAIN and global origin unreachability."
+    },
+    "INC-9114": {
+      "label": "other",
+      "true_cause": "a primary database failover that left replicas lagging",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "export-worker",
+      "style": "five_whys",
+      "attempts": 1,
+      "validator_root_cause": "A failover detection window was shortened, triggering an unnecessary primary promotion; replica WAL replay lag then stalled exports and degraded checkout, compounded by retries without lag-aware backpressure."
+    },
+    "INC-9124": {
+      "label": "other",
+      "true_cause": "a database connection pool exhaustion after a traffic spike",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "loyalty-points",
+      "style": "formal",
+      "attempts": 1,
+      "validator_root_cause": "A marketing traffic spike combined with unbacked-off invoice-render retries exhausted the loyalty-points API tier's fixed 80-connection database pools, whose connections were held for their full lifetime including slow synchronous vault token fetches, creating a retry-driven saturation feedback loop"
+    },
+    "INC-9132": {
+      "label": "tp",
+      "true_cause": "expired_certificate",
+      "decoy_type": null,
+      "no_keyword": true,
+      "service": "auth-broker",
+      "style": "terse",
+      "attempts": 1,
+      "validator_root_cause": "The auth-broker edge listener's 90-day ACME-issued identity certificate genuinely reached its notAfter (2024-05-10 14:17:44 UTC, confirmed by openssl against the system clock) and remained in use because its renewal timer (acme-renew.timer) had been deleted in an unreviewed cleanup PR with no expiry"
+    },
+    "INC-9157": {
+      "label": "other",
+      "true_cause": "cache entries with a TTL misconfigured to expire every second",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "webhook-fanout",
+      "style": "five_whys",
+      "attempts": 1,
+      "validator_root_cause": "Config revision 4471 set the Redis cache TTL to '1' under an hour-based convention while the loader interpreted it as seconds, collapsing cache hit ratio to ~2% and saturating Postgres with lookups, which stalled webhook deliveries."
+    },
+    "INC-9184": {
+      "label": "other",
+      "true_cause": "a misrouted network ACL change blocking the database subnet",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "grpc-mesh",
+      "style": "handoff",
+      "attempts": 1,
+      "validator_root_cause": "A templating error in ACL rollout CL-8842 attached a deny-all ingress rule to the production database subnet, blocking gateway connections."
+    },
+    "INC-9210": {
+      "label": "other",
+      "true_cause": "a misrouted network ACL change blocking the database subnet",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "image-resizer",
+      "style": "exec_email",
+      "attempts": 1,
+      "validator_root_cause": "A network policy sync applied staging ACL rules to the production database subnet, blocking PostgreSQL traffic from application subnets."
+    },
+    "INC-9226": {
+      "label": "other",
+      "true_cause": "a corrupted container image layer in the registry",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "email-relay",
+      "style": "nonnative",
+      "attempts": 1,
+      "validator_root_cause": "A regional registry replication job truncated an email-relay image layer, causing container startup failures and crash loops."
+    },
+    "INC-9246": {
+      "label": "other",
+      "true_cause": "an upstream payment provider outage",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "edge-proxy",
+      "style": "formal",
+      "attempts": 1,
+      "validator_root_cause": "NorthPay’s EU gateway accepted connections but stopped responding, exhausting edge-proxy’s shared upstream worker pool because of long timeouts, a high circuit-breaker threshold, and retries."
+    },
+    "INC-9276": {
+      "label": "other",
+      "true_cause": "thread pool starvation from a blocking call in an async handler",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "ledger-reconciler",
+      "style": "ticket",
+      "attempts": 1,
+      "validator_root_cause": "Version 4.19.2 added synchronous token introspection inside the asynchronous reconcile handler, pinning worker threads until calls timed out and exhausting the pool."
+    },
+    "INC-9295": {
+      "label": "other",
+      "true_cause": "cache entries with a TTL misconfigured to expire every second",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "email-relay",
+      "style": "handoff",
+      "attempts": 1,
+      "validator_root_cause": "A tuning-job config set the outbound cache TTL to 1 second instead of 3600, causing cache stampedes and saturating the shared Redis tier."
+    },
+    "INC-9296": {
+      "label": "other",
+      "true_cause": "a leap-second-like timestamp bug in a scheduler",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "media-transcoder",
+      "style": "five_whys",
+      "attempts": 1,
+      "validator_root_cause": "A lab NTP appliance was mistakenly included in the production time pool and advertised a false leap-second insertion, causing the scheduler to requeue jobs continuously."
+    },
+    "INC-9353": {
+      "label": "other",
+      "true_cause": "a Kerberos ticket-granting ticket that expired on a batch host",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "reporting-etl",
+      "style": "terse",
+      "attempts": 1,
+      "validator_root_cause": "The svc-etl Kerberos TGT on etl-batch-07 expired mid-run (24h lifetime, renewal disabled) because the host was missing the kinit renewal cron due to config drift, causing GSS credential failures that stalled the ETL jobs."
+    },
+    "INC-9401": {
+      "label": "other",
+      "true_cause": "a corrupted container image layer in the registry",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "status-page",
+      "style": "nonnative",
+      "attempts": 1,
+      "validator_root_cause": "The container registry's nightly replication/GC job wrote a truncated base-runtime image layer and served it without digest verification, so any node that had to pull the image failed to extract it and its pods crash-looped."
+    },
+    "INC-9425": {
+      "label": "decoy",
+      "true_cause": "decoy:hostname_mismatch",
+      "decoy_type": "hostname_mismatch",
+      "no_keyword": false,
+      "service": "auth-broker",
+      "style": "terse",
+      "attempts": 1,
+      "validator_root_cause": "The renewed auth-broker TLS certificate was issued from a CSR template that omitted the EU hostname (auth-broker-eu.internal.fablewick.io) from its SAN list, causing hostname verification failures on EU handshakes despite the certificate being cryptographically valid and unexpired."
+    },
+    "INC-9426": {
+      "label": "other",
+      "true_cause": "a database connection pool exhaustion after a traffic spike",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "geo-router",
+      "style": "chatlog",
+      "attempts": 1,
+      "validator_root_cause": "A 4.7x traffic spike from a partner flash sale saturated geo-router's undersized database connection pool (hard cap of 120), causing connection-acquire timeouts and cascading 5xx errors; the suspected auth/vault-sidecar certificate or token angle was investigated and ruled out."
+    },
+    "INC-9476": {
+      "label": "tp",
+      "true_cause": "expired_certificate",
+      "decoy_type": null,
+      "no_keyword": true,
+      "service": "recommendations",
+      "style": "chatlog",
+      "attempts": 1,
+      "validator_root_cause": "The intermediate issuer certificate Meridian Issuing CA G2 genuinely passed its notAfter date (Oct 28 20:30:12 2024 GMT) and remained in the serving chain, so every leaf presented by rec-edge anchored to an expired issuer and failed chain validation."
+    },
+    "INC-9512": {
+      "label": "tp",
+      "true_cause": "expired_certificate",
+      "decoy_type": null,
+      "no_keyword": true,
+      "service": "reporting-etl",
+      "style": "terse",
+      "attempts": 2,
+      "validator_root_cause": "The intermediate CA certificate 'corp tls issuer l1' in the served TLS chain reached its notAfter expiry (2024-03-14 17:00 UTC) and was never rotated, causing TLS handshake verification failures from reporting-etl to Kafka and orders-api."
+    },
+    "INC-9522": {
+      "label": "other",
+      "true_cause": "a load balancer health check pointed at the wrong port",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "carrier-sync",
+      "style": "table",
+      "attempts": 1,
+      "validator_root_cause": "A Terraform module bump changed the load balancer target-group health check port from 8080 to the unused 8081, so all 12 carrier-sync targets failed health checks and were drained from the load balancer."
+    },
+    "INC-9572": {
+      "label": "other",
+      "true_cause": "a leap-second-like timestamp bug in a scheduler",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "status-page",
+      "style": "handoff",
+      "attempts": 1,
+      "validator_root_cause": "A malformed maintenance-window timestamp with seconds set to 60 caused the scheduler to compute a negative duration and stop re-arming the status-page publish timer."
+    },
+    "INC-9584": {
+      "label": "other",
+      "true_cause": "a dependency upgrade that changed JSON serialization of decimals",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "warehouse-scanner",
+      "style": "chatlog",
+      "attempts": 1,
+      "validator_root_cause": "A dependency refresh upgraded fastwire-json, which changed decimal serialization from numbers to strings and caused catalog-api to reject ingest payloads."
+    },
+    "INC-9589": {
+      "label": "other",
+      "true_cause": "a message queue backlog after a consumer deadlock",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "search-indexer",
+      "style": "narrative",
+      "attempts": 1,
+      "validator_root_cause": "A lock-order inversion in search-indexer v4.19.2 caused consumers to deadlock when the reindex fast path overlapped with incremental indexing."
+    },
+    "INC-9592": {
+      "label": "other",
+      "true_cause": "a dependency upgrade that changed JSON serialization of decimals",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "identity-graph",
+      "style": "handoff",
+      "attempts": 1,
+      "validator_root_cause": "The serdelight 4.2.0 upgrade changed identity-graph’s decimal serialization format, causing downstream consumers to reject or fail on emitted events."
+    },
+    "INC-9629": {
+      "label": "other",
+      "true_cause": "an expired domain registration for a marketing domain that also served an API redirect",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "media-transcoder",
+      "style": "chatlog",
+      "attempts": 1,
+      "validator_root_cause": "The transcodely.com domain registration expired and the registrar suspended its DNS (clientHold), breaking redirect-based broker discovery for mq-bridge and causing a reconnect loop and queue backlog."
+    },
+    "INC-9685": {
+      "label": "other",
+      "true_cause": "an expired software license key for the search engine cluster",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "mobile-bff",
+      "style": "formal",
+      "attempts": 1,
+      "validator_root_cause": "The search cluster’s enterprise license expired and caused it to downgrade to a restricted tier, rejecting queries required by mobile-bff."
+    },
+    "INC-9720": {
+      "label": "other",
+      "true_cause": "a message queue backlog after a consumer deadlock",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "sftp-drop",
+      "style": "formal",
+      "attempts": 1,
+      "validator_root_cause": "A lock-order change in loyalty-points v4.12.0 caused tenant-level deadlocks that stopped queue consumption and delayed downstream processing."
+    },
+    "INC-9806": {
+      "label": "other",
+      "true_cause": "a leap-second-like timestamp bug in a scheduler",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "status-page",
+      "style": "exec_email",
+      "attempts": 1,
+      "validator_root_cause": "A one-second backward clock step caused the scheduler to repeatedly re-enqueue jobs, saturating shared resources and delaying status updates and invoice rendering."
+    },
+    "INC-9887": {
+      "label": "tp",
+      "true_cause": "expired_certificate",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "audit-log",
+      "style": "narrative",
+      "attempts": 1,
+      "validator_root_cause": "The manually installed wildcard certificate (*.api.kestrelworks.io) terminating TLS on the edge load balancers genuinely reached its notAfter expiry at 17:39:58 UTC on 2024-04-26 and remained in service because it was never enrolled in the ACME auto-renewal pipeline and CA renewal reminders went to "
+    },
+    "INC-9926": {
+      "label": "other",
+      "true_cause": "a database connection pool exhaustion after a traffic spike",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "shipping-quotes",
+      "style": "nonnative",
+      "attempts": 1,
+      "validator_root_cause": "A traffic spike exhausted the database connection pool, compounded by a v3.14.2 timeout-path bug that leaked connections during parallel carrier lookups."
+    },
+    "INC-9961": {
+      "label": "other",
+      "true_cause": "thread pool starvation from a blocking call in an async handler",
+      "decoy_type": null,
+      "no_keyword": false,
+      "service": "partner-webhooks",
+      "style": "table",
+      "attempts": 1,
+      "validator_root_cause": "A newly added synchronous identity-graph enrichment call blocked all delivery worker threads during elevated lookup latency, starving the pool and causing webhook failures and downstream degradation."
+    }
+  }
+}

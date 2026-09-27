@@ -20,15 +20,11 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { gunzipSync } from "node:zlib";
 
-export const FROZEN_AT = "2026-09-26-research-pilot";
+// The set grew from the pilot to the pilot plus the full corpus; the pilot task itself is unchanged.
+export const FROZEN_AT = "2026-09-27-research";
 
 /** Pass threshold for both precision and recall. */
 export const RESEARCH_THRESHOLD = 0.9;
-
-const FIXTURE = new URL("./fixtures/incident-root-causes.jsonl.gz", import.meta.url);
-const META = new URL("./fixtures/incident-root-causes.meta.json", import.meta.url);
-const FIXTURE_SHA256 = "06c2fc527ba042fee207d287f4a6c6ba8def00e758f9b93c10ac15b2fb89c503";
-const META_SHA256 = "1e92b0d21f44c21a20f2ee134ea0c1d58d5b60d450c44a07fa49f1861fa3133c";
 
 function pinned(url, expected) {
 	const bytes = readFileSync(url);
@@ -37,26 +33,39 @@ function pinned(url, expected) {
 	return bytes;
 }
 
-/** Reports of the frozen corpus: [{id, path, text}]. */
-export function incidentReports() {
-	return gunzipSync(pinned(FIXTURE, FIXTURE_SHA256))
-		.toString("utf8")
-		.split("\n")
-		.filter(Boolean)
-		.map((line) => JSON.parse(line));
+/** A frozen corpus: its reports, labels and true-positive ids, each file pinned by sha256. */
+function corpus(dir, fixtureSha256, metaSha256) {
+	const fixture = new URL(`./fixtures/${dir}incident-root-causes.jsonl.gz`, import.meta.url);
+	const meta = new URL(`./fixtures/${dir}incident-root-causes.meta.json`, import.meta.url);
+	const reports = () =>
+		gunzipSync(pinned(fixture, fixtureSha256))
+			.toString("utf8")
+			.split("\n")
+			.filter(Boolean)
+			.map((line) => JSON.parse(line));
+	const metaData = () => JSON.parse(pinned(meta, metaSha256).toString("utf8"));
+	const truth = () =>
+		Object.entries(metaData().labels)
+			.filter(([, entry]) => entry.label === "tp")
+			.map(([id]) => id)
+			.sort();
+	return { reports, meta: metaData, truth };
 }
 
-/** Labels per incident id ({label: "tp" | "decoy" | "other", ...}) and generation stats. */
-export function incidentMeta() {
-	return JSON.parse(pinned(META, META_SHA256).toString("utf8"));
-}
+/** The 157-report pilot, frozen when power loss interrupted the first full generation run. */
+export const PILOT = corpus(
+	"",
+	"06c2fc527ba042fee207d287f4a6c6ba8def00e758f9b93c10ac15b2fb89c503",
+	"1e92b0d21f44c21a20f2ee134ea0c1d58d5b60d450c44a07fa49f1861fa3133c",
+);
+/** The full 400-report corpus: the pilot's reports plus 243 more, validated by a second model family. */
+export const FULL = corpus("full/", "4e588e1543976816d5cbb3c2c2cdb9fbc69446d561ef9815a8479e23c8567276", "dbaa90b15a6da5b03891a88893541193a0ef0fd3905c1c901b983cc386038f39");
 
-export function trueIncidentIds() {
-	return Object.entries(incidentMeta().labels)
-		.filter(([, entry]) => entry.label === "tp")
-		.map(([id]) => id)
-		.sort();
-}
+/** Reports of the pilot corpus: [{id, path, text}]. */
+export const incidentReports = PILOT.reports;
+/** Pilot labels per incident id ({label: "tp" | "decoy" | "other", ...}) and generation stats. */
+export const incidentMeta = PILOT.meta;
+export const trueIncidentIds = PILOT.truth;
 
 /**
  * Hidden checker: precision and recall of answer.json's incident_ids against the frozen labels. Prints the (capped)
@@ -90,26 +99,39 @@ print(json.dumps({"precision": round(precision, 4), "recall": round(recall, 4), 
 sys.exit(0 if passed else 1)
 `;
 
-function buildIncidentRootCauses() {
+/** The task files for one corpus: every report under incidents/, and the true-positive ids for the hidden check. */
+function buildIncidentRootCauses(source) {
 	const files = {};
-	for (const report of incidentReports()) files[report.path] = report.text;
+	for (const report of source.reports()) files[report.path] = report.text;
 	return {
 		files,
 		hidden: {
 			"check_incidents_hidden.py": CHECK,
-			"expected_hidden.json": `${JSON.stringify({ incident_ids: trueIncidentIds() })}\n`,
+			"expected_hidden.json": `${JSON.stringify({ incident_ids: source.truth() })}\n`,
 		},
 	};
 }
+
+const PROMPT_TAIL = 'written by different people in very different styles: formal postmortems, on-call notes, chat-log dumps, tickets, emails. There is no index of root causes. Find every incident whose ROOT CAUSE was an expired TLS/SSL certificate, meaning a certificate (leaf, intermediate or client) that genuinely reached the end of its validity period while still in use. Reports describe causes in their own words, so the same cause can be phrased in many ways. Be careful: many other incidents mention certificates (suspected and ruled out, revoked, misconfigured, expired somewhere irrelevant, and so on) without a certificate expiry being the root cause; those must not be listed. Write answer.json as {"incident_ids": ["INC-....", ...]} using the ids from the reports. Scoring uses precision and recall over the ids; both must be at least 0.9.';
 
 export function tasks() {
 	return [
 		{
 			id: "incident-root-causes",
 			category: "semantic-research",
-			build: buildIncidentRootCauses,
+			build: () => buildIncidentRootCauses(PILOT),
 			prompts: [
-				'incidents/ holds 157 incident reports from our engineering teams (one file per incident, about 850 KB in total), written by different people in very different styles: formal postmortems, on-call notes, chat-log dumps, tickets, emails. There is no index of root causes. Find every incident whose ROOT CAUSE was an expired TLS/SSL certificate, meaning a certificate (leaf, intermediate or client) that genuinely reached the end of its validity period while still in use. Reports describe causes in their own words, so the same cause can be phrased in many ways. Be careful: many other incidents mention certificates (suspected and ruled out, revoked, misconfigured, expired somewhere irrelevant, and so on) without a certificate expiry being the root cause; those must not be listed. Write answer.json as {"incident_ids": ["INC-....", ...]} using the ids from the reports. Scoring uses precision and recall over the ids; both must be at least 0.9.',
+				`incidents/ holds 157 incident reports from our engineering teams (one file per incident, about 850 KB in total), ${PROMPT_TAIL}`,
+			],
+			verify: "python3 check_incidents_hidden.py",
+			verifyTimeoutMs: 120_000,
+		},
+		{
+			id: "incident-root-causes-full",
+			category: "semantic-research",
+			build: () => buildIncidentRootCauses(FULL),
+			prompts: [
+				`incidents/ holds 400 incident reports from our engineering teams (one file per incident, about 2.1 MB in total), ${PROMPT_TAIL}`,
 			],
 			verify: "python3 check_incidents_hidden.py",
 			verifyTimeoutMs: 120_000,

@@ -4,7 +4,14 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
-import { incidentMeta, incidentReports, RESEARCH_THRESHOLD, tasks, trueIncidentIds } from "../evals/quality/tasks-research.mjs";
+import {
+	FULL,
+	incidentMeta,
+	incidentReports,
+	RESEARCH_THRESHOLD,
+	tasks,
+	trueIncidentIds,
+} from "../evals/quality/tasks-research.mjs";
 import { isGatedComparison, verifyMetrics } from "./eval-quality.mjs";
 
 const fullComparison = (taskSet) => ({ taskSet, summary: { gate: [{ check: "pass rate", ok: true }] } });
@@ -47,6 +54,19 @@ test("the research corpus is frozen with the promised shape", () => {
 	assert.ok(decoys.length >= 35, `${decoys.length} decoys`);
 	const text = Object.fromEntries(reports.map((report) => [report.id, report.text]));
 	for (const id of noKeyword) assert.doesNotMatch(text[id], /cert/i, id);
+});
+
+test("the full research corpus holds the pilot plus 243 more reports, with the same labels for shared ids", () => {
+	const reports = FULL.reports();
+	const { labels, corpus } = FULL.meta();
+	assert.equal(reports.length, 400);
+	assert.deepEqual(reports.map((report) => report.id).sort(), Object.keys(labels).sort());
+	assert.deepEqual(corpus, { reports: 400, bytes: corpus.bytes, truePositives: 25, noKeywordTruePositives: 10, decoys: 40, other: 335 });
+	const pilot = incidentMeta().labels;
+	for (const [id, entry] of Object.entries(pilot)) assert.equal(labels[id]?.label, entry.label, id);
+	assert.deepEqual(FULL.truth(), trueIncidentIds());
+	const text = Object.fromEntries(reports.map((report) => [report.id, report.text]));
+	for (const id of FULL.truth().filter((id) => labels[id].no_keyword)) assert.doesNotMatch(text[id], /cert/i, id);
 });
 
 test("the research task prompt is agent-neutral and its hidden check scores precision and recall", () => {

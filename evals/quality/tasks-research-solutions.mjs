@@ -8,7 +8,7 @@
  *     not solvable with a regex;
  *   - empty answer: no ids.
  */
-import { trueIncidentIds } from "./tasks-research.mjs";
+import { FULL, PILOT } from "./tasks-research.mjs";
 
 const KEYWORD_BASELINE = `import json, os, re
 ids = []
@@ -19,9 +19,10 @@ for name in sorted(os.listdir("incidents")):
 json.dump({"incident_ids": ids}, open("answer.json", "w"))
 `;
 
-export const solutions = {
-	"incident-root-causes": {
-		files: { "answer.json": `${JSON.stringify({ incident_ids: trueIncidentIds() })}\n` },
+/** The reference answer and negative trials for one corpus. */
+function solutionFor(source) {
+	return {
+		files: { "answer.json": `${JSON.stringify({ incident_ids: source.truth() })}\n` },
 		alternatives: [
 			{
 				name: "keyword baseline",
@@ -31,5 +32,10 @@ export const solutions = {
 			},
 			{ name: "empty answer", files: { "answer.json": `${JSON.stringify({ incident_ids: [] })}\n` }, expect: "fail" },
 		],
-	},
+	};
+}
+
+export const solutions = {
+	"incident-root-causes": solutionFor(PILOT),
+	"incident-root-causes-full": solutionFor(FULL),
 };

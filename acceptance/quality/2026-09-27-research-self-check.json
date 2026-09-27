@@ -1,0 +1,131 @@
+{
+  "taskSet": "research",
+  "frozenAt": "2026-09-27-research",
+  "passed": true,
+  "results": [
+    {
+      "task": "incident-root-causes",
+      "category": "semantic-research",
+      "ok": true,
+      "durationMs": 151,
+      "outcomes": [
+        {
+          "trial": "unsolved",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 42,
+          "metrics": {
+            "precision": 0,
+            "recall": 0,
+            "passed": false,
+            "error": "answer.json unusable: [Errno 2] No such file or directory: 'answer.json'"
+          }
+        },
+        {
+          "trial": "solved",
+          "expect": "pass",
+          "ok": true,
+          "verifyMs": 43,
+          "metrics": {
+            "precision": 1,
+            "recall": 1,
+            "passed": true,
+            "answered": 25,
+            "missed": 0,
+            "extra": 0
+          }
+        },
+        {
+          "trial": "keyword baseline",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 42,
+          "metrics": {
+            "precision": 0.3288,
+            "recall": 0.96,
+            "passed": false,
+            "answered": 73,
+            "missed": 1,
+            "extra": 49
+          }
+        },
+        {
+          "trial": "empty answer",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 42,
+          "metrics": {
+            "precision": 0,
+            "recall": 0,
+            "passed": false,
+            "answered": 0,
+            "missed": 25,
+            "extra": 0
+          }
+        }
+      ]
+    },
+    {
+      "task": "incident-root-causes-full",
+      "category": "semantic-research",
+      "ok": true,
+      "durationMs": 199,
+      "outcomes": [
+        {
+          "trial": "unsolved",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 38,
+          "metrics": {
+            "precision": 0,
+            "recall": 0,
+            "passed": false,
+            "error": "answer.json unusable: [Errno 2] No such file or directory: 'answer.json'"
+          }
+        },
+        {
+          "trial": "solved",
+          "expect": "pass",
+          "ok": true,
+          "verifyMs": 40,
+          "metrics": {
+            "precision": 1,
+            "recall": 1,
+            "passed": true,
+            "answered": 25,
+            "missed": 0,
+            "extra": 0
+          }
+        },
+        {
+          "trial": "keyword baseline",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 38,
+          "metrics": {
+            "precision": 0.2637,
+            "recall": 0.96,
+            "passed": false,
+            "answered": 91,
+            "missed": 1,
+            "extra": 67
+          }
+        },
+        {
+          "trial": "empty answer",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 41,
+          "metrics": {
+            "precision": 0,
+            "recall": 0,
+            "passed": false,
+            "answered": 0,
+            "missed": 25,
+            "extra": 0
+          }
+        }
+      ]
+    }
+  ]
+}
