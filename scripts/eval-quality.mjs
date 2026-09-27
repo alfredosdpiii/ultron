@@ -12,7 +12,7 @@
  *   node scripts/eval-quality.mjs --tasks judged --self-check [--judge-live]
  *   node scripts/eval-quality.mjs --tasks parallel [--trials 2 --variants pi,ultron]   (prints wall time per run)
  *   node scripts/eval-quality.mjs --tasks parallel --self-check                        (about 4.5 minutes, real sleeps)
- *   node scripts/eval-quality.mjs --tasks delegation --self-check                      (about 8.5 minutes, real sleeps)
+ *   node scripts/eval-quality.mjs --tasks delegation --self-check                      (about 8.5 minutes, real sleeps and harness runs)
  *
  * `--tasks` picks the frozen set: default is evals/quality/tasks.mjs, `hard` is tasks-hard.mjs, `judged` is
  * tasks-judged.mjs (open-ended work scored by an LLM judge next to a light deterministic sanity check), `parallel`
@@ -21,7 +21,8 @@
  * precision and recall; the corpus is a committed fixture, so running or self-checking the set calls no model), and
  * `delegation` is tasks-delegation.mjs (six independent buggy services to fix under a wall-clock budget that one
  * sequential agent is unlikely to meet: working on them in parallel pays off; the hidden check reports how many
- * of the six passed as `metrics`).
+ * of the six passed as `metrics`; its second task, `six-services-deep`, hides each service's bugs behind a slow
+ * staged harness that must be run and rerun, see tasks-delegation-deep.mjs).
  *
  * Wall time: a task with `timeBudgetMs` records `withinBudget` (durationMs <= budget) next to pass/fail, and the
  * summary reports per variant how many runs (and passing runs) finished within budget, with every run's time. The

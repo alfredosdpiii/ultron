@@ -23,11 +23,17 @@
  * applied to the fixture here so the solutions file and the script tests share them.
  * Same contract as tasks-hard.mjs (`build()` returns `{ files, hidden }`).
  * Do not edit the task after measurements exist: add a new id instead (see FROZEN_AT).
+ *
+ * The set's second task, `six-services-deep` (tasks-delegation-deep.mjs), was added after gpt-6-sol fixed all six
+ * services here from one batched read: its bugs are found only by running a slow, staged check harness and
+ * iterating, and the hidden check needs a logged passing harness run on each service's final code.
  */
-import { createHash } from "node:crypto";
-import { readdirSync, readFileSync } from "node:fs";
-import { join, relative } from "node:path";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { fixtureDigest, readTree } from "./fixture-tree.mjs";
+import { TASK as DEEP_TASK } from "./tasks-delegation-deep.mjs";
+
+export { fixtureDigest };
 
 export const FROZEN_AT = "2026-09-27-delegation";
 
@@ -39,30 +45,6 @@ export const SERVICES = ["alpha", "beta", "gamma", "delta", "epsilon", "zeta"];
 const FIXTURE = fileURLToPath(new URL("./fixtures/delegation/", import.meta.url));
 /** sha256 over every fixture file (path and content, sorted by path); a changed fixture refuses to load. */
 const FIXTURE_SHA256 = "0760eed7560f099ee38d9c65e00424879e867b22d8d9c0f6458d1e5c9b4f8069";
-
-function readTree(dir) {
-	const files = {};
-	const walk = (current) => {
-		for (const entry of readdirSync(current, { withFileTypes: true })) {
-			if (entry.name === "__pycache__") continue;
-			const path = join(current, entry.name);
-			if (entry.isDirectory()) walk(path);
-			else files[relative(dir, path)] = readFileSync(path, "utf8");
-		}
-	};
-	walk(dir);
-	return files;
-}
-
-export function fixtureDigest(project, hidden) {
-	const hash = createHash("sha256");
-	for (const [prefix, tree] of [
-		["project", project],
-		["hidden", hidden],
-	])
-		for (const path of Object.keys(tree).sort()) hash.update(`${prefix}/${path}\0${tree[path]}\0`);
-	return hash.digest("hex");
-}
 
 function loadFixture() {
 	const project = readTree(join(FIXTURE, "project"));
@@ -243,5 +225,6 @@ export function tasks() {
 			verifyTimeoutMs: 180_000,
 			timeBudgetMs: TIME_BUDGET_MS,
 		},
+		DEEP_TASK,
 	];
 }
