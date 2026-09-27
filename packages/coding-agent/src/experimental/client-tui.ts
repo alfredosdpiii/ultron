@@ -73,9 +73,9 @@ import { PiSessionView } from "./pi-session-view.ts";
 import { createPresentationFacetLoaders } from "./plugins/bundled.ts";
 import { PROMPT_HISTORY_LIMIT, PromptHistoryStore, promptHistoryPath, sessionPromptHistory } from "./prompt-history.ts";
 import { PromptHistorySearchComponent } from "./prompt-history-search.ts";
-import { buildDagRuns, RlmDagPane, renderWaveSummary } from "./rlm-dag.ts";
 import { RlmGraphFocus } from "./rlm-focus.ts";
 import { buildRlmGraph, graphActive, renderRlmDock, renderRlmFooter } from "./rlm-graph.ts";
+import { buildDagRuns, paneWorkRuns, RlmPane, renderWaveSummary } from "./rlm-pane.ts";
 import {
 	extractRootCell,
 	extractTurn,
@@ -191,15 +191,15 @@ const RLM_POLL_HIDDEN_MS = 5000;
 const RLM_MAX_ASSESSED = 8;
 /** Frame summaries fetched per poll: enough to fan out a wide `rlm.map` (the worker keeps at most 200). */
 const RLM_FRAME_LIMIT = 200;
-/** The DAG side pane opens beside the chat from this terminal width; narrower, the full-screen graph opens. */
-export const DAG_PANE_MIN_COLUMNS = 120;
+/** The RLM pane opens beside the chat from this terminal width; narrower, the full-screen graph opens. */
+export const RLM_PANE_MIN_COLUMNS = 120;
 /** The pane takes about 40% of the width, at least this many columns (border excluded). */
-const DAG_PANE_MIN_WIDTH = 44;
-const DAG_PANE_RATIO = 0.4;
+const RLM_PANE_MIN_WIDTH = 44;
+const RLM_PANE_RATIO = 0.4;
 
 /** Side pane width for a terminal width. */
-export function dagPaneWidth(columns: number): number {
-	return Math.max(DAG_PANE_MIN_WIDTH, Math.round(columns * DAG_PANE_RATIO));
+export function rlmPaneWidth(columns: number): number {
+	return Math.max(RLM_PANE_MIN_WIDTH, Math.round(columns * RLM_PANE_RATIO));
 }
 
 /** Redraw cadence for spinners and Jev's pulse, only while something animates. */
@@ -282,10 +282,15 @@ export class ExperimentalClientTui implements Component {
 		render: (width) => this.#renderWaveSummary(width),
 		invalidate() {},
 	};
-	/** The DAG side pane (`app.rlm.pane`): open beside the chat on wide terminals; focused takes the keys. */
-	readonly #dagPane: RlmDagPane;
-	#dagPaneOpen = false;
-	#dagPaneFocused = false;
+	/** The RLM pane (`app.rlm.pane`): open beside the chat on wide terminals; focused takes the keys. */
+	readonly #rlmPane: RlmPane;
+	#rlmPaneOpen = false;
+	#rlmPaneFocused = false;
+	/**
+	 * Auto-open bookkeeping: the runs the pane already opened for (or showed while open), and `op:<id>` for each turn
+	 * in which the user closed the pane. Either keeps a closed pane closed for the rest of that turn or run.
+	 */
+	readonly #rlmPaneHandled = new Set<string>();
 	#rlmVisible = false;
 	#jevVisible = false;
 	/** The wave summary showed at the last poll (it polls at the visible rate while it does). */
@@ -397,7 +402,7 @@ export class ExperimentalClientTui implements Component {
 		this.#chatInput.onAction("app.rlm.toggle", () => this.#toggleRlm());
 		this.#chatInput.onAction("app.jev.toggle", () => this.#toggleJev());
 		this.#chatInput.onAction("app.rlm.focus", () => this.#openRlmFocus());
-		this.#chatInput.onAction("app.rlm.pane", () => this.#toggleDagPane());
+		this.#chatInput.onAction("app.rlm.pane", () => this.#toggleRlmPane());
 		this.#chatInput.onAction("app.jev.notes.toggle", () => {
 			this.#jevNotesExpanded = !this.#jevNotesExpanded;
 			this.#layoutRoot.invalidate();
@@ -438,23 +443,23 @@ export class ExperimentalClientTui implements Component {
 			scrollbarTrackStyle: (text) => theme.fg("scrollbarTrack", text),
 			scrollbarThumbStyle: (text) => theme.fg("scrollbarThumb", text),
 		}).root;
-		this.#dagPane = new RlmDagPane({
+		this.#rlmPane = new RlmPane({
 			snapshot: () => this.#rlmSnapshot(),
 			height: () => this.#ui.terminal.rows,
 			keybindings: this.#keybindings,
 			style: rlmStyle,
-			focused: () => this.#dagPaneFocused,
+			focused: () => this.#rlmPaneFocused,
 			toggleKey: () => this.#keybindings.getKeys("app.rlm.pane")[0],
-			onClose: () => this.#closeDagPane(),
+			onClose: () => this.#closeRlmPane(),
 			requestRender: () => this.#requestRender(),
 		});
-		// Chat, editor and footer on the left; the DAG pane on the right while open on a wide terminal.
-		this.#layoutRoot = new SplitView(chatRoot, this.#dagPane, {
+		// Chat, editor and footer on the left; the RLM pane on the right while open on a wide terminal.
+		this.#layoutRoot = new SplitView(chatRoot, this.#rlmPane, {
 			columns: () => this.#ui.terminal.columns,
 			rows: () => this.#ui.terminal.rows,
-			open: (width) => this.#dagPaneOpen && width >= DAG_PANE_MIN_COLUMNS,
-			sideWidth: dagPaneWidth,
-			borderStyle: (text) => theme.fg(this.#dagPaneFocused ? "borderAccent" : "border", text),
+			open: (width) => this.#rlmPaneOpen && width >= RLM_PANE_MIN_COLUMNS,
+			sideWidth: rlmPaneWidth,
+			borderStyle: (text) => theme.fg(this.#rlmPaneFocused ? "borderAccent" : "border", text),
 		});
 		this.#rebuild();
 	}
@@ -529,9 +534,9 @@ export class ExperimentalClientTui implements Component {
 			return;
 		}
 		if (this.#screen === "chat") {
-			if (this.#dagPaneFocused && this.#dagPaneShown()) {
-				if (this.#keybindings.matches(data, "app.rlm.pane")) this.#toggleDagPane();
-				else this.#dagPane.handleInput(data);
+			if (this.#rlmPaneFocused && this.#rlmPaneShown()) {
+				if (this.#keybindings.matches(data, "app.rlm.pane")) this.#toggleRlmPane();
+				else this.#rlmPane.handleInput(data);
 				this.#requestRender();
 				return;
 			}
@@ -666,10 +671,10 @@ export class ExperimentalClientTui implements Component {
 						commands.replace({
 							name: "rlm",
 							description:
-								"Toggle the live RLM graph panel; /rlm focus opens it full screen, /rlm pane the DAG side pane",
+								"Toggle the live RLM graph panel; /rlm focus opens it full screen, /rlm pane the RLM pane",
 							run: (args) => {
 								if (args.trim() === "focus") this.#openRlmFocus();
-								else if (args.trim() === "pane") this.#toggleDagPane();
+								else if (args.trim() === "pane") this.#toggleRlmPane();
 								else this.#toggleRlm();
 								return undefined;
 							},
@@ -826,7 +831,7 @@ export class ExperimentalClientTui implements Component {
 			this.#editorContainer.addChild(this.#active.component);
 		} else {
 			this.#selectList = undefined;
-			this.#chatInput.focused = !this.#busy && !(this.#dagPaneFocused && this.#dagPaneShown());
+			this.#chatInput.focused = !this.#busy && !(this.#rlmPaneFocused && this.#rlmPaneShown());
 			this.#editorContainer.addChild(this.#chatInput);
 		}
 		this.#layoutRoot.invalidate();
@@ -1962,37 +1967,80 @@ export class ExperimentalClientTui implements Component {
 		this.#rebuild();
 	}
 
-	/** Whether the DAG pane shows beside the chat (open, and the terminal wide enough). */
-	#dagPaneShown(): boolean {
-		return this.#dagPaneOpen && this.#ui.terminal.columns >= DAG_PANE_MIN_COLUMNS;
+	/** Whether the RLM pane shows beside the chat (open, and the terminal wide enough). */
+	#rlmPaneShown(): boolean {
+		return this.#rlmPaneOpen && this.#ui.terminal.columns >= RLM_PANE_MIN_COLUMNS;
 	}
 
 	/**
-	 * `app.rlm.pane`: open the DAG side pane with the focus; pressed again, the focus moves between the pane and the
+	 * `app.rlm.pane`: open the RLM pane with the focus; pressed again, the focus moves between the pane and the
 	 * chat (the pane stays open). On a narrow terminal the full-screen graph opens instead.
 	 */
-	#toggleDagPane(): void {
-		if (this.#ui.terminal.columns < DAG_PANE_MIN_COLUMNS) {
-			this.#dagPaneOpen = false;
-			this.#dagPaneFocused = false;
+	#toggleRlmPane(): void {
+		if (this.#ui.terminal.columns < RLM_PANE_MIN_COLUMNS) {
+			this.#rlmPaneOpen = false;
+			this.#rlmPaneFocused = false;
 			this.#openRlmFocus();
 			this.#rebuild();
 			return;
 		}
-		if (!this.#dagPaneOpen) {
-			this.#dagPaneOpen = true;
-			this.#dagPaneFocused = true;
-		} else this.#dagPaneFocused = !this.#dagPaneFocused;
+		if (!this.#rlmPaneOpen) {
+			this.#rlmPaneOpen = true;
+			this.#rlmPaneFocused = true;
+		} else this.#rlmPaneFocused = !this.#rlmPaneFocused;
 		this.#scheduleRlmPolling();
 		void this.#refreshRlm();
 		this.#updateAnimation();
 		this.#rebuild();
 	}
 
-	#closeDagPane(): void {
-		this.#dagPaneOpen = false;
-		this.#dagPaneFocused = false;
+	#closeRlmPane(): void {
+		// Closed during a turn: that turn does not auto-open it again (a later turn may).
+		const operation = this.#laneSnapshot()?.operation;
+		if (operation !== null && operation !== undefined) this.#rlmPaneHandled.add(`op:${operation.id}`);
+		this.#rlmPaneOpen = false;
+		this.#rlmPaneFocused = false;
 		this.#scheduleRlmPolling();
+		this.#rebuild();
+	}
+
+	/** Whether RLM work opens the pane by itself (`rlmPaneAutoOpen`, default on; `ULTRON_RLM_PANE_AUTO=off` turns it off). */
+	#rlmPaneAutoOpenEnabled(): boolean {
+		if (["off", "0", "false"].includes((process.env.ULTRON_RLM_PANE_AUTO ?? "").trim().toLowerCase())) return false;
+		return this.#settingsManager.getRlmPaneAutoOpen();
+	}
+
+	/**
+	 * Auto-open: when work the pane shows (a spawned child, a typed agent or background task, a `workflows.run` node,
+	 * an `rlm.map` fan-out) starts in a run the pane has not opened for, open the pane beside the chat without the
+	 * focus, so typing stays in the editor. Only on a terminal wide enough to split (never the full-screen graph), only
+	 * on the chat screen with the full-screen graph closed; a run seen while too narrow opens once the terminal is wide.
+	 * A pane the user closed stays closed for the rest of that turn and for the runs it already showed; the next turn
+	 * or run with such work opens it again. It never closes the pane by itself.
+	 */
+	#autoOpenRlmPane(): void {
+		const operation = this.#laneSnapshot()?.operation ?? undefined;
+		const runs = paneWorkRuns(buildDagRuns(this.#rlmSnapshot()), operation?.startedAt);
+		const ids = runs.map((run) =>
+			run.kind === "turn" ? `turn:${operation?.id ?? run.startedAt ?? run.id}` : run.key,
+		);
+		if (!ids.some((id) => !this.#rlmPaneHandled.has(id))) return;
+		const mark = () => {
+			for (const id of ids) this.#rlmPaneHandled.add(id);
+		};
+		if (this.#rlmPaneOpen) {
+			mark();
+			return;
+		}
+		if (!this.#rlmPaneAutoOpenEnabled()) return;
+		if (this.#ui.terminal.columns < RLM_PANE_MIN_COLUMNS) return;
+		if (this.#screen !== "chat" || this.#rlmFocus !== undefined) return;
+		mark();
+		if (operation !== undefined && this.#rlmPaneHandled.has(`op:${operation.id}`)) return;
+		this.#rlmPaneOpen = true;
+		this.#rlmPaneFocused = false;
+		this.#scheduleRlmPolling();
+		this.#updateAnimation();
 		this.#rebuild();
 	}
 
@@ -2019,7 +2067,7 @@ export class ExperimentalClientTui implements Component {
 		if (this.#closed) return;
 		this.#rlmTimer = setInterval(
 			() => void this.#refreshRlm(),
-			this.#rlmVisible || this.#jevVisible || this.#rlmFocus !== undefined || this.#dagPaneOpen || this.#waveActive
+			this.#rlmVisible || this.#jevVisible || this.#rlmFocus !== undefined || this.#rlmPaneOpen || this.#waveActive
 				? RLM_POLL_VISIBLE_MS
 				: RLM_POLL_HIDDEN_MS,
 		);
@@ -2085,6 +2133,7 @@ export class ExperimentalClientTui implements Component {
 			next.progress = progress;
 			if (this.#closed) return;
 			this.#rlmState = next;
+			this.#autoOpenRlmPane();
 			// The wave summary is live: poll at the visible rate while it shows.
 			const waveActive = this.#renderWaveSummary(200).length > 0;
 			if (waveActive !== this.#waveActive) {

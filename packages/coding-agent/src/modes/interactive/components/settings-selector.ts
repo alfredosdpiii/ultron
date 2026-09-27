@@ -81,6 +81,8 @@ export interface SettingsConfig {
 	outputPad: 0 | 1;
 	autocompleteMaxVisible: number;
 	quietStartup: boolean;
+	/** Ultron's native TUI only: open the RLM pane when RLM work starts (listed when the callback is set). */
+	rlmPaneAutoOpen?: boolean;
 	defaultProjectTrust: DefaultProjectTrust;
 	clearOnShrink: boolean;
 	showTerminalProgress: boolean;
@@ -119,6 +121,7 @@ export interface SettingsCallbacks {
 	onOutputPadChange: (padding: 0 | 1) => void;
 	onAutocompleteMaxVisibleChange: (maxVisible: number) => void;
 	onQuietStartupChange: (enabled: boolean) => void;
+	onRlmPaneAutoOpenChange?: (enabled: boolean) => void;
 	onDefaultProjectTrustChange: (defaultProjectTrust: DefaultProjectTrust) => void;
 	onClearOnShrinkChange: (enabled: boolean) => void;
 	onShowTerminalProgressChange: (enabled: boolean) => void;
@@ -542,6 +545,18 @@ export class SettingsSelectorComponent extends Container {
 				currentValue: config.quietStartup ? "true" : "false",
 				values: ["true", "false"],
 			},
+			...(callbacks.onRlmPaneAutoOpenChange === undefined
+				? []
+				: [
+						{
+							id: "rlm-pane-auto-open",
+							label: "RLM pane auto-open",
+							description:
+								"Open the RLM pane beside the chat when RLM work starts (wide terminals; the editor keeps the focus)",
+							currentValue: config.rlmPaneAutoOpen === false ? "false" : "true",
+							values: ["true", "false"],
+						},
+					]),
 			{
 				id: "install-telemetry",
 				label: "Install telemetry",
@@ -892,6 +907,9 @@ export class SettingsSelectorComponent extends Container {
 						break;
 					case "quiet-startup":
 						callbacks.onQuietStartupChange(newValue === "true");
+						break;
+					case "rlm-pane-auto-open":
+						callbacks.onRlmPaneAutoOpenChange?.(newValue === "true");
 						break;
 					case "install-telemetry":
 						callbacks.onEnableInstallTelemetryChange(newValue === "true");

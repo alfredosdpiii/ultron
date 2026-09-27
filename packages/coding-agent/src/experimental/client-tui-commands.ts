@@ -297,6 +297,7 @@ export function hotkeysMarkdown(): string {
 | \`${k("app.rlm.toggle")}\` | Toggle the live RLM panel |
 | \`${k("app.jev.toggle")}\` | Toggle the Jev decisions panel |
 | \`${k("app.rlm.focus")}\` | Open the full-screen RLM graph |
+| \`${k("app.rlm.pane")}\` | Open the RLM pane beside the chat, or move the focus between it and the chat |
 | \`${k("app.jev.notes.toggle")}\` | Expand or fold Jev's memory notes |
 | \`/\` | Slash commands |
 | \`!\` | Run bash command |
@@ -384,6 +385,7 @@ export class StartupHeader implements Component {
 					keyHint("app.message.dequeue", "to edit all queued messages"),
 					keyHint("app.clipboard.pasteImage", "to paste image (with text fallback)"),
 					keyHint("app.rlm.toggle", "for the RLM panel"),
+					keyHint("app.rlm.pane", "for the RLM pane"),
 					keyHint("app.jev.toggle", "for the Jev panel"),
 				].join("\n")
 			: [

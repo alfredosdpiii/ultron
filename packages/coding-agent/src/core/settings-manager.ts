@@ -125,6 +125,7 @@ export interface Settings {
 	externalEditor?: string; // Command for Ctrl+G external editor; takes precedence over VISUAL/EDITOR
 	shellPath?: string; // Custom shell path (e.g., for Cygwin users on Windows); supports leading ~ expansion
 	quietStartup?: boolean;
+	rlmPaneAutoOpen?: boolean; // default: true - the native TUI opens the RLM pane when RLM work starts
 	defaultProjectTrust?: DefaultProjectTrust; // default: "ask"; global setting only
 	shellCommandPrefix?: string; // Prefix prepended to every bash command (e.g., "shopt -s expand_aliases" for alias support)
 	npmCommand?: string[]; // Command used for npm package lookup/install operations, argv-style (e.g., ["mise", "exec", "node@20", "--", "npm"])
@@ -1068,6 +1069,16 @@ export class SettingsManager {
 	setQuietStartup(quiet: boolean): void {
 		this.globalSettings.quietStartup = quiet;
 		this.markModified("quietStartup");
+		this.save();
+	}
+
+	getRlmPaneAutoOpen(): boolean {
+		return this.settings.rlmPaneAutoOpen ?? true;
+	}
+
+	setRlmPaneAutoOpen(enabled: boolean): void {
+		this.globalSettings.rlmPaneAutoOpen = enabled;
+		this.markModified("rlmPaneAutoOpen");
 		this.save();
 	}
 

@@ -172,18 +172,18 @@ On native Windows, `app.suspend` has no default because Windows terminals do not
 | `app.rlm.graph.details` | `enter` | RLM graph: show or hide the selected node's details |
 | `app.rlm.graph.collapse` | `c`, `space` | RLM graph: collapse or expand the subtree (on a leaf, fold its parent) |
 | `app.rlm.graph.exit` | `escape`, `q` | RLM graph: leave the focus view |
-| `app.rlm.pane` | `alt+w` | Open the RLM DAG side pane beside the chat (terminals of 120 columns or more; narrower, the full-screen graph opens); pressed again, move the focus between the pane and the chat (native TUI; same as `/rlm pane`). `alt+d` stays the editor's delete-word-forward |
-| `app.rlm.pane.next` | `tab`, `n` | DAG pane: select the next node |
-| `app.rlm.pane.prev` | `shift+tab`, `p` | DAG pane: select the previous node |
-| `app.rlm.pane.fold` | `space`, `enter` | DAG pane: fold or unfold the selected node's box |
-| `app.rlm.pane.details` | `d` | DAG pane: show or hide the node detail cards |
-| `app.rlm.pane.scrollUp` | `up` | DAG pane: scroll up |
-| `app.rlm.pane.scrollDown` | `down` | DAG pane: scroll down |
-| `app.rlm.pane.pageUp` | `pageUp` | DAG pane: page up |
-| `app.rlm.pane.pageDown` | `pageDown` | DAG pane: page down |
-| `app.rlm.pane.prevRun` | `left` | DAG pane: previous run (the current turn, then each `workflows.run` call) |
-| `app.rlm.pane.nextRun` | `right` | DAG pane: next run |
-| `app.rlm.pane.close` | `q`, `escape` | DAG pane: close the pane |
+| `app.rlm.pane` | `alt+w` | Open the RLM pane beside the chat (terminals of 120 columns or more; narrower, the full-screen graph opens); pressed again, move the focus between the pane and the chat (native TUI; same as `/rlm pane`). `alt+d` stays the editor's delete-word-forward |
+| `app.rlm.pane.next` | `tab`, `n` | RLM pane: select the next node |
+| `app.rlm.pane.prev` | `shift+tab`, `p` | RLM pane: select the previous node |
+| `app.rlm.pane.fold` | `space`, `enter` | RLM pane: fold or unfold the selected node's box |
+| `app.rlm.pane.details` | `d` | RLM pane: show or hide the node detail cards |
+| `app.rlm.pane.scrollUp` | `up` | RLM pane: scroll up |
+| `app.rlm.pane.scrollDown` | `down` | RLM pane: scroll down |
+| `app.rlm.pane.pageUp` | `pageUp` | RLM pane: page up |
+| `app.rlm.pane.pageDown` | `pageDown` | RLM pane: page down |
+| `app.rlm.pane.prevRun` | `left` | RLM pane: previous run (the current turn, then each `workflows.run` call) |
+| `app.rlm.pane.nextRun` | `right` | RLM pane: next run |
+| `app.rlm.pane.close` | `q`, `escape` | RLM pane: close the pane |
 | `app.history.search` | `alt+r` | Reverse-search prompt history (native TUI). `ctrl+r` stays the RLM panel's toggle; inside the search, `ctrl+r`, `alt+r` and `up` move to older matches |
 | `app.message.copy` | `ctrl+x` | Copy the selected message in `/tree`; in fullscreen mode, copy the active selection when `fullscreenCopyOnSelect` is `false`; otherwise copy the last assistant message |
 | `app.message.followUp` | `alt+enter` (`ctrl+q` on Windows and WSL) | Queue follow-up message |

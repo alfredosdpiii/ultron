@@ -77,9 +77,11 @@ lookup, so unrelated memories never leak into answers.
 - **The RLM graph** draws the run as a live tree: turn, cells, tool calls, sub-agents, `rlm.map` fan-outs with
   progress bars, workflows and jobs, with budget gauges and a kernel strip. Ctrl+R docks it and Alt+G opens it
   full screen, where you can step into any node and see its input, result and the Python call that fetches it.
-- **The DAG pane** (Alt+W on terminals 120 columns or wider) splits the screen: sub-agents and workflow nodes as
-  boxes in waves, with arrows to the nodes that depend on them, and cards showing each node's model, latest text, time,
-  turns and tool calls. While nodes run, a wave summary sits above the input.
+- **The RLM pane** (Alt+W on terminals 120 columns or wider) splits the screen: sub-agents and workflow nodes as
+  boxes in dependency waves, with arrows to the nodes that depend on them, and cards showing each node's model, latest
+  text, time, turns and tool calls. It opens by itself, without taking the focus, when a turn spawns children, runs a
+  workflow or fans out an `rlm.map` (once per turn; close it with q and it stays closed until the next one; turn it off
+  with the `rlmPaneAutoOpen` setting or `ULTRON_RLM_PANE_AUTO=off`). While nodes run, a wave summary sits above the input.
 - **Jev's presence**: a footer indicator that pulses when Jev decides, one-line notes in the transcript showing what
   memory was used and whether the turn was kept, and a `/jev` view with a decision timeline and threshold gauges.
 
@@ -156,7 +158,7 @@ ultron --mode rpc                        # Pi-compatible JSONL RPC
 Pick a provider as in Pi: `/login` for subscription providers, or `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`,
 `GEMINI_API_KEY` and the like. Custom OpenAI-compatible endpoints go in `~/.ultron/agent/models.json`.
 
-Useful keys: Up/Down and Alt+R for prompt history, Ctrl+R for the RLM panel, Alt+W for the DAG pane, Alt+G for the full-screen graph,
+Useful keys: Up/Down and Alt+R for prompt history, Ctrl+R for the RLM panel, Alt+W for the RLM pane, Alt+G for the full-screen graph,
 Alt+J for Jev, Ctrl+O to expand cells and help. `/hotkeys` lists them all.
 
 ## The REPL at a glance

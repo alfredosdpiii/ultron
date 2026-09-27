@@ -4,15 +4,16 @@ import {
 	applyDagAction,
 	buildDagRuns,
 	computeWaves,
-	type DagPaneState,
-	dagPaneHints,
 	initialDagState,
+	paneWorkRuns,
 	promptOf,
-	renderDagPane,
+	type RlmPaneState,
+	renderRlmPane,
 	renderWaveSummary,
+	rlmPaneHints,
 	selectedNode,
 	waveGeometry,
-} from "../src/experimental/rlm-dag.ts";
+} from "../src/experimental/rlm-pane.ts";
 import { parseAgentsStatus, type RlmSnapshot } from "../src/experimental/rlm-visualizer.ts";
 
 const NOW = 1_000_000;
@@ -97,11 +98,39 @@ function workflowRun(snapshot: RlmSnapshot) {
 	return buildDagRuns(snapshot).filter((run) => run.kind === "workflow");
 }
 
-function pane(width: number, state: DagPaneState = initialDagState(), height = 70, snapshot = referenceSnapshot()) {
-	return renderDagPane(workflowRun(snapshot), state, width, height, { hints: HINTS, now: NOW });
+function pane(width: number, state: RlmPaneState = initialDagState(), height = 70, snapshot = referenceSnapshot()) {
+	return renderRlmPane(workflowRun(snapshot), state, width, height, { hints: HINTS, now: NOW });
 }
 
-describe("DAG layout", () => {
+describe("RLM pane auto-open: the runs that count as new work", () => {
+	test("live children or workflow nodes count; finished ones only for the running turn that started them", () => {
+		const live = referenceSnapshot();
+		// The turn shows the workflow's tasks as its children too; both runs count.
+		expect(paneWorkRuns(buildDagRuns(live)).map((run) => run.key)).toEqual(["turn", "workflow:wf-01a07520"]);
+		const finished: RlmSnapshot = {
+			...live,
+			tasks: live.tasks.map((task) => ({ ...task, state: "completed" })),
+			workflows: live.workflows!.map((plan) => ({
+				...plan,
+				nodes: plan.nodes.map((node) => ({ ...node, status: "succeeded" })),
+			})),
+		};
+		const runs = buildDagRuns(finished);
+		expect(runs.map((run) => run.status)).toEqual(["done", "done"]);
+		// Idle (no running turn): finished work does not open the pane (a resumed Session stays as it was).
+		expect(paneWorkRuns(runs)).toEqual([]);
+		// The running turn started before the workflow: it counts even though it finished between two polls.
+		expect(paneWorkRuns(runs, NOW - 30_000).map((run) => run.key)).toEqual(["turn", "workflow:wf-01a07520"]);
+		// A workflow from before this turn does not (the turn's own run always belongs to it).
+		expect(paneWorkRuns(runs, NOW).map((run) => run.key)).toEqual(["turn"]);
+	});
+
+	test("tool calls alone do not count", () => {
+		expect(paneWorkRuns(buildDagRuns(referenceSnapshot({ tasks: [], workflows: [] })), NOW - 30_000)).toEqual([]);
+	});
+});
+
+describe("RLM pane layout", () => {
 	test("waves are the topological levels of dependsOn, cycles cut", () => {
 		expect(
 			computeWaves([
@@ -125,8 +154,8 @@ describe("DAG layout", () => {
 			["wf:wf-01a07520:verify-evidence"],
 		]);
 		const text = plain(pane(80).lines);
-		expect(text).toContain("DAG · 01a07520");
-		expect(text).toContain("RLM / DAG / workflow  Tasks (0)");
+		expect(text).toContain("RLM · 01a07520");
+		expect(text).toContain("RLM pane / workflow  Tasks (0)");
 		expect(text).toContain("Linear gates integration evidence  1/1");
 		expect(text).toContain("Running · Done 0/4 · 3 running · wave 1/2");
 		// One row of three boxes, the frontier note, an arrow, then the joining node waiting on all three.
@@ -192,7 +221,7 @@ describe("DAG layout", () => {
 	});
 
 	test("the selected node's box and card are highlighted; the dependencies section lists every edge", () => {
-		const rendered = renderDagPane(workflowRun(referenceSnapshot()), initialDagState(), 60, 70, {
+		const rendered = renderRlmPane(workflowRun(referenceSnapshot()), initialDagState(), 60, 70, {
 			style: MARKED,
 			now: NOW,
 		});
@@ -223,7 +252,7 @@ describe("DAG layout", () => {
 		expect(text[status]).toMatch(/^● Connected {2}1-\d+\/\d+$/);
 		expect(text[status - 1]).toMatch(/^─+$/);
 		expect(text.slice(status + 1).join("  ")).toBe(HINTS.join("  ").replace("d Details  ↑↓", "d Details  ↑↓"));
-		const failed = renderDagPane(workflowRun(referenceSnapshot()), initialDagState(), 44, 30, {
+		const failed = renderRlmPane(workflowRun(referenceSnapshot()), initialDagState(), 44, 30, {
 			now: NOW,
 			error: "worker closed",
 		});
@@ -231,7 +260,7 @@ describe("DAG layout", () => {
 	});
 
 	test("a pane with no runs says so; a tiny pane still fits", () => {
-		const empty = renderDagPane([], initialDagState(), 44, 20, { now: NOW });
+		const empty = renderRlmPane([], initialDagState(), 44, 20, { now: NOW });
 		expect(plain(empty.lines)).toContain("No RLM work in this turn yet.");
 		for (const [width, height] of [
 			[12, 6],
@@ -244,7 +273,7 @@ describe("DAG layout", () => {
 	});
 });
 
-describe("DAG navigation", () => {
+describe("RLM pane navigation", () => {
 	test("next and previous wrap around the nodes wave by wave; fold and details toggle", () => {
 		const runs = workflowRun(referenceSnapshot());
 		let state = pane(60).state;
@@ -283,14 +312,14 @@ describe("DAG navigation", () => {
 			],
 		});
 		const runs = workflowRun(snapshot);
-		const render = (state: DagPaneState) => renderDagPane(runs, state, 44, 24, { hints: HINTS, now: NOW });
+		const render = (state: RlmPaneState) => renderRlmPane(runs, state, 44, 24, { hints: HINTS, now: NOW });
 		let rendered = render(initialDagState());
 		// The newest active run shows by default.
-		expect(plain(rendered.lines)).toContain("DAG · 22222222");
+		expect(plain(rendered.lines)).toContain("RLM · 22222222");
 		expect(plain(rendered.lines)).toContain("2/2");
 		let state = applyDagAction(rendered.state, runs, "prevRun");
 		rendered = render(state);
-		expect(plain(rendered.lines)).toContain("DAG · 01a07520");
+		expect(plain(rendered.lines)).toContain("RLM · 01a07520");
 		expect(plain(rendered.lines)).toMatch(/● Connected {2}1-\d+\/\d+/);
 		state = applyDagAction(rendered.state, runs, "scrollDown");
 		state = applyDagAction(state, runs, "scrollDown");
@@ -303,7 +332,7 @@ describe("DAG navigation", () => {
 		rendered = render(state);
 		expect(plain(rendered.lines)).toContain("> [-] verify-evidence");
 		state = applyDagAction(rendered.state, runs, "nextRun");
-		expect(plain(render(state).lines)).toContain("DAG · 22222222");
+		expect(plain(render(state).lines)).toContain("RLM · 22222222");
 	});
 
 	test("hints come from the live bindings", () => {
@@ -319,7 +348,7 @@ describe("DAG navigation", () => {
 			"app.rlm.pane.close": ["q", "escape"],
 		};
 		expect(
-			dagPaneHints({ getKeys: ((id: string) => bindings[id] ?? []) as never, matches: (() => false) as never }),
+			rlmPaneHints({ getKeys: ((id: string) => bindings[id] ?? []) as never, matches: (() => false) as never }),
 		).toEqual(HINTS);
 	});
 });
@@ -393,8 +422,8 @@ describe("turn runs", () => {
 			["task:ultron-task-n1"],
 		]);
 		expect(run!.edges).toEqual([["task:ultron-task-c1", "task:ultron-task-n1"]]);
-		const text = plain(renderDagPane([run!], initialDagState(), 80, 80, { now: NOW }).lines);
-		expect(text).toContain("RLM / DAG / turn");
+		const text = plain(renderRlmPane([run!], initialDagState(), 80, 80, { now: NOW }).lines);
+		expect(text).toContain("RLM pane / turn");
 		expect(text).toContain("[-] child c1");
 		expect(text).toContain("[-] 2 tool calls");
 		expect(text).toContain("│ ▰▰▰▰▰▱▱▱▱▱ 1/2");

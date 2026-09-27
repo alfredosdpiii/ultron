@@ -1433,6 +1433,7 @@ describe("experimental client TUI parity with Pi's interactive mode", () => {
 			runCommand(component, "/hotkeys");
 			await vi.waitFor(() => expect(plain(component.render(120))).toContain("Keyboard Shortcuts"));
 			expect(plain(component.render(120))).toContain("Reverse-search prompt history");
+			expect(plain(component.render(120))).toContain("Open the RLM pane beside the chat");
 
 			// Extension status goes to the footer's status line; a widget renders above the editor.
 			const context = harness.extensionUIBridgeContext();
@@ -1643,7 +1644,7 @@ function fakeOAuthProvider(id: string, name: string): Provider {
 	};
 }
 
-describe("experimental client TUI: the RLM DAG side pane", () => {
+describe("experimental client TUI: the RLM pane", () => {
 	beforeAll(() => initTheme("dark"));
 
 	/** A running workflow: three parallel nodes and one joining all three (not admitted yet). */
@@ -1685,6 +1686,8 @@ describe("experimental client TUI: the RLM DAG side pane", () => {
 
 	test("Alt+W opens the pane beside the chat on a wide terminal and falls back to the full-screen graph when narrow", async () => {
 		vi.stubEnv("COLUMNS", "200");
+		// Manual opening only: auto-open has its own tests below.
+		vi.stubEnv("ULTRON_RLM_PANE_AUTO", "off");
 		vi.stubEnv("LINES", "60");
 		const harness = await openHarness({ command: "client" });
 		const { component, inspect } = harness;
@@ -1695,7 +1698,7 @@ describe("experimental client TUI: the RLM DAG side pane", () => {
 			const screen = () => plain(component.layoutRoot.render(200)).replace(/\u001b\]8;;\u0007/g, "");
 			// Alt+W: the pane opens on the right (40% of 200 columns) and takes the keys.
 			component.handleInput("\u001bw");
-			await vi.waitFor(() => expect(screen()).toContain("│ DAG · 01a07520"));
+			await vi.waitFor(() => expect(screen()).toContain("│ RLM · 01a07520"));
 			const lines = screen().split("\n");
 			expect(lines).toHaveLength(60);
 			for (const line of lines) expect(visibleWidth(line)).toBeLessThanOrEqual(200);
@@ -1727,16 +1730,182 @@ describe("experimental client TUI: the RLM DAG side pane", () => {
 			// Alt+W focuses the pane again; q closes it and the chat gets the full width back.
 			component.handleInput("\u001bw");
 			component.handleInput("q");
-			await vi.waitFor(() => expect(screen()).not.toContain("DAG · 01a07520"));
+			await vi.waitFor(() => expect(screen()).not.toContain("RLM · 01a07520"));
 			expect(component.editorText).toBe("x");
 
 			// On a narrow terminal the key opens the full-screen graph instead.
 			vi.stubEnv("COLUMNS", "100");
 			component.handleInput("\u001bw");
 			await vi.waitFor(() => expect(plain(component.render(100))).toMatch(/RLM graph . running/));
-			expect(plain(component.layoutRoot.render(100))).not.toContain("DAG · 01a07520");
+			expect(plain(component.layoutRoot.render(100))).not.toContain("RLM · 01a07520");
 			component.handleInput("\u001b");
 			await vi.waitFor(() => expect(plain(component.render(100))).not.toContain("RLM graph"));
+		} finally {
+			await harness.dispose();
+			vi.unstubAllEnvs();
+		}
+	});
+});
+
+describe("experimental client TUI: the RLM pane opens by itself", () => {
+	beforeAll(() => initTheme("dark"));
+
+	/** `agents.status` with one running `workflows.run` call per id: two parallel nodes and one joining both. */
+	const workflowStatus = (...runs: string[]): JsonValue => ({
+		definitions: [],
+		tasks: runs.flatMap((run, runIndex) =>
+			["alpha", "beta"].map((node, index) => ({
+				id: `ultron-task-${runIndex}${index}00aaaa`,
+				definition: "rlm-child@1",
+				state: "running",
+				startedAt: Date.now() - 2_000,
+				input: `{"prompt":"Check ${node}"}`,
+				workflow: { run, node, dependsOn: [], join: "all" },
+			})),
+		),
+		workflows: runs.map((run) => ({
+			run,
+			startedAt: Date.now() - 2_000,
+			nodes: [
+				{ id: "alpha", definition: "rlm-child@1", dependsOn: [], join: "all" },
+				{ id: "beta", definition: "rlm-child@1", dependsOn: [], join: "all" },
+				{ id: "gamma", definition: "rlm-child@1", dependsOn: ["alpha", "beta"], join: "all" },
+			],
+		})),
+		usage: { admittedTasks: 2 * runs.length, usage: { cost: null }, reservations: [] },
+		limits: {},
+		controls: {},
+	});
+
+	async function paneHarness(options: HarnessOptions = {}) {
+		const harness = await openHarness({ command: "client" }, options);
+		let status: JsonValue = workflowStatus();
+		harness.inspect.mockImplementation(async (request: string) =>
+			request === "agents.status" ? status : inspectFixture(request),
+		);
+		let toolCall = 0;
+		const statusCalls = () => harness.inspect.mock.calls.filter(([request]) => request === "agents.status").length;
+		/** Start a turn (a lane operation). */
+		const startTurn = (runId: string) =>
+			harness.emitTranscriptEvent({ type: "run_start", lane: "main", runId, startedAt: Date.now() });
+		const endTurn = (runId: string) =>
+			harness.emitTranscriptEvent({
+				type: "run_end",
+				lane: "main",
+				runId,
+				status: "completed",
+				fromTipId: null,
+				tipId: null,
+				endedAt: Date.now(),
+			} as LaneWatchEvent);
+		/** Report `runs` as live and poll once: an `rlm` cell's tool start refreshes the inspection. */
+		const poll = async (runId: string, ...runs: string[]) => {
+			status = workflowStatus(...runs);
+			const before = statusCalls();
+			harness.emitTranscriptEvent({
+				type: "tool_start",
+				lane: "main",
+				runId,
+				toolCallId: `call-${++toolCall}`,
+				toolName: "rlm",
+				args: {},
+			} as LaneWatchEvent);
+			await vi.waitFor(() => expect(statusCalls()).toBeGreaterThan(before));
+			await new Promise((resolve) => setTimeout(resolve, 20));
+		};
+		const screen = (width = 139) =>
+			plain(harness.component.layoutRoot.render(width)).replace(/\u001b\]8;;\u0007/g, "");
+		return { ...harness, startTurn, endTurn, poll, screen };
+	}
+
+	test("a workflow starting in a turn opens the pane beside the chat without the focus, once per turn", async () => {
+		vi.stubEnv("COLUMNS", "139");
+		vi.stubEnv("LINES", "45");
+		const harness = await paneHarness();
+		const { component, startTurn, endTurn, poll, screen } = harness;
+		try {
+			startTurn("op-1");
+			await poll("op-1");
+			expect(screen()).not.toContain("RLM · ");
+			await poll("op-1", "wf-01a07520");
+			await vi.waitFor(() => expect(screen()).toContain("│ RLM · 01a07520"));
+			// The pane is open but the editor keeps the focus: pane keys and text go to the editor.
+			expect(screen()).toContain("alt+w focus");
+			component.handleInput("n");
+			component.handleInput("q");
+			component.handleInput("x");
+			expect(component.editorText).toBe("nqx");
+			expect(screen()).toContain("│ RLM · 01a07520");
+
+			// Resized below the split width, the pane hides and the editor still takes the keys; widened, it is back.
+			vi.stubEnv("COLUMNS", "100");
+			expect(plain(component.layoutRoot.render(100))).not.toContain("RLM · 01a07520");
+			expect(plain(component.render(100))).not.toContain("RLM graph");
+			component.handleInput("y");
+			expect(component.editorText).toBe("nqxy");
+			vi.stubEnv("COLUMNS", "139");
+			expect(screen()).toContain("│ RLM · 01a07520");
+
+			// The user closes it: it stays closed for the rest of the turn, even for a new workflow run.
+			component.handleInput("\u001bw");
+			component.handleInput("q");
+			await vi.waitFor(() => expect(screen()).not.toContain("RLM · 01a07520"));
+			await poll("op-1", "wf-01a07520");
+			await poll("op-1", "wf-01a07520", "wf-02b08631");
+			expect(screen()).not.toContain("RLM · ");
+			endTurn("op-1");
+
+			// The next turn with new RLM work opens it again, still without the focus.
+			startTurn("op-2");
+			await poll("op-2", "wf-01a07520", "wf-02b08631", "wf-03c09742");
+			await vi.waitFor(() => expect(screen()).toContain("│ RLM · 03c09742"));
+			component.handleInput("z");
+			expect(component.editorText).toBe("nqxyz");
+		} finally {
+			await harness.dispose();
+			vi.unstubAllEnvs();
+		}
+	});
+
+	test("no auto-open below the split width (never the full-screen graph); it opens once the terminal is wide", async () => {
+		vi.stubEnv("COLUMNS", "100");
+		vi.stubEnv("LINES", "45");
+		const harness = await paneHarness();
+		const { component, startTurn, poll, screen } = harness;
+		try {
+			startTurn("op-1");
+			await poll("op-1", "wf-01a07520");
+			expect(plain(component.layoutRoot.render(100))).not.toContain("RLM · ");
+			expect(plain(component.render(100))).not.toContain("RLM graph");
+			component.handleInput("a");
+			expect(component.editorText).toBe("a");
+			vi.stubEnv("COLUMNS", "139");
+			await poll("op-1", "wf-01a07520");
+			await vi.waitFor(() => expect(screen()).toContain("│ RLM · 01a07520"));
+			expect(screen()).toContain("alt+w focus");
+		} finally {
+			await harness.dispose();
+			vi.unstubAllEnvs();
+		}
+	});
+
+	test.each([
+		["ULTRON_RLM_PANE_AUTO=off", { env: "off" }],
+		["rlmPaneAutoOpen: false", { setting: false }],
+	])("%s turns auto-open off; Alt+W still opens the pane", async (_name, config) => {
+		vi.stubEnv("COLUMNS", "139");
+		vi.stubEnv("LINES", "45");
+		if ("env" in config) vi.stubEnv("ULTRON_RLM_PANE_AUTO", config.env);
+		const settingsManager = SettingsManager.inMemory("setting" in config ? { rlmPaneAutoOpen: config.setting } : {});
+		const harness = await paneHarness({ settingsManager });
+		const { component, startTurn, poll, screen } = harness;
+		try {
+			startTurn("op-1");
+			await poll("op-1", "wf-01a07520");
+			await poll("op-1", "wf-01a07520");
+			expect(screen()).not.toContain("RLM · ");
+			component.handleInput("\u001bw");
+			await vi.waitFor(() => expect(screen()).toContain("│ RLM · 01a07520"));
 		} finally {
 			await harness.dispose();
 			vi.unstubAllEnvs();
@@ -1763,6 +1932,17 @@ describe("experimental client TUI: Pi's settings, auth, session and diagnostic c
 			await vi.waitFor(() => expect(settingsManager.getHideThinkingBlock()).toBe(true));
 			component.handleInput("\u001b");
 			await vi.waitFor(() => expect(plain(component.render(120))).not.toContain("Hide thinking"));
+
+			// The native TUI's RLM pane auto-open toggle is listed and turns auto-open off for this client at once.
+			runCommand(component, "/settings");
+			await vi.waitFor(() => expect(plain(component.render(120))).toContain("Auto-compact"));
+			type(component, "rlm pane");
+			expect(plain(component.render(120))).toContain("RLM pane auto-open");
+			component.handleInput("\r");
+			await vi.waitFor(() => expect(setSetting).toHaveBeenCalledWith("rlmPaneAutoOpen", false, expect.anything()));
+			await vi.waitFor(() => expect(settingsManager.getRlmPaneAutoOpen()).toBe(false));
+			component.handleInput("\u001b");
+			await vi.waitFor(() => expect(plain(component.render(120))).not.toContain("RLM pane auto-open"));
 
 			// Auto-compact applies live in the worker; a restart-only setting says so.
 			runCommand(component, "/settings");

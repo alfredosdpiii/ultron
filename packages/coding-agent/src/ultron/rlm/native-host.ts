@@ -49,7 +49,7 @@ type TaskRecord = NativeTask & {
 	tokens?: number;
 	inputPreview?: string;
 	workflow?: WorkflowMembership;
-	/** Live lane stats for the DAG view: current model, assistant turns, tool calls, latest assistant text. */
+	/** Live lane stats for the RLM pane: current model, assistant turns, tool calls, latest assistant text. */
 	model?: string;
 	turns?: number;
 	toolCallCount?: number;
@@ -62,7 +62,7 @@ type WorkflowMembership = { run: string; node: string; dependsOn: string[]; join
 /** Tasks listed by `agents.status {graph: true}` (the newest are kept). */
 const GRAPH_TASK_LIMIT = 300;
 const GRAPH_PREVIEW_CHARS = 240;
-/** The latest assistant text of a task's lane, as shown in the DAG view's node cards. */
+/** The latest assistant text of a task's lane, as shown in the RLM pane's node cards. */
 const GRAPH_TEXT_CHARS = 160;
 const GRAPH_MODEL_CHARS = 80;
 /** Workflow runs listed by `agents.status {graph: true}` (the newest), and planned nodes per run. */

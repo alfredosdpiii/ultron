@@ -1,15 +1,15 @@
 /**
- * The RLM run as a DAG of dependency waves: the native TUI's side pane (`app.rlm.pane`) and the live wave summary
- * above the editor.
+ * The RLM pane: the RLM run as dependency waves in the native TUI's side pane (`app.rlm.pane`), and the live wave
+ * summary above the editor.
  *
  * A run is either the current root turn (the work each `rlm` cell started is one wave, a "same frontier"; work a
  * child started follows its parent) or one `workflows.run` call (waves are the topological levels of `dependsOn`;
- * nodes not admitted yet show as pending). Tool calls stay out of the DAG except as one "N tool calls" node per cell,
+ * nodes not admitted yet show as pending). Tool calls stay out of the waves except as one "N tool calls" node per cell,
  * and an `rlm.map` fan-out is one node with a progress bar.
  *
- * Pure and width-bounded: `buildDagRuns` turns an inspection snapshot into runs, `renderDagPane` draws one run as
+ * Pure and width-bounded: `buildDagRuns` turns an inspection snapshot into runs, `renderRlmPane` draws one run as
  * boxes side by side per wave (wrapping when a wave does not fit), arrows between waves, the dependency edges and
- * per-node cards, and `applyDagAction` is the pane's navigation reducer. `RlmDagPane` is the TUI component.
+ * per-node cards, and `applyDagAction` is the pane's navigation reducer. `RlmPane` is the TUI component.
  */
 import type { Component, KeybindingsManager } from "@ultron/tui";
 import { truncateToWidth, visibleWidth } from "@ultron/tui";
@@ -511,7 +511,7 @@ function progressLine(progress: GraphProgress, width: number): string {
 // ---------------------------------------------------------------------------------------------
 // Pane state and navigation.
 
-export interface DagPaneState {
+export interface RlmPaneState {
 	/** Selected run (sticky while it exists); the default run otherwise. */
 	readonly runKey?: string;
 	readonly selectedKey?: string;
@@ -537,11 +537,11 @@ export type DagAction =
 	| "prevRun"
 	| "nextRun";
 
-export function initialDagState(): DagPaneState {
+export function initialDagState(): RlmPaneState {
 	return { folded: new Set(), details: true, scroll: 0, reveal: true };
 }
 
-export function currentRun(runs: readonly DagRun[], state: DagPaneState): DagRun | undefined {
+export function currentRun(runs: readonly DagRun[], state: RlmPaneState): DagRun | undefined {
 	return (state.runKey === undefined ? undefined : runs.find((run) => run.key === state.runKey)) ?? defaultRun(runs);
 }
 
@@ -551,7 +551,7 @@ export function nodeOrder(run: DagRun): string[] {
 }
 
 /** The selected node key: the chosen one while it exists, else the first running node, else the first node. */
-export function selectedNode(run: DagRun, state: DagPaneState): string | undefined {
+export function selectedNode(run: DagRun, state: RlmPaneState): string | undefined {
 	const order = nodeOrder(run);
 	if (state.selectedKey !== undefined && order.includes(state.selectedKey)) return state.selectedKey;
 	const byKey = new Map(run.nodes.map((node) => [node.key, node]));
@@ -559,11 +559,11 @@ export function selectedNode(run: DagRun, state: DagPaneState): string | undefin
 }
 
 export function applyDagAction(
-	state: DagPaneState,
+	state: RlmPaneState,
 	runs: readonly DagRun[],
 	action: DagAction,
 	page = 10,
-): DagPaneState {
+): RlmPaneState {
 	const run = currentRun(runs, state);
 	if (run === undefined) return state;
 	const order = nodeOrder(run);
@@ -758,7 +758,7 @@ interface Body {
 /** The scrolled body of the pane: waves of boxes with arrows, the dependencies, and the node cards. */
 export function renderDagBody(
 	run: DagRun,
-	state: DagPaneState,
+	state: RlmPaneState,
 	width: number,
 	options: { style?: RlmStyle; now?: number } = {},
 ): Body {
@@ -824,13 +824,13 @@ export function renderDagBody(
  * Render the pane into exactly `height` lines of at most `width` columns: a fixed header, the scrolled body and a
  * fixed footer (connection, scroll position, key hints). Returns the state with the scroll it used.
  */
-export function renderDagPane(
+export function renderRlmPane(
 	runs: readonly DagRun[],
-	state: DagPaneState,
+	state: RlmPaneState,
 	width: number,
 	height: number,
 	options: DagRenderOptions = {},
-): { lines: string[]; state: DagPaneState; run?: DagRun; bodyLength: number } {
+): { lines: string[]; state: RlmPaneState; run?: DagRun; bodyLength: number } {
 	const style = options.style ?? PLAIN_STYLE;
 	const now = options.now ?? Date.now();
 	const bound = Math.max(1, width);
@@ -838,14 +838,14 @@ export function renderDagPane(
 	const run = currentRun(runs, state);
 	const header: string[] = [];
 	if (run === undefined) {
-		header.push(style.bold(style.fg("accent", "DAG")));
-		header.push(style.fg("muted", "RLM / DAG"));
+		header.push(style.bold(style.fg("accent", "RLM")));
+		header.push(style.fg("muted", "RLM pane"));
 	} else {
 		const counts = runCounts(run);
 		const index = runs.indexOf(run) + 1;
-		header.push(`${style.bold(style.fg("accent", "DAG"))} ${style.fg("dim", "·")} ${style.fg("muted", run.id)}`);
+		header.push(`${style.bold(style.fg("accent", "RLM"))} ${style.fg("dim", "·")} ${style.fg("muted", run.id)}`);
 		header.push(
-			`${style.fg("muted", `RLM / DAG / ${run.kind === "turn" ? "turn" : "workflow"}`)}  ${style.fg("dim", `Tasks (${options.taskCount ?? 0})`)}`,
+			`${style.fg("muted", `RLM pane / ${run.kind === "turn" ? "turn" : "workflow"}`)}  ${style.fg("dim", `Tasks (${options.taskCount ?? 0})`)}`,
 		);
 		const counter = `${index}/${runs.length}`;
 		const title = cut(run.title, Math.max(1, bound - visibleWidth(counter) - 2));
@@ -942,6 +942,22 @@ export interface WaveSummaryOptions {
 const SUMMARIZED: ReadonlySet<DagNodeKind> = new Set(["task", "child", "background", "workflow", "fanout"]);
 
 /**
+ * The runs whose work the RLM pane shows and that count as new work for its auto-open: runs with a spawned child, a
+ * typed agent or background task, a `workflows.run` node or an `rlm.map` fan-out that is running or waiting, and,
+ * while a turn runs (`since` is its start), the turn's own run and the workflow runs it started even when their work
+ * already finished between two polls.
+ */
+export function paneWorkRuns(runs: readonly DagRun[], since?: number): DagRun[] {
+	return runs.filter((run) => {
+		const nodes = run.nodes.filter((node) => SUMMARIZED.has(node.kind));
+		if (nodes.length === 0) return false;
+		if (nodes.some((node) => isActive(node.status))) return true;
+		if (since === undefined) return false;
+		return run.kind === "turn" || (run.startedAt !== undefined && run.startedAt >= since - 1000);
+	});
+}
+
+/**
  * "▶ <title> running wave i/N  d/T done, r running" and one line per node, while a run's children or workflow nodes
  * run or wait; empty otherwise (the footer's one-line summary remains).
  */
@@ -1034,7 +1050,7 @@ function keysOf(keybindings: KeyLabels, action: string): string[] {
 }
 
 /** Footer hints from the live bindings: "Tab/n next", "Shift-Tab/p prev", "Space/Enter fold", "d Details", ... */
-export function dagPaneHints(keybindings: KeyLabels): string[] {
+export function rlmPaneHints(keybindings: KeyLabels): string[] {
 	const label = (action: string) => keysOf(keybindings, action).join("/") || "unbound";
 	const pair = (first: string, second: string) => {
 		const a = keysOf(keybindings, first)[0] ?? "?";
@@ -1052,7 +1068,7 @@ export function dagPaneHints(keybindings: KeyLabels): string[] {
 	];
 }
 
-export interface RlmDagPaneOptions {
+export interface RlmPaneOptions {
 	readonly snapshot: () => RlmSnapshot;
 	/** Rows the pane fills (the full terminal height beside the chat). */
 	readonly height: () => number;
@@ -1066,17 +1082,17 @@ export interface RlmDagPaneOptions {
 	readonly requestRender: () => void;
 }
 
-/** The DAG side pane: reads a live snapshot on every render; one column of left padding next to the split border. */
-export class RlmDagPane implements Component {
+/** The RLM pane: reads a live snapshot on every render; one column of left padding next to the split border. */
+export class RlmPane implements Component {
 	#state = initialDagState();
 	#runs: DagRun[] = [];
-	private readonly options: RlmDagPaneOptions;
+	private readonly options: RlmPaneOptions;
 
-	constructor(options: RlmDagPaneOptions) {
+	constructor(options: RlmPaneOptions) {
 		this.options = options;
 	}
 
-	get state(): DagPaneState {
+	get state(): RlmPaneState {
 		return this.#state;
 	}
 
@@ -1099,10 +1115,10 @@ export class RlmDagPane implements Component {
 		const inner = Math.max(1, width - 1);
 		const focused = this.options.focused();
 		const toggle = this.options.toggleKey?.();
-		const rendered = renderDagPane(this.#runs, this.#state, inner, Math.max(1, this.options.height()), {
+		const rendered = renderRlmPane(this.#runs, this.#state, inner, Math.max(1, this.options.height()), {
 			...(this.options.style === undefined ? {} : { style: this.options.style }),
 			now: snapshot.now,
-			hints: dagPaneHints(this.options.keybindings),
+			hints: rlmPaneHints(this.options.keybindings),
 			focused,
 			...(toggle === undefined ? {} : { focusHint: `${toggle} ${focused ? "chat" : "focus"}` }),
 			...(snapshot.error === undefined ? {} : { error: snapshot.error }),

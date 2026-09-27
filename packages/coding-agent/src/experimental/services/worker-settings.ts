@@ -73,6 +73,7 @@ export async function readWorkerSettings(target: WorkerSettingsTarget, context: 
 		collapseChangelog: settings.getCollapseChangelog(),
 		enableInstallTelemetry: settings.getEnableInstallTelemetry(),
 		quietStartup: settings.getQuietStartup(),
+		rlmPaneAutoOpen: settings.getRlmPaneAutoOpen(),
 		defaultProjectTrust: settings.getDefaultProjectTrust(),
 		doubleEscapeAction: settings.getDoubleEscapeAction(),
 		treeFilterMode: settings.getTreeFilterMode(),
@@ -223,6 +224,9 @@ export async function applyWorkerSetting(
 			break;
 		case "quietStartup":
 			settings.setQuietStartup(bool(key, value));
+			break;
+		case "rlmPaneAutoOpen":
+			settings.setRlmPaneAutoOpen(bool(key, value));
 			break;
 		case "defaultProjectTrust":
 			settings.setDefaultProjectTrust(

@@ -207,7 +207,7 @@ export interface RlmSnapshot {
 	readonly turn?: { readonly startedAt?: number; readonly prompt?: string } | null;
 	/** Tasks the worker left out of the bounded graph listing. */
 	readonly truncatedTasks?: number;
-	/** Workflow plans, oldest first (the DAG view shows nodes that have no task yet as pending). */
+	/** Workflow plans, oldest first (the RLM pane shows nodes that have no task yet as pending). */
 	readonly workflows?: readonly RlmWorkflowRun[];
 }
 

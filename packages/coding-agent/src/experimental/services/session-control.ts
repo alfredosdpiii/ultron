@@ -154,6 +154,7 @@ export const WORKER_SETTING_KEYS: readonly string[] = [
 	"collapseChangelog",
 	"enableInstallTelemetry",
 	"quietStartup",
+	"rlmPaneAutoOpen",
 	"defaultProjectTrust",
 	"doubleEscapeAction",
 	"treeFilterMode",

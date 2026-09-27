@@ -75,6 +75,7 @@ See [Compaction Reference](compaction.md) for trigger, summarization, and valida
 |---|---|---|---|
 | `theme` | string | Detected | Built-in or custom theme name. |
 | `quietStartup` | boolean | `false` | Hide the startup header. |
+| `rlmPaneAutoOpen` | boolean | `true` | Ultron's native TUI: open the RLM pane beside the chat, without the focus, when RLM work it shows starts (a child, typed agent task, `workflows.run` node or `rlm.map`), on terminals of 120 columns or more. `ULTRON_RLM_PANE_AUTO=off` also turns it off. |
 | `tuiMode` | `"regular" \| "fullscreen"` | `"regular"` | Interactive terminal UI mode. |
 | `fullscreenExitOutput` | `"transcript" \| "resume-hint"` | `"transcript"` | Output printed when fullscreen mode exits. |
 | `fullscreenScrollbar` | `"auto" \| "always" \| "hidden"` | `"auto"` | Fullscreen transcript scrollbar behavior. |
