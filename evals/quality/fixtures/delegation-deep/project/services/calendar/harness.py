@@ -122,30 +122,48 @@ def random_attendee(rnd, start, end):
 
 
 def stage_interval_algebra(rng):
-    for case in range(300):
+    for case in range(250):
         seed = rng.randrange(10**6)
         rnd = random.Random(seed)
-        a_pairs, b_pairs = random_pairs(rnd, rnd.randint(0, 5)), random_pairs(rnd, rnd.randint(0, 5))
-        a, b = IntervalSet(a_pairs), IntervalSet(b_pairs)
-        in_a = [any(s <= m < e for s, e in a_pairs) for m in range(150)]
-        in_b = [any(s <= m < e for s, e in b_pairs) for m in range(150)]
-        expected = {
-            "union": [x or y for x, y in zip(in_a, in_b)],
-            "intersect": [x and y for x, y in zip(in_a, in_b)],
-            "subtract": [x and not y for x, y in zip(in_a, in_b)],
-        }
-        for op, bits in expected.items():
-            got = getattr(a, op)(b)
-            if got.total() != sum(bits):
-                raise StageFailure(f"seed {seed}: A={a_pairs} B={b_pairs}: A.{op}(B).total() = {got.total()}, expected {sum(bits)}")
-            for low, high in runs(bits):
-                if not got.contains(low, high):
-                    raise StageFailure(
-                        f"seed {seed}: A={a_pairs} B={b_pairs}: A.{op}(B).contains({low}, {high}) is False, "
-                        f"but every integer of [{low}, {high}) is in A.{op}(B)"
-                    )
-            if got.intervals() != runs(bits):
-                raise StageFailure(f"seed {seed}: A={a_pairs} B={b_pairs}: A.{op}(B).intervals() = {got.intervals()}, expected {runs(bits)}")
+        sets, models, steps = [], [], []
+        for _ in range(rnd.randint(1, 3)):
+            pairs = random_pairs(rnd, rnd.randint(0, 3))
+            sets.append(IntervalSet(pairs))
+            models.append({m for s, e in pairs for m in range(s, e)})
+            steps.append(f"S{len(sets) - 1} = IntervalSet({pairs})")
+        for _ in range(rnd.randint(4, 12)):
+            choice = rnd.random()
+            if choice < 0.4:
+                i, j = rnd.randrange(len(sets)), rnd.randrange(len(sets))
+                op = rnd.choice(["union", "intersect", "subtract"])
+                sets.append(getattr(sets[i], op)(sets[j]))
+                models.append({"union": models[i] | models[j], "intersect": models[i] & models[j], "subtract": models[i] - models[j]}[op])
+                steps.append(f"S{len(sets) - 1} = S{i}.{op}(S{j})")
+            elif choice < 0.55:
+                sets.append(IntervalSet())
+                models.append(set())
+                steps.append(f"S{len(sets) - 1} = IntervalSet()")
+            else:
+                i = rnd.randrange(len(sets))
+                low = rnd.randrange(0, 120, 5)
+                high = low + rnd.randrange(5, 30, 5)
+                sets[i].add(low, high)
+                models[i] |= set(range(low, high))
+                steps.append(f"S{i}.add({low}, {high})")
+            for index, (got, model) in enumerate(zip(sets, models)):
+                bits = [m in model for m in range(160)]
+                problem = None
+                if got.intervals() != runs(bits):
+                    problem = f"S{index}.intervals() = {got.intervals()}, expected {runs(bits)}"
+                elif got.total() != len(model):
+                    problem = f"S{index}.total() = {got.total()}, expected {len(model)}"
+                else:
+                    for low, high in runs(bits):
+                        if not got.contains(low, high):
+                            problem = f"S{index}.contains({low}, {high}) is False, expected True"
+                            break
+                if problem:
+                    raise StageFailure(f"seed {seed}: after {'; '.join(steps)}: {problem}")
 
 
 def stage_working_hours(rng):
@@ -168,15 +186,25 @@ def stage_free_time(rng):
         seed = rng.randrange(10**6)
         rnd = random.Random(seed)
         start = rnd.randint(0, 2 * 7 * DAY)
-        end = start + rnd.randint(30, DAY)
+        end = start + rnd.randint(30, 2 * DAY)
         ranges, offset, busy, buffer, attendee = random_attendee(rnd, start, end)
-        got = attendee.free(start, end).intervals()
-        expected = runs(free_bits(ranges, offset, busy, buffer, start, end), start)
-        if got != expected:
-            raise StageFailure(
-                f"seed {seed}: hours {ranges} utc_offset={offset}, busy={busy}, buffer={buffer}: "
-                f"free({start}, {end}) = {got}, expected {expected}"
-            )
+        steps = []
+        for _ in range(rnd.randint(1, 4)):
+            low = rnd.randint(start - DAY // 2, end)
+            high = low + rnd.randint(30, DAY)
+            got = attendee.free(low, high).intervals()
+            expected = runs(free_bits(ranges, offset, busy, buffer, low, high), low)
+            if got != expected:
+                raise StageFailure(
+                    f"seed {seed}: hours {ranges} utc_offset={offset}, buffer={buffer}, initial busy {busy[:len(busy) - len(steps)]}, "
+                    f"then {steps or 'nothing'}: free({low}, {high}) = {got}, expected {expected}"
+                )
+            midnight = (rnd.randint(start, end) // DAY + 1) * DAY
+            block_start = rnd.choice([rnd.randint(start - 60, end), midnight - rnd.randint(1, 60), midnight + rnd.randint(0, 20)])
+            block = (block_start, block_start + rnd.randint(1, 60))
+            attendee.add_busy(*block)
+            busy.append(block)
+            steps.append(f"add_busy{block}")
 
 
 def stage_common_slots(rng):

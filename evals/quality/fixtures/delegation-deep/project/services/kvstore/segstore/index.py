@@ -8,6 +8,41 @@ class Location(NamedTuple):
     offset: int
 
 
+class KeyRange:
+    """A live, ordered view over a sorted key list, like the views of a dict."""
+
+    def __init__(self, keys, start, end, prefix):
+        self._keys = keys
+        self.start = start
+        self.end = end
+        self.prefix = prefix or None
+
+    def _first(self):
+        low = 0
+        if self.start is not None:
+            low = bisect.bisect_left(self._keys, self.start)
+        if self.prefix is not None:
+            low = max(low, bisect.bisect_left(self._keys, self.prefix))
+        return low
+
+    def __iter__(self):
+        position = self._first()
+        while position < len(self._keys):
+            key = self._keys[position]
+            if self.end is not None and key >= self.end:
+                return
+            if self.prefix is not None and not key.startswith(self.prefix):
+                return
+            yield key
+            position += 1
+
+    def __len__(self):
+        return sum(1 for _ in self)
+
+    def __repr__(self):
+        return f"KeyRange(start={self.start!r}, end={self.end!r}, prefix={self.prefix!r})"
+
+
 class Index:
     def __init__(self):
         self._locations = {}
@@ -36,23 +71,9 @@ class Index:
         del self._keys[position]
         return True
 
-    def keys(self, start=None, end=None, prefix=None):
-        """Keys in order with start <= key < end (either bound optional) that begin with `prefix`."""
-        low = 0
-        if start is not None:
-            low = bisect.bisect_left(self._keys, start)
-        if prefix:
-            low = max(low, bisect.bisect_left(self._keys, prefix))
-        high = len(self._keys)
-        if end is not None:
-            high = bisect.bisect_left(self._keys, end)
-        for position in range(low, high):
-            key = self._keys[position]
-            if prefix and not key.startswith(prefix):
-                if key > prefix:
-                    break
-                continue
-            yield key
+    def range(self, start=None, end=None, prefix=None):
+        """A view of the keys, in order, with start <= key < end (either bound optional) that begin with `prefix`."""
+        return KeyRange(self._keys, start, end, prefix)
 
     def items(self):
         for key in self._keys:

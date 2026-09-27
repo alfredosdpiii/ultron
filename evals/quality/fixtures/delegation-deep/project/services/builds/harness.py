@@ -114,15 +114,19 @@ def stage_order(rng):
         seed = rng.randrange(10**6)
         rnd = random.Random(seed)
         spec = random_dag(rnd, rnd.randint(3, 10), repeats=True)
-        targets = rnd.sample(list(spec), rnd.randint(1, 2)) if rnd.random() < 0.3 else None
-        got = topo_order(make_graph(rnd, spec), targets)
-        want = smallest_ready_order(spec, targets)
-        if got != want:
-            shown = {name: deps for name, deps in sorted(spec.items()) if deps}
-            raise StageFailure(
-                f"property 'smallest ready target first' failed for seed {seed}: deps {shown}, targets {targets}: "
-                f"got order {got}, expected {want}"
-            )
+        graph = make_graph(rnd, spec)
+        queries = []
+        for _ in range(rnd.randint(2, 5)):
+            targets = None if rnd.random() < 0.3 else sorted(rnd.sample(list(spec), rnd.randint(1, min(3, len(spec)))))
+            queries.append(targets)
+            got = topo_order(graph, targets)
+            want = smallest_ready_order(spec, targets)
+            if got != want:
+                shown = {name: deps for name, deps in sorted(spec.items()) if deps}
+                raise StageFailure(
+                    f"property 'smallest ready target first' failed for seed {seed}: deps {shown}, "
+                    f"orders asked for targets {queries} (None: all): the last one gave {got}, expected {want}"
+                )
 
 
 def simple_cycles(spec):
@@ -176,8 +180,11 @@ def stage_rebuild(rng):
         previous = {}
         for name in order:
             previous[name] = build_output(before, reads[name], name, {dep: previous[dep] for dep in spec[name]})
-        if rnd.random() < 0.15:
+        roll = rnd.random()
+        if roll < 0.15:
             del previous[rnd.choice(order)]
+        elif roll < 0.25:
+            previous["old"] = "h0"
         changed_inputs = rnd.sample(INPUTS, rnd.randint(1, 2))
         after = {item: before[item] + (item in changed_inputs) for item in INPUTS}
         # Oracle: walk the build order; a target is rebuilt if dirty itself or a dependency's output changed.
@@ -199,7 +206,7 @@ def stage_rebuild(rng):
 
         result = rebuild(make_graph(rnd, spec, reads), changed_inputs, build, dict(previous))
         got = (list(result.rebuilt), list(result.changed), result.outputs, calls)
-        want = (want_rebuilt, want_changed, outputs, want_calls)
+        want = (want_rebuilt, want_changed, {name: outputs[name] for name in order}, want_calls)
         if got != want:
             shown = {name: deps for name, deps in sorted(spec.items()) if deps}
             raise StageFailure(

@@ -158,41 +158,44 @@ def stage_minimal(rng):
             raise StageFailure(f"seed {seed}: diff_lines({a!r}, {b!r}) keeps {kept} lines, a longest common subsequence has {best}")
 
 
+def check_shape(where, a, b, context, hunks):
+    for number, hunk in enumerate(hunks, 1):
+        try:
+            hunk.check()
+        except ValueError as error:
+            raise StageFailure(f"{where}\n  hunk {number}: {error}") from None
+        if not hunk.changed():
+            raise StageFailure(f"{where}\n  hunk {number} has no changes")
+        tags = "".join(tag for tag, _ in hunk.lines)
+        lead, trail = len(tags) - len(tags.lstrip(" ")), len(tags) - len(tags.rstrip(" "))
+        anchor = hunk.old_anchor()
+        if lead > context or trail > context:
+            raise StageFailure(f"{where}\n  hunk {number} {hunk.header()} has {lead} leading and {trail} trailing context lines")
+        if lead < context and anchor != 0:
+            raise StageFailure(f"{where}\n  hunk {number} {hunk.header()} shows too little leading context")
+        if trail < context and anchor + hunk.old_count != len(a):
+            raise StageFailure(f"{where}\n  hunk {number} {hunk.header()} shows too little trailing context")
+        inner = max((len(run) for run in tags.strip(" ").replace("+", "-").split("-")), default=0)
+        if inner > 2 * context:
+            raise StageFailure(f"{where}\n  hunk {number} {hunk.header()} keeps {inner} unchanged lines between two changes")
+        if hunk.old_lines() != list(a[anchor:anchor + hunk.old_count]) or hunk.new_lines() != list(b[hunk.new_anchor():hunk.new_anchor() + hunk.new_count]):
+            raise StageFailure(f"{where}\n  hunk {number} {hunk.header()} does not match the files at its header positions")
+    for number in range(1, len(hunks)):
+        before, after = hunks[number - 1], hunks[number]
+        if after.old_anchor() <= before.old_anchor() + before.old_count:
+            raise StageFailure(f"{where}\n  hunks {number} {before.header()} and {number + 1} {after.header()} overlap or touch")
+    again = outcome(lambda: parse_unified(format_hunks(hunks)))
+    if again != hunks:
+        raise StageFailure(f"{where}\n  parse_unified(format_hunks(hunks)) differs: {again!r}")
+
+
 def stage_hunk_shape(rng):
-    for seed, r in cases(rng, 300):
+    for seed, r in cases(rng, 120):
         a = random_file(r, WORDS, 0, 16)
         b = mutate(r, mutate(r, a, WORDS), WORDS)
-        context = r.randint(0, 3)
-        hunks = make_hunks(a, b, context)
-        where = f"seed {seed}: make_hunks(a, b, context={context})\n  a={a!r}\n  b={b!r}"
-        for number, hunk in enumerate(hunks, 1):
-            try:
-                hunk.check()
-            except ValueError as error:
-                raise StageFailure(f"{where}\n  hunk {number}: {error}") from None
-            if not hunk.changed():
-                raise StageFailure(f"{where}\n  hunk {number} has no changes")
-            tags = "".join(tag for tag, _ in hunk.lines)
-            lead, trail = len(tags) - len(tags.lstrip(" ")), len(tags) - len(tags.rstrip(" "))
-            anchor = hunk.old_anchor()
-            if lead > context or trail > context:
-                raise StageFailure(f"{where}\n  hunk {number} {hunk.header()} has {lead} leading and {trail} trailing context lines")
-            if lead < context and anchor != 0:
-                raise StageFailure(f"{where}\n  hunk {number} {hunk.header()} shows too little leading context")
-            if trail < context and anchor + hunk.old_count != len(a):
-                raise StageFailure(f"{where}\n  hunk {number} {hunk.header()} shows too little trailing context")
-            if hunk.old_lines() != a[anchor:anchor + hunk.old_count] or hunk.new_lines() != b[hunk.new_anchor():hunk.new_anchor() + hunk.new_count]:
-                raise StageFailure(f"{where}\n  hunk {number} {hunk.header()} does not match the files at its header positions")
-        for number in range(1, len(hunks)):
-            before, after = hunks[number - 1], hunks[number]
-            end = before.old_anchor() + before.old_count
-            if after.old_anchor() <= end:
-                raise StageFailure(
-                    f"{where}\n  hunks {number} {before.header()} and {number + 1} {after.header()} overlap or touch"
-                )
-        again = outcome(lambda: parse_unified(format_hunks(hunks)))
-        if again != hunks:
-            raise StageFailure(f"{where}\n  parse_unified(format_hunks(hunks)) differs: {again!r}")
+        for context in r.sample(range(4), 4):
+            hunks = make_hunks(a, b, context)
+            check_shape(f"seed {seed}: make_hunks(a, b, context={context})\n  a={a!r}\n  b={b!r}", a, b, context, hunks)
 
 
 def stage_reverse(rng):

@@ -19,6 +19,12 @@ class RefLog:
     def delete(self, key):
         return self.state.pop(key, None) is not None
 
+    def delete_prefix(self, prefix):
+        doomed = [key for key in self.state if key.startswith(prefix)]
+        for key in doomed:
+            del self.state[key]
+        return len(doomed)
+
 
 def ops(r, count):
     out = []
@@ -27,8 +33,10 @@ def ops(r, count):
         key = r.choice(KEYS)
         if x < 0.6:
             out.append(("put", key, bytes(r.randrange(256) for _ in range(r.randint(0, 16)))))
-        elif x < 0.85:
+        elif x < 0.8:
             out.append(("delete", key))
+        elif x < 0.86:
+            out.append(("delete_prefix", r.choice(["k", "m/", "z", "k1", "m/3"])))
         else:
             out.append(("get", key))
     return out
@@ -41,6 +49,8 @@ def play(test, store, ref, sequence, context):
             ref.put(op[1], op[2])
         elif op[0] == "delete":
             test.assertEqual(store.delete(op[1]), ref.delete(op[1]), context)
+        elif op[0] == "delete_prefix":
+            test.assertEqual(store.delete_prefix(op[1]), ref.delete_prefix(op[1]), context)
         else:
             test.assertEqual(store.get(op[1]), ref.state.get(op[1]), context)
 
@@ -177,6 +187,53 @@ class KvstoreHidden(unittest.TestCase):
         flipped = bytearray(data)
         flipped[first + 3] ^= 0x10
         self.assertEqual(dict(recover([(segment_id, bytes(flipped))], 200).scan()), {"a": b"1"})
+
+    def test_delete_prefix(self):
+        store = Store(64)
+        for key in ["p/a", "p/b", "p/c", "p/d", "p/e", "q", "pz"]:
+            store.put(key, b"v")
+        self.assertEqual(store.delete_prefix("p/"), 5)
+        self.assertEqual(store.keys(), ["pz", "q"])
+        self.assertEqual(store.delete_prefix("p/"), 0)
+        self.assertEqual(store.delete_prefix("p"), 1)
+        self.assertEqual(recover(store.export(), 64).keys(), ["q"])
+        with self.assertRaises(ValueError):
+            store.delete_prefix("")
+
+    def test_reads_after_compaction_moves_records(self):
+        store = Store(30)
+        store.put("a", b"1")
+        store.put("b", b"2")
+        store.put("a", b"3")
+        store.put("c", b"4")
+        self.assertEqual([store.get(k) for k in "abc"], [b"3", b"2", b"4"])
+        store.put("d", b"5")
+        store.compact()
+        self.assertEqual([store.get(k) for k in "abcd"], [b"3", b"2", b"4", b"5"])
+
+    def test_export_is_a_snapshot(self):
+        store = Store(30)
+        for index in range(8):
+            store.put(f"k{index % 3}", bytes([index]))
+        snapshot = store.export()
+        expected = dict(store.scan())
+        store.delete("k0")
+        store.put("k1", b"new")
+        store.compact()
+        self.assertEqual(dict(recover(snapshot, 30).scan()), expected)
+
+    def test_random_snapshots(self):
+        for seed in range(11000, 11200):
+            r = random.Random(seed)
+            limit = r.randint(45, 150)
+            store, ref = Store(limit), RefLog()
+            play(self, store, ref, ops(r, r.randint(10, 40)), f"seed {seed}")
+            store.compact()
+            snapshot, expected = store.export(), dict(ref.state)
+            play(self, store, ref, ops(r, r.randint(5, 25)), f"seed {seed}")
+            store.compact()
+            same(self, store, ref, f"seed {seed} store")
+            self.assertEqual(dict(recover(snapshot, limit).scan()), expected, f"seed {seed} snapshot")
 
     def test_damage_before_last_segment(self):
         store = Store(30)

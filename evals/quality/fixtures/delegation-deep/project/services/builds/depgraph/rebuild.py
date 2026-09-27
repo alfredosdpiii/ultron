@@ -37,6 +37,13 @@ def affected(graph, changed_inputs, previous):
     return sorted(reached)
 
 
+def carried_outputs(graph, previous):
+    """The previous outputs of the graph's targets, without entries for targets the graph no longer has."""
+    if len(previous) == len(graph) and all(name in graph for name in previous):
+        return previous
+    return {name: output for name, output in previous.items() if name in graph}
+
+
 def rebuild(graph, changed_inputs, build, previous):
     """Rebuild what `changed_inputs` invalidated, given the `previous` outputs of every built target.
 
@@ -46,24 +53,20 @@ def rebuild(graph, changed_inputs, build, previous):
     previous output does not dirty its dependents (early cutoff). Targets are built in topological order.
     """
     order = topo_order(graph)
-    position = {name: index for index, name in enumerate(order)}
-    outputs = {name: previous[name] for name in order if name in previous}
-    pending = directly_dirty(graph, changed_inputs, previous)
-    queued = set(pending)
+    dirty = set(directly_dirty(graph, changed_inputs, previous))
+    outputs = carried_outputs(graph, previous)
     rebuilt = []
-    changed = []
-    while pending:
-        name = pending.pop(0)
+    changed = set()
+    for name in order:
+        if name not in dirty and not any(dep in changed for dep in graph.deps(name)):
+            continue
         output = build(name, {dep: outputs[dep] for dep in graph.deps(name)})
         rebuilt.append(name)
         outputs[name] = output
-        if name in previous and previous[name] == output:
-            continue
-        changed.append(name)
-        for dependent in graph.dependents(name):
-            if dependent not in queued:
-                queued.add(dependent)
-                pending.append(dependent)
-    rebuilt.sort(key=position.__getitem__)
-    changed.sort(key=position.__getitem__)
-    return Rebuild(rebuilt=tuple(rebuilt), changed=tuple(changed), outputs={name: outputs[name] for name in order})
+        if name not in previous or previous[name] != output:
+            changed.add(name)
+    return Rebuild(
+        rebuilt=tuple(rebuilt),
+        changed=tuple(name for name in order if name in changed),
+        outputs={name: outputs[name] for name in order},
+    )

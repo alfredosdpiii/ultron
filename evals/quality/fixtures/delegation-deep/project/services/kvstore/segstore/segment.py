@@ -49,8 +49,14 @@ class Segment:
     def close(self):
         self.closed = True
 
+    def rewrite(self):
+        """Empty the segment and reopen it for appends, keeping its id and limit."""
+        self._data.clear()
+        self.closed = False
+
     def to_bytes(self):
-        return bytes(self._data)
+        """The segment's bytes."""
+        return self._data if self.closed else bytes(self._data)
 
     def __repr__(self):
         state = "closed" if self.closed else "open"
@@ -91,14 +97,8 @@ class SegmentTable:
         self._segments.append(segment)
         return segment
 
-    def compaction_ids(self):
-        """Ids for the segments a compaction writes, in the order it writes them."""
-        start = self._next_id
-        self._next_id += len(self._segments)
-        return iter(range(start, self._next_id))
-
     def replace_closed(self, segments):
-        """Swap every closed segment for `segments` (already closed), keeping the active one last."""
+        """Keep only `segments` (closed, in write order) before the active segment."""
         for segment in segments:
             segment.close()
         self._segments = list(segments) + [self.active]

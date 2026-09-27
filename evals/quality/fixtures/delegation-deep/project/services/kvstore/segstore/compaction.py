@@ -2,7 +2,6 @@
 from dataclasses import dataclass
 
 from .record import encode
-from .segment import Segment
 
 
 @dataclass
@@ -15,59 +14,53 @@ class CompactionStats:
     records_dropped: int
 
 
-def _newest_closed_records(closed):
-    """For every key in the closed segments, its newest closed record: key -> (position, offset, record)."""
-    newest = {}
-    for position in range(len(closed) - 1, -1, -1):
-        for offset, record in closed[position].records():
-            newest.setdefault(record.key, (position, offset, record))
-    return newest
+def _live_records(closed, index):
+    """The closed segments' records that are still their key's newest, in write order, with their old locations."""
+    live = []
+    for segment in closed:
+        for offset, record in segment.records():
+            if not record.tombstone and index.get(record.key) == (segment.id, offset):
+                live.append(record)
+    return live
 
 
 def compact(table, index):
-    """Compact every closed segment of `table` and repoint `index` at the rewritten records.
+    """Compact every closed segment of `table` in place and repoint `index` at the rewritten records.
 
-    A key's record survives when it is the key's newest record overall; a key whose newest record is in the active
-    segment, or is a tombstone, keeps nothing in the closed segments. Surviving records keep their relative order.
+    A record survives when it is its key's newest record overall (the one the index points at). Survivors keep their
+    relative order and are packed into the closed segments from the oldest one on, so ids keep increasing in write
+    order; closed segments left without records are dropped.
     """
     closed = table.closed()
-    active_id = table.active.id
-    bytes_before = sum(segment.size for segment in closed)
-    total_records = sum(1 for segment in closed for _ in segment.records())
     if not closed:
         return CompactionStats(0, 0, 0, 0, 0, 0)
+    bytes_before = sum(segment.size for segment in closed)
+    total_records = sum(1 for segment in closed for _ in segment.records())
+    survivors = _live_records(closed, index)
 
-    survivors = []
-    for key, (position, offset, record) in _newest_closed_records(closed).items():
-        if record.tombstone:
-            continue
-        location = index.get(key)
-        if location is None or location.segment == active_id:
-            continue
-        survivors.append((position, offset, record))
-    survivors.sort(key=lambda item: (item[0], item[1]))
-
-    ids = table.compaction_ids()
-    rewritten = []
+    targets = iter(closed)
+    used = []
     moves = []
-    current = None
-    for _, _, record in survivors:
+    for record in survivors:
         raw = encode(record.key, record.value)
-        if current is None or not current.fits(len(raw)):
-            if current is not None:
-                current.close()
-            current = Segment(next(ids), table.limit)
-            rewritten.append(current)
-        moves.append((record.key, current.id, current.append(raw)))
+        if not used or not used[-1].fits(len(raw)):
+            if used:
+                used[-1].close()
+            segment = next(targets)
+            segment.rewrite()
+            used.append(segment)
+        moves.append((record.key, used[-1].id, used[-1].append(raw)))
+    for segment in targets:
+        segment.rewrite()
 
-    table.replace_closed(rewritten)
+    table.replace_closed(used)
     for key, segment_id, offset in moves:
         index.set(key, segment_id, offset)
     return CompactionStats(
         segments_before=len(closed),
-        segments_after=len(rewritten),
+        segments_after=len(used),
         bytes_before=bytes_before,
-        bytes_after=sum(segment.size for segment in rewritten),
+        bytes_after=sum(segment.size for segment in used),
         records_kept=len(survivors),
         records_dropped=total_records - len(survivors),
     )

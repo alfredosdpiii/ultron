@@ -16,6 +16,7 @@ class Graph:
     def __init__(self):
         self._declared = {}
         self._inputs = {}
+        self._reach = {}
 
     def add(self, name, deps=(), inputs=()):
         """Define target `name`, depending on the targets in `deps` and reading the source inputs in `inputs`."""
@@ -24,8 +25,9 @@ class Graph:
             raise ValueError(f"target {name!r} is already defined")
         declared = [_check_name(dep, f"a dependency of {name!r}") for dep in deps]
         reads = [_check_name(item, f"an input of {name!r}") for item in inputs]
-        self._declared[name] = declared
+        self._declared[name] = list(dict.fromkeys(declared))
         self._inputs[name] = tuple(sorted(set(reads)))
+        self._reach.clear()
         return self
 
     def __contains__(self, name):
@@ -54,6 +56,28 @@ class Graph:
         if name not in self._declared:
             raise KeyError(name)
         return tuple(sorted(target for target, declared in self._declared.items() if name in declared))
+
+    def reach(self, name):
+        """`name` and every target it depends on, transitively, as a set.
+
+        Raises KeyError for an unknown `name` and ValueError when a reached dependency names no defined target.
+        """
+        if name not in self._declared:
+            raise KeyError(name)
+        found = self._reach.get(name)
+        if found is None:
+            found = set()
+            stack = [(None, name)]
+            while stack:
+                parent, current = stack.pop()
+                if current in found:
+                    continue
+                if current not in self._declared:
+                    raise ValueError(f"{parent!r} depends on undefined target {current!r}")
+                found.add(current)
+                stack.extend((current, dep) for dep in self._declared[current])
+            self._reach[name] = found
+        return found
 
     def readers(self, item):
         """The targets that read source input `item`, sorted."""

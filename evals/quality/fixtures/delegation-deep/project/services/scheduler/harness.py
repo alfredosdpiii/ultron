@@ -176,7 +176,7 @@ class Reference:
         return {job_id: rec["state"] for job_id, rec in sorted(self.current.items())}
 
 
-def make_case(case_seed, *, deps, cancels, retries, caps, fail_rate):
+def make_case(case_seed, *, deps, cancels, retries, caps, fail_rate, reuse=True):
     """A random scenario: scheduler settings and a list of operations."""
     rnd = random.Random(case_seed)
     slots = rnd.randint(1, 4)
@@ -187,11 +187,14 @@ def make_case(case_seed, *, deps, cancels, retries, caps, fail_rate):
         base, cap = rnd.randint(1, 4), rnd.randint(1, 40)
     else:
         base, cap = 1, 16
-    ids = [f"j{n}" for n in range(rnd.randint(3, 9))]
+    ids = [f"j{n}" for n in range(rnd.randint(3, 9 if reuse else 12))]
     ops, submitted, now = [], [], 0
     for _ in range(rnd.randint(1, 4)):
         for _ in range(rnd.randint(1, 5)):
-            job_id = rnd.choice(ids)
+            fresh = [i for i in ids if i not in submitted]
+            if not reuse and not fresh:
+                break
+            job_id = rnd.choice(ids if reuse else fresh)
             dep_ids = []
             if deps and submitted and rnd.random() < 0.6:
                 dep_ids = [rnd.choice(submitted) for _ in range(rnd.randint(1, 3))]
@@ -252,7 +255,8 @@ def check_case(label, case_seed, case):
                                    f"{want_event} (expected events so far: {want_events[max(0, position - 4):position + 1]})")
         if len(got_events) != len(want_events):
             raise StageFailure(f"{where}\n  after op #{index}: {len(got_events)} events, expected {len(want_events)} "
-                               f"(expected events from #{min(len(got_events), len(want_events))}: "
+                               f"(from #{min(len(got_events), len(want_events))} got "
+                               f"{got_events[min(len(got_events), len(want_events)):][:5]}, expected "
                                f"{want_events[min(len(got_events), len(want_events)):][:5]})")
         if got != want:
             raise StageFailure(f"{where}\n  op #{index} {op}: returned {got!r}, expected {want!r}")
@@ -268,7 +272,7 @@ def run_cases(rng, label, **shape):
 
 
 def stage_dispatch(rng):
-    """Priorities, eligible ticks, durations and slots: the order of every start and completion."""
+    """Priorities, eligible ticks, durations and slots, over several runs: every start and completion."""
     run_cases(rng, "dispatch order matches the reference", deps=False, cancels=False, retries=(0, 0), caps=None,
               fail_rate=0.2)
 
@@ -276,33 +280,33 @@ def stage_dispatch(rng):
 def stage_dependencies(rng):
     """Dependencies: release on success, transitive cancellation on failure."""
     run_cases(rng, "dependencies match the reference", deps=True, cancels=False, retries=(0, 0), caps=None,
-              fail_rate=0.3)
+              fail_rate=0.3, reuse=False)
 
 
-def stage_cancel_resubmit(rng):
-    """Cancelling queued and waiting jobs, and submitting finished ids again."""
-    run_cases(rng, "cancel and resubmit match the reference", deps=True, cancels=True, retries=(0, 0), caps=None,
+def stage_resubmit(rng):
+    """Dependencies with cancelled and finished ids submitted again."""
+    run_cases(rng, "resubmission matches the reference", deps=True, cancels=True, retries=(0, 0), caps=None,
               fail_rate=0.25)
 
 
 def stage_retries(rng):
-    """Retries with backoff (caps a power-of-two multiple of the base), with dependencies and cancellation."""
-    run_cases(rng, "retries match the reference", deps=True, cancels=True, retries=(0, 3), caps="power",
+    """Retries with backoff, with dependencies and resubmission."""
+    run_cases(rng, "retries match the reference", deps=True, cancels=False, retries=(0, 4), caps="any",
               fail_rate=0.5)
 
 
-def stage_backoff_caps(rng):
-    """Long retry chains under arbitrary backoff settings."""
-    run_cases(rng, "backoff matches the reference", deps=True, cancels=True, retries=(3, 6), caps="any",
-              fail_rate=0.6)
+def stage_cancel_retries(rng):
+    """Retries, cancellation and resubmission together."""
+    run_cases(rng, "retries with cancellation match the reference", deps=True, cancels=True, retries=(2, 6),
+              caps="any", fail_rate=0.6)
 
 
 STAGES = [
     ("dispatch", stage_dispatch),
     ("dependencies", stage_dependencies),
-    ("cancel_resubmit", stage_cancel_resubmit),
+    ("resubmit", stage_resubmit),
     ("retries", stage_retries),
-    ("backoff_caps", stage_backoff_caps),
+    ("cancel_retries", stage_cancel_retries),
 ]
 
 

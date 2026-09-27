@@ -131,6 +131,8 @@ class PatchHidden(unittest.TestCase):
         b[5] = "five"
         # two unchanged lines between the changes: with context 1 the contexts touch, so one hunk
         self.assertEqual([h.header() for h in make_hunks(a, b, 1)], ["@@ -2,6 +2,6 @@"])
+        # the same files asked again with less context split again
+        self.assertEqual([h.header() for h in make_hunks(a, b, 0)], ["@@ -3,1 +3,1 @@", "@@ -6,1 +6,1 @@"])
 
     def test_offset_ties_toward_earlier(self):
         hunk = Hunk(3, 1, 2, 0, [("-", "x")])
@@ -163,19 +165,22 @@ class PatchHidden(unittest.TestCase):
         for _ in range(400):
             a = [rnd.choice(WORDS) for _ in range(rnd.randint(0, 14))]
             b = mutate(rnd, mutate(rnd, a, WORDS), WORDS)
-            context = rnd.randint(0, 3)
-            hunks = make_hunks(a, b, context)
-            text = format_hunks(hunks)
-            self.assertEqual(parse_unified(text), hunks)
-            self.assertEqual(apply_patch(a, text), b, (a, b, context))
-            self.assertEqual(apply_hunks(b, reverse_hunks(hunks)), a)
-            self.assertEqual(reverse_hunks(reverse_hunks(hunks)), hunks)
-            groups = ref_groups(a, b, context)
-            self.assertEqual(len(hunks), len(groups), (a, b, context))
-            for hunk, (start, end) in zip(hunks, groups):
-                lo, hi = max(0, start - context), min(len(a), end + context)
-                self.assertEqual(hunk.old_count, hi - lo)
-                self.assertEqual(hunk.old_start, lo + 1 if hi > lo else lo)
+            for context in (3, 2, 1, 0):
+                self.check_pair(a, b, context)
+
+    def check_pair(self, a, b, context):
+        hunks = make_hunks(a, b, context)
+        text = format_hunks(hunks)
+        self.assertEqual(parse_unified(text), hunks)
+        self.assertEqual(apply_patch(a, text), b, (a, b, context))
+        self.assertEqual(apply_hunks(b, reverse_hunks(hunks)), a)
+        self.assertEqual(reverse_hunks(reverse_hunks(hunks)), hunks)
+        groups = ref_groups(a, b, context)
+        self.assertEqual(len(hunks), len(groups), (a, b, context))
+        for hunk, (start, end) in zip(hunks, groups):
+            lo, hi = max(0, start - context), min(len(a), end + context)
+            self.assertEqual(hunk.old_count, hi - lo)
+            self.assertEqual(hunk.old_start, lo + 1 if hi > lo else lo)
 
     def test_random_offsets_against_model(self):
         rnd = random.Random(4_242)

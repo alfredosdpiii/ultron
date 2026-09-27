@@ -43,8 +43,6 @@ def parse_unified(text):
     current = None
     old_left = new_left = 0
     for number, line in enumerate(_split(text), 1):
-        if line.startswith(("--- ", "+++ ")):
-            continue
         if old_left or new_left:
             tag, body = line[:1], line[1:]
             if tag == " ":
@@ -59,6 +57,8 @@ def parse_unified(text):
             if old_left < 0 or new_left < 0:
                 raise ValueError(f"line {number}: hunk body longer than its header {current.header()}")
             current.lines.append((tag, body))
+            continue
+        if line.startswith(("--- ", "+++ ")):
             continue
         match = _HEADER.match(line)
         if match is None:

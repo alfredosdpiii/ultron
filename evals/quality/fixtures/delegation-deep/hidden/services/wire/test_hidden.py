@@ -75,6 +75,31 @@ class WireHidden(unittest.TestCase):
         self.assertEqual(decode_record(schema, data), {1: 150, 2: "hi", 3: [1, -1]})
         self.assertEqual(encode_frame(1, b""), b"\x01\x00\xa5\x05\xdf\x1b")
 
+    def test_encoding_is_repeatable(self):
+        schema = Schema({1: "uint", 2: "sint", 3: "bytes", 5: "str"})
+        rnd = random.Random(7005)
+        for _ in range(200):
+            record = {1: rnd.randint(0, 300), 2: rnd.randint(-300, 300), 3: bytes(rnd.randrange(256) for _ in range(rnd.randint(0, 9))), 5: "ab"}
+            expected = (
+                b"\x08" + ref_uvarint(record[1]) + b"\x10" + ref_uvarint(ref_zigzag(record[2]))
+                + b"\x1a" + ref_uvarint(len(record[3])) + record[3] + b"\x2a\x02ab"
+            )
+            self.assertEqual(encode_record(schema, record), expected, record)
+            self.assertEqual(decode_record(schema, encode_record(schema, record)), record)
+        for n in (0, 8, 16, 26, 42, 127, 128, 300):
+            self.assertEqual(encode_uvarint(n), ref_uvarint(n), n)
+
+    def test_series_changed_in_place(self):
+        schema = Schema({4: "sints"})
+        rnd = random.Random(7006)
+        series = [1, 2, 3]
+        for _ in range(100):
+            self.assertEqual(encode_record(schema, {4: series}), b"\x22" + ref_uvarint(len(ref_deltas(series))) + ref_deltas(series))
+            self.assertEqual(decode_record(schema, encode_record(schema, {4: series})), {4: series})
+            series[rnd.randrange(len(series))] = rnd.randint(-1000, 1000)
+            if rnd.random() < 0.3:
+                series.append(rnd.randint(-5, 5))
+
     def test_varint_errors(self):
         for bad in (-1, 1 << 70, True, 1.0):
             with self.assertRaises(EncodeError):

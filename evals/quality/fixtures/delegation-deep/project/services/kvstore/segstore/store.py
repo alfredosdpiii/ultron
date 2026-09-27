@@ -4,6 +4,8 @@ from .index import Index, Location
 from .record import encode
 from .segment import SegmentTable
 
+_DECODED_LIMIT = 1024
+
 
 class Store:
     """A log-structured key-value store. Keys are non-empty strings, values are bytes."""
@@ -14,6 +16,7 @@ class Store:
         self.segment_limit = segment_limit
         self._table = _table if _table is not None else SegmentTable(segment_limit)
         self._index = _index if _index is not None else Index()
+        self._decoded = {}
 
     def __len__(self):
         return len(self._index)
@@ -25,11 +28,9 @@ class Store:
         if len(raw) > self.segment_limit:
             raise ValueError(f"record of {len(raw)} bytes does not fit in a segment of {self.segment_limit}")
         segment = self._table.active
-        offset = segment.size
         if not segment.fits(len(raw)):
             segment = self._table.roll()
-        segment.append(raw)
-        return Location(segment.id, offset)
+        return Location(segment.id, segment.append(raw))
 
     def put(self, key, value):
         """Store `value` under `key`, replacing any earlier value."""
@@ -41,9 +42,12 @@ class Store:
         location = self._index.get(key)
         if location is None:
             return default
-        record = self._table.get(location.segment).read(location.offset)
-        if record.key != key or record.tombstone:
-            raise RuntimeError(f"index for {key!r} points at a record for {record.key!r}")
+        record = self._decoded.get(location)
+        if record is None:
+            record = self._table.get(location.segment).read(location.offset)
+            if len(self._decoded) >= _DECODED_LIMIT:
+                self._decoded.clear()
+            self._decoded[location] = record
         return record.value
 
     def delete(self, key):
@@ -54,9 +58,19 @@ class Store:
         self._index.remove(key)
         return True
 
+    def delete_prefix(self, prefix):
+        """Delete every live key that begins with `prefix`; returns how many were deleted."""
+        if not isinstance(prefix, str) or not prefix:
+            raise ValueError("prefix must be a non-empty string")
+        removed = 0
+        for key in self._index.range(prefix=prefix):
+            self.delete(key)
+            removed += 1
+        return removed
+
     def scan(self, start=None, end=None, prefix=None):
         """(key, value) pairs in key order with start <= key < end, restricted to keys beginning with `prefix`."""
-        return [(key, self.get(key)) for key in self._index.keys(start, end, prefix)]
+        return [(key, self.get(key)) for key in self._index.range(start, end, prefix)]
 
     def keys(self):
         return [key for key, _ in self._index.items()]

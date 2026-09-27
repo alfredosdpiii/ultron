@@ -12,26 +12,16 @@ class CycleError(ValueError):
 
 def closure(graph, targets=None):
     """The given targets (default: all) plus everything they depend on, transitively, as a set."""
-    if targets is None:
-        roots = graph.targets()
-    else:
-        roots = list(targets)
-        for name in roots:
-            if name not in graph:
-                raise KeyError(name)
-    seen = set()
-    stack = list(roots)
-    while stack:
-        name = stack.pop()
-        if name in seen:
-            continue
-        seen.add(name)
-        for dep in graph.deps(name):
-            if dep not in graph:
-                raise ValueError(f"{name!r} depends on undefined target {dep!r}")
-            if dep not in seen:
-                stack.append(dep)
-    return seen
+    roots = graph.targets() if targets is None else list(targets)
+    for name in roots:
+        if name not in graph:
+            raise KeyError(name)
+    if not roots:
+        return set()
+    included = graph.reach(roots[0])
+    for name in roots[1:]:
+        included |= graph.reach(name)
+    return included
 
 
 def topo_order(graph, targets=None):

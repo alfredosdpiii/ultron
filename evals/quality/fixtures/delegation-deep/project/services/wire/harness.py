@@ -240,6 +240,18 @@ def stage_packed_lists(rng):
         got = _case("packed", seed, f"record {record!r}", lambda: decode_record(schema, encode_record(schema, record)))
         if got != record:
             raise StageFailure(f"packed record round trip: seed {seed}: {record!r} came back as {got!r}")
+        if values:
+            before = list(values)
+            values[rnd.randrange(len(values))] = rnd.randint(-(1 << 20), 1 << 20)
+            if values == before:
+                continue
+            record = {7: values, 9: record[9]}
+            got = _case("packed", seed, f"record {record!r}", lambda: decode_record(schema, encode_record(schema, record)))
+            if got != record:
+                raise StageFailure(
+                    f"packed record round trip: seed {seed}: series {before} written earlier, then the record "
+                    f"{record!r} came back as {got!r}"
+                )
 
 
 def _random_frames(rnd, count, max_payload):

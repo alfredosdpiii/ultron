@@ -127,9 +127,10 @@ export const solutions = {
  *   failure and make its fix (a fast agent; debugging from a seed often takes more), DEEP.orchestrationTurns = 2
  *   around the whole job.
  * - The bugs are found from the harness output, one layer per run. An agent that spots a bug by reading skips a
- *   run for it; that is the main way to beat these numbers, and the fixture is built to make it unlikely (semantic
- *   interactions in several hundred lines per service, layered so the later ones are not exercised until the
- *   earlier ones are fixed).
+ *   run for it; that is the main way to beat these numbers, and the fixture is built to make it unlikely (runtime
+ *   state-flow defects in several hundred lines per service, none contradicting a SPEC sentence, layered so the
+ *   later ones are not exercised until the earlier ones are fixed). The pilot fixture broke this assumption:
+ *   gpt-6-sol read 16-17 of its 18 boundary and ordering bugs off the SPEC in one turn.
  *
  * - `parallel` (the reference): the six loops at the same time, e.g. one subagent per service. About
  *   10 + (66 + 3 x 20) + 10 = 146 s: within the 300 s budget. At the slow end (15 s x 3 turns per layer, 2 x 15 s

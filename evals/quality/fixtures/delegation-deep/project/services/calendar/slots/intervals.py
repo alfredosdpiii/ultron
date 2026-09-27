@@ -1,9 +1,9 @@
 """Sets of half-open integer intervals [start, end).
 
 An IntervalSet is kept in canonical form: its intervals are sorted, non-empty, and separated by gaps (two intervals
-never overlap or touch). All set operations return new sets in canonical form.
+never overlap or touch). Set operations return new sets in canonical form; `add` grows a set in place.
 """
-from bisect import bisect_right
+from bisect import bisect_left, bisect_right
 
 
 def _normalize(pairs):
@@ -20,7 +20,7 @@ def _normalize(pairs):
 
 
 class IntervalSet:
-    """An immutable set of integers given as half-open intervals."""
+    """A set of integers given as half-open intervals."""
 
     __slots__ = ("_items", "_starts")
 
@@ -56,9 +56,6 @@ class IntervalSet:
     def __eq__(self, other):
         return isinstance(other, IntervalSet) and self._items == other._items
 
-    def __hash__(self):
-        return hash(tuple(self._items))
-
     def __repr__(self):
         return f"IntervalSet({self._items!r})"
 
@@ -85,6 +82,10 @@ class IntervalSet:
 
     def union(self, other):
         """Integers in either set."""
+        if not other._items:
+            return IntervalSet._canonical(self._items)
+        if not self._items:
+            return IntervalSet._canonical(other._items)
         left, right = self._items, other._items
         i = j = 0
         out = []
@@ -95,12 +96,28 @@ class IntervalSet:
             else:
                 start, end = right[j]
                 j += 1
-            if out and start < out[-1][1]:
+            if out and start <= out[-1][1]:
                 if end > out[-1][1]:
                     out[-1] = (out[-1][0], end)
             else:
                 out.append((start, end))
         return IntervalSet._canonical(out)
+
+    def add(self, start, end):
+        """Adds every integer of [start, end) to this set in place (nothing happens when end <= start)."""
+        if end <= start:
+            return
+        ends = [high for _, high in self._items]
+        low_index = bisect_left(ends, start)
+        high_index = bisect_right(self._starts, end)
+        if low_index < high_index:
+            start = min(start, self._items[low_index][0])
+            end = max(end, self._items[high_index - 1][1])
+        self._items[low_index:high_index] = [(start, end)]
+        self._starts[low_index:high_index] = [start]
+
+    def copy(self):
+        return IntervalSet._canonical(list(self._items))
 
     def intersect(self, other):
         """Integers in both sets."""

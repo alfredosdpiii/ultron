@@ -33,11 +33,14 @@ A record is an 11-byte header (`HEADER_SIZE`) followed by the key (UTF-8) and th
 - `get(key, default=None)` returns the newest value, or `default` when the key is missing or deleted.
 - `delete(key)` removes a present key by appending a tombstone and returns `True`; deleting a missing key writes
   nothing and returns `False`.
+- `delete_prefix(prefix)` deletes (as `delete` does) every live key that begins with `prefix` and returns how many
+  it deleted. An empty or non-`str` prefix raises `ValueError`.
 - `scan(start=None, end=None, prefix=None)` returns a list of `(key, value)` pairs sorted by key (Python string
   order) with `start <= key < end` (either bound may be `None`) and, when `prefix` is non-empty, only keys that
   begin with `prefix`.
 - `keys()` returns the live keys in sorted order; `len(store)` their number; `key in store` works.
-- `export()` returns every segment as `(segment_id, bytes)`, closed segments first and the active one last.
+- `export()` returns every segment as `(segment_id, data)` (`data` is bytes-like), closed segments first and the
+  active one last.
 - `stats()` returns `{"segments", "active_segment", "live_keys", "bytes"}` (segment count, the active segment's id,
   live key count, total bytes over all segments).
 
@@ -48,11 +51,11 @@ Rewrites all closed segments (never the active one) so they hold only live recor
 - A record survives only if it is its key's newest record in the whole store and is not a tombstone. So a key
   deleted or rewritten later (in a closed or the active segment) keeps nothing in the closed segments, and
   tombstones in closed segments are dropped (nothing older than them remains).
-- Survivors keep their relative order and are packed into new closed segments with the same rule as writes (a
+- Survivors keep their relative order and are packed into closed segments with the same rule as writes (a
   record that does not fit starts the next segment). Compaction never adds segments or bytes.
-- The rewritten segments take the ids of the segments they replace, lowest first, so that ascending segment id
-  is always the order in which the data was written: every compacted segment's id is lower than the active
-  segment's. The active segment and all reads are unchanged by a compaction; later writes continue as before.
+- Segment ids always increase in write order, compaction included, so every closed segment's id is lower than
+  the active segment's. Reads return the same values before and after a compaction; later writes continue as
+  before.
 - Returns a `CompactionStats` (segments and bytes before and after, records kept and dropped).
 
 ## Recovery: `recover(segments, segment_limit)`

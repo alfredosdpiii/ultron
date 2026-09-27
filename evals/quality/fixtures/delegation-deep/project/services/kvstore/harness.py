@@ -67,12 +67,17 @@ def _value(r):
     return bytes(r.randrange(256) for _ in range(r.randint(0, 14)))
 
 
-def _random_op(r):
+PREFIXES = ["acct/", "cart/", "user/", "user/b", "cart/d", "a"]
+
+
+def _random_op(r, prefixes=True):
     roll = r.random()
-    if roll < 0.62:
+    if roll < 0.6:
         return ("put", r.choice(KEYS), _value(r))
-    if roll < 0.85:
+    if roll < 0.8:
         return ("delete", r.choice(KEYS))
+    if prefixes and roll < 0.86:
+        return ("delete_prefix", r.choice(PREFIXES))
     return ("get", r.choice(KEYS))
 
 
@@ -86,6 +91,12 @@ def _apply(store, model, op):
         got, expected = store.delete(op[1]), op[1] in model
         model.pop(op[1], None)
         return (got, expected) if got != expected else None
+    if op[0] == "delete_prefix":
+        doomed = [key for key in model if key.startswith(op[1])]
+        got = store.delete_prefix(op[1])
+        for key in doomed:
+            del model[key]
+        return (got, len(doomed)) if got != len(doomed) else None
     got, expected = store.get(op[1]), model.get(op[1])
     return (got, expected) if got != expected else None
 
@@ -215,7 +226,7 @@ def stage_torn_recovery(rng):
         limit = r.randint(50, 160)
         store = Store(limit)
         history = []
-        for op in [_random_op(r) for _ in range(r.randint(5, 45))]:
+        for op in [_random_op(r, prefixes=False) for _ in range(r.randint(5, 45))]:
             if op[0] == "get":
                 continue
             before = store.stats()
@@ -259,8 +270,17 @@ def stage_torn_recovery(rng):
         _check_contents(recovered, model, seed, limit, f"writes after {what}")
 
 
+def _recover_checked(exported, limit, model, seed, what):
+    try:
+        recovered = recover(exported, limit)
+    except Exception as error:  # noqa: BLE001
+        raise StageFailure(f"{what}: seed {seed}, segment limit {limit}: recover() raised {type(error).__name__}: {error}") from None
+    _check_contents(recovered, model, seed, limit, what)
+    return recovered
+
+
 def stage_compact_recover(rng):
-    """A store rebuilt from its exported segments (in any order) matches the store, compactions included."""
+    """Exports taken between compactions rebuild the store exactly as it was when they were taken (any order)."""
     for _ in range(250):
         seed = rng.randrange(10**6)
         r = random.Random(seed)
@@ -269,16 +289,17 @@ def stage_compact_recover(rng):
         for _ in range(r.randint(1, 3)):
             _run(store, model, [_random_op(r) for _ in range(r.randint(10, 40))], seed, limit, "compact then recover")
             store.compact()
-        _run(store, model, [_random_op(r) for _ in range(r.randint(0, 20))], seed, limit, "compact then recover")
-        exported = store.export()
+        exported, snapshot = store.export(), dict(model)
+        _run(store, model, [_random_op(r) for _ in range(r.randint(5, 25))], seed, limit, "compact then recover")
+        store.compact()
+        _check_contents(store, model, seed, limit, "store after a later compaction")
         r.shuffle(exported)
-        try:
-            recovered = recover(exported, limit)
-        except Exception as error:  # noqa: BLE001
-            raise StageFailure(f"compact then recover: seed {seed}, segment limit {limit}: recover() raised {type(error).__name__}: {error}") from None
-        _check_contents(recovered, model, seed, limit, "compact then recover")
-        _run(recovered, model, [_random_op(r) for _ in range(10)], seed, limit, "writes after compact then recover")
-        _check_contents(recovered, model, seed, limit, "writes after compact then recover")
+        recovered = _recover_checked(exported, limit, snapshot, seed, "recover an export taken before later writes and a compaction")
+        _run(recovered, snapshot, [_random_op(r) for _ in range(10)], seed, limit, "writes after recovery")
+        _check_contents(recovered, snapshot, seed, limit, "writes after recovery")
+        latest = store.export()
+        r.shuffle(latest)
+        _recover_checked(latest, limit, model, seed, "recover the latest export")
 
 
 STAGES = [

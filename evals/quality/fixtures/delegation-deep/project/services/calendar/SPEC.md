@@ -17,6 +17,9 @@ A set of integers stored as half-open intervals `[start, end)`.
   integers in the set; `bounds()` is `(first, end)` of the whole set or `None` when empty.
 - `union(other)`, `intersect(other)` and `subtract(other)` return new sets in canonical form with the integers in
   either set, in both, and in this set but not in `other`.
+- `add(start, end)` adds every integer of `[start, end)` to the set in place (nothing happens when `end <= start`)
+  and keeps it canonical. It changes only that set: every set returned by any other method is a separate object,
+  unaffected by later changes to the sets it was computed from, and vice versa. `copy()` returns such a copy.
 - `contains(start, end)` is True when every integer of `[start, end)` is in the set; `start >= end` raises
   `ValueError`. `contains_point(m)` tests one integer.
 - `clip(start, end)` is the part inside `[start, end)`; `expand(before, after)` widens every interval by `before`
@@ -44,7 +47,10 @@ Working hours in the attendee's local time. Local time is UTC plus `utc_offset` 
 
 - `hours` must be a `WeeklyHours` (else `TypeError`); `buffer` a non-negative int (else `ValueError`).
 - `busy` is an iterable of `(start, end)` UTC minutes; `add_busy(start, end)` adds one (`end <= start` raises
-  `ValueError`); `busy()` returns the merged busy blocks; `clear_busy()` removes them all.
+  `ValueError`); `busy()` returns the merged busy blocks; `clear_busy()` removes them all. `version` starts at 0 and
+  grows by one with every `add_busy` or `clear_busy`.
+- Busy blocks may be added at any time: every query answers for the busy blocks as they are at the time of the
+  query.
 - The buffer keeps `buffer` minutes before and after every busy block free of meetings: minute `m` is **blocked**
   when `s - buffer <= m < e + buffer` for some busy block `[s, e)`.
 - `blocked(start, end)` is the IntervalSet of blocked minutes in `[start, end)`.
@@ -64,7 +70,7 @@ Working hours in the attendee's local time. Local time is UTC plus `utc_offset` 
   - every minute of `[t, t + duration)` is free for every attendee, and
   - `t + duration <= earliest + horizon`;
 
-  or `None` if there is no such `t`. `DEFAULT_HORIZON` is four weeks. `duration`, `granularity` and `horizon`
+  or `None` if there is no such `t`. The answer depends only on the attendees' state at the time of the call. `DEFAULT_HORIZON` is four weeks. `duration`, `granularity` and `horizon`
   must be positive ints and the list non-empty, else `ValueError`. The search crosses day and week boundaries.
   Example: office hours Monday to Friday 09:00-17:00 UTC, busy `[(540, 600)]`: `find_slot([a], 30, 0, 15) == 600`,
   and an hour from Friday 16:45 (`4 * DAY + 1005`) is next Monday 09:00,

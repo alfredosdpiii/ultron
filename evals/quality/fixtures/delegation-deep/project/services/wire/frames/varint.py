@@ -4,6 +4,8 @@ from .errors import DecodeError, EncodeError, TruncatedError
 MAX_VARINT_BYTES = 10
 VARINT_LIMIT = 1 << (7 * MAX_VARINT_BYTES)
 
+MEMO_BELOW = 1 << 14
+
 UINT64_MAX = (1 << 64) - 1
 SINT64_MIN = -(1 << 63)
 SINT64_MAX = (1 << 63) - 1
@@ -14,17 +16,29 @@ def _require_int(value, what):
         raise EncodeError(f"{what} must be an int, not {type(value).__name__}")
 
 
+_memo = {}
+
+
 def encode_uvarint(value):
-    """LEB128: seven bits per byte, least significant group first, high bit set on every byte but the last."""
+    """LEB128: seven bits per byte, least significant group first, high bit set on every byte but the last.
+
+    Small values (field keys, lengths) are encoded once and remembered.
+    """
     _require_int(value, "varint")
     if value < 0 or value >= VARINT_LIMIT:
         raise EncodeError(f"varint out of range: {value}")
+    cached = _memo.get(value)
+    if cached is not None:
+        return cached
+    key = value
     out = bytearray()
     while value > 0x7F:
         out.append((value & 0x7F) | 0x80)
         value >>= 7
     out.append(value)
-    return bytes(out)
+    if key < MEMO_BELOW:
+        _memo[key] = out
+    return out
 
 
 def decode_uvarint(data, pos=0):
@@ -59,7 +73,7 @@ def uvarint_size(value):
 
 def zigzag(value):
     """Map a signed integer onto the unsigned ones: 0, -1, 1, -2, 2, ... become 0, 1, 2, 3, 4, ..."""
-    return (value << 1) ^ (value >> 63)
+    return value << 1 if value >= 0 else ((-value) << 1) - 1
 
 
 def unzigzag(value):

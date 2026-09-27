@@ -2,6 +2,8 @@
 from .delta import decode_deltas, encode_deltas
 from .errors import DecodeError, EncodeError, TruncatedError
 from .varint import (
+    SINT64_MAX,
+    SINT64_MIN,
     UINT64_MAX,
     decode_svarint,
     decode_uvarint,
@@ -14,6 +16,9 @@ WIRE_BYTES = 2
 
 FIELD_TYPES = {"uint": WIRE_VARINT, "sint": WIRE_VARINT, "bytes": WIRE_BYTES, "str": WIRE_BYTES, "sints": WIRE_BYTES}
 MAX_FIELD_ID = (1 << 29) - 1
+
+SERIES_CACHE_SIZE = 256
+_series_cache = {}
 
 
 class Schema:
@@ -43,7 +48,7 @@ def _check_value(field_id, kind, value):
             raise EncodeError(f"field {field_id} ({kind}) must be an int, not {type(value).__name__}")
         if kind == "uint" and not 0 <= value <= UINT64_MAX:
             raise EncodeError(f"field {field_id} (uint) out of range: {value}")
-        if kind == "sint" and value.bit_length() > 63:
+        if kind == "sint" and not SINT64_MIN <= value <= SINT64_MAX:
             raise EncodeError(f"field {field_id} (sint) out of range: {value}")
     elif kind == "bytes":
         if not isinstance(value, (bytes, bytearray)):
@@ -63,8 +68,21 @@ def _encode_value(kind, value):
     elif kind == "str":
         body = value.encode("utf-8")
     else:
-        body = encode_deltas(value)
+        body = _encode_series(value)
     return encode_uvarint(len(body)) + body
+
+
+def _encode_series(values):
+    """Packed body of a series. A series object written into many records is encoded only once."""
+    key = id(values)
+    cached = _series_cache.get(key)
+    if cached is not None and cached[0] is values:
+        return cached[1]
+    body = encode_deltas(values)
+    if len(_series_cache) >= SERIES_CACHE_SIZE:
+        _series_cache.clear()
+    _series_cache[key] = (values, body)
+    return body
 
 
 def encode_record(schema, values):
@@ -78,8 +96,9 @@ def encode_record(schema, values):
         if value is None:
             continue
         _check_value(field_id, kind, value)
-        out += encode_uvarint((field_id << 3) | FIELD_TYPES[kind])
-        out += _encode_value(kind, value)
+        field = encode_uvarint((field_id << 3) | FIELD_TYPES[kind])
+        field += _encode_value(kind, value)
+        out += field
     return bytes(out)
 
 

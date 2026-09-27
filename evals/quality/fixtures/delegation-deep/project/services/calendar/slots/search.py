@@ -3,6 +3,8 @@ from .intervals import IntervalSet
 from .timeutil import DAY, WEEK, align_up
 
 DEFAULT_HORIZON = 4 * WEEK
+_CACHE_LIMIT = 4096
+_common_by_day = {}
 
 
 def _check_attendees(attendees):
@@ -29,6 +31,24 @@ def common_free(attendees, start, end):
     return result
 
 
+def _common_day(attendees, day):
+    """Common free time of one UTC day, remembered per group of attendees and their busy-block versions."""
+    key = (tuple((id(attendee), attendee.version) for attendee in attendees), day)
+    free = _common_by_day.get(key)
+    if free is None:
+        if len(_common_by_day) >= _CACHE_LIMIT:
+            _common_by_day.clear()
+        free = _common_by_day[key] = common_free(attendees, day, day + DAY)
+    return free
+
+
+def _window_free(attendees, start, end):
+    pieces = []
+    for day in range(start - start % DAY, end, DAY):
+        pieces.extend(_common_day(attendees, day).clip(start, end))
+    return IntervalSet(pieces)
+
+
 def free_slots(attendees, start, end, min_length=1):
     """Maximal common free ranges inside [start, end) that are at least `min_length` minutes long."""
     _positive("min_length", min_length)
@@ -45,12 +65,12 @@ def find_slot(attendees, duration, earliest, granularity=1, horizon=DEFAULT_HORI
     limit = earliest + horizon
     if align_up(earliest, granularity) + duration > limit:
         return None
-    grid = earliest
+    grid = align_up(earliest, granularity)
     chunk = earliest
     while chunk < limit:
         chunk_end = min(chunk + DAY, limit)
         window_end = min(chunk_end + duration, limit)
-        for low, high in common_free(attendees, chunk, window_end):
+        for low, high in _window_free(attendees, chunk, window_end):
             if low >= chunk_end:
                 break
             candidate = low + (grid - low) % granularity

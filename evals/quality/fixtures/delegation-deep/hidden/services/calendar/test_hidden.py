@@ -71,6 +71,46 @@ class IntervalSetTests(unittest.TestCase):
         self.assertEqual(left.union(right).intervals(), [(0, 31)])
         self.assertEqual(len(right.union(left)), 1)
 
+    def test_results_are_independent_of_their_operands(self):
+        empty, some = IntervalSet(), IntervalSet([(0, 5)])
+        for make in (lambda: some.union(empty), lambda: empty.union(some), lambda: some.intersect(some), lambda: some.subtract(empty)):
+            result = make()
+            result.add(10, 20)
+            self.assertEqual(some.intervals(), [(0, 5)])
+            self.assertEqual(empty.intervals(), [])
+            self.assertEqual(result.intervals(), [(0, 5), (10, 20)])
+        grown = empty.union(empty)
+        empty.add(3, 4)
+        self.assertEqual(grown.intervals(), [])
+        self.assertTrue(empty.contains(3, 4))
+
+    def test_random_programs_with_add(self):
+        for seed in range(300):
+            rnd = random.Random(51000 + seed)
+            sets, models = [], []
+            for _ in range(rnd.randint(1, 3)):
+                pairs = [(s, s + rnd.randint(1, 10)) for s in (rnd.randint(0, 50) for _ in range(rnd.randint(0, 3)))]
+                sets.append(IntervalSet(pairs))
+                models.append({m for a, b in pairs for m in range(a, b)})
+            for _ in range(10):
+                roll = rnd.random()
+                if roll < 0.45:
+                    i, j = rnd.randrange(len(sets)), rnd.randrange(len(sets))
+                    op = rnd.choice(["union", "intersect", "subtract"])
+                    sets.append(getattr(sets[i], op)(sets[j]))
+                    models.append({"union": models[i] | models[j], "intersect": models[i] & models[j], "subtract": models[i] - models[j]}[op])
+                elif roll < 0.6:
+                    sets.append(IntervalSet())
+                    models.append(set())
+                else:
+                    i = rnd.randrange(len(sets))
+                    low = rnd.randint(0, 60)
+                    high = low + rnd.randint(1, 15)
+                    sets[i].add(low, high)
+                    models[i] |= set(range(low, high))
+            for got, model in zip(sets, models):
+                self.assertEqual(got.intervals(), runs(m in model for m in range(90)), f"seed {seed}")
+
     def test_random_against_bitmap(self):
         for seed in range(500):
             rnd = random.Random(7000 + seed)
@@ -102,6 +142,33 @@ class HoursAndFreeTests(unittest.TestCase):
         self.assertEqual(person.free(600, 700).intervals(), [(630, 700)])
         self.assertEqual(person.free(400, 500).intervals(), [(400, 470)])
         self.assertEqual(person.free(0, DAY).intervals(), [(0, 470), (630, DAY)])
+
+    def test_busy_added_after_queries(self):
+        person = Attendee("p", WeeklyHours({d: [(0, DAY)] for d in range(7)}), buffer=30)
+        self.assertEqual(person.free(0, 3 * DAY).intervals(), [(0, 3 * DAY)])
+        person.add_busy(DAY + 5, DAY + 10)
+        self.assertEqual(person.free(0, DAY).intervals(), [(0, DAY - 25)])
+        person.add_busy(2 * DAY - 10, 2 * DAY - 1)
+        self.assertEqual(person.free(2 * DAY, 3 * DAY).intervals(), [(2 * DAY + 29, 3 * DAY)])
+        self.assertEqual(person.free(DAY - 40, 2 * DAY + 40).intervals(), [(DAY - 40, DAY - 25), (DAY + 40, 2 * DAY - 40), (2 * DAY + 29, 2 * DAY + 40)])
+        self.assertEqual(person.busy(), [(DAY + 5, DAY + 10), (2 * DAY - 10, 2 * DAY - 1)])
+
+    def test_random_incremental_against_reference(self):
+        for seed in range(200):
+            rnd = random.Random(64000 + seed)
+            start = rnd.randint(0, 2 * WEEK)
+            end = start + rnd.randint(60, 2 * DAY)
+            person = random_person(rnd, start, end)
+            real = person.real()
+            for _ in range(4):
+                low = rnd.randint(start - DAY // 2, end)
+                high = low + rnd.randint(30, DAY)
+                self.assertEqual(real.free(low, high).intervals(), runs([person.free(m) for m in range(low, high)], low), f"seed {seed}")
+                boundary = (rnd.randint(start, end) // DAY + 1) * DAY
+                block_start = rnd.choice([rnd.randint(start, end), boundary - rnd.randint(1, 40), boundary + rnd.randint(0, 30)])
+                block = (block_start, block_start + rnd.randint(1, 50))
+                real.add_busy(*block)
+                person.busy.append(block)
 
     def test_random_free_against_reference(self):
         for seed in range(250):
@@ -142,6 +209,17 @@ class FindSlotTests(unittest.TestCase):
 
     def test_align_up(self):
         self.assertEqual([align_up(v, 15) for v in (0, 1, 14, 15, 16)], [0, 15, 15, 15, 30])
+
+    def test_fresh_attendees_are_not_confused(self):
+        office = WeeklyHours.office()
+        for minute in range(1, 400, 7):
+            busy_until = 540 + minute
+            got = find_slot([Attendee("x", office, [(540, busy_until)])], 30, 0, 1)
+            self.assertEqual(got, busy_until, busy_until)
+        person = Attendee("y", office)
+        self.assertEqual(find_slot([person], 30, 0), 540)
+        person.add_busy(540, 700)
+        self.assertEqual(find_slot([person], 30, 0), 700)
 
     def test_random_against_reference(self):
         for seed in range(120):

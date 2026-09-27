@@ -21,9 +21,10 @@ and returns its state.
 - `priority` is any int (higher runs first). `run_at` (int >= 0, default `now`) is the earliest tick the job may
   start. `duration` (int >= 1) is how many ticks an attempt occupies its slot. `max_retries` (int >= 0) is how many
   times a failed attempt is retried.
-- `deps` are ids of already submitted jobs (unknown ids raise `ValueError`; duplicates count once). The job waits
-  until every dependency has succeeded. If a dependency is failed or cancelled at submission, the job is cancelled
-  immediately.
+- `deps` are ids of already submitted jobs (unknown ids raise `ValueError`; duplicates count once). A dependency
+  is the job submitted under that id when the dependent is submitted; a later submission of the same id is a
+  different job. The job waits until every dependency has succeeded. If a dependency is failed or cancelled at
+  submission, the job is cancelled immediately.
 - States: `waiting` (dependencies not all succeeded), `queued` (waiting for its eligible tick or a free slot),
   `running`, `succeeded`, `failed` (its last allowed attempt failed), `cancelled`.
 

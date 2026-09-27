@@ -26,7 +26,7 @@ class WorkerPool:
             raise RuntimeError("no free worker slot")
         end = now + job.duration
         self._starts += 1
-        heapq.heappush(self._running, (end, job.seq, job.id))
+        heapq.heappush(self._running, (end, self._starts, job.id))
         self._busy[job.id] = job
         return end
 

@@ -195,6 +195,49 @@ class SchedulerHidden(unittest.TestCase):
         s2.run()
         self.assertEqual(s2.events, [(0, "cancel", "x"), (6, "start", "x"), (7, "done", "x")])
 
+    def test_future_jobs_wait_for_their_tick(self):
+        s = Scheduler(1, lambda job_id, attempt: True)
+        s.submit("a", run_at=4)
+        self.assertEqual(s.run(), 5)
+        self.assertEqual(s.events, [(4, "start", "a"), (5, "done", "a")])
+        s.run(until=7)
+        s.submit("b", run_at=9, duration=2)
+        s.submit("c", run_at=12)
+        self.assertEqual(s.run(), 13)
+        self.assertEqual(s.events[2:], [(9, "start", "b"), (11, "done", "b"), (12, "start", "c"), (13, "done", "c")])
+
+    def test_resubmitted_dependency_is_a_new_job(self):
+        s = Scheduler(2, lambda job_id, attempt: True)
+        s.submit("d")
+        s.submit("e", duration=5)
+        s.submit("x", deps=["d", "e"])
+        s.run(until=2)
+        self.assertEqual(s.state("x"), "waiting")
+        s.submit("d")
+        s.run()
+        self.assertEqual(s.events, [(0, "start", "d"), (0, "start", "e"), (1, "done", "d"), (2, "start", "d"),
+                                    (3, "done", "d"), (5, "done", "e"), (5, "start", "x"), (6, "done", "x")])
+        s2 = Scheduler(2, lambda job_id, attempt: True)
+        s2.submit("d")
+        s2.submit("e", duration=5)
+        s2.submit("x", deps=["d", "e"])
+        s2.run(until=2)
+        s2.submit("d", run_at=4)
+        self.assertTrue(s2.cancel("d"))
+        s2.run()
+        self.assertEqual(s2.jobs(), {"d": "cancelled", "e": "succeeded", "x": "succeeded"})
+
+    def test_resubmitted_job_starts_its_own_backoff(self):
+        s = Scheduler(1, lambda job_id, attempt: attempt >= 2, backoff_base=1, backoff_cap=16)
+        s.submit("r", max_retries=3)
+        s.run(until=4)
+        self.assertEqual(s.state("r"), "queued")
+        self.assertTrue(s.cancel("r"))
+        s.submit("r", max_retries=3)
+        s.run()
+        starts = [t for t, kind, _ in s.events if kind == "start"]
+        self.assertEqual(starts, [0, 2, 4, 6, 9])
+
     def test_backoff_delays(self):
         self.assertEqual(Backoff(1, 10).delays(6), [1, 2, 4, 8, 10, 10])
         self.assertEqual(Backoff(3, 26).delays(5), [3, 6, 12, 24, 26])

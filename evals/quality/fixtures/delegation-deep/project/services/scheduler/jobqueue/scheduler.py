@@ -19,6 +19,7 @@ class Scheduler:
         self._queue = ReadyQueue(self._registry)
         self._pool = WorkerPool(slots)
         self._graph = DependencyGraph(self._registry)
+        self._retry_delays = {}
         self._now = 0
         self._seq = 0
         self._events = []
@@ -149,14 +150,17 @@ class Scheduler:
             job.state = SUCCEEDED
             self._stats["succeeded"] += 1
             self._log("done", job)
+            self._retry_delays.pop(job.id, None)
             for dependent in self._graph.released_by(job):
                 self._enqueue(dependent, max(dependent.run_at, self._now))
             return
         self._log("fail", job)
         if job.can_retry():
             self._stats["retries"] += 1
-            self._enqueue(job, self._now + self._backoff.delay(attempt))
+            delays = self._retry_delays.setdefault(job.id, self._backoff.schedule())
+            self._enqueue(job, self._now + next(delays))
             return
+        self._retry_delays.pop(job.id, None)
         job.state = FAILED
         self._stats["failed"] += 1
         self._doom(job)

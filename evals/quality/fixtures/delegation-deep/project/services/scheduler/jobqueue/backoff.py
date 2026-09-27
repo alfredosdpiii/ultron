@@ -12,13 +12,20 @@ class Backoff:
     def __init__(self, base=1, cap=16):
         self.base = check_int("backoff_base", base, 1)
         self.cap = check_int("backoff_cap", cap, 1)
-        self._capped_from = (self.cap // self.base).bit_length() - 1
+        self._capped_from = (self.cap // self.base).bit_length()
 
     def delay(self, attempt):
         check_int("attempt", attempt, 0)
         if attempt >= self._capped_from:
             return self.cap
         return self.base << attempt
+
+    def schedule(self):
+        """Delays for the consecutive failed attempts of one job: attempt 0, 1, 2, ..."""
+        attempt = 0
+        while True:
+            yield self.delay(attempt)
+            attempt += 1
 
     def delays(self, count):
         """The first `count` delays, for display and planning."""

@@ -186,6 +186,15 @@ class GraphAndOrder(unittest.TestCase):
         self.assertEqual(g.dependents("lib"), ("app", "zz"))
         self.assertEqual(topo_order(g), ["lib", "zz", "app"])
 
+    def test_orders_after_other_orders_and_additions(self):
+        g = Graph().add("app", ["lib"]).add("lib").add("tool", ["zlib"]).add("zlib")
+        self.assertEqual(topo_order(g), ["lib", "app", "zlib", "tool"])
+        self.assertEqual(topo_order(g, ["app"]), ["lib", "app"])
+        self.assertEqual(g.reach("app"), {"app", "lib"})
+        g.add("aaa", ["app"])
+        self.assertEqual(topo_order(g, ["aaa", "tool"]), ["lib", "app", "aaa", "zlib", "tool"])
+        self.assertEqual(topo_order(g, ["aaa"]), ["lib", "app", "aaa"])
+
     def test_errors(self):
         g = Graph().add("a", ["missing"])
         with self.assertRaises(ValueError):
@@ -201,8 +210,12 @@ class GraphAndOrder(unittest.TestCase):
         for seed in range(7000, 7400):
             rnd = random.Random(seed)
             spec = random_dag(rnd, rnd.randint(2, 11), repeats=True)
-            targets = rnd.sample(list(spec), rnd.randint(1, min(3, len(spec)))) if rnd.random() < 0.3 else None
-            self.assertEqual(topo_order(graph_of(spec, rnd=rnd), targets), ref_order(spec, targets), (seed, spec, targets))
+            graph = graph_of(spec, rnd=rnd)
+            asked = []
+            for _ in range(rnd.randint(1, 4)):
+                targets = rnd.sample(list(spec), rnd.randint(1, min(3, len(spec)))) if rnd.random() < 0.6 else None
+                asked.append(targets)
+                self.assertEqual(topo_order(graph, targets), ref_order(spec, targets), (seed, spec, asked))
 
     def test_random_cycles(self):
         for seed in range(7000, 7250):

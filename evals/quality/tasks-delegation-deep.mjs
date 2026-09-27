@@ -17,10 +17,15 @@
  *   stops at the first failing stage, printing the property, the case seed and a small counterexample, never a
  *   location. A run that fails at stage k takes about 6 + 3k s; a passing run about 21 s.
  * - Three bugs per service, layered: on the untouched code the harness first fails at stage 1 (bug 0); with bug 0
- *   fixed at stage 3 (bug 1); with bugs 0 and 1 fixed at stage 5 (bug 2). The bugs are semantic interactions
- *   (boundaries, feature combinations) in code that looks deliberate, spread over two or three files, so the
- *   harness output is how they are found in practice. The layering is the fixture's contract, checked by
- *   scripts/eval-delegation.test.mjs.
+ *   fixed at stage 3 (bug 1); with bugs 0 and 1 fixed at stage 5 (bug 2). Every bug is a runtime state-flow
+ *   defect whose lines are each locally correct: aliasing (a cached or returned list, set, dict or bytearray
+ *   mutated later), a cache not invalidated on one path, a lazy generator reading a list being spliced, an
+ *   id()-keyed cache meeting id reuse, bookkeeping kept across a resubmission. None contradicts a SPEC sentence,
+ *   so reading the code against the SPEC does not show them; the harness output is how they are found. (A
+ *   pilot fixture with boundary and ordering bugs, `<` for `<=` and the like, was read straight off by both
+ *   agents: see docs/implementation-status.md.) The layering is the fixture's contract, checked by
+ *   scripts/eval-delegation.test.mjs. Two bugs (patch and calendar, stage 5) need CPython to reuse a freed
+ *   object's id; that is deterministic for a given interpreter build, and the self-check shows it on this one.
  * - Evidence is mechanical. Every harness run appends {nonce, start, end, stages passed, digest of the package
  *   source at start and end, digest of harness.py} to the service's .harness/runs.jsonl. The hidden check accepts a
  *   service only if harness.py is the original (sha256), the log holds a passing run of that harness on the
@@ -56,7 +61,7 @@ export const BUG_STAGES = [1, 3, 5];
 
 const FIXTURE = fileURLToPath(new URL("./fixtures/delegation-deep/", import.meta.url));
 /** sha256 over every fixture file (path and content, sorted by path); a changed fixture refuses to load. */
-const FIXTURE_SHA256 = "14beaf05358d29505fa9fa4322b6117b98d4cf46e84b3211000b751a1b219023";
+const FIXTURE_SHA256 = "0d21420be77b7e90b635bf0fdd8a32e1d0ebccfc3fc45bbfcb3b2beac5875361";
 
 function loadFixture() {
 	const project = readTree(join(FIXTURE, "project"));
@@ -87,95 +92,95 @@ export const BUGS = {
 	"kvstore": [
 		{
 			"path": "segstore/store.py",
-			"what": "a write that rolls over to a new segment is indexed at the old segment's end offset instead of offset 0",
-			"buggy": "        segment.append(raw)\n        return Location(segment.id, offset)\n",
-			"fixed": "        return Location(segment.id, segment.append(raw))\n"
+			"what": "delete_prefix deletes while iterating the index's live key view, so every other matching key survives",
+			"buggy": "        for key in self._index.range(prefix=prefix):\n",
+			"fixed": "        for key in list(self._index.range(prefix=prefix)):\n"
 		},
 		{
-			"path": "segstore/compaction.py",
-			"what": "compaction keeps a key's oldest record within the newest closed segment holding it, not its newest",
-			"buggy": "        for offset, record in closed[position].records():\n",
-			"fixed": "        for offset, record in reversed(list(closed[position].records())):\n"
+			"path": "segstore/store.py",
+			"what": "the decoded-record cache (keyed by segment id and offset) is not cleared when compaction rewrites segments in place, so reads return stale records",
+			"buggy": "        return compact(self._table, self._index)\n",
+			"fixed": "        self._decoded.clear()\n        return compact(self._table, self._index)\n"
 		},
 		{
 			"path": "segstore/segment.py",
-			"what": "compacted segments get fresh ids above the active segment, so recovery replays old data after newer writes",
-			"buggy": "        start = self._next_id\n        self._next_id += len(self._segments)\n        return iter(range(start, self._next_id))\n",
-			"fixed": "        return iter(sorted(segment.id for segment in self.closed()))\n"
+			"what": "export hands out closed segments' live buffers, which a later in-place compaction rewrites, so an earlier export no longer recovers",
+			"buggy": "        return self._data if self.closed else bytes(self._data)\n",
+			"fixed": "        return bytes(self._data)\n"
 		}
 	],
 	"scheduler": [
 		{
-			"path": "jobqueue/pool.py",
-			"what": "attempts ending at the same tick complete in submission order instead of the order they started",
-			"buggy": "heapq.heappush(self._running, (end, job.seq, job.id))",
-			"fixed": "heapq.heappush(self._running, (end, self._starts, job.id))"
-		},
-		{
 			"path": "jobqueue/queue.py",
-			"what": "a stale heap entry of a cancelled job is taken for the resubmitted job with the same id",
-			"buggy": "return job is not None and job.state == QUEUED",
-			"fixed": "return job is not None and job.seq == entry[-2] and job.state == QUEUED"
+			"what": "pushing onto an empty delayed heap leaves the cached next wake-up tick unset, so a future job can be skipped until something else happens",
+			"buggy": "if self._next is not None and entry[0] < self._next:",
+			"fixed": "if self._next is None or entry[0] < self._next:"
 		},
 		{
-			"path": "jobqueue/backoff.py",
-			"what": "the cap applies one doubling too early when the cap is not base times a power of two",
-			"buggy": "self._capped_from = (self.cap // self.base).bit_length() - 1",
-			"fixed": "self._capped_from = (self.cap // self.base).bit_length()"
+			"path": "jobqueue/graph.py",
+			"what": "the dependents index of an id is not cleared when its job succeeds, so a resubmitted job under that id releases or cancels the old job's dependents again",
+			"buggy": "for dependent in self._waiting_on.get(job.id, ()):",
+			"fixed": "for dependent in self._waiting_on.pop(job.id, ()):"
+		},
+		{
+			"path": "jobqueue/scheduler.py",
+			"what": "cancelling a job waiting for a retry keeps its backoff sequence, which a resubmission under the same id then continues",
+			"buggy": "    def _cancel(self, job):\n        job.state = CANCELLED\n",
+			"fixed": "    def _cancel(self, job):\n        self._retry_delays.pop(job.id, None)\n        job.state = CANCELLED\n"
 		}
 	],
 	"patch": [
 		{
-			"path": "linediff/unified.py",
-			"what": "a hunk body line that starts with '--- ' or '+++ ' (a removed '-- ...' or added '++ ...' line) is skipped as a file header",
-			"buggy": "        if line.startswith((\"--- \", \"+++ \")):\n",
-			"fixed": "        if not (old_left or new_left) and line.startswith((\"--- \", \"+++ \")):\n"
+			"path": "linediff/apply.py",
+			"what": "apply_hunks locates hunks lazily in the list it is splicing, so after a hunk that changes the line count the next hunk is searched in shifted lines",
+			"buggy": "    for hunk, (pos, _) in zip(hunks, plan(result, hunks)):\n",
+			"fixed": "    for hunk, (pos, _) in zip(hunks, plan(lines, hunks)):\n"
 		},
 		{
 			"path": "linediff/hunks.py",
-			"what": "change regions exactly 2*context lines apart are split into two touching hunks instead of merged",
-			"buggy": "block[0] - groups[-1][-1][1] < 2 * context",
-			"fixed": "block[0] - groups[-1][-1][1] <= 2 * context"
+			"what": "joining regions extends the cached change-region lists in place, so a later call on the same files with a smaller context keeps the joined spans",
+			"buggy": "            spans.append(block)\n",
+			"fixed": "            spans.append(list(block))\n"
 		},
 		{
-			"path": "linediff/apply.py",
-			"what": "offset search prefers the later of two equally near positions",
-			"buggy": "(expected + step, expected - step) if step",
-			"fixed": "(expected - step, expected + step) if step"
+			"path": "linediff/search.py",
+			"what": "the line index is cached by the list's id and length, so a new list reusing a freed list's id gets the old list's index",
+			"buggy": "    key = (id(source), len(source))\n",
+			"fixed": "    key = tuple(source)\n"
 		}
 	],
 	"calendar": [
 		{
 			"path": "slots/intervals.py",
-			"what": "union does not merge intervals that touch ([a, b) and [b, c) stay two intervals)",
-			"buggy": "            if out and start < out[-1][1]:\n",
-			"fixed": "            if out and start <= out[-1][1]:\n"
+			"what": "union with an empty set returns a set sharing the other operand's interval list, so a later in-place add() changes both",
+			"buggy": "        if not other._items:\n            return IntervalSet._canonical(self._items)\n        if not self._items:\n            return IntervalSet._canonical(other._items)\n",
+			"fixed": "        if not other._items:\n            return self.copy()\n        if not self._items:\n            return other.copy()\n"
 		},
 		{
 			"path": "slots/attendee.py",
-			"what": "busy blocks just outside the window are dropped before their buffer is applied",
-			"buggy": "        nearby = self._busy.clip(start, end)\n",
-			"fixed": "        nearby = self._busy.clip(start - self.buffer, end + self.buffer)\n"
+			"what": "add_busy drops the cached free time only for the days the block covers, not for the neighbouring days its buffer reaches",
+			"buggy": "        for day in range(day_start(start), end, DAY):\n            self._free_by_day.pop(day, None)\n",
+			"fixed": "        for day in range(day_start(start - self.buffer), end + self.buffer, DAY):\n            self._free_by_day.pop(day, None)\n"
 		},
 		{
 			"path": "slots/search.py",
-			"what": "slot starts are aligned to a grid anchored at `earliest` instead of multiples of granularity in UTC",
-			"buggy": "    grid = earliest\n",
-			"fixed": "    grid = align_up(earliest, granularity)\n"
+			"what": "the per-day common-free cache is keyed by id() of the attendees, so a new attendee that reuses a freed object's id (and has the same version) gets the old attendee's free time",
+			"buggy": "    key = (tuple((id(attendee), attendee.version) for attendee in attendees), day)\n",
+			"fixed": "    key = (tuple((attendee, attendee.version) for attendee in attendees), day)\n"
 		}
 	],
 	"wire": [
 		{
-			"path": "frames/record.py",
-			"what": "a sint field rejects -2**63 (the range check uses bit_length, which is 64 for the most negative value)",
-			"buggy": "        if kind == \"sint\" and value.bit_length() > 63:\n",
-			"fixed": "        if kind == \"sint\" and not -(1 << 63) <= value < (1 << 63):\n"
+			"path": "frames/varint.py",
+			"what": "encode_uvarint memoizes small encodings as a mutable bytearray and returns it; encode_record appends the field value to the returned key bytes, corrupting the memo for later encodes of that number",
+			"buggy": "    out.append(value)\n",
+			"fixed": "    out.append(value)\n    out = bytes(out)\n"
 		},
 		{
-			"path": "frames/varint.py",
-			"what": "zigzag uses the 64-bit formula, wrong for packed-series differences beyond 64 bits",
-			"buggy": "    return (value << 1) ^ (value >> 63)\n",
-			"fixed": "    return value << 1 if value >= 0 else ((-value) << 1) - 1\n"
+			"path": "frames/record.py",
+			"what": "packed series bodies are cached by the list's identity, so a series changed in place and written again reuses the stale encoding",
+			"buggy": "    key = id(values)\n",
+			"fixed": "    key = tuple(values)\n"
 		},
 		{
 			"path": "frames/stream.py",
@@ -186,16 +191,16 @@ export const BUGS = {
 	],
 	"builds": [
 		{
-			"path": "depgraph/graph.py",
-			"what": "a dependency listed twice is kept twice, so ordering releases its dependent too early",
-			"buggy": "        self._declared[name] = declared\n",
-			"fixed": "        self._declared[name] = list(dict.fromkeys(declared))\n"
+			"path": "depgraph/order.py",
+			"what": "closure unions into the graph's cached reach set of the first target, so later orders for that target include unrelated targets",
+			"buggy": "    included = graph.reach(roots[0])\n",
+			"fixed": "    included = set(graph.reach(roots[0]))\n"
 		},
 		{
 			"path": "depgraph/rebuild.py",
-			"what": "dirtied dependents are queued first-in first-out instead of in build order, so a target can be built before a dependency that changes later",
-			"buggy": "                pending.append(dependent)\n",
-			"fixed": "                pending.append(dependent)\n                pending.sort(key=position.__getitem__)\n"
+			"what": "when previous covers exactly the graph's targets, carried_outputs returns previous itself, so recording new outputs overwrites the values early cutoff compares against",
+			"buggy": "        return previous\n",
+			"fixed": "        return dict(previous)\n"
 		},
 		{
 			"path": "depgraph/resolve.py",

@@ -13,6 +13,8 @@ Package `depgraph` (standard library only). Everything below is importable from 
 - `targets()`: every target name, sorted. `name in graph`, `len(graph)`.
 - `deps(name)`, `inputs(name)`, `dependents(name)` (defined targets that depend on `name` directly): sorted tuples
   without repeats. `readers(item)`: the targets that read input `item`, sorted. Unknown names raise `KeyError`.
+- `reach(name)`: the set of `name` and every target it depends on, transitively (`KeyError` for an unknown
+  name, `ValueError` when a reached dependency names no defined target).
 - `edges()`: every `(target, dependency)` pair, targets in name order. `undefined()`: sorted pairs whose
   dependency names no defined target.
 
@@ -51,7 +53,8 @@ build order).
   rebuilt target, and never for any other target.
 - `directly_dirty(graph, changed_inputs, previous)`: the directly dirty targets in build order.
   `affected(graph, changed_inputs, previous)`: the directly dirty targets and all their transitive dependents,
-  sorted (every target a rebuild could touch).
+  sorted (every target a rebuild could touch). `carried_outputs(graph, previous)`: the entries of `previous` for
+  the graph's targets, as a dict.
 
 ## Versions and constraints
 
