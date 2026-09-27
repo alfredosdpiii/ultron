@@ -149,6 +149,10 @@ export const solutions = {
  *   the first two layers fixed everywhere, each of the 18 bugs left alone (all with harness runs), every fix but no
  *   harness run, a passing run followed by one more edit to a package, a harness with its sleeps edited out, a copy
  *   of the harness without sleeps, and the original harness run with `time.sleep` patched out.
+ *
+ * Measured (2026-09-27, gpt-6-sol, one trial each, rebuilt fixture): Ultron passed in 205.7 s with 7 subagents (one
+ * per service, one grandchild); Pi batch-fixed what it could read, debugged the rest one service per turn and
+ * finished at 326.7 s, over budget, failing calendar. Pilot and details: docs/implementation-status.md (Evals).
  */
 export const DEEP = { turnSeconds: 10, turnsPerLayer: 2, orchestrationTurns: 2 };
 
