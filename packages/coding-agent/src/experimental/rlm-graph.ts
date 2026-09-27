@@ -135,7 +135,7 @@ function firstCodeLine(code: string): string {
 }
 
 /** Combine children statuses into a parent status (running wins, then pending, failures, incompletes). */
-function rollup(counts: GraphProgress): GraphStatus {
+export function rollup(counts: GraphProgress): GraphStatus {
 	if (counts.running > 0) return "running";
 	if (counts.pending > 0) return counts.done + counts.failed + counts.incomplete > 0 ? "running" : "pending";
 	if (counts.failed > 0 && counts.done === 0 && counts.incomplete === 0) return "failed";
@@ -143,7 +143,7 @@ function rollup(counts: GraphProgress): GraphStatus {
 	return "done";
 }
 
-function count(statuses: readonly GraphStatus[], total = statuses.length): GraphProgress {
+export function count(statuses: readonly GraphStatus[], total = statuses.length): GraphProgress {
 	const progress = { total, done: 0, running: 0, pending: 0, incomplete: 0, failed: 0 };
 	for (const status of statuses) {
 		if (status === "done") progress.done++;

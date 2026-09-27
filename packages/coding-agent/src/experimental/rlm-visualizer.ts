@@ -29,6 +29,29 @@ export interface RlmTask {
 	readonly input?: string;
 	readonly fetch?: string;
 	readonly workflow?: RlmWorkflowMembership;
+	/** Live lane stats (`agents.status {graph: true}`): the model that answered, turns, tool calls, latest text. */
+	readonly model?: string;
+	readonly turns?: number;
+	readonly toolCallCount?: number;
+	readonly lastText?: string;
+}
+
+/** A `workflows.run` plan from `agents.status {graph: true}`: every node, including those not admitted yet. */
+export interface RlmWorkflowRun {
+	readonly run: string;
+	readonly parentId?: string;
+	readonly startedAt?: number;
+	readonly endedAt?: number;
+	readonly nodes: readonly {
+		readonly id: string;
+		readonly definition: string;
+		readonly dependsOn: readonly string[];
+		readonly join: string;
+		/** How a finished node ended (a skipped node never gets a task). */
+		readonly status?: string;
+		readonly reason?: string;
+	}[];
+	readonly truncatedNodes?: number;
 }
 
 export interface RlmWorkflowMembership {
@@ -184,6 +207,8 @@ export interface RlmSnapshot {
 	readonly turn?: { readonly startedAt?: number; readonly prompt?: string } | null;
 	/** Tasks the worker left out of the bounded graph listing. */
 	readonly truncatedTasks?: number;
+	/** Workflow plans, oldest first (the DAG view shows nodes that have no task yet as pending). */
+	readonly workflows?: readonly RlmWorkflowRun[];
 }
 
 /** Color hooks; the TUI passes the theme, tests pass identity functions. */
@@ -296,6 +321,7 @@ export function parseAgentsStatus(value: unknown): {
 	limits: RlmLimits | null;
 	jobs: RlmJob[];
 	toolCalls: RlmToolCall[];
+	workflows: RlmWorkflowRun[];
 } {
 	const body = record(value);
 	const tasks: RlmTask[] = [];
@@ -319,8 +345,8 @@ export function parseAgentsStatus(value: unknown): {
 							...(typeof result.preview === "string" ? { preview: result.preview } : {}),
 						},
 					}),
-			...pickStrings(task, ["lane", "input", "fetch"]),
-			...pickNumbers(task, ["startedAt", "endedAt", "cost", "tokens"]),
+			...pickStrings(task, ["lane", "input", "fetch", "model", "lastText"]),
+			...pickNumbers(task, ["startedAt", "endedAt", "cost", "tokens", "turns", "toolCallCount"]),
 			...(workflow !== undefined && typeof workflow.run === "string" && typeof workflow.node === "string"
 				? {
 						workflow: {
@@ -367,9 +393,35 @@ export function parseAgentsStatus(value: unknown): {
 			...pickStrings(call, ["lane", "input", "preview", "error"]),
 		});
 	}
+	const workflows: RlmWorkflowRun[] = [];
+	for (const item of Array.isArray(body?.workflows) ? body.workflows : []) {
+		const run = record(item);
+		if (run === undefined || typeof run.run !== "string") continue;
+		const nodes: RlmWorkflowRun["nodes"][number][] = [];
+		for (const entry of Array.isArray(run.nodes) ? run.nodes : []) {
+			const node = record(entry);
+			if (node === undefined || typeof node.id !== "string") continue;
+			nodes.push({
+				id: node.id,
+				definition: typeof node.definition === "string" ? node.definition : "task",
+				dependsOn: Array.isArray(node.dependsOn)
+					? node.dependsOn.filter((dependency): dependency is string => typeof dependency === "string")
+					: [],
+				join: typeof node.join === "string" ? node.join : "all",
+				...pickStrings(node, ["status", "reason"]),
+			});
+		}
+		workflows.push({
+			run: run.run,
+			...pickStrings(run, ["parentId"]),
+			...pickNumbers(run, ["startedAt", "endedAt", "truncatedNodes"]),
+			nodes,
+		});
+	}
 	return {
 		...(typeof body?.truncatedTasks === "number" ? { truncatedTasks: body.truncatedTasks } : {}),
 		tasks,
+		workflows,
 		usage: (usage as RlmUsage | undefined) ?? null,
 		limits: (limits as RlmLimits | undefined) ?? null,
 		jobs,

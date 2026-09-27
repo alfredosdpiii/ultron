@@ -16,6 +16,7 @@ import {
 	isFocusable,
 	type SelectItem,
 	SelectList,
+	SplitView,
 	setKeybindings,
 	Text,
 	type TUI,
@@ -72,6 +73,7 @@ import { PiSessionView } from "./pi-session-view.ts";
 import { createPresentationFacetLoaders } from "./plugins/bundled.ts";
 import { PROMPT_HISTORY_LIMIT, PromptHistoryStore, promptHistoryPath, sessionPromptHistory } from "./prompt-history.ts";
 import { PromptHistorySearchComponent } from "./prompt-history-search.ts";
+import { buildDagRuns, RlmDagPane, renderWaveSummary } from "./rlm-dag.ts";
 import { RlmGraphFocus } from "./rlm-focus.ts";
 import { buildRlmGraph, graphActive, renderRlmDock, renderRlmFooter } from "./rlm-graph.ts";
 import {
@@ -97,6 +99,7 @@ import {
 	type RlmTiming,
 	type RlmToolCall,
 	type RlmUsage,
+	type RlmWorkflowRun,
 } from "./rlm-visualizer.ts";
 import { messageText } from "./rpc-events.ts";
 import { combineRuntimeStatus } from "./runtime-status.ts";
@@ -188,6 +191,17 @@ const RLM_POLL_HIDDEN_MS = 5000;
 const RLM_MAX_ASSESSED = 8;
 /** Frame summaries fetched per poll: enough to fan out a wide `rlm.map` (the worker keeps at most 200). */
 const RLM_FRAME_LIMIT = 200;
+/** The DAG side pane opens beside the chat from this terminal width; narrower, the full-screen graph opens. */
+export const DAG_PANE_MIN_COLUMNS = 140;
+/** The pane takes about 40% of the width, at least this many columns (border excluded). */
+const DAG_PANE_MIN_WIDTH = 44;
+const DAG_PANE_RATIO = 0.4;
+
+/** Side pane width for a terminal width. */
+export function dagPaneWidth(columns: number): number {
+	return Math.max(DAG_PANE_MIN_WIDTH, Math.round(columns * DAG_PANE_RATIO));
+}
+
 /** Redraw cadence for spinners and Jev's pulse, only while something animates. */
 const ANIMATION_MS = 150;
 
@@ -208,6 +222,7 @@ interface RlmPollState {
 	frames: RlmFrame[];
 	jobs: RlmJob[];
 	toolCalls?: RlmToolCall[];
+	workflows?: RlmWorkflowRun[];
 	truncatedTasks?: number;
 	error?: string;
 }
@@ -262,8 +277,19 @@ export class ExperimentalClientTui implements Component {
 		render: (width) => this.#renderJev(width),
 		invalidate() {},
 	};
+	/** The live wave summary above the editor while children or workflow nodes run or wait. */
+	readonly #waveSummary: Component = {
+		render: (width) => this.#renderWaveSummary(width),
+		invalidate() {},
+	};
+	/** The DAG side pane (`app.rlm.pane`): open beside the chat on wide terminals; focused takes the keys. */
+	readonly #dagPane: RlmDagPane;
+	#dagPaneOpen = false;
+	#dagPaneFocused = false;
 	#rlmVisible = false;
 	#jevVisible = false;
+	/** The wave summary showed at the last poll (it polls at the visible rate while it does). */
+	#waveActive = false;
 	/** The full-screen RLM graph, while open. */
 	#rlmFocus: RlmGraphFocus | undefined;
 	/** Jev's transcript notes show every recalled memory instead of one line. */
@@ -371,6 +397,7 @@ export class ExperimentalClientTui implements Component {
 		this.#chatInput.onAction("app.rlm.toggle", () => this.#toggleRlm());
 		this.#chatInput.onAction("app.jev.toggle", () => this.#toggleJev());
 		this.#chatInput.onAction("app.rlm.focus", () => this.#openRlmFocus());
+		this.#chatInput.onAction("app.rlm.pane", () => this.#toggleDagPane());
 		this.#chatInput.onAction("app.jev.notes.toggle", () => {
 			this.#jevNotesExpanded = !this.#jevNotesExpanded;
 			this.#layoutRoot.invalidate();
@@ -402,7 +429,7 @@ export class ExperimentalClientTui implements Component {
 		this.#footerComponent.addChild(this.#widgetsBelow);
 		this.#footerComponent.addChild(this.#footer);
 		this.#footerComponent.addChild(this.#runtimeLine);
-		this.#layoutRoot = createChatViewport({
+		const chatRoot = createChatViewport({
 			document: this.#documentContainer,
 			pendingMessages: this.#pendingMessagesContainer,
 			status: this.#statusContainer,
@@ -411,6 +438,24 @@ export class ExperimentalClientTui implements Component {
 			scrollbarTrackStyle: (text) => theme.fg("scrollbarTrack", text),
 			scrollbarThumbStyle: (text) => theme.fg("scrollbarThumb", text),
 		}).root;
+		this.#dagPane = new RlmDagPane({
+			snapshot: () => this.#rlmSnapshot(),
+			height: () => this.#ui.terminal.rows,
+			keybindings: this.#keybindings,
+			style: rlmStyle,
+			focused: () => this.#dagPaneFocused,
+			toggleKey: () => this.#keybindings.getKeys("app.rlm.pane")[0],
+			onClose: () => this.#closeDagPane(),
+			requestRender: () => this.#requestRender(),
+		});
+		// Chat, editor and footer on the left; the DAG pane on the right while open on a wide terminal.
+		this.#layoutRoot = new SplitView(chatRoot, this.#dagPane, {
+			columns: () => this.#ui.terminal.columns,
+			rows: () => this.#ui.terminal.rows,
+			open: (width) => this.#dagPaneOpen && width >= DAG_PANE_MIN_COLUMNS,
+			sideWidth: dagPaneWidth,
+			borderStyle: (text) => theme.fg(this.#dagPaneFocused ? "borderAccent" : "border", text),
+		});
 		this.#rebuild();
 	}
 
@@ -484,6 +529,12 @@ export class ExperimentalClientTui implements Component {
 			return;
 		}
 		if (this.#screen === "chat") {
+			if (this.#dagPaneFocused && this.#dagPaneShown()) {
+				if (this.#keybindings.matches(data, "app.rlm.pane")) this.#toggleDagPane();
+				else this.#dagPane.handleInput(data);
+				this.#requestRender();
+				return;
+			}
 			this.#chatInput.handleInput(data);
 			this.#requestRender();
 			return;
@@ -614,9 +665,11 @@ export class ExperimentalClientTui implements Component {
 					env.own(
 						commands.replace({
 							name: "rlm",
-							description: "Toggle the live RLM graph panel; /rlm focus opens it full screen",
+							description:
+								"Toggle the live RLM graph panel; /rlm focus opens it full screen, /rlm pane the DAG side pane",
 							run: (args) => {
 								if (args.trim() === "focus") this.#openRlmFocus();
+								else if (args.trim() === "pane") this.#toggleDagPane();
 								else this.#toggleRlm();
 								return undefined;
 							},
@@ -753,6 +806,7 @@ export class ExperimentalClientTui implements Component {
 		if (this.#rlmVisible) this.#statusContainer.addChild(this.#rlmPanel);
 		if (this.#jevVisible) this.#statusContainer.addChild(this.#jevPanel);
 		if (this.#chatView !== undefined) this.#statusContainer.addChild(this.#chatView.status);
+		this.#statusContainer.addChild(this.#waveSummary);
 		this.#editorContainer.clear();
 		if (this.#screen === "select" && this.#selection !== undefined) {
 			this.#chatInput.focused = false;
@@ -772,7 +826,7 @@ export class ExperimentalClientTui implements Component {
 			this.#editorContainer.addChild(this.#active.component);
 		} else {
 			this.#selectList = undefined;
-			this.#chatInput.focused = !this.#busy;
+			this.#chatInput.focused = !this.#busy && !(this.#dagPaneFocused && this.#dagPaneShown());
 			this.#editorContainer.addChild(this.#chatInput);
 		}
 		this.#layoutRoot.invalidate();
@@ -1908,6 +1962,50 @@ export class ExperimentalClientTui implements Component {
 		this.#rebuild();
 	}
 
+	/** Whether the DAG pane shows beside the chat (open, and the terminal wide enough). */
+	#dagPaneShown(): boolean {
+		return this.#dagPaneOpen && this.#ui.terminal.columns >= DAG_PANE_MIN_COLUMNS;
+	}
+
+	/**
+	 * `app.rlm.pane`: open the DAG side pane with the focus; pressed again, the focus moves between the pane and the
+	 * chat (the pane stays open). On a narrow terminal the full-screen graph opens instead.
+	 */
+	#toggleDagPane(): void {
+		if (this.#ui.terminal.columns < DAG_PANE_MIN_COLUMNS) {
+			this.#dagPaneOpen = false;
+			this.#dagPaneFocused = false;
+			this.#openRlmFocus();
+			this.#rebuild();
+			return;
+		}
+		if (!this.#dagPaneOpen) {
+			this.#dagPaneOpen = true;
+			this.#dagPaneFocused = true;
+		} else this.#dagPaneFocused = !this.#dagPaneFocused;
+		this.#scheduleRlmPolling();
+		void this.#refreshRlm();
+		this.#updateAnimation();
+		this.#rebuild();
+	}
+
+	#closeDagPane(): void {
+		this.#dagPaneOpen = false;
+		this.#dagPaneFocused = false;
+		this.#scheduleRlmPolling();
+		this.#rebuild();
+	}
+
+	/** The wave summary above the editor; hidden while the docked panel or the full-screen graph shows. */
+	#renderWaveSummary(width: number): string[] {
+		if (this.#rlmVisible || this.#rlmFocus !== undefined) return [];
+		const snapshot = this.#rlmSnapshot();
+		return renderWaveSummary(buildDagRuns(snapshot), Math.max(1, width - 2), {
+			style: rlmStyle,
+			now: snapshot.now,
+		}).map((line) => ` ${line}`);
+	}
+
 	#toggleJev(): void {
 		this.#jevVisible = !this.#jevVisible;
 		this.#scheduleRlmPolling();
@@ -1921,7 +2019,7 @@ export class ExperimentalClientTui implements Component {
 		if (this.#closed) return;
 		this.#rlmTimer = setInterval(
 			() => void this.#refreshRlm(),
-			this.#rlmVisible || this.#jevVisible || this.#rlmFocus !== undefined
+			this.#rlmVisible || this.#jevVisible || this.#rlmFocus !== undefined || this.#dagPaneOpen || this.#waveActive
 				? RLM_POLL_VISIBLE_MS
 				: RLM_POLL_HIDDEN_MS,
 		);
@@ -1960,6 +2058,7 @@ export class ExperimentalClientTui implements Component {
 				next.limits = parsed.limits;
 				next.jobs = parsed.jobs;
 				next.toolCalls = parsed.toolCalls;
+				next.workflows = parsed.workflows;
 				if (parsed.truncatedTasks === undefined) delete next.truncatedTasks;
 				else next.truncatedTasks = parsed.truncatedTasks;
 				next.timing = this.#rlmClock.timings(parsed.tasks, parsed.usage, Date.now());
@@ -1986,6 +2085,12 @@ export class ExperimentalClientTui implements Component {
 			next.progress = progress;
 			if (this.#closed) return;
 			this.#rlmState = next;
+			// The wave summary is live: poll at the visible rate while it shows.
+			const waveActive = this.#renderWaveSummary(200).length > 0;
+			if (waveActive !== this.#waveActive) {
+				this.#waveActive = waveActive;
+				this.#scheduleRlmPolling();
+			}
 			this.#jevState = {
 				...(jev.status === "fulfilled"
 					? parseJevDecisions(jev.value)
@@ -2024,6 +2129,7 @@ export class ExperimentalClientTui implements Component {
 			frames: state.frames,
 			jobs: state.jobs,
 			...(state.toolCalls === undefined ? {} : { toolCalls: state.toolCalls }),
+			...(state.workflows === undefined ? {} : { workflows: state.workflows }),
 			cells,
 			turn,
 			...(state.truncatedTasks === undefined ? {} : { truncatedTasks: state.truncatedTasks }),

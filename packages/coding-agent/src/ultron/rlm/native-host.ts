@@ -49,6 +49,11 @@ type TaskRecord = NativeTask & {
 	tokens?: number;
 	inputPreview?: string;
 	workflow?: WorkflowMembership;
+	/** Live lane stats for the DAG view: current model, assistant turns, tool calls, latest assistant text. */
+	model?: string;
+	turns?: number;
+	toolCallCount?: number;
+	lastText?: string;
 };
 
 /** A task's place in a `workflows.run` graph: the run, its node id, and the dependencies it joined. */
@@ -57,6 +62,36 @@ type WorkflowMembership = { run: string; node: string; dependsOn: string[]; join
 /** Tasks listed by `agents.status {graph: true}` (the newest are kept). */
 const GRAPH_TASK_LIMIT = 300;
 const GRAPH_PREVIEW_CHARS = 240;
+/** The latest assistant text of a task's lane, as shown in the DAG view's node cards. */
+const GRAPH_TEXT_CHARS = 160;
+const GRAPH_MODEL_CHARS = 80;
+/** Workflow runs listed by `agents.status {graph: true}` (the newest), and planned nodes per run. */
+const GRAPH_WORKFLOW_LIMIT = 20;
+const GRAPH_WORKFLOW_NODE_LIMIT = 64;
+
+/** A `workflows.run` call's plan, kept in memory for the graph view: nodes not yet admitted show as pending. */
+type WorkflowRunRecord = {
+	run: string;
+	parentId?: string;
+	startedAt: number;
+	endedAt?: number;
+	nodes: { id: string; definition: string; dependsOn: string[]; join: "all" | "any" }[];
+	/** How each finished node ended (a skipped node never gets a task), with a bounded reason. */
+	ended: Record<string, { status: string; reason?: string }>;
+};
+
+/** The graph view of a workflow run: its planned nodes (bounded) and how the finished ones ended. */
+function graphWorkflow(record: WorkflowRunRecord): Record<string, unknown> {
+	const nodes = record.nodes.slice(0, GRAPH_WORKFLOW_NODE_LIMIT);
+	return {
+		run: record.run,
+		...(record.parentId === undefined ? {} : { parentId: record.parentId }),
+		startedAt: record.startedAt,
+		...(record.endedAt === undefined ? {} : { endedAt: record.endedAt }),
+		nodes: nodes.map((node) => ({ ...node, dependsOn: [...node.dependsOn], ...(record.ended[node.id] ?? {}) })),
+		...(record.nodes.length > nodes.length ? { truncatedNodes: record.nodes.length - nodes.length } : {}),
+	};
+}
 
 export type DetachedEndKind = "child_done" | "task_done";
 
@@ -177,6 +212,35 @@ function textOf(entry: Entry): string {
 		.join("\n");
 }
 
+/** The text parts of an assistant message, flattened (thinking and tool calls left out); "" for other messages. */
+function assistantText(message: unknown): string {
+	const body = message as { role?: unknown; content?: unknown } | undefined;
+	if (body?.role !== "assistant" || !Array.isArray(body.content)) return "";
+	return body.content
+		.filter((part): part is { type: "text"; text: string } => part?.type === "text" && typeof part.text === "string")
+		.map((part) => part.text)
+		.join(" ")
+		.replace(/\s+/g, " ")
+		.trim();
+}
+
+/** Assistant turns, tool calls and the latest assistant text of one run's entries (the graph view's fallback). */
+function runStats(entries: readonly Entry[]): { turns: number; toolCalls: number; text?: string } {
+	let turns = 0;
+	let toolCalls = 0;
+	let text: string | undefined;
+	// Entries arrive newest first; the first text seen is the latest.
+	for (const entry of entries) {
+		if (entry.type !== "message" || entry.message.role !== "assistant") continue;
+		turns += 1;
+		const content = entry.message.content as readonly { type?: string }[];
+		toolCalls += content.filter((part) => part?.type === "toolCall").length;
+		const line = assistantText(entry.message);
+		if (text === undefined && line.length > 0) text = line;
+	}
+	return { turns, toolCalls, ...(text === undefined ? {} : { text }) };
+}
+
 /** Provider-reported usage of one run's assistant messages; unknown unless every message reports it. */
 function runUsage(entries: readonly Entry[]): NativeUsageMeasurement | undefined {
 	const total = { inputTokens: 0, outputTokens: 0, totalTokens: 0, cost: 0 };
@@ -275,6 +339,10 @@ function graphTask(task: TaskRecord): Record<string, unknown> {
 		...(task.tokens === undefined ? {} : { tokens: task.tokens }),
 		...(task.inputPreview === undefined ? {} : { input: task.inputPreview }),
 		...(task.workflow === undefined ? {} : { workflow: structuredClone(task.workflow) }),
+		...(task.model === undefined ? {} : { model: task.model }),
+		...(task.turns === undefined ? {} : { turns: task.turns }),
+		...(task.toolCallCount === undefined ? {} : { toolCallCount: task.toolCallCount }),
+		...(task.lastText === undefined ? {} : { lastText: task.lastText }),
 		...(result === undefined
 			? {}
 			: {
@@ -373,6 +441,10 @@ export class NativeRlmHost {
 	private admissions: Promise<void> = Promise.resolve();
 	private closing?: Promise<void>;
 	private closed = false;
+	/** Workflow plans for the graph view, newest last (bounded). */
+	private readonly workflowRuns = new Map<string, WorkflowRunRecord>();
+	/** Removes the harness event listeners that keep the graph view's lane stats live. */
+	private stopObserving?: () => void;
 	private readonly harness: AgentHarness;
 	private readonly services: NativeHostService | undefined;
 	private readonly usage: NativeUsageLedgerLike | undefined;
@@ -569,6 +641,43 @@ export class NativeRlmHost {
 		now: () => this.now(),
 	};
 
+	/**
+	 * Keep each task lane's read-only stats live for the graph view: the model that answered, assistant turns, tool
+	 * calls, and the latest assistant text (bounded). One listener pair for all lanes; a lane maps to its newest task.
+	 */
+	private observeLanes(): void {
+		if (this.stopObserving !== undefined) return;
+		const events = (this.harness as Partial<AgentHarness>).events;
+		if (typeof events?.on !== "function") {
+			this.stopObserving = () => {};
+			return;
+		}
+		const taskOf = (lane: string | undefined): TaskRecord | undefined => {
+			const id = lane === undefined ? undefined : this.laneTasks.get(lane);
+			const task = id === undefined ? undefined : this.tasks.get(id);
+			return task?.result === undefined ? task : undefined;
+		};
+		const removers = [
+			events.on("message_end", (event) => {
+				const task = taskOf(event.lane);
+				const message = event.message as { role?: string; provider?: unknown; model?: unknown };
+				if (task === undefined || message.role !== "assistant") return;
+				task.turns = (task.turns ?? 0) + 1;
+				const text = assistantText(message);
+				if (text.length > 0) task.lastText = preview(text, GRAPH_TEXT_CHARS);
+				if (typeof message.provider === "string" && typeof message.model === "string")
+					task.model = preview(`${message.provider}/${message.model}`, GRAPH_MODEL_CHARS);
+			}),
+			events.on("tool_start", (event) => {
+				const task = taskOf(event.lane);
+				if (task !== undefined) task.toolCallCount = (task.toolCallCount ?? 0) + 1;
+			}),
+		];
+		this.stopObserving = () => {
+			for (const remove of removers) remove();
+		};
+	}
+
 	list(): ReturnType<NativeDefinitionRegistry["list"]> {
 		return this.registry.list();
 	}
@@ -648,6 +757,7 @@ export class NativeRlmHost {
 			task.laneName = laneName;
 			// A reused lane now acts for its newest invocation.
 			this.laneTasks.set(laneName, task.id);
+			this.observeLanes();
 			if (signal.aborted) this.abortLane(task);
 			signal.throwIfAborted();
 			await lane.getActiveTools(taskContext);
@@ -659,6 +769,11 @@ export class NativeRlmHost {
 				const split = model.indexOf("/");
 				await lane.setModel({ provider: model.slice(0, split), modelId: model.slice(split + 1) }, taskContext);
 				signal.throwIfAborted();
+				task.model = preview(model, GRAPH_MODEL_CHARS);
+			} else if (typeof lane.getModel === "function") {
+				// The lane's default model, for the graph view; an unreadable model is simply not shown.
+				const current = await lane.getModel(taskContext).catch(() => undefined);
+				if (current) task.model = preview(`${current.provider}/${current.id}`, GRAPH_MODEL_CHARS);
 			}
 			if (definition.id === "rlm-frame" && this.frames)
 				return await this.frames({
@@ -718,7 +833,13 @@ export class NativeRlmHost {
 				taskContext,
 			);
 			signal.throwIfAborted();
-			modelUsage = runUsage(entries.filter((candidate) => candidate.id !== fromTipId));
+			const runEntries = entries.filter((candidate) => candidate.id !== fromTipId);
+			modelUsage = runUsage(runEntries);
+			// The run's own entries are authoritative for the graph view's counts (events can be missed).
+			const stats = runStats(runEntries);
+			task.turns = Math.max(task.turns ?? 0, stats.turns);
+			task.toolCallCount = Math.max(task.toolCallCount ?? 0, stats.toolCalls);
+			if (stats.text !== undefined) task.lastText = preview(stats.text, GRAPH_TEXT_CHARS);
 			const entry = entries.find((candidate) => candidate.id === tipId);
 			const text = entry ? textOf(entry) : "";
 			if (!text.trim()) throw new Error("Agent produced no assistant result at the completed tip");
@@ -983,6 +1104,7 @@ export class NativeRlmHost {
 
 	close(): Promise<void> {
 		this.closed = true;
+		this.stopObserving?.();
 		this.closing ??= (async () => {
 			await this.admissions;
 			for (const module of this.modules) await module.close?.();
@@ -1304,6 +1426,20 @@ export class NativeRlmHost {
 		const byId = new Map(nodes.map((node) => [node.id, node]));
 		// Groups this run's tasks in the read-only graph view.
 		const run = `wf-${randomUUID().slice(0, 8)}`;
+		const record: WorkflowRunRecord = {
+			run,
+			...(parentId === undefined ? {} : { parentId }),
+			startedAt: this.now(),
+			nodes: nodes.map((node) => ({
+				id: node.id,
+				definition: node.definition,
+				dependsOn: [...node.dependsOn],
+				join: node.join,
+			})),
+			ended: {},
+		};
+		this.workflowRuns.set(run, record);
+		for (const old of [...this.workflowRuns.keys()].slice(0, -GRAPH_WORKFLOW_LIMIT)) this.workflowRuns.delete(old);
 		// A reviewer runs inside its loop; its outcome is published when the loop ends.
 		const reviewers = new Set(nodes.flatMap((node) => (node.revise ? [node.revise.from] : [])));
 		// A dependency is satisfied only by its durable terminal result, never by admission.
@@ -1349,8 +1485,21 @@ export class NativeRlmHost {
 					return [[node.id, await this.workflowTask(node, decided.input, node.key, context, parentId, run)]];
 				}),
 			);
-			for (const [id, result] of results.flat()) output.set(id, result);
+			for (const [id, result] of results.flat()) {
+				output.set(id, result);
+				const reason =
+					"reason" in result && typeof result.reason === "string"
+						? result.reason
+						: "error" in result && typeof result.error === "string"
+							? result.error
+							: undefined;
+				record.ended[id] = {
+					status: result.status,
+					...(reason === undefined ? {} : { reason: preview(reason, GRAPH_TEXT_CHARS) }),
+				};
+			}
 		}
+		record.endedAt = this.now();
 		return Object.fromEntries(output);
 	}
 
@@ -1388,6 +1537,16 @@ export class NativeRlmHost {
 				definitions: this.list(),
 				tasks: graph ? listed.map((task) => graphTask(this.tasks.get(task.id) ?? task)) : listed.map(publicTask),
 				...(graph && shown.length > listed.length ? { truncatedTasks: shown.length - listed.length } : {}),
+				// Workflow plans (pending nodes have no task yet); a child lane sees only runs its subtree started.
+				...(graph
+					? {
+							workflows: [...this.workflowRuns.values()]
+								.filter((record) =>
+									record.parentId === undefined ? parentId === undefined : visible(record.parentId),
+								)
+								.map(graphWorkflow),
+						}
+					: {}),
 				usage,
 				limits: usage?.limits ?? null,
 				// The spend of the caller's root tree: every model response of the root and each lane it admitted.

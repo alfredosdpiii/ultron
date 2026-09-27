@@ -1002,10 +1002,17 @@ describe("experimental client TUI", () => {
 					expect(navigateTree).toHaveBeenCalledWith(null, { summarize: false }, expect.anything()),
 				);
 				await vi.waitFor(() => expect(plain(component.render(80))).toContain("Navigated to selected point"));
-				// "hello" shows in the transcript and, restored, in the editor; Ctrl-C clears the editor.
-				expect(plain(component.render(80)).split("hello").length - 1).toBe(2);
+				// "hello" shows in the transcript and, restored, in the editor; Ctrl-C clears the editor. (The live
+				// wave summary above the editor titles the running turn "hello" too; it is left out of the count.)
+				const hellos = () =>
+					plain(component.render(80))
+						.split("\n")
+						.filter((line) => !line.startsWith(" ▶ "))
+						.join("\n")
+						.split("hello").length - 1;
+				expect(hellos()).toBe(2);
 				component.handleInput("\u0003");
-				expect(plain(component.render(80)).split("hello").length - 1).toBe(1);
+				expect(hellos()).toBe(1);
 				await new Promise((resolveWait) => setTimeout(resolveWait, 600));
 
 				// With doubleEscapeAction "fork", a double Esc opens Pi's fork selector; the fork is a new Session
@@ -1635,6 +1642,107 @@ function fakeOAuthProvider(id: string, name: string): Provider {
 		},
 	};
 }
+
+describe("experimental client TUI: the RLM DAG side pane", () => {
+	beforeAll(() => initTheme("dark"));
+
+	/** A running workflow: three parallel nodes and one joining all three (not admitted yet). */
+	const dagStatus: JsonValue = {
+		definitions: [],
+		tasks: ["navigation", "gate-wiring", "test-coverage"].map((node, index) => ({
+			id: `ultron-task-${index}000aaaa`,
+			definition: "rlm-child@1",
+			state: "running",
+			startedAt: Date.now() - 21_000,
+			input: `{"prompt":"Check ${node}"}`,
+			model: "cliproxyapi/glm-5.3-flash",
+			turns: 1,
+			toolCallCount: index,
+			lastText: `Working on ${node}`,
+			workflow: { run: "wf-01a07520", node, dependsOn: [], join: "all" },
+		})),
+		workflows: [
+			{
+				run: "wf-01a07520",
+				startedAt: Date.now() - 21_000,
+				nodes: [
+					{ id: "navigation", definition: "rlm-child@1", dependsOn: [], join: "all" },
+					{ id: "gate-wiring", definition: "rlm-child@1", dependsOn: [], join: "all" },
+					{ id: "test-coverage", definition: "rlm-child@1", dependsOn: [], join: "all" },
+					{
+						id: "verify-evidence",
+						definition: "rlm-child@1",
+						dependsOn: ["navigation", "gate-wiring", "test-coverage"],
+						join: "all",
+					},
+				],
+			},
+		],
+		usage: { admittedTasks: 3, usage: { cost: null }, reservations: [] },
+		limits: {},
+		controls: {},
+	};
+
+	test("Alt+W opens the pane beside the chat on a wide terminal and falls back to the full-screen graph when narrow", async () => {
+		vi.stubEnv("COLUMNS", "200");
+		vi.stubEnv("LINES", "60");
+		const harness = await openHarness({ command: "client" });
+		const { component, inspect } = harness;
+		inspect.mockImplementation(async (request: string) =>
+			request === "agents.status" ? dagStatus : inspectFixture(request),
+		);
+		try {
+			const screen = () => plain(component.layoutRoot.render(200)).replace(/\u001b\]8;;\u0007/g, "");
+			// Alt+W: the pane opens on the right (40% of 200 columns) and takes the keys.
+			component.handleInput("\u001bw");
+			await vi.waitFor(() => expect(screen()).toContain("│ DAG · 01a07520"));
+			const lines = screen().split("\n");
+			expect(lines).toHaveLength(60);
+			for (const line of lines) expect(visibleWidth(line)).toBeLessThanOrEqual(200);
+			// The border sits at column 119 on every row: 119 chat columns, 80 pane columns.
+			for (const line of lines) expect([...line][119]).toBe("│");
+			const text = screen();
+			expect(text).toMatch(/│ > \[-\] navigation +│ {2}│ {3}\[-\] gate-wiring +│ {2}│ {3}\[-\] test-coverage +│/);
+			expect(text).toContain("· Same frontier");
+			expect(text).toContain("│ ← navigation, gate-wiring, test-coverage");
+			expect(text).toContain("navigation → verify-evidence");
+			expect(text).toContain("│ navigation · rlm-child@1 · cliproxyapi/glm-5.3-flash");
+			expect(text).toContain("● Connected");
+			expect(text).toContain("alt+w chat  Tab/n next  Shift-Tab/p prev  Space/Enter fold  d Details");
+			expect(text).toContain("↑↓ Scroll  ←→ Runs  q/Esc Close");
+			// The chat column shows the live wave summary above the editor.
+			expect(text).toMatch(/▶ workflow wf-01a07520 running wave 1\/2 {2}0\/4 done, 3 running/);
+			expect(text).toMatch(/▶ navigation · category:rlm-child@1 · Working on navigation · 2\ds/);
+			expect(text).toMatch(/○ verify-evidence · category:rlm-child@1 · waiting 2\ds/);
+
+			// Focused, the pane takes the keys: n selects the next node and the editor stays empty.
+			component.handleInput("n");
+			await vi.waitFor(() => expect(screen()).toMatch(/│ {3}\[-\] navigation +│ {2}│ > \[-\] gate-wiring/));
+			expect(component.editorText).toBe("");
+			// Alt+W again: the focus returns to the chat, the pane stays open.
+			component.handleInput("\u001bw");
+			component.handleInput("x");
+			expect(component.editorText).toBe("x");
+			await vi.waitFor(() => expect(screen()).toContain("alt+w focus"));
+			// Alt+W focuses the pane again; q closes it and the chat gets the full width back.
+			component.handleInput("\u001bw");
+			component.handleInput("q");
+			await vi.waitFor(() => expect(screen()).not.toContain("DAG · 01a07520"));
+			expect(component.editorText).toBe("x");
+
+			// On a narrow terminal the key opens the full-screen graph instead.
+			vi.stubEnv("COLUMNS", "100");
+			component.handleInput("\u001bw");
+			await vi.waitFor(() => expect(plain(component.render(100))).toMatch(/RLM graph . running/));
+			expect(plain(component.layoutRoot.render(100))).not.toContain("DAG · 01a07520");
+			component.handleInput("\u001b");
+			await vi.waitFor(() => expect(plain(component.render(100))).not.toContain("RLM graph"));
+		} finally {
+			await harness.dispose();
+			vi.unstubAllEnvs();
+		}
+	});
+});
 
 describe("experimental client TUI: Pi's settings, auth, session and diagnostic commands", () => {
 	beforeAll(() => initTheme("dark"));
