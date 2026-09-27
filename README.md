@@ -118,13 +118,13 @@ result file is in [`acceptance/quality/`](acceptance/quality).
 | Research: 400 reports, 2.1 MB | 2/2, median 76 s, 638k tokens | 2/2, median **73 s**, **372k** tokens |
 | Parallel work | 2/2, median 162 s | 2/2, median 162 s |
 | Delegation: 6 services, bugs readable from the code, 300 s budget | 2/2, 119 s and 145 s | 2/2, **113 s and 78 s**, 6 sub-agents each |
-| Delegation, deep: 6 services, bugs only a slow harness reveals, 300 s budget | **0/2**, 311 s and 408 s, both over budget | **2/2**, 144 s and 161 s, 6 sub-agents each |
+| Delegation, deep: 6 services, bugs only a slow harness reveals, 300 s budget (0.87.11) | 6/6 both times, but **over budget**: 355 s and 366 s, $0.47 avg | 6/6 both times, **within budget: 165 s and 176 s**, $0.63 avg, 6 sub-agents each |
 
 The deep delegation task is where the runtime matters most: each service hides three bugs behind a 21-second test
 harness that stops at the first failure, so working through six services one at a time cannot fit the budget.
-Ultron split the work into one sub-agent per service on its own, without being told to, and finished in about half
-the time; Pi worked sequentially, ran out of time and left a service broken. Delegation costs more (about 2x the
-cost on the delegation set, $1.88 against $0.96), which is the price of doing six things at once.
+Ultron split the work into one sub-agent per service on its own, without being told to, waited for them without
+checking in, and finished in less than half of Pi's time for about 1.35x the cost. Pi fixed everything too, but
+sequentially, and ran over the budget in both trials.
 
 Ultron has been at least as accurate as Pi on every set so far, at about the same token cost on hard tasks and 40%
 fewer tokens on research. Release 0.87.10 closed most of the short-task speed gap (median 60 s to 40 s against Pi's
