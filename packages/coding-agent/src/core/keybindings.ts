@@ -34,6 +34,18 @@ export interface AppKeybindings {
 	"app.rlm.graph.details": true;
 	"app.rlm.graph.collapse": true;
 	"app.rlm.graph.exit": true;
+	"app.rlm.pane": true;
+	"app.rlm.pane.next": true;
+	"app.rlm.pane.prev": true;
+	"app.rlm.pane.fold": true;
+	"app.rlm.pane.details": true;
+	"app.rlm.pane.scrollUp": true;
+	"app.rlm.pane.scrollDown": true;
+	"app.rlm.pane.pageUp": true;
+	"app.rlm.pane.pageDown": true;
+	"app.rlm.pane.prevRun": true;
+	"app.rlm.pane.nextRun": true;
+	"app.rlm.pane.close": true;
 	"app.history.search": true;
 	"app.session.toggleNamedFilter": true;
 	"app.editor.external": true;
@@ -154,6 +166,22 @@ export const KEYBINDINGS = {
 	"app.rlm.graph.details": { defaultKeys: "enter", description: "RLM graph: show or hide the node's details" },
 	"app.rlm.graph.collapse": { defaultKeys: ["c", "space"], description: "RLM graph: collapse or expand the subtree" },
 	"app.rlm.graph.exit": { defaultKeys: ["escape", "q"], description: "RLM graph: leave the focus view" },
+	// Alt+D is Pi's delete-word-forward in the editor; Alt+W is free everywhere.
+	"app.rlm.pane": {
+		defaultKeys: "alt+w",
+		description: "Open the RLM DAG side pane, or move focus between it and the chat (native TUI)",
+	},
+	"app.rlm.pane.next": { defaultKeys: ["tab", "n"], description: "RLM DAG pane: select the next node" },
+	"app.rlm.pane.prev": { defaultKeys: ["shift+tab", "p"], description: "RLM DAG pane: select the previous node" },
+	"app.rlm.pane.fold": { defaultKeys: ["space", "enter"], description: "RLM DAG pane: fold or unfold the node's box" },
+	"app.rlm.pane.details": { defaultKeys: "d", description: "RLM DAG pane: show or hide the node detail cards" },
+	"app.rlm.pane.scrollUp": { defaultKeys: "up", description: "RLM DAG pane: scroll up" },
+	"app.rlm.pane.scrollDown": { defaultKeys: "down", description: "RLM DAG pane: scroll down" },
+	"app.rlm.pane.pageUp": { defaultKeys: "pageUp", description: "RLM DAG pane: page up" },
+	"app.rlm.pane.pageDown": { defaultKeys: "pageDown", description: "RLM DAG pane: page down" },
+	"app.rlm.pane.prevRun": { defaultKeys: "left", description: "RLM DAG pane: previous run" },
+	"app.rlm.pane.nextRun": { defaultKeys: "right", description: "RLM DAG pane: next run" },
+	"app.rlm.pane.close": { defaultKeys: ["q", "escape"], description: "RLM DAG pane: close the pane" },
 	// Ctrl+R is the RLM panel's; Alt+R ("reverse") is free in Pi's editor and every dialog.
 	"app.history.search": {
 		defaultKeys: "alt+r",
