@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { allRowsPassed, rowRange } from "./acceptance-report.mjs";
-import { freePath } from "./eval-quality.mjs";
+import { freePath, withoutHome } from "./eval-quality.mjs";
 
 test("the gate requires every manifest row, not a fixed count", () => {
 	assert.equal(allRowsPassed({ total: 55, passed: 55 }), true);
@@ -30,4 +30,12 @@ test("an eval result never overwrites an earlier one from the same day", () => {
 	} finally {
 		rmSync(dir, { recursive: true, force: true });
 	}
+});
+
+test("recorded commands carry no home directory", () => {
+	assert.equal(
+		withoutHome("node --import /home/alice/wt/src/x.ts /home/alice/wt/src/cli.ts", "/home/alice"),
+		"node --import ~/wt/src/x.ts ~/wt/src/cli.ts",
+	);
+	assert.equal(withoutHome("ultron", "/home/alice"), "ultron");
 });

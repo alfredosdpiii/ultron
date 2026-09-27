@@ -764,6 +764,11 @@ async function selfCheck(taskSet, selected, concurrency, liveJudge) {
 	return passed ? 0 : 1;
 }
 
+/** A recorded command with the user's home directory written as `~`, so result files carry no local paths. */
+export function withoutHome(text, home = homedir()) {
+	return home ? text.split(home).join("~") : text;
+}
+
 /** `path`, or `path` with "-2", "-3", ... before the extension, whichever does not exist yet. */
 export function freePath(path) {
 	if (!existsSync(path)) return path;
@@ -872,7 +877,7 @@ async function main() {
 	}
 	mkdirSync(dirname(out), { recursive: true });
 	const judgeConfig = judge ? { model: judgeModel, thinking: judgeThinking ?? null, command: judgeCommand.join(" ") } : undefined;
-	writeFileSync(out, `${JSON.stringify({ taskSet, frozenAt: FROZEN_AT, thresholds: THRESHOLDS, model, thinking, ultronCommand: ultronCommand || undefined, trials, judge: judgeConfig, summary, records }, null, 2)}\n`);
+	writeFileSync(out, `${JSON.stringify({ taskSet, frozenAt: FROZEN_AT, thresholds: THRESHOLDS, model, thinking, ultronCommand: ultronCommand ? withoutHome(ultronCommand) : undefined, trials, judge: judgeConfig, summary, records }, null, 2)}\n`);
 	console.log(JSON.stringify(summary, null, 2));
 	console.log(`Wrote ${out}`);
 	return summary.passed ? 0 : 1;
