@@ -94,8 +94,10 @@ lookup, so unrelated memories never leak into answers.
 
 ## Results so far
 
-Measured with [`scripts/eval-quality.mjs`](scripts/eval-quality.mjs) against stock Pi on the same model
-(glm-5.3-flash, thinking `max`). Every result file is in [`acceptance/quality/`](acceptance/quality).
+Measured with [`scripts/eval-quality.mjs`](scripts/eval-quality.mjs) against stock Pi on the same model. Every
+result file is in [`acceptance/quality/`](acceptance/quality).
+
+**glm-5.3-flash** (a small, fast model), thinking `max`:
 
 | Task set | Pi | Ultron |
 |---|---|---|
@@ -103,8 +105,19 @@ Measured with [`scripts/eval-quality.mjs`](scripts/eval-quality.mjs) against sto
 | Research pilot: find expired-certificate incidents among 157 reports, 1 trial | pass, 342 s | pass, **273 s**, 99 sub-model frames |
 | Parallel work: a 150 s test suite plus two bug fixes, 2 trials | 2/2 | 2/2, same speed |
 
-These are small samples on one model. Treat them as early evidence, not benchmarks. Behaviour is also covered by
-56 acceptance rows (A01-A56) judged by a runner, not by hand.
+**gpt-6-sol** (a strong model), default thinking, 1 trial:
+
+| Task set | Pi | Ultron |
+|---|---|---|
+| Hard set: 15 tasks | 14/15, median 31 s | **15/15**, median 45 s, 1.55x the cost |
+| Research: 400 reports, 2.1 MB | exact, **71 s, 289k tokens** | exact, 369 s, 8.0M tokens (33 sub-model frames) |
+| Parallel work | pass, 161 s | pass, 161 s |
+
+So far Ultron is at least as accurate as Pi on every set, and ahead on the hard set with both models. With a
+strong model it is slower and more expensive: on the research task Pi narrowed 400 reports down with a few
+targeted searches, while Ultron sent the corpus through sub-model frames at about 28 times the tokens. Making
+Ultron search before it delegates is the next thing to fix. These are small samples; treat them as early
+evidence, not benchmarks. Behaviour is also covered by 56 acceptance rows (A01-A56) judged by a runner.
 
 ## Install
 
