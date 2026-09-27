@@ -230,7 +230,9 @@ profile, so both prompts include the same user skills list):
    Never spawn subagents to read or classify documents. It includes a worked example shaped like Pi's approach.
    The Delegation section says the same, and tells a subagent to do its brief itself.
 2. **Subagent nesting limit** (`native-host.ts`). `rlm.spawn` refuses beyond `ULTRON_SPAWN_DEPTH` levels (default
-   2: children may spawn, grandchildren may not; 0 means no limit). The error tells the model to do the part itself.
+   1 since 0.87.11: the root spawns, children may not; it was 2 until then; 0 means no limit). The error tells the
+   model to do the part itself. On the deep delegation task, children that split their service across grandchildren
+   raised the cost without finishing sooner.
    Both runs above went 3 and 4 levels deep.
 3. **Cheaper, bounded frames** (`inference.ts`, `infer_api.py`):
    - A top-level `rlm.map` without a token limit gets a default budget of 500,000 tokens (`ULTRON_RLM_MAP_TOKENS`).
