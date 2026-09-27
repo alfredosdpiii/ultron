@@ -1,21 +1,21 @@
 {
 	"name": "@bryandlp/ultron-coding-agent",
-	"version": "0.87.5",
+	"version": "0.87.6",
 	"lockfileVersion": 3,
 	"requires": true,
 	"packages": {
 		"": {
 			"name": "@bryandlp/ultron-coding-agent",
-			"version": "0.87.5",
+			"version": "0.87.6",
 			"license": "MIT",
 			"dependencies": {
-				"@ultron/chord": "^0.87.5",
-				"@ultron/agent-core": "^0.87.5",
-				"@ultron/ai": "^0.87.5",
-				"@ultron/client": "^0.87.5",
-				"@ultron/protocol": "^0.87.5",
-				"@ultron/server": "^0.87.5",
-				"@ultron/tui": "^0.87.5",
+				"@ultron/chord": "^0.87.6",
+				"@ultron/agent-core": "^0.87.6",
+				"@ultron/ai": "^0.87.6",
+				"@ultron/client": "^0.87.6",
+				"@ultron/protocol": "^0.87.6",
+				"@ultron/server": "^0.87.6",
+				"@ultron/tui": "^0.87.6",
 				"@silvia-odwyer/photon-node": "0.3.4",
 				"chalk": "6.0.0",
 				"cross-spawn": "7.0.6",
@@ -1010,13 +1010,13 @@
 			}
 		},
 		"node_modules/@ultron/agent-core": {
-			"version": "0.87.5",
-			"resolved": "https://registry.npmjs.org/@ultron/agent-core/-/agent-core-0.87.5.tgz",
+			"version": "0.87.6",
+			"resolved": "https://registry.npmjs.org/@ultron/agent-core/-/agent-core-0.87.6.tgz",
 			"license": "MIT",
 			"dependencies": {
-				"@ultron/chord": "^0.87.5",
-				"@ultron/ai": "^0.87.5",
-				"@ultron/telemetry": "^0.87.5",
+				"@ultron/chord": "^0.87.6",
+				"@ultron/ai": "^0.87.6",
+				"@ultron/telemetry": "^0.87.6",
 				"diff": "8.0.4",
 				"ignore": "7.0.8",
 				"typebox": "1.3.27",
@@ -1027,13 +1027,13 @@
 			}
 		},
 		"node_modules/@ultron/ai": {
-			"version": "0.87.5",
-			"resolved": "https://registry.npmjs.org/@ultron/ai/-/ai-0.87.5.tgz",
+			"version": "0.87.6",
+			"resolved": "https://registry.npmjs.org/@ultron/ai/-/ai-0.87.6.tgz",
 			"license": "MIT",
 			"dependencies": {
 				"@anthropic-ai/sdk": "0.124.0",
 				"@aws-sdk/client-bedrock-runtime": "3.1127.0",
-				"@ultron/telemetry": "^0.87.5",
+				"@ultron/telemetry": "^0.87.6",
 				"@google/genai": "2.21.0",
 				"@smithy/node-http-handler": "4.12.1",
 				"http-proxy-agent": "9.1.0",
@@ -1073,8 +1073,8 @@
 			}
 		},
 		"node_modules/@ultron/chord": {
-			"version": "0.87.5",
-			"resolved": "https://registry.npmjs.org/@ultron/chord/-/chord-0.87.5.tgz",
+			"version": "0.87.6",
+			"resolved": "https://registry.npmjs.org/@ultron/chord/-/chord-0.87.6.tgz",
 			"license": "MIT",
 			"dependencies": {
 				"esbuild": "0.28.2"
@@ -1084,23 +1084,23 @@
 			}
 		},
 		"node_modules/@ultron/client": {
-			"version": "0.87.5",
-			"resolved": "https://registry.npmjs.org/@ultron/client/-/client-0.87.5.tgz",
+			"version": "0.87.6",
+			"resolved": "https://registry.npmjs.org/@ultron/client/-/client-0.87.6.tgz",
 			"license": "MIT",
 			"dependencies": {
-				"@ultron/chord": "^0.87.5",
-				"@ultron/protocol": "^0.87.5"
+				"@ultron/chord": "^0.87.6",
+				"@ultron/protocol": "^0.87.6"
 			},
 			"engines": {
 				"node": ">=22.19.0"
 			}
 		},
 		"node_modules/@ultron/protocol": {
-			"version": "0.87.5",
-			"resolved": "https://registry.npmjs.org/@ultron/protocol/-/protocol-0.87.5.tgz",
+			"version": "0.87.6",
+			"resolved": "https://registry.npmjs.org/@ultron/protocol/-/protocol-0.87.6.tgz",
 			"license": "MIT",
 			"dependencies": {
-				"@ultron/chord": "^0.87.5",
+				"@ultron/chord": "^0.87.6",
 				"typebox": "1.3.27"
 			},
 			"engines": {
@@ -1108,29 +1108,29 @@
 			}
 		},
 		"node_modules/@ultron/server": {
-			"version": "0.87.5",
-			"resolved": "https://registry.npmjs.org/@ultron/server/-/server-0.87.5.tgz",
+			"version": "0.87.6",
+			"resolved": "https://registry.npmjs.org/@ultron/server/-/server-0.87.6.tgz",
 			"license": "MIT",
 			"dependencies": {
-				"@ultron/chord": "^0.87.5",
-				"@ultron/agent-core": "^0.87.5",
-				"@ultron/protocol": "^0.87.5"
+				"@ultron/chord": "^0.87.6",
+				"@ultron/agent-core": "^0.87.6",
+				"@ultron/protocol": "^0.87.6"
 			},
 			"engines": {
 				"node": ">=22.19.0"
 			}
 		},
 		"node_modules/@ultron/telemetry": {
-			"version": "0.87.5",
-			"resolved": "https://registry.npmjs.org/@ultron/telemetry/-/telemetry-0.87.5.tgz",
+			"version": "0.87.6",
+			"resolved": "https://registry.npmjs.org/@ultron/telemetry/-/telemetry-0.87.6.tgz",
 			"license": "MIT",
 			"engines": {
 				"node": ">=22.19.0"
 			}
 		},
 		"node_modules/@ultron/tui": {
-			"version": "0.87.5",
-			"resolved": "https://registry.npmjs.org/@ultron/tui/-/tui-0.87.5.tgz",
+			"version": "0.87.6",
+			"resolved": "https://registry.npmjs.org/@ultron/tui/-/tui-0.87.6.tgz",
 			"license": "MIT",
 			"dependencies": {
 				"get-east-asian-width": "1.6.0",
