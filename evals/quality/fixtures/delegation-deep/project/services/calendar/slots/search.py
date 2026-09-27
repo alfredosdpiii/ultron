@@ -31,21 +31,22 @@ def common_free(attendees, start, end):
     return result
 
 
-def _common_day(attendees, day):
-    """Common free time of one UTC day, remembered per group of attendees and their busy-block versions."""
-    key = (tuple((id(attendee), attendee.version) for attendee in attendees), day)
+def _common_day(attendees, day, end):
+    """Common free time of one UTC day, remembered per group of attendees and their busy-block versions. Only the
+    part before `end` is ever read, so no more is computed."""
+    key = (tuple((attendee, attendee.version) for attendee in attendees), day)
     free = _common_by_day.get(key)
     if free is None:
         if len(_common_by_day) >= _CACHE_LIMIT:
             _common_by_day.clear()
-        free = _common_by_day[key] = common_free(attendees, day, day + DAY)
+        free = _common_by_day[key] = common_free(attendees, day, min(day + DAY, end))
     return free
 
 
 def _window_free(attendees, start, end):
     pieces = []
     for day in range(start - start % DAY, end, DAY):
-        pieces.extend(_common_day(attendees, day).clip(start, end))
+        pieces.extend(_common_day(attendees, day, end).clip(start, end))
     return IntervalSet(pieces)
 
 

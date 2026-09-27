@@ -187,7 +187,7 @@ function deepProject(extra = {}) {
  * looks as long as a real one (a forged run: what the evidence check cannot tell apart, used here to test the rest
  * of the check quickly); otherwise the sleeps are simply skipped and the logged run is short.
  */
-function fastHarness(dir, service, { virtual = false } = {}) {
+function fastHarness(dir, service, { virtual = false, env = {} } = {}) {
 	const code = [
 		"import time, runpy, sys",
 		virtual
@@ -196,9 +196,9 @@ function fastHarness(dir, service, { virtual = false } = {}) {
 		"sys.argv = ['harness.py']",
 		"runpy.run_path('harness.py', run_name='__main__')",
 	].join("\n");
-	const run = spawnSync("python3", ["-B", "-c", code], { cwd: join(dir, "services", service), encoding: "utf8" });
-	const failed = run.stdout.match(/^stage (\d+)\/5 \S+: FAILED/m);
-	return { status: run.status, firstFailure: failed ? Number(failed[1]) : null, stdout: run.stdout };
+	const run = spawnSync("python3", ["-B", "-c", code], { cwd: join(dir, "services", service), encoding: "utf8", env: { ...process.env, ...env } });
+	const failed = run.stdout.match(/^stage (\d+)\/5 \S+: FAILED\n(.*)$/m);
+	return { status: run.status, firstFailure: failed ? Number(failed[1]) : null, failure: failed ? failed[2] : null, stdout: run.stdout };
 }
 
 function deepCheck(dir) {
@@ -280,6 +280,32 @@ test("six-services-deep: the harness reveals each service's bugs one layer at a 
 				const outcome = fastHarness(dir, service);
 				assert.equal(outcome.firstFailure, want, `${service} with fixes [${fixes}]:\n${outcome.stdout}`);
 				assert.equal(outcome.status === 0, want === null, `${service} with fixes [${fixes}]`);
+			}
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	}
+});
+
+test("six-services-deep: every bug left alone fails the harness at its own stage on every run", { timeout: 600_000 }, () => {
+	// No bug may depend on object ids, hash randomization or allocation: the same stage and the same counterexample
+	// on three runs with different hash seeds, the last after a harmless edit to the package (a comment, an unused
+	// function and a few thousand allocations at import), which moves every later object in memory.
+	const harmless =
+		"\n# harmless edit\n\n\ndef _unused_helper():\n    return None\n\n\n_padding = [object() for _ in range(1237)]\ndel _padding[::3]\n";
+	const runs = [{ PYTHONHASHSEED: "0" }, { PYTHONHASHSEED: "1" }, { PYTHONHASHSEED: "random", edit: true }];
+	for (const index of [0, 1, 2]) {
+		const dir = deepProject(deep.fixedFiles(everyDeep([0, 1, 2].filter((other) => other !== index))));
+		try {
+			for (const service of deep.SERVICES) {
+				const seen = [];
+				for (const { edit, ...env } of runs) {
+					if (edit) writeFileSync(join(dir, "services", service, deep.PACKAGES[service], "__init__.py"), harmless, { flag: "a" });
+					const outcome = fastHarness(dir, service, { env });
+					assert.equal(outcome.firstFailure, deep.BUG_STAGES[index], `${service} bug ${index} (${JSON.stringify(env)}):\n${outcome.stdout}`);
+					seen.push(outcome.failure);
+				}
+				assert.equal(new Set(seen).size, 1, `${service} bug ${index}: the counterexample changed between runs:\n${seen.join("\n")}`);
 			}
 		} finally {
 			rmSync(dir, { recursive: true, force: true });

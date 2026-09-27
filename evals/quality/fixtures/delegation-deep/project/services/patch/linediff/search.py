@@ -1,4 +1,5 @@
 """Finding where a block of lines sits in a file: the expected position first, then the nearest match."""
+from bisect import bisect_left, bisect_right
 
 _INDEX_LIMIT = 64
 _indexes = {}
@@ -6,7 +7,7 @@ _indexes = {}
 
 def _line_index(source):
     """Positions of every distinct line of `source`, in increasing order. Reused while the same file is patched."""
-    key = (id(source), len(source))
+    key = tuple(source)
     index = _indexes.get(key)
     if index is None:
         index = {}
@@ -16,6 +17,14 @@ def _line_index(source):
             _indexes.clear()
         _indexes[key] = index
     return index
+
+
+def _starts(source, line, floor):
+    """Positions of `line` in `source` from `floor` on, in increasing order."""
+    positions = _line_index(source).get(line, [])
+    if not positions or positions[0] >= floor:
+        return positions
+    return positions[bisect_left(positions, floor):]
 
 
 def _nearest_first(candidates, expected):
@@ -36,7 +45,8 @@ def locate(source, old, expected, floor=0):
         return expected
     if not old:
         return min(max(expected, floor), hi)
-    starts = [pos for pos in _line_index(source).get(old[0], ()) if floor <= pos <= hi]
+    starts = _starts(source, old[0], floor)
+    del starts[bisect_right(starts, hi):]
     for pos in _nearest_first(starts, expected):
         if matches_at(source, pos, old):
             return pos

@@ -1,0 +1,1177 @@
+{
+  "taskSet": "delegation",
+  "frozenAt": "2026-09-27-delegation",
+  "passed": true,
+  "results": [
+    {
+      "task": "six-services-deep",
+      "category": "delegation",
+      "ok": true,
+      "durationMs": 410156,
+      "outcomes": [
+        {
+          "trial": "unsolved",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 1322,
+          "metrics": {
+            "passed": 0,
+            "total": 6,
+            "services": {
+              "kvstore": false,
+              "scheduler": false,
+              "patch": false,
+              "calendar": false,
+              "wire": false,
+              "builds": false
+            },
+            "evidence": {
+              "kvstore": false,
+              "scheduler": false,
+              "patch": false,
+              "calendar": false,
+              "wire": false,
+              "builds": false
+            },
+            "tests": {
+              "kvstore": false,
+              "scheduler": false,
+              "patch": false,
+              "calendar": false,
+              "wire": false,
+              "builds": false
+            }
+          }
+        },
+        {
+          "trial": "solved",
+          "expect": "pass, within budget",
+          "ok": true,
+          "verifyMs": 4860,
+          "metrics": {
+            "passed": 6,
+            "total": 6,
+            "services": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": true,
+              "calendar": true,
+              "wire": true,
+              "builds": true
+            },
+            "evidence": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": true,
+              "calendar": true,
+              "wire": true,
+              "builds": true
+            },
+            "tests": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": true,
+              "calendar": true,
+              "wire": true,
+              "builds": true
+            }
+          },
+          "solveMs": 148190,
+          "timeBudgetMs": 300000,
+          "withinBudget": true
+        },
+        {
+          "trial": "sequential floor: one service after another, no model time",
+          "expect": "pass, over budget",
+          "ok": true,
+          "verifyMs": 3076,
+          "metrics": {
+            "passed": 6,
+            "total": 6,
+            "services": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": true,
+              "calendar": true,
+              "wire": true,
+              "builds": true
+            },
+            "evidence": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": true,
+              "calendar": true,
+              "wire": true,
+              "builds": true
+            },
+            "tests": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": true,
+              "calendar": true,
+              "wire": true,
+              "builds": true
+            }
+          },
+          "solveMs": 405748,
+          "timeBudgetMs": 300000,
+          "withinBudget": false
+        },
+        {
+          "trial": "deep: five services fixed and run, kvstore untouched",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 7741,
+          "metrics": {
+            "passed": 5,
+            "total": 6,
+            "services": {
+              "kvstore": false,
+              "scheduler": true,
+              "patch": true,
+              "calendar": true,
+              "wire": true,
+              "builds": true
+            },
+            "evidence": {
+              "kvstore": false,
+              "scheduler": true,
+              "patch": true,
+              "calendar": true,
+              "wire": true,
+              "builds": true
+            },
+            "tests": {
+              "kvstore": false,
+              "scheduler": true,
+              "patch": true,
+              "calendar": true,
+              "wire": true,
+              "builds": true
+            }
+          }
+        },
+        {
+          "trial": "deep: five services fixed and run, scheduler untouched",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 9333,
+          "metrics": {
+            "passed": 5,
+            "total": 6,
+            "services": {
+              "kvstore": true,
+              "scheduler": false,
+              "patch": true,
+              "calendar": true,
+              "wire": true,
+              "builds": true
+            },
+            "evidence": {
+              "kvstore": true,
+              "scheduler": false,
+              "patch": true,
+              "calendar": true,
+              "wire": true,
+              "builds": true
+            },
+            "tests": {
+              "kvstore": true,
+              "scheduler": false,
+              "patch": true,
+              "calendar": true,
+              "wire": true,
+              "builds": true
+            }
+          }
+        },
+        {
+          "trial": "deep: five services fixed and run, patch untouched",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 6590,
+          "metrics": {
+            "passed": 5,
+            "total": 6,
+            "services": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": false,
+              "calendar": true,
+              "wire": true,
+              "builds": true
+            },
+            "evidence": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": false,
+              "calendar": true,
+              "wire": true,
+              "builds": true
+            },
+            "tests": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": false,
+              "calendar": true,
+              "wire": true,
+              "builds": true
+            }
+          }
+        },
+        {
+          "trial": "deep: five services fixed and run, calendar untouched",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 6403,
+          "metrics": {
+            "passed": 5,
+            "total": 6,
+            "services": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": true,
+              "calendar": false,
+              "wire": true,
+              "builds": true
+            },
+            "evidence": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": true,
+              "calendar": false,
+              "wire": true,
+              "builds": true
+            },
+            "tests": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": true,
+              "calendar": false,
+              "wire": true,
+              "builds": true
+            }
+          }
+        },
+        {
+          "trial": "deep: five services fixed and run, wire untouched",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 7933,
+          "metrics": {
+            "passed": 5,
+            "total": 6,
+            "services": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": true,
+              "calendar": true,
+              "wire": false,
+              "builds": true
+            },
+            "evidence": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": true,
+              "calendar": true,
+              "wire": false,
+              "builds": true
+            },
+            "tests": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": true,
+              "calendar": true,
+              "wire": false,
+              "builds": true
+            }
+          }
+        },
+        {
+          "trial": "deep: five services fixed and run, builds untouched",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 7913,
+          "metrics": {
+            "passed": 5,
+            "total": 6,
+            "services": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": true,
+              "calendar": true,
+              "wire": true,
+              "builds": false
+            },
+            "evidence": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": true,
+              "calendar": true,
+              "wire": true,
+              "builds": false
+            },
+            "tests": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": true,
+              "calendar": true,
+              "wire": true,
+              "builds": false
+            }
+          }
+        },
+        {
+          "trial": "deep: first layer fixed in every service, harness run",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 2263,
+          "metrics": {
+            "passed": 0,
+            "total": 6,
+            "services": {
+              "kvstore": false,
+              "scheduler": false,
+              "patch": false,
+              "calendar": false,
+              "wire": false,
+              "builds": false
+            },
+            "evidence": {
+              "kvstore": false,
+              "scheduler": false,
+              "patch": false,
+              "calendar": false,
+              "wire": false,
+              "builds": false
+            },
+            "tests": {
+              "kvstore": false,
+              "scheduler": false,
+              "patch": false,
+              "calendar": false,
+              "wire": false,
+              "builds": false
+            }
+          }
+        },
+        {
+          "trial": "deep: two of three layers fixed in every service, harness run",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 7439,
+          "metrics": {
+            "passed": 0,
+            "total": 6,
+            "services": {
+              "kvstore": false,
+              "scheduler": false,
+              "patch": false,
+              "calendar": false,
+              "wire": false,
+              "builds": false
+            },
+            "evidence": {
+              "kvstore": false,
+              "scheduler": false,
+              "patch": false,
+              "calendar": false,
+              "wire": false,
+              "builds": false
+            },
+            "tests": {
+              "kvstore": false,
+              "scheduler": false,
+              "patch": false,
+              "calendar": false,
+              "wire": false,
+              "builds": false
+            }
+          }
+        },
+        {
+          "trial": "deep: kvstore all fixed but \"delete_prefix deletes while iterating the index's live key view, so every other matching key survives\", harness run",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 8281,
+          "metrics": {
+            "passed": 5,
+            "total": 6,
+            "services": {
+              "kvstore": false,
+              "scheduler": true,
+              "patch": true,
+              "calendar": true,
+              "wire": true,
+              "builds": true
+            },
+            "evidence": {
+              "kvstore": false,
+              "scheduler": true,
+              "patch": true,
+              "calendar": true,
+              "wire": true,
+              "builds": true
+            },
+            "tests": {
+              "kvstore": false,
+              "scheduler": true,
+              "patch": true,
+              "calendar": true,
+              "wire": true,
+              "builds": true
+            }
+          }
+        },
+        {
+          "trial": "deep: kvstore all fixed but \"the decoded-record cache (keyed by segment id and offset) is not cleared when compaction rewrites segments in place, so reads return stale records\", harness run",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 8685,
+          "metrics": {
+            "passed": 5,
+            "total": 6,
+            "services": {
+              "kvstore": false,
+              "scheduler": true,
+              "patch": true,
+              "calendar": true,
+              "wire": true,
+              "builds": true
+            },
+            "evidence": {
+              "kvstore": false,
+              "scheduler": true,
+              "patch": true,
+              "calendar": true,
+              "wire": true,
+              "builds": true
+            },
+            "tests": {
+              "kvstore": false,
+              "scheduler": true,
+              "patch": true,
+              "calendar": true,
+              "wire": true,
+              "builds": true
+            }
+          }
+        },
+        {
+          "trial": "deep: kvstore all fixed but \"export hands out closed segments' live buffers, which a later in-place compaction rewrites, so an earlier export no longer recovers\", harness run",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 8760,
+          "metrics": {
+            "passed": 5,
+            "total": 6,
+            "services": {
+              "kvstore": false,
+              "scheduler": true,
+              "patch": true,
+              "calendar": true,
+              "wire": true,
+              "builds": true
+            },
+            "evidence": {
+              "kvstore": false,
+              "scheduler": true,
+              "patch": true,
+              "calendar": true,
+              "wire": true,
+              "builds": true
+            },
+            "tests": {
+              "kvstore": false,
+              "scheduler": true,
+              "patch": true,
+              "calendar": true,
+              "wire": true,
+              "builds": true
+            }
+          }
+        },
+        {
+          "trial": "deep: scheduler all fixed but \"pushing onto an empty delayed heap leaves the cached next wake-up tick unset, so a future job can be skipped until something else happens\", harness run",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 8294,
+          "metrics": {
+            "passed": 5,
+            "total": 6,
+            "services": {
+              "kvstore": true,
+              "scheduler": false,
+              "patch": true,
+              "calendar": true,
+              "wire": true,
+              "builds": true
+            },
+            "evidence": {
+              "kvstore": true,
+              "scheduler": false,
+              "patch": true,
+              "calendar": true,
+              "wire": true,
+              "builds": true
+            },
+            "tests": {
+              "kvstore": true,
+              "scheduler": false,
+              "patch": true,
+              "calendar": true,
+              "wire": true,
+              "builds": true
+            }
+          }
+        },
+        {
+          "trial": "deep: scheduler all fixed but \"the dependents index of an id is not cleared when its job succeeds, so a resubmitted job under that id releases or cancels the old job's dependents again\", harness run",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 7805,
+          "metrics": {
+            "passed": 5,
+            "total": 6,
+            "services": {
+              "kvstore": true,
+              "scheduler": false,
+              "patch": true,
+              "calendar": true,
+              "wire": true,
+              "builds": true
+            },
+            "evidence": {
+              "kvstore": true,
+              "scheduler": false,
+              "patch": true,
+              "calendar": true,
+              "wire": true,
+              "builds": true
+            },
+            "tests": {
+              "kvstore": true,
+              "scheduler": false,
+              "patch": true,
+              "calendar": true,
+              "wire": true,
+              "builds": true
+            }
+          }
+        },
+        {
+          "trial": "deep: scheduler all fixed but \"cancelling a job waiting for a retry keeps its backoff sequence, which a resubmission under the same id then continues\", harness run",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 8238,
+          "metrics": {
+            "passed": 5,
+            "total": 6,
+            "services": {
+              "kvstore": true,
+              "scheduler": false,
+              "patch": true,
+              "calendar": true,
+              "wire": true,
+              "builds": true
+            },
+            "evidence": {
+              "kvstore": true,
+              "scheduler": false,
+              "patch": true,
+              "calendar": true,
+              "wire": true,
+              "builds": true
+            },
+            "tests": {
+              "kvstore": true,
+              "scheduler": false,
+              "patch": true,
+              "calendar": true,
+              "wire": true,
+              "builds": true
+            }
+          }
+        },
+        {
+          "trial": "deep: patch all fixed but \"apply_hunks locates hunks lazily in the list it is splicing, so after a hunk that changes the line count the next hunk is searched in shifted lines\", harness run",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 6670,
+          "metrics": {
+            "passed": 5,
+            "total": 6,
+            "services": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": false,
+              "calendar": true,
+              "wire": true,
+              "builds": true
+            },
+            "evidence": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": false,
+              "calendar": true,
+              "wire": true,
+              "builds": true
+            },
+            "tests": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": false,
+              "calendar": true,
+              "wire": true,
+              "builds": true
+            }
+          }
+        },
+        {
+          "trial": "deep: patch all fixed but \"joining regions extends the cached change-region lists in place, so a later call on the same files with a smaller context keeps the joined spans\", harness run",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 8122,
+          "metrics": {
+            "passed": 5,
+            "total": 6,
+            "services": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": false,
+              "calendar": true,
+              "wire": true,
+              "builds": true
+            },
+            "evidence": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": false,
+              "calendar": true,
+              "wire": true,
+              "builds": true
+            },
+            "tests": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": false,
+              "calendar": true,
+              "wire": true,
+              "builds": true
+            }
+          }
+        },
+        {
+          "trial": "deep: patch all fixed but \"locate trims the line index's cached position list in place past its search end, so a later search of an equal file misses those matches\", harness run",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 8314,
+          "metrics": {
+            "passed": 5,
+            "total": 6,
+            "services": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": false,
+              "calendar": true,
+              "wire": true,
+              "builds": true
+            },
+            "evidence": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": false,
+              "calendar": true,
+              "wire": true,
+              "builds": true
+            },
+            "tests": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": false,
+              "calendar": true,
+              "wire": true,
+              "builds": true
+            }
+          }
+        },
+        {
+          "trial": "deep: calendar all fixed but \"union with an empty set returns a set sharing the other operand's interval list, so a later in-place add() changes both\", harness run",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 8580,
+          "metrics": {
+            "passed": 5,
+            "total": 6,
+            "services": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": true,
+              "calendar": false,
+              "wire": true,
+              "builds": true
+            },
+            "evidence": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": true,
+              "calendar": false,
+              "wire": true,
+              "builds": true
+            },
+            "tests": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": true,
+              "calendar": false,
+              "wire": true,
+              "builds": true
+            }
+          }
+        },
+        {
+          "trial": "deep: calendar all fixed but \"add_busy drops the cached free time only for the days the block covers, not for the neighbouring days its buffer reaches\", harness run",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 8254,
+          "metrics": {
+            "passed": 5,
+            "total": 6,
+            "services": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": true,
+              "calendar": false,
+              "wire": true,
+              "builds": true
+            },
+            "evidence": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": true,
+              "calendar": false,
+              "wire": true,
+              "builds": true
+            },
+            "tests": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": true,
+              "calendar": false,
+              "wire": true,
+              "builds": true
+            }
+          }
+        },
+        {
+          "trial": "deep: calendar all fixed but \"the per-day common-free cache stores only the part of the day before the first asking window's end, so the next chunk of a search reads a truncated day\", harness run",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 6590,
+          "metrics": {
+            "passed": 5,
+            "total": 6,
+            "services": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": true,
+              "calendar": false,
+              "wire": true,
+              "builds": true
+            },
+            "evidence": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": true,
+              "calendar": false,
+              "wire": true,
+              "builds": true
+            },
+            "tests": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": true,
+              "calendar": false,
+              "wire": true,
+              "builds": true
+            }
+          }
+        },
+        {
+          "trial": "deep: wire all fixed but \"encode_uvarint memoizes small encodings as a mutable bytearray and returns it; encode_record appends the field value to the returned key bytes, corrupting the memo for later encodes of that number\", harness run",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 7971,
+          "metrics": {
+            "passed": 5,
+            "total": 6,
+            "services": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": true,
+              "calendar": true,
+              "wire": false,
+              "builds": true
+            },
+            "evidence": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": true,
+              "calendar": true,
+              "wire": false,
+              "builds": true
+            },
+            "tests": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": true,
+              "calendar": true,
+              "wire": false,
+              "builds": true
+            }
+          }
+        },
+        {
+          "trial": "deep: wire all fixed but \"packed series bodies are cached by the list's identity, so a series changed in place and written again reuses the stale encoding\", harness run",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 8213,
+          "metrics": {
+            "passed": 5,
+            "total": 6,
+            "services": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": true,
+              "calendar": true,
+              "wire": false,
+              "builds": true
+            },
+            "evidence": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": true,
+              "calendar": true,
+              "wire": false,
+              "builds": true
+            },
+            "tests": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": true,
+              "calendar": true,
+              "wire": false,
+              "builds": true
+            }
+          }
+        },
+        {
+          "trial": "deep: wire all fixed but \"compacting the buffer does not rebase a frame header that is already parsed, so a frame split across chunks after 4 KiB is read from the wrong offset\", harness run",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 7911,
+          "metrics": {
+            "passed": 5,
+            "total": 6,
+            "services": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": true,
+              "calendar": true,
+              "wire": false,
+              "builds": true
+            },
+            "evidence": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": true,
+              "calendar": true,
+              "wire": false,
+              "builds": true
+            },
+            "tests": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": true,
+              "calendar": true,
+              "wire": false,
+              "builds": true
+            }
+          }
+        },
+        {
+          "trial": "deep: builds all fixed but \"closure unions into the graph's cached reach set of the first target, so later orders for that target include unrelated targets\", harness run",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 8347,
+          "metrics": {
+            "passed": 5,
+            "total": 6,
+            "services": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": true,
+              "calendar": true,
+              "wire": true,
+              "builds": false
+            },
+            "evidence": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": true,
+              "calendar": true,
+              "wire": true,
+              "builds": false
+            },
+            "tests": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": true,
+              "calendar": true,
+              "wire": true,
+              "builds": false
+            }
+          }
+        },
+        {
+          "trial": "deep: builds all fixed but \"when previous covers exactly the graph's targets, carried_outputs returns previous itself, so recording new outputs overwrites the values early cutoff compares against\", harness run",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 8811,
+          "metrics": {
+            "passed": 5,
+            "total": 6,
+            "services": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": true,
+              "calendar": true,
+              "wire": true,
+              "builds": false
+            },
+            "evidence": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": true,
+              "calendar": true,
+              "wire": true,
+              "builds": false
+            },
+            "tests": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": true,
+              "calendar": true,
+              "wire": true,
+              "builds": false
+            }
+          }
+        },
+        {
+          "trial": "deep: builds all fixed but \"backtracking shares the constraint lists of the parent step, so constraints of an abandoned choice stay behind\", harness run",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 8435,
+          "metrics": {
+            "passed": 5,
+            "total": 6,
+            "services": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": true,
+              "calendar": true,
+              "wire": true,
+              "builds": false
+            },
+            "evidence": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": true,
+              "calendar": true,
+              "wire": true,
+              "builds": false
+            },
+            "tests": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": true,
+              "calendar": true,
+              "wire": true,
+              "builds": false
+            }
+          }
+        },
+        {
+          "trial": "deep: every fix, no harness run",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 3868,
+          "metrics": {
+            "passed": 0,
+            "total": 6,
+            "services": {
+              "kvstore": false,
+              "scheduler": false,
+              "patch": false,
+              "calendar": false,
+              "wire": false,
+              "builds": false
+            },
+            "evidence": {
+              "kvstore": false,
+              "scheduler": false,
+              "patch": false,
+              "calendar": false,
+              "wire": false,
+              "builds": false
+            },
+            "tests": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": true,
+              "calendar": true,
+              "wire": true,
+              "builds": true
+            }
+          }
+        },
+        {
+          "trial": "deep: every fix and a passing run, then one more edit to each package",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 7942,
+          "metrics": {
+            "passed": 0,
+            "total": 6,
+            "services": {
+              "kvstore": false,
+              "scheduler": false,
+              "patch": false,
+              "calendar": false,
+              "wire": false,
+              "builds": false
+            },
+            "evidence": {
+              "kvstore": false,
+              "scheduler": false,
+              "patch": false,
+              "calendar": false,
+              "wire": false,
+              "builds": false
+            },
+            "tests": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": true,
+              "calendar": true,
+              "wire": true,
+              "builds": true
+            }
+          }
+        },
+        {
+          "trial": "deep: every fix, harness.py edited to drop its sleeps, then run",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 3124,
+          "metrics": {
+            "passed": 0,
+            "total": 6,
+            "services": {
+              "kvstore": false,
+              "scheduler": false,
+              "patch": false,
+              "calendar": false,
+              "wire": false,
+              "builds": false
+            },
+            "evidence": {
+              "kvstore": false,
+              "scheduler": false,
+              "patch": false,
+              "calendar": false,
+              "wire": false,
+              "builds": false
+            },
+            "tests": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": true,
+              "calendar": true,
+              "wire": true,
+              "builds": true
+            }
+          }
+        },
+        {
+          "trial": "deep: every fix, a copy of the harness without sleeps run instead",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 3252,
+          "metrics": {
+            "passed": 0,
+            "total": 6,
+            "services": {
+              "kvstore": false,
+              "scheduler": false,
+              "patch": false,
+              "calendar": false,
+              "wire": false,
+              "builds": false
+            },
+            "evidence": {
+              "kvstore": false,
+              "scheduler": false,
+              "patch": false,
+              "calendar": false,
+              "wire": false,
+              "builds": false
+            },
+            "tests": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": true,
+              "calendar": true,
+              "wire": true,
+              "builds": true
+            }
+          }
+        },
+        {
+          "trial": "deep: every fix, the original harness run with time.sleep patched out",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 3117,
+          "metrics": {
+            "passed": 0,
+            "total": 6,
+            "services": {
+              "kvstore": false,
+              "scheduler": false,
+              "patch": false,
+              "calendar": false,
+              "wire": false,
+              "builds": false
+            },
+            "evidence": {
+              "kvstore": false,
+              "scheduler": false,
+              "patch": false,
+              "calendar": false,
+              "wire": false,
+              "builds": false
+            },
+            "tests": {
+              "kvstore": true,
+              "scheduler": true,
+              "patch": true,
+              "calendar": true,
+              "wire": true,
+              "builds": true
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

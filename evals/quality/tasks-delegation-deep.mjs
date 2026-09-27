@@ -19,13 +19,16 @@
  * - Three bugs per service, layered: on the untouched code the harness first fails at stage 1 (bug 0); with bug 0
  *   fixed at stage 3 (bug 1); with bugs 0 and 1 fixed at stage 5 (bug 2). Every bug is a runtime state-flow
  *   defect whose lines are each locally correct: aliasing (a cached or returned list, set, dict or bytearray
- *   mutated later), a cache not invalidated on one path, a lazy generator reading a list being spliced, an
- *   id()-keyed cache meeting id reuse, bookkeeping kept across a resubmission. None contradicts a SPEC sentence,
- *   so reading the code against the SPEC does not show them; the harness output is how they are found. (A
- *   pilot fixture with boundary and ordering bugs, `<` for `<=` and the like, was read straight off by both
- *   agents: see docs/implementation-status.md.) The layering is the fixture's contract, checked by
- *   scripts/eval-delegation.test.mjs. Two bugs (patch and calendar, stage 5) need CPython to reuse a freed
- *   object's id; that is deterministic for a given interpreter build, and the self-check shows it on this one.
+ *   mutated later), a cache not invalidated on one path or keyed on less than it depends on, a lazy generator
+ *   reading a list being spliced, bookkeeping kept across a resubmission. None contradicts a SPEC sentence, so
+ *   reading the code against the SPEC does not show them; the harness output is how they are found. (A pilot
+ *   fixture with boundary and ordering bugs, `<` for `<=` and the like, was read straight off by both agents: see
+ *   docs/implementation-status.md.) The layering is the fixture's contract, checked by
+ *   scripts/eval-delegation.test.mjs, and it is deterministic: no bug depends on object ids, hash randomization,
+ *   timing or allocation, and the test runs every single-bug-left variant under several PYTHONHASHSEED values and
+ *   after a harmless edit that moves every later allocation, expecting the same stage and counterexample. (The
+ *   first rebuild had id()-keyed caches as patch's and calendar's stage-5 bugs; unrelated edits changed
+ *   allocation so the harness sometimes passed with them present. They were replaced on 2026-09-28.)
  * - Evidence is mechanical. Every harness run appends {nonce, start, end, stages passed, digest of the package
  *   source at start and end, digest of harness.py} to the service's .harness/runs.jsonl. The hidden check accepts a
  *   service only if harness.py is the original (sha256), the log holds a passing run of that harness on the
@@ -61,7 +64,7 @@ export const BUG_STAGES = [1, 3, 5];
 
 const FIXTURE = fileURLToPath(new URL("./fixtures/delegation-deep/", import.meta.url));
 /** sha256 over every fixture file (path and content, sorted by path); a changed fixture refuses to load. */
-const FIXTURE_SHA256 = "0d21420be77b7e90b635bf0fdd8a32e1d0ebccfc3fc45bbfcb3b2beac5875361";
+const FIXTURE_SHA256 = "d9e41084a2f75d5d86cd69eac8d780753c9c87dcfa57c5de5e8e15fd7059e531";
 
 function loadFixture() {
 	const project = readTree(join(FIXTURE, "project"));
@@ -144,9 +147,9 @@ export const BUGS = {
 		},
 		{
 			"path": "linediff/search.py",
-			"what": "the line index is cached by the list's id and length, so a new list reusing a freed list's id gets the old list's index",
-			"buggy": "    key = (id(source), len(source))\n",
-			"fixed": "    key = tuple(source)\n"
+			"what": "locate trims the line index's cached position list in place past its search end, so a later search of an equal file misses those matches",
+			"buggy": "        return positions\n",
+			"fixed": "        return list(positions)\n"
 		}
 	],
 	"calendar": [
@@ -164,9 +167,9 @@ export const BUGS = {
 		},
 		{
 			"path": "slots/search.py",
-			"what": "the per-day common-free cache is keyed by id() of the attendees, so a new attendee that reuses a freed object's id (and has the same version) gets the old attendee's free time",
-			"buggy": "    key = (tuple((id(attendee), attendee.version) for attendee in attendees), day)\n",
-			"fixed": "    key = (tuple((attendee, attendee.version) for attendee in attendees), day)\n"
+			"what": "the per-day common-free cache stores only the part of the day before the first asking window's end, so the next chunk of a search reads a truncated day",
+			"buggy": "        free = _common_by_day[key] = common_free(attendees, day, min(day + DAY, end))\n",
+			"fixed": "        free = _common_by_day[key] = common_free(attendees, day, day + DAY)\n"
 		}
 	],
 	"wire": [

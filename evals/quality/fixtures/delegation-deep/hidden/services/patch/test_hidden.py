@@ -192,6 +192,22 @@ class PatchHidden(unittest.TestCase):
             moved = mutate(rnd, a, words, 3)
             self.assertEqual(run_apply(moved, hunks), ref_apply(moved, hunks), (a, b, moved))
 
+    def test_one_file_patched_with_several_contexts(self):
+        # Hunks of the same change with different contexts, applied to one moved copy (and offsets asked for)
+        # one after another: each answer is the model's, whatever came before.
+        rnd = random.Random(5_151)
+        for _ in range(300):
+            words = ["p", "q", "r"]
+            a = [rnd.choice(words) for _ in range(rnd.randint(2, 12))]
+            b = mutate(rnd, a, words)
+            moved = mutate(rnd, a, words, 3)
+            for context in rnd.sample([0, 1, 2, 3], 4):
+                hunks = make_hunks(a, b, context)
+                self.assertEqual(run_apply(moved, hunks), ref_apply(moved, hunks), (a, b, moved, context))
+                try:
+                    offsets(moved, hunks)
+                except PatchError:
+                    pass
 
 if __name__ == "__main__":
     unittest.main()

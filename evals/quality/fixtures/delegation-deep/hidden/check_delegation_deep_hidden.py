@@ -93,7 +93,9 @@ def hidden_tests(service_dir):
         if "__pycache__" in dirs:
             shutil.rmtree(os.path.join(base, "__pycache__"), ignore_errors=True)
     try:
-        run = subprocess.run([sys.executable, "-B", "test_hidden.py"], cwd=service_dir, capture_output=True, text=True, timeout=60)
+        # A fixed hash seed: string hashing (set order) is the same on every check.
+        env = {**os.environ, "PYTHONHASHSEED": "0"}
+        run = subprocess.run([sys.executable, "-B", "test_hidden.py"], cwd=service_dir, capture_output=True, text=True, timeout=60, env=env)
     except subprocess.TimeoutExpired:
         return False, "hidden tests timed out after 60 s"
     except OSError as error:
