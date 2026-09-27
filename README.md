@@ -77,6 +77,9 @@ lookup, so unrelated memories never leak into answers.
 - **The RLM graph** draws the run as a live tree: turn, cells, tool calls, sub-agents, `rlm.map` fan-outs with
   progress bars, workflows and jobs, with budget gauges and a kernel strip. Ctrl+R docks it and Alt+G opens it
   full screen, where you can step into any node and see its input, result and the Python call that fetches it.
+- **The DAG pane** (Alt+W on terminals 140 columns or wider) splits the screen: sub-agents and workflow nodes as
+  boxes in waves, with arrows to the nodes that depend on them, and cards showing each node's model, latest text, time,
+  turns and tool calls. While nodes run, a wave summary sits above the input.
 - **Jev's presence**: a footer indicator that pulses when Jev decides, one-line notes in the transcript showing what
   memory was used and whether the turn was kept, and a `/jev` view with a decision timeline and threshold gauges.
 
@@ -112,6 +115,11 @@ result file is in [`acceptance/quality/`](acceptance/quality).
 | Research: 400 reports, 2.1 MB | exact, 84 s, 172k tokens | exact, **75 s**, 238k tokens |
 | Hard set, 5 tasks | 5/5, 130k tokens, median 32 s | 5/5, 143k tokens (1.1x), median 60 s |
 | Parallel work | pass, 166 s | pass, 163 s |
+| Delegation: fix 3 bugs in each of 6 independent services, 300 s budget (0.87.8) | 6/6, 108 s, 118k tokens | 6/6, **75 s**, 187k tokens, 5 sub-agents |
+
+On the delegation task Ultron spawned its sub-agents on its own, without any prompting, and fixed the sixth service
+itself while they ran. That was about 30% faster, at about 2.2x the cost. The budget did not separate the two
+strategies on this model: gpt-6-sol read all six services in a few batched turns, so Pi's sequential run also fit.
 
 An earlier, full 15-task hard run on gpt-6-sol had Ultron at 15/15 and Pi at 14/15.
 
@@ -148,7 +156,7 @@ ultron --mode rpc                        # Pi-compatible JSONL RPC
 Pick a provider as in Pi: `/login` for subscription providers, or `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`,
 `GEMINI_API_KEY` and the like. Custom OpenAI-compatible endpoints go in `~/.ultron/agent/models.json`.
 
-Useful keys: Up/Down and Alt+R for prompt history, Ctrl+R for the RLM panel, Alt+G for the full-screen graph,
+Useful keys: Up/Down and Alt+R for prompt history, Ctrl+R for the RLM panel, Alt+W for the DAG pane, Alt+G for the full-screen graph,
 Alt+J for Jev, Ctrl+O to expand cells and help. `/hotkeys` lists them all.
 
 ## The REPL at a glance

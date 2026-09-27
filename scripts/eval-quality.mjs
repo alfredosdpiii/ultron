@@ -189,6 +189,38 @@ const VARIANTS = {
 };
 const DEFAULT_KEEP_DIR = "/tmp/ultron-quality-failed";
 
+const VALUE_FLAGS = [
+	"baseline",
+	"concurrency",
+	"judge-command",
+	"judge-model",
+	"judge-thinking",
+	"keep-failed",
+	"model",
+	"only",
+	"out",
+	"tasks",
+	"thinking",
+	"trials",
+	"ultron-command",
+	"variants",
+];
+const SWITCH_FLAGS = ["self-check", "judge-live", "keep-all", "no-judge"];
+
+/**
+ * Arguments that are not a known flag or a known flag's value. A typo or `--help` must never fall through to a
+ * real, paid comparison run.
+ */
+export function unknownArgs(args) {
+	const unknown = [];
+	for (let index = 0; index < args.length; index++) {
+		const name = args[index].replace(/^--/, "");
+		if (args[index].startsWith("--") && VALUE_FLAGS.includes(name)) index++;
+		else if (!(args[index].startsWith("--") && SWITCH_FLAGS.includes(name))) unknown.push(args[index]);
+	}
+	return unknown;
+}
+
 function arg(name, fallback) {
 	const index = process.argv.indexOf(`--${name}`);
 	return index === -1 ? fallback : process.argv[index + 1];
@@ -869,6 +901,13 @@ export function freePath(path) {
 let FROZEN_AT;
 
 async function main() {
+	const unknown = unknownArgs(process.argv.slice(2));
+	if (unknown.length) {
+		console.error(`Unknown arguments: ${unknown.join(" ")}`);
+		console.error(`Flags with a value: ${VALUE_FLAGS.map((flag) => `--${flag}`).join(" ")}`);
+		console.error(`Switches: ${SWITCH_FLAGS.map((flag) => `--${flag}`).join(" ")}`);
+		return 2;
+	}
 	const taskSet = arg("tasks", "default");
 	if (!TASK_SETS[taskSet]) throw new Error(`Unknown task set "${taskSet}" (expected ${Object.keys(TASK_SETS).join(" or ")})`);
 	const taskModule = await import(TASK_SETS[taskSet].tasks);

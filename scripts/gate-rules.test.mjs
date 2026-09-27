@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { allRowsPassed, rowRange } from "./acceptance-report.mjs";
-import { freePath, withoutHome } from "./eval-quality.mjs";
+import { freePath, unknownArgs, withoutHome } from "./eval-quality.mjs";
 
 test("the gate requires every manifest row, not a fixed count", () => {
 	assert.equal(allRowsPassed({ total: 55, passed: 55 }), true);
@@ -38,4 +38,10 @@ test("recorded commands carry no home directory", () => {
 		"node --import ~/wt/src/x.ts ~/wt/src/cli.ts",
 	);
 	assert.equal(withoutHome("ultron", "/home/alice"), "ultron");
+});
+
+test("unknownArgs rejects --help and typos so they never start a paid run", () => {
+	assert.deepEqual(unknownArgs(["--help"]), ["--help"]);
+	assert.deepEqual(unknownArgs(["--tasks", "delegation", "--trails", "1"]), ["--trails", "1"]);
+	assert.deepEqual(unknownArgs(["--tasks", "hard", "--keep-all", "--only", "a,b", "--self-check"]), []);
 });
