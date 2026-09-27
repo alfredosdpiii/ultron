@@ -99,7 +99,7 @@ describe("per-root max_total_turns / max_total_tokens", () => {
 		await expect(ledger.reserve({ kind: "model", rootId: "turn:a" })).rejects.toThrow("Usage token limit reached");
 	});
 
-	test("counts survive a reopen, and nothing is written per turn without a limit", async () => {
+	test("counts survive a reopen, and nothing is written per turn without a limit (the tally is still kept)", async () => {
 		const store = countingStore();
 		const limited = new NativeUsageLedger(store, { limits: { maxTotalTurns: 2 } });
 		await limited.recordTurn("turn:a", { totalTokens: 10 });
@@ -112,12 +112,49 @@ describe("per-root max_total_turns / max_total_tokens", () => {
 		await unlimited.recordTurn("turn:a", { totalTokens: 10 });
 		await expect(unlimited.turnBudgetExhausted("turn:a")).resolves.toBeUndefined();
 		expect(quiet.state.writes).toBe(0);
+		// The tree's spend is still shown, from memory.
 		expect((await unlimited.status("turn:a")).turns).toEqual({
-			turns: 0,
-			tokens: 0,
+			turns: 1,
+			tokens: 10,
 			maxTotalTurns: null,
 			maxTotalTokens: null,
 		});
+	});
+
+	test("the cost cap counts every response's reported cost; unpriced responses make it unenforceable", async () => {
+		const ledger = new NativeUsageLedger(undefined, { limits: { maxCostUsd: 0.5 } });
+		await ledger.recordTurn("turn:a", { totalTokens: 100, cost: 0.2 });
+		await expect(ledger.turnBudgetExhausted("turn:a")).resolves.toBeUndefined();
+		await ledger.recordTurn("turn:a", { totalTokens: 100, cost: 0.3 });
+		await expect(ledger.turnBudgetExhausted("turn:a")).resolves.toContain(
+			"Usage cost cap reached for root turn:a: spent $0.5 of $0.5 (ULTRON_MAX_COST_USD)",
+		);
+		await expect(ledger.reserve({ kind: "task", rootId: "turn:a" })).rejects.toThrow("Usage cost cap reached");
+		expect((await ledger.status("turn:a")).cost).toEqual({
+			maxCostUsd: 0.5,
+			spentUsd: 0.5,
+			unknownPricedCalls: 0,
+			remainingUsd: 0,
+		});
+		await ledger.recordTurn("turn:b", { totalTokens: 100 });
+		await expect(ledger.turnBudgetExhausted("turn:b")).resolves.toContain("Usage pricing unknown");
+	});
+
+	test("a root that records responses is charged from them, not again from its settled model calls", async () => {
+		const ledger = new NativeUsageLedger(undefined, { limits: { maxCostUsd: 1 } });
+		// A sub-agent's (or frame's) model call settles with the usage of the responses already recorded.
+		const call = await ledger.reserve({ kind: "model", rootId: "turn:a", requestKey: "child" });
+		await ledger.recordTurn("turn:a", { totalTokens: 1000, cost: 0.3 });
+		await ledger.recordTurn("turn:a", { totalTokens: 1000, cost: 0.3 });
+		await ledger.settle(call, {
+			status: "succeeded",
+			usage: { inputTokens: 1900, outputTokens: 100, totalTokens: 2000, cost: 0.6 },
+		});
+		const status = await ledger.status("turn:a");
+		expect(status.cost.spentUsd).toBeCloseTo(0.6, 9);
+		expect(status.turns).toMatchObject({ turns: 2, tokens: 2000 });
+		expect(status.session.spentUsd).toBeCloseTo(0.6, 9);
+		await expect(ledger.turnBudgetExhausted("turn:a")).resolves.toBeUndefined();
 	});
 
 	test("a descendant lane's turns are charged to the root turn that admitted its task", async () => {

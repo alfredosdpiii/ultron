@@ -255,6 +255,8 @@ _TYPE_SCHEMAS: dict[Any, dict[str, Any]] = {
 def _schema(contract: Any) -> Any:
     if contract is None:
         return None
+    if isinstance(contract, dict):
+        return contract
     if contract in _TYPE_SCHEMAS:
         return dict(_TYPE_SCHEMAS[contract])
     origin = getattr(contract, "__origin__", None)
@@ -263,8 +265,6 @@ def _schema(contract: Any) -> Any:
         return {"type": "array", "items": _schema(arguments[0])}
     if origin is dict and len(arguments) == 2 and arguments[0] is str:
         return {"type": "object", "additionalProperties": _schema(arguments[1])}
-    if isinstance(contract, dict):
-        return contract
     raise TypeError("contract must be a JSON schema dict, a builtin type (int, str, float, bool, list, dict) or list[T]")
 
 
@@ -338,7 +338,12 @@ class Inference:
 
     async def load(self, source: Any = None, *, path: Any = None, text: str | None = None,
                    data: bytes | None = None, label: str | None = None) -> ContextHandle:
-        """Intern a file (path), text, or bytes and return a ContextHandle. The content is never returned."""
+        """Intern a file (path), text, or bytes and return a ContextHandle. The content is never returned.
+
+        A handle (`h.size`, `h.digest`; printing it never shows content) is programmed over, not read:
+        `h.search(regex, limit=20)` -> [{start, end, line, text}], `h.count(regex)`, `h.lines(a, b)` (0-based,
+        end-exclusive), `h.slice(a, b)` and `h.chunks(chars)` return views, which print their text: print only
+        what you must read, and hand views to `rlm.infer` / `rlm.map`."""
         given = [item for item in (source, path, text, data) if item is not None]
         if len(given) != 1:
             raise ValueError("rlm.load takes exactly one of a path, text, or bytes")
@@ -399,7 +404,12 @@ class Inference:
                     model: str | None = None, max_repairs: int | None = None, timeout_ms: int | None = None) -> Any:
         """Run one private inference frame over explicit context views. Returns the contract-validated value
         (or the reply text without a contract), an `Incomplete` when budget or repairs run out, and raises
-        `InferenceError` when the frame fails. `max_repairs` defaults to 2 re-asks (1 for a scalar contract)."""
+        `InferenceError` when the frame fails. `max_repairs` defaults to 2 re-asks (1 for a scalar contract).
+
+        The frame is a sub-model that sees only `task` and the `context` views or strings: no transcript, no
+        tools. `contract` is a JSON schema or int/str/float/bool/list/dict/list[T]. An `Incomplete` is falsy
+        (`.status`, `.spent`, `.last_outputs`), not an exception. `budget=Budget(calls, tokens, depth)` caps the
+        frame subtree; the frame's responses also count once toward the root's own turn, token and cost limits."""
         reply = await self._bridge.request("rlm.infer", {
             "task": task,
             "context": _wire_context(context),
@@ -423,7 +433,15 @@ class Inference:
         Without `budget=Budget(tokens=...)` a top-level map is limited to the host's default token budget
         (ULTRON_RLM_MAP_TOKENS, 500,000 by default); frames past it come back `Incomplete`. The result is a
         list with `.spent` ({calls, tokens}), `.budget` and `.remaining`, and one summary line is printed.
-        Every frame is a model request: filter with code first and give each frame only what it must judge."""
+        Every frame is a model request: filter with code first and give each frame only what it must judge
+        (a section, a few KB), not whole files; compute exact numbers in plain Python. `await rlm.frames()`
+        lists traces.
+
+        Example:
+            h = await rlm.load('app.log')
+            hits = h.search(r'ERROR .*timeout', limit=8)
+            causes = await rlm.map('Root cause of this failure, 10 words max.',
+                                   [h.lines(m['line'] - 20, m['line'] + 5) for m in hits], contract=str)"""
         shared = _wire_context(context)
         if isinstance(tasks, str):
             if items is None:

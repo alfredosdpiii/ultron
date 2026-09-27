@@ -83,15 +83,40 @@ class RLMNamespace:
 
     `h = await rlm.spawn(task, name=...)` starts a subagent with its own REPL (a full agent: it re-sends the
     system prompt and its own transcript on every turn, so use it for independent multi-step work, not for
-    reading files); `await rlm.collect([h.rlm_child_id])` waits for results; `rlm.list_subagents()`,
+    reading files); `await rlm.collect([h])` waits for results; `rlm.list_subagents()`,
     `rlm.delete_subagent(id)`. `rlm.load`, `rlm.open`, `rlm.infer`, `rlm.map` and `rlm.frames` are the
     bounded-inference API (`help(rlm.map)`). `rlm.jobs()` / `rlm.job(id)` recover shell jobs.
+
+    Search before delegating, over many files or a large input: search the concept and its synonyms in code,
+    print one compact line per candidate, read the deciding passages of the unclear ones yourself, and use
+    `rlm.map` only for what a line or two cannot settle. For example:
+
+        import re
+        from pathlib import Path
+        docs = {p.stem: p.read_text() for p in Path("reports").glob("*.md")}
+        topic = re.compile(r"certific|\bTLS\b|\bSSL\b|x\.?509", re.I)
+        event = re.compile(r"expir|lapsed|notAfter|validity", re.I)
+        hits = {k: [l.strip() for l in t.splitlines() if topic.search(l) and event.search(l)] for k, t in docs.items()}
+        for k, lines in hits.items():
+            if lines: print(k, " | ".join(l[:150] for l in lines[:3]))
+
+    Then print the root-cause lines of the unclear candidates, decide, and check synonyms you may have missed.
     """
 
     def __init__(self, bridge: HostBridge) -> None:
         self._bridge = bridge
 
     async def spawn(self, prompt: str, **kwargs: Any) -> SpawnHandle:
+        """Start a subagent and return its SpawnHandle at once (`h.rlm_child_id`); options: name (required),
+        model, thinking, timeout_ms.
+
+        The child has its own REPL and your tools and shares your filesystem, but not your conversation: give
+        a self-contained brief (goal, paths, constraints, what to return). Its final reply is its result.
+        Start several before collecting and keep working; each completion arrives as a `child_done` event.
+        `await rlm.collect([h])` returns `[{"id": ..., "result": {"status": "succeeded", "value": <answer>}}]`
+        (check each status). Subagents nest at most two levels, and every response they make counts toward
+        the root's turn, token and cost limits. Spawn for independent multi-step work, never to read or
+        classify documents (narrow with code and `rlm.map` instead)."""
         if not isinstance(prompt, str) or not prompt.strip():
             raise ValueError("rlm.spawn prompt must be a non-empty string")
         name = kwargs.get("name")
@@ -115,8 +140,14 @@ class RLMNamespace:
         return result.get("subagents", []) if isinstance(result, dict) else []
 
     async def collect(self, selectors: list[str] | None = None, timeout_ms: int = 0) -> list[dict[str, Any]]:
+        """Wait for subagents (SpawnHandles or ids; all of yours when empty) and return their results:
+        `[{"id": ..., "result": {"status": ..., "value" | "error": ...}}]`."""
+        if isinstance(selectors, (str, SpawnHandle)):
+            selectors = [selectors]
+        # A SpawnHandle from rlm.spawn selects its child by id.
+        selectors = [s.rlm_child_id if isinstance(s, SpawnHandle) else s for s in (selectors or [])]
         result = await self._bridge.request("rlm.collect", {
-            "selectors": selectors or [],
+            "selectors": selectors,
             "timeout_ms": timeout_ms,
         })
         return result.get("results", []) if isinstance(result, dict) else []

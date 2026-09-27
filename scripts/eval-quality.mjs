@@ -49,8 +49,9 @@
  * `uptake.handleBytesPrinted`; otherwise null). Summaries aggregate them per variant.
  *
  * Both agents run in RPC mode in a fresh copy of the task files with an isolated profile that holds
- * only models.json and auth.json (no extensions, skills, or memory), so the runtimes are compared,
- * not the user's setup. Hidden checks are copied in after the agent finishes and decide pass/fail.
+ * only models.json and auth.json (no extensions, skills, or memory) and an empty HOME of their own, so neither
+ * loads the user's global skills from ~/.agents/skills; the runtimes are compared, not the user's setup. The
+ * result JSON records this as `isolation` (and each record as `homeIsolated`). Hidden checks are copied in after the agent finishes and decide pass/fail.
  * Thresholds are frozen below, before any measurement.
  *
  * Evidence: every run's RPC event stream (commands sent and everything the agent printed) is written to
@@ -184,8 +185,37 @@ function arg(name, fallback) {
 	return index === -1 ? fallback : process.argv[index + 1];
 }
 
+/**
+ * The environment an agent runs in: its isolated agent dir (models.json and auth.json only) and a fresh, empty
+ * HOME inside the run's work dir. Both Pi and Ultron read user-global resources from the home directory (the
+ * Agent Skills location `~/.agents/skills`, whose skills every system prompt would list), so an agent dir alone is
+ * not enough: the user's global skills would leak into both variants. The XDG base directories follow the new
+ * home. Auth comes from the copied files in the agent dir, and tools are found through PATH as before.
+ */
+export function isolatedAgentEnv({ work, agentDirEnv, agentDir, baseEnv = process.env }) {
+	const home = join(work, "home");
+	mkdirSync(home, { recursive: true });
+	return {
+		...baseEnv,
+		HOME: home,
+		USERPROFILE: home,
+		XDG_CONFIG_HOME: join(home, ".config"),
+		XDG_CACHE_HOME: join(home, ".cache"),
+		XDG_DATA_HOME: join(home, ".local", "share"),
+		XDG_STATE_HOME: join(home, ".local", "state"),
+		[agentDirEnv]: agentDir,
+	};
+}
+
+/** How every run is isolated from the user's setup; recorded in the result JSON. */
+export const ISOLATION = {
+	home: "per-run empty HOME inside the run's work dir (no ~/.agents, ~/.pi, ~/.ultron or other user-global resources)",
+	agentDir: "per-run agent dir holding only models.json and auth.json copied from ~/.ultron/agent",
+	memory: "off (ULTRON_HINDSIGHT_URL=off)",
+};
+
 /** Minimal Pi RPC driver: JSONL commands on stdin, responses and events on stdout. */
-function rpcSession({ command, args, cwd, env, log }) {
+export function rpcSession({ command, args, cwd, env, log }) {
 	const [binary, ...prefix] = command;
 	const child = spawn(binary, [...prefix, ...args], { cwd, env, stdio: ["pipe", "pipe", "pipe"] });
 	const record = (direction, line) => {
@@ -360,7 +390,11 @@ function createModelJudge({ command, model, thinking, keepDir }) {
 				...(thinking ? ["--thinking", thinking] : []),
 			],
 			cwd: work,
-			env: { ...process.env, PI_CODING_AGENT_DIR: agentDir, ULTRON_CODING_AGENT_DIR: agentDir, ULTRON_HINDSIGHT_URL: "off" },
+			env: {
+				...isolatedAgentEnv({ work, agentDirEnv: "PI_CODING_AGENT_DIR", agentDir }),
+				ULTRON_CODING_AGENT_DIR: agentDir,
+				ULTRON_HINDSIGHT_URL: "off",
+			},
 			log: keepDir ? join(keepDir, `judge-${Date.now()}-${++calls}.jsonl`) : undefined,
 		});
 		try {
@@ -397,14 +431,14 @@ async function runOne({ task, variant, trial, model, thinking, keepDir, keepAll,
 	const keep = join(keepDir, runName);
 	mkdirSync(keep, { recursive: true });
 	const split = model.indexOf("/");
-	// Memory off: the baseline runs without extensions, so neither side gets cross-run memory.
+	// Memory off: the baseline runs without extensions, so neither side gets cross-run memory. HOME is a fresh
+	// empty dir, so neither side loads the user's global skills (see isolatedAgentEnv).
 	const env = {
-		...process.env,
-		[agentDirEnv]: agentDir,
+		...isolatedAgentEnv({ work, agentDirEnv, agentDir }),
 		ULTRON_SERVER_DIR: mkdtempSync(join("/tmp", "u-q-")),
 		ULTRON_HINDSIGHT_URL: "off",
 	};
-	const record = { task: task.id, category: task.category, variant, trial, model, passed: false };
+	const record = { task: task.id, category: task.category, variant, trial, model, passed: false, homeIsolated: true };
 	const started = Date.now();
 	const session = rpcSession({
 		command,
@@ -877,7 +911,7 @@ async function main() {
 	}
 	mkdirSync(dirname(out), { recursive: true });
 	const judgeConfig = judge ? { model: judgeModel, thinking: judgeThinking ?? null, command: judgeCommand.join(" ") } : undefined;
-	writeFileSync(out, `${JSON.stringify({ taskSet, frozenAt: FROZEN_AT, thresholds: THRESHOLDS, model, thinking, ultronCommand: ultronCommand ? withoutHome(ultronCommand) : undefined, trials, judge: judgeConfig, summary, records }, null, 2)}\n`);
+	writeFileSync(out, `${JSON.stringify({ taskSet, frozenAt: FROZEN_AT, thresholds: THRESHOLDS, model, thinking, ultronCommand: ultronCommand ? withoutHome(ultronCommand) : undefined, trials, isolation: ISOLATION, judge: judgeConfig, summary, records }, null, 2)}\n`);
 	console.log(JSON.stringify(summary, null, 2));
 	console.log(`Wrote ${out}`);
 	return summary.passed ? 0 : 1;

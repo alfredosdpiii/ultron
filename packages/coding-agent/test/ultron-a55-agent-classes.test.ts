@@ -143,7 +143,7 @@ describe("A55 agents as Python classes", () => {
 		);
 		// The root model is told about agent classes in the rlm tool description.
 		expect(provider.requests.find((request) => request.firstUser.startsWith("A55"))!.raw).toContain(
-			"Agents as classes",
+			"`@agent` classes",
 		);
 
 		// A bad return raises with the schema error; state is unchanged; the journal records a failure.

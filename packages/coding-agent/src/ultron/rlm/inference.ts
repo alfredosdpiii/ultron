@@ -43,12 +43,11 @@ export function defaultMapTokens(env: NodeJS.ProcessEnv = process.env): number {
  * to the `rlm` tool description.
  */
 export const INFERENCE_PROMPT = [
-	"Large inputs stay out of your context: load them as handles and program over them.",
-	"- `h = await rlm.load(path_or_text)` returns a ContextHandle (`h.size`, `h.digest`; printing it never shows content). `h.search(regex, limit=20)` -> [{start, end, line, text}], `h.count(regex)`, `h.lines(a, b)` (0-based, end-exclusive), `h.slice(a, b)` and `h.chunks(chars)` return views, which print their text: print only what you must read.",
-	"- `v = await rlm.infer(task, context=[views or strings], contract=T, budget=Budget(calls, tokens, depth))` asks a private sub-model that sees only the task and those views (no transcript, no tools) and returns the contract-validated value (a JSON schema, or int/str/float/bool/list/dict/list[T]). Bad answers are re-asked (`max_repairs`: 2, or 1 for a scalar contract); running out returns a falsy `Incomplete` (`.status`, `.spent`, `.last_outputs`), not an exception.",
-	`- \`vs = await rlm.map(task, items, contract=..., budget=..., context=shared)\` runs one frame per item under one shared budget (by default ${DEFAULT_MAP_TOKENS.toLocaleString("en-US")} tokens: pass \`budget=Budget(tokens=...)\` for more), results in order; a failed item is an \`Incomplete\` or \`FrameError\`. It prints one line with the frames' outcome and tokens spent (also \`vs.spent\`). \`await rlm.frames()\` lists traces.`,
-	"- Every frame is a model request: filter with code first and give each frame only the passage it must judge (a section, a few KB), not whole files. Compute exact numbers in plain Python, not frames.",
-	"Example: `h = await rlm.load('app.log'); hits = h.search(r'ERROR .*timeout', limit=8); causes = await rlm.map('Root cause of this failure, 10 words max.', [h.lines(m['line'] - 20, m['line'] + 5) for m in hits], contract=str)`",
+	"Large inputs stay out of your context as handles; details and examples: `help(rlm.load)`, `help(rlm.map)`.",
+	"- `h = await rlm.load(path_or_text)`: `h.search(regex)`, `h.count(regex)`, `h.lines(a, b)`, `h.chunks(n)`; views print their text.",
+	"- `await rlm.infer(task, context=[views], contract=T, budget=Budget(calls, tokens, depth))`: one private sub-model call (no transcript, no tools), contract-validated and re-asked; running out returns a falsy `Incomplete`.",
+	`- \`await rlm.map(task, items, contract=T)\`: one frame per item, in order, under one shared budget (default ${DEFAULT_MAP_TOKENS.toLocaleString("en-US")} tokens; \`budget=Budget(tokens=...)\` for more).`,
+	"- Every frame is a model request: filter with code first, give each frame only the passage it must judge, and compute exact numbers in Python.",
 ].join("\n");
 
 export const RLM_FRAME_DEFINITION = "rlm-frame@1";

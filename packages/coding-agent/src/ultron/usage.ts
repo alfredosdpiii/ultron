@@ -11,7 +11,10 @@ export type NativeUsageLimits = {
 	maxAdmittedTasks?: number;
 	/** Wall budget of one root, counted from its first reservation. */
 	maxWallMs?: number;
-	/** Optional spend cap per root, from provider-reported model cost. Unset means no cap. */
+	/**
+	 * Optional spend cap per root, from provider-reported model cost of every response in the root's tree (its own
+	 * lane, sub-agents, frames, typed agents and background jobs). Unset means no cap.
+	 */
 	maxCostUsd?: number;
 	/**
 	 * nano-rlm's `max_total_tokens`: provider-reported tokens of every model turn of one root, its descendants
@@ -131,7 +134,7 @@ export type NativeUsageStatus = {
 		maxTotalTokens: number | null;
 		maxTotalTurns: number | null;
 	};
-	/** Model turns and tokens of this root and its descendants, counted while a turn or token limit is set. */
+	/** Model responses and tokens of this root's whole tree (every lane it admitted). */
 	turns: NativeUsageTurns;
 	/** Settled model spend of this root against the optional cap. */
 	cost: NativeUsageCost;
@@ -197,11 +200,17 @@ export type NativeUsageLedgerLike = {
 	settle(reservation: NativeUsageReservation, settlement?: NativeUsageSettlement): Promise<void>;
 	status(rootId?: string): Promise<NativeUsageStatus>;
 	reconcile?(activeTaskIds: readonly string[]): Promise<void>;
-	/** Counts one model turn of `rootId` (the default root when undefined) against the turn and token limits. */
-	recordTurn?(rootId: string | undefined, measurement?: { totalTokens?: number | null }): Promise<void>;
-	/** Why `rootId` may start no further model work under the turn and token limits, or undefined. */
+	/**
+	 * Counts one model response of `rootId` (the default root when undefined), on any lane of its tree, against the
+	 * turn, token and cost limits.
+	 */
+	recordTurn?(rootId: string | undefined, measurement?: NativeUsageTurnMeasurement): Promise<void>;
+	/** Why `rootId` may start no further model work under the turn, token and cost limits, or undefined. */
 	turnBudgetExhausted?(rootId: string | undefined): Promise<string | undefined>;
 };
+
+/** Provider-reported usage of one model response; a missing cost counts the response as unpriced. */
+export type NativeUsageTurnMeasurement = { totalTokens?: number | null; cost?: number | null };
 
 type StoredMeasurement = {
 	inputTokens: number | null;
@@ -237,8 +246,12 @@ type StoredRoot = {
 	calls: StoredCall[];
 	/** Set on a historical root written by an import, e.g. Pi usage entries; never admits new work. */
 	imported?: { source: string; entries: number };
-	/** Model turns of the root and its descendants, kept while a turn or token limit is set. */
-	turns?: { count: number; tokens: number; lastAt: number };
+	/**
+	 * Model responses of the root and its whole tree (every lane it admitted): the tree's spend. `cost` and
+	 * `unpriced` are absent in documents written before responses carried cost; such a root's spend falls back to
+	 * its settled model calls.
+	 */
+	turns?: { count: number; tokens: number; lastAt: number; cost?: number; unpriced?: number };
 };
 
 type StoredDocument = {
@@ -392,6 +405,9 @@ function validateDocument(valueToCheck: JsonValue): StoredDocument {
 			finiteInteger(turns.count, "turn count");
 			if (finiteNumber(turns.tokens, "turn tokens") < 0) throw new Error("Invalid usage ledger turn tokens");
 			finiteNumber(turns.lastAt, "turn lastAt");
+			if (turns.cost !== undefined && finiteNumber(turns.cost, "turn cost") < 0)
+				throw new Error("Invalid usage ledger turn cost");
+			if (turns.unpriced !== undefined) finiteInteger(turns.unpriced, "turn unpriced");
 		}
 		if (root.imported !== undefined) {
 			const imported = object(root.imported);
@@ -454,8 +470,11 @@ function turnUsage(root: StoredRoot, limits: Required<NativeUsageLimits>): Nativ
 	};
 }
 
-/** The error text for a root that has used up its turn or token limit, or undefined. */
-function turnExhaustion(root: StoredRoot, limits: Required<NativeUsageLimits>): string | undefined {
+/**
+ * The error text for a root whose tree has used up its turn, token or cost limit, or undefined. Every limit counts
+ * the root's whole tree: its own lane and every lane it admitted (sub-agents, frames, typed agents, jobs).
+ */
+function rootExhaustion(root: StoredRoot, limits: Required<NativeUsageLimits>): string | undefined {
 	const count = root.turns?.count ?? 0;
 	const tokens = root.turns?.tokens ?? 0;
 	const advice = "No further model work is admitted for this root; answer with what you have.";
@@ -463,17 +482,42 @@ function turnExhaustion(root: StoredRoot, limits: Required<NativeUsageLimits>): 
 		return `Usage turn limit reached for root ${root.rootId}: ${count} of ${limits.maxTotalTurns} model turns used (max_total_turns, ULTRON_MAX_TOTAL_TURNS). ${advice}`;
 	if (tokens >= limits.maxTotalTokens)
 		return `Usage token limit reached for root ${root.rootId}: ${tokens} of ${limits.maxTotalTokens} tokens used (max_total_tokens, ULTRON_MAX_TOTAL_TOKENS). ${advice}`;
+	if (Number.isFinite(limits.maxCostUsd)) {
+		const cost = spend(root, limits);
+		if (cost.unknownPricedCalls > 0)
+			return `Usage pricing unknown; cannot enforce cost cap of $${limits.maxCostUsd} for root ${root.rootId} (${cost.unknownPricedCalls} model call(s) reported no cost). ${advice}`;
+		if (cost.spentUsd >= limits.maxCostUsd)
+			return `Usage cost cap reached for root ${root.rootId}: spent $${roundUsd(cost.spentUsd)} of $${limits.maxCostUsd} (ULTRON_MAX_COST_USD). ${advice}`;
+	}
 	return undefined;
 }
 
-function spend(root: StoredRoot, limits: Required<NativeUsageLimits>): NativeUsageCost {
-	const models = root.calls.filter((call) => call.kind === "model");
-	const spentUsd = models.reduce((total, call) => total + (call.usage.cost ?? 0), 0);
-	const maxCostUsd = Number.isFinite(limits.maxCostUsd) ? limits.maxCostUsd : null;
+function roundUsd(amount: number): number {
+	return Math.round(amount * 1e6) / 1e6;
+}
+
+/**
+ * Model spend of a root's tree. A root that records responses (the worker records every assistant response on
+ * every lane) is charged from that per-response tally, so a call is never counted twice: a sub-agent's or frame's
+ * settled model call describes the same responses. Roots without the tally (imports, older documents, hosts that
+ * do not record responses) fall back to their settled model calls.
+ */
+function spend(root: StoredRoot, limits?: Required<NativeUsageLimits>): NativeUsageCost {
+	let spentUsd: number;
+	let unknownPricedCalls: number;
+	if (root.turns?.cost !== undefined) {
+		spentUsd = root.turns.cost;
+		unknownPricedCalls = root.turns.unpriced ?? 0;
+	} else {
+		const models = root.calls.filter((call) => call.kind === "model");
+		spentUsd = models.reduce((total, call) => total + (call.usage.cost ?? 0), 0);
+		unknownPricedCalls = models.filter((call) => call.usage.cost === null).length;
+	}
+	const maxCostUsd = limits && Number.isFinite(limits.maxCostUsd) ? limits.maxCostUsd : null;
 	return {
 		maxCostUsd,
 		spentUsd,
-		unknownPricedCalls: models.filter((call) => call.usage.cost === null).length,
+		unknownPricedCalls,
 		remainingUsd: maxCostUsd === null ? null : Math.max(0, maxCostUsd - spentUsd),
 	};
 }
@@ -584,13 +628,10 @@ function foldRoot(history: NativeUsageHistory, root: StoredRoot): void {
 	history.usage = mergeTotals(history.usage, totals(root.calls));
 	for (const kind of ["task", "model", "jev"] as const)
 		history.byKind[kind] = mergeTotals(history.byKind[kind], totals(root.calls.filter((call) => call.kind === kind)));
-	for (const call of root.calls) {
-		if (call.kind === "model") {
-			if (call.usage.cost === null) history.unknownPricedCalls += 1;
-			else history.spentUsd += call.usage.cost;
-		}
-		if (call.kind === "task") history.taskAdmissions[call.status] += 1;
-	}
+	const cost = spend(root);
+	history.spentUsd += cost.spentUsd;
+	history.unknownPricedCalls += cost.unknownPricedCalls;
+	for (const call of root.calls) if (call.kind === "task") history.taskAdmissions[call.status] += 1;
 }
 
 function lastActivity(root: StoredRoot): number {
@@ -734,19 +775,8 @@ export class NativeUsageLedger implements NativeUsageLedgerLike {
 			)
 				throw new Error(`Usage admitted-task limit exceeded for root ${rootId}`);
 			const modelWork = request.kind === "model" || (request.kind === "task" && request.modelBacked !== false);
-			const exhausted = modelWork ? turnExhaustion(root, this.limits) : undefined;
+			const exhausted = modelWork ? rootExhaustion(root, this.limits) : undefined;
 			if (exhausted) throw new Error(exhausted);
-			if (Number.isFinite(this.limits.maxCostUsd) && modelWork) {
-				const cost = spend(root, this.limits);
-				if (cost.unknownPricedCalls > 0)
-					throw new Error(
-						`Usage pricing unknown; cannot enforce cost cap of $${this.limits.maxCostUsd} for root ${rootId} (${cost.unknownPricedCalls} model call(s) reported no cost)`,
-					);
-				if (cost.spentUsd >= this.limits.maxCostUsd)
-					throw new Error(
-						`Usage cost cap reached for root ${rootId}: spent $${cost.spentUsd} of $${this.limits.maxCostUsd}`,
-					);
-			}
 			const asked = request.deadlineAt ?? (request.timeoutMs === undefined ? null : now + request.timeoutMs);
 			// A child inherits whatever remains of the root's wall budget; a longer request is capped, not refused.
 			const requestedDeadline =
@@ -826,35 +856,50 @@ export class NativeUsageLedger implements NativeUsageLedgerLike {
 		});
 	}
 
-	private get countsTurns(): boolean {
-		return Number.isFinite(this.limits.maxTotalTurns) || Number.isFinite(this.limits.maxTotalTokens);
+	/** Whether a per-tree limit (turns, tokens or cost) is set, so each response is written through. */
+	private get enforcesTree(): boolean {
+		return (
+			Number.isFinite(this.limits.maxTotalTurns) ||
+			Number.isFinite(this.limits.maxTotalTokens) ||
+			Number.isFinite(this.limits.maxCostUsd)
+		);
 	}
 
 	/**
-	 * Counts one model turn (one provider response) of `rootId` or one of its descendants. Kept only while a turn or
-	 * token limit is set, so sessions without one never write the ledger per response.
+	 * Counts one model response (one provider turn) of `rootId` or any lane of its tree: its tokens and cost. The
+	 * tally is always kept so `status` shows the tree's spend; it is written through only while a turn, token or
+	 * cost limit is set, so sessions without one never write the ledger per response (it is saved with the next
+	 * reservation or settlement instead).
 	 */
-	recordTurn(rootId: string | undefined, measurement: { totalTokens?: number | null } = {}): Promise<void> {
-		if (!this.countsTurns) return Promise.resolve();
+	recordTurn(rootId: string | undefined, measurement: NativeUsageTurnMeasurement = {}): Promise<void> {
 		return this.enqueue(async () => {
 			const id = rootId ?? this.defaultRootId;
 			const root = this.document.roots[id] ?? emptyRoot(id);
 			if (root.imported) return;
-			const tokens = measurement.totalTokens;
-			const counted = typeof tokens === "number" && Number.isFinite(tokens) && tokens > 0 ? tokens : 0;
+			const known = (amount: number | null | undefined): amount is number =>
+				typeof amount === "number" && Number.isFinite(amount) && amount >= 0;
 			const turns = root.turns ?? { count: 0, tokens: 0, lastAt: 0 };
-			root.turns = { count: turns.count + 1, tokens: turns.tokens + counted, lastAt: this.now() };
+			root.turns = {
+				count: turns.count + 1,
+				tokens: turns.tokens + (known(measurement.totalTokens) ? measurement.totalTokens : 0),
+				lastAt: this.now(),
+				cost: (turns.cost ?? 0) + (known(measurement.cost) ? measurement.cost : 0),
+				unpriced: (turns.unpriced ?? 0) + (known(measurement.cost) ? 0 : 1),
+			};
 			this.document.roots[id] = root;
-			await this.write(this.document);
+			if (this.enforcesTree) await this.write(this.document);
 		});
 	}
 
-	/** The limit error for `rootId` once its turns or tokens reached a limit; undefined while work may continue. */
+	/**
+	 * The limit error for `rootId` once its tree reached the turn, token or cost limit; undefined while work may
+	 * continue.
+	 */
 	turnBudgetExhausted(rootId: string | undefined): Promise<string | undefined> {
-		if (!this.countsTurns) return Promise.resolve(undefined);
+		if (!this.enforcesTree) return Promise.resolve(undefined);
 		return this.enqueue(async () => {
 			const root = this.document.roots[rootId ?? this.defaultRootId];
-			return root ? turnExhaustion(root, this.limits) : undefined;
+			return root ? rootExhaustion(root, this.limits) : undefined;
 		});
 	}
 

@@ -288,10 +288,77 @@ On these five tasks, Ultron's tokens fell by 55%, from 2.50x Pi's to 1.13x. Its 
 1.19x Pi's. These are single trials, so the per-task time differences are within run-to-run noise. The token
 totals are the more reliable signal.
 
-## Left
+## Left (addressed below)
 
-- Child model calls are recorded in the usage ledger without tokens (`unknownCalls`), so `ULTRON_MAX_TOTAL_TOKENS`
-  and the cost cap cannot govern an `rlm.spawn` subtree by tokens. Only admission and wall time bound it.
-- The eval's isolated profile still lists `~/.agents/skills`, for Pi and Ultron alike.
-- Ultron's first request is still about 2x Pi's (4.5k against 2.3k tokens). The remaining gap is the runtime guide,
-  which replaces Pi's four tool schemas and guidelines.
+- Child model calls were recorded in the usage ledger without tokens (`unknownCalls`), so `ULTRON_MAX_TOTAL_TOKENS`
+  and the cost cap could not govern an `rlm.spawn` subtree. Only admission and wall time bounded it.
+- The eval's isolated profile still listed `~/.agents/skills`, for Pi and Ultron alike.
+- Ultron's first request was still about 2x Pi's (4.5k against 2.3k tokens).
+
+# Limits and prompt pass (2026-09-27)
+
+## Tree limits
+
+Every assistant response on every lane (the root's own, `rlm.spawn` children at any depth, frames, typed agents,
+background jobs) is now charged, tokens and cost, to the root that admitted its lane. The turn limit, the token
+limit (`ULTRON_MAX_TOTAL_TOKENS`, `rootBudget`) and the cost cap (`ULTRON_MAX_COST_USD`) all read that tally, and
+`before_request` refuses the next model request on any lane of a spent tree, the root's own included. A task
+stopped this way fails with the limit message; `agents.status` shows the tree's `spend`. Before, a runaway child
+under a $0.02 cap made 1,850 requests (the cap only saw settled calls); now it stops at the request that crosses
+the cap. Each response counts once: frames and children also settle a model call in the ledger, but a root's spend
+is its per-response tally, and a frame's `Budget` is a nested cap inside it. `test/ultron-tree-budget.test.ts`
+runs the real CLI against a scripted provider for the token, cost and turn limits and the frame accounting.
+
+## Eval isolation
+
+`scripts/eval-quality.mjs` and `scripts/profile-overhead.mjs` now give each agent an empty `HOME` inside the run's
+work dir. Both Pi and Ultron read `~/.agents/skills` from the home directory, so the agent dir alone did not
+isolate them. The result JSON records `isolation`; `scripts/eval-isolation.test.mjs` checks both agents with a
+canary skill. The user's skills list was about 3.2 KB of every request for both agents.
+
+## First request
+
+`node scripts/profile-overhead.mjs --runs 1 --variants pi,source --scenario text`:
+
+| First request | Pi 0.84.4 | Ultron before | Ultron after |
+| --- | --- | --- | --- |
+| Body, user home (skills listed) | 8,965 B | 16,642 B | 9,844 B |
+| Body, isolated home | 5,755 B | 13,408 B | 6,629 B (1.15x Pi) |
+| System prompt, isolated | 2,567 chars | 11,666 chars | 5,633 chars |
+| of which the runtime guide | | 9,462 chars | 5,084 chars |
+| of which Pi's docs pointers and custom-tools note | 1,262 chars | 1,329 chars | omitted |
+| Tool schema | 2,901 B (4 tools) | 1,372 B | 689 B |
+
+Guide sections, before and after (characters): Runtime 1,974 to 1,261 (with async events), Skills 2,097 to 1,038,
+Search before delegating 1,393 to 606, Bounded inference 1,723 to 786, Delegation 1,336 to 752, Other APIs 934 to
+636. How:
+
+1. Pi's docs pointers (paths to Pi's README, docs and examples) and the "other custom tools" note are left out in
+   the REPL-only default (`includeHarnessDocs: false` in `buildSystemPrompt`); native mode keeps them.
+2. Each section keeps its rules in one line per API: search before delegating, never spawn subagents to read
+   documents, turn endings, output limits, project code through `bash` with the project's interpreter, `edit`
+   semantics, no polling. The worked search example moved to `help(rlm)`, the `rlm.map` example and handle and
+   contract detail to `help(rlm.load)`/`help(rlm.infer)`/`help(rlm.map)`, and the spawn and collect detail to
+   `help(rlm.spawn)`/`help(rlm.collect)`.
+3. The `rlm` tool description only names the pre-imported APIs; the tool line and REPL rule in Pi's lists are one
+   short line each. The skills are described once, in the guide.
+
+The prompt stays byte-stable across turns (checked on the second request).
+
+## Live checks (glm-5.3-flash, thinking max, 1 trial, Ultron only, isolated home)
+
+| Task | Earlier glm runs (Ultron) | After |
+| --- | --- | --- |
+| research `incident-root-causes` (157 reports) | pass, 353,509 tokens, 273 s, 12 cells, 99 frames (2026-09-26) | pass (P 1.0, R 1.0), 244,540 tokens, 208 s, 14 cells, 0 frames |
+| hard `bugs-scheduler` | pass, 273,984 / 310,373 tokens, 517 / 361 s (2026-09-26) | pass, 214,535 tokens, 630 s, 10 cells |
+| hard `data-sessions` | pass, 26,358 / 26,141 tokens, 69 / 52 s | pass, 18,384 tokens, 90 s, 3 cells |
+| hard `logs-bruteforce` | pass, 44,661 / 53,329 tokens, 83 / 89 s | pass, 51,521 tokens, 129 s, 8 cells |
+
+All four passed, with 529k tokens in all against 721k for the earlier runs (the research run plus the means of
+the hard pairs). The longer wall times come from the model: most of `bugs-scheduler`'s 630 s is
+one 455 s response with thinking at max, while the three hard runs and the research run shared the proxy.
+In the research run the model searched before reading, as the guide asks: it globbed the corpus, filtered with
+two regexes (certificate terms and expiry terms), printed compact per-candidate lines, read the deciding passages
+of the unclear ones, and wrote the answer, with no subagents and no frames. Results are in
+`acceptance/quality/2026-09-27-research-cliproxyapi_glm-5.3-flash-thinking-max-compact-prompt.json` and
+`acceptance/quality/2026-09-27-hard-cliproxyapi_glm-5.3-flash-thinking-max-compact-prompt.json`.

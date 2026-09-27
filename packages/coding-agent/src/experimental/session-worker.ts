@@ -100,6 +100,7 @@ import { type DetachedTaskEnd, NativeRlmHost } from "../ultron/rlm/native-host.t
 import { truncateToolOutput } from "../ultron/rlm/output-truncation.ts";
 import {
 	defaultBuiltinToolNames,
+	NATIVE_FILE_TOOLS,
 	RLM_TOOL_DESCRIPTION,
 	RLM_TOOL_SNIPPET,
 	rlmRuntimePrompt,
@@ -1602,6 +1603,11 @@ async function createCodingAgentHarness(
 			contextFiles,
 			skills: resourceLoader.getSkills().skills,
 			appendSystemPrompt: resourceLoader.getAppendSystemPrompt().join("\n\n"),
+			// REPL-only mode: Pi's docs pointers and custom-tools note describe docs and tools the model lacks
+			// (extension tools are REPL skills, listed in the guide).
+			includeHarnessDocs:
+				!effectiveActiveToolNames.includes("rlm") ||
+				NATIVE_FILE_TOOLS.some((name) => effectiveActiveToolNames.includes(name)),
 		});
 	// Rendered again only when the extension tool list changes (the guide lists them), so the prompt-cache prefix
 	// stays stable.
@@ -1905,15 +1911,22 @@ async function createCodingAgentHarness(
 					})
 				: undefined;
 		const removeAutoMemory = autoMemory?.install(harness) ?? (() => {});
-		// Per-root turn and token limits: every model response on any lane counts against its root, and once a root
-		// is spent its tool calls are refused with the limit error and the run stops (no-ops without a limit).
-		// A turn is recorded asynchronously; the request check waits for records still in flight.
+		// Per-root turn, token and cost limits: every model response on any lane (the root's own, sub-agents, frames,
+		// typed agents, background jobs) is charged, tokens and cost, to the root that admitted its lane. Once a
+		// root's tree is spent its tool calls are refused with the limit error, its runs stop, and no lane of the tree
+		// gets another model request (no-ops without a limit; the tally still feeds `agents.status`).
+		// A response is recorded asynchronously; the request check waits for records still in flight.
 		const pendingTurnRecords = pendingSet();
 		const removeBudgetTurnListener = harness.events.on("message_end", (event) => {
 			if (event.message.role !== "assistant" || event.runId === undefined || "recovery" in event) return;
-			const totalTokens = (event.message as { usage?: { totalTokens?: number } }).usage?.totalTokens ?? null;
+			const reported = (event.message as { usage?: { totalTokens?: number; cost?: { total?: number } } }).usage;
 			pendingTurnRecords.track(
-				usage.recordTurn(host?.usageRootForLane(event.lane, event.runId), { totalTokens }).catch(() => {}),
+				usage
+					.recordTurn(host?.usageRootForLane(event.lane, event.runId), {
+						totalTokens: reported?.totalTokens ?? null,
+						cost: reported?.cost?.total ?? null,
+					})
+					.catch(() => {}),
 			);
 		});
 		const removeBudgetToolHook = harness.hooks.on("before_tool", async (event) => {

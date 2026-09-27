@@ -57,8 +57,8 @@ describe("default tool set", () => {
 		expect(replOnly).toContain("## Skills");
 		expect(replOnly).toContain("## Delegation");
 		expect(replOnly).toContain("await rlm.collect(");
-		expect(replOnly).toContain('await edit(path="pkg/file.py", old_str=..., new_str=...)');
-		expect(replOnly).toContain("goes through `bash` with the project's own toolchain");
+		expect(replOnly).toContain("await edit(path=..., old_str=..., new_str=...)` replaces exactly one occurrence");
+		expect(replOnly).toContain("through `bash` with the project's own interpreter and toolchain");
 		expect(replOnly).toContain("`preview(x)`");
 		expect(replOnly).not.toContain("also run shell");
 		const withNative = rlmRuntimePrompt(["read", "edit", "write", "bash", "rlm"]);
@@ -67,21 +67,28 @@ describe("default tool set", () => {
 		expect(rlmRuntimePrompt(["read", "bash"])).toBeUndefined();
 		expect(rlmToolGuidelines(["rlm"])[0]).toContain("Do all work through the rlm tool");
 		expect(rlmToolGuidelines(["bash", "rlm"])[0]).not.toContain("Do all work");
-		expect(RLM_TOOL_DESCRIPTION).toContain("await bash('''command''')");
-		expect(RLM_TOOL_DESCRIPTION).toContain("raises ValueError");
+		// The tool description names the pre-imported APIs; how to use them is said once, in the guide.
+		expect(RLM_TOOL_DESCRIPTION).toContain("Pre-imported: `bash`, `read`, `edit`");
+		expect(RLM_TOOL_DESCRIPTION).not.toContain("raises ValueError");
+		expect(replOnly).toContain("await bash('''cmd''')");
 	});
 
 	test("the guide stays small, byte-stable and keeps the rules that matter", () => {
 		const guide = rlmRuntimePrompt(["rlm"])!;
-		// 13,976 characters and a 2,185-character tool description before the cost pass (2026-09-27).
-		expect(guide.length).toBeLessThan(10_000);
-		expect(RLM_TOOL_DESCRIPTION.length).toBeLessThan(1_200);
+		// 13,976 characters and a 2,185-character tool description before the cost pass (2026-09-27); 9,462 and
+		// 1,117 before the compact guide (5,084 and 439 after, same day).
+		expect(guide.length).toBeLessThan(5_500);
+		expect(RLM_TOOL_DESCRIPTION.length).toBeLessThan(600);
 		expect(rlmRuntimePrompt(["rlm"])).toBe(guide);
 		for (const rule of [
 			"## Search before delegating",
 			"Do not spawn subagents to read or classify documents",
 			"narrow with code",
 			"Never end a turn with a promise",
+			"A turn ends when you reply without calling rlm",
+			"Output over about 20 KB is cut in the middle",
+			"run all project code (tests, repros, builds, imports) through `bash`",
+			"replaces exactly one occurrence and raises ValueError",
 			"never sleep, poll or loop",
 			"`help(obj)`",
 			"If you are a subagent, do the brief yourself",
@@ -384,7 +391,9 @@ describe("CLI with the RLM-only tool set", () => {
 		expect(await client.getLastAssistantText()).toBe("probed");
 		expect(toolNames(provider.requests[0]!)).toEqual(["rlm"]);
 		const system = provider.requests[0]!.system;
-		expect(system).toContain("- rlm: Run Python in your persistent REPL");
+		expect(system).toContain("- rlm: Python REPL for files");
+		// REPL-only mode leaves out Pi's own docs pointers.
+		expect(system).not.toContain("Pi documentation");
 		expect(system).not.toContain("- bash:");
 		expect(system).toContain("<runtime>");
 		expect(system).toContain("## Delegation");
@@ -405,6 +414,7 @@ describe("CLI with the RLM-only tool set", () => {
 		expect(toolNames(provider.requests.at(-1)!)).toEqual(["read", "edit", "write", "bash", "rlm", "probe"]);
 		expect(provider.requests.at(-1)!.system).toContain("- bash:");
 		expect(provider.requests.at(-1)!.system).toContain("also run shell");
+		expect(provider.requests.at(-1)!.system).toContain("Pi documentation");
 		await native.stop();
 
 		const explicit = startClient(["--no-session", "--tools", "bash,rlm"]);

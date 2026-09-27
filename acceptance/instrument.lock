@@ -55,7 +55,7 @@
 		"packages/coding-agent/test/ultron-a52-context-guards.test.ts": "c69850b06dd5aa233c7fd034c72efcc0a5dd6c6cdd41692fe8ae7e8729fd25c5",
 		"packages/coding-agent/test/ultron-a53-code-skills.test.ts": "4b7a3f2af411db8e5fbbcf13e72c76052f9a699b1db3fa0c93b688b8136cc9ea",
 		"packages/coding-agent/test/ultron-a54-skill-reuse.test.ts": "fc9f3215c436ad69e248c1bdbec2c15606f916b47bf5d75b74ffa51d0dde8b5f",
-		"packages/coding-agent/test/ultron-a55-agent-classes.test.ts": "e2ca3478d70fb01437e657b1ca6d8dd782f9ad9c9df8e06cec7b3d004abaace8",
+		"packages/coding-agent/test/ultron-a55-agent-classes.test.ts": "a98fa66e199b5b27e7586d0ba6abb52b2dcc9a5b68dee5632f7e2d3af6a8d14c",
 		"packages/coding-agent/test/ultron-agent-classes.test.ts": "484f03805bdfc11f43a1e5a82af4d698d5b13fefe4ef2fc8ee421d3ab967a7a8",
 		"packages/coding-agent/test/ultron-async-cli.test.ts": "bd71b13099da5aa954af169315f5fc8d395c56d3940a3e8e7d208af8c4bf437d",
 		"packages/coding-agent/test/ultron-async-events.test.ts": "8d112c861e15c8a816dbe6c492e6b7ad215ff2f37af7ef6e0751237c3d819185",

@@ -110,7 +110,7 @@ export type CodeSkillOptions = {
 
 /** Prompt fragment for the system prompt's Runtime section (Phase 1) and the rlm tool description. */
 export const CODE_SKILLS_PROMPT = [
-	"- Code skills: save a procedure that worked and will recur as tested Python with `await skills.propose_code(name, source, test_source, evidence)`; use an active one with `from code_skills import <name>` instead of re-deriving it. `help(skills)`.",
+	"- Save a working procedure that will recur as a tested code skill (`await skills.propose_code(...)`); reuse one with `from code_skills import <name>`. `help(skills)`.",
 ].join("\n");
 
 const NAME = /^[a-z][a-z0-9_]{0,63}$/;

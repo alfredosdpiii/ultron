@@ -44,7 +44,7 @@ export const CONTEXT_EDIT_EVENT = "ultron:context_edit";
 
 /** Runtime-section text for the kernel's `ctx` API; the integrator places it in the system prompt. */
 export const CONTEXT_PROMPT = [
-	"- `ctx` edits what you see of your own context, never the transcript: `ctx.history()`, `ctx.get(id)`, `ctx.forget(ids, reason)`, `ctx.summarize(ids, text)`, `ctx.pin(id)`, `ctx.note(text)`. A finished task's result collapses to one line after you have seen it (`await agents.result(id)` returns it). `help(ctx)`.",
+	"- `ctx` edits your view of your own context (`ctx.history()`, `ctx.forget`, `ctx.summarize`, `ctx.pin`, `ctx.note`); a seen task result collapses to one line (`await agents.result(id)`). `help(ctx)`.",
 ].join("\n");
 
 const HISTORY_DEFAULT = 20;

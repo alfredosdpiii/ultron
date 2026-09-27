@@ -56,6 +56,8 @@ class Agents:
         return await self._bridge.request('agents.cancel', {'id': task_id})
 
     async def status(self):
+        """Tasks, definitions and usage of this root. `spend` is the root tree's model spend: turns, tokens and
+        costUsd of every response of the root and each lane it admitted, beside its turn, token and cost limits."""
         return await self._bridge.request('agents.status')
 
 

@@ -231,7 +231,7 @@ describe("view_image in the rlm tool", () => {
 	});
 
 	test("the runtime guide lists view_image", () => {
-		expect(rlmRuntimePrompt(["rlm"])).toContain("await view_image(path_or_bytes");
+		expect(rlmRuntimePrompt(["rlm"])).toContain("await view_image(path)");
 	});
 });
 

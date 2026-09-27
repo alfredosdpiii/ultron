@@ -1813,7 +1813,7 @@ describe("experimental client TUI: Pi's settings, auth, session and diagnostic c
 		const { component, importPi, prepareSessionPlugins } = harness;
 		try {
 			runCommand(component, `/import ${piFile}`);
-			await vi.waitFor(() => expect(plain(component.render(200))).toContain("Switch to it?"));
+			await vi.waitFor(() => expect(plain(component.render(200)).replace(/\s+/g, " ")).toContain("Switch to it?"));
 			expect(importPi).toHaveBeenCalledWith(
 				{ sourcePath: piFile, content: readFileSync(piFile, "utf8") },
 				expect.anything(),

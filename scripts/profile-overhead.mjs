@@ -7,7 +7,7 @@
  *
  * Variants: `pi` (installed stock Pi), `source` (this checkout's source CLI via the source resolver),
  * `ultron` (the linked `ultron` build), `bundle` (this checkout's dist/bundle, after `npm run build`). Each run uses a fresh isolated agent dir holding only a
- * models.json that points at the fake provider, and runs RPC mode with --no-session like
+ * models.json that points at the fake provider and an empty HOME, and runs RPC mode with --no-session like
  * scripts/eval-quality.mjs. Reports medians of: time until RPC ready, time from prompt to the first
  * provider request, total prompt wall time, time between tool call and the follow-up request
  * (tool execution + per-turn host work), shutdown time, and request body composition.
@@ -18,6 +18,7 @@ import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { isolatedAgentEnv } from "./eval-quality.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -209,10 +210,12 @@ function variantCommand(variant, agentDir, work) {
 	for (const key of Object.keys(base)) if (/_API_KEY$/.test(key)) delete base[key];
 	const args = ["--mode", "rpc", "--provider", "fake", "--model", "fake"];
 	if (!process.env.PROFILE_KEEP_SESSION) args.push("--no-session");
-	if (variant === "pi") return { command: "pi", args, env: { ...base, PI_CODING_AGENT_DIR: agentDir } };
+	// An empty HOME per run, as in the quality eval, so the user's global skills (~/.agents/skills) never land in
+	// either request body.
+	const isolated = (agentDirEnv) => isolatedAgentEnv({ work, agentDirEnv, agentDir, baseEnv: base });
+	if (variant === "pi") return { command: "pi", args, env: isolated("PI_CODING_AGENT_DIR") };
 	const env = {
-		...base,
-		ULTRON_CODING_AGENT_DIR: agentDir,
+		...isolated("ULTRON_CODING_AGENT_DIR"),
 		ULTRON_SERVER_DIR: mkdtempSync(join("/tmp", "u-prof-")),
 		ULTRON_HINDSIGHT_URL: "off",
 		ULTRON_STARTUP_TRACE: join(work, "startup-trace.jsonl"),

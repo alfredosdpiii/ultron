@@ -833,7 +833,7 @@ export class NativeRlmHost {
 			Object.assign(task, committed);
 			if (task.finishing) return;
 			const result = await this.execute(task, request, context);
-			await this.finish(task, result);
+			await this.finish(task, await this.withLimitReason(task, result));
 		} catch (error) {
 			task.reject?.(error);
 			task.controller?.abort(error);
@@ -844,6 +844,16 @@ export class NativeRlmHost {
 			task.cleanup?.();
 			this.abortLane(task);
 		}
+	}
+
+	/**
+	 * A task that failed once its root's tree ran out of turns, tokens or cost (its next model request was refused)
+	 * fails with the limit message rather than whatever the stopped run left behind.
+	 */
+	private async withLimitReason(task: TaskRecord, result: NativeResult): Promise<NativeResult> {
+		if (result.status !== "failed") return result;
+		const reason = await this.usage?.turnBudgetExhausted?.(task.usageReservation?.rootId).catch(() => undefined);
+		return reason === undefined || result.error === reason ? result : { ...result, error: reason };
 	}
 
 	/**
@@ -1380,6 +1390,19 @@ export class NativeRlmHost {
 				...(graph && shown.length > listed.length ? { truncatedTasks: shown.length - listed.length } : {}),
 				usage,
 				limits: usage?.limits ?? null,
+				// The spend of the caller's root tree: every model response of the root and each lane it admitted.
+				spend:
+					usage === null
+						? null
+						: {
+								root: usage.rootId,
+								turns: usage.turns.turns,
+								tokens: usage.turns.tokens,
+								costUsd: usage.cost.spentUsd,
+								maxTotalTurns: usage.limits.maxTotalTurns,
+								maxTotalTokens: usage.limits.maxTotalTokens,
+								maxCostUsd: usage.limits.maxCostUsd,
+							},
 				...(this.statusExtras?.(caller) ?? {}),
 				controls: Object.fromEntries(
 					[

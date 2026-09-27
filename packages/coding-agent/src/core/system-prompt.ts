@@ -29,6 +29,11 @@ export interface BuildSystemPromptOptions {
 	contextFiles?: Array<{ path: string; content: string }>;
 	/** Pre-loaded skills. */
 	skills?: Skill[];
+	/**
+	 * Ultron: false leaves out the pointers to Pi's own documentation and the note about other custom tools, for
+	 * Ultron's REPL-only mode, where they describe tools and docs the model does not have. Default true.
+	 */
+	includeHarnessDocs?: boolean;
 }
 
 export type NormalizedBuildSystemPromptOptions = BuildSystemPromptOptions & {
@@ -66,6 +71,7 @@ export function normalizeBuildSystemPromptOptions(input: BuildSystemPromptOption
 		cwd: input.cwd,
 		contextFiles: (input.contextFiles ?? []).map((file) => ({ ...file })),
 		skills: (input.skills ?? []).map((skill) => ({ ...skill })),
+		...(input.includeHarnessDocs === undefined ? {} : { includeHarnessDocs: input.includeHarnessDocs }),
 	};
 }
 
@@ -131,6 +137,7 @@ export function buildSystemPromptSections(input: BuildSystemPromptOptions): Syst
 		cwd,
 		contextFiles,
 		skills,
+		includeHarnessDocs = true,
 	} = options;
 
 	for (const name of Object.keys(customSections)) {
@@ -148,9 +155,12 @@ export function buildSystemPromptSections(input: BuildSystemPromptOptions): Syst
 		const visibleTools = selectedTools.filter((name) => !!toolSnippets[name]);
 		const tools =
 			visibleTools.length > 0 ? visibleTools.map((name) => `- ${name}: ${toolSnippets[name]}`).join("\n") : "(none)";
-		promptSections.tools = `${tools}\n\nIn addition to the tools above, you may have access to other custom tools depending on the project.`;
+		promptSections.tools = includeHarnessDocs
+			? `${tools}\n\nIn addition to the tools above, you may have access to other custom tools depending on the project.`
+			: tools;
 		promptSections.rules = buildRules(selectedTools, toolGuidelines, promptGuidelines);
-		promptSections.docs = `Pi documentation (read only when the user asks about pi itself, its SDK, extensions, themes, skills, or TUI):
+		if (includeHarnessDocs)
+			promptSections.docs = `Pi documentation (read only when the user asks about pi itself, its SDK, extensions, themes, skills, or TUI):
 - Main documentation: ${getReadmePath()}
 - Additional docs: ${getDocsPath()}
 - Examples: ${getExamplesPath()} (extensions, custom tools, SDK)

@@ -3,5 +3,5 @@
  * details live in `help(agent)` (the decorator's docstring), so the prompt stays one line.
  */
 export const AGENT_CLASS_PROMPT = [
-	"- Agents as classes: `@agent` on a class makes each docstring-only `async def` method a typed model call (docstring = task, annotations = contract) and annotated fields durable state. `help(agent)`.",
+	"- `@agent` classes: docstring-only async methods are typed model calls, annotated fields durable state. `help(agent)`.",
 ].join("\n");
