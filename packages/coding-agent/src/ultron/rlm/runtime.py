@@ -79,6 +79,15 @@ class HostBridge:
 
 
 class RLMNamespace:
+    """Subagents and bounded inference.
+
+    `h = await rlm.spawn(task, name=...)` starts a subagent with its own REPL (a full agent: it re-sends the
+    system prompt and its own transcript on every turn, so use it for independent multi-step work, not for
+    reading files); `await rlm.collect([h.rlm_child_id])` waits for results; `rlm.list_subagents()`,
+    `rlm.delete_subagent(id)`. `rlm.load`, `rlm.open`, `rlm.infer`, `rlm.map` and `rlm.frames` are the
+    bounded-inference API (`help(rlm.map)`). `rlm.jobs()` / `rlm.job(id)` recover shell jobs.
+    """
+
     def __init__(self, bridge: HostBridge) -> None:
         self._bridge = bridge
 
@@ -135,6 +144,12 @@ class RLMNamespace:
         return ShellJob(self._bridge, await self._bridge.request("shell.get", {"id": job_id}))
 
 class BackgroundNamespace:
+    """Long-running background agent jobs that outlive the turn.
+
+    `await background.start(prompt)` starts one; `background.list()`, `background.inspect(id)`,
+    `background.result(id)` and `background.stop(id)` manage them. Completion arrives as a `task_done` event.
+    """
+
     def __init__(self, bridge: HostBridge) -> None:
         self._bridge = bridge
 
@@ -786,6 +801,9 @@ def _encode_value(value: Any, mutable: set[int]) -> Any:
     kind = type(value)
     if value is None or kind in (bool, int, str, float):
         return value
+    if kind is not list and isinstance(value, list) and getattr(kind, "_snapshot_as_list", False):
+        # A list subclass that only adds metadata (rlm.map's MapResults) is kept as its plain items.
+        kind = list
     if kind in (bytes, bytearray):
         if kind is bytearray:
             if id(value) in mutable:

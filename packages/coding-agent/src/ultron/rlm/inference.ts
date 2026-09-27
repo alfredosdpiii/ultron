@@ -28,17 +28,27 @@ import type { HostCaller, NativeHostApi, NativeHostModule } from "./host-module.
 import type { NativeFrameExecutor, NativeFrameRun, NativeResult } from "./native-host.ts";
 
 /**
+ * Token budget of an `rlm.map` whose caller sets none (`ULTRON_RLM_MAP_TOKENS` overrides it): enough for a few
+ * hundred small frames, so a map over a whole corpus stops with `Incomplete` entries instead of spending millions.
+ */
+export const DEFAULT_MAP_TOKENS = 500_000;
+
+export function defaultMapTokens(env: NodeJS.ProcessEnv = process.env): number {
+	const value = Number(env.ULTRON_RLM_MAP_TOKENS?.trim());
+	return Number.isSafeInteger(value) && value > 0 ? value : DEFAULT_MAP_TOKENS;
+}
+
+/**
  * API description for the model. It belongs in the system prompt's Runtime section; until then it is appended
  * to the `rlm` tool description.
  */
 export const INFERENCE_PROMPT = [
-	"Bounded inference: never read a large input into your context; load it as a handle and program over it.",
-	"- `h = await rlm.load(path_or_text)` returns a ContextHandle (`h.label`, `h.size`, `h.digest`; printing it never shows content). `h.length()`, `h.slice(a, b)`, `h.lines(a, b)` (0-based, end-exclusive), `h.search(regex, limit=20)` -> [{start, end, line, text}], `h.count(regex)`, `h.chunks(chars, overlap=0)` (line-aligned). Views print their text: print only what you must read.",
-	"- `v = await rlm.infer(task, context=[view, 'literal', ...], contract=schema_or_type, budget=Budget(calls, tokens, depth))` asks a private sub-model that sees only the task and those views (no transcript, no tools) and returns the contract-validated value (a JSON schema, or int/str/float/bool/list/dict/list[T]); without a contract, the reply text. Bad answers are re-asked within budget (`max_repairs=2`); running out returns an `Incomplete` (falsy: `.status`, `.spent`, `.remaining`, `.trace_id`, `.last_outputs`), not an exception.",
-	"- `vs = await rlm.map(task, items, contract=..., budget=...)` runs one frame per item (a view or a list of views) under one shared budget, results in order; failed items are `Incomplete` or `FrameError` entries. `await rlm.frames()` lists frame traces.",
-	"- Compute exact numbers in plain Python over the handle (`h.count`, `csv` over `h.lines`); use frames to read and judge text.",
-	"Example (log forensics): `h = await rlm.load('app.log'); hits = h.search(r'ERROR .*timeout', limit=8); causes = await rlm.map('Root cause of this failure, 10 words max.', [h.lines(m['line'] - 20, m['line'] + 5) for m in hits], contract=str)`",
-	"Example (huge CSV): `h = await rlm.load('orders.csv'); head = h.lines(0, 1).text; ids = await rlm.map('Header: ' + head + ' Return the order_id of every row whose comment is a refund complaint.', h.chunks(40000), contract=list[str], budget=Budget(calls=120)); refunds = [i for part in ids if isinstance(part, list) for i in part]`",
+	"Large inputs stay out of your context: load them as handles and program over them.",
+	"- `h = await rlm.load(path_or_text)` returns a ContextHandle (`h.size`, `h.digest`; printing it never shows content). `h.search(regex, limit=20)` -> [{start, end, line, text}], `h.count(regex)`, `h.lines(a, b)` (0-based, end-exclusive), `h.slice(a, b)` and `h.chunks(chars)` return views, which print their text: print only what you must read.",
+	"- `v = await rlm.infer(task, context=[views or strings], contract=T, budget=Budget(calls, tokens, depth))` asks a private sub-model that sees only the task and those views (no transcript, no tools) and returns the contract-validated value (a JSON schema, or int/str/float/bool/list/dict/list[T]). Bad answers are re-asked (`max_repairs`: 2, or 1 for a scalar contract); running out returns a falsy `Incomplete` (`.status`, `.spent`, `.last_outputs`), not an exception.",
+	`- \`vs = await rlm.map(task, items, contract=..., budget=..., context=shared)\` runs one frame per item under one shared budget (by default ${DEFAULT_MAP_TOKENS.toLocaleString("en-US")} tokens: pass \`budget=Budget(tokens=...)\` for more), results in order; a failed item is an \`Incomplete\` or \`FrameError\`. It prints one line with the frames' outcome and tokens spent (also \`vs.spent\`). \`await rlm.frames()\` lists traces.`,
+	"- Every frame is a model request: filter with code first and give each frame only the passage it must judge (a section, a few KB), not whole files. Compute exact numbers in plain Python, not frames.",
+	"Example: `h = await rlm.load('app.log'); hits = h.search(r'ERROR .*timeout', limit=8); causes = await rlm.map('Root cause of this failure, 10 words max.', [h.lines(m['line'] - 20, m['line'] + 5) for m in hits], contract=str)`",
 ].join("\n");
 
 export const RLM_FRAME_DEFINITION = "rlm-frame@1";
@@ -54,6 +64,9 @@ const MAX_FRAME_CONTEXT_CHARS = 4_000_000;
 const MAX_MAP_FRAMES = 10_000;
 const MAX_CONCURRENCY = 16;
 const MAX_REPAIRS = 8;
+/** Re-asks when the caller gives no `max_repairs`: a scalar contract (int, bool, ...) rarely needs a second one. */
+const DEFAULT_REPAIRS = 2;
+const DEFAULT_SCALAR_REPAIRS = 1;
 const MAX_DEPTH = 4;
 const DEFAULT_TIMEOUT_MS = 10 * 60 * 1000;
 const TRACE_INDEX_LIMIT = 200;
@@ -74,6 +87,8 @@ export class BudgetNode {
 	readonly parent: BudgetNode | undefined;
 	readonly calls: Pool;
 	readonly tokens: Pool;
+	/** Set when the token limit is `rlm.map`'s default rather than the caller's: exhaustion then says how to raise it. */
+	defaultTokens = false;
 
 	constructor(
 		id: string,
@@ -361,8 +376,8 @@ function framePrompt(spec: FrameSpec): string {
 	const references = spec.views.filter((view) => view.byReference);
 	if (spec.views.length === 0) parts.push("Context: none.");
 	else {
-		const chars = materialized.reduce((sum, view) => sum + view.chars, 0);
-		parts.push(`Context: ${materialized.length} view(s), ${chars} characters.`);
+		// No per-frame totals before the views: a map's frames then share the task and shared views as one
+		// byte-identical prefix, which the provider's prompt cache can reuse.
 		materialized.forEach((view, index) => {
 			parts.push(
 				`--- view ${index + 1}: ${view.label} (${view.chars} chars) ---\n${view.text}\n--- end of view ${index + 1} ---`,
@@ -386,6 +401,18 @@ function isStringContract(contract: JsonValue): boolean {
 		typeof contract === "object" &&
 		!Array.isArray(contract) &&
 		contract.type === "string" &&
+		Object.keys(contract).every((key) => ["type", "description", "title"].includes(key))
+	);
+}
+
+/** A bare scalar type (`int`, `float`, `bool`, `str`, null): a malformed reply is rarely fixed by a second re-ask. */
+function isScalarContract(contract: JsonValue): boolean {
+	return (
+		contract !== null &&
+		typeof contract === "object" &&
+		!Array.isArray(contract) &&
+		typeof contract.type === "string" &&
+		["string", "integer", "number", "boolean", "null"].includes(contract.type) &&
 		Object.keys(contract).every((key) => ["type", "description", "title"].includes(key))
 	);
 }
@@ -650,13 +677,13 @@ export class InferenceRuntime {
 		return views;
 	}
 
-	private options(payload: Payload, caller: HostCaller, host: NativeHostApi) {
+	private options(payload: Payload, caller: HostCaller, host: NativeHostApi, kind: "infer" | "map" = "infer") {
 		const contract = payload.contract ?? undefined;
 		if (contract !== undefined) validateJsonSchema(contract, "$.contract");
 		const budget = payload.budget == null ? {} : objectPayload(payload.budget, "budget");
 		fields(budget, ["calls", "tokens", "depth"]);
 		const calls = optionalInteger(budget.calls, "budget.calls", 0, Number.MAX_SAFE_INTEGER) ?? null;
-		const tokens = optionalInteger(budget.tokens, "budget.tokens", 0, Number.MAX_SAFE_INTEGER) ?? null;
+		let tokens = optionalInteger(budget.tokens, "budget.tokens", 0, Number.MAX_SAFE_INTEGER) ?? null;
 		const requestedDepth = optionalInteger(budget.depth, "budget.depth", 1, MAX_DEPTH);
 		let model: string | undefined;
 		if (payload.model != null) {
@@ -664,14 +691,20 @@ export class InferenceRuntime {
 				throw new Error("model must be provider/model");
 			model = payload.model;
 		}
-		const maxRepairs = optionalInteger(payload.max_repairs, "max_repairs", 0, MAX_REPAIRS) ?? 2;
+		const maxRepairs =
+			optionalInteger(payload.max_repairs, "max_repairs", 0, MAX_REPAIRS) ??
+			(contract !== undefined && isScalarContract(contract as JsonValue) ? DEFAULT_SCALAR_REPAIRS : DEFAULT_REPAIRS);
 		const timeoutMs = optionalInteger(payload.timeout_ms, "timeout_ms", 1, 60 * 60 * 1000) ?? DEFAULT_TIMEOUT_MS;
 		const callerTaskId = host.callerTaskId(caller);
 		const parentFrame = callerTaskId === null ? undefined : this.byTask.get(callerTaskId);
 		// A nested request gets at most one level less than its frame; the root defaults to depth 1.
 		const ceiling = parentFrame ? parentFrame.node.depth - 1 : MAX_DEPTH;
 		const depth = Math.min(requestedDepth ?? (parentFrame ? ceiling : 1), ceiling);
+		// A top-level map without a token limit gets the default one; a nested map already draws on its frame's pool.
+		const defaultTokens = kind === "map" && tokens === null && !parentFrame;
+		if (defaultTokens) tokens = defaultMapTokens();
 		const node = new BudgetNode(`budget-${randomUUID()}`, { calls, tokens }, Math.max(depth, 0), parentFrame?.node);
+		node.defaultTokens = defaultTokens;
 		return {
 			contract: contract as JsonValue | undefined,
 			node,
@@ -755,7 +788,7 @@ export class InferenceRuntime {
 		if (!Array.isArray(payload.frames)) throw new Error("frames must be a list");
 		if (payload.frames.length > MAX_MAP_FRAMES) throw new Error(`rlm.map takes at most ${MAX_MAP_FRAMES} frames`);
 		const concurrency = optionalInteger(payload.concurrency, "concurrency", 1, MAX_CONCURRENCY) ?? 8;
-		const options = this.options(payload, caller, host);
+		const options = this.options(payload, caller, host, "map");
 		// Validate every item before any frame runs or any budget is touched.
 		const requests = payload.frames.map((item) => this.request(item, options.depth));
 		const frames = requests.map((request) => this.newFrame(request, options));
@@ -995,7 +1028,10 @@ export class InferenceRuntime {
 			return {
 				status: "incomplete",
 				reason: outcome.reason,
-				detail: outcome.detail,
+				detail:
+					outcome.reason === "budget_exhausted" && frame.node.parent?.defaultTokens
+						? `${outcome.detail} (rlm.map's default budget is ${frame.node.parent.tokens.limit} tokens; pass budget=Budget(tokens=...) to allow more)`
+						: outcome.detail,
 				...base,
 				last_outputs: [...frame.outputs],
 			};

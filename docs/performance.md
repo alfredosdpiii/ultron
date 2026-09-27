@@ -145,3 +145,153 @@ Leads to check with metered runs (not done here):
 - Request differences that could make upstream empty streams more likely: the `rlm` tool definition, the
   prompt that lacks Pi's tool guidelines, and the runtime (Pi 0.84.4 runs its own Node 24; Ultron runs the
   system Node 26).
+
+# Cost pass (2026-09-27): where the research task's 8M tokens went
+
+On `cliproxyapi/gpt-6-sol` the research task `incident-root-causes-full` (400 reports, 2.1 MB; find the
+expired-certificate root causes) was exact for both agents, but Ultron took 369 s and 8.0M tokens ($4.48) against
+Pi's 71 s and 289k tokens ($0.17). On the 15-task hard set Ultron used 1.55x Pi's tokens at 1.46x its median time.
+This section breaks the research run down, records what changed, and measures the result live.
+
+## Evidence
+
+- Recorded run A (`acceptance/quality/2026-09-27-research-cliproxyapi_gpt-6-sol.json`, main checkout): the root's
+  RPC events, plus `inspect agents.status` and `get_session_stats` at the end.
+- Diagnostic run B (`acceptance/quality/2026-09-27-research-cliproxyapi_gpt-6-sol-ultron-diagnostic-before.json`):
+  the same code, Ultron only, with the new `--keep-all` eval option. It showed the same pattern. With
+  `--no-session` the child lanes' transcripts were not written to disk, and the usage ledger records child model
+  calls without tokens (`unknownCalls`). So per-child usage is reconstructed: session totals minus the root's
+  per-message usage. `--keep-all` now also drops `--no-session`, so later runs keep every lane's transcript and the
+  frame traces.
+
+## Breakdown
+
+| | Pi | Ultron run A | Ultron run B |
+| --- | --- | --- | --- |
+| Wall time | 71 s | 369 s | 196 s |
+| Total tokens (cost) | 288,678 ($0.17) | 7,995,811 ($4.48) | 4,359,699 ($2.49) |
+| Model requests | 12 | 339 | 242 |
+| Root requests / tokens | 12 / 289k | 13 / 164k (2.1%) | 13 / 231k (5.3%) |
+| Subagents (`rlm.spawn`) | none | 24 `rlm-child`, 3 levels deep (4, then 16, then 4) | 25 `rlm-child`, 4 levels deep (4, 9, 11, 1) |
+| Their requests / tokens | | 326 / 7.83M (97.9%) incl. 9 frames | 229 / 4.13M (94.7%) |
+| Inference frames | | 9 `rlm-frame` (3 answered, 6 refused: "the budget cannot cover the first request") | 0 |
+| Root time blocked in `rlm.collect` | | 284 s (77%) | 116 s (59%) |
+| Cache reads | 0.20M | 6.71M (84% of tokens) | 3.67M (84%) |
+
+So the cost came from subagents, not from frames or the root. Frames were a rounding error: the 9 in run A were
+started by grandchildren, and six of them spent nothing. What happened in both runs:
+
+1. The root spawned subagents at its third or fourth cell, before it had narrowed anything. In run A that was
+   4 children of 100 reports each. In run B it filtered to 146 keyword candidates, split them over 3 children,
+   and sent the other 254 reports to a fourth.
+2. Every child is a full agent. It has the same system prompt, runtime guide and tool schema, about 5.8k tokens
+   per request, and re-sends its growing transcript on every turn. Each child split its slice again into
+   grandchildren, and some grandchildren split again. The guide said nothing to stop this, and nothing in the
+   host limited it.
+3. Meanwhile the root did Pi's winning approach itself. It grepped, printed one line per candidate and read the
+   root-cause lines of about 30 candidates. Then it waited for the children and wrote their answer, so the tree's
+   work was duplicated.
+
+The fixed per-request prompt alone accounts for 326 x 5.8k = 1.9M tokens in run A (24%) and 1.33M in run B
+(31%). The rest is the children's transcripts: each read 25 to 100 reports (about 1.4k tokens each) and re-sent
+them on every later turn, about 24k tokens per request on average in run A.
+
+Pi's run had 12 requests. It counted regex hits for `expir`, `cert`, `TLS`, `SSL` and `notAfter`, and looked at
+the heads of 5 reports. It printed the certificate-related lines of every matching report, one compact line per
+file (44 KB), and checked expiry mentions without certificate words. It printed the root-cause and expiry lines of
+35 candidates (36 KB), then wrote the 25 ids. Its context peaked at about 45k tokens.
+
+Other findings:
+
+- Both agents' first cell read `~/.agents/skills/unslop/SKILL.md` ("Must always apply"). The eval's isolated
+  profile does not isolate `~/.agents/skills`, so both prompts list the user's skills (about 0.9k tokens).
+- The root's rlm output adds no framing: a cell's result is its printed text, plus at most one hint line.
+- The system prompt and tools are byte-identical across turns (checked on every request of the `rlm` profile
+  scenario, before and after), so prompt caching works. The cost is volume, not cache misses.
+
+## Fixed cost per request
+
+Measured with `scripts/profile-overhead.mjs --scenario rlm,text --dump-system` (local fake provider, same machine
+profile, so both prompts include the same user skills list):
+
+| First request | Pi 0.84.4 | Ultron before | Ultron after |
+| --- | --- | --- | --- |
+| Request body | 8,965 B | 22,310 B | 16,681 B |
+| System prompt | 5,734 chars | 19,393 chars | 14,879 chars |
+| of which the runtime guide | | 13,976 chars | 9,462 chars |
+| Tool schema | 2,901 B (4 tools) | 2,447 B (`rlm`) | 1,372 B (`rlm`) |
+| Live first-request input tokens (gpt-6-sol) | 2,349 | 5,826 | 4,535 |
+
+## Changes
+
+1. **Search before delegating** (`src/ultron/rlm/prompt.ts`). A new guide section: for a corpus, search for the
+   concept and its synonyms in Python, print one line per candidate, read the deciding passages of the unclear
+   ones, and use `rlm.map` only for what a line cannot settle or when the narrowed text is still over about 100 KB.
+   Never spawn subagents to read or classify documents. It includes a worked example shaped like Pi's approach.
+   The Delegation section says the same, and tells a subagent to do its brief itself.
+2. **Subagent nesting limit** (`native-host.ts`). `rlm.spawn` refuses beyond `ULTRON_SPAWN_DEPTH` levels (default
+   2: children may spawn, grandchildren may not; 0 means no limit). The error tells the model to do the part itself.
+   Both runs above went 3 and 4 levels deep.
+3. **Cheaper, bounded frames** (`inference.ts`, `infer_api.py`):
+   - A top-level `rlm.map` without a token limit gets a default budget of 500,000 tokens (`ULTRON_RLM_MAP_TOKENS`).
+     Frames beyond it come back `Incomplete`, with a detail that says how to raise the limit.
+   - `rlm.map` returns a `MapResults` list with `.spent`, `.budget` and `.remaining`, and prints one line such as
+     `[rlm.map] 40 frames: 38 complete, 2 incomplete, 0 failed; spent 40 calls, 81,200 tokens of 500,000`, so
+     the model sees what the map cost. It snapshots as a plain list.
+   - Without `max_repairs`, a scalar contract (int, float, bool, str, null) is re-asked once instead of twice.
+   - The per-frame `Context: N view(s), X characters` line before the views is gone. A map's frames now share the
+     task and the shared `context=` views as a byte-identical, cacheable prefix.
+   - The frame system prompt was already about 500 characters with no tools, so it is unchanged.
+4. **Shorter guide and tool description.** Runtime, skills, bounded inference and delegation are compressed to one
+   line per API. The details of `ctx`, code skills, agents as classes, typed agents, workflows, background jobs,
+   shell jobs and `rlm` moved into their docstrings, which the guide points to with `help(obj)`. The guide went from
+   13,976 to 9,462 characters, including the new 1.4k search section. The `rlm` tool description went from 2,185 to
+   1,117. Every root and child request is about 1.3k tokens lighter.
+5. **`--keep-all`** in `scripts/eval-quality.mjs` keeps passing runs' evidence and the session.
+
+A47 to A50 behaviour is unchanged: contracts, repair, `Incomplete`, shared budgets, tranches and cancellation. An
+explicit `max_repairs` or token budget always wins. The A47/A48 evidence tests gained assertions for the reported
+spend and were relocked.
+
+## Live results (gpt-6-sol, 1 trial, Ultron only; Pi's recorded runs are the baseline)
+
+Research, `incident-root-causes-full`
+(`acceptance/quality/2026-09-27-research-cliproxyapi_gpt-6-sol-ultron-after-cost-pass.json`):
+
+| | Pi | Ultron before (A / B) | Ultron after |
+| --- | --- | --- | --- |
+| Pass (precision, recall) | 1.0, 1.0 | 1.0, 1.0 / 1.0, 1.0 | 1.0, 1.0 |
+| Wall time | 71 s | 369 s / 196 s | 73 s |
+| Tokens | 288,678 | 7,995,811 / 4,359,699 | 286,685 |
+| Cost | $0.167 | $4.48 / $2.49 | $0.143 |
+| Requests, subagents, frames | 12, 0, 0 | 339, 24, 9 / 242, 25, 0 | 12, 0, 0 |
+
+After the change, Ultron searched and narrowed in 11 cells, much as Pi did. It printed compact candidate lines and
+read about 25 candidates' root-cause passages, then wrote the answer. It spawned nothing and used no frames.
+
+Hard set, 5 representative tasks
+(`acceptance/quality/2026-09-27-hard5-cliproxyapi_gpt-6-sol-ultron-after-cost-pass.json`; Pi and "before" are from
+`2026-09-27-hard-cliproxyapi_gpt-6-sol.json`):
+
+| Task | Pi tokens / time | Ultron before | Ultron after |
+| --- | --- | --- | --- |
+| bugs-scheduler | 87,735 / 117.7 s | 233,426 / 108.7 s | 51,744 / 70.0 s |
+| refactor-intervals-fast | 31,084 / 71.4 s | 114,205 / 183.8 s | 70,339 / 145.7 s |
+| data-sessions | 31,421 / 32.8 s | 66,540 / 55.8 s | 34,682 / 34.5 s |
+| logs-bruteforce | 23,466 / 28.5 s | 32,039 / 31.3 s | 34,927 / 39.1 s |
+| huge-catalog-diff | 17,382 / 27.9 s | 31,822 / 35.6 s | 24,915 / 35.5 s |
+| Total tokens (cost) | 191,088 ($0.235) | 478,032 ($0.481) | 216,607 ($0.285) |
+| Median time | 32.8 s | 55.8 s | 39.1 s |
+| Passed | 5/5 | 5/5 | 5/5 |
+
+On these five tasks, Ultron's tokens fell by 55%, from 2.50x Pi's to 1.13x. Its median time went from 1.70x to
+1.19x Pi's. These are single trials, so the per-task time differences are within run-to-run noise. The token
+totals are the more reliable signal.
+
+## Left
+
+- Child model calls are recorded in the usage ledger without tokens (`unknownCalls`), so `ULTRON_MAX_TOTAL_TOKENS`
+  and the cost cap cannot govern an `rlm.spawn` subtree by tokens. Only admission and wall time bound it.
+- The eval's isolated profile still lists `~/.agents/skills`, for Pi and Ultron alike.
+- Ultron's first request is still about 2x Pi's (4.5k against 2.3k tokens). The remaining gap is the runtime guide,
+  which replaces Pi's four tool schemas and guidelines.

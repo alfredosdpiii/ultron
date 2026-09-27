@@ -44,8 +44,7 @@ export const CONTEXT_EDIT_EVENT = "ultron:context_edit";
 
 /** Runtime-section text for the kernel's `ctx` API; the integrator places it in the system prompt. */
 export const CONTEXT_PROMPT = [
-	"- `ctx` manages your own context (the transcript itself is never changed): `await ctx.history(limit=20, kinds=None)` lists recent items with id, kind, bytes, preview and state; `await ctx.get(id)` returns one in full; `await ctx.forget(ids, reason)` removes items from what you see; `await ctx.summarize(ids, text)` replaces a span with your summary; `await ctx.pin(id)` keeps an item through edits and compaction; `await ctx.note(text)` records a note that survives compaction. The current user message and pinned items cannot be forgotten.",
-	'- Task results collapse on return: after you have seen a cell\'s output once, it shrinks to one line per finished task (definition, key, status, cost). `await agents.result("<task id>")` returns the full value again; `await ctx.get(id)` shows the original output.',
+	"- `ctx` edits what you see of your own context, never the transcript: `ctx.history()`, `ctx.get(id)`, `ctx.forget(ids, reason)`, `ctx.summarize(ids, text)`, `ctx.pin(id)`, `ctx.note(text)`. A finished task's result collapses to one line after you have seen it (`await agents.result(id)` returns it). `help(ctx)`.",
 ].join("\n");
 
 const HISTORY_DEFAULT = 20;

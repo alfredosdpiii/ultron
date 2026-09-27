@@ -1,0 +1,80 @@
+{
+  "taskSet": "research",
+  "frozenAt": "2026-09-27-research",
+  "thresholds": {
+    "maxPassRateDropPoints": 10,
+    "maxMedianLatencyRatio": 2,
+    "maxCostRatio": 2
+  },
+  "model": "cliproxyapi/gpt-6-sol",
+  "ultronCommand": "node --import ~/Projects/personal/ultron-wt-cost/packages/coding-agent/src/experimental/source-resolver.ts ~/Projects/personal/ultron-wt-cost/packages/coding-agent/src/cli.ts",
+  "trials": 1,
+  "judge": {
+    "model": "cliproxyapi/glm-5.3-flash",
+    "thinking": "low",
+    "command": "pi"
+  },
+  "summary": {
+    "byVariant": {
+      "ultron": {
+        "runs": 1,
+        "infrastructure": 0,
+        "passRate": 1,
+        "categories": {
+          "semantic-research": {
+            "passed": 1,
+            "runs": 1
+          }
+        },
+        "medianDurationMs": 195671,
+        "totalCost": 2.485172400000001,
+        "uptake": {
+          "toolsByName": {
+            "rlm": 12
+          },
+          "rlmRunShare": 1,
+          "framesSpawned": {
+            "runs": 1,
+            "total": 25,
+            "median": 25
+          },
+          "rootUnseenBytes": {
+            "runs": 0,
+            "total": null,
+            "median": null
+          }
+        }
+      }
+    },
+    "gate": [],
+    "passed": false
+  },
+  "records": [
+    {
+      "task": "incident-root-causes-full",
+      "category": "semantic-research",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "toolsByName": {
+        "rlm": 12
+      },
+      "framesSpawned": 25,
+      "rootUnseenBytes": null,
+      "toolCalls": 12,
+      "tasksByDefinition": {
+        "rlm-child": 25
+      },
+      "framesSource": "inspect",
+      "cost": 2.485172400000001,
+      "tokens": 4359699,
+      "durationMs": 195671,
+      "verify": {
+        "status": 0,
+        "output": "missed: \nextra: \n{\"precision\": 1.0, \"recall\": 1.0, \"passed\": true, \"answered\": 25, \"missed\": 0, \"extra\": 0}\n"
+      },
+      "evidence": "/tmp/claude-1000/-home-bryan--pi/5d60a779-e265-418c-9996-f27f1acf766b/scratchpad/keep/incident-root-causes-full-ultron-1-2026-09-27T05-11-55-334Z"
+    }
+  ]
+}

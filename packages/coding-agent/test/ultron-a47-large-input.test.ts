@@ -39,7 +39,7 @@ const COUNT_CELL = `import json
 h = await rlm.load('big.log')
 counts = await rlm.map('Count the lines that contain ERROR. Reply with the integer.', h.chunks(24000), contract=int, budget=Budget(calls=200))
 bad = [c for c in counts if not isinstance(c, int)]
-print('RESULT ' + json.dumps({'errors': sum(c for c in counts if isinstance(c, int)), 'frames': len(counts), 'bad': len(bad), 'handle': repr(h)}))`;
+print('RESULT ' + json.dumps({'errors': sum(c for c in counts if isinstance(c, int)), 'frames': len(counts), 'bad': len(bad), 'handle': repr(h), 'spent': counts.spent, 'budget': counts.budget, 'summary': counts.summary()}))`;
 
 const REPAIR_CELL = `import json
 h = await rlm.load('big.log')
@@ -166,6 +166,17 @@ describe("A47 an input larger than the window is processed exactly through bound
 		expect(result!.frames).toBeGreaterThan(4);
 		// Printing a handle shows its label, size and digest only.
 		expect(result!.handle).toMatch(/^ContextHandle\(label='big.log', chars=\d+, size=\d+, digest='sha256:/);
+		// The map reports what it spent: on the result, and as one printed line the model sees.
+		expect(result!.spent.calls).toBe(result!.frames);
+		expect(result!.spent.tokens).toBeGreaterThan(0);
+		expect(result!.budget).toMatchObject({ calls: 200 });
+		expect(result!.summary).toMatch(
+			new RegExp(
+				`^\\[rlm\\.map\\] ${result!.frames} frames: ${result!.frames} complete, 0 incomplete, 0 failed; spent ${result!.frames} calls, [\\d,]+ tokens of [\\d,]+$`,
+			),
+		);
+		const cellText = JSON.stringify(await client.getMessages());
+		expect(cellText).toContain(`[rlm.map] ${result!.frames} frames`);
 
 		const frames = provider.requests.filter(isFrame);
 		const roots = provider.requests.filter((request) => !isFrame(request));

@@ -6,7 +6,7 @@
  *   node scripts/eval-quality.mjs [--tasks default|hard|judged|parallel|research] [--model cliproxyapi/gpt-6-sol] [--trials 2]
  *                                 [--concurrency 3] [--only id,id] [--variants pi,ultron] [--out path]
  *                                 [--baseline recorded.json] [--thinking off|low|medium|high|xhigh|max]
- *                                 [--keep-failed dir] [--ultron-command "node --import ... cli.ts"]
+ *                                 [--keep-failed dir] [--keep-all] [--ultron-command "node --import ... cli.ts"]
  *                                 [--judge-model cliproxyapi/glm-5.3-flash] [--judge-thinking low] [--no-judge]
  *   node scripts/eval-quality.mjs --tasks hard --self-check [--only id,id] [--concurrency 4]
  *   node scripts/eval-quality.mjs --tasks judged --self-check [--judge-live]
@@ -57,6 +57,8 @@
  * <keep>/<run>/events.jsonl, where <keep> is `--keep-failed` (default /tmp/ultron-quality-failed). A failed
  * run additionally keeps its project dir (with the hidden check files), its isolated agent dir (Ultron's
  * session files live under agent/experimental/sessions), the agent's stderr, and the hidden check output.
+ * `--keep-all` keeps the same evidence for passing runs too, and runs the agent with a session instead of
+ * `--no-session`, so the kept agent dir holds every lane's transcript and usage and the frame traces (cost diagnosis).
  * `--ultron-command` replaces the `ultron` binary (e.g. a worktree's source through the source resolver).
  */
 import { spawn } from "node:child_process";
@@ -378,7 +380,7 @@ function createModelJudge({ command, model, thinking, keepDir }) {
 	};
 }
 
-async function runOne({ task, variant, trial, model, thinking, keepDir, commands, judge }) {
+async function runOne({ task, variant, trial, model, thinking, keepDir, keepAll, commands, judge }) {
 	const work = mkdtempSync(join(tmpdir(), `ultron-quality-${task.id}-${variant}-`));
 	const project = join(work, "project");
 	const agentDir = join(work, "agent");
@@ -413,7 +415,8 @@ async function runOne({ task, variant, trial, model, thinking, keepDir, commands
 			model.slice(0, split),
 			"--model",
 			model.slice(split + 1),
-			"--no-session",
+			// --keep-all keeps the session (every lane's transcript and usage, frame traces) in the kept agent dir.
+			...(keepAll ? [] : ["--no-session"]),
 			// Both variants get the same explicit level; without it each picks its own default.
 			...(thinking ? ["--thinking", thinking] : []),
 		],
@@ -476,8 +479,8 @@ async function runOne({ task, variant, trial, model, thinking, keepDir, commands
 	writeTree(project, hidden);
 	record.verify = await runVerify(task, project);
 	record.passed = !record.error && record.verify.status === 0;
-	if (!record.passed) {
-		// Evidence for failed runs: the files the agent left, its session files, stderr and the hidden check output.
+	if (!record.passed || keepAll) {
+		// Evidence for failed runs (and every run with --keep-all): the files the agent left, its session files, stderr and the hidden check output.
 		cpSync(project, join(keep, "project"), { recursive: true });
 		cpSync(agentDir, join(keep, "agent"), { recursive: true });
 		writeFileSync(join(keep, "stderr.txt"), session.stderr());
@@ -800,6 +803,7 @@ async function main() {
 	const variants = arg("variants", "pi,ultron").split(",");
 	const thinking = arg("thinking", "") || undefined;
 	const keepDir = resolve(arg("keep-failed", DEFAULT_KEEP_DIR));
+	const keepAll = process.argv.includes("--keep-all");
 	const ultronCommand = arg("ultron-command", "");
 	const commands = {
 		pi: VARIANTS.pi.command,
@@ -818,7 +822,7 @@ async function main() {
 	const judge = process.argv.includes("--no-judge") ? undefined : makeJudge(keepDir);
 	const jobs = selected.flatMap((task) =>
 		variants.flatMap((variant) =>
-			Array.from({ length: trials }, (_, index) => ({ task, variant, trial: index + 1, model, thinking, keepDir, commands, judge })),
+			Array.from({ length: trials }, (_, index) => ({ task, variant, trial: index + 1, model, thinking, keepDir, keepAll, commands, judge })),
 		),
 	);
 	console.log(`Quality comparison (${taskSet} set): ${selected.length} tasks x ${variants.join("/")} x ${trials} trials = ${jobs.length} runs (${model}${thinking ? `, thinking ${thinking}` : ""})`);

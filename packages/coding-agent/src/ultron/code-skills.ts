@@ -110,8 +110,7 @@ export type CodeSkillOptions = {
 
 /** Prompt fragment for the system prompt's Runtime section (Phase 1) and the rlm tool description. */
 export const CODE_SKILLS_PROMPT = [
-	"Code skills are tested Python kept across sessions. When a procedure worked and will recur, save it: `await skills.propose_code(name, source, test_source, evidence)` (name is a lowercase identifier; `test_source` defines `test_*` functions and imports the skill with `from code_skills import <name>`). The test runs in a fresh kernel; only a passing version becomes active. `await skills.rollback(name, version)` undoes the active version; `await skills.code_list()` and `await skills.code_history(name)` inspect them.",
-	"Use an active code skill instead of re-deriving it: `from code_skills import <name>` works in every kernel.",
+	"- Code skills: save a procedure that worked and will recur as tested Python with `await skills.propose_code(name, source, test_source, evidence)`; use an active one with `from code_skills import <name>` instead of re-deriving it. `help(skills)`.",
 ].join("\n");
 
 const NAME = /^[a-z][a-z0-9_]{0,63}$/;

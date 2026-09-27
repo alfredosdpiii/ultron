@@ -18,6 +18,15 @@ class TaskHandle:
 
 
 class Agents:
+    """Typed agents run by the Ultron host.
+
+    `await agents.list()` shows definitions (for example "rlm-child@1" with input `{"prompt": ...}`);
+    `await agents.invoke(definition, input)` runs one and returns `{"status": ..., "value": ...}`;
+    `t = await agents.spawn(definition, input)` starts one in the background (its completion arrives as a
+    `task_done` event) and `await t.result()` collects it. `agents.tasks()`, `agents.inspect(id)`,
+    `agents.result(id)`, `agents.cancel(id)` and `agents.status()` manage tasks.
+    """
+
     def __init__(self, bridge):
         self._bridge = bridge
 
@@ -51,6 +60,8 @@ class Agents:
 
 
 class Workflows:
+    """`await workflows.run(nodes)` validates an agent graph and runs it (see `help(workflows.run)`)."""
+
     def __init__(self, bridge):
         self._bridge = bridge
 

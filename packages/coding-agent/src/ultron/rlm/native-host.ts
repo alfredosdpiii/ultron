@@ -227,6 +227,15 @@ function publicRecord(task: TaskRecord): NativeTask {
 	};
 }
 
+/** Nesting limit for `rlm.spawn` subagents (`ULTRON_SPAWN_DEPTH`, default 2; 0 means no limit). */
+export const DEFAULT_SPAWN_DEPTH = 2;
+
+export function spawnDepthLimit(env: NodeJS.ProcessEnv = process.env): number {
+	const raw = env.ULTRON_SPAWN_DEPTH?.trim();
+	const value = raw ? Number(raw) : Number.NaN;
+	return Number.isSafeInteger(value) && value >= 0 ? value : DEFAULT_SPAWN_DEPTH;
+}
+
 function publicTask(task: TaskRecord): Record<string, unknown> {
 	return {
 		id: task.id,
@@ -1422,6 +1431,21 @@ export class NativeRlmHost {
 		}
 		if (type === "rlm.spawn") {
 			fields(payload, ["prompt", "kwargs"]);
+			// Recursive fan-out (children re-splitting their slice into grandchildren) multiplies the whole prompt and
+			// transcript per level; a subagent nested this deep does its part itself.
+			const limit = spawnDepthLimit();
+			let depth = 0;
+			for (
+				let id = parentId;
+				id !== undefined;
+				id = this.tasks.get(id)?.parentId ?? journal.find((task) => task.id === id)?.parentId
+			)
+				if ((this.tasks.get(id) ?? journal.find((task) => task.id === id))?.definition === "rlm-child@1")
+					depth += 1;
+			if (limit > 0 && depth >= limit)
+				throw new Error(
+					`rlm.spawn refused: subagents nest at most ${limit} level(s) deep (ULTRON_SPAWN_DEPTH). Do this part yourself: narrow with code, read the candidates, and use rlm.map for passages you cannot settle.`,
+				);
 			const prompt = nonemptyString(payload.prompt, "prompt");
 			const kwargs = payload.kwargs === undefined ? {} : objectInput(payload.kwargs);
 			fields(kwargs, ["name", "model", "timeout_ms"]);

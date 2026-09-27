@@ -1,0 +1,190 @@
+{
+  "taskSet": "hard",
+  "frozenAt": "2026-09-25-hard",
+  "thresholds": {
+    "maxPassRateDropPoints": 10,
+    "maxMedianLatencyRatio": 2,
+    "maxCostRatio": 2
+  },
+  "model": "cliproxyapi/gpt-6-sol",
+  "ultronCommand": "node --import ~/Projects/personal/ultron-wt-cost/packages/coding-agent/src/experimental/source-resolver.ts ~/Projects/personal/ultron-wt-cost/packages/coding-agent/src/cli.ts",
+  "trials": 1,
+  "judge": {
+    "model": "cliproxyapi/glm-5.3-flash",
+    "thinking": "low",
+    "command": "pi"
+  },
+  "summary": {
+    "byVariant": {
+      "ultron": {
+        "runs": 5,
+        "infrastructure": 0,
+        "passRate": 1,
+        "categories": {
+          "large-data": {
+            "passed": 1,
+            "runs": 1
+          },
+          "multi-bug": {
+            "passed": 1,
+            "runs": 1
+          },
+          "log-forensics": {
+            "passed": 1,
+            "runs": 1
+          },
+          "huge-file": {
+            "passed": 1,
+            "runs": 1
+          },
+          "refactor": {
+            "passed": 1,
+            "runs": 1
+          }
+        },
+        "medianDurationMs": 39098,
+        "totalCost": 0.2848892,
+        "uptake": {
+          "toolsByName": {
+            "rlm": 23
+          },
+          "rlmRunShare": 1,
+          "framesSpawned": {
+            "runs": 5,
+            "total": 0,
+            "median": 0
+          },
+          "rootUnseenBytes": {
+            "runs": 0,
+            "total": null,
+            "median": null
+          }
+        }
+      }
+    },
+    "gate": [],
+    "passed": false
+  },
+  "records": [
+    {
+      "task": "data-sessions",
+      "category": "large-data",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "toolsByName": {
+        "rlm": 4
+      },
+      "framesSpawned": 0,
+      "rootUnseenBytes": null,
+      "toolCalls": 4,
+      "tasksByDefinition": {},
+      "framesSource": "inspect",
+      "cost": 0.0413384,
+      "tokens": 34682,
+      "durationMs": 34500,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/claude-1000/-home-bryan--pi/5d60a779-e265-418c-9996-f27f1acf766b/scratchpad/keep3/data-sessions-ultron-1-2026-09-27T05-34-57-199Z"
+    },
+    {
+      "task": "bugs-scheduler",
+      "category": "multi-bug",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "toolsByName": {
+        "rlm": 5
+      },
+      "framesSpawned": 0,
+      "rootUnseenBytes": null,
+      "toolCalls": 5,
+      "tasksByDefinition": {},
+      "framesSource": "inspect",
+      "cost": 0.066728,
+      "tokens": 51744,
+      "durationMs": 69983,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/claude-1000/-home-bryan--pi/5d60a779-e265-418c-9996-f27f1acf766b/scratchpad/keep3/bugs-scheduler-ultron-1-2026-09-27T05-34-56-631Z"
+    },
+    {
+      "task": "logs-bruteforce",
+      "category": "log-forensics",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "toolsByName": {
+        "rlm": 4
+      },
+      "framesSpawned": 0,
+      "rootUnseenBytes": null,
+      "toolCalls": 4,
+      "tasksByDefinition": {},
+      "framesSource": "inspect",
+      "cost": 0.034477999999999995,
+      "tokens": 34927,
+      "durationMs": 39098,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/claude-1000/-home-bryan--pi/5d60a779-e265-418c-9996-f27f1acf766b/scratchpad/keep3/logs-bruteforce-ultron-1-2026-09-27T05-35-32-836Z"
+    },
+    {
+      "task": "huge-catalog-diff",
+      "category": "huge-file",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "toolsByName": {
+        "rlm": 3
+      },
+      "framesSpawned": 0,
+      "rootUnseenBytes": null,
+      "toolCalls": 3,
+      "tasksByDefinition": {},
+      "framesSource": "inspect",
+      "cost": 0.030530800000000004,
+      "tokens": 24915,
+      "durationMs": 35474,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/claude-1000/-home-bryan--pi/5d60a779-e265-418c-9996-f27f1acf766b/scratchpad/keep3/huge-catalog-diff-ultron-1-2026-09-27T05-36-07-201Z"
+    },
+    {
+      "task": "refactor-intervals-fast",
+      "category": "refactor",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "toolsByName": {
+        "rlm": 7
+      },
+      "framesSpawned": 0,
+      "rootUnseenBytes": null,
+      "toolCalls": 7,
+      "tasksByDefinition": {},
+      "framesSource": "inspect",
+      "cost": 0.11181400000000001,
+      "tokens": 70339,
+      "durationMs": 145669,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/claude-1000/-home-bryan--pi/5d60a779-e265-418c-9996-f27f1acf766b/scratchpad/keep3/refactor-intervals-fast-ultron-1-2026-09-27T05-34-56-635Z"
+    }
+  ]
+}

@@ -70,6 +70,31 @@ describe("default tool set", () => {
 		expect(RLM_TOOL_DESCRIPTION).toContain("await bash('''command''')");
 		expect(RLM_TOOL_DESCRIPTION).toContain("raises ValueError");
 	});
+
+	test("the guide stays small, byte-stable and keeps the rules that matter", () => {
+		const guide = rlmRuntimePrompt(["rlm"])!;
+		// 13,976 characters and a 2,185-character tool description before the cost pass (2026-09-27).
+		expect(guide.length).toBeLessThan(10_000);
+		expect(RLM_TOOL_DESCRIPTION.length).toBeLessThan(1_200);
+		expect(rlmRuntimePrompt(["rlm"])).toBe(guide);
+		for (const rule of [
+			"## Search before delegating",
+			"Do not spawn subagents to read or classify documents",
+			"narrow with code",
+			"Never end a turn with a promise",
+			"never sleep, poll or loop",
+			"`help(obj)`",
+			"If you are a subagent, do the brief yourself",
+			"rlm.map",
+			"help(ctx)",
+			"help(skills)",
+			"help(agent)",
+		])
+			expect(guide).toContain(rule);
+		// Rarely needed detail lives in docstrings, not in every request.
+		expect(guide).not.toContain("Triage.generations()");
+		expect(guide).not.toContain("code_history");
+	});
 });
 
 describe("tool output truncation", () => {

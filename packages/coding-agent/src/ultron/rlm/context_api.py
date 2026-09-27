@@ -6,6 +6,18 @@ they change only the model's view on this branch, and the transcript keeps every
 
 
 class Context:
+    """`ctx` manages your own context; the durable transcript itself is never changed.
+
+    - `await ctx.history(limit=20, kinds=None)` lists recent items with id, kind, bytes, preview and state.
+    - `await ctx.get(id)` returns one item in full; `await ctx.forget(ids, reason)` removes items from what
+      you see; `await ctx.summarize(ids, text)` replaces a span with your summary; `await ctx.pin(id)` keeps
+      an item through edits and compaction; `await ctx.note(text)` records a note that survives compaction.
+    - The current user message and pinned items cannot be forgotten.
+    - Task results collapse on return: after you have seen a cell's output once, it shrinks to one line per
+      finished task (definition, key, status, cost). `await agents.result("<task id>")` returns the full
+      value again; `await ctx.get(id)` shows the original output.
+    """
+
     def __init__(self, bridge):
         self._bridge = bridge
 

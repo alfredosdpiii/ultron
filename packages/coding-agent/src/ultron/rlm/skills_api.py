@@ -2,6 +2,17 @@
 
 
 class Skills:
+    """Skill catalog and code skills.
+
+    Code skills are tested Python kept across sessions. When a procedure worked and will recur, save it:
+    `await skills.propose_code(name, source, test_source, evidence)` (name is a lowercase identifier;
+    `test_source` defines `test_*` functions and imports the skill with `from code_skills import <name>`).
+    The test runs in a fresh kernel; only a passing version becomes active. `await skills.rollback(name,
+    version)` undoes the active version; `await skills.code_list()` and `await skills.code_history(name)`
+    inspect them. Use an active code skill instead of re-deriving it: `from code_skills import <name>` works
+    in every kernel.
+    """
+
     def __init__(self, bridge):
         self._bridge = bridge
 

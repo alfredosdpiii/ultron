@@ -311,6 +311,26 @@ def _outcome(observation: dict[str, Any], raise_errors: bool) -> Any:
     return FrameError(observation)
 
 
+class MapResults(list):
+    """`rlm.map`'s results in order, plus what the map spent: `.spent`, `.budget` (limits) and `.remaining`."""
+
+    _snapshot_as_list = True
+    spent: dict[str, Any]
+    budget: dict[str, Any]
+    remaining: dict[str, Any]
+
+    def summary(self) -> str:
+        complete = sum(1 for item in self if not isinstance(item, (Incomplete, FrameError)))
+        incomplete = sum(1 for item in self if isinstance(item, Incomplete))
+        failed = len(self) - complete - incomplete
+        tokens = self.spent.get("tokens")
+        limit = self.budget.get("tokens")
+        spent = f"{self.spent.get('calls', 0)} calls, {tokens:,} tokens" if isinstance(tokens, int) else "spend unknown"
+        of = f" of {limit:,}" if isinstance(limit, int) else ""
+        return (f"[rlm.map] {len(self)} frames: {complete} complete, {incomplete} incomplete, {failed} failed; "
+                f"spent {spent}{of}")
+
+
 class Inference:
     def __init__(self, bridge: Any) -> None:
         self._bridge = bridge
@@ -376,10 +396,10 @@ class Inference:
         return handle
 
     async def infer(self, task: str, context: Any = None, *, contract: Any = None, budget: Any = None,
-                    model: str | None = None, max_repairs: int = 2, timeout_ms: int | None = None) -> Any:
+                    model: str | None = None, max_repairs: int | None = None, timeout_ms: int | None = None) -> Any:
         """Run one private inference frame over explicit context views. Returns the contract-validated value
         (or the reply text without a contract), an `Incomplete` when budget or repairs run out, and raises
-        `InferenceError` when the frame fails."""
+        `InferenceError` when the frame fails. `max_repairs` defaults to 2 re-asks (1 for a scalar contract)."""
         reply = await self._bridge.request("rlm.infer", {
             "task": task,
             "context": _wire_context(context),
@@ -392,13 +412,18 @@ class Inference:
         return _outcome(reply, raise_errors=True)
 
     async def map(self, tasks: Any, items: Any = None, *, context: Any = None, contract: Any = None,
-                  budget: Any = None, model: str | None = None, max_repairs: int = 2,
-                  concurrency: int = 8, timeout_ms: int | None = None) -> list[Any]:
+                  budget: Any = None, model: str | None = None, max_repairs: int | None = None,
+                  concurrency: int = 8, timeout_ms: int | None = None) -> "MapResults":
         """Fan frames out under one shared budget, preserving order.
 
         `rlm.map(task, items)` runs `task` once per item (a view, a string, or a list of them);
-        `rlm.map([task, ...])` runs each task. `context` is shared by every frame. Entries are values,
-        `Incomplete`, or `FrameError`."""
+        `rlm.map([task, ...])` runs each task. `context` is shared by every frame (sent before each item, so
+        the frames share a cacheable prefix). Entries are values, `Incomplete`, or `FrameError`.
+
+        Without `budget=Budget(tokens=...)` a top-level map is limited to the host's default token budget
+        (ULTRON_RLM_MAP_TOKENS, 500,000 by default); frames past it come back `Incomplete`. The result is a
+        list with `.spent` ({calls, tokens}), `.budget` and `.remaining`, and one summary line is printed.
+        Every frame is a model request: filter with code first and give each frame only what it must judge."""
         shared = _wire_context(context)
         if isinstance(tasks, str):
             if items is None:
@@ -422,7 +447,13 @@ class Inference:
             "concurrency": concurrency,
             "timeout_ms": timeout_ms,
         })
-        return [_outcome(item, raise_errors=False) for item in reply["results"]]
+        results = MapResults(_outcome(item, raise_errors=False) for item in reply["results"])
+        budget = reply.get("budget") if isinstance(reply.get("budget"), dict) else {}
+        results.spent = dict(budget.get("spent") or {})
+        results.budget = dict(budget.get("limits") or {})
+        results.remaining = dict(budget.get("remaining") or {})
+        print(results.summary())
+        return results
 
     async def frames(self, trace_id: str | None = None, limit: int = 20) -> Any:
         """Recent frame summaries, or one frame's full trace by id."""
@@ -442,5 +473,6 @@ def install(namespace: dict[str, Any], bridge: Any) -> None:
     namespace["ContextHandle"] = ContextHandle
     namespace["ContextView"] = ContextView
     namespace["Incomplete"] = Incomplete
+    namespace["MapResults"] = MapResults
     namespace["FrameError"] = FrameError
     namespace["InferenceError"] = InferenceError

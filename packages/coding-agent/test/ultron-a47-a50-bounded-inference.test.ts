@@ -13,9 +13,15 @@ import { visibleWidth } from "@ultron/tui";
 import { afterEach, describe, expect, test } from "vitest";
 import { renderRlmDock } from "../src/experimental/rlm-graph.ts";
 import { parseFrames } from "../src/experimental/rlm-visualizer.ts";
-import { createInferenceRuntime, createMemoryFrameStore } from "../src/ultron/rlm/inference.ts";
+import {
+	createInferenceRuntime,
+	createMemoryFrameStore,
+	DEFAULT_MAP_TOKENS,
+	defaultMapTokens,
+	INFERENCE_PROMPT,
+} from "../src/ultron/rlm/inference.ts";
 import { RlmKernel } from "../src/ultron/rlm/kernel.ts";
-import { NativeRlmHost } from "../src/ultron/rlm/native-host.ts";
+import { DEFAULT_SPAWN_DEPTH, NativeRlmHost, spawnDepthLimit } from "../src/ultron/rlm/native-host.ts";
 import { NativeUsageLedger } from "../src/ultron/usage.ts";
 import { deferred, memoryDefinitionStore, memoryStore, waitFor } from "./ultron-host-fixtures.ts";
 
@@ -583,7 +589,11 @@ describe("the /rlm graph shows frames", () => {
 		const mapped = raw.frames.filter((frame) => frame.kind === "map");
 		expect(mapped).toHaveLength(3);
 		expect(new Set(mapped.map((frame) => (frame.budget as { id: string }).id)).size).toBe(1);
-		expect(mapped[0]).toMatchObject({ batch: 3, callerTaskId: null, budget: { calls: 9, tokens: null, depth: 1 } });
+		expect(mapped[0]).toMatchObject({
+			batch: 3,
+			callerTaskId: null,
+			budget: { calls: 9, tokens: DEFAULT_MAP_TOKENS, depth: 1 },
+		});
 		expect(raw.frames.filter((frame) => frame.kind === "infer").map((frame) => frame.batch)).toEqual([1, 1]);
 
 		const frames = parseFrames(raw);
@@ -593,6 +603,117 @@ describe("the /rlm graph shows frames", () => {
 		expect(rendered).toMatch(/◐ rlm\.infer \w{8} contract_unmet/);
 		expect(rendered).toMatch(/✓ rlm\.infer \w{8} good frame/);
 		expect(lines.every((line) => visibleWidth(line) <= 80)).toBe(true);
+	});
+});
+
+describe("cost defaults: map budget, repairs, cacheable frames, spawn depth", () => {
+	afterEach(() => {
+		delete process.env.ULTRON_RLM_MAP_TOKENS;
+		delete process.env.ULTRON_SPAWN_DEPTH;
+	});
+
+	test("a top-level map without a token limit gets the default budget and says how to raise it", async () => {
+		expect(defaultMapTokens({})).toBe(DEFAULT_MAP_TOKENS);
+		expect(defaultMapTokens({ ULTRON_RLM_MAP_TOKENS: "1200" })).toBe(1200);
+		expect(defaultMapTokens({ ULTRON_RLM_MAP_TOKENS: "lots" })).toBe(DEFAULT_MAP_TOKENS);
+		process.env.ULTRON_RLM_MAP_TOKENS = "1200";
+		const { call, calls } = setup(() => ({ text: "1", usage: { input: 500, output: 8 } }));
+		const reply = await call<MapReply>("rlm.map", {
+			frames: Array.from({ length: 6 }, (_, index) => ({ task: `item ${index}`, context: [text("x")] })),
+			contract: { type: "integer" },
+			concurrency: 1,
+		});
+		expect(reply.budget.limits.tokens).toBe(1200);
+		const complete = reply.results.filter((result) => result.status === "complete");
+		const incomplete = reply.results.filter((result) => result.status === "incomplete");
+		expect(complete.length).toBeGreaterThan(0);
+		expect(incomplete.length).toBeGreaterThan(0);
+		expect(calls.length).toBe(complete.length);
+		expect(reply.budget.spent.tokens).toBeLessThanOrEqual(1200);
+		expect(incomplete[0]).toMatchObject({ reason: "budget_exhausted" });
+		expect(incomplete[0]!.detail).toContain("default budget is 1200 tokens; pass budget=Budget(tokens=...)");
+	});
+
+	test("an explicit token limit is kept, and rlm.infer gets no default", async () => {
+		const { call } = setup(() => ({ text: "1" }));
+		const map = await call<MapReply>("rlm.map", {
+			frames: [{ task: "a", context: [] }],
+			contract: { type: "integer" },
+			budget: { tokens: 9_999_999 },
+		});
+		expect(map.budget.limits.tokens).toBe(9_999_999);
+		const infer = await call<Observation>("rlm.infer", { task: "a", context: [], contract: { type: "integer" } });
+		expect(infer.remaining.tokens).toBeNull();
+	});
+
+	test("a scalar contract is re-asked once by default, a structured one twice, an explicit count wins", async () => {
+		const scalar = setup(() => ({ text: "not a number" }));
+		const one = await scalar.call<Observation>("rlm.infer", {
+			task: "n",
+			context: [],
+			contract: { type: "integer" },
+		});
+		expect(one).toMatchObject({ status: "incomplete", reason: "contract_unmet" });
+		expect(scalar.calls).toHaveLength(2);
+		const structured = setup(() => ({ text: "not json" }));
+		await structured.call("rlm.infer", {
+			task: "o",
+			context: [],
+			contract: { type: "object", properties: { n: { type: "integer" } }, required: ["n"] },
+		});
+		expect(structured.calls).toHaveLength(3);
+		const explicit = setup(() => ({ text: "not a number" }));
+		await explicit.call("rlm.infer", { task: "n", context: [], contract: { type: "integer" }, max_repairs: 3 });
+		expect(explicit.calls).toHaveLength(4);
+	});
+
+	test("a map's frames share the task and shared views as a byte-identical prefix", async () => {
+		const { call, calls } = setup(() => ({ text: "ok" }));
+		const shared = { kind: "text", label: "guide", text: "Shared rubric. ".repeat(40) };
+		await call("rlm.map", {
+			frames: ["short", "a much longer item ".repeat(10)].map((item) => ({
+				task: "Judge the item by the rubric.",
+				context: [shared, text(item)],
+			})),
+			contract: { type: "string" },
+		});
+		expect(calls).toHaveLength(2);
+		const [first, second] = calls.map((entry) => entry.message);
+		const prefix = first!.slice(0, first!.indexOf("--- view 2"));
+		expect(prefix).toContain("Shared rubric.");
+		expect(second!.startsWith(prefix)).toBe(true);
+		expect(first).not.toMatch(/view\(s\)/);
+	});
+
+	test("rlm.spawn refuses subagents nested deeper than ULTRON_SPAWN_DEPTH", async () => {
+		expect(spawnDepthLimit({})).toBe(DEFAULT_SPAWN_DEPTH);
+		expect(spawnDepthLimit({ ULTRON_SPAWN_DEPTH: "0" })).toBe(0);
+		process.env.ULTRON_SPAWN_DEPTH = "1";
+		const release = deferred();
+		const { call, calls } = setup(() => ({ text: "child done", wait: release.promise }));
+		const child = await call<{ rlm_child_id: string }>("rlm.spawn", { prompt: "child brief", kwargs: { name: "c" } });
+		await waitFor(() => calls.length === 1);
+		const lane = calls[0]!.lane;
+		await expect(call("rlm.spawn", { prompt: "grandchild", kwargs: { name: "g" } }, { lane })).rejects.toThrow(
+			/nest at most 1 level/,
+		);
+		process.env.ULTRON_SPAWN_DEPTH = "2";
+		const grandchild = await call<{ rlm_child_id: string }>(
+			"rlm.spawn",
+			{ prompt: "grandchild", kwargs: { name: "g" } },
+			{ lane },
+		);
+		release.resolve();
+		const collected = await call<{ results: Array<{ result: { status: string } }> }>("rlm.collect", {
+			selectors: [child.rlm_child_id, grandchild.rlm_child_id],
+		});
+		expect(collected.results.map((entry) => entry.result.status)).toEqual(["succeeded", "succeeded"]);
+	});
+
+	test("the guide's inference section stays short and keeps the rules that matter", () => {
+		expect(INFERENCE_PROMPT.length).toBeLessThan(2_000);
+		for (const rule of ["rlm.load", "rlm.infer", "rlm.map", "Incomplete", "Budget(tokens=", "filter with code first"])
+			expect(INFERENCE_PROMPT).toContain(rule);
 	});
 });
 
