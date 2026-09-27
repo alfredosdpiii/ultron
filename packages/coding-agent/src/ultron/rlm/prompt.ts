@@ -52,7 +52,7 @@ export function rlmToolGuidelines(activeTools: readonly string[]): string[] {
 	];
 }
 
-const BASH_SKILL = `- \`out = await bash('''cmd''')\` (always triple-quoted; \`r'''...'''\` with backslashes) returns stdout and stderr as a str, with \`[exit code N]\` appended on failure (\`out.ok\`, \`out.exit_code\`). Prefer \`rg -n\`, \`sed -n 'A,Bp'\`, \`head\` over whole files. A command still running after 30 s continues as a job (\`out.job\`; its end arrives as an event); \`yield_after=0\` starts a known-long suite or build as a job at once. \`help(bash)\`.`;
+const BASH_SKILL = `- \`out = await bash('''cmd''')\` (always triple-quoted, even for one line; the text reaches bash as written, backslashes included) returns stdout and stderr as a str, with \`[exit code N]\` appended on failure (\`out.ok\`, \`out.exit_code\`). Prefer \`rg -n\`, \`sed -n 'A,Bp'\`, \`head\` over whole files. A command still running after 30 s continues as a job (\`out.job\`; its end arrives as an event); \`yield_after=0\` starts a suite or build you know takes minutes as a job at once. \`help(bash)\`.`;
 
 const BASH_SKILL_WITH_TOOL = `- Inside rlm you can also run shell with \`out = await bash('''command''')\`: it returns the output as a string (\`[exit code N]\` appended on failure; \`out.ok\`; a command still running after 30 s continues as a job, \`out.job\`), useful when mixing shell and Python in one cell.`;
 
@@ -63,7 +63,7 @@ const EDIT_SKILL = `- \`await edit(path=..., old_str=..., new_str=...)\` replace
 const EDIT_SKILL_WITH_TOOL =
 	"- The native edit tool and the `edit` skill both replace exactly one occurrence of old text (the skill raises ValueError when old_str is absent or ambiguous); use either.";
 
-const PROJECT_ENV = `- The kernel is the system Python without the project's packages: run all project code (tests, repros, builds, imports) through \`bash\` with the project's own interpreter and toolchain (\`.venv/bin/python -m pytest -q\`, \`npm test\`).`;
+const PROJECT_ENV = `- The kernel is the system Python without the project's packages: run all project code (tests, repros, builds, imports) through \`bash\` with the project's own interpreter and toolchain (\`.venv/bin/python -m pytest -q\`, \`npm test\`). Work on data files (parse, count, join, write results) in the cell itself, where the data stays in variables for the next cell, not in a \`python - <<EOF\` heredoc through \`bash\`.`;
 
 const RUNTIME = `## Runtime
 Each rlm call runs a cell in your lane's persistent kernel: program over files, shell and agents, keep data in variables and print only what the next step needs. Output over about 20 KB is cut in the middle and a large value is shown by reference; \`preview(x)\` gives a bounded view. APIs are pre-imported and async; check \`help(obj)\` before guessing. Act on a trailing \`[hint:<tag>]\` line (\`await hints.mute(tag)\` once understood).

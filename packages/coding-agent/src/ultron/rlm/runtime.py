@@ -9,9 +9,11 @@ import io
 import json
 import math
 import os
+import re
 import signal
 import sys
 import threading
+import tokenize
 import traceback
 from dataclasses import dataclass
 from pathlib import Path
@@ -39,6 +41,12 @@ class SpawnHandle:
     model: str
     timeout_ms: int
     parent_branch_anchor: str
+
+    @property
+    def id(self) -> str:
+        """The child's id (``rlm_child_id``), as ``agents.result(id)`` and runtime events name it."""
+        return self.rlm_child_id
+
     def __repr__(self) -> str:
         return f"SpawnHandle(name={self.name!r}, rlm_child_id={self.rlm_child_id!r})"
 
@@ -287,6 +295,11 @@ class BashOutput(str):
     def ok(self) -> bool:
         return self.exit_code == 0 and not self.timed_out and not self.cancelled and not self.running
 
+    @property
+    def text(self) -> str:
+        """The string itself (as ShellJob.text), for code written against a result object."""
+        return str(self)
+
     def __getitem__(self, key: Any) -> Any:
         if isinstance(key, str):
             if key in ("output", "exit_code", "timed_out", "cancelled", "truncated", "full_output_path", "ok", "running", "job"):
@@ -337,6 +350,11 @@ class ShellJob:
         self.elapsed_seconds: float = float(data.get("elapsed_seconds") or 0)
         error = data.get("error")
         self.error: str | None = error if isinstance(error, str) else None
+
+    @property
+    def job(self) -> "ShellJob":
+        """This handle, so ``out.job.result()`` works whether ``out`` is a BashOutput or a ShellJob."""
+        return self
 
     async def result(self, wait: float | None = None) -> "ShellJob":
         """Wait for the job to end (at most ``wait`` seconds) and return this handle, refreshed."""
@@ -414,7 +432,9 @@ async def bash(command: str, timeout: float | None = None, yield_after: Any = _D
     """Run a shell command in the working directory.
 
     Args:
-        command: The command, run by the user's shell (bash).
+        command: The command, run by the user's shell (bash). A string literal written in the call
+            reaches bash as typed: its backslashes are not Python escapes (as if written r'''...'''),
+            so a heredoc's program keeps its own '\\n'.
         timeout: Seconds before the command is killed (default: no limit).
         yield_after: Left out: wait up to ULTRON_BASH_YIELD_AFTER seconds (default 30) and return
             the output as a string; a command still running then keeps running as a host job and
@@ -756,6 +776,8 @@ class RuntimeState:
         self.snapshot_path: Path | None = None
         # asyncio is pre-imported: the guide batches independent work with asyncio.gather.
         self.namespace: dict[str, Any] = {"__name__": "__main__", "asyncio": asyncio}
+        # The stdlib names cells most often use without importing (a NameError costs a whole turn).
+        self.namespace.update({"re": re, "json": json, "os": os, "Path": Path})
         self.namespace["rlm"] = RLMNamespace(self.bridge)
         self.namespace["agent_message"] = AgentMessages(self.bridge)
         self.namespace["jev"] = JevNamespace(self.bridge)
@@ -1011,15 +1033,99 @@ def restore_snapshot(path: str, verified_sha256: Any = None) -> dict[str, Any]:
     return {"restored": sorted(decoded), "missing": False, "skipped": sorted(skipped), "reasons": reasons}
 
 
-def _prepare_code(source: str) -> Any:
-    tree = ast.parse(source, filename="<rlm-cell>", mode="exec")
+_UNCLOSED = re.compile(r"^'([(\[{])' was never closed$")
+_CLOSERS = {"(": ")", "[": "]", "{": "}"}
+
+
+def _parse_cell(source: str) -> tuple[ast.Module, str, str | None]:
+    """Parse a cell; a cell whose only fault is brackets left open at its very end (typically
+    ``print(await bash('''...''')`` short of one ``)``) is closed there, with a note for the output."""
+    try:
+        return ast.parse(source, filename="<rlm-cell>", mode="exec"), source, None
+    except SyntaxError as parse_error:
+        original = error = parse_error
+    added = ""
+    for _ in range(3):
+        match = _UNCLOSED.match(str(error.msg or ""))
+        if match is None:
+            break
+        added += _CLOSERS[match.group(1)]
+        repaired = source.rstrip() + added + "\n"
+        try:
+            tree = ast.parse(repaired, filename="<rlm-cell>", mode="exec")
+        except SyntaxError as retry:
+            error = retry
+            continue
+        return tree, repaired, f"[note: added the missing {added!r} at the end of the cell]"
+    raise original
+
+
+def _string_token_count(segment: str) -> int:
+    try:
+        return sum(1 for token in tokenize.generate_tokens(io.StringIO(segment).readline) if token.type == tokenize.STRING)
+    except (tokenize.TokenError, SyntaxError):
+        return -1
+
+
+_QUOTED_ESCAPE = re.compile(r"\\(?:\\|['\"])")
+
+
+def _raw_command_literal(source: str, node: ast.expr) -> str | None:
+    """The value of a plain string literal read as if written raw, when that differs.
+
+    A shell command is text for bash, which does its own escaping (and a heredoc's program its own):
+    ``bash('''python - <<'PY' ... print('a\\nb') ...''')`` means the two characters ``\\n``, as
+    Pi's bash tool would pass them. Python would turn them into a real newline and break the inner
+    program, so a literal whose backslashes only make sense raw is read raw. Literals written raw,
+    f-strings, concatenations, and ones that already escape backslashes or quotes (``\\\\``,
+    ``\\'``) are left as written.
+    """
+    if not isinstance(node, ast.Constant) or not isinstance(node.value, str):
+        return None
+    segment = ast.get_source_segment(source, node)
+    if not segment or "\\" not in segment:
+        return None
+    prefix = segment[: len(segment) - len(segment.lstrip("rRbBuUfF"))]
+    if prefix.lower() not in ("", "u") or _QUOTED_ESCAPE.search(segment):
+        return None
+    if _string_token_count(segment) != 1:
+        return None
+    try:
+        raw = ast.literal_eval("r" + segment[len(prefix):])
+    except (SyntaxError, ValueError):
+        return None
+    return raw if isinstance(raw, str) and raw != node.value else None
+
+
+class _RawShellLiterals(ast.NodeTransformer):
+    def __init__(self, source: str) -> None:
+        self._source = source
+
+    def visit_Call(self, node: ast.Call) -> ast.AST:
+        self.generic_visit(node)
+        if isinstance(node.func, ast.Name) and node.func.id == "bash":
+            if node.args:
+                raw = _raw_command_literal(self._source, node.args[0])
+                if raw is not None:
+                    node.args[0] = ast.copy_location(ast.Constant(raw), node.args[0])
+            for keyword in node.keywords:
+                if keyword.arg == "command":
+                    raw = _raw_command_literal(self._source, keyword.value)
+                    if raw is not None:
+                        keyword.value = ast.copy_location(ast.Constant(raw), keyword.value)
+        return node
+
+
+def _prepare_code(source: str) -> tuple[Any, str | None]:
+    tree, text, note = _parse_cell(source)
+    tree = _RawShellLiterals(text).visit(tree)
     if tree.body and isinstance(tree.body[-1], ast.Expr):
         tree.body[-1] = ast.Assign(
             targets=[ast.Name(id="_rlm_result", ctx=ast.Store())],
             value=tree.body[-1].value,
         )
     ast.fix_missing_locations(tree)
-    return compile(tree, "<rlm-cell>", "exec", flags=ast.PyCF_ALLOW_TOP_LEVEL_AWAIT)
+    return compile(tree, "<rlm-cell>", "exec", flags=ast.PyCF_ALLOW_TOP_LEVEL_AWAIT), note
 
 
 _PREVIEW_BYTES = 8192
@@ -1502,7 +1608,9 @@ async def execute_cell(request_id: str, source: str) -> None:
         stderr = _MiddleTextIO(budget)
         _STATE.namespace.pop("_rlm_result", None)
         try:
-            compiled = _prepare_code(source)
+            compiled, note = _prepare_code(source)
+            if note is not None:
+                stdout.write(note + "\n")
             _arm_cpu_limit()
             _STATE.cell_active = True
             try:
