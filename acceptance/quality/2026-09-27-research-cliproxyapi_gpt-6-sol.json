@@ -1,0 +1,146 @@
+{
+  "taskSet": "research",
+  "frozenAt": "2026-09-27-research",
+  "thresholds": {
+    "maxPassRateDropPoints": 10,
+    "maxMedianLatencyRatio": 2,
+    "maxCostRatio": 2
+  },
+  "model": "cliproxyapi/gpt-6-sol",
+  "trials": 1,
+  "summary": {
+    "byVariant": {
+      "pi": {
+        "runs": 1,
+        "infrastructure": 0,
+        "passRate": 1,
+        "categories": {
+          "semantic-research": {
+            "passed": 1,
+            "runs": 1
+          }
+        },
+        "medianDurationMs": 71321,
+        "totalCost": 0.1672168,
+        "uptake": {
+          "toolsByName": {
+            "bash": 8,
+            "read": 2,
+            "write": 1
+          },
+          "rlmRunShare": 0,
+          "framesSpawned": {
+            "runs": 0,
+            "total": null,
+            "median": null
+          },
+          "rootUnseenBytes": {
+            "runs": 0,
+            "total": null,
+            "median": null
+          }
+        }
+      },
+      "ultron": {
+        "runs": 1,
+        "infrastructure": 0,
+        "passRate": 1,
+        "categories": {
+          "semantic-research": {
+            "passed": 1,
+            "runs": 1
+          }
+        },
+        "medianDurationMs": 368798,
+        "totalCost": 4.476790000000002,
+        "uptake": {
+          "toolsByName": {
+            "rlm": 12
+          },
+          "rlmRunShare": 1,
+          "framesSpawned": {
+            "runs": 1,
+            "total": 33,
+            "median": 33
+          },
+          "rootUnseenBytes": {
+            "runs": 0,
+            "total": null,
+            "median": null
+          }
+        }
+      }
+    },
+    "gate": [
+      {
+        "check": "pass rate",
+        "ok": true,
+        "detail": "0.0 points below baseline"
+      },
+      {
+        "check": "median latency",
+        "ok": false,
+        "detail": "5.17x baseline"
+      },
+      {
+        "check": "cost",
+        "ok": false,
+        "detail": "26.77x baseline"
+      }
+    ],
+    "passed": false
+  },
+  "records": [
+    {
+      "task": "incident-root-causes-full",
+      "category": "semantic-research",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "toolsByName": {
+        "bash": 8,
+        "read": 2,
+        "write": 1
+      },
+      "framesSpawned": null,
+      "rootUnseenBytes": null,
+      "toolCalls": 11,
+      "cost": 0.1672168,
+      "tokens": 288678,
+      "durationMs": 71321,
+      "verify": {
+        "status": 0,
+        "output": "missed: \nextra: \n{\"precision\": 1.0, \"recall\": 1.0, \"passed\": true, \"answered\": 25, \"missed\": 0, \"extra\": 0}\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/incident-root-causes-full-pi-1-2026-09-27T04-48-03-431Z"
+    },
+    {
+      "task": "incident-root-causes-full",
+      "category": "semantic-research",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "toolsByName": {
+        "rlm": 12
+      },
+      "framesSpawned": 33,
+      "rootUnseenBytes": null,
+      "toolCalls": 12,
+      "tasksByDefinition": {
+        "rlm-child": 24,
+        "rlm-frame": 9
+      },
+      "framesSource": "inspect",
+      "cost": 4.476790000000002,
+      "tokens": 7995811,
+      "durationMs": 368798,
+      "verify": {
+        "status": 0,
+        "output": "missed: \nextra: \n{\"precision\": 1.0, \"recall\": 1.0, \"passed\": true, \"answered\": 25, \"missed\": 0, \"extra\": 0}\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/incident-root-causes-full-ultron-1-2026-09-27T04-48-03-457Z"
+    }
+  ]
+}
