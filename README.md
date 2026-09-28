@@ -102,13 +102,17 @@ lookup, so unrelated memories never leak into answers.
 Measured with [`scripts/eval-quality.mjs`](scripts/eval-quality.mjs) against stock Pi on the same model. Every
 result file is in [`acceptance/quality/`](acceptance/quality).
 
-**glm-5.3-flash** (a small, fast model), thinking `max`:
+**glm-5.3-flash** (a small, fast model), thinking `max`, 2 trials per task (release 0.87.12):
 
 | Task set | Pi | Ultron |
 |---|---|---|
-| Hard set: 15 tasks (multi-file bugs, refactors, large data, log forensics), 2 trials | 27/30 | **29/30**, a third fewer tool calls, same speed |
-| Research pilot: find expired-certificate incidents among 157 reports, 1 trial | pass, 342 s | pass, **273 s**, 99 sub-model frames |
-| Parallel work: a 150 s test suite plus two bug fixes, 2 trials | 2/2 | 2/2, same speed |
+| Hard set: 15 tasks (multi-file bugs, refactors, large data, log forensics) | 28/30, median 116 s, 2.53M tokens, 288 tool calls | 28/30, median 128 s, **1.96M** tokens, **182** tool calls |
+| Research pilot: expired-certificate incidents among 157 reports | 1/2 (one run lost to a provider rate limit), 377 s | **2/2**, 397 s, 157 sub-model frames |
+| Parallel work: a 150 s test suite plus two bug fixes | 2/2, median 175 s | 2/2, median 196 s |
+
+On the small model the two agents are level on accuracy and speed (each was faster on about half the hard tasks);
+Ultron uses about a quarter fewer tokens and a third fewer tool calls. Each agent lost one hard run to a single model
+turn that ran past the 20-minute limit.
 
 **gpt-6-sol** (a strong model), default thinking, 2 trials per task, both agents with an isolated home (release 0.87.10):
 
