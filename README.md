@@ -114,7 +114,7 @@ result file is in [`acceptance/quality/`](acceptance/quality).
 
 | Task set | Pi | Ultron |
 |---|---|---|
-| Hard set: 15 tasks | 30/30, median 34 s, 670k tokens, $1.07 | 30/30, median 40 s, 660k tokens, $1.06 |
+| Hard set: 15 tasks (0.87.11) | 29/30, median 34 s, 696k tokens, $1.11 | **30/30**, median 36 s, **586k** tokens, $1.02 |
 | Research: 400 reports, 2.1 MB | 2/2, median 76 s, 638k tokens | 2/2, median **73 s**, **372k** tokens |
 | Parallel work | 2/2, median 162 s | 2/2, median 162 s |
 | Delegation: 6 services, bugs readable from the code, 300 s budget | 2/2, 119 s and 145 s | 2/2, **113 s and 78 s**, 6 sub-agents each |
@@ -127,8 +127,8 @@ checking in, and finished in less than half of Pi's time for about 1.35x the cos
 sequentially, and ran over the budget in both trials.
 
 Ultron has been at least as accurate as Pi on every set so far, at about the same token cost on hard tasks and 40%
-fewer tokens on research. Release 0.87.10 closed most of the short-task speed gap (median 60 s to 40 s against Pi's
-34 s): the extra time was extra model turns caused by shell text mangled by Python string escapes, which the kernel
+fewer tokens on research. Releases 0.87.10 and 0.87.11 closed the short-task speed gap (median 60 s, then 40 s, then 36 s against Pi's
+34 s; the rest is run-to-run noise): the extra time was extra model turns caused by shell text mangled by Python string escapes, which the kernel
 now passes to bash as written. Before release 0.87.6, the research task cost Ultron 8.0M tokens because it handed the
 corpus to nested sub-agents instead of searching first ([`docs/performance.md`](docs/performance.md) has the
 breakdown). Two trials is still a small sample; treat these as evidence, not benchmarks. Behaviour is also covered by
