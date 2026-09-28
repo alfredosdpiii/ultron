@@ -11,6 +11,7 @@ import { keyHint } from "./keybinding-hints.ts";
 export class LoginDialogComponent extends Container implements Focusable {
 	private contentContainer: Container;
 	private input: Input;
+	private secretInput = false;
 	private tui: TUI;
 	private abortController = new AbortController();
 	private inputResolver?: (value: string) => void;
@@ -52,22 +53,29 @@ export class LoginDialogComponent extends Container implements Focusable {
 		this.addChild(this.contentContainer);
 
 		// Input (always present, used when needed)
-		this.input = new Input();
-		this.input.onSubmit = () => {
+		this.input = this.createInput(false);
+
+		// Bottom border
+		this.addChild(new DynamicBorder());
+	}
+
+	/** A plain input, or a masked one for secrets (API keys) that never shows the value, even once submitted. */
+	private createInput(secret: boolean): Input {
+		const input = new Input(secret ? { mask: "•" } : {});
+		input.onSubmit = () => {
 			if (this.inputResolver) {
-				const value = this.input.getValue();
-				this.replaceInputWithSubmittedText(value);
+				const value = input.getValue();
+				this.replaceInputWithSubmittedText(secret ? "•".repeat(Math.min(value.length, 12)) : value);
 				this.inputResolver(value);
 				this.inputResolver = undefined;
 				this.inputRejecter = undefined;
 			}
 		};
-		this.input.onEscape = () => {
+		input.onEscape = () => {
 			this.cancel();
 		};
-
-		// Bottom border
-		this.addChild(new DynamicBorder());
+		this.secretInput = secret;
+		return input;
 	}
 
 	get signal(): AbortSignal {
@@ -151,7 +159,12 @@ export class LoginDialogComponent extends Container implements Focusable {
 	 * Called by onPrompt callback - show prompt and wait for input
 	 * Note: Does NOT clear content, appends to existing (preserves URL from showAuth)
 	 */
-	showPrompt(message: string, placeholder?: string): Promise<string> {
+	showPrompt(message: string, placeholder?: string, options: { secret?: boolean } = {}): Promise<string> {
+		const secret = options.secret === true;
+		if (secret !== this.secretInput) {
+			this.input = this.createInput(secret);
+			this.input.focused = this._focused;
+		}
 		this.contentContainer.addChild(new Spacer(1));
 		this.contentContainer.addChild(new Text(theme.fg("text", message), 1, 0));
 		if (placeholder) {

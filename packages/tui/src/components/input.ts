@@ -17,6 +17,8 @@ export interface InputOptions {
 	prompt?: string;
 	placeholder?: string;
 	placeholderStyle?: (text: string) => string;
+	/** Render each character of the value as this string (e.g. "•"), for secrets. The value itself is unchanged. */
+	mask?: string;
 }
 
 /**
@@ -28,6 +30,7 @@ export class Input implements Component, Focusable {
 	private readonly prompt: string;
 	private readonly placeholder: string;
 	private readonly placeholderStyle: (text: string) => string;
+	private readonly mask: string | undefined;
 	private renderedStartColumn = 0;
 	public onSubmit?: (value: string) => void;
 	public onEscape?: () => void;
@@ -50,6 +53,7 @@ export class Input implements Component, Focusable {
 		this.prompt = options.prompt ?? "> ";
 		this.placeholder = options.placeholder ?? "";
 		this.placeholderStyle = options.placeholderStyle ?? ((text) => text);
+		this.mask = options.mask;
 	}
 
 	getValue(): string {
@@ -59,6 +63,11 @@ export class Input implements Component, Focusable {
 	setValue(value: string): void {
 		this.value = value;
 		this.cursor = Math.min(this.cursor, value.length);
+	}
+
+	/** Put the cursor after the last character, e.g. after prefilling a suggestion. */
+	moveCursorToEnd(): void {
+		this.cursor = this.value.length;
 	}
 
 	handleInput(data: string): void {
@@ -417,7 +426,12 @@ export class Input implements Component, Focusable {
 			return [truncateToWidth(this.prompt, width, "")];
 		}
 
-		if (this.value.length === 0 && this.placeholder) {
+		// A masked input renders one mask per grapheme, with the cursor after the same number of graphemes.
+		const value = this.mask === undefined ? this.value : this.mask.repeat(countGraphemes(this.value));
+		const cursor =
+			this.mask === undefined ? this.cursor : this.mask.length * countGraphemes(this.value.slice(0, this.cursor));
+
+		if (value.length === 0 && this.placeholder) {
 			const placeholder = truncateToWidth(this.placeholder, availableWidth, "");
 			const graphemes = [...segmenter.segment(placeholder)];
 			const atCursor = graphemes[0]?.segment ?? " ";
@@ -430,18 +444,18 @@ export class Input implements Component, Focusable {
 		}
 
 		let visibleText = "";
-		let cursorDisplay = this.cursor;
+		let cursorDisplay = cursor;
 		this.renderedStartColumn = 0;
-		const totalWidth = visibleWidth(this.value);
+		const totalWidth = visibleWidth(value);
 
 		if (totalWidth < availableWidth) {
 			// Everything fits (leave room for cursor at end)
-			visibleText = this.value;
+			visibleText = value;
 		} else {
 			// Need horizontal scrolling
 			// Reserve one column for cursor if it's at the end
-			const scrollWidth = this.cursor === this.value.length ? availableWidth - 1 : availableWidth;
-			const cursorCol = visibleWidth(this.value.slice(0, this.cursor));
+			const scrollWidth = cursor === value.length ? availableWidth - 1 : availableWidth;
+			const cursorCol = visibleWidth(value.slice(0, cursor));
 
 			if (scrollWidth > 0) {
 				const halfWidth = Math.floor(scrollWidth / 2);
@@ -459,8 +473,8 @@ export class Input implements Component, Focusable {
 				}
 
 				this.renderedStartColumn = startCol;
-				visibleText = sliceByColumn(this.value, startCol, scrollWidth, true);
-				const beforeCursor = sliceByColumn(this.value, startCol, Math.max(0, cursorCol - startCol), true);
+				visibleText = sliceByColumn(value, startCol, scrollWidth, true);
+				const beforeCursor = sliceByColumn(value, startCol, Math.max(0, cursorCol - startCol), true);
 				cursorDisplay = beforeCursor.length;
 			} else {
 				visibleText = "";
@@ -491,4 +505,10 @@ export class Input implements Component, Focusable {
 
 		return [line];
 	}
+}
+
+function countGraphemes(text: string): number {
+	let count = 0;
+	for (const _ of segmenter.segment(text)) count++;
+	return count;
 }

@@ -163,6 +163,8 @@ export interface Settings {
 	fullscreenCopyOnSelect?: boolean; // default: true; no effect in regular TUI mode
 	rootBudget?: RootBudgetSettings; // Ultron: per-root max_total_tokens / max_total_turns (nano-rlm policy knobs)
 	extensionTools?: ExtensionToolsSettings; // Ultron: extension tools in the REPL (default) or as native model tools
+	hindsightUrl?: string; // Ultron: Hindsight memory server (default http://localhost:8888; "off" disables); global only; ULTRON_HINDSIGHT_URL overrides
+	skipSetupPrompt?: boolean; // Ultron: do not offer `ultron setup` when an interactive start finds no usable model; global only
 }
 
 /**
@@ -1079,6 +1081,29 @@ export class SettingsManager {
 	setRlmPaneAutoOpen(enabled: boolean): void {
 		this.globalSettings.rlmPaneAutoOpen = enabled;
 		this.markModified("rlmPaneAutoOpen");
+		this.save();
+	}
+
+	/** Ultron: the saved Hindsight URL. Global only: a project must not redirect memory to another server. */
+	getHindsightUrl(): string | undefined {
+		const value = this.globalSettings.hindsightUrl;
+		return typeof value === "string" && value.trim() !== "" ? value.trim() : undefined;
+	}
+
+	setHindsightUrl(url: string | undefined): void {
+		this.globalSettings.hindsightUrl = url;
+		this.markModified("hindsightUrl");
+		this.save();
+	}
+
+	/** Ultron: true once the user declined the first-run `ultron setup` offer for good. */
+	getSkipSetupPrompt(): boolean {
+		return this.globalSettings.skipSetupPrompt === true;
+	}
+
+	setSkipSetupPrompt(skip: boolean): void {
+		this.globalSettings.skipSetupPrompt = skip;
+		this.markModified("skipSetupPrompt");
 		this.save();
 	}
 

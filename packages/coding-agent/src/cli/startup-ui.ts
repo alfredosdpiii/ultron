@@ -1,4 +1,11 @@
-import { ProcessTerminal, setCapabilityOverrides, setKeybindings, type TUI, TuiMainScreen } from "@ultron/tui";
+import {
+	ProcessTerminal,
+	setCapabilityOverrides,
+	setKeybindings,
+	type Terminal,
+	type TUI,
+	TuiMainScreen,
+} from "@ultron/tui";
 import { existsSync } from "fs";
 import { APP_NAME, CONFIG_DIR_NAME, ENV_AGENT_DIR, getAgentDir, getSettingsPath, PACKAGE_NAME } from "../config.ts";
 import { areExperimentalFeaturesEnabled } from "../core/experimental.ts";
@@ -77,13 +84,16 @@ async function loadStartupThemes(settingsManager: SettingsManager): Promise<Them
 	return loadThemes(resolvedPaths.themes);
 }
 
-export async function createStartupTui(settingsManager: SettingsManager): Promise<TUI> {
+export async function createStartupTui(
+	settingsManager: SettingsManager,
+	terminal: Terminal = new ProcessTerminal(),
+): Promise<TUI> {
 	setCapabilityOverrides(settingsManager.getTerminalCapabilityOverrides());
 	setRegisteredThemes(await loadStartupThemes(settingsManager));
 	const terminalTheme = detectTerminalBackgroundFromEnv().theme;
 	initTheme(resolveThemeSetting(settingsManager.getThemeSetting(), terminalTheme) ?? terminalTheme);
 	setKeybindings(KeybindingsManager.create());
-	const ui: TUI = new TuiMainScreen(new ProcessTerminal(), settingsManager.getShowHardwareCursor(), getAgentDir());
+	const ui: TUI = new TuiMainScreen(terminal, settingsManager.getShowHardwareCursor(), getAgentDir());
 	ui.setClearOnShrink(settingsManager.getClearOnShrink());
 	return ui;
 }

@@ -588,6 +588,14 @@ export async function main(args: string[], options?: MainOptions) {
 		return;
 	}
 
+	if (args[0] === "setup") {
+		const { runSetupCommand } = await import("./cli/setup/command.ts");
+		if (await runSetupCommand(args)) {
+			process.exit(process.exitCode ?? 0);
+			return;
+		}
+	}
+
 	if (await runMigrationCommand(args)) {
 		process.exit(process.exitCode ?? 0);
 		return;
@@ -646,11 +654,16 @@ export async function main(args: string[], options?: MainOptions) {
 		}
 		// RPC reads its commands from stdin, so it must not be consumed as a prompt.
 		const nativeStdin = process.stdin.isTTY || parsed.mode === "rpc" ? undefined : await readPipedStdin();
+		const setup = await import("./cli/setup/command.ts");
+		// An interactive start with no usable model offers the guided setup; other modes are never prompted.
+		if (nativeStdin === undefined && parsed.mode !== "rpc" && !(await setup.offerSetupOnFirstRun(parsed))) return;
 		try {
 			await runNativeUltronCommand(parsed, nativeStdin);
 		} catch (error: unknown) {
 			const message = error instanceof Error ? error.message : String(error);
 			console.error(chalk.red(`Error: ${message}`));
+			const hint = await setup.noModelHint().catch(() => undefined);
+			if (hint) console.error(chalk.yellow(hint));
 			process.exitCode = 1;
 		}
 		return;

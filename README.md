@@ -12,7 +12,8 @@ It is a fork of [Pi](https://github.com/badlogic/pi-mono) and keeps Pi's interfa
 `--mode json`, `--mode rpc`, providers, extensions, skills and prompt templates all work the same.
 
 ```bash
-npm install -g --ignore-scripts https://github.com/alfredosdpiii/ultron/releases/latest/download/ultron.tgz
+npm install -g ultron-agent
+ultron setup
 ```
 
 ## What makes Ultron different
@@ -143,13 +144,37 @@ breakdown). Two trials is still a small sample; treat these as evidence, not ben
 Requirements: **Node.js 22.19 or newer** and **Python 3** on your `PATH` (the REPL uses the system `python3`).
 
 ```bash
-npm install -g --ignore-scripts https://github.com/alfredosdpiii/ultron/releases/latest/download/ultron.tgz
-ultron --version
+npm install -g ultron-agent     # the package is ultron-agent; the command is ultron
+ultron setup                    # guided setup: provider and model, Jev key, Hindsight memory
 ```
 
-The same command updates an existing install. Nothing Ultron depends on needs lifecycle scripts, hence
-`--ignore-scripts`. Settings and sessions live in `~/.ultron/agent`, separate from Pi's `~/.pi/agent`, so both
-can be installed side by side.
+The same install command updates an existing install. The only install script in the dependency tree is esbuild's
+optional binary check, so `npm install -g --ignore-scripts ultron-agent` works as well, if you prefer it or your npm
+asks about allowing scripts.
+
+The same package is attached to every GitHub release, for installing without the npm registry:
+
+```bash
+npm install -g https://github.com/alfredosdpiii/ultron/releases/latest/download/ultron.tgz
+```
+
+Settings and sessions live in `~/.ultron/agent`, separate from Pi's `~/.pi/agent`, so both can be installed side
+by side.
+
+### `ultron setup`
+
+A terminal wizard, also offered the first time `ultron` starts without a usable model. Every step can be skipped
+with Esc, nothing is overwritten without asking, secrets are typed masked and saved readable only by you, and it
+can be run again at any time.
+
+1. **Environment**: checks Node.js and `python3`, with fixes when either is missing.
+2. **Provider and model**: sign in with a subscription or save an API key (Pi's `/login`), or add a custom
+   OpenAI-compatible endpoint to `models.json`; pick the default model and thinking level; then one tiny live
+   request shows whether it works, with the provider's error if not.
+3. **Jev API key**: saved to `~/.ultron/agent/jev-api-key`, optionally checked with one small request.
+4. **Hindsight**: finds a running server, starts it with Docker (`ghcr.io/vectorize-io/hindsight`, asking for the
+   LLM key Hindsight itself needs), saves a different URL, or shows the manual install.
+5. **Summary** of what changed and where it lives.
 
 ## Quick start
 
@@ -160,8 +185,9 @@ ultron -p "why does test_parser fail?"   # one-shot print mode
 ultron --mode rpc                        # Pi-compatible JSONL RPC
 ```
 
-Pick a provider as in Pi: `/login` for subscription providers, or `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`,
-`GEMINI_API_KEY` and the like. Custom OpenAI-compatible endpoints go in `~/.ultron/agent/models.json`.
+`ultron setup` configures a provider. Pi's ways work too: `/login` for subscription providers, or
+`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY` and the like. Custom OpenAI-compatible endpoints go in
+`~/.ultron/agent/models.json`.
 
 Useful keys: Up/Down and Alt+R for prompt history, Ctrl+R for the RLM panel, Alt+W for the RLM pane, Alt+G for the full-screen graph,
 Alt+J for Jev, Ctrl+O to expand cells and help. `/hotkeys` lists them all.
@@ -184,9 +210,11 @@ Opt-outs: `ULTRON_TOOLS=native` gives the model Pi's `read`, `edit`, `write` and
 
 ## Optional services
 
-- **Hindsight** memory is used at `http://localhost:8888` when it is running (`ULTRON_HINDSIGHT_URL` to change,
-  `off` to disable). Without it, memory calls fail quietly and turns are unaffected.
-- **Jev** gates memory and needs `TYPESAFE_API_KEY`. Without it, automatic memory stays off.
+- **Hindsight** memory is used at `http://localhost:8888` when it is running. `ultron setup` can install it with
+  Docker or save another address as the `hindsightUrl` setting; `ULTRON_HINDSIGHT_URL` overrides both, and `off`
+  disables memory. Without it, memory calls fail quietly and turns are unaffected.
+- **Jev** gates memory and needs a key, from `ultron setup` (`~/.ultron/agent/jev-api-key`) or `TYPESAFE_API_KEY`.
+  Without it, automatic memory stays off.
 
 ## Safety
 
@@ -217,6 +245,7 @@ npm run check                   # lint, format, type check
 ./test.sh                       # all tests
 npm run test:acceptance         # acceptance rows A01-A56, judged by the runner
 node scripts/pack-release.mjs   # build the self-contained release tarball (after a build)
+npm run publish:npm -- --dry-run   # build, pack and check the ultron-agent npm package (drop --dry-run to publish)
 ```
 
 Design and status: [`docs/implementation-status.md`](docs/implementation-status.md),

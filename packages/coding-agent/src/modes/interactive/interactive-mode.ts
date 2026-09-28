@@ -6089,7 +6089,7 @@ export class InteractiveMode {
 		} else if (prompt.type === "manual_code") {
 			response = dialog.showManualInput(prompt.message);
 		} else {
-			response = dialog.showPrompt(prompt.message, prompt.placeholder);
+			response = dialog.showPrompt(prompt.message, prompt.placeholder, { secret: prompt.type === "secret" });
 		}
 		if (!prompt.signal) return response;
 		if (prompt.signal.aborted) throw new Error("Login cancelled");

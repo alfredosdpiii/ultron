@@ -55,7 +55,7 @@ class Slot extends Container implements Focusable {
 	}
 }
 
-function loginProviderOptions(runtime: LoginRuntime, authType?: "oauth" | "api_key"): AuthSelectorProvider[] {
+export function loginProviderOptions(runtime: LoginRuntime, authType?: "oauth" | "api_key"): AuthSelectorProvider[] {
 	const options: AuthSelectorProvider[] = [];
 	for (const provider of runtime.getProviders()) {
 		const authStatus = runtime.getProviderAuthStatus(provider.id);
@@ -215,8 +215,26 @@ async function startProviderLogin(
 	await runLoginDialog(host, runtime, option);
 }
 
-/** Pi's login dialog around `ModelRuntime.login`, then the worker reloads the saved credentials. */
-async function runLoginDialog(host: PiCommandHost, runtime: LoginRuntime, option: AuthSelectorProvider): Promise<void> {
+/** What a login flow needs from its screen: the TUI and a slot to show the dialog in. */
+export interface LoginDialogHost {
+	readonly ui: PiCommandHost["ui"];
+	showComponent: PiCommandHost["showComponent"];
+	requestRender(): void;
+}
+
+export type LoginOutcome =
+	| { readonly ok: true }
+	| { readonly ok: false; readonly cancelled: boolean; readonly error: string };
+
+/**
+ * Pi's login dialog around `ModelRuntime.login`: browser/device-code flows for subscriptions, a masked prompt for
+ * API keys. Credentials are saved by the runtime (to its `auth.json`); resolves once the dialog has closed.
+ */
+export async function runProviderLogin(
+	host: LoginDialogHost,
+	runtime: LoginRuntime,
+	option: AuthSelectorProvider,
+): Promise<LoginOutcome> {
 	const dialog = new LoginDialogComponent(host.ui, option.id, () => {}, option.name);
 	const slot = new Slot(dialog);
 	let closed = false;
@@ -255,7 +273,7 @@ async function runLoginDialog(host: PiCommandHost, runtime: LoginRuntime, option
 		} else if (request.type === "manual_code") {
 			response = dialog.showManualInput(request.message);
 		} else {
-			response = dialog.showPrompt(request.message, request.placeholder);
+			response = dialog.showPrompt(request.message, request.placeholder, { secret: request.type === "secret" });
 		}
 		const signal = request.signal;
 		if (!signal) return response;
@@ -276,22 +294,31 @@ async function runLoginDialog(host: PiCommandHost, runtime: LoginRuntime, option
 		else dialog.showProgress(event.message);
 		host.requestRender();
 	};
-	const action = option.authType === "oauth" ? `Logged in to ${option.name}` : `Saved API key for ${option.name}`;
 	try {
 		await runtime.login(option.id, option.authType, { signal: dialog.signal, prompt, notify });
 	} catch (error) {
 		finish();
 		const message = error instanceof Error ? error.message : String(error);
-		if (message !== CANCELLED && !dialog.signal.aborted) {
+		return { ok: false, cancelled: message === CANCELLED || dialog.signal.aborted, error: message };
+	}
+	finish();
+	return { ok: true };
+}
+
+/** Pi's login dialog around `ModelRuntime.login`, then the worker reloads the saved credentials. */
+async function runLoginDialog(host: PiCommandHost, runtime: LoginRuntime, option: AuthSelectorProvider): Promise<void> {
+	const outcome = await runProviderLogin(host, runtime, option);
+	if (!outcome.ok) {
+		if (!outcome.cancelled) {
 			host.showStatus(
 				option.authType === "oauth"
-					? `Error: Failed to login to ${option.name}: ${message}`
-					: `Error: Failed to save API key for ${option.name}: ${message}`,
+					? `Error: Failed to login to ${option.name}: ${outcome.error}`
+					: `Error: Failed to save API key for ${option.name}: ${outcome.error}`,
 			);
 		}
 		return;
 	}
-	finish();
+	const action = option.authType === "oauth" ? `Logged in to ${option.name}` : `Saved API key for ${option.name}`;
 	host.showStatus(`${action}. Credentials saved to ${host.authPath}. Reloading the Session's credentials…`);
 	await reloadWorkerAuth(host, option.id, `${action}. Credentials saved to ${host.authPath}`);
 }

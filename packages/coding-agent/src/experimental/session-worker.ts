@@ -41,6 +41,7 @@ import Type, { type Static } from "typebox";
 import { Check } from "typebox/value";
 import { isValidThinkingLevel } from "../cli/args.ts";
 import { getAgentDir, getRlmRuntimePath } from "../config.ts";
+import { DEFAULT_HINDSIGHT_URL } from "../core/defaults.ts";
 import { createEventBus } from "../core/event-bus.ts";
 import { configureHttpDispatcher } from "../core/http-dispatcher.ts";
 import { ModelRegistry } from "../core/model-registry.ts";
@@ -1689,7 +1690,7 @@ async function createCodingAgentHarness(
 			sessionId: options.metadata.id,
 			cwd: options.metadata.cwd,
 			jev: jev ?? undefined,
-			hindsightUrl: hindsightUrl(process.env.ULTRON_HINDSIGHT_URL),
+			hindsightUrl: hindsightUrl(process.env.ULTRON_HINDSIGHT_URL, settingsManager.getHindsightUrl()),
 			bankId: process.env.ULTRON_HINDSIGHT_BANK || "ultron",
 			extensionCommands: {
 				list: async () => legacyExtensions?.commands ?? [],
@@ -1907,7 +1908,9 @@ async function createCodingAgentHarness(
 						memory: nativeServices.memory,
 						sessionId: options.metadata.id,
 						holdActivity: () => holdActivity?.() ?? (() => {}),
-						...legacyRecallOption(),
+						...legacyRecallOption(
+							hindsightUrl(process.env.ULTRON_HINDSIGHT_URL, settingsManager.getHindsightUrl()),
+						),
 					})
 				: undefined;
 		const removeAutoMemory = autoMemory?.install(harness) ?? (() => {});
@@ -2029,7 +2032,8 @@ async function createCodingAgentHarness(
 					return {
 						available: {
 							jev: nativeJev !== undefined,
-							hindsight: hindsightUrl(process.env.ULTRON_HINDSIGHT_URL) !== undefined,
+							hindsight:
+								hindsightUrl(process.env.ULTRON_HINDSIGHT_URL, settingsManager.getHindsightUrl()) !== undefined,
 						},
 						capacity: JEV_DECISION_CAPACITY,
 						// The gates' cut-offs, so a view can show a score against the line it had to clear.
@@ -2068,13 +2072,8 @@ async function createCodingAgentHarness(
 	}
 }
 
-/**
- * Hindsight memory is on by default against a local server, as in the Pi Jev extension.
- * ULTRON_HINDSIGHT_URL overrides the address; "off" (or "none"/"0") disables memory.
- */
 /** Read-only recall from the Pi extension's Hindsight bank, when Hindsight and that bank are configured. */
-function legacyRecallOption(): { legacyRecall?: ReturnType<typeof createLegacyRecall> } {
-	const url = hindsightUrl(process.env.ULTRON_HINDSIGHT_URL);
+function legacyRecallOption(url: string | undefined): { legacyRecall?: ReturnType<typeof createLegacyRecall> } {
 	const bank = legacyBankFromEnv(process.env.ULTRON_HINDSIGHT_LEGACY_BANK);
 	return url && bank ? { legacyRecall: createLegacyRecall(url, bank) } : {};
 }
@@ -2188,9 +2187,15 @@ function pendingSet(): { track(promise: Promise<unknown>): void; settled(): Prom
 	};
 }
 
-export function hindsightUrl(configured: string | undefined): string | undefined {
-	if (configured === undefined || configured.trim() === "") return "http://localhost:8888";
-	return ["off", "none", "0", "false"].includes(configured.trim().toLowerCase()) ? undefined : configured.trim();
+/**
+ * Hindsight memory is on by default against a local server, as in the Pi Jev extension.
+ * ULTRON_HINDSIGHT_URL overrides the address, then the `hindsightUrl` setting (written by `ultron setup`);
+ * "off" (or "none"/"0"/"false") disables memory.
+ */
+export function hindsightUrl(configured: string | undefined, setting?: string): string | undefined {
+	const value = configured?.trim() ? configured.trim() : setting?.trim();
+	if (!value) return DEFAULT_HINDSIGHT_URL;
+	return ["off", "none", "0", "false"].includes(value.toLowerCase()) ? undefined : value;
 }
 
 export function runSessionWorkerProcess(args: readonly string[]): Promise<void> {
