@@ -7,6 +7,7 @@ import contextlib
 import hashlib
 import io
 import json
+import linecache
 import math
 import os
 import re
@@ -431,6 +432,20 @@ def _default_yield_after() -> float | None:
     return None if value == 0 else min(value, _JOB_MAX_WAIT_SECONDS)
 
 
+# Outside a work tree `git diff` prints its whole option list (about 130 lines, 7 KB) after the one line that
+# matters; every later turn re-reads it. Keep the warning and drop the list.
+_GIT_DIFF_USAGE = re.compile(
+    r"^usage: git diff --no-index [^\n]*\n(?:(?:[ \t][^\n]*|Diff [^\n]*|Other diff options[^\n]*|)(?:\n|$))*",
+    re.MULTILINE,
+)
+
+
+def _quiet_git_usage(output: str) -> str:
+    if "usage: git diff --no-index" not in output:
+        return output
+    return _GIT_DIFF_USAGE.sub("(not a git work tree: no diff; compare against the text you read instead)\n", output)
+
+
 async def bash(command: str, timeout: float | None = None, yield_after: Any = _DEFAULT) -> Any:
     """Run a shell command in the working directory.
 
@@ -489,7 +504,7 @@ async def bash(command: str, timeout: float | None = None, yield_after: Any = _D
                 truncated = False
     exit_code = result.get("exit_code")
     return BashOutput(
-        output,
+        _quiet_git_usage(output),
         exit_code if isinstance(exit_code, int) else None,
         timed_out=bool(result.get("timed_out")),
         cancelled=bool(result.get("cancelled")),
@@ -1128,7 +1143,44 @@ def _prepare_code(source: str) -> tuple[Any, str | None]:
             value=tree.body[-1].value,
         )
     ast.fix_missing_locations(tree)
-    return compile(tree, "<rlm-cell>", "exec", flags=ast.PyCF_ALLOW_TOP_LEVEL_AWAIT), note
+    code = compile(tree, "<rlm-cell>", "exec", flags=ast.PyCF_ALLOW_TOP_LEVEL_AWAIT)
+    _remember_cell_source(code, text)
+    return code, note
+
+
+# Every cell is compiled as "<rlm-cell>", so a traceback cannot find its text by file name; the code objects of
+# recent cells (functions they define included) map to their lines instead. A failing line shown in the traceback
+# is one the model does not have to find again before fixing it.
+_CELL_SOURCES: dict[int, tuple[Any, list[str]]] = {}
+_CELL_SOURCE_ORDER: list[list[int]] = []
+_CELL_SOURCES_KEPT = 200
+
+
+def _remember_cell_source(code: Any, text: str) -> None:
+    lines = text.splitlines()
+    keys: list[int] = []
+    pending = [code]
+    while pending:
+        current = pending.pop()
+        _CELL_SOURCES[id(current)] = (current, lines)
+        keys.append(id(current))
+        pending.extend(const for const in current.co_consts if hasattr(const, "co_code"))
+    _CELL_SOURCE_ORDER.append(keys)
+    while len(_CELL_SOURCE_ORDER) > _CELL_SOURCES_KEPT:
+        for key in _CELL_SOURCE_ORDER.pop(0):
+            _CELL_SOURCES.pop(key, None)
+
+
+def _frame_source_line(code: Any, lineno: int | None) -> str:
+    if not lineno:
+        return ""
+    entry = _CELL_SOURCES.get(id(code))
+    if entry is not None and entry[0] is code:
+        lines = entry[1]
+        return lines[lineno - 1].strip() if 0 < lineno <= len(lines) else ""
+    with contextlib.suppress(Exception):
+        return linecache.getline(code.co_filename, lineno).strip()
+    return ""
 
 
 _PREVIEW_BYTES = 8192
@@ -1581,11 +1633,19 @@ def _error_preview(error: BaseException) -> dict[str, Any]:
         if current.__traceback__ is not None:
             stream.write("Traceback (most recent call last):\n")
             for frame, lineno in traceback.walk_tb(current.__traceback__):
+                code = frame.f_code
+                if code.co_name == "execute_cell" and code.co_filename == __file__:
+                    continue  # the kernel's own frame around every cell
                 stream.write('  File "')
-                stream.write(frame.f_code.co_filename)
+                stream.write(code.co_filename)
                 stream.write(f'", line {lineno}, in ')
-                stream.write(frame.f_code.co_name)
+                stream.write(code.co_name)
                 stream.write("\n")
+                line = _frame_source_line(code, lineno)
+                if line:
+                    stream.write("    ")
+                    stream.write(line[:300])
+                    stream.write("\n")
                 if stream.truncated:
                     return
         stream.write(type(current).__name__)
