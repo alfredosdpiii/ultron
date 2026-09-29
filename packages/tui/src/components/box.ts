@@ -2,11 +2,18 @@ import { type Component, dispatchMouseEvent, type TuiMouseDispatchResult, type T
 import { applyBackgroundToLine, visibleWidth } from "../utils.ts";
 
 type RenderCache = {
-	childLines: string[];
+	/** Each child's lines as it returned them (without the left padding). */
+	childLines: string[][];
 	width: number;
 	bgSample: string | undefined;
 	lines: string[];
 };
+
+function sameLines(a: readonly string[], b: readonly string[]): boolean {
+	if (a.length !== b.length) return false;
+	for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+	return true;
+}
 
 /**
  * Box component - a container that applies padding and background to all children
@@ -54,14 +61,14 @@ export class Box implements Component {
 		this.cache = undefined;
 	}
 
-	private matchCache(width: number, childLines: string[], bgSample: string | undefined): boolean {
+	private matchCache(width: number, childLines: string[][], bgSample: string | undefined): boolean {
 		const cache = this.cache;
 		return (
 			!!cache &&
 			cache.width === width &&
 			cache.bgSample === bgSample &&
 			cache.childLines.length === childLines.length &&
-			cache.childLines.every((line, i) => line === childLines[i])
+			cache.childLines.every((lines, i) => sameLines(lines, childLines[i]!))
 		);
 	}
 
@@ -106,27 +113,35 @@ export class Box implements Component {
 		const contentWidth = Math.max(1, width - this.paddingX * 2);
 		const leftPad = " ".repeat(this.paddingX);
 
-		// Render all children
-		const childLines: string[] = [];
-		const mouseChildren: Array<{ component: Component; height: number }> = [];
+		// Render all children. Their lines are compared with the last render before anything is built, so an
+		// unchanged box (most of a long transcript on any frame) costs no allocation.
+		const childLines: string[][] = [];
+		let lineCount = 0;
 		for (const child of this.children) {
 			const lines = child.render(contentWidth);
-			mouseChildren.push({ component: child, height: lines.length });
-			for (const line of lines) {
-				childLines.push(leftPad + line);
-			}
+			childLines.push(lines);
+			lineCount += lines.length;
 		}
-		this.mouseLayout = { width: contentWidth, children: mouseChildren };
-
-		if (childLines.length === 0) {
-			return [];
-		}
-
 		// Check if bgFn output changed by sampling
 		const bgSample = this.bgFn ? this.bgFn("test") : undefined;
+		const cached = this.matchCache(width, childLines, bgSample);
+		const mouseLayout = this.mouseLayout;
+		if (
+			!cached ||
+			mouseLayout?.width !== contentWidth ||
+			mouseLayout.children.length !== this.children.length ||
+			mouseLayout.children.some((entry, i) => entry.component !== this.children[i])
+		) {
+			this.mouseLayout = {
+				width: contentWidth,
+				children: this.children.map((component, i) => ({ component, height: childLines[i]!.length })),
+			};
+		}
 
-		// Check cache validity
-		if (this.matchCache(width, childLines, bgSample)) {
+		if (lineCount === 0) {
+			return [];
+		}
+		if (cached) {
 			return this.cache!.lines;
 		}
 
@@ -139,8 +154,8 @@ export class Box implements Component {
 		}
 
 		// Content
-		for (const line of childLines) {
-			result.push(this.applyBg(line, width));
+		for (const lines of childLines) {
+			for (const line of lines) result.push(this.applyBg(leftPad + line, width));
 		}
 
 		// Bottom padding
@@ -149,7 +164,8 @@ export class Box implements Component {
 		}
 
 		// Update cache
-		this.cache = { childLines, width, bgSample, lines: result };
+		// Copies: a child may reuse and refill the array it returned.
+		this.cache = { childLines: childLines.map((lines) => lines.slice()), width, bgSample, lines: result };
 
 		return result;
 	}

@@ -6,7 +6,7 @@
  * Without this the transcript showed only the word "rlm" and the output, never the code that produced it.
  */
 
-import { Container, Text, truncateToWidth } from "@ultron/tui";
+import { Container, Text, truncateToWidth, visibleWidth, wrapTextWithAnsi } from "@ultron/tui";
 import type { ToolRenderContext, ToolRenderResultOptions } from "../core/extensions/types.ts";
 import { getTextOutput } from "../core/tools/render-utils.ts";
 import type { ToolRenderers } from "../core/tools/renderers/index.ts";
@@ -36,6 +36,47 @@ function highlighted(state: RlmRenderState, code: string): string[] {
 		state.highlighted = highlightCode(code.replace(/\t/g, "    "), "python");
 	}
 	return state.highlighted;
+}
+
+/**
+ * The last `maxLines` visual lines of the output and how many came before, exactly as
+ * `truncateToVisualLines(styled output, maxLines, width)` computes them, without wrapping the whole output: a line
+ * no wider than the pane is one visual line, so only the tail and over-wide lines are laid out. Output with its own
+ * escape sequences or carriage returns (whose styles can carry across lines) takes the general path.
+ */
+export function outputTail(
+	output: string,
+	color: (text: string) => string,
+	maxLines: number,
+	width: number,
+): { visualLines: string[]; skippedCount: number } {
+	if (output.includes("\x1b") || output.includes("\r")) {
+		const styled = output
+			.split("\n")
+			.map((line) => color(line))
+			.join("\n");
+		return truncateToVisualLines(styled, maxLines, width);
+	}
+	const lines = output.split("\n");
+	const tail: string[] = [];
+	let total = 0;
+	for (let index = lines.length - 1; index >= 0; index--) {
+		const plain = lines[index]!.replace(/\t/g, "   ");
+		const lineWidth = visibleWidth(plain);
+		if (lineWidth <= width) {
+			total += 1;
+			if (tail.length < maxLines) tail.push(color(plain) + " ".repeat(width - lineWidth));
+			continue;
+		}
+		const wrapped = wrapTextWithAnsi(color(plain), width);
+		total += wrapped.length;
+		for (let row = wrapped.length - 1; row >= 0 && tail.length < maxLines; row--) {
+			const line = wrapped[row]!;
+			tail.push(line + " ".repeat(Math.max(0, width - visibleWidth(line))));
+		}
+	}
+	tail.reverse();
+	return { visualLines: tail, skippedCount: Math.max(0, total - tail.length) };
 }
 
 function renderCall(args: unknown, _theme: unknown, context: ToolRenderContext<RlmRenderState>): Container {
@@ -76,12 +117,12 @@ function renderResult(
 		return container;
 	}
 	const color = context.isError ? "error" : "toolOutput";
-	const styled = output
-		.split("\n")
-		.map((line) => theme.fg(color, line))
-		.join("\n");
 	const label = theme.fg("muted", context.isError ? "error" : options.isPartial ? "output (running)" : "output");
 	if (options.expanded) {
+		const styled = output
+			.split("\n")
+			.map((line) => theme.fg(color, line))
+			.join("\n");
 		container.addChild(new Text(`\n${label}\n${styled}`, 0, 0));
 		return container;
 	}
@@ -90,7 +131,7 @@ function renderResult(
 	container.addChild({
 		render(width: number): string[] {
 			if (cachedWidth !== width) {
-				const preview = truncateToVisualLines(styled, RLM_OUTPUT_PREVIEW_LINES, width);
+				const preview = outputTail(output, (text) => theme.fg(color, text), RLM_OUTPUT_PREVIEW_LINES, width);
 				cachedWidth = width;
 				cachedLines = ["", label];
 				if (preview.skippedCount > 0) {

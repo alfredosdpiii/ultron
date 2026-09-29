@@ -2201,3 +2201,146 @@ describe("experimental client TUI: Pi's settings, auth, session and diagnostic c
 		}
 	});
 });
+
+describe("experimental client TUI: render cost", () => {
+	beforeAll(() => initTheme("dark"));
+
+	test("a lane update (a streamed token) does not invalidate the transcript already on screen", () => {
+		const view = new ExperimentalChatView(new TuiMainScreen(new ProcessTerminal()), process.cwd());
+		const snapshot = laneSnapshot();
+		const usage = snapshot.stats.usage;
+		snapshot.transcript = [
+			{
+				id: "u1",
+				parentId: null,
+				seq: 1,
+				timestamp: 1,
+				type: "message",
+				message: { role: "user", content: [{ type: "text", text: "count the rows" }], timestamp: 1 },
+			},
+			{
+				id: "a1",
+				parentId: "u1",
+				seq: 2,
+				timestamp: 2,
+				type: "message",
+				message: {
+					role: "assistant",
+					content: [
+						{ type: "text", text: "Counting **now**." },
+						{ type: "toolCall", id: "call-1", name: "rlm", arguments: { code: "print(len(rows))" } },
+					],
+					provider: "test",
+					model: "one",
+					api: "test",
+					usage,
+					stopReason: "toolUse",
+					timestamp: 2,
+				},
+			},
+			{
+				id: "r1",
+				parentId: "a1",
+				seq: 3,
+				timestamp: 3,
+				type: "message",
+				message: {
+					role: "toolResult",
+					toolCallId: "call-1",
+					toolName: "rlm",
+					content: [{ type: "text", text: Array.from({ length: 40 }, (_, index) => `row ${index}`).join("\n") }],
+					isError: false,
+					timestamp: 3,
+				},
+			},
+		];
+		view.apply(snapshot);
+		const rendered = plain(view.transcript.render(100));
+		const existing = [...view.transcript.children];
+		const invalidations = existing.map((child) => vi.spyOn(child, "invalidate"));
+		for (const text of ["The", "The answer", "The answer is 40."]) {
+			view.apply({
+				...snapshot,
+				operation: {
+					kind: "run",
+					streamingMessage: {
+						role: "assistant",
+						content: [{ type: "text", text }],
+						provider: "test",
+						model: "one",
+						api: "test",
+						usage,
+						stopReason: "stop",
+						timestamp: 4,
+					},
+					runningTools: [],
+				},
+			} as unknown as LaneSnapshot);
+		}
+		for (const invalidate of invalidations) expect(invalidate).not.toHaveBeenCalled();
+		const streamed = plain(view.transcript.render(100));
+		expect(streamed.startsWith(rendered)).toBe(true);
+		expect(streamed).toContain("The answer is 40.");
+		// Explicit changes still redraw the transcript (Ctrl+O).
+		view.setToolsExpanded(true);
+		expect(plain(view.transcript.render(100))).toContain("row 0");
+		view.dispose();
+	});
+
+	test("an idle poll that returns the same data does not redraw; a changed answer does", async () => {
+		// Only the poll timers are fake, so the harness's own promises and timeouts run as usual.
+		vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
+		const at = Date.now() - 20 * 60_000;
+		let tasks: JsonValue[] = [];
+		const stable = (request: string): JsonValue => {
+			if (request === "agents.status") {
+				return {
+					definitions: [],
+					tasks,
+					usage: { admittedTasks: 0, usage: { cost: null }, reservations: [] },
+					limits: {},
+					controls: {},
+				};
+			}
+			if (request === "jev.decisions") {
+				return {
+					available: { jev: true, hindsight: false },
+					capacity: 200,
+					thresholds: { recall: 0.65, keep: 0.65 },
+					decisions: [{ id: "jev-1", at, kind: "recall", status: "ok", retrieve: true, probability: 0.8 }],
+				};
+			}
+			return inspectFixture(request);
+		};
+		const harness = await openHarness({ command: "client" });
+		harness.inspect.mockImplementation(async (request: string) => stable(request));
+		const polls = () => harness.inspect.mock.calls.filter(([request]) => request === "agents.status").length;
+		const poll = async () => {
+			const before = polls();
+			vi.advanceTimersByTime(5_000);
+			await vi.waitFor(() => expect(polls()).toBeGreaterThan(before));
+			await new Promise((resolve) => setTimeout(resolve, 20));
+		};
+		try {
+			await poll();
+			const renders = harness.requestRender.mock.calls.length;
+			await poll();
+			await poll();
+			expect(harness.requestRender).toHaveBeenCalledTimes(renders);
+			// A finished task showing up changes what the runtime line and pane draw.
+			tasks = [
+				{
+					id: "ultron-task-dddd4444",
+					definition: "rlm-child@1",
+					state: "completed",
+					result: { status: "succeeded", value: "done", verification: "unverified" },
+				},
+			];
+			await poll();
+			expect(harness.requestRender.mock.calls.length).toBeGreaterThan(renders);
+		} finally {
+			await harness.dispose();
+			vi.useRealTimers();
+		}
+	});
+});

@@ -202,6 +202,8 @@ export function rlmPaneWidth(columns: number): number {
 	return Math.max(RLM_PANE_MIN_WIDTH, Math.round(columns * RLM_PANE_RATIO));
 }
 
+/** How long views may share one RLM snapshot (a spinner step; durations show tenths of a second at most). */
+const RLM_SNAPSHOT_BUCKET_MS = 100;
 /** Redraw cadence for spinners and Jev's pulse, only while something animates. */
 const ANIMATION_MS = 150;
 
@@ -280,7 +282,9 @@ export class ExperimentalClientTui implements Component {
 	/** The live wave summary above the editor while children or workflow nodes run or wait. */
 	readonly #waveSummary: Component = {
 		render: (width) => this.#renderWaveSummary(width),
-		invalidate() {},
+		invalidate: () => {
+			this.#waveDrawn = undefined;
+		},
 	};
 	/** The RLM pane (`app.rlm.pane`): open beside the chat on wide terminals; focused takes the keys. */
 	readonly #rlmPane: RlmPane;
@@ -295,6 +299,8 @@ export class ExperimentalClientTui implements Component {
 	#jevVisible = false;
 	/** The wave summary showed at the last poll (it polls at the visible rate while it does). */
 	#waveActive = false;
+	/** The wave summary's last lines and the snapshot they were drawn from. */
+	#waveDrawn: { readonly snapshot: RlmSnapshot; readonly width: number; readonly lines: string[] } | undefined;
 	/** The full-screen RLM graph, while open. */
 	#rlmFocus: RlmGraphFocus | undefined;
 	/** Jev's transcript notes show every recalled memory instead of one line. */
@@ -303,9 +309,19 @@ export class ExperimentalClientTui implements Component {
 	#graphListing = true;
 	#animationTimer: ReturnType<typeof setInterval> | undefined;
 	#jevState: Omit<JevSnapshot, "now"> = { available: null, decisions: [] };
+	#jevRecalled:
+		| {
+				readonly transcript: unknown;
+				readonly memories: JevSnapshot["memories"];
+				readonly recalledCounts: Map<string, number>;
+		  }
+		| undefined;
 	#rlmTimer: ReturnType<typeof setInterval> | undefined;
 	#rlmInFlight = false;
 	#rlmQueued = false;
+	#rlmSnapshotMemo: { lane: unknown; state: RlmPollState; bucket: number; snapshot: RlmSnapshot } | undefined;
+	/** What the last poll drew (see `#pollSignature`); a poll that changes nothing does not redraw. */
+	#lastPollSignature: string | undefined;
 	readonly #rlmClock = new RlmClock();
 	#rlmState: RlmPollState = {
 		tasks: [],
@@ -834,8 +850,21 @@ export class ExperimentalClientTui implements Component {
 			this.#chatInput.focused = !this.#busy && !(this.#rlmPaneFocused && this.#rlmPaneShown());
 			this.#editorContainer.addChild(this.#chatInput);
 		}
-		this.#layoutRoot.invalidate();
+		this.#invalidateChrome();
 		this.#requestRender();
+	}
+
+	/**
+	 * Drop the cached lines of everything around the transcript (the dock under it and the side pane). The
+	 * transcript is left alone: its components redraw themselves when their content changes, and re-wrapping a long
+	 * Session here (on every lane update, poll and animation frame) was the TUI's main source of lag.
+	 */
+	#invalidateChrome(): void {
+		this.#pendingMessagesContainer.invalidate();
+		this.#statusContainer.invalidate();
+		this.#editorContainer.invalidate();
+		this.#footerComponent.invalidate();
+		this.#rlmPane.invalidate();
 	}
 
 	#select(title: string, items: readonly SelectItem[], selectedValue?: string): Promise<string | undefined> {
@@ -2048,10 +2077,14 @@ export class ExperimentalClientTui implements Component {
 	#renderWaveSummary(width: number): string[] {
 		if (this.#rlmVisible || this.#rlmFocus !== undefined) return [];
 		const snapshot = this.#rlmSnapshot();
-		return renderWaveSummary(buildDagRuns(snapshot), Math.max(1, width - 2), {
+		const drawn = this.#waveDrawn;
+		if (drawn?.snapshot === snapshot && drawn.width === width) return drawn.lines;
+		const lines = renderWaveSummary(buildDagRuns(snapshot), Math.max(1, width - 2), {
 			style: rlmStyle,
 			now: snapshot.now,
 		}).map((line) => ` ${line}`);
+		this.#waveDrawn = { snapshot, width, lines };
+		return lines;
 	}
 
 	#toggleJev(): void {
@@ -2148,8 +2181,13 @@ export class ExperimentalClientTui implements Component {
 				...(jev.status === "rejected" && this.#jevState.available !== null ? { error: message(jev.reason) } : {}),
 			};
 			this.#updateAnimation();
-			this.#layoutRoot.invalidate();
-			this.#requestRender();
+			// The RLM and Jev views render from this state on every frame; redraw only when a poll changed what they
+			// show (an idle Session polls every few seconds and usually gets the same answer back).
+			const signature = this.#pollSignature();
+			if (signature !== this.#lastPollSignature) {
+				this.#lastPollSignature = signature;
+				this.#requestRender();
+			}
 		} finally {
 			this.#rlmInFlight = false;
 			if (this.#rlmQueued && !this.#closed) {
@@ -2159,10 +2197,37 @@ export class ExperimentalClientTui implements Component {
 		}
 	}
 
+	/**
+	 * Everything a poll feeds into what is on screen: the polled RLM and Jev state, plus the runtime line, whose ages
+	 * ("jev: kept · 2m5s ago") move with the clock. The docked RLM and Jev panels list ages too, and the pane counts
+	 * how long queued nodes have waited, so while one of those shows live data every poll redraws, as before.
+	 */
+	#pollSignature(): string {
+		const live = this.#rlmVisible || this.#jevVisible || this.#rlmFocus !== undefined;
+		if (live || (this.#waveActive && this.#rlmPaneShown())) return `t:${Date.now()}`;
+		return JSON.stringify(
+			[this.#rlmState, this.#jevState, this.#renderRuntimeLine(Math.max(1, this.#ui.terminal.columns))],
+			(_key, value: unknown) => (value instanceof Map || value instanceof Set ? [...value] : value),
+		);
+	}
+
 	#rlmSnapshot(): RlmSnapshot {
 		const now = Date.now();
 		const state = this.#rlmState;
 		const lane = this.#laneSnapshot();
+		// Several views read this every frame (pane, wave summary, runtime line). Within one spinner step (100 ms)
+		// and until the lane or a poll changes it, they share one snapshot, which lets the pane reuse its lines.
+		const bucket = Math.floor(now / RLM_SNAPSHOT_BUCKET_MS);
+		const memo = this.#rlmSnapshotMemo;
+		if (memo !== undefined && memo.lane === lane && memo.state === state && memo.bucket === bucket) {
+			return memo.snapshot;
+		}
+		const snapshot = this.#buildRlmSnapshot(now, state, lane);
+		this.#rlmSnapshotMemo = { lane, state, bucket, snapshot };
+		return snapshot;
+	}
+
+	#buildRlmSnapshot(now: number, state: RlmPollState, lane: Parameters<typeof extractTurn>[0]): RlmSnapshot {
 		const { turn, cells } = extractTurn(lane, this.#rlmClock, now);
 		return {
 			now,
@@ -2226,12 +2291,23 @@ export class ExperimentalClientTui implements Component {
 
 	#jevSnapshot(): JevSnapshot {
 		const transcript = this.#laneSnapshot()?.transcript ?? [];
-		const recalledCounts = new Map<string, number>();
-		for (const entry of transcript) {
-			const note = parseMemoryMessage((entry as { message?: unknown }).message);
-			if (note?.taskId !== undefined) recalledCounts.set(note.taskId, note.items.length);
+		// What the transcript recalled only changes with the transcript; the runtime line asks on every frame.
+		let recalled = this.#jevRecalled;
+		if (recalled?.transcript !== transcript) {
+			const recalledCounts = new Map<string, number>();
+			for (const entry of transcript) {
+				const note = parseMemoryMessage((entry as { message?: unknown }).message);
+				if (note?.taskId !== undefined) recalledCounts.set(note.taskId, note.items.length);
+			}
+			recalled = { transcript, memories: collectKnownMemories(transcript), recalledCounts };
+			this.#jevRecalled = recalled;
 		}
-		return { now: Date.now(), ...this.#jevState, memories: collectKnownMemories(transcript), recalledCounts };
+		return {
+			now: Date.now(),
+			...this.#jevState,
+			memories: recalled.memories,
+			recalledCounts: recalled.recalledCounts,
+		};
 	}
 
 	#renderJev(width: number): string[] {
@@ -2289,7 +2365,6 @@ export class ExperimentalClientTui implements Component {
 		const animate = !this.#closed && (pulsing || running);
 		if (animate && this.#animationTimer === undefined) {
 			this.#animationTimer = setInterval(() => {
-				this.#layoutRoot.invalidate();
 				this.#requestRender();
 				this.#updateAnimation();
 			}, ANIMATION_MS);

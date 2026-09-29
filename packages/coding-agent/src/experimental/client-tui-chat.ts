@@ -143,7 +143,9 @@ export class ExperimentalChatView {
 		this.#setWorking(snapshot.operation);
 		// A settled turn gets its retention note after the answer.
 		if (snapshot.operation === null && this.#turn?.answered) this.#closeTurn();
-		this.transcript.invalidate();
+		// Not the transcript: every component in it redraws itself when its own content changes (streaming text,
+		// tool results, appended entries), and invalidating all of them re-wrapped the whole Session on every
+		// streamed token. Theme and expansion changes invalidate it explicitly.
 		this.pendingMessages.invalidate();
 		this.status.invalidate();
 	}

@@ -201,6 +201,8 @@ export class TuiAltScreen extends TuiBase implements ViewportTUI {
 	private lastDocument: string[] = [];
 	private previousScreenWidth = 0;
 	private previousScreenHeight = 0;
+	/** Where the primary scroll view sat on the last frame, for moving its rows with a terminal scroll. */
+	private previousScrollRegion: { top: number; height: number; scrollTop: number } | undefined;
 	private layoutRoot: Component | undefined;
 	private currentLayout: LayoutFrame | undefined;
 	private readonly implicitDocument: Component;
@@ -463,6 +465,7 @@ export class TuiAltScreen extends TuiBase implements ViewportTUI {
 		this.previousScreen = [];
 		this.previousScreenWidth = 0;
 		this.previousScreenHeight = 0;
+		this.previousScrollRegion = undefined;
 		this.currentLayout = undefined;
 	}
 
@@ -1658,6 +1661,57 @@ export class TuiAltScreen extends TuiBase implements ViewportTUI {
 		return result;
 	}
 
+	/** The primary scroll view's rows when it spans the full terminal width (a terminal scroll moves whole rows). */
+	private getFullWidthScrollRegion(
+		layout: LayoutFrame,
+		width: number,
+	): { top: number; height: number; scrollTop: number } | undefined {
+		const scrollView = layout.primaryScrollView;
+		if (!scrollView) return undefined;
+		const box = getScrollViewBox(layout, scrollView);
+		if (!box || box.rect.x !== 0 || box.rect.width !== width) return undefined;
+		const top = Math.max(0, box.clip.y);
+		const height = Math.min(box.clip.height, layout.height - top);
+		if (box.clip.x !== 0 || box.clip.width !== width || height < 2) return undefined;
+		return { top, height, scrollTop: scrollView.scrollTop };
+	}
+
+	/**
+	 * When the transcript scrolled (or grew while following the end), move the rows the terminal already shows with
+	 * a scroll inside the transcript's rows instead of rewriting each of them; the row diff then writes only the
+	 * rows that came into view or changed. Returns the terminal sequence and the rows shown after it, or undefined
+	 * when the frame is not such a scroll (or a scroll would not save anything).
+	 */
+	private scrollRegionRows(
+		screen: readonly string[],
+		region: { top: number; height: number; scrollTop: number } | undefined,
+	): { sequence: string; shown: string[] } | undefined {
+		const previous = this.previousScrollRegion;
+		if (!region || !previous || previous.top !== region.top || previous.height !== region.height) return undefined;
+		const delta = region.scrollTop - previous.scrollTop;
+		if (delta === 0 || Math.abs(delta) >= region.height) return undefined;
+		const bottom = region.top + region.height;
+		if (this.previousScreen.length < bottom || screen.length < bottom) return undefined;
+		// Inline images are placed by their own protocol; leave frames that show one to the full row diff.
+		for (let row = region.top; row < bottom; row++) {
+			if (isImageLine(this.previousScreen[row]!) || isImageLine(screen[row]!)) return undefined;
+		}
+		const shown = [...this.previousScreen];
+		let kept = 0;
+		let unchanged = 0;
+		for (let row = region.top; row < bottom; row++) {
+			const source = row + delta;
+			const line = source >= region.top && source < bottom ? this.previousScreen[source]! : "";
+			shown[row] = line;
+			if (line !== "" && line === screen[row]) kept += 1;
+			if (screen[row] === this.previousScreen[row]) unchanged += 1;
+		}
+		if (kept <= unchanged) return undefined;
+		// Reset attributes first: the rows the scroll opens are cleared with the current background.
+		const scroll = delta > 0 ? `\x1b[${delta}S` : `\x1b[${-delta}T`;
+		return { sequence: `\x1b[0m\x1b[${region.top + 1};${bottom}r${scroll}\x1b[r`, shown };
+	}
+
 	protected override doRender(): void {
 		if (this.stopped || !this.altScreenActive) return;
 		const width = Math.max(1, this.terminal.columns);
@@ -1694,7 +1748,19 @@ export class TuiAltScreen extends TuiBase implements ViewportTUI {
 				? this.prepareKittyScreen(screen)
 				: { lines: screen, evictedImageDeletion: "" };
 
+		const scrollRegion = this.getFullWidthScrollRegion(nextLayout, width);
+		// Rows the terminal already shows, after a region scroll below moved them (diff baseline for this frame).
+		let shown: readonly string[] = this.previousScreen;
 		let buffer = BEGIN_SYNCHRONIZED_OUTPUT;
+		if (!fullRedraw && !imagesNeedRedraw) {
+			const moved = this.scrollRegionRows(screen, scrollRegion);
+			if (moved) {
+				buffer += moved.sequence;
+				shown = moved.shown;
+				this.regionScrollCount += 1;
+			}
+		}
+		this.previousScrollRegion = scrollRegion;
 		if (fullRedraw) {
 			this.fullRedrawCount += 1;
 			const clearImages =
@@ -1718,13 +1784,13 @@ export class TuiAltScreen extends TuiBase implements ViewportTUI {
 			(Boolean(process.env.WEZTERM_PANE) || process.env.TERM_PROGRAM?.toLowerCase() === "wezterm");
 		if (clearRowsBeforeKittyImages) {
 			for (let row = 0; row < height; row++) {
-				if (!fullRedraw && !imagesNeedRedraw && screen[row] === this.previousScreen[row]) continue;
+				if (!fullRedraw && !imagesNeedRedraw && screen[row] === shown[row]) continue;
 				buffer += `\x1b[${row + 1};1H\x1b[2K`;
 			}
 		}
 
 		for (let row = 0; row < height; row++) {
-			if (!fullRedraw && !imagesNeedRedraw && screen[row] === this.previousScreen[row]) continue;
+			if (!fullRedraw && !imagesNeedRedraw && screen[row] === shown[row]) continue;
 			buffer += `\x1b[${row + 1};1H${clearRowsBeforeKittyImages ? "" : "\x1b[2K"}${preparedKittyScreen.lines[row] ?? ""}`;
 		}
 
