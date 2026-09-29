@@ -1,0 +1,13 @@
+{
+	"version": "0.1.2",
+	"source": {
+		"kind": "git",
+		"commit": "35aa99c2aeeed61494086467dfb8a0001d70ef89",
+		"repository": "https://github.com/alfredosdpiii/loki"
+	},
+	"files": {
+		"loki.py": "e79ede717fe77a5ea6a56f642e285f640da6db466d80575e591a4647e95597da",
+		"templates/loki.json": "a397f86c9287ad96505a2e31ecaf898afdc0f3c8b0f83b3a9e6ef13d12507f88",
+		"LICENSE": "107c3b93ec7cdd2aa8314e6184c176d794899630266774c204f870a3198e75fe"
+	}
+}

@@ -1,6 +1,6 @@
 /**
- * `ultron setup`: a guided first configuration in five steps (environment, provider and model, Jev, Hindsight,
- * summary). Every step can be skipped with Esc and the wizard can be run again; nothing is overwritten without
+ * `ultron setup`: a guided first configuration in six steps (environment, provider and model, Jev, Hindsight, Loki
+ * guardrails, summary). Every step can be skipped with Esc and the wizard can be run again; nothing is overwritten without
  * asking, and secrets are read masked and never printed. The questions go through `SetupUi`, so the flow is the
  * same in the terminal (`tui.ts`) and in tests.
  */
@@ -10,12 +10,13 @@ import type { ThinkingLevel } from "@ultron/agent-core";
 import { type Api, getSupportedThinkingLevels, type Model } from "@ultron/ai";
 import { DEFAULT_THINKING_LEVEL } from "../../core/defaults.ts";
 import type { ModelRuntime } from "../../core/model-runtime.ts";
-import type { SettingsManager } from "../../core/settings-manager.ts";
+import type { LokiSettings, SettingsManager } from "../../core/settings-manager.ts";
 import { type LoginOutcome, type LoginRuntime, loginProviderOptions } from "../../experimental/client-tui-auth.ts";
 import type { AuthSelectorProvider } from "../../modes/interactive/components/oauth-selector.ts";
 import {
 	type CustomEndpointApi,
 	checkEnvironment,
+	checkLokiAnalyzers,
 	customProviderExists,
 	effectiveHindsightUrl,
 	formatCommand,
@@ -111,6 +112,8 @@ export interface SetupDeps {
 	runDocker(args: readonly string[], env: Record<string, string>): Promise<{ ok: boolean; output: string }>;
 	/** How long to wait for a new Hindsight container to answer. */
 	readonly hindsightWaitMs: number;
+	/** The Loki engine version bundled with this installation, when it has one. */
+	readonly lokiVersion?: string;
 }
 
 export interface SetupSummaryLine {
@@ -126,7 +129,7 @@ export interface SetupResult {
 	readonly modelReady: boolean;
 }
 
-const STEPS = 5;
+const STEPS = 6;
 
 function stepTitle(index: number, title: string): string {
 	return `Step ${index}/${STEPS}: ${title}`;
@@ -160,6 +163,7 @@ export async function runSetupWizard(ui: SetupUi, deps: SetupDeps): Promise<Setu
 		modelReady = model.ready;
 		lines.push(await jevStep(ui, deps));
 		lines.push(await hindsightStep(ui, deps));
+		lines.push(await lokiStep(ui, deps));
 		completed = true;
 	} catch (error) {
 		if (!(error instanceof SetupQuit)) throw error;
@@ -705,11 +709,94 @@ async function installWithDocker(ui: SetupUi, deps: SetupDeps, url: string): Pro
 }
 
 // ---------------------------------------------------------------------------------------------------------------
-// 5. Summary
+// 5. Loki guardrails
+// ---------------------------------------------------------------------------------------------------------------
+
+type LokiAction = "keep" | "autoInit" | "autoCommit" | "advise" | "enforce" | "off" | "on";
+
+function describeLoki(settings: LokiSettings): string {
+	const mode = settings.mode ?? "on";
+	if (mode === "off") return "off";
+	return [
+		mode === "advise" ? "advise-only" : "blocking",
+		`auto-install ${settings.autoInit === false ? "off" : "on"}`,
+		`auto-commit ${settings.autoCommit === false ? "off" : "on"}`,
+	].join(", ");
+}
+
+async function lokiStep(ui: SetupUi, deps: SetupDeps): Promise<SetupSummaryLine> {
+	const step = "Loki";
+	ui.heading(stepTitle(5, "Loki guardrails"));
+	ui.note(
+		"Loki checks every file the agent writes with deterministic rules and real analyzers: edit() and write() are checked before the file changes, other writes after the cell.",
+		"info",
+	);
+	ui.note(
+		deps.lokiVersion === undefined
+			? "✗ This installation has no bundled Loki engine; guardrails run only where a repository has its own .loki/."
+			: `✓ Bundled Loki ${deps.lokiVersion}`,
+		deps.lokiVersion === undefined ? "warning" : "success",
+	);
+	for (const name of ["ULTRON_LOKI", "ULTRON_LOKI_AUTOINIT", "ULTRON_LOKI_AUTOCOMMIT"])
+		if (deps.env[name]?.trim())
+			ui.note(`${name}=${deps.env[name]} is set; it overrides the settings saved here.`, "warning");
+	const analyzers = checkLokiAnalyzers(deps.probe);
+	for (const analyzer of analyzers)
+		ui.note(
+			`${analyzer.found ? "✓" : "–"} ${analyzer.name} (${analyzer.language})${analyzer.found ? "" : `: not found. ${analyzer.hint}`}`,
+			analyzer.found ? "success" : "dim",
+		);
+	if (analyzers.some((analyzer) => !analyzer.found))
+		ui.note("Missing analyzers are reported as NOT CHECKED, never as clean.", "dim");
+	const initial = deps.settings.getLokiSettings();
+	let current = initial;
+	for (;;) {
+		ui.note(`Loki: ${describeLoki(current)}.`, "info");
+		const mode = current.mode ?? "on";
+		const choices: Choice<LokiAction>[] =
+			mode === "off"
+				? [
+						{ label: "Keep Loki off", value: "keep" },
+						{ label: "Turn Loki on", value: "on" },
+					]
+				: [
+						{ label: "Keep these settings", value: "keep" },
+						{
+							label: `Turn auto-install ${current.autoInit === false ? "on" : "off"}`,
+							value: "autoInit",
+							description: "Create .loki/ (engine and default policy) in a Git repository that lacks it",
+						},
+						{
+							label: `Turn auto-commit ${current.autoCommit === false ? "on" : "off"}`,
+							value: "autoCommit",
+							description:
+								"Commit the .loki/ Ultron created, and only it; on a fork the commit rides along in pull requests",
+						},
+						mode === "advise"
+							? { label: "Block unsafe writes again", value: "enforce" }
+							: { label: "Advise only (report, never block)", value: "advise" },
+						{ label: "Turn Loki off", value: "off" },
+					];
+		const action = await ui.select("Loki guardrails", choices);
+		if (action === undefined || action === "keep") break;
+		if (action === "autoInit") current = { ...current, autoInit: current.autoInit === false };
+		else if (action === "autoCommit") current = { ...current, autoCommit: current.autoCommit === false };
+		else if (action === "advise") current = { ...current, mode: "advise" };
+		else current = { ...current, mode: action === "off" ? "off" : "on" };
+	}
+	if (describeLoki(current) === describeLoki(initial))
+		return { step, status: "unchanged", detail: describeLoki(current) };
+	deps.settings.setLokiSettings(current);
+	await deps.settings.flush();
+	return { step, status: "configured", detail: describeLoki(current) };
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// 6. Summary
 // ---------------------------------------------------------------------------------------------------------------
 
 function summaryStep(ui: SetupUi, deps: SetupDeps, lines: readonly SetupSummaryLine[], completed: boolean): void {
-	ui.heading(stepTitle(5, "Summary"));
+	ui.heading(stepTitle(6, "Summary"));
 	for (const line of lines) {
 		const tone: Tone = line.status === "configured" ? "success" : line.status === "failed" ? "error" : "dim";
 		ui.note(`${line.step}: ${line.status} — ${line.detail}`, tone);

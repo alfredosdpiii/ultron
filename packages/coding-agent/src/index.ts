@@ -52,6 +52,9 @@ export {
 export { createEventBus, type EventBus, type EventBusController } from "./core/event-bus.ts";
 // Extension system
 export type {
+	// Events - Ultron files
+	AfterCellChangesEvent,
+	AfterCellChangesEventResult,
 	AfterProviderResponseEvent,
 	AgentActivityOutcome,
 	AgentBeforeSettleEvent,
@@ -66,6 +69,8 @@ export type {
 	BashToolCallEvent,
 	BeforeAgentStartEvent,
 	BeforeAgentStartEventResult,
+	BeforeFileWriteEvent,
+	BeforeFileWriteEventResult,
 	BeforeProviderHeadersEvent,
 	BeforeProviderRequestEvent,
 	BeforeProviderRequestEventResult,

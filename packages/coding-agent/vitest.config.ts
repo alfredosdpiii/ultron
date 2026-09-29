@@ -10,8 +10,14 @@ export default mergeConfig(
 			testTimeout: 30000,
 			// Tests run offline by default; opt in with allowNetwork() from test/test-network-env.ts.
 			// Offline by default, never against the user's real Hindsight memory server, and never writing RLM
-			// snapshot keys of temporary profiles into the user's login keyring.
-			env: { PI_OFFLINE: "1", ULTRON_HINDSIGHT_URL: "off", ULTRON_RLM_SNAPSHOT_KEY_STORE: "file" },
+			// snapshot keys of temporary profiles into the user's login keyring. Loki guardrails are off unless a test
+			// turns them on (ultron-loki*.test.ts), so sessions in temporary repositories get no `.loki/` commit.
+			env: {
+				PI_OFFLINE: "1",
+				ULTRON_HINDSIGHT_URL: "off",
+				ULTRON_RLM_SNAPSHOT_KEY_STORE: "file",
+				ULTRON_LOKI: "off",
+			},
 			unstubEnvs: true,
 			reporters: process.env.GITHUB_ACTIONS ? ["dot", "github-actions"] : ["dot"],
 			silent: "passed-only",

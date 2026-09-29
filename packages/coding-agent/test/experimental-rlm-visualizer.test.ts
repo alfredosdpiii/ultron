@@ -426,6 +426,36 @@ describe("RLM gauges and kernel strip", () => {
 		expect(plain(renderKernelStrip(fixture(), 40, PLAIN_STYLE)!)).toBe("kernels 3/16 · 2 busy · 1 pinned · 2 ev…");
 		expect(renderKernelStrip(fixture({ pool: null }), 80, PLAIN_STYLE)).toBeUndefined();
 	});
+
+	test("kernel strip shows file-guard time this turn and in all, and blocks", () => {
+		const base = fixture().pool!;
+		const guard = { checks: 4, unchecked: 0, afterChecks: 2, afterFindings: 1 };
+		const pool = {
+			...base,
+			guards: [
+				{ name: "Loki", ...guard, blocked: 1, turnMs: 85, totalMs: 1_430 },
+				{ name: "extension", ...guard, checks: 0, afterChecks: 0, blocked: 0, turnMs: 0, totalMs: 0 },
+			],
+		};
+		expect(renderKernelStrip(fixture({ pool }), 120, PLAIN_STYLE)).toBe(
+			"kernels ■■◆············· 3/16 · 2 busy · 1 pinned · 2 evicted · mem 212 MiB · loki 85ms turn/1.4s 1 blocked",
+		);
+		expect(
+			parsePool({ live: 1, maxLive: 2, lanes: [], guards: [{ name: "Loki", checks: 3, turnMs: 12 }, { bogus: 1 }] })
+				?.guards,
+		).toEqual([
+			{
+				name: "Loki",
+				checks: 3,
+				blocked: 0,
+				unchecked: 0,
+				afterChecks: 0,
+				afterFindings: 0,
+				turnMs: 12,
+				totalMs: 0,
+			},
+		]);
+	});
 });
 
 describe("RLM views", () => {

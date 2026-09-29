@@ -93,6 +93,110 @@ export function checkEnvironment(nodeVersion: string, probe: ProbeCommand): Envi
 }
 
 // ---------------------------------------------------------------------------------------------------------------
+// Loki guardrails
+// ---------------------------------------------------------------------------------------------------------------
+
+export interface LokiAnalyzerCheck {
+	readonly name: string;
+	/** What Loki uses it for. */
+	readonly language: string;
+	readonly found: boolean;
+	readonly hint: string;
+}
+
+/** The analyzers Loki runs when a project needs them; each one missing is reported as NOT CHECKED, never as clean. */
+export const LOKI_ANALYZERS: readonly {
+	name: string;
+	language: string;
+	command: string;
+	args: string[];
+	hint: string;
+}[] = [
+	{
+		name: "ruff",
+		language: "Python",
+		command: "ruff",
+		args: ["--version"],
+		hint: "uv tool install ruff (or pipx install ruff)",
+	},
+	{
+		name: "mypy",
+		language: "Python types",
+		command: "mypy",
+		args: ["--version"],
+		hint: "uv tool install mypy (or pipx install mypy)",
+	},
+	{
+		name: "tsc",
+		language: "TypeScript types",
+		command: "tsc",
+		args: ["--version"],
+		hint: "npm i -D typescript in the project (node_modules/.bin/tsc is used when present)",
+	},
+	{
+		name: "oxlint",
+		language: "JavaScript/TypeScript",
+		command: "oxlint",
+		args: ["--version"],
+		hint: "npm i -D oxlint @oxlint/plugins in the project (node_modules/.bin/oxlint is used when present)",
+	},
+	{
+		name: "golangci-lint",
+		language: "Go",
+		command: "golangci-lint",
+		args: ["--version"],
+		hint: "https://golangci-lint.run/welcome/install/",
+	},
+	{
+		name: "clippy",
+		language: "Rust",
+		command: "cargo",
+		args: ["clippy", "--version"],
+		hint: "rustup component add clippy",
+	},
+	{
+		name: "credo",
+		language: "Elixir",
+		command: "mix",
+		args: ["--version"],
+		hint: "install Elixir, then add {:credo, only: [:dev, :test]} to the project's mix.exs deps",
+	},
+	{
+		name: "sobelow",
+		language: "Phoenix security",
+		command: "mix",
+		args: ["--version"],
+		hint: "install Elixir, then add {:sobelow, only: [:dev, :test]} to the project's mix.exs deps",
+	},
+];
+
+/** Which of Loki's analyzers are on PATH (Credo and Sobelow are project dependencies: only Elixir is checked). */
+export function checkLokiAnalyzers(probe: ProbeCommand): LokiAnalyzerCheck[] {
+	const cache = new Map<string, boolean>();
+	return LOKI_ANALYZERS.map((analyzer) => {
+		const key = `${analyzer.command} ${analyzer.args.join(" ")}`;
+		if (!cache.has(key)) cache.set(key, probe(analyzer.command, analyzer.args) !== undefined);
+		return { name: analyzer.name, language: analyzer.language, found: cache.get(key)!, hint: analyzer.hint };
+	});
+}
+
+/** The bundled Loki version from its VERSION.json next to loki.py, or undefined. */
+export function bundledLokiVersion(enginePath: string | undefined): string | undefined {
+	if (enginePath === undefined) return undefined;
+	try {
+		const pin = JSON.parse(readFileSync(join(dirname(enginePath), "VERSION.json"), "utf8")) as {
+			version?: unknown;
+			source?: { commit?: unknown };
+		};
+		if (typeof pin.version !== "string") return undefined;
+		const commit = typeof pin.source?.commit === "string" ? ` (${pin.source.commit.slice(0, 12)})` : "";
+		return `${pin.version}${commit}`;
+	} catch {
+		return undefined;
+	}
+}
+
+// ---------------------------------------------------------------------------------------------------------------
 // Secret files
 // ---------------------------------------------------------------------------------------------------------------
 

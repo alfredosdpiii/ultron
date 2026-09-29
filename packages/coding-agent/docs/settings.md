@@ -41,6 +41,19 @@ See [Choose a Model](models.md) for model selection and thinking controls.
 
 Available built-in tools are `read`, `bash`, `powershell`, `edit`, `write`, `grep`, `find`, and `ls`. CLI tool options override this setting for one invocation. See [Command Line](cli.md#tools).
 
+### Loki guardrails (Ultron)
+
+Global settings only (`~/.ultron/agent/settings.json`), so a repository cannot switch its own checks off. `ultron setup` edits them.
+
+| Setting | Type | Default | Description |
+|---|---|---|---|
+| `loki.mode` | `"on" \| "advise" \| "off"` | `"on"` | Check every REPL file write with the bundled Loki engine: `on` blocks unsafe `edit()`/`write()` calls, `advise` only reports, `off` disables Loki. `ULTRON_LOKI` overrides it. |
+| `loki.autoInit` | boolean | `true` | Create `.loki/` (engine and default policy, nothing else) in a Git repository that lacks it. Never in CI, a repository rooted at `$HOME` or `/`, under node_modules or in a read-only checkout. `ULTRON_LOKI_AUTOINIT` overrides it. |
+| `loki.autoCommit` | boolean | `true` | Commit the `.loki/` Ultron created, and only it, as "Add Loki guardrails" with your Git identity; never pushed, hooks and signing respected. On a fork this commit rides along in pull requests. `ULTRON_LOKI_AUTOCOMMIT` overrides it. |
+| `loki.ignoreRepos` | `string[]` | `[]` | Repository roots (absolute or `~/...`) where `.loki/` is never created. |
+
+`ULTRON_LOKI_TIMEOUT_MS` (default 5000) bounds each before-write check; a check that takes longer lets the write through with a visible note. `ULTRON_LOKI_LOG=<file>` appends every check as a JSON line.
+
 ## Sessions and context
 
 | Setting | Type | Default | Description |

@@ -1409,4 +1409,41 @@ describe("ExtensionRunner", () => {
 			expect(errors[0].error).toContain("header handler boom");
 		});
 	});
+
+	describe("Ultron file events", () => {
+		it("before_file_write blocks on the first blocking handler; after_cell_changes joins messages", async () => {
+			const source = `
+				export default function(pi) {
+					pi.on("before_file_write", (event) =>
+						event.content.includes("bad") ? { block: true, reason: "no bad in " + event.path } : { message: "ok " + event.lane });
+					pi.on("after_cell_changes", (event) => ({ message: "saw " + event.files.join(",") }));
+					pi.on("after_cell_changes", () => { throw new Error("cell handler boom"); });
+				}
+			`;
+			fs.writeFileSync(path.join(extensionsDir, "files.ts"), source);
+			const result = await discoverAndLoadExtensions([], tempDir, tempDir);
+			const runner = new ExtensionRunner(result.extensions, result.runtime, tempDir, sessionManager, modelRegistry);
+			const errors: string[] = [];
+			runner.onError((err) => errors.push(err.error));
+			expect(runner.hasHandlers("before_file_write")).toBe(true);
+			const write = { type: "before_file_write" as const, path: "/r/a.py", cwd: "/r", lane: "main" };
+			expect(await runner.emitBeforeFileWrite({ ...write, content: "bad" })).toEqual({
+				block: true,
+				reason: "no bad in /r/a.py",
+			});
+			expect(await runner.emitBeforeFileWrite({ ...write, content: "fine" })).toEqual({ message: "ok main" });
+			expect(
+				await runner.emitAfterCellChanges({
+					type: "after_cell_changes",
+					files: ["/r/a.py"],
+					checked: [],
+					deleted: [],
+					complete: true,
+					cwd: "/r",
+					lane: "main",
+				}),
+			).toEqual({ message: "saw /r/a.py" });
+			expect(errors).toEqual(["cell handler boom"]);
+		});
+	});
 });

@@ -34,7 +34,7 @@ export function defaultBuiltinToolNames(env: NodeJS.ProcessEnv = process.env): s
  */
 export const RLM_TOOL_DESCRIPTION = [
 	"Run a Python cell in your persistent REPL: variables, imports and functions persist across calls, top-level `await` works, and the last expression's value is shown with anything printed (kept as `_`).",
-	"Pre-imported: `bash`, `read`, `edit`, `view_image`, `rlm`, `agents`, `workflows`, `background`, `tools`, `mcp`, `ctx`, `skills`, `memory`, `hints`, `agent`, `Budget`, `state`, `jev`, `preview`, `asyncio`; `help(obj)` shows any API's docs.",
+	"Pre-imported: `bash`, `read`, `edit`, `write`, `view_image`, `rlm`, `agents`, `workflows`, `background`, `tools`, `mcp`, `ctx`, `skills`, `memory`, `hints`, `agent`, `Budget`, `state`, `jev`, `preview`, `asyncio`; `help(obj)` shows any API's docs.",
 ].join("\n");
 
 export const RLM_TOOL_SNIPPET = "Python REPL for files, shell (`bash`), edits (`edit`), data and subagents";
@@ -58,7 +58,7 @@ const BASH_SKILL_WITH_TOOL = `- Inside rlm you can also run shell with \`out = a
 
 const READ_SKILL = `- \`await read(path)\` returns a file's text (a ContextHandle over 256 KiB); \`await view_image(path)\` shows you an image.`;
 
-const EDIT_SKILL = `- \`await edit(path=..., old_str=..., new_str=...)\` replaces exactly one occurrence and raises ValueError when old_str is absent or ambiguous: read first, copy old_str exactly, several hunks in one cell. Create files with \`Path(p).write_text(...)\`.`;
+const EDIT_SKILL = `- \`await edit(path=..., old_str=..., new_str=...)\` replaces exactly one occurrence and raises ValueError when old_str is absent or ambiguous: read first, copy old_str exactly, several hunks in one cell. Create files with \`await write(path, text)\`.`;
 
 const EDIT_SKILL_WITH_TOOL =
 	"- The native edit tool and the `edit` skill both replace exactly one occurrence of old text (the skill raises ValueError when old_str is absent or ambiguous); use either.";

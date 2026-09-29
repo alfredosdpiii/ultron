@@ -1057,7 +1057,12 @@ export function renderGauges(gauges: readonly Gauge[], width: number, style: Rlm
 	return lines.map((line) => truncateToWidth(line, width, "…"));
 }
 
-/** `kernels ■■◆□······ 3/16 · 1 busy · 1 pinned · 2 evicted · 212 MiB`. */
+/** Guard time: `85ms`, `1.4s`. */
+function formatGuardMs(ms: number): string {
+	return ms < 1000 ? `${Math.round(ms)}ms` : `${(ms / 1000).toFixed(1)}s`;
+}
+
+/** `kernels ■■◆□······ 3/16 · 1 busy · 1 pinned · 2 evicted · 212 MiB · loki 85ms turn/1.4s`. */
 export function renderKernelStrip(snapshot: RlmSnapshot, width: number, style: RlmStyle): string | undefined {
 	const pool = snapshot.pool;
 	if (!pool) return undefined;
@@ -1083,6 +1088,13 @@ export function renderKernelStrip(snapshot: RlmSnapshot, width: number, style: R
 		parts.push(
 			`mem ${formatBytes(pool.memoryBytes)}${typeof pool.memoryCapBytes === "number" && width >= 100 ? ` (cap ${formatBytes(pool.memoryCapBytes)}/kernel)` : ""}`,
 		);
+	for (const guard of pool.guards ?? []) {
+		if (guard.checks === 0 && guard.afterChecks === 0) continue;
+		const blocked = guard.blocked > 0 ? style.fg("warning", ` ${guard.blocked} blocked`) : "";
+		parts.push(
+			`${style.fg("dim", guard.name.toLowerCase())} ${formatGuardMs(guard.turnMs)} turn/${formatGuardMs(guard.totalMs)}${blocked}`,
+		);
+	}
 	return truncateToWidth(parts.join(style.fg("dim", " · ")), width, "…");
 }
 

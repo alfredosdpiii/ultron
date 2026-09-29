@@ -102,6 +102,8 @@ Events cover resource discovery, sessions, agent and message lifecycle, provider
 
 `message_end` can replace a finalized message while preserving its role. `tool_call` can mutate input or block execution. `tool_result` handlers compose, with each handler seeing prior changes.
 
+Ultron's REPL writes files from Python, where `tool_call` never fires for an edit. Two Ultron events cover it: `before_file_write` (`{path, content, cwd, lane}`) runs before the kernel's `edit()` or `write()` changes a file, and returning `{ block: true, reason }` makes the Python call raise `ValueError` with the reason while nothing is written (`{ message }` adds a note to the cell output; a handler that takes longer than 5 s lets the write proceed with a visible "not checked" note). `after_cell_changes` (`{files, checked, deleted, complete, cwd, lane}`) runs in the background after a cell with the files it changed by other means (`bash`, `Path.write_text`); a returned `{ message }` reaches the model with that lane's next cell result.
+
 <a id="context_with_system"></a>
 
 `context` transforms conversation messages without prompt and tool system messages; Pi restores that state afterward. Use `context_with_system` only when a request-local transformation must own the complete transcript, and keep a system message at index zero.

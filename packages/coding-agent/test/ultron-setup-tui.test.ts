@@ -89,7 +89,7 @@ describe("ultron setup in a terminal", () => {
 		await waitFor(terminal, "Default model (1 from custom)");
 		terminal.sendInput(ENTER);
 
-		await waitFor(terminal, "Step 3/5: Jev API key");
+		await waitFor(terminal, "Step 3/6: Jev API key");
 		expect(screen(terminal)).toContain("✓ Live test passed in 0.3s");
 		terminal.sendInput(ENTER); // Paste a key
 		await waitFor(terminal, "Input is hidden");

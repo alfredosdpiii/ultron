@@ -165,6 +165,22 @@ export interface Settings {
 	extensionTools?: ExtensionToolsSettings; // Ultron: extension tools in the REPL (default) or as native model tools
 	hindsightUrl?: string; // Ultron: Hindsight memory server (default http://localhost:8888; "off" disables); global only; ULTRON_HINDSIGHT_URL overrides
 	skipSetupPrompt?: boolean; // Ultron: do not offer `ultron setup` when an interactive start finds no usable model; global only
+	loki?: LokiSettings; // Ultron: built-in Loki guardrails (checked file writes, auto-installed .loki/); global only
+}
+
+/**
+ * Ultron's built-in Loki guardrails. Global only: a repository must not be able to switch its own checks off.
+ * ULTRON_LOKI, ULTRON_LOKI_AUTOINIT and ULTRON_LOKI_AUTOCOMMIT override them.
+ */
+export interface LokiSettings {
+	/** "on" (default) blocks unsafe writes, "advise" only reports them, "off" disables Loki. */
+	mode?: "on" | "advise" | "off";
+	/** Create `.loki/` (engine and default policy) in a Git repository that lacks it (default true). */
+	autoInit?: boolean;
+	/** Commit a `.loki/` that Ultron created, and only it (default true). */
+	autoCommit?: boolean;
+	/** Repository roots (absolute or `~/`) where `.loki/` is never created. */
+	ignoreRepos?: string[];
 }
 
 /**
@@ -1093,6 +1109,31 @@ export class SettingsManager {
 	setHindsightUrl(url: string | undefined): void {
 		this.globalSettings.hindsightUrl = url;
 		this.markModified("hindsightUrl");
+		this.save();
+	}
+
+	/** Ultron: the built-in Loki guardrail settings. Global only, so a repository cannot turn its own checks off. */
+	getLokiSettings(): LokiSettings {
+		const configured = this.globalSettings.loki;
+		if (!isMergeableObject(configured)) return {};
+		const mode =
+			configured.mode === "on" || configured.mode === "advise" || configured.mode === "off"
+				? configured.mode
+				: undefined;
+		const ignoreRepos = Array.isArray(configured.ignoreRepos)
+			? configured.ignoreRepos.filter((path): path is string => typeof path === "string" && path.trim().length > 0)
+			: undefined;
+		return {
+			...(mode === undefined ? {} : { mode }),
+			...(typeof configured.autoInit === "boolean" ? { autoInit: configured.autoInit } : {}),
+			...(typeof configured.autoCommit === "boolean" ? { autoCommit: configured.autoCommit } : {}),
+			...(ignoreRepos === undefined ? {} : { ignoreRepos }),
+		};
+	}
+
+	setLokiSettings(settings: LokiSettings): void {
+		this.globalSettings.loki = { ...this.getLokiSettings(), ...settings };
+		this.markModified("loki");
 		this.save();
 	}
 

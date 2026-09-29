@@ -25,9 +25,13 @@ import {
 	normalizeBuildSystemPromptOptions,
 } from "../system-prompt.ts";
 import type {
+	AfterCellChangesEvent,
+	AfterCellChangesEventResult,
 	AgentBeforeSettleEvent,
 	BeforeAgentStartEvent,
 	BeforeAgentStartEventResult,
+	BeforeFileWriteEvent,
+	BeforeFileWriteEventResult,
 	BeforeProviderHeadersEvent,
 	BeforeProviderRequestEvent,
 	BoundaryContextPreview,
@@ -186,6 +190,8 @@ type RunnerEmitEvent = Exclude<
 	| InputEvent
 	| TurnEndEvent
 	| AgentBeforeSettleEvent
+	| BeforeFileWriteEvent
+	| AfterCellChangesEvent
 >;
 
 type SessionBeforeEvent = Extract<
@@ -1149,6 +1155,42 @@ export class ExtensionRunner {
 		}
 
 		return result;
+	}
+
+	/** Ultron's `before_file_write`: the first handler that blocks wins; other handlers' messages are joined. */
+	async emitBeforeFileWrite(event: BeforeFileWriteEvent): Promise<BeforeFileWriteEventResult | undefined> {
+		const ctx = this.createContext();
+		const messages: string[] = [];
+		for (const { handlers } of snapshotEventHandlers(this.extensions, "before_file_write")) {
+			for (const handler of handlers) {
+				const result = (await handler(event, ctx)) as BeforeFileWriteEventResult | undefined;
+				if (result?.block) return { block: true, reason: result.reason ?? "blocked by an extension" };
+				if (result?.message) messages.push(result.message);
+			}
+		}
+		return messages.length === 0 ? undefined : { message: messages.join("\n") };
+	}
+
+	/** Ultron's `after_cell_changes`: every handler runs; their messages are joined. */
+	async emitAfterCellChanges(event: AfterCellChangesEvent): Promise<AfterCellChangesEventResult | undefined> {
+		const ctx = this.createContext();
+		const messages: string[] = [];
+		for (const { ext, handlers } of snapshotEventHandlers(this.extensions, "after_cell_changes")) {
+			for (const handler of handlers) {
+				try {
+					const result = (await handler(event, ctx)) as AfterCellChangesEventResult | undefined;
+					if (result?.message) messages.push(result.message);
+				} catch (err) {
+					this.emitError({
+						extensionPath: ext.path,
+						event: "after_cell_changes",
+						error: err instanceof Error ? err.message : String(err),
+						stack: err instanceof Error ? err.stack : undefined,
+					});
+				}
+			}
+		}
+		return messages.length === 0 ? undefined : { message: messages.join("\n") };
 	}
 
 	async emitUserBash(event: UserBashEvent): Promise<UserBashEventResult | undefined> {
