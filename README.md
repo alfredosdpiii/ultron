@@ -214,6 +214,11 @@ agent (`ultron claude` runs Claude Code itself as the root):
 ULTRON_RLM_FRAME_MODEL=claude-code/haiku ultron   # code-free rlm.infer/rlm.map frames go to the CLI
 ```
 
+Or pick it in the TUI without restarting: `/settings → Models` sets the frame model (`rlm.frameModel`), the `/review`
+model, the sub-agent model (tool-capable models only) and the frame thinking level, each from a list of the models
+your providers offer, and the next frame uses it. The same section holds the `ultron claude` models. See
+[settings](packages/coding-agent/docs/settings.md#models-of-rlm-work-ultron).
+
 Each call is isolated (no tools, MCP servers, settings, hooks or `CLAUDE.md`, and its own system prompt) and uses your
 subscription's shared limits, so at most four run at once (`ULTRON_CLAUDE_CODE_CONCURRENCY`). Ultron never touches
 Claude credentials; the CLI logs itself in. Details: [providers](packages/coding-agent/docs/providers.md#claude-code-cli-claude-code).

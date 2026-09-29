@@ -167,6 +167,37 @@ export interface Settings {
 	skipSetupPrompt?: boolean; // Ultron: do not offer `ultron setup` when an interactive start finds no usable model; global only
 	loki?: LokiSettings; // Ultron: built-in Loki guardrails (checked file writes, auto-installed .loki/); global only
 	claudeCode?: ClaudeCodeSettings; // Ultron: Claude Code as the root agent (`ultron claude`, `ultron mcp`); global only
+	rlm?: RlmModelSettings; // Ultron: models of RLM frames and sub-agents (/settings → Models); global only
+	review?: ReviewSettings; // Ultron: /review (/settings → Models); global only
+}
+
+/** A `provider/model` reference, as `--model`, `model=` and ULTRON_*_MODEL take it. */
+export const MODEL_REF_PATTERN = /^[^/\s]+\/[^/\s]+(?:\/[^/\s]+)*$/;
+
+/** Thinking levels an inference frame may be given (`rlm.frameThinking`). */
+export const FRAME_THINKING_LEVELS = ["off", "minimal", "low", "medium", "high", "xhigh", "max"] as const;
+export type FrameThinkingLevel = (typeof FRAME_THINKING_LEVELS)[number];
+
+/**
+ * Ultron's model choices for RLM work in the native runtime. Global only: a repository must not be able to route
+ * its frames or sub-agents to another provider. They apply live, per frame or spawn (/settings → Models).
+ */
+export interface RlmModelSettings {
+	/**
+	 * `provider/model` of code-free `rlm.infer`/`rlm.map` frames that name no `model=` (and /review frames without
+	 * `review.model`). ULTRON_RLM_FRAME_MODEL overrides it; unset, frames use the session's model.
+	 */
+	frameModel?: string;
+	/** `provider/model` of `rlm.spawn` sub-agents that name no `model=`; must be tool-capable (no `claude-code/*`). */
+	childModel?: string;
+	/** Thinking level of inference frames; unset, frames inherit the session's thinking level. */
+	frameThinking?: FrameThinkingLevel;
+}
+
+/** Ultron's `/review`. Global only. */
+export interface ReviewSettings {
+	/** `provider/model` of /review frames; `--model` and ULTRON_REVIEW_MODEL override it; unset, `rlm.frameModel`. */
+	model?: string;
 }
 
 /**
@@ -183,6 +214,8 @@ export interface ClaudeCodeSettings {
 	childModel?: string;
 	/** Model of `ultron` subagents, `provider/model` (default: the default model). */
 	ultronChildModel?: string;
+	/** Claude Code model of the root (`claude --model`, default `claude-opus-5-5`); ULTRON_CLAUDE_MODEL overrides it. */
+	model?: string;
 }
 
 /**
@@ -242,6 +275,13 @@ function deepMergeObjects(base: Record<string, unknown>, overrides: Record<strin
 /** Deep merge settings: project/overrides take precedence, nested objects merge recursively */
 function deepMergeSettings(base: Settings, overrides: Settings): Settings {
 	return deepMergeObjects(base as Record<string, unknown>, overrides as Record<string, unknown>) as Settings;
+}
+
+/** A trimmed `provider/model` reference, or undefined when `value` is not one. */
+function modelRef(value: unknown): string | undefined {
+	if (typeof value !== "string") return undefined;
+	const trimmed = value.trim();
+	return MODEL_REF_PATTERN.test(trimmed) ? trimmed : undefined;
 }
 
 function parseTimeoutSetting(value: unknown, settingName: string): number | undefined {
@@ -1137,6 +1177,7 @@ export class SettingsManager {
 		const frameModel = text(configured.frameModel);
 		const childModel = text(configured.childModel);
 		const ultronChildModel = text(configured.ultronChildModel);
+		const model = text(configured.model);
 		const children =
 			configured.children === "claude" || configured.children === "ultron" ? configured.children : undefined;
 		return {
@@ -1144,7 +1185,54 @@ export class SettingsManager {
 			...(children === undefined ? {} : { children }),
 			...(childModel === undefined ? {} : { childModel }),
 			...(ultronChildModel === undefined ? {} : { ultronChildModel }),
+			...(model === undefined ? {} : { model }),
 		};
+	}
+
+	/** Set (or clear, with undefined) one Claude Code mode setting. Global only. */
+	setClaudeCodeSetting<K extends keyof ClaudeCodeSettings>(key: K, value: ClaudeCodeSettings[K] | undefined): void {
+		const current = isMergeableObject(this.globalSettings.claudeCode) ? this.globalSettings.claudeCode : {};
+		this.globalSettings.claudeCode = { ...current, [key]: value };
+		this.markModified("claudeCode", key);
+		this.save();
+	}
+
+	/**
+	 * Ultron: the models of RLM frames and sub-agents. Global only. A `claude-code/*` child model is dropped: the
+	 * Claude Code CLI provider has no tool calling, and a sub-agent needs tools.
+	 */
+	getRlmModelSettings(): RlmModelSettings {
+		const configured = this.globalSettings.rlm;
+		if (!isMergeableObject(configured)) return {};
+		const frameModel = modelRef(configured.frameModel);
+		const childModel = modelRef(configured.childModel);
+		const frameThinking = FRAME_THINKING_LEVELS.find((level) => level === configured.frameThinking);
+		return {
+			...(frameModel === undefined ? {} : { frameModel }),
+			...(childModel === undefined || childModel.startsWith("claude-code/") ? {} : { childModel }),
+			...(frameThinking === undefined ? {} : { frameThinking }),
+		};
+	}
+
+	/** Set (or clear, with undefined) one of `rlm.frameModel`, `rlm.childModel`, `rlm.frameThinking`. */
+	setRlmModelSetting<K extends keyof RlmModelSettings>(key: K, value: RlmModelSettings[K] | undefined): void {
+		const current = isMergeableObject(this.globalSettings.rlm) ? this.globalSettings.rlm : {};
+		this.globalSettings.rlm = { ...current, [key]: value };
+		this.markModified("rlm", key);
+		this.save();
+	}
+
+	/** Ultron: the model of /review frames (`review.model`). Global only. */
+	getReviewModel(): string | undefined {
+		const configured = this.globalSettings.review;
+		return isMergeableObject(configured) ? modelRef(configured.model) : undefined;
+	}
+
+	setReviewModel(model: string | undefined): void {
+		const current = isMergeableObject(this.globalSettings.review) ? this.globalSettings.review : {};
+		this.globalSettings.review = { ...current, model };
+		this.markModified("review", "model");
+		this.save();
 	}
 
 	/** Ultron: the built-in Loki guardrail settings. Global only, so a repository cannot turn its own checks off. */

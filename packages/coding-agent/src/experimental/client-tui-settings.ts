@@ -13,6 +13,7 @@ import { formatHttpIdleTimeoutMs } from "../core/http-dispatcher.ts";
 import type { Settings, SettingsManager } from "../core/settings-manager.ts";
 import { type SettingsConfig, SettingsSelectorComponent } from "../modes/interactive/components/settings-selector.ts";
 import { getAvailableThemes } from "../modes/interactive/theme/theme.ts";
+import { modelsSection } from "./client-tui-models-settings.ts";
 import type { PiCommandHost } from "./client-tui-pi-commands.ts";
 import type { WorkerSettingResult } from "./services/session-control.ts";
 import { settingsFragment } from "./services/worker-settings.ts";
@@ -157,7 +158,9 @@ export async function showSettingsSelector(host: PiCommandHost): Promise<void> {
 			await models.selectThinking(level ?? defaultThinking, BACKGROUND_CONTEXT).catch(() => {});
 		})();
 	};
+	const models = modelsSection(host, read, (key, value) => changeSetting(host, key, value, { quiet: true }));
 	const config: SettingsConfig = {
+		...(models === undefined ? {} : { models }),
 		autoCompact: bool("compaction.enabled", true),
 		defaultModel:
 			typeof defaultProvider === "string" && typeof defaultModelId === "string"

@@ -419,10 +419,11 @@ async function openHarness(command: ClientCommand, options: HarnessOptions = {})
 		savedTrust: null,
 	}));
 	const setSetting = vi.fn(async (key: string, _value: JsonValue) => ({
-		applied: (key === "defaultProjectTrust" ? "restart" : key === "compaction.enabled" ? "live" : "saved") as
-			| "live"
-			| "restart"
-			| "saved",
+		applied: (key === "defaultProjectTrust"
+			? "restart"
+			: key === "compaction.enabled" || key.startsWith("rlm.")
+				? "live"
+				: "saved") as "live" | "restart" | "saved",
 	}));
 	const setProjectTrust = vi.fn(async () => {});
 	const reloadAuth = vi.fn(async () => ({ availableModels: 2 }));
@@ -1943,6 +1944,37 @@ describe("experimental client TUI: Pi's settings, auth, session and diagnostic c
 			await vi.waitFor(() => expect(settingsManager.getRlmPaneAutoOpen()).toBe(false));
 			component.handleInput("\u001b");
 			await vi.waitFor(() => expect(plain(component.render(120))).not.toContain("RLM pane auto-open"));
+
+			// /settings → Models: each row shows its value and source; the frame model is picked from the Session's
+			// models (no typing a model id) and written through SessionControl; the worker applies it to the next frame.
+			runCommand(component, "/settings");
+			await vi.waitFor(() => expect(plain(component.render(120))).toContain("Auto-compact"));
+			expect(plain(component.render(160))).toContain("frames: same as session (test/one)");
+			type(component, "models");
+			component.handleInput("\r");
+			await vi.waitFor(() => expect(plain(component.render(160))).toContain("Frame model"));
+			expect(plain(component.render(160))).toMatch(/Session model\s+test\/one \(session\)/);
+			expect(plain(component.render(160))).toMatch(/Sub-agent model\s+same as session \(test\/one\)/);
+			expect(plain(component.render(160))).toContain("Claude Code mode");
+			component.handleInput("\u001b[B");
+			component.handleInput("\r");
+			await vi.waitFor(() => expect(plain(component.render(160))).toContain("Same as session model"));
+			expect(plain(component.render(160))).toContain("── test ──");
+			type(component, "two");
+			component.handleInput("\r");
+			await vi.waitFor(() =>
+				expect(setSetting).toHaveBeenCalledWith("rlm.frameModel", "test/two", expect.anything()),
+			);
+			await vi.waitFor(() => expect(plain(component.render(160))).toContain("test/two (setting)"));
+			// The review row falls back to the new frame model at once.
+			expect(plain(component.render(160))).toMatch(/Review model\s+test\/two \(frame model\)/);
+			await vi.waitFor(() =>
+				expect(plain(component.render(160))).toContain("Frame model: test/two (applies to the next frame)"),
+			);
+			component.handleInput("\u001b");
+			await vi.waitFor(() => expect(plain(component.render(160))).toContain("frames: test/two (setting)"));
+			component.handleInput("\u001b");
+			await vi.waitFor(() => expect(plain(component.render(120))).not.toContain("Auto-compact"));
 
 			// Auto-compact applies live in the worker; a restart-only setting says so.
 			runCommand(component, "/settings");

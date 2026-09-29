@@ -131,7 +131,7 @@ export type HostFixtureOptions = {
 	externalChild?: NativeHostOptions["externalChild"];
 	rootSpawn?: NativeHostOptions["rootSpawn"];
 	rootFinish?: NativeHostOptions["rootFinish"];
-	childModel?: string;
+	childModel?: NativeHostOptions["childModel"];
 };
 
 export function hostFixture(options: HostFixtureOptions = {}) {

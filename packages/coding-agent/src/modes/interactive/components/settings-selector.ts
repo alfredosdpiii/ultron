@@ -91,6 +91,14 @@ export interface SettingsConfig {
 	fullscreenScrollbar: ScrollViewScrollbar;
 	fullscreenCopyOnSelect: boolean;
 	warnings: WarningSettings;
+	/**
+	 * Ultron's native TUI only: the Models section (session, frame, /review and sub-agent models), listed first.
+	 * `open` builds its submenu; `done(summary)` closes it and shows the new summary.
+	 */
+	models?: {
+		readonly summary: string;
+		open(done: (summary?: string) => void): Component;
+	};
 }
 
 export interface SettingsCallbacks {
@@ -847,6 +855,19 @@ export class SettingsSelectorComponent extends Container {
 			currentValue: config.showTerminalProgress ? "true" : "false",
 			values: ["true", "false"],
 		});
+
+		// Ultron's Models section leads the list (added last: the inserts above use fixed positions).
+		const models = config.models;
+		if (models !== undefined) {
+			items.unshift({
+				id: "models",
+				label: "Models",
+				description:
+					"Models of the session, inference frames, /review and sub-agents, and of Claude Code mode. Changes apply to the running session.",
+				currentValue: models.summary,
+				submenu: (_currentValue, done) => models.open((summary) => done(summary)),
+			});
+		}
 
 		// Add borders
 		this.addChild(new DynamicBorder());

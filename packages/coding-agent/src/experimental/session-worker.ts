@@ -1882,6 +1882,11 @@ export async function createUltronRuntime(
 			contextDir: join(dirname(options.metadata.path), "rlm-context", options.metadata.id),
 			traces: createSessionFrameStore(session),
 			usage,
+			// Read per frame: `/settings → Models` applies to the next frame without a restart.
+			modelSettings: () => ({
+				rlm: settingsManager.getRlmModelSettings(),
+				reviewModel: settingsManager.getReviewModel(),
+			}),
 		});
 		const removeInferenceHooks = inference.install(harness);
 		// Host-owned shell jobs (`bash(cmd, yield_after=...)`) and completion events for detached work
@@ -1924,7 +1929,8 @@ export async function createUltronRuntime(
 			rootTurns: true,
 			// Subagents' declared file changes are checked against snapshots of the session's working directory.
 			workspace: options.metadata.cwd,
-			...(external?.childModel === undefined ? {} : { childModel: external.childModel }),
+			// Read per spawn: `ultron claude`'s child model, else `rlm.childModel` (/settings → Models).
+			childModel: () => external?.childModel ?? settingsManager.getRlmModelSettings().childModel,
 			...(external?.externalChild === undefined ? {} : { externalChild: external.externalChild }),
 			...(external?.rootSpawn === undefined ? {} : { rootSpawn: external.rootSpawn }),
 			...(external?.rootFinish === undefined ? {} : { rootFinish: external.rootFinish }),

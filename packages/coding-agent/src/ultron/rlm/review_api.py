@@ -74,7 +74,7 @@ USAGE = """Usage: /review [base-ref | PR-number | path ...] [options]
 
   --only a,b        reviewers to run: bugs, security, arch, tests, ai (default: all)
   --budget N        token cap for all frames, e.g. 200k or 1m (default 300k)
-  --model p/m       model for the frames (default: the session's model)
+  --model p/m       model for the frames (default: review.model, else rlm.frameModel, else the session's model)
   --deep[=N]        re-check up to N uncertain findings with a sub-agent that explores the repo (default 3)
   --plan            show the scope, chunks and frame plan without calling a model
   --post            prepare the report for posting to the PR; posting still needs your explicit yes"""
@@ -123,6 +123,8 @@ class Options:
     only: list[str] | None = None
     budget_tokens: int = DEFAULT_BUDGET_TOKENS
     model: str | None = None
+    # `review.model` (/settings -> Models) when neither --model nor ULTRON_REVIEW_MODEL names one; frames only.
+    frame_model: str | None = None
     post: bool = False
     deep: int = 0
     plan: bool = False
@@ -1190,6 +1192,20 @@ def _plan_report(label: str, chunks: list[Chunk], plan: dict[str, Any], skipped:
     return "\n".join(out) + "\n"
 
 
+async def _saved_review_model(rlm: Any) -> str | None:
+    """`review.model` as the host reads it now (a /settings change applies to the next review); None when unset,
+    so the frames take `rlm.frameModel` or the session's model from the host."""
+    models = getattr(rlm, "_models", None)
+    if not callable(models):
+        return None
+    try:
+        review = (await models()).get("review") or {}
+    except Exception:
+        return None
+    model = review.get("model")
+    return model if review.get("source") == "setting" and isinstance(model, str) else None
+
+
 async def run(rlm: Any, args: str | list[str] | None = "", *, cwd: str | None = None, runner: Runner | None = None,
               which: Callable[[str], str | None] = shutil.which) -> Review:
     """Review the changes `args` selects (see USAGE) and return a Review; `print(review.report)` shows it."""
@@ -1200,6 +1216,8 @@ async def run(rlm: Any, args: str | list[str] | None = "", *, cwd: str | None = 
         return Review(f"/review: {error}\n")
     if options.help:
         return Review(USAGE + "\n")
+    if options.model is None:
+        options.frame_model = await _saved_review_model(rlm)
     try:
         scope = resolve_scope(options, cwd, runner=runner, which=which)
     except ReviewError as error:
@@ -1238,7 +1256,8 @@ async def run(rlm: Any, args: str | list[str] | None = "", *, cwd: str | None = 
     raised: list[dict[str, Any]] = []
     if frames:
         results = await rlm.map([finder_task(reviewer) for reviewer, _ in frames], [chunk.text for _, chunk in frames],
-                                contract=FINDINGS_CONTRACT, budget=Budget(tokens=find_budget), model=options.model,
+                                contract=FINDINGS_CONTRACT, budget=Budget(tokens=find_budget),
+                                model=options.model or options.frame_model,
                                 timeout_ms=FRAME_TIMEOUT_MS)
         calls, tokens = _spent(results)
         stats.update(find_frames=len(frames), frames=calls, tokens=tokens)
@@ -1292,7 +1311,7 @@ async def run(rlm: Any, args: str | list[str] | None = "", *, cwd: str | None = 
     rejected: list[dict[str, Any]] = []
     if to_verify:
         verdicts = await rlm.map(VERIFIER_TASK, items, contract=VERDICT_CONTRACT, budget=Budget(tokens=verify_budget),
-                                 model=options.model, timeout_ms=FRAME_TIMEOUT_MS)
+                                 model=options.model or options.frame_model, timeout_ms=FRAME_TIMEOUT_MS)
         calls, tokens = _spent(verdicts)
         stats["verify_frames"] = len(to_verify)
         stats["frames"] += calls

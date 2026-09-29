@@ -528,8 +528,11 @@ export type NativeHostOptions = {
 	 * ends, and checks the child's declared `changed_files` against what changed (see verdict.ts).
 	 */
 	workspace?: string;
-	/** Model of `rlm.spawn` subagents on harness lanes when the spawn names none (default: the lane's model). */
-	childModel?: string;
+	/**
+	 * Model of `rlm.spawn` subagents on harness lanes when the spawn names none (default: the lane's model). A
+	 * function is read at each spawn, so a changed setting (`rlm.childModel`) applies to the next subagent.
+	 */
+	childModel?: string | (() => string | undefined);
 	/** Runs `rlm.spawn` subagents as processes of their own instead of harness lanes (see NativeExternalChildRun). */
 	externalChild?: NativeExternalChildRunner;
 	/**
@@ -577,7 +580,7 @@ export class NativeRlmHost {
 	private readonly statusExtras: NativeHostOptions["statusExtras"];
 	private readonly workspace: string | undefined;
 	private readonly externalChild: NativeHostOptions["externalChild"];
-	private readonly childModel: string | undefined;
+	private readonly childModel: NativeHostOptions["childModel"];
 	private readonly rootSpawn: NativeHostOptions["rootSpawn"];
 	private readonly rootFinish: NativeHostOptions["rootFinish"];
 	/** Root-lane runs that continue an earlier root (a completion event re-invoking the model): run id -> root. */
@@ -1982,7 +1985,14 @@ export class NativeRlmHost {
 			const request: TaskRequest = {
 				definition: "rlm-child@1",
 				input: { prompt },
-				model: typeof kwargs.model === "string" ? kwargs.model : this.externalChild ? undefined : this.childModel,
+				model:
+					typeof kwargs.model === "string"
+						? kwargs.model
+						: this.externalChild
+							? undefined
+							: typeof this.childModel === "function"
+								? this.childModel()
+								: this.childModel,
 				timeoutMs: typeof kwargs.timeout_ms === "number" ? kwargs.timeout_ms : 30 * 60 * 1000,
 			};
 			if (!Number.isSafeInteger(request.timeoutMs) || request.timeoutMs < 1 || request.timeoutMs > 60 * 60 * 1000)

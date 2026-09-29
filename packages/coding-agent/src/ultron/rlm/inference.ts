@@ -22,10 +22,20 @@ import { isJsonValue, type JsonValue } from "@ultron/chord";
 import { BACKGROUND_CONTEXT } from "@ultron/chord/context";
 import type { TSchema } from "typebox";
 import { Check, Errors } from "typebox/value";
+import type { FrameThinkingLevel, RlmModelSettings } from "../../core/settings-manager.ts";
 import type { NativeUsageCallStatus, NativeUsageLedgerLike, NativeUsageMeasurement } from "../usage.ts";
 import { validateJsonSchema } from "./definition-registry.ts";
 import type { HostCaller, NativeHostApi, NativeHostModule } from "./host-module.ts";
+import {
+	effectiveChildModel,
+	effectiveFrameModel,
+	effectiveReviewModel,
+	envModel,
+	FRAME_MODEL_ENV,
+} from "./model-settings.ts";
 import type { NativeFrameExecutor, NativeFrameRun, NativeResult } from "./native-host.ts";
+
+export { FRAME_MODEL_ENV };
 
 /**
  * Token budget of an `rlm.map` whose caller sets none (`ULTRON_RLM_MAP_TOKENS` overrides it): enough for a few
@@ -38,14 +48,13 @@ export function defaultMapTokens(env: NodeJS.ProcessEnv = process.env): number {
 	return Number.isSafeInteger(value) && value > 0 ? value : DEFAULT_MAP_TOKENS;
 }
 
-/** Environment variable naming the default model (provider/model) of code-free inference frames. */
-export const FRAME_MODEL_ENV = "ULTRON_RLM_FRAME_MODEL";
-
-/** The configured default model of code-free frames, or undefined when unset or not provider/model. */
+/** ULTRON_RLM_FRAME_MODEL: the default model of code-free frames, or undefined when unset or not provider/model. */
 export function defaultFrameModel(env: NodeJS.ProcessEnv = process.env): string | undefined {
-	const value = env[FRAME_MODEL_ENV]?.trim();
-	return value && /^[^/\s]+\/[^/\s]+(?:\/[^/\s]+)*$/.test(value) ? value : undefined;
+	return envModel(env, FRAME_MODEL_ENV);
 }
+
+/** The saved model settings the runtime reads for every frame (`/settings → Models`). */
+export type FrameModelSettings = { rlm: RlmModelSettings; reviewModel?: string };
 
 /**
  * API description for the model. It belongs in the system prompt's Runtime section; until then it is appended
@@ -179,6 +188,8 @@ type FrameSpec = {
 	maxRepairs: number;
 	depth: number;
 	model?: string;
+	/** `rlm.frameThinking` at admission; unset, the frame lane keeps the session's thinking level. */
+	thinking?: FrameThinkingLevel;
 	timeoutMs: number;
 };
 
@@ -258,6 +269,12 @@ export type InferenceRuntimeOptions = {
 	traces?: FrameTraceStore;
 	usage?: NativeUsageLedgerLike;
 	now?: () => number;
+	/**
+	 * The saved `rlm.*` and `review.model` settings, read when each frame is admitted, so a change in `/settings`
+	 * applies to the next frame. ULTRON_RLM_FRAME_MODEL still wins over `rlm.frameModel`.
+	 */
+	modelSettings?: () => FrameModelSettings;
+	env?: NodeJS.ProcessEnv;
 };
 
 function objectPayload(item: unknown, name: string): Payload {
@@ -496,6 +513,8 @@ export class InferenceRuntime {
 	private readonly traces: FrameTraceStore | undefined;
 	private readonly usage: NativeUsageLedgerLike | undefined;
 	private readonly now: () => number;
+	private readonly modelSettings: () => FrameModelSettings;
+	private readonly env: NodeJS.ProcessEnv;
 	private readonly frames = new Map<string, FrameState>();
 	private readonly byLane = new Map<string, FrameState>();
 	private readonly byTask = new Map<string, FrameState>();
@@ -510,13 +529,16 @@ export class InferenceRuntime {
 		this.traces = options.traces;
 		this.usage = options.usage;
 		this.now = options.now ?? Date.now;
+		this.modelSettings = options.modelSettings ?? (() => ({ rlm: {} }));
+		this.env = options.env ?? process.env;
 		this.module = {
-			prefixes: ["rlm.load", "rlm.infer", "rlm.map", "rlm.frames"],
+			prefixes: ["rlm.load", "rlm.infer", "rlm.map", "rlm.frames", "rlm.models"],
 			handle: ({ type, payload, caller, context }, host) => {
 				if (type === "rlm.load") return this.load(payload);
 				if (type === "rlm.infer") return this.infer(payload, caller, context, host);
 				if (type === "rlm.map") return this.map(payload, caller, context, host);
 				if (type === "rlm.frames") return this.list(payload);
+				if (type === "rlm.models") return this.models();
 				throw new Error(`Ultron RLM host request is not wired: ${type}`);
 			},
 		};
@@ -739,9 +761,12 @@ export class InferenceRuntime {
 		// A nested request gets at most one level less than its frame; the root defaults to depth 1.
 		const ceiling = parentFrame ? parentFrame.node.depth - 1 : MAX_DEPTH;
 		const depth = Math.min(requestedDepth ?? (parentFrame ? ceiling : 1), ceiling);
-		// A code-free frame without an explicit model may take the configured frame model (e.g. claude-code/haiku);
-		// a frame with depth runs the rlm cell, so it keeps the session's tool-capable model.
-		if (model === undefined && depth === 1) model = defaultFrameModel();
+		// A code-free frame without an explicit model may take the configured frame model (e.g. claude-code/haiku):
+		// ULTRON_RLM_FRAME_MODEL, else `rlm.frameModel`, read now so a change in /settings applies to this frame.
+		// A frame with depth runs the rlm cell, so it keeps the session's tool-capable model.
+		const settings = this.modelSettings();
+		if (model === undefined && depth === 1) model = effectiveFrameModel(this.env, settings.rlm).model;
+		const thinking = settings.rlm.frameThinking;
 		// A top-level map without a token limit gets the default one; a nested map already draws on its frame's pool.
 		const defaultTokens = kind === "map" && tokens === null && !parentFrame;
 		if (defaultTokens) tokens = defaultMapTokens();
@@ -752,6 +777,7 @@ export class InferenceRuntime {
 			node,
 			depth,
 			model,
+			thinking,
 			maxRepairs,
 			timeoutMs,
 			callerTaskId,
@@ -771,6 +797,7 @@ export class InferenceRuntime {
 				maxRepairs: options.maxRepairs,
 				depth: options.depth,
 				...(options.model === undefined ? {} : { model: options.model }),
+				...(options.thinking === undefined ? {} : { thinking: options.thinking }),
 				timeoutMs: options.timeoutMs,
 			},
 			callerTaskId: options.callerTaskId,
@@ -812,6 +839,17 @@ export class InferenceRuntime {
 		if (task.length > MAX_TASK_CHARS)
 			throw new Error(`task exceeds ${MAX_TASK_CHARS} characters; pass data as context`);
 		return { task, context: this.views(item.context ?? [], depth) };
+	}
+
+	/** `rlm.models`: the models frames, /review frames and sub-agents take when a call names none, and why. */
+	private async models() {
+		const settings = this.modelSettings();
+		return {
+			frame: effectiveFrameModel(this.env, settings.rlm),
+			review: effectiveReviewModel(this.env, settings.reviewModel, settings.rlm),
+			child: effectiveChildModel(settings.rlm),
+			frameThinking: settings.rlm.frameThinking ?? null,
+		};
 	}
 
 	private async infer(payload: Payload, caller: HostCaller, context: Context, host: NativeHostApi) {
@@ -951,6 +989,9 @@ export class InferenceRuntime {
 		await lane.setActiveTools(frame.spec.depth > 1 ? ["rlm"] : [], context);
 		const model = await lane.getModel(context).catch(() => undefined);
 		if (model) frame.model = `${model.provider}/${model.id}`;
+		// `rlm.frameThinking` (a model without reasoning has no thinking to set).
+		if (frame.spec.thinking !== undefined && model?.reasoning !== false)
+			await lane.setThinkingLevel(frame.spec.thinking, context);
 		frame.conversationChars = frameSystemPrompt(frame.spec.depth).length;
 		let message = framePrompt(frame.spec);
 		for (let attempt = 0; ; attempt += 1) {

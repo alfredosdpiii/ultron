@@ -22,6 +22,30 @@ Cache warming runs only when the model declares a cache lifetime and Pi estimate
 
 See [Choose a Model](models.md) for model selection and thinking controls.
 
+### Models of RLM work (Ultron)
+
+Global settings only (`~/.ultron/agent/settings.json`); a project's `settings.json` cannot set them, so a repository
+cannot route your frames or sub-agents to another provider. In the native TUI, `/settings → Models` shows each one
+with its effective value and where it comes from (setting, environment variable, default or the session's model) and
+sets it with a picker over the models your providers make available. Changes apply to the running session: the
+worker reads them for every frame, `/review` and spawn, so the next one uses the new value without a restart. A row an
+environment variable overrides is shown locked with the variable's name.
+
+| Setting | Type | Default | Description |
+|---|---|---|---|
+| `rlm.frameModel` | `provider/model` | The session's model | Code-free `rlm.infer`/`rlm.map` frames that name no `model=` (and `/review` frames without `review.model`). Order: `model=` > `ULTRON_RLM_FRAME_MODEL` > this > the session's model. A frame with depth (it runs the REPL) keeps the session's model. `claude-code/*` models are allowed. |
+| `review.model` | `provider/model` | `rlm.frameModel` | `/review` finder and verifier frames. Order: `--model` > `ULTRON_REVIEW_MODEL` > this > the frame model. `--deep` sub-agents do not use it (they need tools). |
+| `rlm.childModel` | `provider/model` | The session's model | `rlm.spawn` sub-agents that name no `model=`. Must be tool-capable: `claude-code/*` is refused (and ignored if hand-edited in). Under `ultron claude`, `claudeCode.ultronChildModel` comes first. |
+| `rlm.frameThinking` | `"off" \| "minimal" \| "low" \| "medium" \| "high" \| "xhigh" \| "max"` | The session's level | Thinking level of inference frames (`claude-code` frames pass it as `--effort`). `/settings` offers off, low, medium and high. |
+| `claudeCode.model` | Claude Code alias | `claude-opus-5-5` | The model Claude Code itself runs under `ultron claude` (`claude --model`). `--model` and `ULTRON_CLAUDE_MODEL` override it. |
+| `claudeCode.frameModel` | `provider/model` | `claude-code/claude-opus-5-5` | Frames under `ultron claude`. `--frame-model` and `ULTRON_CLAUDE_FRAME_MODEL` override it. |
+| `claudeCode.childModel` | Claude Code alias | `claude-opus-5-5` | Claude Code sub-agents (`children: "claude"`). `--child-model` and `ULTRON_CLAUDE_CHILD_MODEL` override it. |
+| `claudeCode.ultronChildModel` | `provider/model` | The default model | Ultron sub-agents under `ultron claude` (`children: "ultron"`); tool-capable models only. |
+
+The session's own model is `defaultProvider`/`defaultModel`: the Models section's "Session model" row switches the
+running session and saves it as the default, as `/model` does. The `claudeCode.*` rows apply when `ultron claude` next
+starts.
+
 ## Interaction
 
 | Setting | Type | Default | Description |

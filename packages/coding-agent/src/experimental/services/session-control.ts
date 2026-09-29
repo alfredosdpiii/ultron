@@ -54,6 +54,8 @@ export interface WorkerSettingsRead {
 	projectTrusted: boolean;
 	/** The saved trust decision that applies to `cwd` (it may be inherited from a parent directory). */
 	savedTrust: { path: string; decision: boolean } | null;
+	/** Model settings an environment variable overrides in the worker (/settings → Models shows them locked). */
+	envOverrides?: Record<string, { name: string; value: string }>;
 }
 
 /** How the worker applied a setting change. */
@@ -170,6 +172,15 @@ export const WORKER_SETTING_KEYS: readonly string[] = [
 	"fullscreenCopyOnSelect",
 	"warnings",
 	"enabledModels",
+	// /settings → Models (null clears one).
+	"rlm.frameModel",
+	"rlm.childModel",
+	"rlm.frameThinking",
+	"review.model",
+	"claudeCode.frameModel",
+	"claudeCode.childModel",
+	"claudeCode.ultronChildModel",
+	"claudeCode.model",
 ];
 
 /** Read-only host requests the inspector may issue. None of them runs a search or starts work. */

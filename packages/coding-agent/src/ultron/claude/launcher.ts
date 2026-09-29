@@ -20,6 +20,8 @@ import { randomBytes } from "node:crypto";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { getAgentDir } from "../../config.ts";
+import { SettingsManager } from "../../core/settings-manager.ts";
 import {
 	type ClaudeAuthStatus,
 	claudeAuthStatus,
@@ -42,6 +44,8 @@ export interface LauncherOptions {
 	frameModel?: string;
 	children?: "claude" | "ultron";
 	childModel?: string;
+	/** Claude Code model of the root when neither `--model` nor ULTRON_CLAUDE_MODEL names one (`claudeCode.model`). */
+	rootModel?: string;
 	/** Arguments for `claude`. */
 	claudeArgs: string[];
 }
@@ -183,7 +187,7 @@ export function buildClaudeLaunch(input: {
 		...(options.keepSettings ? [] : ["--setting-sources", ""]),
 		...(options.claudeArgs.some((arg) => arg === "--model" || arg.startsWith("--model="))
 			? []
-			: ["--model", input.env.ULTRON_CLAUDE_MODEL?.trim() || DEFAULT_CLAUDE_MODEL]),
+			: ["--model", input.env.ULTRON_CLAUDE_MODEL?.trim() || options.rootModel || DEFAULT_CLAUDE_MODEL]),
 		...options.claudeArgs,
 	];
 	const env: Record<string, string> = {};
@@ -227,6 +231,10 @@ export async function runClaudeLauncher(argv: readonly string[]): Promise<void> 
 		return;
 	}
 	const env = process.env;
+	// `claudeCode.model` (/settings → Models); the MCP server reads the frame and child models itself.
+	parsed.rootModel ??= SettingsManager.create(process.cwd(), getAgentDir(), {
+		projectTrusted: false,
+	}).getClaudeCodeSettings().model;
 	const { claude, flags } = requireClaude(env);
 	const auth = claudeAuthStatus(claude, env);
 	if (!auth.loggedIn && !parsed.printConfig)

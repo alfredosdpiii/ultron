@@ -529,12 +529,17 @@ class Inference:
             payload = {"id": trace_id}
         return await self._bridge.request("rlm.frames", payload)
 
+    async def _models(self) -> Any:
+        """The models frames, /review frames and sub-agents take when a call names none, with their sources
+        (`/settings -> Models`, ULTRON_RLM_FRAME_MODEL, ULTRON_REVIEW_MODEL, or the session's model)."""
+        return await self._bridge.request("rlm.models", {})
+
 
 def install(namespace: dict[str, Any], bridge: Any) -> None:
     """Attach load/open/infer/map/frames to the kernel's `rlm` object and export the result types."""
     inference = Inference(bridge)
     rlm = namespace["rlm"]
-    for name in ("load", "open", "infer", "map", "frames"):
+    for name in ("load", "open", "infer", "map", "frames", "_models"):
         setattr(rlm, name, getattr(inference, name))
     namespace["Budget"] = Budget
     namespace["ContextHandle"] = ContextHandle

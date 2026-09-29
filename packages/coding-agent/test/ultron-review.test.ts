@@ -650,6 +650,42 @@ emit({"report": rv.report, "spawned": f.spawned, "confirmed": len(rv.confirmed)}
 		expect(result.confirmed).toBe(1);
 		expect(result.report).toContain("1 verification sub-agents");
 	});
+
+	test("frames take review.model from the host (/settings → Models) unless --model names one; sub-agents do not", () => {
+		const dir = fixtureRepo();
+		const result = py<Record<string, unknown>>(
+			`
+class SavedRlm(FakeRlm):
+    source = "setting"
+    spawned = []
+    async def _models(self):
+        return {"review": {"model": "claude-code/sonnet", "source": self.source}}
+    async def spawn(self, prompt, **kwargs):
+        self.spawned.append(kwargs.get("model"))
+        return type("Handle", (), {"rlm_child_id": "child-1"})()
+    async def collect(self, handles, timeout_ms=0):
+        return []
+finder = lambda task, text: ([{"file": "calc.py", "line": 4, "severity": "major", "category": "bug",
+    "claim": "The loop skips the last item.", "why": "", "suggested_fix": "", "confidence": 0.9}]
+    if "Correctness" in task else [])
+models = lambda rlm: sorted({call["options"]["model"] for call in rlm.calls})
+saved = SavedRlm(finder)
+asyncio.run(r.run(saved, '--deep --only bugs'))
+explicit = SavedRlm(finder)
+asyncio.run(r.run(explicit, '--model x/y --only bugs'))
+fallback = SavedRlm(finder)
+fallback.source = "frame"
+asyncio.run(r.run(fallback, '--only bugs'))
+emit({"saved": models(saved), "spawned": saved.spawned, "explicit": models(explicit), "fallback": models(fallback)})`,
+			dir,
+		);
+		expect(result.saved).toEqual(["'claude-code/sonnet'"]);
+		// A sub-agent needs tools: it keeps the session's (or rlm.childModel's) model.
+		expect(result.spawned).toEqual([null]);
+		expect(result.explicit).toEqual(["'x/y'"]);
+		// Without review.model the host applies the frame model itself.
+		expect(result.fallback).toEqual(["None"]);
+	});
 });
 
 // --- End to end: a real kernel and host, with frames answered by a scripted provider ---------------------------

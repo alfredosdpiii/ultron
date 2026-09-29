@@ -11,12 +11,41 @@ import { DEFAULT_THINKING_LEVEL } from "../../core/defaults.ts";
 import { configureHttpDispatcher } from "../../core/http-dispatcher.ts";
 import {
 	CACHE_WARMING_MODES,
+	type ClaudeCodeSettings,
 	type DefaultProjectTrust,
+	FRAME_THINKING_LEVELS,
+	MODEL_REF_PATTERN,
+	type RlmModelSettings,
 	type Settings,
 	SettingsManager,
 } from "../../core/settings-manager.ts";
 import { hasTrustRequiringProjectResources, ProjectTrustStore } from "../../core/trust-manager.ts";
+import { envModel, FRAME_MODEL_ENV, isClaudeCodeModelRef, REVIEW_MODEL_ENV } from "../../ultron/rlm/model-settings.ts";
 import type { WorkerSettingResult, WorkerSettingsRead } from "./session-control.ts";
+
+/**
+ * Model settings (/settings → Models) and the environment variables that override them in this worker. The
+ * `claudeCode.*` ones apply when `ultron claude` next starts; the rest apply to the next frame or spawn.
+ */
+export const MODEL_SETTING_ENV: Readonly<Record<string, string>> = {
+	"rlm.frameModel": FRAME_MODEL_ENV,
+	"review.model": REVIEW_MODEL_ENV,
+	"claudeCode.frameModel": "ULTRON_CLAUDE_FRAME_MODEL",
+	"claudeCode.childModel": "ULTRON_CLAUDE_CHILD_MODEL",
+	"claudeCode.model": "ULTRON_CLAUDE_MODEL",
+};
+
+/** The environment variables that override model settings here, with their values. */
+export function modelEnvOverrides(env: NodeJS.ProcessEnv): Record<string, { name: string; value: string }> {
+	const overrides: Record<string, { name: string; value: string }> = {};
+	for (const [key, name] of Object.entries(MODEL_SETTING_ENV)) {
+		// provider/model variables count only when well formed (as the runtime reads them); aliases when non-empty.
+		const value =
+			key.startsWith("claudeCode.") && key !== "claudeCode.frameModel" ? env[name]?.trim() : envModel(env, name);
+		if (value) overrides[key] = { name, value };
+	}
+	return overrides;
+}
 
 export interface WorkerSettingsTarget {
 	readonly harness: AgentHarness;
@@ -26,6 +55,8 @@ export interface WorkerSettingsTarget {
 	readonly agentDir: string;
 	/** Reconfigure the process's HTTP stack (Pi's `configureHttpDispatcher`); injectable for tests. */
 	readonly configureHttpIdleTimeout?: (timeoutMs: number) => void;
+	/** The worker's environment (model overrides); injectable for tests. */
+	readonly env?: NodeJS.ProcessEnv;
 }
 
 /**
@@ -89,6 +120,7 @@ export async function readWorkerSettings(target: WorkerSettingsTarget, context: 
 		fullscreenCopyOnSelect: settings.getFullscreenCopyOnSelect(),
 		warnings: { ...settings.getWarnings() } as JsonValue,
 		enabledModels: settings.getEnabledModels() ?? null,
+		...modelSettingValues(settings),
 	};
 	const saved = new ProjectTrustStore(target.agentDir).getEntry(target.cwd);
 	return {
@@ -100,7 +132,55 @@ export async function readWorkerSettings(target: WorkerSettingsTarget, context: 
 		agentDir: target.agentDir,
 		projectTrusted: settings.isProjectTrusted(),
 		savedTrust: saved === null ? null : { path: saved.path, decision: saved.decision },
+		envOverrides: modelEnvOverrides(target.env ?? process.env),
 	};
+}
+
+/** The saved model settings (null when unset), by setting key. */
+function modelSettingValues(settings: SettingsManager): Record<string, JsonValue> {
+	const rlm = settings.getRlmModelSettings();
+	const claude = settings.getClaudeCodeSettings();
+	return {
+		"rlm.frameModel": rlm.frameModel ?? null,
+		"rlm.childModel": rlm.childModel ?? null,
+		"rlm.frameThinking": rlm.frameThinking ?? null,
+		"review.model": settings.getReviewModel() ?? null,
+		"claudeCode.frameModel": claude.frameModel ?? null,
+		"claudeCode.childModel": claude.childModel ?? null,
+		"claudeCode.ultronChildModel": claude.ultronChildModel ?? null,
+		"claudeCode.model": claude.model ?? null,
+	};
+}
+
+/** A `provider/model` value, or undefined for null (clear the setting). */
+function modelValue(key: string, value: JsonValue): string | undefined {
+	if (value === null) return undefined;
+	if (typeof value !== "string" || !MODEL_REF_PATTERN.test(value.trim())) {
+		throw new Error(`${key} must be provider/model (or null to clear it)`);
+	}
+	return value.trim();
+}
+
+/** A model a sub-agent runs on: tool calling is required, so the Claude Code CLI provider is refused. */
+function toolModelValue(key: string, value: JsonValue): string | undefined {
+	const model = modelValue(key, value);
+	if (model !== undefined && isClaudeCodeModelRef(model)) {
+		throw new Error(
+			`${key} must be a tool-capable model: ${model} runs on the Claude Code CLI, which has no tool calling. Use claude-code models for frames (rlm.frameModel, review.model).`,
+		);
+	}
+	return model;
+}
+
+/** A Claude Code model alias (`claude --model`), from `claude-code/<alias>` or the bare alias; null clears it. */
+function claudeAliasValue(key: string, value: JsonValue): string | undefined {
+	if (value === null) return undefined;
+	const alias = string(key, value)
+		.trim()
+		.replace(/^claude-code\//, "");
+	if (!/^[A-Za-z0-9][\w.[\]-]*$/.test(alias))
+		throw new Error(`${key} must be a Claude Code model such as opus or sonnet`);
+	return alias;
 }
 
 /** Persist `key` through the worker's `SettingsManager`, then apply it to the running Session where Pi does. */
@@ -281,6 +361,43 @@ export async function applyWorkerSetting(
 			);
 			break;
 		}
+		case "rlm.frameModel":
+		case "rlm.childModel": {
+			const field = key.slice("rlm.".length) as "frameModel" | "childModel";
+			settings.setRlmModelSetting(
+				field,
+				field === "childModel" ? toolModelValue(key, value) : modelValue(key, value),
+			);
+			// The runtime reads it for every frame and spawn.
+			applied = "live";
+			break;
+		}
+		case "rlm.frameThinking":
+			settings.setRlmModelSetting(
+				"frameThinking",
+				value === null
+					? undefined
+					: (oneOf(key, value, FRAME_THINKING_LEVELS) as RlmModelSettings["frameThinking"]),
+			);
+			applied = "live";
+			break;
+		case "review.model":
+			settings.setReviewModel(modelValue(key, value));
+			applied = "live";
+			break;
+		case "claudeCode.frameModel":
+			settings.setClaudeCodeSetting("frameModel", modelValue(key, value));
+			break;
+		case "claudeCode.ultronChildModel":
+			settings.setClaudeCodeSetting("ultronChildModel", toolModelValue(key, value));
+			break;
+		case "claudeCode.childModel":
+		case "claudeCode.model":
+			settings.setClaudeCodeSetting(
+				key.slice("claudeCode.".length) as keyof Pick<ClaudeCodeSettings, "childModel" | "model">,
+				claudeAliasValue(key, value),
+			);
+			break;
 		case "enabledModels":
 			settings.setEnabledModels(
 				value === null ? undefined : array(key, value).map((pattern) => string(key, pattern)),
