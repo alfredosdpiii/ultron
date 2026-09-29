@@ -88,6 +88,12 @@ These variables are read by Pi itself:
 | `ULTRON_LOKI_TIMEOUT_MS` | How long a before-write Loki check may take (default 5000) before the write proceeds with a "not checked" note |
 | `ULTRON_LOKI_PYTHON` | Python 3.11+ interpreter for Loki (default `python3`) |
 | `ULTRON_LOKI_LOG` | Append every Loki check (and setup) to this file as JSON lines |
+| `ULTRON_RLM_FRAME_MODEL` | Default model (`provider/model`, e.g. `claude-code/haiku`) of `rlm.infer`/`rlm.map` frames that give none and run no code |
+| `ULTRON_CLAUDE_CODE_BIN` | The `claude` executable used by the `claude-code` provider (default: `claude` on `PATH`) |
+| `ULTRON_CLAUDE_CODE_CONCURRENCY` | Most `claude-code` calls running at once (default 4) |
+| `ULTRON_CLAUDE_CODE_TIMEOUT_MS` | Time limit of one `claude-code` call (default 600000) |
+| `ULTRON_CLAUDE_CODE_WARM`, `ULTRON_CLAUDE_CODE_WARM_TTL_MS` | Idle `claude` processes started ahead of the next call (default 2, `0` disables) and how long they wait (default 30000) |
+| `ULTRON_CLAUDE_CODE_ALLOW_THIRD_PARTY` | `1` lets the `claude-code` provider use a CLI set up for Bedrock or Vertex |
 | `PI_TELEMETRY` | Override provider attribution headers: `1`/`true`/`yes` or `0`/`false`/`no` |
 | `PI_CACHE_RETENTION` | Set to `long` for extended provider prompt caching where supported |
 | `PI_SHARE_VIEWER_URL` | Override the base URL used by `/share` |

@@ -38,6 +38,7 @@ import {
 	type StreamOptions,
 } from "@ultron/ai";
 import * as builtinProviderCatalog from "@ultron/ai/providers/all";
+import { CLAUDE_CODE_PROVIDER_ID } from "@ultron/ai/providers/claude-code";
 import { getAgentDir } from "../config.ts";
 import { operationSignal, raceWithAbortSignal } from "../utils/abort.ts";
 import { AuthStorage as DefaultAuthStorage } from "./auth-storage.ts";
@@ -181,13 +182,12 @@ export class ModelRuntime implements Models {
 				? new FileModelsStore(options.modelsStorePath ?? join(dirname(modelsPath), "models-store.json"))
 				: new InMemoryCodingAgentModelsStore());
 		const builtinModelDataGeneratedAt = builtinProviderCatalog.getBuiltinModelDataGeneratedAt();
-		const providers = builtinProviderCatalog
-			.builtinProviders()
-			.map((provider) =>
-				provider.id === "radius"
-					? provider
-					: withRemoteCatalog(provider, options.catalogBaseUrl, builtinModelDataGeneratedAt),
-			);
+		const providers = builtinProviderCatalog.builtinProviders().map((provider) =>
+			// Radius and the Claude Code CLI list their own models; neither has a pi.dev catalog.
+			provider.id === "radius" || provider.id === CLAUDE_CODE_PROVIDER_ID
+				? provider
+				: withRemoteCatalog(provider, options.catalogBaseUrl, builtinModelDataGeneratedAt),
+		);
 		const runtime = new ModelRuntime(
 			credentials,
 			config,
@@ -461,6 +461,8 @@ export class ModelRuntime implements Models {
 	}
 
 	isUsingSubscription(providerId: string): boolean {
+		// The Claude Code CLI runs on its own login (normally a claude.ai subscription); its costs are notional.
+		if (providerId === CLAUDE_CODE_PROVIDER_ID) return this.hasConfiguredAuth(providerId);
 		return this.isUsingOAuth(providerId) && this.models.getProvider(providerId)?.auth.oauth?.isSubscription === true;
 	}
 

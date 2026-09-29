@@ -185,3 +185,40 @@ gcloud auth application-default login
 ```
 
 To use a service-account key file instead, set `GOOGLE_APPLICATION_CREDENTIALS` along with the project and location.
+
+## Claude Code CLI (`claude-code`)
+
+The `claude-code` provider sends model calls through your installed, logged-in [Claude Code](https://docs.claude.com/en/docs/claude-code) CLI in headless mode (`claude -p --output-format stream-json`) instead of an API key. It needs no configuration: when a `claude` executable is on `PATH` (or named by `ULTRON_CLAUDE_CODE_BIN`), `claude-code/opus`, `claude-code/sonnet` and `claude-code/haiku` are available. These ids are the CLI's own model aliases and are only matched by their full `claude-code/...` reference, so `--model sonnet` keeps meaning the other providers' Sonnet models.
+
+The CLI authenticates itself. Ultron never reads, copies or creates Claude credentials; it passes `CLAUDE_CONFIG_DIR` through to the child and, before the first call, checks `claude auth status --json`: a logged-out CLI fails with a message to run `claude auth login`, and a CLI set up for a third-party API provider (Bedrock, Vertex) is refused unless `ULTRON_CLAUDE_CODE_ALLOW_THIRD_PARTY=1`. If the CLI authenticates with an API key instead of a claude.ai login (`apiKeySource` in its stream), the call proceeds and the response carries a warning diagnostic.
+
+Every call is isolated from your own Claude Code setup and uses only flags `claude --help` lists (checked once; a missing flag fails naming it): `--tools ""`, `--strict-mcp-config` with an empty `--mcp-config`, `--setting-sources ""` (no user or project settings, hooks or `CLAUDE.md`), `--disable-slash-commands`, `--no-session-persistence`, `--permission-prompts none`, an empty working directory, and `--system-prompt` with the caller's own system text (never Claude Code's default prompt). The CLI still adds a short identity line and environment/date reminders, about 350 input tokens per call, against about 6,600 with its default prompt. Thinking is off unless a thinking level is set, which becomes `--effort`.
+
+**No tool calling.** `claude -p` returns completions, not raw tool calls, so the provider serves tool-free lanes: `rlm.infer` and `rlm.map` frames, `/review` frames, judges. A lane that declares tools (the root agent, `rlm.spawn` children, frames with `depth > 1`) fails before any process starts, with a message pointing to `ultron claude`, which runs Claude Code itself as the root agent. Set `ULTRON_RLM_FRAME_MODEL=claude-code/haiku` to send code-free frames there by default, or pass `model="claude-code/haiku"` to one call.
+
+A frame's JSON-schema contract becomes `--json-schema` (object schemas; the reply is the CLI's structured output). Other schemas, or one the API rejects, are asked for in the prompt instead. Images in user messages are passed as image blocks. Usage comes from the CLI's result event; the cost is the CLI's own `total_cost_usd` (under a subscription a list-price figure, marked `(sub)` in the footer), or unknown when it reports none.
+
+**Fair use.** These calls draw on your subscription's shared five-hour and weekly limits. At most `ULTRON_CLAUDE_CODE_CONCURRENCY` calls (default 4) run at once. An exhausted window is reported as `Claude Code usage limit reached (...; resets at ...)`, is not retried, and makes an inference frame `Incomplete` with reason `usage_limit`; a transient 429 is retried like any provider's.
+
+Each call is one `claude` process (about 0.6 to 0.9 s of CLI start-up, 1.3 to 1.6 s for a small Haiku call). A process is never reused: in stream-json mode it carries context from one prompt to the next. What is pooled is start-up: after a call, up to `ULTRON_CLAUDE_CODE_WARM` (default 2, `0` disables) idle processes with the same arguments are started ahead of time and stop after `ULTRON_CLAUDE_CODE_WARM_TTL_MS` (default 30000), which brings the next call of that shape to about 0.7 s. `ULTRON_CLAUDE_CODE_TIMEOUT_MS` (default 600000) bounds one call; an abort or timeout stops the process tree.
+
+Model ids the aliases do not cover go in `models.json`:
+
+```json
+{
+  "providers": {
+    "claude-code": {
+      "models": [
+        {
+          "id": "claude-opus-4-8",
+          "api": "claude-code-cli",
+          "reasoning": true,
+          "input": ["text", "image"],
+          "contextWindow": 200000,
+          "maxTokens": 32000
+        }
+      ]
+    }
+  }
+}
+```

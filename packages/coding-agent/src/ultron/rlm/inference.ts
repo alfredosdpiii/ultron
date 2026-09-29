@@ -38,6 +38,15 @@ export function defaultMapTokens(env: NodeJS.ProcessEnv = process.env): number {
 	return Number.isSafeInteger(value) && value > 0 ? value : DEFAULT_MAP_TOKENS;
 }
 
+/** Environment variable naming the default model (provider/model) of code-free inference frames. */
+export const FRAME_MODEL_ENV = "ULTRON_RLM_FRAME_MODEL";
+
+/** The configured default model of code-free frames, or undefined when unset or not provider/model. */
+export function defaultFrameModel(env: NodeJS.ProcessEnv = process.env): string | undefined {
+	const value = env[FRAME_MODEL_ENV]?.trim();
+	return value && /^[^/\s]+\/[^/\s]+(?:\/[^/\s]+)*$/.test(value) ? value : undefined;
+}
+
 /**
  * API description for the model. It belongs in the system prompt's Runtime section; until then it is appended
  * to the `rlm` tool description.
@@ -173,7 +182,7 @@ type FrameSpec = {
 	timeoutMs: number;
 };
 
-type IncompleteReason = "budget_exhausted" | "contract_unmet" | "depth_exhausted";
+type IncompleteReason = "budget_exhausted" | "contract_unmet" | "depth_exhausted" | "usage_limit";
 
 type FrameOutcome =
 	| { status: "complete"; value: JsonValue }
@@ -298,6 +307,20 @@ function assistantMessages(entries: readonly Entry[]) {
 	);
 }
 
+/**
+ * The error of a response the provider marked as out of subscription capacity (a `provider_usage_limit`
+ * diagnostic, e.g. the Claude Code CLI's five-hour window). The frame then reports Incomplete, not a failure.
+ */
+function usageLimitError(entries: readonly Entry[]): string | undefined {
+	for (const entry of entries) {
+		if (entry.type !== "message" || entry.message.role !== "assistant") continue;
+		const message = entry.message as { diagnostics?: { type?: string }[]; errorMessage?: string };
+		if (message.diagnostics?.some((item) => item.type === "provider_usage_limit"))
+			return message.errorMessage ?? "the provider's usage limit is reached";
+	}
+	return undefined;
+}
+
 function replyText(entry: Entry | undefined): string {
 	if (!entry || entry.type !== "message" || entry.message.role !== "assistant") return "";
 	return entry.message.content
@@ -322,6 +345,18 @@ function measurement(entries: readonly Entry[]): NativeUsageMeasurement | undefi
 		total.cost += usage.cost?.total ?? 0;
 	}
 	return total;
+}
+
+/**
+ * Hand a frame's contract to a provider that enforces JSON schemas natively. Only the Claude Code CLI provider
+ * (`claude -p --json-schema`) takes it today, through its payload's `json_schema`; the reply is still
+ * validated against the contract like any other.
+ */
+export function withContractSchema(payload: unknown, contract: JsonValue | undefined, api?: string): unknown {
+	if (api !== "claude-code-cli" || contract === undefined) return payload;
+	if (payload === null || typeof payload !== "object" || Array.isArray(payload)) return payload;
+	(payload as Record<string, unknown>).json_schema = contract;
+	return payload;
 }
 
 /**
@@ -538,7 +573,12 @@ export class InferenceRuntime {
 			}
 		}
 		frame.open.push(hold);
-		return capOutputTokens(payload, hold.tranche, model?.api, model?.provider);
+		return capOutputTokens(
+			withContractSchema(payload, frame.spec.contract, model?.api),
+			hold.tranche,
+			model?.api,
+			model?.provider,
+		);
 	}
 
 	/** Hook: settle the oldest open request against its reported usage and release its hold. */
@@ -699,6 +739,9 @@ export class InferenceRuntime {
 		// A nested request gets at most one level less than its frame; the root defaults to depth 1.
 		const ceiling = parentFrame ? parentFrame.node.depth - 1 : MAX_DEPTH;
 		const depth = Math.min(requestedDepth ?? (parentFrame ? ceiling : 1), ceiling);
+		// A code-free frame without an explicit model may take the configured frame model (e.g. claude-code/haiku);
+		// a frame with depth runs the rlm cell, so it keeps the session's tool-capable model.
+		if (model === undefined && depth === 1) model = defaultFrameModel();
 		// A top-level map without a token limit gets the default one; a nested map already draws on its frame's pool.
 		const defaultTokens = kind === "map" && tokens === null && !parentFrame;
 		if (defaultTokens) tokens = defaultMapTokens();
@@ -980,6 +1023,8 @@ export class InferenceRuntime {
 			signal.throwIfAborted();
 			if (frame.exhausted) return { status: "incomplete", reason: "budget_exhausted", detail: frame.exhausted };
 			if (!response.ok) return { status: "error", error: `frame request failed: ${JSON.stringify(response.error)}` };
+			const limited = usageLimitError(entries);
+			if (limited !== undefined) return { status: "incomplete", reason: "usage_limit", detail: limited };
 			if (response.value.status !== "completed")
 				return {
 					status: "error",
