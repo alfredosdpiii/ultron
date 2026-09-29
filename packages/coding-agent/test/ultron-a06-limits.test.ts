@@ -5,7 +5,7 @@
  * - Output: 8 KiB preview per stdout/stderr/result stream (runtime.py); raw protocol output
  *   is capped at 1 MiB per frame and 4 MiB per kernel generation (kernel.ts).
  * - Artifacts: maxArtifactBytes (default 256 MiB) and maxArtifactStorageBytes (default 1 GiB)
- *   in NativeLocalServices; from Python, a single host request is capped by the 1 MiB frame.
+ *   in NativeLocalServices; from Python, a host request over the 1 MiB frame raises in the cell.
  * - Wall time: per-task timeout_ms in NativeRlmHost and root maxWallMs in the usage ledger;
  *   a cell is interrupted through its AbortSignal.
  * - Concurrency: maxAdmittedTasks: 24 unfinished task reservations per root (worker profile).
@@ -212,10 +212,15 @@ describe("A06 limits", () => {
 				return { id: "stored" };
 			});
 			try {
-				await expect(
-					kernel.execute("await rlm.host_request('artifacts.put', {'text': 'z' * (2 * 1024 * 1024)})"),
-				).rejects.toThrow("exceeds 1 MiB");
+				await kernel.execute("kept = 1");
+				// Refused in the cell (a ValueError), so the kernel and its variables survive.
+				const refused = await kernel.execute(
+					"await rlm.host_request('artifacts.put', {'text': 'z' * (2 * 1024 * 1024)})",
+				);
+				expect(refused).toMatchObject({ status: "error", error: { ename: "ValueError" } });
+				expect(refused.error?.evalue).toContain("over the kernel's 1 MiB frame");
 				expect(requests).toEqual([]);
+				expect(await kernel.execute("kept")).toMatchObject({ result: "1" });
 				expect(await kernel.execute("await rlm.host_request('artifacts.put', {'text': 'small'})")).toMatchObject({
 					result: "{'id': 'stored'}",
 				});

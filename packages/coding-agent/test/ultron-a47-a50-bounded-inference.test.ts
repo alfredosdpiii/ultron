@@ -4,7 +4,7 @@
  * Frames are `rlm-frame@1` tasks: journal, admission, cancellation cascade and the usage ledger all apply.
  */
 import { createHash } from "node:crypto";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -752,4 +752,65 @@ describe("ContextHandle in the kernel", () => {
 			await kernel.shutdown();
 		}
 	});
+});
+
+describe("large maps and contracts in the kernel", () => {
+	const runtimePath = fileURLToPath(new URL("../src/ultron/rlm/runtime.py", import.meta.url));
+	function kernelWith(script: Script) {
+		const dir = mkdtempSync(join(tmpdir(), "ultron-bigmap-"));
+		dirs.push(dir);
+		const harness = setup(script);
+		const kernel = new RlmKernel({ cwd: dir, runtimePath }, (type, payload) =>
+			harness.call(type, payload as Record<string, unknown>),
+		);
+		return { ...harness, kernel };
+	}
+
+	test("a map whose inline text passes the 1 MiB protocol frame goes by handle, in one call, keeping state", async () => {
+		const { kernel, calls, contextDir } = kernelWith(({ message }) => ({ text: String(viewOf(message).length) }));
+		try {
+			const cell = [
+				"kept = 'still here'",
+				"docs = [f'report {i} ' + 'x' * 8000 for i in range(157)]",
+				"rubric = 'Shared rubric. ' * 1400",
+				"res = await rlm.map('Length of the item.', docs, contract=int)",
+				"shared = await rlm.map('Length.', [d[:100] for d in docs[:40]], context=rubric, contract=int)",
+				"print(len(res), res[0] == len(docs[0]), res[-1] == len(docs[-1]), shared[0] == len(rubric))",
+			].join("\n");
+			const result = await kernel.execute(cell);
+			expect(result).toMatchObject({ status: "ok" });
+			expect(result.stdout).toContain("157 True True True\n");
+			expect(calls).toHaveLength(197);
+			// Each item went to the host as a stored handle; frames still see the same labelled view.
+			expect(calls[0]!.message).toContain("--- view 1: literal (8009 chars) ---\nreport 0 xxx");
+			expect(readdirSync(contextDir).length).toBe(158);
+			expect(await kernel.execute("kept")).toMatchObject({ status: "ok", result: "'still here'" });
+		} finally {
+			await kernel.shutdown();
+		}
+	}, 60_000);
+
+	test("contracts may be dataclasses, TypedDicts, Literal and {field: type} shorthands", async () => {
+		const { kernel, calls } = kernelWith(() => ({ text: '{"ok": true, "role": "leaf", "note": null}' }));
+		try {
+			const result = await kernel.execute(
+				[
+					"from dataclasses import dataclass",
+					"from typing import Literal",
+					"@dataclass",
+					"class Verdict:",
+					"    ok: bool",
+					"    role: Literal['leaf', 'client']",
+					"    note: str | None = None",
+					"a = await rlm.infer('Judge.', 'text', contract=Verdict)",
+					"b = await rlm.infer('Judge.', 'text', contract={'ok': bool, 'role': Literal['leaf', 'client'], 'note': str | None})",
+					"print(a == b == {'ok': True, 'role': 'leaf', 'note': None})",
+				].join("\n"),
+			);
+			expect(result).toMatchObject({ status: "ok", stdout: "True\n" });
+			expect(calls).toHaveLength(2);
+		} finally {
+			await kernel.shutdown();
+		}
+	}, 30_000);
 });
