@@ -125,6 +125,8 @@ export type HostFixtureOptions = {
 	definitionStore?: NativeDefinitionStore;
 	rootTurns?: boolean;
 	now?: () => number;
+	/** Working directory whose changes are checked against subagents' verdicts. */
+	workspace?: string;
 };
 
 export function hostFixture(options: HostFixtureOptions = {}) {
@@ -139,6 +141,7 @@ export function hostFixture(options: HostFixtureOptions = {}) {
 		modules: options.modules,
 		...(options.rootTurns === undefined ? {} : { rootTurns: options.rootTurns }),
 		...(options.now === undefined ? {} : { now: options.now }),
+		...(options.workspace === undefined ? {} : { workspace: options.workspace }),
 	});
 	return {
 		host,

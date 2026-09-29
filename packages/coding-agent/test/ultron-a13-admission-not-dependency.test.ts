@@ -62,7 +62,14 @@ describe("A13 admission does not satisfy a graph dependency", () => {
 
 		release.resolve("delayed valid result");
 		const output = await workflow;
-		expect(output.slow).toEqual({ status: "succeeded", value: "delayed valid result", verification: "unverified" });
+		// A subagent that ended without rlm.finish returns its reply unverified.
+		expect(output.slow).toEqual({
+			status: "succeeded",
+			value: "delayed valid result",
+			verification: "unverified",
+			verdict: null,
+			unverified: true,
+		});
 		expect(output.dependent).toEqual({
 			status: "succeeded",
 			value: "delayed valid result",
@@ -91,7 +98,13 @@ describe("A13 admission does not satisfy a graph dependency", () => {
 		expect(resolved).toBe(false);
 		expect(await fixture.call("agents.inspect", { id: handle.id })).not.toHaveProperty("result");
 		release.resolve("late but valid");
-		expect(await result).toEqual({ status: "succeeded", value: "late but valid", verification: "unverified" });
+		expect(await result).toEqual({
+			status: "succeeded",
+			value: "late but valid",
+			verification: "unverified",
+			verdict: null,
+			unverified: true,
+		});
 	});
 
 	test("a dependency that ends unsuccessfully skips its dependent, and a late valid result cannot revive it", async () => {

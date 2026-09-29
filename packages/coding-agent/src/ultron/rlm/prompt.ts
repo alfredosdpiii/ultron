@@ -77,19 +77,19 @@ const ASYNC_EVENTS_OFF =
 
 /** The cost rule that matters most on large inputs: narrow with code, read candidates, delegate last. */
 const SEARCH_FIRST = `## Search before delegating
-For many files or a large input, narrow with code first: 1. search the concept and its synonyms (\`re\`, \`h.search\`, \`rg -il\`) and count hits; 2. print one compact line per candidate (id and matching sentence); 3. read the deciding passages of unclear candidates and judge them yourself. Use \`rlm.map\` only for candidates a line or two cannot settle, or text still over about 100 KB, one passage per frame. Do not spawn subagents to read or classify documents: each re-sends this prompt and its transcript every turn, often 10 to 50 times the cost. A worked example: \`help(rlm)\`.`;
+For many files or a large input, narrow with code first: 1. search the concept and its synonyms (\`re\`, \`h.search\`, \`rg -il\`) and count hits; 2. print one compact line per candidate (id and matching sentence); 3. read the deciding passages of unclear candidates and judge them yourself. Use \`rlm.map\` only for candidates a line or two cannot settle, or text still over about 100 KB, one passage per frame. Do not spawn subagents to read or classify documents: each re-sends this prompt and its transcript every turn. Example: \`help(rlm)\`.`;
 
 const BOUNDED_INFERENCE = `## Bounded inference\n${INFERENCE_PROMPT}`;
 
 /** Delegation, with how to wait for children depending on whether their ends are announced (ULTRON_ASYNC_EVENTS). */
 function delegationPrompt(asyncEvents: boolean): string {
 	const wait = asyncEvents
-		? "`await rlm.collect(hs)` (free; check each status), or end your turn: each end arrives as a `child_done` event"
-		: "`await rlm.collect(hs)` (free; check each status)";
+		? "`await rlm.collect(hs)` (free), or end your turn: each end arrives as a `child_done` event"
+		: "`await rlm.collect(hs)` (free)";
 	return `## Delegation
-\`h = await rlm.spawn(brief, name=...)\` starts a subagent (own REPL, your tools and files, not your chat). Spawn only for independent multi-step work, with a self-contained brief (goal, paths, constraints, what to return), several at once; \`depth=N\` lets a child delegate too (≤3 levels) if its part splits again. Then do only your own work that no child owns; never check on children's files, logs or progress: results come to you. With nothing of your own left, ${wait}. Check their reports against your evidence. \`help(rlm.spawn)\`.
-If you are a subagent, do the brief yourself (spawn only if given depth); your final reply is your result: self-contained, with evidence, paths and uncertainties.
-Typed agents, agent graphs and jobs that outlive the turn: \`help(agents)\`, \`help(workflows)\`, \`help(background)\`.`;
+\`h = await rlm.spawn(brief, name=...)\` starts a subagent (own REPL, your tools and files, not your chat). Spawn only for independent multi-step work, with a self-contained brief (goal, paths, constraints, what to return), several at once; \`depth=N\` lets a child delegate too (≤3 levels) if its part splits again. Then do only your own work that no child owns; never check on children's files, logs or progress: results come to you. With nothing of your own left, ${wait}. Trust only verdicts whose \`check.outcome\` is "verified"; re-check the rest. \`help(rlm.spawn)\`.
+If you are a subagent, do the brief yourself (spawn only if given depth), then \`await rlm.finish(status, summary, evidence=[...], changed_files=[...])\` and reply briefly with paths and uncertainties.
+Typed agents, graphs, background jobs: \`help(agents)\`, \`help(workflows)\`, \`help(background)\`.`;
 }
 
 const CONTEXT = `## Other APIs\n${CONTEXT_PROMPT}\n${CODE_SKILLS_PROMPT}\n${AGENT_CLASS_PROMPT}`;

@@ -31,6 +31,12 @@ const resultSchema = Type.Object(
 		value: Type.Optional(Type.Unknown()),
 		error: Type.Optional(Type.String()),
 		verification: Type.Literal("unverified"),
+		/** A subagent's checked verdict (rlm.finish), or null when it ended without one. */
+		verdict: Type.Optional(Type.Unknown()),
+		/** The host's check of that verdict against the files that changed while the subagent ran. */
+		check: Type.Optional(Type.Unknown()),
+		/** Set when a subagent ended without a valid verdict: its reply is all there is. */
+		unverified: Type.Optional(Type.Literal(true)),
 	},
 	{ additionalProperties: false },
 );
@@ -65,6 +71,12 @@ export type NativeResult = {
 	value?: JsonValue;
 	error?: string;
 	verification: "unverified";
+	/** A subagent's checked verdict (`rlm.finish`); null when it ended without one. */
+	verdict?: JsonValue;
+	/** The host's check of the verdict against the files that changed while the subagent ran. */
+	check?: JsonValue;
+	/** A subagent ended without a valid verdict: its reply text is all there is. */
+	unverified?: true;
 };
 export type NativeTask = {
 	id: string;
