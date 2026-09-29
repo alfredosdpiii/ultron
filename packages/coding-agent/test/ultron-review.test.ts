@@ -5,7 +5,7 @@
  * false finding, where the bug must be reported and the false finding rejected.
  */
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -18,6 +18,11 @@ import { RlmKernel } from "../src/ultron/rlm/kernel.ts";
 import { NativeRlmHost } from "../src/ultron/rlm/native-host.ts";
 import { NativeUsageLedger } from "../src/ultron/usage.ts";
 import { memoryDefinitionStore, memoryStore } from "./ultron-host-fixtures.ts";
+
+/** The interpreter the kernel uses (kernel.ts): a `python3` on PATH can be a version-manager shim that fails under test.sh's isolated HOME. */
+const PYTHON =
+	process.env.ULTRON_PYTHON ??
+	(process.platform === "linux" && existsSync("/usr/bin/python3") ? "/usr/bin/python3" : "python3");
 
 const RLM_DIR = fileURLToPath(new URL("../src/ultron/rlm/", import.meta.url));
 const RUNTIME = join(RLM_DIR, "runtime.py");
@@ -62,7 +67,7 @@ def emit(value):
 `;
 
 function py<T = unknown>(code: string, cwd?: string): T {
-	const output = execFileSync("python3", ["-c", `${PRELUDE}\n${code}`], {
+	const output = execFileSync(PYTHON, ["-c", `${PRELUDE}\n${code}`], {
 		cwd: cwd ?? RLM_DIR,
 		encoding: "utf8",
 		env: { ...process.env, PYTHONDONTWRITEBYTECODE: "1" },

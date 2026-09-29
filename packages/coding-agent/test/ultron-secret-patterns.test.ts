@@ -10,7 +10,7 @@
  * Fake credentials are built from parts at run time, so this file never holds a whole one.
  */
 import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, test } from "vitest";
 import { containsCodeSecret } from "../src/ultron/jev.ts";
@@ -22,6 +22,11 @@ import {
 	SecretDetector,
 	shannonEntropy,
 } from "../src/ultron/secrets.ts";
+
+/** The interpreter the kernel uses (kernel.ts): a `python3` on PATH can be a version-manager shim that fails under test.sh's isolated HOME. */
+const PYTHON =
+	process.env.ULTRON_PYTHON ??
+	(process.platform === "linux" && existsSync("/usr/bin/python3") ? "/usr/bin/python3" : "python3");
 
 const patternsPath = fileURLToPath(new URL("../src/ultron/rlm/secret-patterns.json", import.meta.url));
 const pythonModule = fileURLToPath(new URL("../src/ultron/rlm/secret_patterns.py", import.meta.url));
@@ -186,7 +191,7 @@ describe("Python parity", () => {
 			["/Us", "ers/fakeperson/x and /home/user/y"].join(""),
 			"nothing to see here",
 		);
-		const run = spawnSync("python3", [pythonModule, patternsPath], {
+		const run = spawnSync(PYTHON, [pythonModule, patternsPath], {
 			input: JSON.stringify(texts),
 			encoding: "utf8",
 		});
