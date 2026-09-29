@@ -1,5 +1,5 @@
 {
-	"generated_at": "2026-09-29T12:07:24.952Z",
+	"generated_at": "2026-09-29T12:27:42.214Z",
 	"lock": {
 		"ok": true,
 		"lockMissing": false,
@@ -307,8 +307,8 @@
 			"status": "passed",
 			"declared": "passed",
 			"evidence": {
-				"listed": 13,
-				"passed": 13,
+				"listed": 18,
+				"passed": 18,
 				"failed": 0,
 				"missing": 0,
 				"skipped": 0,
@@ -325,7 +325,7 @@
 				},
 				{
 					"file": "packages/coding-agent/test/ultron-a06-limits.test.ts",
-					"test": "raw writes that bypass Python's stdout are cut off at the protocol frame limit",
+					"test": "raw writes that bypass Python's stdout are bounded output, not protocol",
 					"outcome": "passed",
 					"matched": 1,
 					"infra": null
@@ -402,7 +402,42 @@
 				},
 				{
 					"file": "packages/coding-agent/test/ultron-kernel-long-session.test.ts",
+					"test": "raw fd 1 output across many cells (far over 4 MiB in total) keeps the same kernel generation",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-kernel-long-session.test.ts",
 					"test": "the host bounds a cell's accumulated output without failing the kernel",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-kernel-raw-output.test.ts",
+					"test": "raw output over the 4 MiB per-cell limit keeps its head and tail with a marker",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-kernel-raw-output.test.ts",
+					"test": "os.system, an uncaptured subprocess and sys.__stdout__ write into the cell",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-kernel-raw-output.test.ts",
+					"test": "writes to fd 2 land in the cell's stderr",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-kernel-raw-output.test.ts",
+					"test": "processes the kernel starts cannot reach the protocol descriptors",
 					"outcome": "passed",
 					"matched": 1,
 					"infra": null

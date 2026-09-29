@@ -147,19 +147,28 @@ describe("A06 limits", () => {
 			}
 		}, 30_000);
 
-		test("raw writes that bypass Python's stdout are cut off at the protocol frame limit", async () => {
-			const kernel = new RlmKernel({ cwd: dir, runtimePath }, async () => null);
-			try {
-				// Raw bytes on the protocol stream cannot be resynchronized; the frame limit stops them.
-				await expect(kernel.execute("import os\nos.write(1, b'y' * (8 * 1024 * 1024))")).rejects.toThrow(
-					/protocol frame exceeds 1 MiB/,
-				);
-				// The next cell gets a fresh kernel generation instead of a wedged protocol.
-				expect(await kernel.execute("6 * 7")).toMatchObject({ status: "ok", result: "42" });
-			} finally {
-				await kernel.shutdown();
-			}
-		}, 30_000);
+		test.skipIf(process.platform === "win32")(
+			"raw writes that bypass Python's stdout are bounded output, not protocol",
+			async () => {
+				const kernel = new RlmKernel({ cwd: dir, runtimePath }, async () => null);
+				try {
+					const pid = (await kernel.execute("import os\nkept = 'intact'\nos.getpid()")).result;
+					// The protocol runs on fd 3, so 8 MiB on fd 1 is the cell's output, cut to the per-cell limit.
+					const result = await kernel.execute("os.write(1, b'y' * (8 * 1024 * 1024))\n'after'");
+					expect(result).toMatchObject({ status: "ok", result: "'after'" });
+					expect(result.stdout.length).toBeLessThanOrEqual(4 * 1024 * 1024 + 256);
+					expect(result.stdout).toMatch(/over the RLM kernel's 4 MiB per-cell output limit/);
+					// The same kernel process keeps its variables.
+					expect(await kernel.execute("os.getpid(), kept")).toMatchObject({
+						status: "ok",
+						result: `(${pid}, 'intact')`,
+					});
+				} finally {
+					await kernel.shutdown();
+				}
+			},
+			30_000,
+		);
 	});
 
 	describe("artifact size", () => {

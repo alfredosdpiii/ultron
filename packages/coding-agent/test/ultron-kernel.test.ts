@@ -92,7 +92,13 @@ describe("RLM kernel protocol", () => {
 		const directory = await mkdtemp(join(tmpdir(), "ultron-kernel-"));
 		try {
 			const invalid = join(directory, "invalid.py");
-			await writeFile(invalid, "print('not JSON', flush=True)\n");
+			// Frames travel on fd 3 (the stdio channel on Windows); plain stdout output is not protocol.
+			await writeFile(
+				invalid,
+				process.platform === "win32"
+					? "print('not JSON', flush=True)\n"
+					: "import os, time\nprint('plain output', flush=True)\nos.write(3, b'not JSON\\n')\ntime.sleep(30)\n",
+			);
 			const kernel = new RlmKernel({ cwd: directory, runtimePath: invalid }, () => null);
 			try {
 				await expect(kernel.execute("1")).rejects.toThrow(/invalid protocol/);

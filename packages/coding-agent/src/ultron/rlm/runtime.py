@@ -78,8 +78,7 @@ class HostBridge:
         future: asyncio.Future[Any] = asyncio.get_running_loop().create_future()
         self._host_requests[request_id] = future
         async with self._write_lock:
-            sys.__stdout__.write(line)
-            sys.__stdout__.flush()
+            _write_frame(line)
         try:
             return await future
         finally:
@@ -896,9 +895,94 @@ def _encode_frame(payload: dict[str, Any]) -> str:
     return line + "\n"
 
 
+# Protocol channel. With --protocol-fds (every platform but Windows) frames go to the private fd 3 and host
+# messages arrive on fd 4, both close-on-exec, so fd 0/1/2 are plain streams: stdin is /dev/null, and bytes that
+# anything writes to fd 1 or fd 2 (os.write, subprocesses, C code) are output the host attributes to the running
+# cell rather than protocol. Without the flag (Windows) the protocol stays on stdout and stdin.
+_PROTOCOL_FDS = (3, 4)
+_PRIVATE_PROTOCOL = False
+_PROTOCOL_OUT: Any = None
+_PROTOCOL_IN: Any = None
+# (st_dev, st_ino) of the pipes fd 1 and fd 2 were at startup; a flush marker goes only to the host's own pipe.
+_RAW_STREAMS: dict[str, tuple[int, tuple[int, int]]] = {}
+_LIBC_FFLUSH: Any = None
+
+
+def _open_protocol() -> None:
+    global _PRIVATE_PROTOCOL, _PROTOCOL_OUT, _PROTOCOL_IN, _LIBC_FFLUSH
+    if "--protocol-fds" not in sys.argv[1:]:
+        _PROTOCOL_OUT, _PROTOCOL_IN = sys.__stdout__.buffer, sys.__stdin__.buffer
+        return
+    out_fd, in_fd = _PROTOCOL_FDS
+    # Close-on-exec: no process a cell starts (os.system, subprocess with close_fds=False) can reach the protocol.
+    os.set_inheritable(out_fd, False)
+    os.set_inheritable(in_fd, False)
+    _PROTOCOL_OUT = os.fdopen(out_fd, "wb")
+    _PROTOCOL_IN = os.fdopen(in_fd, "rb")
+    _PRIVATE_PROTOCOL = True
+    for name, fd in (("stdout", 1), ("stderr", 2)):
+        try:
+            stat = os.fstat(fd)
+            _RAW_STREAMS[name] = (fd, (stat.st_dev, stat.st_ino))
+        except OSError:
+            pass
+    try:
+        import ctypes
+        _LIBC_FFLUSH = ctypes.CDLL(None).fflush
+    except Exception:
+        _LIBC_FFLUSH = None
+    import builtins
+
+    def _no_input(prompt: Any = "") -> str:
+        raise EOFError("input() is not available: the RLM kernel has no interactive stdin (it reads /dev/null); "
+                       "put the data in the code, a variable or a file instead")
+
+    builtins.input = _no_input
+
+
+def _write_frame(line: str) -> None:
+    _PROTOCOL_OUT.write(line.encode("utf-8"))
+    _PROTOCOL_OUT.flush()
+
+
 def emit(event: str, **fields: Any) -> None:
-    sys.__stdout__.write(_encode_frame({"event": event, **fields}))
-    sys.__stdout__.flush()
+    _write_frame(_encode_frame({"event": event, **fields}))
+
+
+def _flush_raw_output(request_id: Any) -> dict[str, bool] | None:
+    """Write the cell's flush marker to fd 1 and fd 2, after anything buffered in Python or C stdio. The host
+    finalizes the cell once it has read each marker written here, so raw output from the cell precedes it."""
+    if not _PRIVATE_PROTOCOL:
+        return None
+    for stream in (sys.__stdout__, sys.__stderr__):
+        try:
+            stream.flush()
+        except BaseException:
+            pass
+    if _LIBC_FFLUSH is not None:
+        try:
+            _LIBC_FFLUSH(None)
+        except BaseException:
+            pass
+    marker = f"\x1eultron-rlm-flush:{request_id}\x1e".encode("utf-8")
+    flushed: dict[str, bool] = {}
+    for name in ("stdout", "stderr"):
+        flushed[name] = False
+        if name not in _RAW_STREAMS:
+            continue
+        fd, identity = _RAW_STREAMS[name]
+        try:
+            # Cell code may have closed or redirected the fd: the marker would never reach the host.
+            stat = os.fstat(fd)
+            if (stat.st_dev, stat.st_ino) != identity:
+                continue
+            view = memoryview(marker)
+            while view:
+                view = view[os.write(fd, view):]
+            flushed[name] = True
+        except BaseException:
+            pass
+    return flushed
 
 
 _SNAPSHOT_FORMAT = "ultron-rlm-snapshot"
@@ -1753,7 +1837,7 @@ async def execute_cell(request_id: str, source: str) -> None:
             emit("stdout", id=request_id, text=stdout.getvalue())
             emit("stderr", id=request_id, text=stderr.getvalue())
             emit("result", id=request_id, result=result_text)
-            emit("done", id=request_id, status="ok")
+            emit("done", id=request_id, status="ok", flush=_flush_raw_output(request_id))
         except BaseException as error:
             try:
                 emit("stdout", id=request_id, text=stdout.getvalue())
@@ -1767,7 +1851,7 @@ async def execute_cell(request_id: str, source: str) -> None:
                     note = _memory_limit_note()
                     details["evalue"] = f"{details['evalue']} ({note})" if details["evalue"] else note
                 emit("error", id=request_id, **details)
-                emit("done", id=request_id, status="error")
+                emit("done", id=request_id, status="error", flush=_flush_raw_output(request_id))
             except BaseException as secondary:
                 # The cell cannot be reported in-band (e.g. no memory left to encode it): exit with a code
                 # the host maps to a clear error, rather than leaving the cell pending forever.
@@ -1780,10 +1864,11 @@ def _exit_for(*errors: BaseException) -> None:
         code = _EXIT_MEMORY
     elif any(isinstance(error, RlmCpuLimitExceeded) for error in errors):
         code = _EXIT_CPU
-    try:
-        sys.__stdout__.flush()
-    except BaseException:
-        pass
+    for stream in (_PROTOCOL_OUT, sys.__stdout__, sys.__stderr__):
+        try:
+            stream.flush()
+        except BaseException:
+            pass
     os._exit(code)
 
 
@@ -1821,13 +1906,15 @@ async def handle_request(frame: dict[str, Any]) -> None:
 
 
 async def main() -> None:
+    # Output before this marker (interpreter warnings, for example) is startup diagnostics, not a cell's output.
+    _flush_raw_output("ready")
     emit("ready", protocol=1, pid=os.getpid())
     while True:
-        line = await asyncio.to_thread(sys.stdin.readline)
+        line = await asyncio.to_thread(_PROTOCOL_IN.readline)
         if not line:
             return
         try:
-            frame = json.loads(line)
+            frame = json.loads(line.decode("utf-8"))
             if isinstance(frame, dict):
                 await handle_request(frame)
         except SystemExit:
@@ -1837,6 +1924,7 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
+    _open_protocol()
     _become_subreaper()
     _apply_resource_limits()
     try:
