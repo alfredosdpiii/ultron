@@ -19,6 +19,8 @@ export default mergeConfig(
 				ULTRON_LOKI: "off",
 			},
 			unstubEnvs: true,
+			// Provider API keys from the developer's shell are removed unless ULTRON_LIVE_TESTS=1.
+			setupFiles: ["../ai/test/no-live-credentials.ts"],
 			reporters: process.env.GITHUB_ACTIONS ? ["dot", "github-actions"] : ["dot"],
 			silent: "passed-only",
 			server: {
