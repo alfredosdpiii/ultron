@@ -175,11 +175,11 @@ export interface Settings {
  * override them.
  */
 export interface ClaudeCodeSettings {
-	/** Model of `rlm.map`/`rlm.infer` frames, `provider/model` (default `claude-code/sonnet`, else the default model). */
+	/** Model of `rlm.map`/`rlm.infer` frames, `provider/model` (default `claude-code/claude-opus-5-5`, else the default model). */
 	frameModel?: string;
 	/** `rlm.spawn` subagents: `claude` (default: Claude Code processes with their own REPL) or `ultron` (Ultron lanes). */
 	children?: "claude" | "ultron";
-	/** Claude Code model alias of `claude` subagents (default `sonnet`). */
+	/** Claude Code model of `claude` subagents (default `claude-opus-5-5`). */
 	childModel?: string;
 	/** Model of `ultron` subagents, `provider/model` (default: the default model). */
 	ultronChildModel?: string;

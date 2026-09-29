@@ -25,6 +25,7 @@ import {
 	claudeAuthStatus,
 	claudeFlags,
 	claudeVersion,
+	DEFAULT_CLAUDE_MODEL,
 	REQUIRED_CLAUDE_FLAGS,
 	resolveClaudeBinary,
 } from "./claude-cli.ts";
@@ -55,12 +56,13 @@ Options (before any claude args, or anywhere before --):
   --keep-settings        Load your user/project Claude Code settings and CLAUDE.md (default: none)
   --no-hooks             No Ultron hooks (no automatic memory, events only in rlm results)
   --watch                Open \`ultron watch\` in a tmux split (inside tmux)
-  --frame-model <p/m>    Model of rlm.map/rlm.infer frames (default claude-code/sonnet)
+  --frame-model <p/m>    Model of rlm.map/rlm.infer frames (default claude-code/claude-opus-5-5)
   --children <mode>      rlm.spawn subagents: claude (Claude Code processes, default) or ultron
-  --child-model <alias>  Claude Code model of claude subagents (default sonnet)
+  --child-model <alias>  Claude Code model of claude subagents (default claude-opus-5-5)
   --help                 This help
 
-Everything else is passed to claude (for example -p "prompt", --model opus, --resume <id>).`;
+Claude Code itself runs claude-opus-5-5 unless you pass --model (or set ULTRON_CLAUDE_MODEL).
+Everything else is passed to claude (for example -p "prompt", --model sonnet, --resume <id>).`;
 
 /** Split `ultron claude` arguments into Ultron's options and claude's. */
 export function parseLauncherArgs(args: readonly string[]): LauncherOptions | "help" {
@@ -179,6 +181,9 @@ export function buildClaudeLaunch(input: {
 		"--settings",
 		settingsPath ?? settings,
 		...(options.keepSettings ? [] : ["--setting-sources", ""]),
+		...(options.claudeArgs.some((arg) => arg === "--model" || arg.startsWith("--model="))
+			? []
+			: ["--model", input.env.ULTRON_CLAUDE_MODEL?.trim() || DEFAULT_CLAUDE_MODEL]),
 		...options.claudeArgs,
 	];
 	const env: Record<string, string> = {};

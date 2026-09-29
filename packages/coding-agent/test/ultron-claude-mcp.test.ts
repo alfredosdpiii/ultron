@@ -262,7 +262,7 @@ describe("ultron mcp end to end", () => {
 		);
 		child = spawn(
 			process.execPath,
-			["--import", sourceResolverPath, cliPath, "mcp", "--frame-model", "claude-code/not-installed"],
+			["--import", sourceResolverPath, cliPath, "mcp", "--frame-model", "no-such-provider/frames"],
 			{
 				cwd: project,
 				env: {

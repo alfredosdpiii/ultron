@@ -1522,7 +1522,7 @@ export async function createUltronRuntime(
 	loadedExtensions.runtime.pendingNativeProviderRegistrations = [];
 	await modelRuntime.refresh({ allowNetwork: false });
 	let resolved: Awaited<ReturnType<typeof findInitialModel>> | ReturnType<typeof resolveCliModel> | undefined;
-	// An external root prefers its frame model (for example claude-code/sonnet) and falls back to the default.
+	// An external root prefers its frame model (claude-code/claude-opus-5-5 by default) and falls back to the default.
 	if (external?.preferredModel !== undefined) {
 		const preferred = resolveCliModel({
 			cliProvider: external.preferredModel.provider,

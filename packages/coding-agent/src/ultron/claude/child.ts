@@ -25,7 +25,7 @@ export interface ClaudeChildOptions {
 	/** The parent server's control socket and registry name. */
 	readonly parentSocket: string;
 	readonly parentName: string;
-	/** Claude model alias for children (`sonnet` by default); `rlm.spawn(model="claude-code/opus")` overrides it. */
+	/** Claude model alias for children (`claude-opus-5-5` by default); `rlm.spawn(model="claude-code/opus")` overrides it. */
 	readonly model: string;
 	/** Frame model for the child's own `rlm.map`/`rlm.infer`. */
 	readonly frameModel?: string;
@@ -52,7 +52,7 @@ export function childClaudeModel(requested: string | undefined, fallback: string
 	if (trimmed.startsWith("claude-code/")) return trimmed.slice("claude-code/".length);
 	if (!trimmed.includes("/")) return trimmed;
 	throw new Error(
-		`rlm.spawn model=${trimmed}: subagents here are Claude Code processes; pass claude-code/<opus|sonnet|haiku> or leave model unset`,
+		`rlm.spawn model=${trimmed}: subagents here are Claude Code processes; pass claude-code/<claude-opus-5-5|opus|sonnet|haiku> or leave model unset`,
 	);
 }
 

@@ -29,7 +29,7 @@ import {
 import { codeSkillsToolSection } from "../code-skills.ts";
 import { RLM_TOOL_DESCRIPTION } from "../rlm/prompt.ts";
 import { runClaudeChild } from "./child.ts";
-import { resolveClaudeBinary } from "./claude-cli.ts";
+import { DEFAULT_CLAUDE_MODEL, resolveClaudeBinary } from "./claude-cli.ts";
 import {
 	type ControlClient,
 	type ControlRequest,
@@ -43,8 +43,8 @@ import { claudeRuntimeGuide, claudeSystemPrompt } from "./guide.ts";
 import { type McpContent, serveMcp } from "./mcp-protocol.ts";
 import { selfCommand } from "./self.ts";
 
-export const DEFAULT_FRAME_MODEL = "claude-code/sonnet";
-export const DEFAULT_CHILD_CLAUDE_MODEL = "sonnet";
+export const DEFAULT_FRAME_MODEL = `claude-code/${DEFAULT_CLAUDE_MODEL}`;
+export const DEFAULT_CHILD_CLAUDE_MODEL = DEFAULT_CLAUDE_MODEL;
 
 export interface McpServerArgs {
 	child: boolean;

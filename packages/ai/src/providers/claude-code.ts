@@ -42,8 +42,9 @@ function aliasModel(id: string, name: string): Model<typeof CLAUDE_CODE_API> {
 	};
 }
 
-/** The model aliases the CLI resolves to the latest model of each family. */
+/** Opus 5.5 by its exact id, then the aliases the CLI resolves to the latest model of each family. */
 export const CLAUDE_CODE_MODELS: readonly Model<typeof CLAUDE_CODE_API>[] = [
+	aliasModel("claude-opus-5-5", "Claude Opus 5.5 (Claude Code CLI)"),
 	aliasModel("opus", "Claude Opus (Claude Code CLI)"),
 	aliasModel("sonnet", "Claude Sonnet (Claude Code CLI)"),
 	aliasModel("haiku", "Claude Haiku (Claude Code CLI)"),

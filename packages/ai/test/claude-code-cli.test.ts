@@ -131,9 +131,14 @@ afterEach(() => resetClaudeCodeCliState());
 afterAll(() => rmSync(root, { recursive: true, force: true }));
 
 describe("claude-code provider registration", () => {
-	it("exposes opus, sonnet and haiku aliases as a built-in, key-less provider", async () => {
+	it("exposes Opus 5.5 plus the opus, sonnet and haiku aliases as a built-in, key-less provider", async () => {
 		expect(builtinProviders().map((provider) => provider.id)).toContain("claude-code");
-		expect(models.getModels("claude-code").map((model) => model.id)).toEqual(["opus", "sonnet", "haiku"]);
+		expect(models.getModels("claude-code").map((model) => model.id)).toEqual([
+			"claude-opus-5-5",
+			"opus",
+			"sonnet",
+			"haiku",
+		]);
 		expect(haiku).toMatchObject({ api: CLAUDE_CODE_API, provider: "claude-code", input: ["text", "image"] });
 		expect(isClaudeCodeModel(haiku)).toBe(true);
 		const withCli = createModels({
@@ -143,7 +148,12 @@ describe("claude-code provider registration", () => {
 			},
 		});
 		withCli.setProvider(claudeCodeProvider());
-		expect((await withCli.getAvailable("claude-code")).map((model) => model.id)).toEqual(["opus", "sonnet", "haiku"]);
+		expect((await withCli.getAvailable("claude-code")).map((model) => model.id)).toEqual([
+			"claude-opus-5-5",
+			"opus",
+			"sonnet",
+			"haiku",
+		]);
 		const withoutCli = createModels({
 			authContext: {
 				env: async (name) => (name === "PATH" ? join(root, "nothing") : undefined),

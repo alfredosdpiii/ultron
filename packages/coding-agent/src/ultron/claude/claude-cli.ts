@@ -8,6 +8,9 @@ import { spawnSync } from "node:child_process";
 import { accessSync, constants } from "node:fs";
 import { delimiter, isAbsolute, join } from "node:path";
 
+/** Claude Code model of the root, of claude subagents and (as claude-code/…) of frames: Opus 5.5. */
+export const DEFAULT_CLAUDE_MODEL = "claude-opus-5-5";
+
 /** `ULTRON_CLAUDE_BIN`, else `claude` on PATH. */
 export function resolveClaudeBinary(env: NodeJS.ProcessEnv = process.env): string | undefined {
 	const configured = env.ULTRON_CLAUDE_BIN?.trim();
