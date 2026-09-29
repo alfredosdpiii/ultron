@@ -1,6 +1,7 @@
 import type { ThinkingLevel } from "@ultron/agent-core";
 import { defineFacet, type Facet, type JsonValue } from "@ultron/chord";
 import { BACKGROUND_CONTEXT } from "@ultron/chord/context";
+import { REVIEW_COMMAND } from "../../ultron/review.ts";
 import { AgentController } from "./agent-controller.ts";
 import { inspectionCommands } from "./inspection-commands.ts";
 import { LegacyExtensionCommands } from "./legacy-extensions.ts";
@@ -119,6 +120,7 @@ export function createBuiltInSlashCommandsFacet(options: {
 				}
 				env.own(commands.replace(thinkingCommand(models, ui)));
 				env.own(commands.replace(compactCommand(controller, ui)));
+				env.own(commands.replace(reviewCommand(controller, ui)));
 				env.own(
 					commands.replace({
 						name: "reload",
@@ -250,6 +252,17 @@ function thinkingCommand(models: ModelsService, ui: PresentationUI): SlashComman
 			await models.selectThinking(selected, context);
 			ui.showStatus(`Thinking level: ${selected}.`, context);
 			return undefined;
+		},
+	};
+}
+
+/** `/review`: sent as a prompt; the worker's AgentController expands it (see src/ultron/review.ts). */
+function reviewCommand(controller: AgentController, ui: PresentationUI): SlashCommandContribution {
+	return {
+		...REVIEW_COMMAND,
+		run(args, context) {
+			ui.showStatus("Reviewing changes…", context);
+			return controller.prompt({ message: `/review ${args}`.trim(), images: null }, context);
 		},
 	};
 }

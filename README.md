@@ -86,6 +86,17 @@ lookup, so unrelated memories never leak into answers.
 - **Jev's presence**: a footer indicator that pulses when Jev decides, one-line notes in the transcript showing what
   memory was used and whether the turn was kept, and a `/jev` view with a decision timeline and threshold gauges.
 
+### 7. Reviews that check their own findings (`/review`)
+
+`/review` is an optional command for reviewing a change: the working tree plus the current branch by default, or
+`/review main`, `/review 123` (a PR, through `gh`), `/review src/`. Five specialist reviewers (correctness,
+security, architecture, tests, AI/LLM integration) run as bounded `rlm.map` frames over the diff in chunks with the
+surrounding code; then every finding goes to a verifier frame that reads the lines it cites and the callers of the
+code involved. Rejected findings never reach the report, confirmations must quote the source, and the report ends
+with counts, cost and what was not checked. One token cap covers it all (`--budget`, default 300k); `--only sec,bugs`,
+`--model`, `--deep` (a sub-agent re-checks undecided findings) and `--post` (only after you say yes) adjust it.
+It adds nothing to the prompt of ordinary turns. Details: [`docs/review.md`](docs/review.md).
+
 ## How it compares
 
 | | Typical tool-calling agent | Ultron |

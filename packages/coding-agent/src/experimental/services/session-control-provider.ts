@@ -7,6 +7,7 @@ import type { SettingsManager } from "../../core/settings-manager.ts";
 import { createLocalBashOperations } from "../../core/tools/bash.ts";
 import { ProjectTrustStore } from "../../core/trust-manager.ts";
 import { nativeSessionEntriesToPi } from "../../ultron/migration.ts";
+import { REVIEW_COMMAND } from "../../ultron/review.ts";
 import type { CommandSourceInfo, LegacyExtensionCommands } from "./legacy-extensions.ts";
 import {
 	INSPECTION_REQUESTS,
@@ -97,6 +98,12 @@ export function createSessionControl(options: {
 				source: "extension",
 				sourceInfo: plainSourceInfo(command.sourceInfo),
 			}));
+			commands.push({
+				name: REVIEW_COMMAND.name,
+				description: REVIEW_COMMAND.description,
+				source: "prompt",
+				sourceInfo: null,
+			});
 			for (const template of resources.promptTemplates ?? []) {
 				commands.push({
 					name: template.name,
