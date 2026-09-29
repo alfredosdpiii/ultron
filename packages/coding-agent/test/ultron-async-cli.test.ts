@@ -351,7 +351,10 @@ describe("asynchronous execution in the real CLI", () => {
 			await flow.client.promptAndWait("PARENT: delegate the count", undefined, 60_000);
 			expect(await flow.client.getLastAssistantText()).toBe("DELEGATED");
 			await expect.poll(flow.agentEnds, { timeout: 30_000, interval: 100 }).toBe(2);
-			expect(await flow.client.getLastAssistantText()).toBe("ROOT GOT rlm-child@1: child found 3 files");
+			// The event summary leads with the verdict tag: this child ended without rlm.finish.
+			expect(await flow.client.getLastAssistantText()).toBe(
+				"ROOT GOT rlm-child@1: [unverified] child found 3 files",
+			);
 			const event = flow.provider.requests.map((request) => CHILD_EVENT.exec(request.lastUser)).find(Boolean)!;
 			expect(event[3]).toBe(`await rlm.collect([&quot;${event[1]}&quot;])`);
 		} finally {

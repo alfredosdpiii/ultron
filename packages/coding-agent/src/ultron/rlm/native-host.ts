@@ -1,4 +1,6 @@
 import { randomUUID } from "node:crypto";
+import { lstat } from "node:fs/promises";
+import { join } from "node:path";
 import type { AgentHarness, AgentLane, Context, Entry } from "@ultron/agent-core";
 import { isJsonValue, type JsonValue } from "@ultron/chord";
 import { BACKGROUND_CONTEXT, withAbortSignal, withoutAbortSignal } from "@ultron/chord/context";
@@ -8,6 +10,7 @@ import type {
 	NativeUsageMeasurement,
 	NativeUsageReservation,
 } from "../usage.ts";
+import { diffSnapshots, snapshotWorkspace, type WorkspaceSnapshot } from "../workspace-snapshot.ts";
 import {
 	type NativeDefinition,
 	type NativeDefinitionAdapter,
@@ -22,6 +25,7 @@ import {
 	type NativeResult as StoredTaskResult,
 	taskFingerprint,
 } from "./task-store.ts";
+import { checkFiles, MAX_VERDICT_REJECTIONS, type Verdict, type VerdictCheck, validateVerdict } from "./verdict.ts";
 
 type Payload = Record<string, unknown>;
 export type NativeResult = StoredTaskResult;
@@ -56,6 +60,13 @@ type TaskRecord = NativeTask & {
 	lastText?: string;
 	/** For an `rlm.spawn` subagent: how many more nesting levels it may create (`depth=` at its spawn; in memory). */
 	spawnDepth?: number;
+	/** A subagent's accepted `rlm.finish` verdict (the latest valid call wins). */
+	verdict?: Verdict;
+	/** Rejected `rlm.finish` calls, and the problems of the latest one. */
+	verdictRejections?: number;
+	verdictProblems?: string[];
+	/** The rejections ran out with no valid verdict: the subagent's reply is returned unverified. */
+	verdictInvalid?: boolean;
 };
 
 /** A task's place in a `workflows.run` graph: the run, its node id, and the dependencies it joined. */
@@ -188,6 +199,44 @@ function conditionMet(value: JsonValue | undefined, condition: { field?: string;
 				? value[condition.field]
 				: undefined;
 	return actual !== undefined && canonicalJson(actual) === canonicalJson(condition.equals);
+}
+
+/**
+ * The value a later workflow node binds from a finished one (`inputFrom`, `when`, `revise.until`): a subagent's
+ * checked verdict when it gave one, else the node's value.
+ */
+function boundValue(outcome: WorkflowOutcome | undefined): JsonValue | undefined {
+	const result = outcome as (NativeResult & { value?: JsonValue }) | undefined;
+	const verdict = result?.verdict as Verdict | null | undefined;
+	if (verdict === null || verdict === undefined || typeof verdict !== "object") return result?.value;
+	return {
+		status: verdict.status,
+		summary: verdict.summary,
+		outputs: verdict.outputs,
+		evidence: verdict.evidence,
+		changed_files: verdict.changed_files,
+		check: (result?.check as VerdictCheck | undefined)?.outcome ?? "unchecked",
+		reply: typeof result?.value === "string" ? result.value : null,
+	};
+}
+
+/**
+ * A workflow node backed by a subagent succeeds only when its verdict passed and was not contradicted; a subagent
+ * without a verdict keeps its plain success (it is marked unverified).
+ */
+function verdictGate(result: NativeResult): NativeResult {
+	const verdict = result.verdict as Verdict | null | undefined;
+	if (result.status !== "succeeded" || verdict === null || verdict === undefined) return result;
+	const check = result.check as VerdictCheck | undefined;
+	if (verdict.status !== "passed")
+		return { ...result, status: "failed", error: `Subagent verdict ${verdict.status}: ${verdict.summary}` };
+	if (check?.outcome === "contradicted")
+		return {
+			...result,
+			status: "failed",
+			error: `Subagent verdict contradicted: declared as changed but unchanged: ${check.unobserved.join(", ")}`,
+		};
+	return result;
 }
 
 function canonicalJson(value: JsonValue): string {
@@ -443,6 +492,11 @@ export type NativeHostOptions = {
 	onDetachedEnd?: (end: DetachedTaskEnd) => void;
 	/** Extra fields for `agents.status` (for example shell jobs), per calling lane. */
 	statusExtras?: (caller: HostCaller) => Record<string, JsonValue>;
+	/**
+	 * The working directory subagents share. When set, the host snapshots it when an `rlm.spawn` child starts and
+	 * ends, and checks the child's declared `changed_files` against what changed (see verdict.ts).
+	 */
+	workspace?: string;
 	now?: () => number;
 };
 
@@ -479,6 +533,7 @@ export class NativeRlmHost {
 	private readonly onTaskEnd: NativeHostOptions["onTaskEnd"];
 	private readonly onDetachedEnd: NativeHostOptions["onDetachedEnd"];
 	private readonly statusExtras: NativeHostOptions["statusExtras"];
+	private readonly workspace: string | undefined;
 	/** Root-lane runs that continue an earlier root (a completion event re-invoking the model): run id -> root. */
 	private readonly rootAliases = new Map<string, string>();
 
@@ -500,6 +555,7 @@ export class NativeRlmHost {
 		this.onTaskEnd = options.onTaskEnd;
 		this.onDetachedEnd = options.onDetachedEnd;
 		this.statusExtras = options.statusExtras;
+		this.workspace = options.workspace;
 		this.registry = new NativeDefinitionRegistry(options.definitionStore, {
 			deterministic: options.deterministic,
 			predict: options.predict,
@@ -815,6 +871,9 @@ export class NativeRlmHost {
 									`Active refinement ${refinement.id} (version ${refinement.version ?? "unversioned"}):\n${refinement.text}`,
 							)
 							.join("\n\n")}`;
+			// A subagent's files are pictured before its first model turn, to check its verdict against at the end.
+			const before = definition.id === "rlm-child" ? await this.snapshot(signal) : undefined;
+			signal.throwIfAborted();
 			modelReservation = await this.usage?.reserve({
 				kind: "model",
 				...(task.usageReservation === undefined ? {} : { rootId: task.usageReservation.rootId }),
@@ -853,6 +912,7 @@ export class NativeRlmHost {
 			if (stats.text !== undefined) task.lastText = preview(stats.text, GRAPH_TEXT_CHARS);
 			const entry = entries.find((candidate) => candidate.id === tipId);
 			const text = entry ? textOf(entry) : "";
+			if (definition.id === "rlm-child") return await this.childResult(task, text, before, signal);
 			if (!text.trim()) throw new Error("Agent produced no assistant result at the completed tip");
 			const value = definition.id === "rlm-child" || definition.id === "background-job" ? text : jsonFrom(text);
 			if (!isJsonValue(value)) throw new Error("Agent produced a non-JSON result");
@@ -986,6 +1046,109 @@ export class NativeRlmHost {
 		if (result.status !== "failed") return result;
 		const reason = await this.usage?.turnBudgetExhausted?.(task.usageReservation?.rootId).catch(() => undefined);
 		return reason === undefined || result.error === reason ? result : { ...result, error: reason };
+	}
+
+	/** A picture of the shared workspace, an Error when it could not be taken, or undefined without a workspace. */
+	private async snapshot(signal: AbortSignal): Promise<WorkspaceSnapshot | Error | undefined> {
+		if (this.workspace === undefined) return undefined;
+		try {
+			return await snapshotWorkspace(this.workspace, { signal });
+		} catch (error) {
+			return error instanceof Error ? error : new Error(String(error));
+		}
+	}
+
+	/**
+	 * Other lane-backed tasks whose runs overlapped `task`'s, outside its own line (its ancestors and descendants):
+	 * work that may have written files while it ran.
+	 */
+	private concurrentWith(task: TaskRecord): TaskRecord[] {
+		const start = task.startedAt ?? 0;
+		const end = this.now();
+		const ancestors = new Set<string>();
+		for (let id = task.parentId; id !== undefined; id = this.tasks.get(id)?.parentId) ancestors.add(id);
+		const descends = (other: TaskRecord): boolean => {
+			for (let id = other.parentId; id !== undefined; id = this.tasks.get(id)?.parentId)
+				if (id === task.id) return true;
+			return false;
+		};
+		return [...this.tasks.values()].filter(
+			(other) =>
+				other !== task &&
+				other.laneName !== undefined &&
+				!other.definition.startsWith("rlm-frame@") &&
+				other.startedAt !== undefined &&
+				other.startedAt <= end &&
+				(other.endedAt ?? Number.POSITIVE_INFINITY) >= start &&
+				!ancestors.has(other.id) &&
+				!descends(other),
+		);
+	}
+
+	/**
+	 * A finished subagent's result: its reply, its verdict (null without a valid `rlm.finish`), and the host's check
+	 * of the verdict's declared files against the files that changed while it ran (see verdict.ts).
+	 */
+	private async childResult(
+		task: TaskRecord,
+		text: string,
+		before: WorkspaceSnapshot | Error | undefined,
+		signal: AbortSignal,
+	): Promise<NativeResult> {
+		const verdict = task.verdict;
+		if (!text.trim() && verdict === undefined)
+			throw new Error("Agent produced no assistant result at the completed tip");
+		const value = text.trim() ? text : verdict!.summary;
+		const after = before instanceof Error || before === undefined ? undefined : await this.snapshot(signal);
+		signal.throwIfAborted();
+		const concurrent = this.concurrentWith(task);
+		const explained = new Set<string>();
+		for (const other of concurrent) {
+			const declared = (other.result?.verdict as Verdict | null | undefined)?.changed_files;
+			for (const path of Array.isArray(declared) ? declared : []) explained.add(path);
+		}
+		const empty = { unobserved: [], unreported: [], unlisted: [], concurrent: concurrent.map((other) => other.id) };
+		let check: VerdictCheck;
+		if (before === undefined || after === undefined || before instanceof Error || after instanceof Error) {
+			const failed = before instanceof Error ? before : after instanceof Error ? after : undefined;
+			check = {
+				outcome: task.verdictInvalid ? "invalid" : "unchecked",
+				...empty,
+				reason: failed ? `workspace snapshot failed: ${failed.message}` : "no workspace to compare",
+			};
+		} else {
+			const workspace = before.root;
+			// Without a verdict nothing is declared, so every change seen during the run is reported.
+			check = await checkFiles({
+				verdict: verdict ?? { status: "failed", summary: "", outputs: {}, evidence: [], changed_files: [] },
+				workspace,
+				before,
+				after,
+				diff: diffSnapshots(before, after),
+				explained,
+				concurrent: empty.concurrent,
+				exists: (path) =>
+					lstat(join(workspace, path)).then(
+						() => true,
+						() => false,
+					),
+			});
+			if (verdict === undefined) {
+				check.outcome = task.verdictInvalid ? "invalid" : "unchecked";
+				check.reason = "the subagent ended without a verdict (rlm.finish)";
+			}
+		}
+		if (task.verdictInvalid) check.problems = task.verdictProblems ?? [];
+		// A child with no verdict and no workspace to observe has nothing to report beyond being unverified.
+		const nothingChecked = verdict === undefined && !task.verdictInvalid && before === undefined;
+		return {
+			status: "succeeded",
+			value,
+			verification: "unverified",
+			verdict: verdict === undefined ? null : (structuredClone(verdict) as unknown as JsonValue),
+			...(nothingChecked ? {} : { check: check as unknown as JsonValue }),
+			...(verdict === undefined ? { unverified: true as const } : {}),
+		};
 	}
 
 	/**
@@ -1299,7 +1462,7 @@ export class NativeRlmHost {
 				},
 			};
 		const succeeded = (dependency: string) => statusOf(dependency) === "succeeded";
-		const resultOf = (dependency: string) => (output.get(dependency) as NativeResult).value;
+		const resultOf = (dependency: string) => boundValue(output.get(dependency));
 		if (node.when) {
 			const label = `${node.when.node}${node.when.field === undefined ? "" : `.${node.when.field}`}`;
 			if (!succeeded(node.when.node))
@@ -1331,6 +1494,8 @@ export class NativeRlmHost {
 		context: Context,
 		parentId: string | undefined,
 		run?: string,
+		/** Fail a subagent node whose verdict did not pass (a revision reviewer's verdict is data for `until`). */
+		gate = true,
 	): Promise<WorkflowOutcome> {
 		const definition = this.definition(node.definition);
 		// A bound input that does not fit fails this node explicitly; nothing is spawned for it.
@@ -1353,7 +1518,8 @@ export class NativeRlmHost {
 				verification: "unverified",
 			};
 		}
-		return await (task.promise ?? task.result!);
+		const result = await (task.promise ?? task.result!);
+		return gate ? verdictGate(result) : result;
 	}
 
 	/**
@@ -1398,7 +1564,15 @@ export class NativeRlmHost {
 			const reviewResult =
 				"outcome" in decided
 					? decided.outcome
-					: await this.workflowTask(reviewer, decided.input, roundKey(reviewer, round), context, parentId, run);
+					: await this.workflowTask(
+							reviewer,
+							decided.input,
+							roundKey(reviewer, round),
+							context,
+							parentId,
+							run,
+							false,
+						);
 			rounds.push({ round, work: workResult, review: reviewResult });
 			if (reviewResult.status !== "succeeded")
 				return finish(
@@ -1411,8 +1585,7 @@ export class NativeRlmHost {
 					},
 					reviewResult,
 				);
-			if (conditionMet((reviewResult as NativeResult).value, revise.until))
-				return finish("converged", workResult, reviewResult);
+			if (conditionMet(boundValue(reviewResult), revise.until)) return finish("converged", workResult, reviewResult);
 			if (round === revise.maxRounds)
 				return finish(
 					"exhausted",
@@ -1421,8 +1594,8 @@ export class NativeRlmHost {
 				);
 			input = {
 				input: firstInput,
-				previous: (workResult as NativeResult).value ?? null,
-				review: (reviewResult as NativeResult).value ?? null,
+				previous: boundValue(workResult) ?? null,
+				review: boundValue(reviewResult) ?? null,
 				round: round + 1,
 			};
 		}
@@ -1678,6 +1851,36 @@ export class NativeRlmHost {
 				timeout_ms: request.timeoutMs,
 				parent_branch_anchor: "",
 			} satisfies RlmChildHandle;
+		}
+		if (type === "rlm.finish") {
+			const task = parentId === undefined ? undefined : this.tasks.get(parentId);
+			if (task?.definition !== "rlm-child@1")
+				throw new Error("rlm.finish is for subagents started with rlm.spawn; here, answer in your reply");
+			if (task.result !== undefined || task.finishing !== undefined)
+				throw new Error("rlm.finish: this subagent has already ended");
+			if (task.verdictInvalid)
+				throw new Error("rlm.finish: no attempts left; end your turn, your reply is returned unverified");
+			const checked = validateVerdict(payload, this.workspace);
+			if ("verdict" in checked) {
+				task.verdict = checked.verdict;
+				return {
+					recorded: true,
+					status: checked.verdict.status,
+					next: "End your turn now with a short reply; the host checks changed_files against the files that changed while you ran.",
+				};
+			}
+			task.verdictRejections = (task.verdictRejections ?? 0) + 1;
+			task.verdictProblems = checked.problems;
+			const left = MAX_VERDICT_REJECTIONS + 1 - task.verdictRejections;
+			const problems = checked.problems.map((problem) => `- ${problem}`).join("\n");
+			if (left > 0 || task.verdict !== undefined)
+				throw new Error(
+					`rlm.finish rejected:\n${problems}\nFix these and call rlm.finish again${task.verdict === undefined ? ` (${left} attempt${left === 1 ? "" : "s"} left)` : "; your earlier verdict stands until then"}.`,
+				);
+			task.verdictInvalid = true;
+			throw new Error(
+				`rlm.finish rejected:\n${problems}\nNo attempts left: end your turn; your reply is returned unverified, with these problems.`,
+			);
 		}
 		if (type === "rlm.list_subagents") {
 			fields(payload, []);

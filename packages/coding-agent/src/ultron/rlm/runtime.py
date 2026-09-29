@@ -100,8 +100,8 @@ class RLMNamespace:
 
     `h = await rlm.spawn(task, name=...)` starts a subagent with its own REPL (a full agent: it re-sends the
     system prompt and its own transcript on every turn, so use it for independent multi-step work, not for
-    reading files); `await rlm.collect([h])` waits for results; `rlm.list_subagents()`,
-    `rlm.delete_subagent(id)`. `rlm.load`, `rlm.open`, `rlm.infer`, `rlm.map` and `rlm.frames` are the
+    reading files); `await rlm.collect([h])` waits for results; a subagent ends with `rlm.finish(...)`;
+    `rlm.list_subagents()`, `rlm.delete_subagent(id)`. `rlm.load`, `rlm.open`, `rlm.infer`, `rlm.map` and `rlm.frames` are the
     bounded-inference API (`help(rlm.map)`). `rlm.jobs()` / `rlm.job(id)` recover shell jobs.
 
     Search before delegating, over many files or a large input: search the concept and its synonyms in code,
@@ -133,8 +133,10 @@ class RLMNamespace:
         files, logs or progress, since their results come to you. With nothing of your own left, wait for free
         with `await rlm.collect(handles)`, or (completion events on) end your turn: each end arrives as a
         `child_done` event.
-        `await rlm.collect([h])` returns `[{"id": ..., "result": {"status": "succeeded", "value": <answer>}}]`
-        (check each status). A subagent does its brief itself unless you pass `depth=N` (1 lets it spawn its
+        `await rlm.collect([h])` returns `[{"id": ..., "result": {"status": "succeeded", "value": <answer>,
+        "verdict": {...} | None, "check": {"outcome": ...}}}]` (check each status): trust a verdict only when
+        `check["outcome"] == "verified"`; `unobserved` lists files it claimed but did not change, `unreported`
+        files that changed while it ran without being declared (maybe by concurrent work). A subagent does its brief itself unless you pass `depth=N` (1 lets it spawn its
         own subagents, 2 lets those spawn too; at most 3 levels in all), and every response they make counts
         toward the root's turn, token and cost limits. Spawn for independent multi-step work, never to read or
         classify documents (narrow with code and `rlm.map` instead)."""
@@ -159,13 +161,35 @@ class RLMNamespace:
         })
         return SpawnHandle(**result)
 
+    async def finish(self, status: str, summary: str, *, evidence: Any = (), outputs: dict[str, Any] | None = None,
+                     changed_files: Any = ()) -> dict[str, Any]:
+        """As a subagent, record your verdict, then end your turn with a short reply.
+
+        status: "passed" (the brief is done), "failed" (it could not be done) or "blocked" (something outside
+        you stopped it). summary: what was done or what blocked it. evidence: concrete strings, each a command
+        with its outcome ("pytest -q: exit 0, 12 passed") or a file with lines ("src/a.py:40-52 handles X");
+        "passed" is rejected without it. outputs: named results for the parent. changed_files: every file
+        you (or your subagents) created, edited or deleted, relative to the working directory.
+
+        The host checks changed_files against the files that changed on disk while you ran and shows the
+        parent any mismatch. A rejected call raises with the reasons: fix them and call again (a few attempts)."""
+        payload: dict[str, Any] = {
+            "status": status,
+            "summary": summary,
+            "evidence": list(evidence) if isinstance(evidence, (list, tuple)) else evidence,
+            "outputs": {} if outputs is None else outputs,
+            "changed_files": [str(p) for p in changed_files] if isinstance(changed_files, (list, tuple, set)) else changed_files,
+        }
+        return await self._bridge.request("rlm.finish", payload)
+
     async def list_subagents(self) -> list[dict[str, Any]]:
         result = await self._bridge.request("rlm.list_subagents")
         return result.get("subagents", []) if isinstance(result, dict) else []
 
     async def collect(self, selectors: list[str] | None = None, timeout_ms: int = 0) -> list[dict[str, Any]]:
         """Wait for subagents (SpawnHandles or ids; all of yours when empty) and return their results:
-        `[{"id": ..., "result": {"status": ..., "value" | "error": ...}}]`."""
+        `[{"id": ..., "result": {"status": ..., "value" | "error": ..., "verdict": ..., "check": ...}}]`
+        (`help(rlm.spawn)`)."""
         if isinstance(selectors, (str, SpawnHandle)):
             selectors = [selectors]
         # A SpawnHandle from rlm.spawn selects its child by id.

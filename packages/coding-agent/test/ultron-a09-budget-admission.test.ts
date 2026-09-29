@@ -121,7 +121,7 @@ describe("A09 tree budget admission under concurrency", () => {
 				input: { prompt: "hold" },
 				key: "retry-key",
 			}),
-		).toEqual({ status: "succeeded", value: "done", verification: "unverified" });
+		).toEqual({ status: "succeeded", value: "done", verification: "unverified", verdict: null, unverified: true });
 		expect((await usage.status()).usage).toEqual(before);
 		expect(fixture.prompts.filter((entry) => entry.prompt === "hold")).toHaveLength(2);
 	});

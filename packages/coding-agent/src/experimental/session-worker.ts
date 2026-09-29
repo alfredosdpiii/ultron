@@ -110,6 +110,7 @@ import {
 import { jobSummary, type ShellJobEnd, ShellJobs } from "../ultron/rlm/shell-jobs.ts";
 import { loadSnapshotKey } from "../ultron/rlm/snapshot-auth.ts";
 import { createSessionTaskStore } from "../ultron/rlm/task-store.ts";
+import { verdictTag } from "../ultron/rlm/verdict.ts";
 import { CellImages, VIEW_IMAGE_REQUEST, type ViewImageOptions } from "../ultron/rlm/view-image.ts";
 import { createScheduleModule } from "../ultron/schedules.ts";
 import { createSkillModule } from "../ultron/skills.ts";
@@ -1771,6 +1772,8 @@ async function createCodingAgentHarness(
 			usage,
 			frames: inference.executor,
 			rootTurns: true,
+			// Subagents' declared file changes are checked against snapshots of the session's working directory.
+			workspace: options.metadata.cwd,
 			pinLane: (lane, holder) => rlmTool.pin(lane, holder),
 			unpinLane: (lane, holder) => rlmTool.unpin(lane, holder),
 			onTaskEnd: (task, info) => contextControl.taskEnded(task, info),
@@ -2162,11 +2165,13 @@ function taskEvent(end: DetachedTaskEnd): RuntimeEvent {
 				? value
 				: JSON.stringify(value ?? null)
 			: (result?.error ?? "");
+	// A subagent's verdict and its check lead the summary: `[passed, verified] ...`, `[unverified] ...`.
+	const tag = result === undefined ? undefined : verdictTag(result);
 	return {
 		kind: end.kind,
 		id: end.task.id,
 		status: result?.status ?? end.task.state,
-		summary: boundedSummary(`${end.task.definition}: ${detail}`),
+		summary: boundedSummary(`${end.task.definition}: ${tag === undefined ? "" : `${tag} `}${detail}`),
 		fetch: end.fetch,
 		lane: end.ownerLane,
 		...(end.rootId === undefined ? {} : { rootId: end.rootId }),

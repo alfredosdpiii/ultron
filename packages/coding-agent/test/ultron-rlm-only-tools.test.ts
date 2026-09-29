@@ -77,7 +77,7 @@ describe("default tool set", () => {
 		const guide = rlmRuntimePrompt(["rlm"])!;
 		// 13,976 characters and a 2,185-character tool description before the cost pass (2026-09-27); 9,462 and
 		// 1,117 before the compact guide (5,084 and 439 after, same day); 5,318 before the wait-for-children wording
-		// replaced "keep working" (5,493 after, 2026-09-28).
+		// replaced "keep working" (5,493 after, 2026-09-28); 5,485 with the subagent verdict lines (2026-09-29).
 		expect(guide.length).toBeLessThan(5_500);
 		expect(RLM_TOOL_DESCRIPTION.length).toBeLessThan(600);
 		expect(rlmRuntimePrompt(["rlm"])).toBe(guide);
@@ -102,6 +102,9 @@ describe("default tool set", () => {
 			"or end your turn: each end arrives as a `child_done` event",
 			"`depth=N` lets a child delegate too (≤3 levels)",
 			"spawn only if given depth",
+			// Subagents finish with a checked verdict; the root trusts only verified ones.
+			"`await rlm.finish(status, summary, evidence=[...], changed_files=[...])`",
+			'Trust only verdicts whose `check.outcome` is "verified"',
 		])
 			expect(guide).toContain(rule);
 		expect(guide).not.toContain("keep working");
