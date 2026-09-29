@@ -43,6 +43,8 @@ export interface McpServerHandlers {
 		name: string,
 		args: Record<string, unknown>,
 		signal: AbortSignal,
+		/** The request's `_meta` (Claude Code puts the tool-use id in `claudecode/toolUseId`). */
+		meta?: Record<string, unknown>,
 	): Promise<{ content: McpContent[]; isError?: boolean }>;
 	prompts?(): McpPrompt[];
 	resources?(): McpResource[];
@@ -130,7 +132,7 @@ export function serveMcp(handlers: McpServerHandlers, input: Readable, output: M
 				const controller = new AbortController();
 				running.set(id, controller);
 				try {
-					return await handlers.callTool(name, record(params.arguments), controller.signal);
+					return await handlers.callTool(name, record(params.arguments), controller.signal, record(params._meta));
 				} finally {
 					running.delete(id);
 				}

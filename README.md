@@ -207,8 +207,9 @@ ultron --mode rpc                        # Pi-compatible JSONL RPC
 
 If the [Claude Code](https://docs.claude.com/en/docs/claude-code) CLI is installed and logged in, the `claude-code`
 provider runs model calls through it (`claude -p`) with no API key: `claude-code/haiku`, `claude-code/sonnet`,
-`claude-code/opus`. It has no tool calling, so it serves inference frames, `/review` frames and judges, not the root
-agent (`ultron claude` runs Claude Code itself as the root):
+`claude-code/opus`, `claude-code/claude-opus-5-5`. Tool-free calls serve inference frames, `/review` frames and judges;
+a lane with tools (the root agent under `ultron --claude`, its subagents) runs as a Claude Code session whose tools are
+served back to Ultron over MCP (see below):
 
 ```bash
 ULTRON_RLM_FRAME_MODEL=claude-code/haiku ultron   # code-free rlm.infer/rlm.map frames go to the CLI
@@ -273,6 +274,44 @@ findings). It is bundled and on by default:
   so and runs unchecked.
 
 `npm run loki:update -- <loki-checkout | version>` refreshes the bundled engine, pinned by sha256.
+
+## Ultron's UI with Claude Code underneath: `ultron --claude`
+
+`ultron --claude` is Ultron as usual (its TUI, runtime, RLM pane, Jev, Loki, budgets and session files) with the
+root agent's model calls made by [Claude Code](https://claude.com/claude-code) on your login (for example a Pro or
+Max subscription). `ultron claude` is the other way round: Claude Code's own TUI, with Ultron's REPL as its tool.
+
+```bash
+ultron --claude                           # claude-opus-5-5 through Claude Code
+ultron --claude --model claude-code/haiku # another Claude Code model (sonnet, opus, haiku, a full id)
+ultron --claude -c                        # continue the last session: its Claude Code session is resumed
+ULTRON_ROOT=claude ultron                 # the same as --claude (or the global setting claudeCode.root: true)
+```
+
+How it works: each root run is one headless `claude -p` process speaking stream-json (`--input-format
+stream-json --output-format stream-json --include-partial-messages`), started with `--session-id` on the first run and
+`--resume` after it; the session id is kept in the Ultron session, so `ultron --claude -c` continues the same Claude
+Code conversation. Claude Code gets no tools of its own (`--tools ""`, `--strict-mcp-config`, `--setting-sources ""`,
+`--disable-slash-commands`, `--permission-prompts none`) and Ultron's own system prompt (`--system-prompt-file`, with
+a note that `rlm` is listed as `mcp__ultron__rlm`). Its one MCP server is a bridge (`ultron mcp --bridge`) back to the
+session worker: when Claude calls `rlm`, the call is handed to Ultron's harness as an ordinary tool call, which runs
+the cell on the root kernel exactly as in a native turn, and the result goes back to Claude Code. Ultron never reads
+Claude credentials; the CLI logs itself in (`claude auth status` is checked first).
+
+**The same as native Ultron:** the transcript (streamed text, `rlm` cells with their code and output, errors), the
+RLM pane and its waves, Esc to interrupt (the `claude` process group is stopped; the next turn resumes), typing
+while a turn runs (the message goes to Claude Code's input queue and reaches the model with the next tool result),
+wake-ups (a job, subagent or task that finishes while the root is idle starts a new resumed turn with its
+`<runtime_event>`), Jev recall and retention, Loki, per-root turn, token and cost limits (Claude Code's reported
+usage and cost are charged per response), `/review`, sessions, `/tree` and forks. Subagents (`rlm.spawn`) inherit the
+root's model, so each one is its own Claude Code session on its own Ultron lane and kernel; frames without tools use
+the plain `claude-code` provider.
+
+**Different:** Claude Code manages the context (Ultron's compaction is declined for these lanes; the footer shows the
+context Claude Code reports), the footer shows `claude-opus-5-5 (Claude Code)` and your subscription windows (`Claude
+Code 5h 18% · 7d 63%`), costs are the CLI's notional figures (`(sub)`), and Claude's thinking is not shown (Claude
+Code streams none). `/model` can switch to any other model; the transcript carries on there, and switching back to a
+Claude Code model starts a new Claude Code session that gets the conversation so far as text.
 
 ## Claude Code as an RLM
 

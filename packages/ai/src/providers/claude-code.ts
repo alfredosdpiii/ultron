@@ -1,14 +1,16 @@
 import { claudeCodeCliApi } from "../api/claude-code-cli.lazy.ts";
 import type { ApiKeyAuth, AuthContext } from "../auth/types.ts";
 import { createProvider, type Provider } from "../models.ts";
-import type { Model, ThinkingLevelMap } from "../types.ts";
+import type { Api, Model, SimpleStreamOptions, ThinkingLevelMap, TranscriptContext } from "../types.ts";
+import type { AssistantMessageEventStream } from "../utils/event-stream.ts";
 
 /**
  * Claude Code provider: model calls run through the user's installed, logged-in `claude` CLI in headless
  * mode (`claude -p --output-format stream-json`). The CLI does its own authentication (a claude.ai
  * subscription login, or whatever the user configured); Ultron never reads, copies or mints Claude
- * credentials. The provider has no tool calling: it serves tool-free lanes (inference frames, review
- * frames, judges). A tool-using root lane belongs to `ultron claude`.
+ * credentials. On its own the provider serves tool-free lanes (inference frames, review frames, judges); a
+ * request that declares tools goes to the registered tool runner (`setClaudeCodeToolRunner`), which Ultron's
+ * session worker provides, so `ultron --claude` runs its root lane (and subagent lanes) on Claude Code.
  */
 export const CLAUDE_CODE_PROVIDER_ID = "claude-code";
 export const CLAUDE_CODE_API = "claude-code-cli";
@@ -50,9 +52,33 @@ export const CLAUDE_CODE_MODELS: readonly Model<typeof CLAUDE_CODE_API>[] = [
 	aliasModel("haiku", "Claude Haiku (Claude Code CLI)"),
 ];
 
-/** Whether a model is served by the Claude Code CLI provider (no native tool calling). */
+/** Whether a model is served by the Claude Code CLI provider. */
 export function isClaudeCodeModel(model: { api?: string } | undefined): boolean {
 	return model?.api === CLAUDE_CODE_API;
+}
+
+/**
+ * Serves a request that declares tools. `claude -p` cannot hand raw tool calls back, so tool calling needs a host
+ * that exposes the request's tools to the CLI as MCP tools and relays each call back as a tool call (Ultron's
+ * session worker does, see coding-agent's ultron/claude/root-runner.ts). Without a registered runner a request
+ * with tools fails before any process starts.
+ */
+export type ClaudeCodeToolRunner = (
+	model: Model<Api>,
+	context: TranscriptContext,
+	options: SimpleStreamOptions | undefined,
+) => AssistantMessageEventStream;
+
+// A process-wide slot (not a module variable): source and built copies of this module may both be loaded.
+const TOOL_RUNNER_SLOT = Symbol.for("ultron.claude-code.tool-runner");
+
+/** Register (or, with undefined, remove) the runner for tool-declaring requests in this process. */
+export function setClaudeCodeToolRunner(runner: ClaudeCodeToolRunner | undefined): void {
+	(globalThis as Record<symbol, unknown>)[TOOL_RUNNER_SLOT] = runner;
+}
+
+export function getClaudeCodeToolRunner(): ClaudeCodeToolRunner | undefined {
+	return (globalThis as Record<symbol, unknown>)[TOOL_RUNNER_SLOT] as ClaudeCodeToolRunner | undefined;
 }
 
 function pathEntries(pathValue: string): string[] {

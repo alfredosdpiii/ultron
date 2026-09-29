@@ -20,7 +20,7 @@ import type * as NodeChildProcess from "node:child_process";
 import type * as NodeFs from "node:fs";
 import type * as NodeOs from "node:os";
 import type * as NodePath from "node:path";
-import { CLAUDE_CODE_BIN_ENV } from "../providers/claude-code.ts";
+import { CLAUDE_CODE_BIN_ENV, getClaudeCodeToolRunner } from "../providers/claude-code.ts";
 import type {
 	Api,
 	AssistantMessage,
@@ -87,7 +87,7 @@ const STDERR_TAIL_CHARS = 4_000;
 const MAX_SYSTEM_PROMPT_ARG_CHARS = 100_000;
 const NEUTRAL_SYSTEM_PROMPT = "You are a helpful assistant. Follow the user's instructions exactly.";
 const TOOLS_UNSUPPORTED =
-	"does not support tool calling: `claude -p` returns completions, not raw tool calls. Use it for tool-free lanes (rlm.infer/rlm.map frames, /review frames, judges), or run Claude Code as the root agent with `ultron claude`.";
+	"does not support tool calling here: `claude -p` returns completions, not raw tool calls, and only Ultron's session worker relays tools to it. Use it for tool-free lanes (rlm.infer/rlm.map frames, /review frames, judges), or run Claude Code as the root agent with `ultron --claude` or `ultron claude`.";
 
 /** Flags every request relies on. Each must appear in `claude --help`. */
 export const REQUIRED_FLAGS = [
@@ -129,7 +129,7 @@ const PARENT_SESSION_ENV = [
 	"CLAUDE_CODE_MAX_OUTPUT_TOKENS",
 ];
 
-type Env = Record<string, string | undefined>;
+export type Env = Record<string, string | undefined>;
 
 function positiveInt(value: string | undefined, fallback: number, allowZero = false): number {
 	const parsed = Number(value?.trim());
@@ -153,7 +153,7 @@ function runtimeConfig(env: Env, options: StreamOptions | undefined): RuntimeCon
 	};
 }
 
-function childEnv(options: StreamOptions | undefined): Env {
+export function childEnv(options: StreamOptions | undefined): Env {
 	const env: Env = { ...process.env, ...(options?.env ?? {}) };
 	for (const name of PARENT_SESSION_ENV) delete env[name];
 	return env;
@@ -335,7 +335,7 @@ export function ensureClaudeCli(bin: string, env: Env, cwd: string): Promise<Cla
 // Working directory: one empty directory per user, so no project CLAUDE.md or settings are near the call.
 
 let workDir: string | undefined;
-function emptyWorkDir(): string {
+export function emptyWorkDir(): string {
 	if (workDir) return workDir;
 	const { fs, os, path } = node();
 	let user = "user";
@@ -392,9 +392,9 @@ const limiter = new Limiter();
 // ---------------------------------------------------------------------------------------------------------
 // Child processes
 
-type CliEvent = Record<string, unknown> & { type?: string; subtype?: string };
+export type CliEvent = Record<string, unknown> & { type?: string; subtype?: string };
 
-class CliProcess {
+export class CliProcess {
 	readonly child: NodeChildProcess.ChildProcess;
 	private readonly lines: CliEvent[] = [];
 	private waiter: (() => void) | undefined;
@@ -807,13 +807,13 @@ export function usageFromResult(result: CliEvent): Usage {
 	return out;
 }
 
-interface RateLimitInfo {
+export interface RateLimitInfo {
 	status?: string;
 	rateLimitType?: string;
 	resetsAt?: number;
 }
 
-function rateLimitInfo(event: CliEvent): RateLimitInfo | undefined {
+export function rateLimitInfo(event: CliEvent): RateLimitInfo | undefined {
 	const info = record(event.rate_limit_info);
 	if (!info) return undefined;
 	return {
@@ -823,7 +823,7 @@ function rateLimitInfo(event: CliEvent): RateLimitInfo | undefined {
 	};
 }
 
-function resetText(info: RateLimitInfo | undefined): string {
+export function resetText(info: RateLimitInfo | undefined): string {
 	if (!info?.resetsAt) return "";
 	const millis = info.resetsAt < 1e12 ? info.resetsAt * 1000 : info.resetsAt;
 	return `; resets at ${new Date(millis).toISOString()}`;
@@ -1130,6 +1130,10 @@ export function streamSimple(
 		stream.push({ type: "error", reason: output.stopReason, error: output });
 		stream.end(output);
 	};
+
+	// A lane with tools runs on the registered tool runner (an MCP bridge to the host's tools), when there is one.
+	const toolRunner = declaredTools(context).length > 0 ? getClaudeCodeToolRunner() : undefined;
+	if (toolRunner) return toolRunner(model, context, options);
 
 	(async () => {
 		const signal = options?.signal;

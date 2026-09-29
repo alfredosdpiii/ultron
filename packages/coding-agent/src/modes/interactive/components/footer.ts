@@ -148,7 +148,10 @@ export class FooterComponent implements Component {
 
 		// Colorize context percentage based on usage
 		let contextPercentStr: string;
-		const autoIndicator = this.autoCompactEnabled ? " (auto)" : "";
+		// A Claude Code model (the claude-code provider, e.g. `ultron --claude`) is named as such, and manages its own
+		// context (Ultron does not compact it).
+		const claudeCode = state.model?.provider === "claude-code";
+		const autoIndicator = this.autoCompactEnabled && !claudeCode ? " (auto)" : "";
 		const contextPercentDisplay =
 			contextPercent === "?"
 				? `?/${formatTokens(contextWindow)}${autoIndicator}`
@@ -168,7 +171,11 @@ export class FooterComponent implements Component {
 		let statsLeft = statsParts.join(" ");
 
 		// Add model name on the right side, plus thinking level if model supports it
-		const modelName = state.model?.id || "no-model";
+		const modelName = state.model?.id
+			? claudeCode
+				? `${state.model.id} (Claude Code)`
+				: state.model.id
+			: "no-model";
 
 		let statsLeftWidth = visibleWidth(statsLeft);
 
@@ -191,7 +198,7 @@ export class FooterComponent implements Component {
 
 		// Prepend the provider in parentheses if there are multiple providers and there's enough room
 		let rightSide = rightSideWithoutProvider;
-		if (this.footerData.getAvailableProviderCount() > 1 && state.model) {
+		if (this.footerData.getAvailableProviderCount() > 1 && state.model && !claudeCode) {
 			rightSide = `(${state.model!.provider}) ${rightSideWithoutProvider}`;
 			if (statsLeftWidth + minPadding + visibleWidth(rightSide) > width) {
 				// Too wide, fall back

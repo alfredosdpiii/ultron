@@ -216,6 +216,8 @@ export interface ClaudeCodeSettings {
 	ultronChildModel?: string;
 	/** Claude Code model of the root (`claude --model`, default `claude-opus-5-5`); ULTRON_CLAUDE_MODEL overrides it. */
 	model?: string;
+	/** `ultron` starts with Claude Code as its root model, as with `--claude` (ULTRON_ROOT=claude). */
+	root?: boolean;
 }
 
 /**
@@ -1186,6 +1188,7 @@ export class SettingsManager {
 			...(childModel === undefined ? {} : { childModel }),
 			...(ultronChildModel === undefined ? {} : { ultronChildModel }),
 			...(model === undefined ? {} : { model }),
+			...(configured.root === true ? { root: true } : {}),
 		};
 	}
 
