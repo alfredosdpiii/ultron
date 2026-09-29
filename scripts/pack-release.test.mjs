@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { BUNDLED, INLINED, NPM_NAME, npmReadme, releaseManifest } from "./pack-release.mjs";
+import { BUNDLED, INLINED, NPM_NAME, npmReadme, OMITTED, releaseManifest } from "./pack-release.mjs";
 
 const manifest = {
 	name: "@bryandlp/ultron-coding-agent",
@@ -18,13 +18,19 @@ const manifest = {
 };
 
 test("the release installs from public npm only, with chord bundled", () => {
-	const release = releaseManifest(manifest, { version: "0.87.1", dependencies: { esbuild: "0.28.2" } });
+	const release = releaseManifest(manifest, {
+		version: "0.87.1",
+		dependencies: { esbuild: "0.28.2", "chord-runtime-dep": "1.2.3" },
+	});
 	for (const name of INLINED) assert.equal(release.dependencies[name], undefined, name);
 	assert.equal(release.dependencies[BUNDLED], "0.87.1");
 	assert.deepEqual(release.bundleDependencies, [BUNDLED]);
 	// Chord's own dependencies are hoisted, because global installs skip a bundled package's dependencies.
-	assert.equal(release.dependencies.esbuild, "0.28.2");
+	assert.equal(release.dependencies["chord-runtime-dep"], "1.2.3");
 	assert.equal(release.dependencies.chalk, "5.6.2");
+	// esbuild is left out: its postinstall makes npm 11 warn on every global install, and only plugin packages use it.
+	assert.deepEqual(OMITTED, ["esbuild"]);
+	assert.equal(release.dependencies.esbuild, undefined);
 	assert.ok(!release.files.includes("npm-shrinkwrap.json"));
 	assert.ok(release.files.includes("node_modules/@ultron/chord"));
 	assert.match(release.repository.url, /alfredosdpiii\/ultron/);

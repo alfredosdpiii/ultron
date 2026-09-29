@@ -9,7 +9,8 @@
  *
  * The CLI bundle inlines the workspace packages except `@ultron/chord`, which stays external (plugins load it at
  * runtime). None of the `@ultron/*` packages are on the npm registry, so the release manifest drops the inlined ones,
- * ships `@ultron/chord` inside the tarball as a bundled dependency, and depends only on public npm packages.
+ * ships `@ultron/chord` inside the tarball as a bundled dependency, and depends only on public npm packages. It leaves
+ * out esbuild (see OMITTED), so the install runs no dependency install scripts.
  */
 import { execFileSync } from "node:child_process";
 import { copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -32,6 +33,12 @@ export const INLINED = [
 ];
 /** The one workspace package the bundle imports at runtime. */
 export const BUNDLED = "@ultron/chord";
+/**
+ * Chord dependencies the release leaves out. esbuild only builds experimental plugin packages (loaded lazily by
+ * `@ultron/chord/bundler`), and its postinstall script makes npm 11 print an allow-scripts warning on every global
+ * install, which a package cannot silence for its users. Users of plugin packages install it next to ultron.
+ */
+export const OMITTED = ["esbuild"];
 /** The package name on the npm registry; the command stays `ultron`. */
 export const NPM_NAME = "ultron-agent";
 const REPOSITORY = "https://github.com/alfredosdpiii/ultron";
@@ -57,7 +64,8 @@ export function releaseManifest(manifest, chordManifest) {
 	const dependencies = { ...manifest.dependencies };
 	for (const name of INLINED) delete dependencies[name];
 	dependencies[BUNDLED] = chordManifest.version;
-	for (const [name, version] of Object.entries(chordManifest.dependencies ?? {})) dependencies[name] ??= version;
+	for (const [name, version] of Object.entries(chordManifest.dependencies ?? {}))
+		if (!OMITTED.includes(name)) dependencies[name] ??= version;
 	const unknown = Object.keys(dependencies).filter((name) => name.startsWith("@ultron/") && name !== BUNDLED);
 	if (unknown.length) throw new Error(`Unexpected workspace dependencies in the release: ${unknown.join(", ")}`);
 	// Workspace scripts (build, prepublishOnly) and dev dependencies mean nothing outside the monorepo.

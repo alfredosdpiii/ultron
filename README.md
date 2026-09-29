@@ -148,9 +148,10 @@ npm install -g ultron-agent     # the package is ultron-agent; the command is ul
 ultron setup                    # guided setup: provider and model, Jev key, Hindsight memory
 ```
 
-The same install command updates an existing install. The only install script in the dependency tree is esbuild's
-optional binary check, so `npm install -g --ignore-scripts ultron-agent` works as well, if you prefer it or your npm
-asks about allowing scripts.
+The same install command updates an existing install, and so does `ultron update`, which checks the npm registry for
+a newer `ultron-agent` (set `ULTRON_SKIP_VERSION_CHECK=1` to turn off the startup check). No dependency runs an install
+script, so npm 11's allow-scripts prompt does not apply. The experimental plugin packages (`-e` with the experimental
+server) are the one feature that needs esbuild; install it next to ultron with `npm install -g esbuild` if you use them.
 
 The same package is attached to every GitHub release, for installing without the npm registry:
 

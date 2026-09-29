@@ -1,12 +1,33 @@
 import { createHash } from "node:crypto";
 import { readFile, rm, writeFile } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
-import { bundleFacetPackage } from "@ultron/chord/bundler";
 import { FACET_BUNDLE_MANIFEST_FILE, type FacetBundleArtifact, readFacetBundleArtifact } from "@ultron/chord/node";
 import type { ServerId } from "@ultron/protocol";
 
 const PLUGIN_PACKAGE_PROFILE_VERSION = 1;
 const DEFAULT_PLUGIN_FACETS = Object.freeze({ session: "src/session.ts", tui: "src/tui.ts" });
+
+/**
+ * The facet bundler, loaded on first use. It needs esbuild, which only plugin packages use: the `ultron-agent` npm
+ * package leaves esbuild out (its install script makes npm 11 warn on every global install), so an npm install needs
+ * esbuild installed next to it before it can build plugin packages.
+ */
+export async function loadFacetBundler(
+	importBundler: () => Promise<typeof import("@ultron/chord/bundler")> = () => import("@ultron/chord/bundler"),
+): Promise<typeof import("@ultron/chord/bundler")> {
+	try {
+		return await importBundler();
+	} catch (error) {
+		const code = error instanceof Error && "code" in error ? error.code : undefined;
+		if (code === "ERR_MODULE_NOT_FOUND" && /\besbuild\b/.test(error instanceof Error ? error.message : "")) {
+			throw new Error(
+				"Experimental plugin packages are bundled with esbuild, which is not installed. Install it next to ultron (npm install -g esbuild) and try again.",
+				{ cause: error },
+			);
+		}
+		throw error;
+	}
+}
 
 export interface ConfiguredServerPluginPackage {
 	readonly manifestPath: string;
@@ -75,6 +96,7 @@ export function createServerPluginPackage(
 		manifestPath,
 		build() {
 			const operation = buildTail.then(async () => {
+				const { bundleFacetPackage } = await loadFacetBundler();
 				const result = await bundleFacetPackage({
 					packagePath: normalizedPackagePath,
 					outdir,
