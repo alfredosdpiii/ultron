@@ -52,6 +52,10 @@ class SpawnHandle:
         return f"SpawnHandle(name={self.name!r}, rlm_child_id={self.rlm_child_id!r})"
 
 
+# json.dumps escapes non-ASCII, so a line's length is its byte count; kept under kernel.ts MAX_FRAME_BYTES.
+_MAX_HOST_FRAME_BYTES = 1024 * 1024 - 1024
+
+
 class HostBridge:
     def __init__(self) -> None:
         self._host_requests: dict[str, asyncio.Future[Any]] = {}
@@ -61,16 +65,20 @@ class HostBridge:
     async def request(self, request_type: str, payload: dict[str, Any] | None = None) -> Any:
         self._counter += 1
         request_id = f"host-{self._counter}"
-        loop = asyncio.get_running_loop()
-        future: asyncio.Future[Any] = loop.create_future()
+        line = json.dumps({
+            "event": "host_request",
+            "id": request_id,
+            "type": request_type,
+            "payload": payload or {},
+        }, separators=(",", ":")) + "\n"
+        # The host kills a kernel that writes a frame over 1 MiB, losing every variable: refuse it here instead.
+        if len(line) > _MAX_HOST_FRAME_BYTES:
+            raise ValueError(f"{request_type} request is {len(line):,} bytes, over the kernel's 1 MiB frame: pass "
+                             "rlm.load handles or file paths instead of inline text, or send it in parts")
+        future: asyncio.Future[Any] = asyncio.get_running_loop().create_future()
         self._host_requests[request_id] = future
         async with self._write_lock:
-            sys.__stdout__.write(json.dumps({
-                "event": "host_request",
-                "id": request_id,
-                "type": request_type,
-                "payload": payload or {},
-            }, separators=(",", ":")) + "\n")
+            sys.__stdout__.write(line)
             sys.__stdout__.flush()
         try:
             return await future

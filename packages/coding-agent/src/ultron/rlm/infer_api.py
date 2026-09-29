@@ -16,6 +16,8 @@ from typing import Any
 
 _PREVIEW = 80
 _MAX_PATH_TEXT = 4096
+# Inline text a frame request may carry before it goes by handle: the kernel protocol frame is 1 MiB.
+_INLINE_BYTES = 512 * 1024
 
 
 def _short(text: str, limit: int = _PREVIEW) -> str:
@@ -252,20 +254,46 @@ _TYPE_SCHEMAS: dict[Any, dict[str, Any]] = {
 }
 
 
+_TYPE_NAMES = {kind.__name__: kind for kind in _TYPE_SCHEMAS if kind is not type(None)}
+_SCHEMA_KEYS = {"type", "properties", "items", "enum", "const", "anyOf", "oneOf", "allOf", "$ref", "not"}
+
+
 def _schema(contract: Any) -> Any:
     if contract is None:
         return None
     if isinstance(contract, dict):
-        return contract
-    if contract in _TYPE_SCHEMAS:
+        typed = any(isinstance(value, type) or hasattr(value, "__origin__") for value in contract.values())
+        if not contract or (_SCHEMA_KEYS & contract.keys() and not typed):
+            return contract
+        # {"field": type, ...} shorthand for an object whose fields are all required.
+        return {"type": "object", "properties": {key: _schema(value) for key, value in contract.items()},
+                "required": list(contract)}
+    if isinstance(contract, type) and contract in _TYPE_SCHEMAS:
         return dict(_TYPE_SCHEMAS[contract])
+    if callable(getattr(contract, "model_json_schema", None)):  # a pydantic model
+        return contract.model_json_schema()
+    dataclass_fields = getattr(contract, "__dataclass_fields__", None)
+    fields = ({name: field.type for name, field in dataclass_fields.items()} if isinstance(dataclass_fields, dict)
+              else getattr(contract, "__annotations__", None))
+    if isinstance(contract, type) and isinstance(fields, dict) and fields:  # a dataclass or TypedDict
+        return _schema({name: _TYPE_NAMES.get(kind, Any) if isinstance(kind, str) else kind
+                        for name, kind in fields.items()})
     origin = getattr(contract, "__origin__", None)
     arguments = getattr(contract, "__args__", ())
     if origin is list and len(arguments) == 1:
         return {"type": "array", "items": _schema(arguments[0])}
     if origin is dict and len(arguments) == 2 and arguments[0] is str:
         return {"type": "object", "additionalProperties": _schema(arguments[1])}
-    raise TypeError("contract must be a JSON schema dict, a builtin type (int, str, float, bool, list, dict) or list[T]")
+    import typing
+
+    if origin is typing.Literal:
+        return {"enum": list(arguments)}
+    if origin is typing.Union or type(contract).__name__ == "UnionType":  # Optional[T], T | None
+        return {"anyOf": [_schema(argument) for argument in arguments]}
+    if contract is Any:
+        return {}
+    raise TypeError("contract must be a JSON schema dict, a builtin type (int, str, float, bool, list, dict), "
+                    "list[T], Literal[...], T | None, a dataclass or {'field': type}")
 
 
 def _wire_item(item: Any, out: list[dict[str, Any]]) -> None:
@@ -400,6 +428,23 @@ class Inference:
         self._handles[digest] = handle
         return handle
 
+    async def _by_reference(self, contexts: list[list[dict[str, Any]]]) -> None:
+        """Past _INLINE_BYTES of inline text (strings, views; shared context counts once per frame), intern each
+        text as a handle so the request carries digests, not text. Frames see the same labelled views."""
+        import json
+
+        texts = [item for context in contexts for item in context if item["kind"] == "text"]
+        if sum(len(json.dumps(item["text"])) for item in texts) <= _INLINE_BYTES:
+            return
+        interned: set[int] = set()
+        for item in texts:
+            if id(item) in interned or len(item["text"]) < 256:
+                continue
+            interned.add(id(item))
+            handle = await self.load(text=item["text"], label=item["label"])
+            item.clear()
+            item.update(handle._wire())
+
     async def infer(self, task: str, context: Any = None, *, contract: Any = None, budget: Any = None,
                     model: str | None = None, max_repairs: int | None = None, timeout_ms: int | None = None) -> Any:
         """Run one private inference frame over explicit context views. Returns the contract-validated value
@@ -407,12 +452,15 @@ class Inference:
         `InferenceError` when the frame fails. `max_repairs` defaults to 2 re-asks (1 for a scalar contract).
 
         The frame is a sub-model that sees only `task` and the `context` views or strings: no transcript, no
-        tools. `contract` is a JSON schema or int/str/float/bool/list/dict/list[T]. An `Incomplete` is falsy
+        tools. `contract` is a JSON schema, int/str/float/bool/list/dict, list[T], Literal[...], T | None, a
+        dataclass or `{'field': type}`. Large text goes to the host by handle. An `Incomplete` is falsy
         (`.status`, `.spent`, `.last_outputs`), not an exception. `budget=Budget(calls, tokens, depth)` caps the
         frame subtree; the frame's responses also count once toward the root's own turn, token and cost limits."""
+        wired = _wire_context(context)
+        await self._by_reference([wired])
         reply = await self._bridge.request("rlm.infer", {
             "task": task,
-            "context": _wire_context(context),
+            "context": wired,
             "contract": _schema(contract),
             "budget": _budget(budget),
             "model": model,
@@ -456,6 +504,7 @@ class Inference:
                 frames = [{"task": task, "context": shared + _wire_context(item)} for task, item in zip(tasks, items)]
             else:
                 frames = [{"task": task, "context": shared} for task in tasks]
+        await self._by_reference([frame["context"] for frame in frames])
         reply = await self._bridge.request("rlm.map", {
             "frames": frames,
             "contract": _schema(contract),
