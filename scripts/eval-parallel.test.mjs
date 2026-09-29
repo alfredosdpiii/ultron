@@ -8,7 +8,7 @@ import { AGENT_TURN_SECONDS, FIX_TURNS, solutions } from "../evals/quality/tasks
 import { FIXED, SUITE, TIME_BUDGET_MS, tasks } from "../evals/quality/tasks-parallel.mjs";
 import { formatRunTime, isGatedComparison, summarize, summarizeTiming } from "./eval-quality.mjs";
 
-const [task] = tasks();
+const task = tasks().find((entry) => entry.id === "slow-suite-and-fixes");
 
 function project(extra = {}) {
 	const dir = mkdtempSync(join(tmpdir(), "ultron-parallel-test-"));
@@ -37,9 +37,11 @@ function fastSuiteRun(dir, seconds) {
 	return entry.line;
 }
 
-test("the parallel set is one timed task with an agent-neutral prompt", () => {
-	assert.equal(tasks().length, 1);
-	assert.equal(task.id, "slow-suite-and-fixes");
+test("the parallel set's first task is timed, with an agent-neutral prompt", () => {
+	assert.deepEqual(
+		tasks().map((entry) => entry.id),
+		["slow-suite-and-fixes", "slow-pipeline-deep"],
+	);
 	assert.equal(task.timeBudgetMs, TIME_BUDGET_MS);
 	for (const prompt of task.prompts) assert.doesNotMatch(prompt, /\b(ultron|rlm|yield_after|handles?|background|async\w*|in parallel)\b/i);
 	// The budget sits between a suite overlapped with the fix work and the suite followed by it.

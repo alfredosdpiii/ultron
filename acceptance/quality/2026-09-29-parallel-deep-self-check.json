@@ -1,0 +1,167 @@
+{
+  "taskSet": "parallel",
+  "frozenAt": "2026-09-26-parallel",
+  "passed": true,
+  "results": [
+    {
+      "task": "slow-pipeline-deep",
+      "category": "parallel",
+      "ok": true,
+      "durationMs": 451020,
+      "outcomes": [
+        {
+          "trial": "unsolved",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 172,
+          "metrics": {
+            "ops": true,
+            "tests": false,
+            "loadtest": false,
+            "replay": false,
+            "report": false
+          }
+        },
+        {
+          "trial": "solved",
+          "expect": "pass, within budget",
+          "ok": true,
+          "verifyMs": 387,
+          "metrics": {
+            "ops": true,
+            "tests": true,
+            "loadtest": true,
+            "replay": true,
+            "report": true
+          },
+          "solveMs": 215275,
+          "timeBudgetMs": 270000,
+          "withinBudget": true
+        },
+        {
+          "trial": "waits for both first steps before using either",
+          "expect": "pass, over budget",
+          "ok": true,
+          "verifyMs": 320,
+          "metrics": {
+            "ops": true,
+            "tests": true,
+            "loadtest": true,
+            "replay": true,
+            "report": true
+          },
+          "solveMs": 300442,
+          "timeBudgetMs": 270000,
+          "withinBudget": false
+        },
+        {
+          "trial": "sequential: every step blocking",
+          "expect": "pass, over budget",
+          "ok": true,
+          "verifyMs": 134,
+          "metrics": {
+            "ops": true,
+            "tests": true,
+            "loadtest": true,
+            "replay": true,
+            "report": true
+          },
+          "solveMs": 450707,
+          "timeBudgetMs": 270000,
+          "withinBudget": false
+        },
+        {
+          "trial": "no runs, guessed report lines",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 165,
+          "metrics": {
+            "ops": true,
+            "tests": true,
+            "loadtest": false,
+            "replay": false,
+            "report": false
+          }
+        },
+        {
+          "trial": "load test against a made-up tenant, replay of a made-up snapshot",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 159,
+          "metrics": {
+            "ops": true,
+            "tests": true,
+            "loadtest": false,
+            "replay": false,
+            "report": false
+          }
+        },
+        {
+          "trial": "replay before the ledger fix, not rerun",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 127,
+          "metrics": {
+            "ops": true,
+            "tests": true,
+            "loadtest": true,
+            "replay": false,
+            "report": false
+          }
+        },
+        {
+          "trial": "client edited after the passing load test",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 634,
+          "metrics": {
+            "ops": true,
+            "tests": true,
+            "loadtest": false,
+            "replay": true,
+            "report": false
+          }
+        },
+        {
+          "trial": "without the uploader fix",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 487,
+          "metrics": {
+            "ops": true,
+            "tests": false,
+            "loadtest": false,
+            "replay": true,
+            "report": false
+          }
+        },
+        {
+          "trial": "without the ledger fix",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 420,
+          "metrics": {
+            "ops": true,
+            "tests": false,
+            "loadtest": true,
+            "replay": false,
+            "report": false
+          }
+        },
+        {
+          "trial": "ops scripts with their waits cut",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 146,
+          "metrics": {
+            "ops": false,
+            "tests": true,
+            "loadtest": false,
+            "replay": false,
+            "report": false
+          }
+        }
+      ]
+    }
+  ]
+}
