@@ -2,6 +2,7 @@ import type { AgentLane, OperationResultRecord, SuspendedRun } from "@ultron/age
 import type { ImageContent } from "@ultron/ai";
 import type { Context } from "@ultron/chord";
 import { withoutAbortSignal } from "@ultron/chord/context";
+import { expandReviewCommand } from "../../ultron/review.ts";
 import type {
 	AgentController as AgentControllerService,
 	AgentOperationError,
@@ -115,6 +116,7 @@ function toAgentError(error: { readonly _tag: string; readonly message: string }
 	return { code, message: error.message };
 }
 
+/** Every client's prompt enters here, so built-in prompt commands (`/review`) expand the same for all of them. */
 function toTextPrompt(request: AgentPromptRequest): [message: string, images: ImageContent[] | undefined] {
-	return [request.message, request.images ?? undefined];
+	return [expandReviewCommand(request.message), request.images ?? undefined];
 }

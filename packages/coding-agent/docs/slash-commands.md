@@ -51,6 +51,12 @@ Review a session before exporting or sharing it. Sessions can contain prompts, t
 | `/changelog` | Show changelog entries |
 | `/quit` | Quit Pi |
 
+## Code review (Ultron)
+
+| Command | Description |
+|---|---|
+| `/review [base-ref\|PR\|path...] [options]` | Review the working tree and branch, a ref, a PR or paths with specialist reviewer frames, then verify each finding against the source; see `docs/review.md` in the Ultron repository |
+
 ## Commands added by resources
 
 - Extensions can register commands with their own arguments and completion behavior.
