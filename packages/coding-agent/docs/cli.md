@@ -222,7 +222,7 @@ Add `--local` or `-l` to `install`, `remove`, `uninstall`, or `config` to use pr
 
 ### Update Pi or packages
 
-Running `pi update` without a target updates Pi itself.
+Running `ultron update` without a target updates Ultron itself: it asks the npm registry for the latest `ultron-agent` release and reinstalls it with the package manager that installed it (for npm, `npm install -g ultron-agent@<version>`). Installs it cannot update (a source checkout, or a path it cannot write) print the command to run instead.
 
 | Task | Command |
 |---|---|
@@ -237,7 +237,7 @@ Add `--force` to reinstall Pi when the selected update includes Pi.
 ### Aliases and command options
 
 - `pi uninstall <source>` is an alias for `pi remove <source>`.
-- `pi update --self`, `pi update self`, and `pi update pi` are aliases for `pi update`.
+- `ultron update --self`, `ultron update self`, `ultron update ultron`, and `ultron update pi` are aliases for `ultron update`.
 - `pi update --extension <source>` is an alias for `pi update <source>`.
 - `-a`, `--approve` trusts project-local files for one command. `-na`, `--no-approve` ignores trust-gated project-local files.
 - Append `-h` or `--help` to a command for its exact usage and option constraints.

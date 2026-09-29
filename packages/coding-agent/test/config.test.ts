@@ -177,7 +177,7 @@ describe("detectInstallMethod", () => {
 		expect(detectInstallMethod()).toBe("unknown");
 		expect(getSelfUpdateCommand("@earendil-works/pi-coding-agent")).toBeUndefined();
 		expect(getUpdateInstruction("@earendil-works/pi-coding-agent")).toBe(
-			"Update @earendil-works/pi-coding-agent using the package manager, wrapper, or source checkout that provides this installation.",
+			"Update @earendil-works/pi-coding-agent using the package manager, wrapper, or source checkout that provides this installation, or install the published release with: npm install -g @earendil-works/pi-coding-agent",
 		);
 	});
 

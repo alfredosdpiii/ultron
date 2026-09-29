@@ -68,7 +68,7 @@ import { InteractiveMode, runPrintMode, runRpcMode } from "./modes/index.ts";
 import { initTheme, setThemeJsonValidator, stopThemeWatcher } from "./modes/interactive/theme/theme.ts";
 import { validateThemeJson } from "./modes/interactive/theme/theme-json.ts";
 import { runNativeUltronCommand } from "./native-command.ts";
-import { cleanupManagedInstall, handleConfigCommand, handlePackageCommand } from "./package-manager-cli.ts";
+import { handleConfigCommand, handlePackageCommand } from "./package-manager-cli.ts";
 import { runMigrationCommand } from "./ultron/migration-cli.ts";
 import { exportNativeSessionFile, isNativeSessionFile } from "./ultron/native-export.ts";
 import { isLocalPath, normalizePath, resolvePath } from "./utils/paths.ts";
@@ -604,7 +604,6 @@ export async function main(args: string[], options?: MainOptions) {
 	if (process.platform === "win32") {
 		cleanupWindowsSelfUpdateQuarantine(getPackageDir());
 	}
-	cleanupManagedInstall();
 
 	const cwd = process.cwd();
 	const agentDir = getAgentDir();

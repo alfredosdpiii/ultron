@@ -1,14 +1,25 @@
 import { compare, valid } from "semver";
+import { NPM_PACKAGE_NAME } from "../config.ts";
 import { fetchWithRetry } from "./management-http.ts";
 import { getPiUserAgent } from "./pi-user-agent.ts";
 
-const LATEST_VERSION_URL = "https://pi.dev/api/latest-version";
+/** The npm registry document for the `latest` dist-tag of the published package. */
+export const LATEST_VERSION_URL = `https://registry.npmjs.org/${NPM_PACKAGE_NAME}/latest`;
 const DEFAULT_VERSION_CHECK_TIMEOUT_MS = 10000;
 
-export interface LatestPiRelease {
+export interface LatestRelease {
 	version: string;
-	packageName?: string;
-	note?: string;
+	/** The npm package to install for this release. */
+	packageName: string;
+}
+
+function isTruthy(value: string | undefined): boolean {
+	return value !== undefined && value.trim() !== "" && !/^(0|false|no)$/i.test(value.trim());
+}
+
+/** Automatic update checks are off in offline mode and when PI_SKIP_VERSION_CHECK or ULTRON_SKIP_VERSION_CHECK is set. */
+export function areAutomaticVersionChecksDisabled(env: NodeJS.ProcessEnv = process.env): boolean {
+	return Boolean(env.PI_OFFLINE) || isTruthy(env.PI_SKIP_VERSION_CHECK) || isTruthy(env.ULTRON_SKIP_VERSION_CHECK);
 }
 
 /** Include useful errno details hidden behind Node's generic "fetch failed" error. */
@@ -48,10 +59,11 @@ export function isNewerPackageVersion(candidateVersion: string, currentVersion: 
 	return candidateVersion.trim() !== currentVersion.trim();
 }
 
-export async function getLatestPiRelease(
+/** Ask the npm registry for the latest published version of Ultron. */
+export async function getLatestRelease(
 	currentVersion: string,
 	options: { timeoutMs?: number; retry?: boolean } = {},
-): Promise<LatestPiRelease | undefined> {
+): Promise<LatestRelease | undefined> {
 	if (process.env.PI_OFFLINE) return undefined;
 
 	const response = await fetchWithRetry(
@@ -69,36 +81,26 @@ export async function getLatestPiRelease(
 	);
 	if (!response.ok) return undefined;
 
-	const data = (await response.json()) as {
-		packageName?: unknown;
-		version?: unknown;
-		note?: unknown;
-	};
-	if (typeof data.version !== "string" || !data.version.trim()) {
+	const data = (await response.json()) as { version?: unknown };
+	if (typeof data.version !== "string" || !valid(data.version.trim())) {
 		return undefined;
 	}
-	const packageName =
-		typeof data.packageName === "string" && data.packageName.trim() ? data.packageName.trim() : undefined;
-	const note = typeof data.note === "string" && data.note.trim() ? data.note.trim() : undefined;
-	return {
-		version: data.version.trim(),
-		packageName,
-		...(note ? { note } : {}),
-	};
+	return { version: data.version.trim(), packageName: NPM_PACKAGE_NAME };
 }
 
-export async function getLatestPiVersion(
+export async function getLatestVersion(
 	currentVersion: string,
 	options: { timeoutMs?: number; retry?: boolean } = {},
 ): Promise<string | undefined> {
-	return (await getLatestPiRelease(currentVersion, options))?.version;
+	return (await getLatestRelease(currentVersion, options))?.version;
 }
 
-export async function checkForNewPiVersion(currentVersion: string): Promise<LatestPiRelease | undefined> {
-	if (process.env.PI_SKIP_VERSION_CHECK) return undefined;
+/** The startup update notification: a newer release, or undefined when there is none or checks are disabled. */
+export async function checkForNewVersion(currentVersion: string): Promise<LatestRelease | undefined> {
+	if (areAutomaticVersionChecksDisabled()) return undefined;
 
 	try {
-		const latestRelease = await getLatestPiRelease(currentVersion);
+		const latestRelease = await getLatestRelease(currentVersion);
 		if (latestRelease && isNewerPackageVersion(latestRelease.version, currentVersion)) {
 			return latestRelease;
 		}

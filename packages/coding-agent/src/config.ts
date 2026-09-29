@@ -338,16 +338,16 @@ export function getSelfUpdateUnavailableInstruction(
 	const method = detectInstallMethod();
 	const target = normalizeSelfUpdatePackageTarget(updatePackageTarget);
 	if (method === "bun-binary") {
-		return `Download from: https://github.com/earendil-works/pi/releases/latest`;
+		return `Download from: ${RELEASES_URL}/latest`;
 	}
 	const command = getSelfUpdateCommandForMethod(method, packageName, target, npmCommand);
 	if (command) {
 		if (isManagedByGlobalPackageManager(method, packageName, npmCommand) && !isSelfUpdatePathWritable()) {
 			return `This installation is managed by a global ${method} install, but the install path is not writable. Update it yourself with: ${command.display}`;
 		}
-		return `This installation is not managed by a global ${method} install. Update it with the package manager, wrapper, or source checkout that provides it.`;
+		return `This installation is not managed by a global ${method} install. Update it with the package manager, wrapper, or source checkout that provides it, or install the published release with: npm install -g ${target.installSpec}`;
 	}
-	return `Update ${target.installSpec} using the package manager, wrapper, or source checkout that provides this installation.`;
+	return `Update ${target.installSpec} using the package manager, wrapper, or source checkout that provides this installation, or install the published release with: npm install -g ${target.installSpec}`;
 }
 
 export function getUpdateInstruction(packageName: string): string {
@@ -522,6 +522,10 @@ export const APP_TITLE: string = piConfigName ? APP_NAME : "ultron";
 export const CONFIG_DIR_NAME = ".pi";
 export const AGENT_CONFIG_DIR_NAME = ".ultron";
 export const VERSION: string = pkg.version || "0.0.0";
+/** The package Ultron is published as on the npm registry (the release tarball renames the workspace package). */
+export const NPM_PACKAGE_NAME = "ultron-agent";
+/** Where Ultron releases and their notes are published. */
+export const RELEASES_URL = "https://github.com/alfredosdpiii/ultron/releases";
 
 // e.g., PI_CODING_AGENT_DIR or TAU_CODING_AGENT_DIR
 export const ENV_AGENT_DIR = `${APP_NAME.toUpperCase()}_CODING_AGENT_DIR`;

@@ -1,19 +1,8 @@
-import {
-	chmodSync,
-	existsSync,
-	mkdirSync,
-	readdirSync,
-	readFileSync,
-	realpathSync,
-	rmSync,
-	utimesSync,
-	writeFileSync,
-} from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { delimiter, join } from "node:path";
-import lockfile from "proper-lockfile";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ENV_AGENT_DIR, PACKAGE_NAME, VERSION } from "../src/config.ts";
+import { ENV_AGENT_DIR, NPM_PACKAGE_NAME, PACKAGE_NAME, VERSION } from "../src/config.ts";
 import { ModelRuntime } from "../src/core/model-runtime.ts";
 import type { ResolvedPaths } from "../src/core/package-manager.ts";
 import { InMemorySettingsStorage, SettingsManager } from "../src/core/settings-manager.ts";
@@ -38,77 +27,6 @@ describe("package commands", () => {
 	function getNewerPatchVersion(): string {
 		const [major = "0", minor = "0", patch = "0"] = VERSION.split(".");
 		return `${major}.${minor}.${Number.parseInt(patch, 10) + 1}`;
-	}
-
-	function prepareManagedInstall(
-		targetVersion: string,
-		npmExitCode = 0,
-	): { managedRoot: string; npmRecordPath: string } {
-		const managedRoot = join(agentDir, "install");
-		const activeRelease = join(managedRoot, "releases", VERSION);
-		const selfPackageDir = join(activeRelease, "node_modules", ...PACKAGE_NAME.split("/"));
-		mkdirSync(selfPackageDir, { recursive: true });
-		writeFileSync(join(activeRelease, "active.txt"), "active");
-		writeFileSync(join(managedRoot, "current-version"), `${VERSION}\n`);
-		writeFileSync(
-			join(managedRoot, "managed-install.json"),
-			`${JSON.stringify({ kind: "pi-managed-install", schemaVersion: 1, layout: "releases-v1" })}\n`,
-		);
-
-		const binDir = join(tempDir, "managed-bin");
-		const fakeNpmPath = join(tempDir, "managed-npm.cjs");
-		const npmRecordPath = join(tempDir, "managed-npm-record.json");
-		mkdirSync(binDir, { recursive: true });
-		writeFileSync(
-			fakeNpmPath,
-			`const fs = require("node:fs");
-const path = require("node:path");
-const args = process.argv.slice(2);
-fs.writeFileSync(${JSON.stringify(npmRecordPath)}, JSON.stringify(args));
-if (${npmExitCode} !== 0) process.exit(${npmExitCode});
-const binDir = path.join(process.cwd(), "node_modules", ".bin");
-fs.mkdirSync(binDir, { recursive: true });
-const piPath = path.join(binDir, process.platform === "win32" ? "ultron.cmd" : "ultron");
-fs.writeFileSync(
-	piPath,
-	process.platform === "win32"
-		? "@echo off\\r\\necho ${targetVersion}\\r\\n"
-		: "#!/bin/sh\\nprintf '%s\\n' ${targetVersion}\\n",
-);
-if (process.platform !== "win32") fs.chmodSync(piPath, 0o755);
-`,
-		);
-		const npmPath = join(binDir, process.platform === "win32" ? "npm.cmd" : "npm");
-		writeFileSync(
-			npmPath,
-			process.platform === "win32"
-				? `@echo off\r\n"${originalExecPath}" "${fakeNpmPath}" %*\r\n`
-				: `#!/bin/sh\nexec "${originalExecPath}" "${fakeNpmPath}" "$@"\n`,
-		);
-		chmodSync(npmPath, 0o755);
-
-		vi.stubEnv("PI_INSTALLER_API_BASE", "https://example.test/api/installer/releases");
-		vi.stubEnv("PI_MANAGED_INSTALL_ROOT", managedRoot);
-		process.env.PI_PACKAGE_DIR = selfPackageDir;
-		process.env.PATH = `${binDir}${delimiter}${originalPath ?? ""}`;
-		return { managedRoot, npmRecordPath };
-	}
-
-	function mockManagedUpdate(targetVersion: string): void {
-		vi.stubGlobal(
-			"fetch",
-			vi.fn(async (input: string | URL | Request) => {
-				const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
-				if (url === "https://pi.dev/api/latest-version") {
-					return Response.json({ packageName: PACKAGE_NAME, version: targetVersion });
-				}
-				const releaseUrl = `https://example.test/api/installer/releases/${targetVersion}`;
-				if (url === `${releaseUrl}/package.json` || url === `${releaseUrl}/package-lock.json`) {
-					return Response.json({});
-				}
-				throw new Error(`Unexpected fetch: ${url}`);
-			}),
-		);
 	}
 
 	async function runPackageCommandDirectly(args: string[]): Promise<void> {
@@ -606,103 +524,10 @@ if (process.platform !== "win32") fs.chmodSync(piPath, 0o755);
 		}
 	});
 
-	it("updates installer-managed Pi through a staged immutable release", async () => {
-		const targetVersion = getNewerPatchVersion();
-		const { managedRoot, npmRecordPath } = prepareManagedInstall(targetVersion);
-		const abandonedStage = join(managedRoot, "staging", "update-abandoned");
-		mkdirSync(abandonedStage, { recursive: true });
-		writeFileSync(join(abandonedStage, "partial"), "partial");
-		const abandonedLock = join(managedRoot, "update.lock");
-		mkdirSync(abandonedLock);
-		utimesSync(abandonedLock, new Date(0), new Date(0));
-		mockManagedUpdate(targetVersion);
-		const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-
-		await expect(runPackageCommandDirectly(["update", "--self"])).resolves.toBeUndefined();
-
-		expect(readFileSync(join(managedRoot, "current-version"), "utf8")).toBe(`${targetVersion}\n`);
-		expect(existsSync(join(managedRoot, "releases", targetVersion))).toBe(true);
-		expect(existsSync(join(managedRoot, "releases", VERSION, "active.txt"))).toBe(true);
-		expect(readdirSync(join(managedRoot, "staging"))).toEqual([]);
-		expect(JSON.parse(readFileSync(npmRecordPath, "utf8")) as string[]).toEqual(
-			expect.arrayContaining(["ci", "--ignore-scripts"]),
-		);
-		expect(logSpy.mock.calls.map(([message]) => String(message)).join("\n")).toContain(
-			`Updated ultron from ${VERSION} to ${targetVersion}`,
-		);
-		expect(errorSpy).not.toHaveBeenCalled();
-		expect(process.exitCode).toBeUndefined();
-	});
-
-	it("rejects a concurrent managed update", async () => {
-		const targetVersion = getNewerPatchVersion();
-		const { managedRoot, npmRecordPath } = prepareManagedInstall(targetVersion);
-		const releaseLock = await lockfile.lock(join(managedRoot, "update"), { realpath: false });
-		mockManagedUpdate(targetVersion);
-		const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-
-		try {
-			await expect(runPackageCommandDirectly(["update", "--self"])).resolves.toBeUndefined();
-		} finally {
-			await releaseLock();
-		}
-
-		expect(readFileSync(join(managedRoot, "current-version"), "utf8")).toBe(`${VERSION}\n`);
-		expect(existsSync(npmRecordPath)).toBe(false);
-		expect(logSpy.mock.calls.map(([message]) => String(message)).join("\n")).not.toContain("Updated ultron from");
-		expect(errorSpy.mock.calls.map(([message]) => String(message)).join("\n")).toContain(
-			"Another managed Pi update is already running.",
-		);
-		expect(process.exitCode).toBe(1);
-	});
-
-	it("rejects forced managed reinstalls", async () => {
-		const targetVersion = getNewerPatchVersion();
-		const { npmRecordPath } = prepareManagedInstall(targetVersion);
-		const fetchMock = vi.fn();
-		vi.stubGlobal("fetch", fetchMock);
-		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-
-		await expect(runPackageCommandDirectly(["update", "--self", "--force"])).resolves.toBeUndefined();
-
-		expect(fetchMock).not.toHaveBeenCalled();
-		expect(existsSync(npmRecordPath)).toBe(false);
-		expect(errorSpy.mock.calls.map(([message]) => String(message)).join("\n")).toContain(
-			"Managed ultron installations do not support --force",
-		);
-		expect(process.exitCode).toBe(1);
-	});
-
-	it("keeps the managed release active when its update fails", async () => {
-		const targetVersion = getNewerPatchVersion();
-		const { managedRoot } = prepareManagedInstall(targetVersion, 23);
-		mockManagedUpdate(targetVersion);
-		const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-
-		await expect(runPackageCommandDirectly(["update", "--self"])).resolves.toBeUndefined();
-
-		expect(readFileSync(join(managedRoot, "current-version"), "utf8")).toBe(`${VERSION}\n`);
-		expect(existsSync(join(managedRoot, "releases", targetVersion))).toBe(false);
-		expect(readdirSync(join(managedRoot, "staging"))).toEqual([]);
-		expect(logSpy.mock.calls.map(([message]) => String(message)).join("\n")).not.toContain("Updated ultron from");
-		expect(errorSpy.mock.calls.map(([message]) => String(message)).join("\n")).toContain("exited with code 23");
-		expect(process.exitCode).toBe(1);
-	});
-
-	it("keeps npm self-updates non-managed when the managed environment is inherited", async () => {
+	it("self-updates with the global npm command, not a project one", async () => {
 		const globalPrefix = join(tempDir, "global-prefix");
 		const projectPrefix = join(tempDir, "project-prefix");
-		const selfPackageDir = join(globalPrefix, "lib", "node_modules", "@earendil-works", "pi-coding-agent");
-		const inheritedManagedRoot = join(tempDir, "inherited-managed-install");
-		mkdirSync(join(inheritedManagedRoot, "releases"), { recursive: true });
-		writeFileSync(
-			join(inheritedManagedRoot, "managed-install.json"),
-			JSON.stringify({ kind: "pi-managed-install", schemaVersion: 1, layout: "releases-v1" }),
-		);
-		vi.stubEnv("PI_MANAGED_INSTALL_ROOT", inheritedManagedRoot);
+		const selfPackageDir = join(globalPrefix, "lib", "node_modules", "ultron-agent");
 		const fakeNpmPath = join(tempDir, "fake-npm.cjs");
 		const recordPath = join(tempDir, "self-update.json");
 		mkdirSync(selfPackageDir, { recursive: true });
@@ -727,7 +552,7 @@ else fs.writeFileSync(${JSON.stringify(recordPath)},JSON.stringify(args));
 			value: join(selfPackageDir, "dist", "cli.js"),
 			configurable: true,
 		});
-		const fetchMock = vi.fn(async () => Response.json({ version: VERSION }));
+		const fetchMock = vi.fn(async () => Response.json({ name: NPM_PACKAGE_NAME, version: VERSION }));
 		vi.stubGlobal("fetch", fetchMock);
 
 		const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
@@ -742,8 +567,7 @@ else fs.writeFileSync(${JSON.stringify(recordPath)},JSON.stringify(args));
 			const stdout = logSpy.mock.calls.map(([message]) => String(message)).join("\n");
 			const recordedArgs = JSON.parse(readFileSync(recordPath, "utf-8")) as string[];
 			expect(recordedArgs).toContain(globalPrefix);
-			expect(recordedArgs).toContain(`${PACKAGE_NAME}@${VERSION}`);
-			expect(recordedArgs).not.toContain(PACKAGE_NAME);
+			expect(recordedArgs).toEqual(expect.arrayContaining(["install", "-g", `${NPM_PACKAGE_NAME}@${VERSION}`]));
 			expect(recordedArgs).not.toContain(projectPrefix);
 			expect(stdout).toContain(`Updated ultron from ${VERSION} to ${VERSION}`);
 		} finally {
@@ -752,53 +576,7 @@ else fs.writeFileSync(${JSON.stringify(recordPath)},JSON.stringify(args));
 		}
 	});
 
-	it("uses the current package name when the update check omits packageName", async () => {
-		const globalPrefix = join(tempDir, "global-prefix");
-		const selfPackageDir = join(globalPrefix, "lib", "node_modules", "@mariozechner", "pi-coding-agent");
-		const fakeNpmPath = join(tempDir, "fake-npm.cjs");
-		const recordPath = join(tempDir, "self-update.json");
-		mkdirSync(selfPackageDir, { recursive: true });
-		writeFileSync(
-			fakeNpmPath,
-			`const fs=require("node:fs"),path=require("node:path"),args=process.argv.slice(2),prefix=args[args.indexOf("--prefix")+1];
-if(args.includes("root")) console.log(path.join(prefix,"lib","node_modules"));
-else fs.writeFileSync(${JSON.stringify(recordPath)},JSON.stringify(args));
-`,
-		);
-		writeFileSync(
-			join(agentDir, "settings.json"),
-			JSON.stringify({ npmCommand: [originalExecPath, fakeNpmPath, "--prefix", globalPrefix] }, null, 2),
-		);
-		process.env.PI_PACKAGE_DIR = selfPackageDir;
-		Object.defineProperty(process, "execPath", {
-			value: join(selfPackageDir, "dist", "cli.js"),
-			configurable: true,
-		});
-		const targetVersion = getNewerPatchVersion();
-		const fetchMock = vi.fn(async () => Response.json({ version: targetVersion }));
-		vi.stubGlobal("fetch", fetchMock);
-
-		const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-
-		try {
-			await expect(runPackageCommandDirectly(["update", "--self"])).resolves.toBeUndefined();
-
-			expect(process.exitCode).toBeUndefined();
-			expect(errorSpy).not.toHaveBeenCalled();
-			expect(fetchMock).toHaveBeenCalledOnce();
-			const stdout = logSpy.mock.calls.map(([message]) => String(message)).join("\n");
-			const recordedArgs = JSON.parse(readFileSync(recordPath, "utf-8")) as string[];
-			expect(recordedArgs).toContain(`${PACKAGE_NAME}@${targetVersion}`);
-			expect(recordedArgs).not.toContain(PACKAGE_NAME);
-			expect(stdout).toContain(`Updated ultron from ${VERSION} to ${targetVersion}`);
-		} finally {
-			logSpy.mockRestore();
-			errorSpy.mockRestore();
-		}
-	});
-
-	it("installs the active package name from the update check during self-update", async () => {
+	it("installs the latest ultron-agent release from the npm registry", async () => {
 		const globalPrefix = join(tempDir, "global-prefix");
 		const selfPackageDir = join(globalPrefix, "lib", "node_modules", "@mariozechner", "pi-coding-agent");
 		const fakeNpmPath = join(tempDir, "fake-npm.cjs");
@@ -824,10 +602,67 @@ else {
 			value: join(selfPackageDir, "dist", "cli.js"),
 			configurable: true,
 		});
-		const activePackageName = PACKAGE_NAME === "@new-scope/pi" ? "@newer-scope/pi" : "@new-scope/pi";
+		const targetVersion = getNewerPatchVersion();
+		const fetchMock = vi.fn(async () => Response.json({ name: NPM_PACKAGE_NAME, version: targetVersion }));
+		vi.stubGlobal("fetch", fetchMock);
+
+		const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+		try {
+			await expect(runPackageCommandDirectly(["update", "--self"])).resolves.toBeUndefined();
+
+			expect(process.exitCode).toBeUndefined();
+			expect(errorSpy).not.toHaveBeenCalled();
+			expect(fetchMock).toHaveBeenCalledOnce();
+			expect(fetchMock).toHaveBeenCalledWith("https://registry.npmjs.org/ultron-agent/latest", expect.anything());
+			const stdout = logSpy.mock.calls.map(([message]) => String(message)).join("\n");
+			const recordedCalls = JSON.parse(readFileSync(recordPath, "utf-8")) as string[][];
+			// A workspace-named install (the source package) moves to the published package.
+			const expectedCalls =
+				PACKAGE_NAME === NPM_PACKAGE_NAME
+					? [expect.arrayContaining(["install", "-g", `${NPM_PACKAGE_NAME}@${targetVersion}`])]
+					: [
+							expect.arrayContaining(["uninstall", "-g", PACKAGE_NAME]),
+							expect.arrayContaining(["install", "-g", `${NPM_PACKAGE_NAME}@${targetVersion}`]),
+						];
+			expect(recordedCalls).toEqual(expectedCalls);
+			expect(stdout).toContain(`Updated ultron from ${VERSION} to ${targetVersion}`);
+		} finally {
+			logSpy.mockRestore();
+			errorSpy.mockRestore();
+		}
+	});
+
+	it("moves a differently named install to ultron-agent during self-update", async () => {
+		const globalPrefix = join(tempDir, "global-prefix");
+		const selfPackageDir = join(globalPrefix, "lib", "node_modules", "@mariozechner", "pi-coding-agent");
+		const fakeNpmPath = join(tempDir, "fake-npm.cjs");
+		const recordPath = join(tempDir, "self-update.json");
+		mkdirSync(selfPackageDir, { recursive: true });
+		writeFileSync(
+			fakeNpmPath,
+			`const fs=require("node:fs"),path=require("node:path"),args=process.argv.slice(2),prefix=args[args.indexOf("--prefix")+1];
+if(args.includes("root")) console.log(path.join(prefix,"lib","node_modules"));
+else {
+	const records=fs.existsSync(${JSON.stringify(recordPath)})?JSON.parse(fs.readFileSync(${JSON.stringify(recordPath)},"utf-8")):[];
+	records.push(args);
+	fs.writeFileSync(${JSON.stringify(recordPath)},JSON.stringify(records));
+}
+`,
+		);
+		writeFileSync(
+			join(agentDir, "settings.json"),
+			JSON.stringify({ npmCommand: [originalExecPath, fakeNpmPath, "--prefix", globalPrefix] }, null, 2),
+		);
+		process.env.PI_PACKAGE_DIR = selfPackageDir;
+		Object.defineProperty(process, "execPath", {
+			value: join(selfPackageDir, "dist", "cli.js"),
+			configurable: true,
+		});
 		vi.stubGlobal(
 			"fetch",
-			vi.fn(async () => Response.json({ packageName: activePackageName, version: "0.73.0" })),
+			vi.fn(async () => Response.json({ name: NPM_PACKAGE_NAME, version: getNewerPatchVersion() })),
 		);
 
 		const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
@@ -841,7 +676,7 @@ else {
 			const recordedCalls = JSON.parse(readFileSync(recordPath, "utf-8")) as string[][];
 			expect(recordedCalls).toEqual([
 				expect.arrayContaining(["uninstall", "-g", PACKAGE_NAME]),
-				expect.arrayContaining(["install", "-g", `${activePackageName}@0.73.0`]),
+				expect.arrayContaining(["install", "-g", `${NPM_PACKAGE_NAME}@${getNewerPatchVersion()}`]),
 			]);
 		} finally {
 			logSpy.mockRestore();
@@ -921,10 +756,9 @@ if(args.includes("install")) process.exit(23);
 			value: join(selfPackageDir, "dist", "cli.js"),
 			configurable: true,
 		});
-		const activePackageName = PACKAGE_NAME === "@new-scope/pi" ? "@newer-scope/pi" : "@new-scope/pi";
 		vi.stubGlobal(
 			"fetch",
-			vi.fn(async () => Response.json({ packageName: activePackageName, version: "0.73.0" })),
+			vi.fn(async () => Response.json({ name: NPM_PACKAGE_NAME, version: getNewerPatchVersion() })),
 		);
 
 		const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
@@ -941,7 +775,7 @@ if(args.includes("install")) process.exit(23);
 			const recordedCalls = JSON.parse(readFileSync(recordPath, "utf-8")) as string[][];
 			expect(recordedCalls).toEqual([
 				expect.arrayContaining(["uninstall", "-g", PACKAGE_NAME]),
-				expect.arrayContaining(["install", "-g", `${activePackageName}@0.73.0`]),
+				expect.arrayContaining(["install", "-g", `${NPM_PACKAGE_NAME}@${getNewerPatchVersion()}`]),
 			]);
 		} finally {
 			logSpy.mockRestore();
