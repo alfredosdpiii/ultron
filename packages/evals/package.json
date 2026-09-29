@@ -1,6 +1,6 @@
 {
 	"name": "@ultron/evals",
-	"version": "0.87.13",
+	"version": "0.87.14",
 	"private": true,
 	"type": "module",
 	"scripts": {
@@ -12,8 +12,8 @@
 	},
 	"devDependencies": {
 		"autoevals": "0.3.0",
-		"@ultron/ai": "^0.87.13",
-		"@bryandlp/ultron-coding-agent": "^0.87.13",
+		"@ultron/ai": "^0.87.14",
+		"@bryandlp/ultron-coding-agent": "^0.87.14",
 		"@types/node": "22.19.19",
 		"@vitest-evals/core": "0.15.0",
 		"shx": "0.4.0",
