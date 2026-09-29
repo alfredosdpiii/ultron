@@ -380,7 +380,7 @@ describe("ultron mcp end to end", () => {
 				onClose: () => {},
 				requestRender: () => {},
 			});
-			const text = renderWatchFrame(pane, snapshot, status, 100, 40, PLAIN_STYLE).join("\n");
+			const text = renderWatchFrame(pane, snapshot, status, 200, 40, PLAIN_STYLE).join("\n");
 			expect(text).toContain("Ultron");
 			expect(text).toContain("frames stub/frames");
 			expect(text).toMatch(/RLM/);

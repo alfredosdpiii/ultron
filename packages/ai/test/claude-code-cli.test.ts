@@ -33,6 +33,9 @@ import { CLAUDE_CODE_API, claudeCodeProvider, isClaudeCodeModel } from "../src/p
 import type { AssistantMessage, AssistantMessageEvent, Context, Message, SimpleStreamOptions } from "../src/types.ts";
 import { isRetryableAssistantError } from "../src/utils/retry.ts";
 
+// These tests put a fake `claude` on PATH; the shared test setup hides the real CLI via this variable.
+delete process.env.ULTRON_CLAUDE_CODE_BIN;
+
 const fixture = fileURLToPath(new URL("./fixtures/fake-claude.mjs", import.meta.url));
 const root = mkdtempSync(join(tmpdir(), "ultron-fake-claude-"));
 const binDir = join(root, "bin");

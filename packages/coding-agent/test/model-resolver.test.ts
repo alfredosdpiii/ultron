@@ -238,6 +238,7 @@ describe("Claude Code CLI models", () => {
 		const scoped = await resolveModelScopeWithDiagnostics(["*sonnet*", "claude-code/*"], registry);
 		expect(scoped.scopedModels.map(({ model }) => `${model.provider}/${model.id}`)).toEqual([
 			"anthropic/claude-sonnet-4-5",
+			"claude-code/claude-opus-5-5",
 			"claude-code/opus",
 			"claude-code/sonnet",
 			"claude-code/haiku",
