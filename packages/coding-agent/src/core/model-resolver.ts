@@ -4,6 +4,7 @@
 
 import type { ThinkingLevel } from "@ultron/agent-core";
 import { type Api, type AuthOperationOptions, type KnownProvider, type Model, modelsAreEqual } from "@ultron/ai";
+import { isClaudeCodeModel } from "@ultron/ai/providers/claude-code";
 import chalk from "chalk";
 import { minimatch } from "minimatch";
 import { isValidThinkingLevel } from "../cli/args.ts";
@@ -119,7 +120,11 @@ export function findExactModelReferenceMatch(
 		}
 	}
 
-	const idMatches = availableModels.filter((model) => model.id.toLowerCase() === normalizedReference);
+	// Claude Code CLI models answer only to `claude-code/<id>`: their bare ids (opus, sonnet, haiku) would
+	// otherwise capture patterns meant for tool-capable models.
+	const idMatches = availableModels.filter(
+		(model) => model.id.toLowerCase() === normalizedReference && !isClaudeCodeModel(model),
+	);
 	return idMatches.length === 1 ? idMatches[0] : undefined;
 }
 
@@ -136,8 +141,9 @@ function tryMatchModel(modelPattern: string, availableModels: Model<Api>[]): Mod
 	// No exact match - fall back to partial matching
 	const matches = availableModels.filter(
 		(m) =>
-			m.id.toLowerCase().includes(modelPattern.toLowerCase()) ||
-			m.name?.toLowerCase().includes(modelPattern.toLowerCase()),
+			!isClaudeCodeModel(m) &&
+			(m.id.toLowerCase().includes(modelPattern.toLowerCase()) ||
+				m.name?.toLowerCase().includes(modelPattern.toLowerCase())),
 	);
 
 	if (matches.length === 0) {
@@ -309,7 +315,10 @@ export function resolveModelScopeFromModels(
 			// This allows "*sonnet*" to match without requiring "anthropic/*sonnet*"
 			const matchingModels = availableModels.filter((m) => {
 				const fullId = `${m.provider}/${m.id}`;
-				return minimatch(fullId, globPattern, { nocase: true }) || minimatch(m.id, globPattern, { nocase: true });
+				return (
+					minimatch(fullId, globPattern, { nocase: true }) ||
+					(!isClaudeCodeModel(m) && minimatch(m.id, globPattern, { nocase: true }))
+				);
 			});
 
 			if (matchingModels.length === 0) {
@@ -682,7 +691,8 @@ export async function findInitialModel(options: {
 	}
 
 	// 4. Try first available model with valid API key
-	const availableModels = [...modelRuntime.getAvailableSnapshot()];
+	// Tool-less providers (the Claude Code CLI) cannot drive a root lane, so a fallback never picks them.
+	const availableModels = modelRuntime.getAvailableSnapshot().filter((model) => !isClaudeCodeModel(model));
 
 	if (availableModels.length > 0) {
 		// Try to find a default model from known providers
@@ -743,7 +753,8 @@ export async function restoreModelFromSession(
 	}
 
 	// Try to find any available model
-	const availableModels = [...modelRuntime.getAvailableSnapshot()];
+	// Tool-less providers (the Claude Code CLI) cannot drive a root lane, so a fallback never picks them.
+	const availableModels = modelRuntime.getAvailableSnapshot().filter((model) => !isClaudeCodeModel(model));
 
 	if (availableModels.length > 0) {
 		// Try to find a default model from known providers

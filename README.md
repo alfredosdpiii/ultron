@@ -203,6 +203,21 @@ ultron --mode rpc                        # Pi-compatible JSONL RPC
 `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY` and the like. Custom OpenAI-compatible endpoints go in
 `~/.ultron/agent/models.json`.
 
+### Claude Code as a frame model
+
+If the [Claude Code](https://docs.claude.com/en/docs/claude-code) CLI is installed and logged in, the `claude-code`
+provider runs model calls through it (`claude -p`) with no API key: `claude-code/haiku`, `claude-code/sonnet`,
+`claude-code/opus`. It has no tool calling, so it serves inference frames, `/review` frames and judges, not the root
+agent (`ultron claude` runs Claude Code itself as the root):
+
+```bash
+ULTRON_RLM_FRAME_MODEL=claude-code/haiku ultron   # code-free rlm.infer/rlm.map frames go to the CLI
+```
+
+Each call is isolated (no tools, MCP servers, settings, hooks or `CLAUDE.md`, and its own system prompt) and uses your
+subscription's shared limits, so at most four run at once (`ULTRON_CLAUDE_CODE_CONCURRENCY`). Ultron never touches
+Claude credentials; the CLI logs itself in. Details: [providers](packages/coding-agent/docs/providers.md#claude-code-cli-claude-code).
+
 Useful keys: Up/Down and Alt+R for prompt history, Ctrl+R for the RLM panel, Alt+W for the RLM pane, Alt+G for the full-screen graph,
 Alt+J for Jev, Ctrl+O to expand cells and help. `/hotkeys` lists them all.
 

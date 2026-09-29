@@ -5,6 +5,7 @@ import { Agent } from "@ultron/agent-core";
 import type { Model } from "@ultron/ai";
 import { getModel, streamSimple } from "@ultron/ai/compat";
 import { getBuiltinModels, getBuiltinProviders } from "@ultron/ai/providers/all";
+import { CLAUDE_CODE_MODELS } from "@ultron/ai/providers/claude-code";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { AgentSession } from "../src/core/agent-session.ts";
 import { AuthStorage } from "../src/core/auth-storage.ts";
@@ -217,6 +218,45 @@ describe("parseModelPattern", () => {
 			expect(result.model?.id).toBe("claude-sonnet-4-5");
 			expect(result.warning).toContain("Invalid thinking level");
 		});
+	});
+});
+
+describe("Claude Code CLI models", () => {
+	const claudeCode = CLAUDE_CODE_MODELS.map((model) => ({ ...model }));
+	const withClaudeCode = [...claudeCode, ...allModels];
+
+	test("answer only to their full claude-code/ reference, never to a bare or partial pattern", async () => {
+		expect(parseModelPattern("sonnet", withClaudeCode).model?.id).toBe("claude-sonnet-4-5");
+		expect(parseModelPattern("haiku", withClaudeCode).model).toBeUndefined();
+		expect(parseModelPattern("claude-code/haiku", withClaudeCode).model).toMatchObject({
+			provider: "claude-code",
+			id: "haiku",
+		});
+		const registry = { getAvailable: () => withClaudeCode } as unknown as Parameters<
+			typeof resolveModelScopeWithDiagnostics
+		>[1];
+		const scoped = await resolveModelScopeWithDiagnostics(["*sonnet*", "claude-code/*"], registry);
+		expect(scoped.scopedModels.map(({ model }) => `${model.provider}/${model.id}`)).toEqual([
+			"anthropic/claude-sonnet-4-5",
+			"claude-code/opus",
+			"claude-code/sonnet",
+			"claude-code/haiku",
+		]);
+	});
+
+	test("are never an automatic root-model fallback", async () => {
+		const only = { getAvailableSnapshot: () => claudeCode } as unknown as Parameters<
+			typeof findInitialModel
+		>[0]["modelRuntime"];
+		expect(
+			(await findInitialModel({ scopedModels: [], isContinuing: false, modelRuntime: only })).model,
+		).toBeUndefined();
+		const mixed = { getAvailableSnapshot: () => withClaudeCode } as unknown as Parameters<
+			typeof findInitialModel
+		>[0]["modelRuntime"];
+		expect(
+			(await findInitialModel({ scopedModels: [], isContinuing: false, modelRuntime: mixed })).model?.provider,
+		).not.toBe("claude-code");
 	});
 });
 
