@@ -292,11 +292,11 @@ function publicRecord(task: TaskRecord): NativeTask {
 }
 
 /**
- * Nesting limit for `rlm.spawn` subagents (`ULTRON_SPAWN_DEPTH`, default 1: the root spawns, its children do their
- * brief themselves; 0 means no limit). Grandchildren re-split work a child was given whole, multiplying prompt and
- * transcript cost without making the tree finish sooner.
+ * Nesting limit for `rlm.spawn` subagents (`ULTRON_SPAWN_DEPTH`, default 3: root, children, grandchildren and
+ * great-grandchildren; 0 means no limit). Each level re-sends the guide and its own transcript every turn, so the cap
+ * keeps runaway re-splitting bounded.
  */
-export const DEFAULT_SPAWN_DEPTH = 1;
+export const DEFAULT_SPAWN_DEPTH = 3;
 
 export function spawnDepthLimit(env: NodeJS.ProcessEnv = process.env): number {
 	const raw = env.ULTRON_SPAWN_DEPTH?.trim();
