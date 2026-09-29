@@ -183,6 +183,8 @@ export interface ClaudeCodeSettings {
 	childModel?: string;
 	/** Model of `ultron` subagents, `provider/model` (default: the default model). */
 	ultronChildModel?: string;
+	/** `ultron` starts with Claude Code as its root model, as with `--claude` (ULTRON_ROOT=claude). */
+	root?: boolean;
 }
 
 /**
@@ -1144,6 +1146,7 @@ export class SettingsManager {
 			...(children === undefined ? {} : { children }),
 			...(childModel === undefined ? {} : { childModel }),
 			...(ultronChildModel === undefined ? {} : { ultronChildModel }),
+			...(configured.root === true ? { root: true } : {}),
 		};
 	}
 

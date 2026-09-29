@@ -656,6 +656,18 @@ export async function main(args: string[], options?: MainOptions) {
 
 	if (shouldRunUltronWorker(parsed)) {
 		traceStartup("cli.native");
+		// `--claude`: Ultron's UI and runtime, with Claude Code running the root lane (see ultron/claude/worker-root.ts).
+		const { claudeRootRequested, prepareClaudeRoot } = await import("./ultron/claude/worker-root.ts");
+		if (parsed.claude || claudeRootRequested() || bootstrapSettingsManager.getClaudeCodeSettings().root === true) {
+			try {
+				const selection = prepareClaudeRoot(parsed);
+				parsed.model = selection.model;
+				parsed.provider = selection.provider;
+			} catch (error) {
+				console.error(chalk.red(`Error: ${error instanceof Error ? error.message : String(error)}`));
+				process.exit(1);
+			}
+		}
 		if (parsed.mode === "rpc" && parsed.fileArgs.length > 0) {
 			console.error(chalk.red("Error: @file arguments are not supported in RPC mode"));
 			process.exit(1);

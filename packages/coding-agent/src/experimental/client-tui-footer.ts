@@ -50,6 +50,10 @@ export class NativeFooter implements Component {
 		const models = this.#source.models();
 		const providers = new Set(models?.catalog.availableModels.map((model) => model.provider) ?? []);
 		this.#data.setAvailableProviderCount(providers.size);
+		this.#data.setExtensionStatus(
+			CLAUDE_USAGE_STATUS,
+			claudeCodeUsageText(this.#source.snapshot()?.transcript ?? []),
+		);
 		return this.#footer.render(width);
 	}
 
@@ -99,10 +103,44 @@ export class NativeFooter implements Component {
 				getSessionName: () => source.sessionName(),
 			},
 			getContextUsage: () => laneContextUsage(source.snapshot()?.transcript ?? [], currentModel()?.contextWindow),
-			modelRuntime: { isUsingSubscription: () => false },
+			// The Claude Code CLI runs on its own (normally subscription) login; its reported costs are notional.
+			modelRuntime: { isUsingSubscription: (provider: string) => provider === "claude-code" },
 		};
 		return shim as unknown as AgentSession;
 	}
+}
+
+const CLAUDE_USAGE_STATUS = "claude-code-usage";
+/** Window names Claude Code reports, shortened for the footer. */
+const WINDOW_LABELS: Record<string, string> = { five_hour: "5h", seven_day: "7d", seven_day_opus: "7d opus" };
+
+/**
+ * Claude Code's subscription usage as the lane's last Claude Code response reported it (`ultron --claude`):
+ * "Claude Code 5h 9% · 7d 62%", or undefined when the lane has no such response.
+ */
+export function claudeCodeUsageText(transcript: readonly Entry[]): string | undefined {
+	for (let index = transcript.length - 1; index >= 0; index--) {
+		const entry = transcript[index]!;
+		if (entry.type !== "message" || entry.message.role !== "assistant") continue;
+		const message = entry.message;
+		if (message.provider !== "claude-code") continue;
+		const diagnostic = message.diagnostics?.find((item) => item.type === "claude_code_usage");
+		const windows = diagnostic?.details?.windows;
+		if (typeof windows !== "object" || windows === null || Array.isArray(windows)) continue;
+		const parts: string[] = [];
+		for (const [name, value] of Object.entries(windows)) {
+			const utilization =
+				typeof value === "object" && value !== null && !Array.isArray(value)
+					? (value as Record<string, unknown>).utilization
+					: undefined;
+			if (typeof utilization !== "number") continue;
+			parts.push(`${WINDOW_LABELS[name] ?? name.replace(/_/g, " ")} ${Math.round(utilization * 100)}%`);
+		}
+		const status = diagnostic?.details?.status;
+		const limited = status === "rejected" ? " (limit reached)" : "";
+		return parts.length === 0 ? undefined : `Claude Code ${parts.join(" · ")}${limited}`;
+	}
+	return undefined;
 }
 
 /** Lane entries in the shape Pi's footer totals usage over. */

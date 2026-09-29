@@ -24,6 +24,7 @@ import {
 } from "@ultron/agent-core";
 import { NodeExecutionEnv } from "@ultron/agent-core/node";
 import type { Api, Model } from "@ultron/ai";
+import { CLAUDE_CODE_PROVIDER_ID } from "@ultron/ai/providers/claude-code";
 import type { Context } from "@ultron/chord";
 import {
 	isJsonValue,
@@ -69,7 +70,9 @@ import {
 	createLegacyRecall,
 	legacyBankFromEnv,
 } from "../ultron/auto-memory.ts";
+import { DEFAULT_CLAUDE_MODEL } from "../ultron/claude/claude-cli.ts";
 import { EXTERNAL_ROOT_OPERATION, ExternalRootController } from "../ultron/claude/external-root.ts";
+import { claudeRootRequested, installClaudeCodeLanes } from "../ultron/claude/worker-root.ts";
 import { CodeSkills, codeSkillsDir, codeSkillsToolSection } from "../ultron/code-skills.ts";
 import { CONTEXT_EDIT_EVENT, CONTEXT_ENTRY_PROJECTORS, ContextControl } from "../ultron/context-control.ts";
 import { createFamilyModule } from "../ultron/family.ts";
@@ -1789,12 +1792,31 @@ export async function createUltronRuntime(
 		)
 	).harness;
 	rlmHarness = harness;
+	// Lanes on a claude-code model with tools run through Claude Code (`ultron --claude`, see
+	// ultron/claude/worker-root.ts); an external root (`ultron mcp`) already is Claude Code.
+	const claudeLanes =
+		external === undefined ? installClaudeCodeLanes({ session, harness, cwd: options.metadata.cwd }) : undefined;
 	// A worker started for an interactive client (Pi's TUI or RPC mode) queues extension UI for it until it attaches.
 	const extensionUI = new ExtensionUIBridge({
 		expectClient: options.extensionMode === "tui" || options.extensionMode === "rpc",
 	});
 	try {
 		const lane = await harness.lane("main", TODO_CONTEXT);
+		// `ultron --claude` (ULTRON_ROOT=claude): the root lane runs on Claude Code, also in a resumed session that
+		// was on another model.
+		if (external === undefined && claudeRootRequested()) {
+			const current = await lane.getModel(TODO_CONTEXT).catch(() => undefined);
+			if (current?.provider !== CLAUDE_CODE_PROVIDER_ID) {
+				const target =
+					resolved.model.provider === CLAUDE_CODE_PROVIDER_ID
+						? resolved.model
+						: modelRuntime.getModel(
+								CLAUDE_CODE_PROVIDER_ID,
+								process.env.ULTRON_CLAUDE_MODEL?.trim() || DEFAULT_CLAUDE_MODEL,
+							);
+				if (target) await lane.setModel({ provider: target.provider, modelId: target.id }, TODO_CONTEXT);
+			}
+		}
 		// A Session the server just created as a fork starts with Pi's `session_start` reason "fork", once.
 		const forked = await session.getValue(forkedSessionStart, TODO_CONTEXT);
 		if (forked !== undefined) await session.deleteValue(forkedSessionStart, TODO_CONTEXT);
@@ -2182,6 +2204,7 @@ export async function createUltronRuntime(
 			hostRequest: (type, payload, context, caller) => activeHost.handle(type, payload, context, caller),
 			...(externalRoot === undefined ? {} : { externalRoot }),
 			closeRlm: async () => {
+				await claudeLanes?.close();
 				removeLokiListeners();
 				removeRootTurnListener();
 				removeToolCallListeners();
@@ -2260,6 +2283,7 @@ export async function createUltronRuntime(
 		};
 	} catch (error) {
 		try {
+			await claudeLanes?.close();
 			await legacyExtensions?.close();
 			await harness.close(TODO_CONTEXT);
 		} catch (cleanupError) {

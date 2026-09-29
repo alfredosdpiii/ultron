@@ -46,6 +46,21 @@ function runGuide(args: readonly string[]): void {
 	process.stdout.write(`${text}\n`);
 }
 
+/** `ultron mcp --bridge <socket> --token <token>`: the MCP server a `ultron --claude` lane process talks to. */
+async function runBridge(args: readonly string[]): Promise<void> {
+	let socket: string | undefined;
+	let token: string | undefined;
+	for (let index = 0; index < args.length; index += 1) {
+		const arg = args[index]!;
+		if (arg === "--bridge") socket = args[++index];
+		else if (arg === "--token") token = args[++index];
+		else throw new UsageError(`unknown option for ultron mcp --bridge: ${arg}`);
+	}
+	if (!socket || !token) throw new UsageError("ultron mcp --bridge needs a socket and --token");
+	const { runMcpBridge } = await import("./tool-bridge.ts");
+	await runMcpBridge(socket, token);
+}
+
 /** Run one of CLAUDE_COMMANDS; `args[0]` is the command. Sets process.exitCode on failure. */
 export async function runClaudeCommand(args: readonly string[]): Promise<void> {
 	const [command, ...rest] = args;
@@ -53,6 +68,7 @@ export async function runClaudeCommand(args: readonly string[]): Promise<void> {
 		if (command === "guide") runGuide(rest);
 		else if (command === "hook") await runHookCommand(rest);
 		else if (command === "watch") await runWatchCommand(rest);
+		else if (command === "mcp" && rest.includes("--bridge")) await runBridge(rest);
 		else if (command === "mcp") await runMcpServer(rest);
 		else if (command === "claude") await runClaudeLauncher(rest);
 		else throw new UsageError(`unknown command: ${command}`);
