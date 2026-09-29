@@ -560,7 +560,8 @@ export class SettingsSelectorComponent extends Container {
 			{
 				id: "install-telemetry",
 				label: "Install telemetry",
-				description: "Send an anonymous version/update ping after changelog-detected updates",
+				description:
+					"Send provider attribution headers (OpenRouter, NVIDIA NIM, Cloudflare); Ultron sends no install pings",
 				currentValue: config.enableInstallTelemetry ? "true" : "false",
 				values: ["true", "false"],
 			},

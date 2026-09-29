@@ -146,6 +146,6 @@ Resource arrays support glob exclusions with `!pattern`, exact inclusion with `+
 | Setting | Type | Default | Description |
 |---|---|---|---|
 | `collapseChangelog` | boolean | `false` | Show a condensed changelog after an update. |
-| `enableInstallTelemetry` | boolean | `true` | Enable anonymous install/update reporting and selected provider attribution headers. Does not control update checks. |
+| `enableInstallTelemetry` | boolean | `true` | Send selected provider attribution headers (OpenRouter, NVIDIA NIM, Cloudflare). Ultron does not report installs or updates. Does not control update checks. |
 | `enableAnalytics` | boolean | `false` | Opt in to analytics data sharing. Currently used only by the experimental first-run setup. |
 | `warnings.anthropicExtraUsage` | boolean | `true` | Warn when Anthropic subscription authentication may use paid extra usage. |
