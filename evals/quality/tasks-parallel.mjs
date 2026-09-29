@@ -20,8 +20,14 @@
  * Same contract as tasks-hard.mjs (`build()` returns `{ files, hidden }`). Reference solutions (a parallel and a
  * sequential one, plus wrong ones) live in tasks-parallel-solutions.mjs.
  * Do not edit the task after measurements exist: add a new id instead (see FROZEN_AT).
+ *
+ * The set's second task, `slow-pipeline-deep` (tasks-parallel-deep.mjs), was added after this one tied on both
+ * models: four slow steps whose random outputs feed each other (provision, then the load test; snapshot, then the
+ * replay), so the fastest plan acts on each result as it arrives, and neither a sequential plan nor starting
+ * everything and waiting for all of it fits the budget.
  */
 import { createHash } from "node:crypto";
+import { TASK as SLOW_PIPELINE_DEEP } from "./tasks-parallel-deep.mjs";
 
 export const FROZEN_AT = "2026-09-26-parallel";
 
@@ -438,5 +444,6 @@ export function tasks() {
 			verify: "python3 check_parallel_hidden.py",
 			timeBudgetMs: TIME_BUDGET_MS,
 		},
+		SLOW_PIPELINE_DEEP,
 	];
 }

@@ -1,0 +1,223 @@
+{
+  "taskSet": "parallel",
+  "frozenAt": "2026-09-26-parallel",
+  "thresholds": {
+    "maxPassRateDropPoints": 10,
+    "maxMedianLatencyRatio": 2,
+    "maxCostRatio": 2
+  },
+  "model": "cliproxyapi/gpt-6-sol",
+  "trials": 1,
+  "isolation": {
+    "home": "per-run empty HOME inside the run's work dir (no ~/.agents, ~/.pi, ~/.ultron or other user-global resources)",
+    "agentDir": "per-run agent dir holding only models.json and auth.json copied from ~/.ultron/agent",
+    "memory": "off (ULTRON_HINDSIGHT_URL=off)"
+  },
+  "judge": {
+    "model": "cliproxyapi/glm-5.3-flash",
+    "thinking": "low",
+    "command": "pi"
+  },
+  "summary": {
+    "byVariant": {
+      "pi": {
+        "runs": 1,
+        "infrastructure": 0,
+        "passRate": 1,
+        "categories": {
+          "parallel": {
+            "passed": 1,
+            "runs": 1
+          }
+        },
+        "medianDurationMs": 219775,
+        "totalCost": 0.04978400000000001,
+        "uptake": {
+          "toolsByName": {
+            "bash": 8,
+            "read": 12,
+            "edit": 3,
+            "write": 1
+          },
+          "rlmRunShare": 0,
+          "framesSpawned": {
+            "runs": 0,
+            "total": null,
+            "median": null
+          },
+          "childrenSpawned": {
+            "runs": 0,
+            "total": null,
+            "median": null
+          },
+          "rootUnseenBytes": {
+            "runs": 0,
+            "total": null,
+            "median": null
+          }
+        },
+        "timing": {
+          "runs": 1,
+          "withinBudget": 1,
+          "passedWithinBudget": 1,
+          "passed": 1,
+          "medianDurationMs": 219775,
+          "perRun": [
+            {
+              "task": "slow-pipeline-deep",
+              "trial": 1,
+              "durationMs": 219775,
+              "timeBudgetMs": 270000,
+              "withinBudget": true,
+              "passed": true
+            }
+          ]
+        }
+      },
+      "ultron": {
+        "runs": 1,
+        "infrastructure": 0,
+        "passRate": 1,
+        "categories": {
+          "parallel": {
+            "passed": 1,
+            "runs": 1
+          }
+        },
+        "medianDurationMs": 212088,
+        "totalCost": 0.0527656,
+        "uptake": {
+          "toolsByName": {
+            "rlm": 10
+          },
+          "rlmRunShare": 1,
+          "framesSpawned": {
+            "runs": 1,
+            "total": 0,
+            "median": 0
+          },
+          "childrenSpawned": {
+            "runs": 1,
+            "total": 0,
+            "median": 0
+          },
+          "rootUnseenBytes": {
+            "runs": 0,
+            "total": null,
+            "median": null
+          }
+        },
+        "timing": {
+          "runs": 1,
+          "withinBudget": 1,
+          "passedWithinBudget": 1,
+          "passed": 1,
+          "medianDurationMs": 212088,
+          "perRun": [
+            {
+              "task": "slow-pipeline-deep",
+              "trial": 1,
+              "durationMs": 212088,
+              "timeBudgetMs": 270000,
+              "withinBudget": true,
+              "passed": true
+            }
+          ]
+        }
+      }
+    },
+    "gate": [
+      {
+        "check": "pass rate",
+        "ok": true,
+        "detail": "0.0 points below baseline"
+      },
+      {
+        "check": "median latency",
+        "ok": true,
+        "detail": "0.97x baseline"
+      },
+      {
+        "check": "cost",
+        "ok": true,
+        "detail": "1.06x baseline"
+      }
+    ],
+    "passed": true
+  },
+  "records": [
+    {
+      "task": "slow-pipeline-deep",
+      "category": "parallel",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "rlm": 10
+      },
+      "framesSpawned": 0,
+      "childrenSpawned": 0,
+      "childDepth": 0,
+      "rootUnseenBytes": null,
+      "toolCalls": 10,
+      "tasksByDefinition": {},
+      "framesSource": "inspect",
+      "cost": 0.0527656,
+      "tokens": 57962,
+      "durationMs": 212088,
+      "timeBudgetMs": 270000,
+      "withinBudget": true,
+      "verify": {
+        "status": 0,
+        "output": "{\"ops\":true,\"tests\":true,\"loadtest\":true,\"replay\":true,\"report\":true}\n"
+      },
+      "metrics": {
+        "ops": true,
+        "tests": true,
+        "loadtest": true,
+        "replay": true,
+        "report": true
+      },
+      "evidence": "/tmp/ultron-quality-failed/slow-pipeline-deep-ultron-1-2026-09-29T11-27-05-488Z"
+    },
+    {
+      "task": "slow-pipeline-deep",
+      "category": "parallel",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "bash": 8,
+        "read": 12,
+        "edit": 3,
+        "write": 1
+      },
+      "framesSpawned": null,
+      "childrenSpawned": null,
+      "childDepth": null,
+      "rootUnseenBytes": null,
+      "toolCalls": 24,
+      "cost": 0.04978400000000001,
+      "tokens": 69356,
+      "durationMs": 219775,
+      "timeBudgetMs": 270000,
+      "withinBudget": true,
+      "verify": {
+        "status": 0,
+        "output": "{\"ops\":true,\"tests\":true,\"loadtest\":true,\"replay\":true,\"report\":true}\n"
+      },
+      "metrics": {
+        "ops": true,
+        "tests": true,
+        "loadtest": true,
+        "replay": true,
+        "report": true
+      },
+      "evidence": "/tmp/ultron-quality-failed/slow-pipeline-deep-pi-1-2026-09-29T11-27-05-484Z"
+    }
+  ]
+}
