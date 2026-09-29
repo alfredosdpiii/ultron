@@ -230,7 +230,8 @@ profile, so both prompts include the same user skills list):
    Never spawn subagents to read or classify documents. It includes a worked example shaped like Pi's approach.
    The Delegation section says the same, and tells a subagent to do its brief itself.
 2. **Subagent nesting limit** (`native-host.ts`). `rlm.spawn` refuses beyond `ULTRON_SPAWN_DEPTH` levels (default
-   3 since 0.87.14; it was 2 until 0.87.10 and 1 in 0.87.11 to 0.87.13; 0 means no limit). The error tells the
+   3 since 0.87.14, a ceiling; below it a subagent nests only when its parent passed `depth=N`, default 0; it was a
+   flat 2 until 0.87.10 and 1 in 0.87.11 to 0.87.13; 0 means no limit). The error tells the
    model to do the part itself. On the deep delegation task, children that split their service across grandchildren
    raised the cost without finishing sooner.
    Both runs above went 3 and 4 levels deep.

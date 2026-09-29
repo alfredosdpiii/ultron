@@ -117,7 +117,7 @@ class RLMNamespace:
 
     async def spawn(self, prompt: str, **kwargs: Any) -> SpawnHandle:
         """Start a subagent and return its SpawnHandle at once (`h.rlm_child_id`); options: name (required),
-        model, thinking, timeout_ms.
+        model, thinking, timeout_ms, depth.
 
         The child has its own REPL and your tools and shares your filesystem, but not your conversation: give
         a self-contained brief (goal, paths, constraints, what to return). Its final reply is its result.
@@ -126,21 +126,25 @@ class RLMNamespace:
         with `await rlm.collect(handles)`, or (completion events on) end your turn: each end arrives as a
         `child_done` event.
         `await rlm.collect([h])` returns `[{"id": ..., "result": {"status": "succeeded", "value": <answer>}}]`
-        (check each status). Subagents nest at most two levels, and every response they make counts toward
-        the root's turn, token and cost limits. Spawn for independent multi-step work, never to read or
+        (check each status). A subagent does its brief itself unless you pass `depth=N` (1 lets it spawn its
+        own subagents, 2 lets those spawn too; at most 3 levels in all), and every response they make counts
+        toward the root's turn, token and cost limits. Spawn for independent multi-step work, never to read or
         classify documents (narrow with code and `rlm.map` instead)."""
         if not isinstance(prompt, str) or not prompt.strip():
             raise ValueError("rlm.spawn prompt must be a non-empty string")
         name = kwargs.get("name")
         if not isinstance(name, str) or not name.strip():
             raise ValueError("rlm.spawn name must be a non-empty string")
-        allowed = {"name", "model", "thinking", "timeout_ms"}
+        allowed = {"name", "model", "thinking", "timeout_ms", "depth"}
         unknown = sorted(set(kwargs) - allowed)
         if unknown:
             raise TypeError(f"rlm.spawn unknown options: {', '.join(unknown)}")
         timeout_ms = kwargs.get("timeout_ms")
         if timeout_ms is not None and (isinstance(timeout_ms, bool) or not isinstance(timeout_ms, (int, float)) or timeout_ms < 1):
             raise ValueError("rlm.spawn timeout_ms must be a positive number")
+        depth = kwargs.get("depth")
+        if depth is not None and (isinstance(depth, bool) or not isinstance(depth, int) or depth < 0):
+            raise ValueError("rlm.spawn depth must be a non-negative integer")
         result = await self._bridge.request("rlm.spawn", {
             "prompt": prompt,
             "kwargs": kwargs,

@@ -691,23 +691,55 @@ describe("cost defaults: map budget, repairs, cacheable frames, spawn depth", ()
 		process.env.ULTRON_SPAWN_DEPTH = "1";
 		const release = deferred();
 		const { call, calls } = setup(() => ({ text: "child done", wait: release.promise }));
+		await expect(call("rlm.spawn", { prompt: "child brief", kwargs: { name: "c", depth: 1 } })).rejects.toThrow(
+			/depth=1 is too deep here: at most 0/,
+		);
 		const child = await call<{ rlm_child_id: string }>("rlm.spawn", { prompt: "child brief", kwargs: { name: "c" } });
 		await waitFor(() => calls.length === 1);
 		const lane = calls[0]!.lane;
 		await expect(call("rlm.spawn", { prompt: "grandchild", kwargs: { name: "g" } }, { lane })).rejects.toThrow(
 			/nest at most 1 level/,
 		);
-		process.env.ULTRON_SPAWN_DEPTH = "2";
-		const grandchild = await call<{ rlm_child_id: string }>(
-			"rlm.spawn",
-			{ prompt: "grandchild", kwargs: { name: "g" } },
-			{ lane },
-		);
 		release.resolve();
 		const collected = await call<{ results: Array<{ result: { status: string } }> }>("rlm.collect", {
-			selectors: [child.rlm_child_id, grandchild.rlm_child_id],
+			selectors: [child.rlm_child_id],
 		});
-		expect(collected.results.map((entry) => entry.result.status)).toEqual(["succeeded", "succeeded"]);
+		expect(collected.results.map((entry) => entry.result.status)).toEqual(["succeeded"]);
+	});
+
+	test("a subagent nests only as deep as its parent allowed with depth=, never past the ceiling", async () => {
+		expect(DEFAULT_SPAWN_DEPTH).toBe(3);
+		const release = deferred();
+		const { call, calls } = setup(() => ({ text: "done", wait: release.promise }));
+		// Default depth=0: the child does its brief itself.
+		await call("rlm.spawn", { prompt: "plain child", kwargs: { name: "plain" } });
+		await waitFor(() => calls.length === 1);
+		await expect(
+			call("rlm.spawn", { prompt: "grandchild", kwargs: { name: "g" } }, { lane: calls[0]!.lane }),
+		).rejects.toThrow(/started with depth=0/);
+		// The root may grant at most ceiling - 1 = 2 further levels.
+		await expect(call("rlm.spawn", { prompt: "too deep", kwargs: { name: "x", depth: 3 } })).rejects.toThrow(
+			/at most 2/,
+		);
+		await call("rlm.spawn", { prompt: "delegating child", kwargs: { name: "d", depth: 2 } });
+		await waitFor(() => calls.length === 2);
+		const childLane = calls[1]!.lane;
+		// The child passes down less than it was given.
+		await expect(
+			call("rlm.spawn", { prompt: "grandchild", kwargs: { name: "g", depth: 2 } }, { lane: childLane }),
+		).rejects.toThrow(/at most 1/);
+		await call("rlm.spawn", { prompt: "grandchild", kwargs: { name: "g", depth: 1 } }, { lane: childLane });
+		await waitFor(() => calls.length === 3);
+		await call("rlm.spawn", { prompt: "great-grandchild", kwargs: { name: "gg" } }, { lane: calls[2]!.lane });
+		await waitFor(() => calls.length === 4);
+		// Level 3 is the ceiling: a great-grandchild cannot spawn.
+		await expect(
+			call("rlm.spawn", { prompt: "too deep", kwargs: { name: "z" } }, { lane: calls[3]!.lane }),
+		).rejects.toThrow(/nest at most 3 level/);
+		await expect(call("rlm.spawn", { prompt: "bad", kwargs: { name: "b", depth: -1 } })).rejects.toThrow(
+			/non-negative integer/,
+		);
+		release.resolve();
 	});
 
 	test("the guide's inference section stays short and keeps the rules that matter", () => {

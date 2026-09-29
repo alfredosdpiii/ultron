@@ -54,6 +54,8 @@ type TaskRecord = NativeTask & {
 	turns?: number;
 	toolCallCount?: number;
 	lastText?: string;
+	/** For an `rlm.spawn` subagent: how many more nesting levels it may create (`depth=` at its spawn; in memory). */
+	spawnDepth?: number;
 };
 
 /** A task's place in a `workflows.run` graph: the run, its node id, and the dependencies it joined. */
@@ -292,11 +294,16 @@ function publicRecord(task: TaskRecord): NativeTask {
 }
 
 /**
- * Nesting limit for `rlm.spawn` subagents (`ULTRON_SPAWN_DEPTH`, default 3: root, children, grandchildren and
- * great-grandchildren; 0 means no limit). Each level re-sends the guide and its own transcript every turn, so the cap
- * keeps runaway re-splitting bounded.
+ * Ceiling on `rlm.spawn` nesting (`ULTRON_SPAWN_DEPTH`, default 3; 0 means no ceiling). Below the ceiling a subagent may
+ * delegate only as deep as its parent allowed with `rlm.spawn(..., depth=N)`; the default `depth=0` keeps it doing its
+ * brief itself. Each level re-sends the guide and its own transcript every turn, so nesting is opt-in per spawn.
  */
 export const DEFAULT_SPAWN_DEPTH = 3;
+
+/** The nesting levels a spawned subagent may still create below itself (`depth=` at its spawn; 0 by default). */
+function spawnAllowance(task: TaskRecord): number {
+	return task.spawnDepth ?? 0;
+}
 
 export function spawnDepthLimit(env: NodeJS.ProcessEnv = process.env): number {
 	const raw = env.ULTRON_SPAWN_DEPTH?.trim();
@@ -1620,22 +1627,38 @@ export class NativeRlmHost {
 			// Recursive fan-out (children re-splitting their slice into grandchildren) multiplies the whole prompt and
 			// transcript per level; a subagent nested this deep does its part itself.
 			const limit = spawnDepthLimit();
+			const record = (id: string) => this.tasks.get(id) ?? journal.find((task) => task.id === id);
 			let depth = 0;
-			for (
-				let id = parentId;
-				id !== undefined;
-				id = this.tasks.get(id)?.parentId ?? journal.find((task) => task.id === id)?.parentId
-			)
-				if ((this.tasks.get(id) ?? journal.find((task) => task.id === id))?.definition === "rlm-child@1")
-					depth += 1;
+			let spawner: TaskRecord | undefined;
+			for (let id = parentId; id !== undefined; id = record(id)?.parentId) {
+				const ancestor = record(id);
+				if (ancestor?.definition !== "rlm-child@1") continue;
+				depth += 1;
+				spawner ??= ancestor;
+			}
 			if (limit > 0 && depth >= limit)
 				throw new Error(
 					`rlm.spawn refused: subagents nest at most ${limit} level(s) deep (ULTRON_SPAWN_DEPTH). Do this part yourself: narrow with code, read the candidates, and use rlm.map for passages you cannot settle.`,
 				);
+			// How many more levels the spawning subagent's parent let it create (rlm.spawn(..., depth=N)); the root may
+			// always spawn.
+			const allowance = spawner === undefined ? Number.POSITIVE_INFINITY : spawnAllowance(spawner);
+			if (allowance < 1)
+				throw new Error(
+					"rlm.spawn refused: this subagent was started with depth=0, so it does its brief itself. A parent that wants nested delegation passes rlm.spawn(brief, name=..., depth=N).",
+				);
 			const prompt = nonemptyString(payload.prompt, "prompt");
 			const kwargs = payload.kwargs === undefined ? {} : objectInput(payload.kwargs);
-			fields(kwargs, ["name", "model", "timeout_ms"]);
+			fields(kwargs, ["name", "model", "timeout_ms", "depth"]);
 			const name = nonemptyString(kwargs.name, "name");
+			const childDepth = kwargs.depth === undefined ? 0 : kwargs.depth;
+			const maxChildDepth = Math.min(allowance - 1, limit > 0 ? limit - depth - 1 : Number.POSITIVE_INFINITY);
+			if (typeof childDepth !== "number" || !Number.isSafeInteger(childDepth) || childDepth < 0)
+				throw new Error("depth must be a non-negative integer");
+			if (childDepth > maxChildDepth)
+				throw new Error(
+					`rlm.spawn depth=${childDepth} is too deep here: at most ${maxChildDepth} (ULTRON_SPAWN_DEPTH=${limit} levels in all).`,
+				);
 			const request: TaskRequest = {
 				definition: "rlm-child@1",
 				input: { prompt },
@@ -1646,6 +1669,7 @@ export class NativeRlmHost {
 				throw new Error("timeout_ms must be an integer between 1 and 3600000");
 			// A spawned child outlives the cell that started it; its subtree still stops with its parent task.
 			const task = await this.spawnTask(request, context, parentId, true, "child_done");
+			if (childDepth > 0) task.spawnDepth = childDepth;
 			return {
 				rlm_child_id: task.id,
 				name,
