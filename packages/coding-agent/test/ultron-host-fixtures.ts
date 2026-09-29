@@ -2,7 +2,7 @@ import type { Context } from "@ultron/agent-core";
 import type { JsonValue } from "@ultron/chord";
 import type { NativeDefinitionAdapter, NativeDefinitionStore } from "../src/ultron/rlm/definition-registry.ts";
 import type { NativeHostModule } from "../src/ultron/rlm/host-module.ts";
-import { NativeRlmHost } from "../src/ultron/rlm/native-host.ts";
+import { type NativeHostOptions, NativeRlmHost } from "../src/ultron/rlm/native-host.ts";
 import type { NativeHostStore } from "../src/ultron/rlm/task-store.ts";
 import type { NativeUsageLedgerLike } from "../src/ultron/usage.ts";
 
@@ -127,6 +127,11 @@ export type HostFixtureOptions = {
 	now?: () => number;
 	/** Working directory whose changes are checked against subagents' verdicts. */
 	workspace?: string;
+	/** Subagents as processes of their own, and a root that is itself a subagent (Claude Code over MCP). */
+	externalChild?: NativeHostOptions["externalChild"];
+	rootSpawn?: NativeHostOptions["rootSpawn"];
+	rootFinish?: NativeHostOptions["rootFinish"];
+	childModel?: string;
 };
 
 export function hostFixture(options: HostFixtureOptions = {}) {
@@ -142,6 +147,10 @@ export function hostFixture(options: HostFixtureOptions = {}) {
 		...(options.rootTurns === undefined ? {} : { rootTurns: options.rootTurns }),
 		...(options.now === undefined ? {} : { now: options.now }),
 		...(options.workspace === undefined ? {} : { workspace: options.workspace }),
+		...(options.externalChild === undefined ? {} : { externalChild: options.externalChild }),
+		...(options.rootSpawn === undefined ? {} : { rootSpawn: options.rootSpawn }),
+		...(options.rootFinish === undefined ? {} : { rootFinish: options.rootFinish }),
+		...(options.childModel === undefined ? {} : { childModel: options.childModel }),
 	});
 	return {
 		host,

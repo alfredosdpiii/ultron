@@ -166,6 +166,23 @@ export interface Settings {
 	hindsightUrl?: string; // Ultron: Hindsight memory server (default http://localhost:8888; "off" disables); global only; ULTRON_HINDSIGHT_URL overrides
 	skipSetupPrompt?: boolean; // Ultron: do not offer `ultron setup` when an interactive start finds no usable model; global only
 	loki?: LokiSettings; // Ultron: built-in Loki guardrails (checked file writes, auto-installed .loki/); global only
+	claudeCode?: ClaudeCodeSettings; // Ultron: Claude Code as the root agent (`ultron claude`, `ultron mcp`); global only
+}
+
+/**
+ * Ultron with Claude Code as the root agent (`ultron claude`, `ultron mcp`). Global only. `--frame-model`,
+ * `--children`, `--child-model` and ULTRON_CLAUDE_FRAME_MODEL / ULTRON_CLAUDE_CHILDREN / ULTRON_CLAUDE_CHILD_MODEL
+ * override them.
+ */
+export interface ClaudeCodeSettings {
+	/** Model of `rlm.map`/`rlm.infer` frames, `provider/model` (default `claude-code/sonnet`, else the default model). */
+	frameModel?: string;
+	/** `rlm.spawn` subagents: `claude` (default: Claude Code processes with their own REPL) or `ultron` (Ultron lanes). */
+	children?: "claude" | "ultron";
+	/** Claude Code model alias of `claude` subagents (default `sonnet`). */
+	childModel?: string;
+	/** Model of `ultron` subagents, `provider/model` (default: the default model). */
+	ultronChildModel?: string;
 }
 
 /**
@@ -1110,6 +1127,24 @@ export class SettingsManager {
 		this.globalSettings.hindsightUrl = url;
 		this.markModified("hindsightUrl");
 		this.save();
+	}
+
+	/** Ultron: Claude Code as the root agent. Global only. */
+	getClaudeCodeSettings(): ClaudeCodeSettings {
+		const configured = this.globalSettings.claudeCode;
+		if (!isMergeableObject(configured)) return {};
+		const text = (value: unknown) => (typeof value === "string" && value.trim() !== "" ? value.trim() : undefined);
+		const frameModel = text(configured.frameModel);
+		const childModel = text(configured.childModel);
+		const ultronChildModel = text(configured.ultronChildModel);
+		const children =
+			configured.children === "claude" || configured.children === "ultron" ? configured.children : undefined;
+		return {
+			...(frameModel === undefined ? {} : { frameModel }),
+			...(children === undefined ? {} : { children }),
+			...(childModel === undefined ? {} : { childModel }),
+			...(ultronChildModel === undefined ? {} : { ultronChildModel }),
+		};
 	}
 
 	/** Ultron: the built-in Loki guardrail settings. Global only, so a repository cannot turn its own checks off. */

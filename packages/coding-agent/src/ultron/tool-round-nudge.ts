@@ -32,8 +32,10 @@ export function nudgeMessage(rounds: number, final: boolean): string {
  * The steer while `running` subagents or tasks the root started have not ended. With completion events off
  * (ULTRON_ASYNC_EVENTS=off) nothing wakes an idle root, so the only way to wait is `rlm.collect`.
  */
-export function waitNudgeMessage(running: number, asyncEvents = true): string {
+export function waitNudgeMessage(running: number, asyncEvents = true, nextCall = false): string {
 	const what = running === 1 ? "1 subagent or task you started is" : `${running} subagents or tasks you started are`;
+	if (asyncEvents && nextCall)
+		return `[Ultron] ${what} still running; each end is reported as a \`child_done\` (or \`task_done\`) event at the top of a later rlm result. Do only separate work of your own and do not check on them through their files, logs or progress. If nothing of your own is left, wait for free: \`await rlm.collect(handles)\` (nothing wakes you after you reply).`;
 	return asyncEvents
 		? `[Ultron] ${what} still running; each result comes to you as a \`child_done\` (or \`task_done\`) event. Do only separate work of your own and do not check on them through their files, logs or progress. If nothing of your own is left, wait for free: \`await rlm.collect(handles)\`, or end your turn and the events wake you.`
 		: `[Ultron] ${what} still running. Do only separate work of your own and do not check on them through their files, logs or progress. If nothing of your own is left, wait for free with \`await rlm.collect(handles)\` (or \`await agents.result(id)\`).`;
@@ -44,6 +46,8 @@ export interface ToolRoundNudgerOptions {
 	readonly asyncEvents?: boolean;
 	/** Tool rounds with work still running before the wait steer; 0 disables it (the brake still adapts). */
 	readonly waitRounds?: number;
+	/** Nothing wakes the root between turns (Claude Code over MCP): the wait steer says to collect, not to end the turn. */
+	readonly nextCall?: boolean;
 }
 
 type RunRounds = {
@@ -62,6 +66,7 @@ export class ToolRoundNudger {
 	readonly #steer: (message: string) => Promise<unknown>;
 	readonly #asyncEvents: boolean;
 	readonly #waitRounds: number;
+	readonly #nextCall: boolean;
 	readonly #runs = new Map<string, RunRounds>();
 
 	constructor(threshold: number, steer: (message: string) => Promise<unknown>, options: ToolRoundNudgerOptions = {}) {
@@ -69,6 +74,7 @@ export class ToolRoundNudger {
 		this.#steer = steer;
 		this.#asyncEvents = options.asyncEvents !== false;
 		this.#waitRounds = options.waitRounds ?? DEFAULT_WAIT_ROUNDS;
+		this.#nextCall = options.nextCall === true;
 	}
 
 	/**
@@ -89,7 +95,7 @@ export class ToolRoundNudger {
 		const wait = running > 0 && !run.waitNudged && this.#waitRounds > 0 && run.waiting >= this.#waitRounds;
 		if (running > 0 && (brake || wait)) {
 			run.waitNudged = true;
-			this.#send(waitNudgeMessage(running, this.#asyncEvents));
+			this.#send(waitNudgeMessage(running, this.#asyncEvents, this.#nextCall));
 		} else if (brake) this.#send(nudgeMessage(run.rounds, run.rounds === this.#threshold * 2));
 	}
 

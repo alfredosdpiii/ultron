@@ -1,0 +1,200 @@
+{
+  "taskSet": "research",
+  "frozenAt": "2026-09-27-research",
+  "thresholds": {
+    "maxPassRateDropPoints": 10,
+    "maxMedianLatencyRatio": 2,
+    "maxCostRatio": 2
+  },
+  "model": "claude-code/sonnet",
+  "ultronCommand": "node --import ~/Projects/personal/ultron-wt-ccroot/packages/coding-agent/src/experimental/source-resolver.ts ~/Projects/personal/ultron-wt-ccroot/packages/coding-agent/src/cli.ts",
+  "trials": 1,
+  "isolation": {
+    "home": "per-run empty HOME inside the run's work dir (no ~/.agents, ~/.pi, ~/.ultron or other user-global resources)",
+    "agentDir": "per-run agent dir holding only models.json and auth.json copied from ~/.ultron/agent",
+    "memory": "off (ULTRON_HINDSIGHT_URL=off)",
+    "loki": "off (ULTRON_LOKI=off, ULTRON_LOKI_AUTOINIT=off) unless --loki"
+  },
+  "loki": "off",
+  "judge": {
+    "model": "cliproxyapi/glm-5.3-flash",
+    "thinking": "low",
+    "command": "pi"
+  },
+  "summary": {
+    "byVariant": {
+      "claude": {
+        "runs": 1,
+        "infrastructure": 0,
+        "passRate": 1,
+        "categories": {
+          "semantic-research": {
+            "passed": 1,
+            "runs": 1
+          }
+        },
+        "medianDurationMs": 25693,
+        "totalCost": 0.19163799999999998,
+        "uptake": {
+          "toolsByName": {
+            "Bash": 7,
+            "Read": 1
+          },
+          "rlmRunShare": 0,
+          "framesSpawned": {
+            "runs": 0,
+            "total": null,
+            "median": null
+          },
+          "childrenSpawned": {
+            "runs": 0,
+            "total": null,
+            "median": null
+          },
+          "rootUnseenBytes": {
+            "runs": 0,
+            "total": null,
+            "median": null
+          }
+        }
+      },
+      "claude-ultron": {
+        "runs": 1,
+        "infrastructure": 0,
+        "passRate": 1,
+        "categories": {
+          "semantic-research": {
+            "passed": 1,
+            "runs": 1
+          }
+        },
+        "medianDurationMs": 30762,
+        "totalCost": 0.13279539999999998,
+        "uptake": {
+          "toolsByName": {
+            "rlm": 5
+          },
+          "rlmRunShare": 1,
+          "framesSpawned": {
+            "runs": 1,
+            "total": 0,
+            "median": 0
+          },
+          "childrenSpawned": {
+            "runs": 1,
+            "total": 0,
+            "median": 0
+          },
+          "rootUnseenBytes": {
+            "runs": 0,
+            "total": null,
+            "median": null
+          }
+        }
+      }
+    },
+    "gate": [],
+    "comparison": "skipped",
+    "skipped": [
+      {
+        "check": "pass rate",
+        "detail": "needs both pi and ultron; this run has only claude, claude-ultron"
+      },
+      {
+        "check": "median latency",
+        "detail": "needs both pi and ultron; this run has only claude, claude-ultron"
+      },
+      {
+        "check": "cost",
+        "detail": "needs both pi and ultron; this run has only claude, claude-ultron"
+      }
+    ],
+    "checks": [
+      {
+        "check": "runs",
+        "ok": true,
+        "detail": "claude: 1 of 1 measured runs passed"
+      },
+      {
+        "check": "runs",
+        "ok": true,
+        "detail": "claude-ultron: 1 of 1 measured runs passed"
+      }
+    ],
+    "passed": true
+  },
+  "records": [
+    {
+      "task": "incident-root-causes",
+      "category": "semantic-research",
+      "variant": "claude",
+      "trial": 1,
+      "model": "claude-code/sonnet",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "Bash": 7,
+        "Read": 1
+      },
+      "toolCalls": 8,
+      "framesSpawned": null,
+      "childrenSpawned": null,
+      "childDepth": null,
+      "rootUnseenBytes": null,
+      "cost": 0.19163799999999998,
+      "tokens": 268130,
+      "firstRequestInputTokens": 19217,
+      "turns": 9,
+      "durationMs": 25693,
+      "verify": {
+        "status": 0,
+        "output": "missed: \nextra: \n{\"precision\": 1.0, \"recall\": 1.0, \"passed\": true, \"answered\": 25, \"missed\": 0, \"extra\": 0}\n"
+      },
+      "metrics": {
+        "precision": 1,
+        "recall": 1,
+        "passed": true,
+        "answered": 25,
+        "missed": 0,
+        "extra": 0
+      },
+      "evidence": "/tmp/ultron-quality-failed/incident-root-causes-claude-1-2026-09-29T17-00-11-138Z"
+    },
+    {
+      "task": "incident-root-causes",
+      "category": "semantic-research",
+      "variant": "claude-ultron",
+      "trial": 1,
+      "model": "claude-code/sonnet",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "rlm": 5
+      },
+      "toolCalls": 5,
+      "framesSpawned": 0,
+      "framesSource": "events",
+      "childrenSpawned": 0,
+      "childDepth": null,
+      "rootUnseenBytes": null,
+      "cost": 0.13279539999999998,
+      "tokens": 92604,
+      "firstRequestInputTokens": 3929,
+      "turns": 6,
+      "durationMs": 30762,
+      "verify": {
+        "status": 0,
+        "output": "missed: \nextra: \n{\"precision\": 1.0, \"recall\": 1.0, \"passed\": true, \"answered\": 25, \"missed\": 0, \"extra\": 0}\n"
+      },
+      "metrics": {
+        "precision": 1,
+        "recall": 1,
+        "passed": true,
+        "answered": 25,
+        "missed": 0,
+        "extra": 0
+      },
+      "evidence": "/tmp/ultron-quality-failed/incident-root-causes-claude-ultron-1-2026-09-29T17-00-11-150Z"
+    }
+  ]
+}

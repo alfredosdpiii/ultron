@@ -455,6 +455,37 @@ export type NativeFrameRun = {
 };
 export type NativeFrameExecutor = (run: NativeFrameRun) => Promise<NativeResult>;
 
+/**
+ * One `rlm.spawn` subagent run outside the harness: an agent process of its own (Claude Code as a child agent, with
+ * its own REPL) instead of a lane of this harness. It answers with its final reply; its `rlm.finish` verdict reaches
+ * this host through `handle("rlm.finish", ..., { lane: laneName })`, so the verdict check is the native one.
+ */
+export type NativeExternalChildRun = {
+	taskId: string;
+	/** The lane name the child acts as: its relayed host requests (rlm.finish) name it as their caller. */
+	laneName: string;
+	prompt: string;
+	/** Nesting levels above the child (1 for a child of the root) and how many more it may create below itself. */
+	level: number;
+	allowance: number;
+	/** The spawn's `model=`, when given. */
+	model?: string;
+	signal: AbortSignal;
+	context: Context;
+	deadlineAt: number | null;
+	timeoutMs: number;
+	/** Live stats for the graph view. */
+	progress(stats: { turns?: number; toolCalls?: number; text?: string; model?: string }): void;
+};
+export type NativeExternalChildResult = {
+	text: string;
+	usage?: NativeUsageMeasurement;
+	turns: number;
+	toolCalls: number;
+	model?: string;
+};
+export type NativeExternalChildRunner = (run: NativeExternalChildRun) => Promise<NativeExternalChildResult>;
+
 export type NativeHostService = {
 	handle(type: string, payload: Record<string, unknown>, context: Context): Promise<unknown>;
 };
@@ -497,6 +528,17 @@ export type NativeHostOptions = {
 	 * ends, and checks the child's declared `changed_files` against what changed (see verdict.ts).
 	 */
 	workspace?: string;
+	/** Model of `rlm.spawn` subagents on harness lanes when the spawn names none (default: the lane's model). */
+	childModel?: string;
+	/** Runs `rlm.spawn` subagents as processes of their own instead of harness lanes (see NativeExternalChildRun). */
+	externalChild?: NativeExternalChildRunner;
+	/**
+	 * The root is itself a subagent (an `ultron mcp --child` server): how many levels sit above it and how many more
+	 * it may create. Default: a top-level root, which may always spawn.
+	 */
+	rootSpawn?: { level: number; allowance: number };
+	/** A root that is itself a subagent relays its `rlm.finish` verdict to its parent host. */
+	rootFinish?: (payload: Payload, context: Context) => Promise<unknown>;
 	now?: () => number;
 };
 
@@ -534,6 +576,10 @@ export class NativeRlmHost {
 	private readonly onDetachedEnd: NativeHostOptions["onDetachedEnd"];
 	private readonly statusExtras: NativeHostOptions["statusExtras"];
 	private readonly workspace: string | undefined;
+	private readonly externalChild: NativeHostOptions["externalChild"];
+	private readonly childModel: string | undefined;
+	private readonly rootSpawn: NativeHostOptions["rootSpawn"];
+	private readonly rootFinish: NativeHostOptions["rootFinish"];
 	/** Root-lane runs that continue an earlier root (a completion event re-invoking the model): run id -> root. */
 	private readonly rootAliases = new Map<string, string>();
 
@@ -556,6 +602,10 @@ export class NativeRlmHost {
 		this.onDetachedEnd = options.onDetachedEnd;
 		this.statusExtras = options.statusExtras;
 		this.workspace = options.workspace;
+		this.externalChild = options.externalChild;
+		this.childModel = options.childModel;
+		this.rootSpawn = options.rootSpawn;
+		this.rootFinish = options.rootFinish;
 		this.registry = new NativeDefinitionRegistry(options.definitionStore, {
 			deterministic: options.deterministic,
 			predict: options.predict,
@@ -818,6 +868,8 @@ export class NativeRlmHost {
 				);
 			}
 			const laneName = request.lane ?? `ultron.${definition.id}.${task.id}`;
+			if (definition.id === "rlm-child" && this.externalChild !== undefined)
+				return await this.executeExternalChild(task, request, laneName, taskContext, signal);
 			if (request.lane !== undefined) await this.beforeLaneReuse?.(laneName, taskContext);
 			const lane = await this.harness.lane(laneName, taskContext);
 			task.lane = lane;
@@ -1083,6 +1135,100 @@ export class NativeRlmHost {
 				!ancestors.has(other.id) &&
 				!descends(other),
 		);
+	}
+
+	/** Nesting levels above a subagent task: its `rlm-child` ancestors, itself, and the levels above this host's root. */
+	private childLevel(task: TaskRecord): number {
+		let level = this.rootSpawn?.level ?? 0;
+		for (let id: string | undefined = task.id; id !== undefined; id = this.tasks.get(id)?.parentId)
+			if (this.tasks.get(id)?.definition === "rlm-child@1") level += 1;
+		return level;
+	}
+
+	/** An `rlm.spawn` subagent run as a process of its own; the same prompt, budget, verdict check and graph stats. */
+	private async executeExternalChild(
+		task: TaskRecord,
+		request: TaskRequest,
+		laneName: string,
+		context: Context,
+		signal: AbortSignal,
+	): Promise<NativeResult> {
+		task.laneName = laneName;
+		this.laneTasks.set(laneName, task.id);
+		const basePrompt = String(objectInput(request.input).prompt);
+		const refinements = (await this.refinements?.("rlm-child", context).catch(() => [])) ?? [];
+		const prompt =
+			refinements.length === 0
+				? basePrompt
+				: `${basePrompt}\n\n${refinements
+						.map(
+							(refinement) =>
+								`Active refinement ${refinement.id} (version ${refinement.version ?? "unversioned"}):\n${refinement.text}`,
+						)
+						.join("\n\n")}`;
+		const before = await this.snapshot(signal);
+		signal.throwIfAborted();
+		const reservation = await this.usage?.reserve({
+			kind: "model",
+			...(task.usageReservation === undefined ? {} : { rootId: task.usageReservation.rootId }),
+			parentTaskId: task.id,
+			taskId: task.id,
+			requestKey: `${task.id}:model`,
+			...(task.usageReservation?.deadlineAt == null
+				? { timeoutMs: request.timeoutMs }
+				: { deadlineAt: task.usageReservation.deadlineAt }),
+			signal,
+		});
+		let status: NativeUsageCallStatus = "failed";
+		let usage: NativeUsageMeasurement | undefined;
+		let turns = 0;
+		try {
+			const run = await this.externalChild!({
+				taskId: task.id,
+				laneName,
+				prompt,
+				level: this.childLevel(task),
+				allowance: spawnAllowance(task),
+				...(request.model === undefined ? {} : { model: request.model }),
+				signal,
+				context,
+				deadlineAt: task.usageReservation?.deadlineAt ?? null,
+				timeoutMs: request.timeoutMs,
+				progress: (stats) => {
+					if (stats.turns !== undefined) task.turns = stats.turns;
+					if (stats.toolCalls !== undefined) task.toolCallCount = stats.toolCalls;
+					if (stats.text) task.lastText = preview(stats.text, GRAPH_TEXT_CHARS);
+					if (stats.model) task.model = preview(stats.model, GRAPH_MODEL_CHARS);
+				},
+			});
+			signal.throwIfAborted();
+			status = "succeeded";
+			usage = run.usage;
+			turns = run.turns;
+			task.turns = Math.max(task.turns ?? 0, run.turns);
+			task.toolCallCount = Math.max(task.toolCallCount ?? 0, run.toolCalls);
+			if (run.model) task.model = preview(run.model, GRAPH_MODEL_CHARS);
+			if (run.text.trim()) task.lastText = preview(run.text, GRAPH_TEXT_CHARS);
+			return await this.childResult(task, run.text, before, signal);
+		} catch (error) {
+			status = signal.aborted ? "cancelled" : "failed";
+			throw error;
+		} finally {
+			if (typeof usage?.cost === "number") task.cost = usage.cost;
+			if (typeof usage?.totalTokens === "number") task.tokens = usage.totalTokens;
+			if (reservation) await this.usage?.settle(reservation, { status, ...(usage === undefined ? {} : { usage }) });
+			// The child's model turns count toward its root's turn and token limits, its tokens and cost on the first.
+			const rootId = task.usageReservation?.rootId;
+			for (let index = 0; index < Math.max(1, turns); index += 1)
+				await this.usage
+					?.recordTurn?.(
+						rootId,
+						index === 0
+							? { totalTokens: usage?.totalTokens ?? null, cost: usage?.cost ?? null }
+							: { totalTokens: 0, cost: 0 },
+					)
+					.catch(() => {});
+		}
 	}
 
 	/**
@@ -1801,7 +1947,7 @@ export class NativeRlmHost {
 			// transcript per level; a subagent nested this deep does its part itself.
 			const limit = spawnDepthLimit();
 			const record = (id: string) => this.tasks.get(id) ?? journal.find((task) => task.id === id);
-			let depth = 0;
+			let depth = this.rootSpawn?.level ?? 0;
 			let spawner: TaskRecord | undefined;
 			for (let id = parentId; id !== undefined; id = record(id)?.parentId) {
 				const ancestor = record(id);
@@ -1815,7 +1961,8 @@ export class NativeRlmHost {
 				);
 			// How many more levels the spawning subagent's parent let it create (rlm.spawn(..., depth=N)); the root may
 			// always spawn.
-			const allowance = spawner === undefined ? Number.POSITIVE_INFINITY : spawnAllowance(spawner);
+			const allowance =
+				spawner === undefined ? (this.rootSpawn?.allowance ?? Number.POSITIVE_INFINITY) : spawnAllowance(spawner);
 			if (allowance < 1)
 				throw new Error(
 					"rlm.spawn refused: this subagent was started with depth=0, so it does its brief itself. A parent that wants nested delegation passes rlm.spawn(brief, name=..., depth=N).",
@@ -1835,7 +1982,7 @@ export class NativeRlmHost {
 			const request: TaskRequest = {
 				definition: "rlm-child@1",
 				input: { prompt },
-				model: typeof kwargs.model === "string" ? kwargs.model : undefined,
+				model: typeof kwargs.model === "string" ? kwargs.model : this.externalChild ? undefined : this.childModel,
 				timeoutMs: typeof kwargs.timeout_ms === "number" ? kwargs.timeout_ms : 30 * 60 * 1000,
 			};
 			if (!Number.isSafeInteger(request.timeoutMs) || request.timeoutMs < 1 || request.timeoutMs > 60 * 60 * 1000)
@@ -1853,6 +2000,8 @@ export class NativeRlmHost {
 			} satisfies RlmChildHandle;
 		}
 		if (type === "rlm.finish") {
+			// A root that is itself a subagent (an `ultron mcp --child` server) gives its verdict to its parent's host.
+			if (parentId === undefined && this.rootFinish !== undefined) return this.rootFinish(payload, context);
 			const task = parentId === undefined ? undefined : this.tasks.get(parentId);
 			if (task?.definition !== "rlm-child@1")
 				throw new Error("rlm.finish is for subagents started with rlm.spawn; here, answer in your reply");

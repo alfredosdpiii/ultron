@@ -72,6 +72,18 @@ A turn ends when you reply without calling rlm; that reply is your answer. Never
 /** How completion events reach the model (ULTRON_ASYNC_EVENTS, on by default). */
 const ASYNC_EVENTS = `Nothing needs polling: a job, tool call, subagent or task that ends while you are not waiting sends a \`<runtime_event kind=... id=... status=... fetch=...>\` message, which starts a new turn if yours ended. Start long work and do the rest meanwhile; never sleep, poll or loop waiting, and if only that result is left, await it (\`await job.result()\`). Run independent operations together with \`asyncio.gather\`.`;
 
+/**
+ * How completion events reach a root that nothing can wake between turns (Claude Code driving the REPL over MCP):
+ * they lead the next rlm result, or come with the user's next message.
+ */
+const ASYNC_EVENTS_NEXT_CALL = `Nothing needs polling: a job, tool call, subagent or task that ends while you are not waiting on it is reported as a \`<runtime_event kind=... id=... status=... fetch=...>\` line at the top of your next rlm result (after you reply, with the user's next message). Nothing wakes you after you reply, so before ending your turn await what the answer still needs (\`await rlm.collect(hs)\`, \`await job.result()\`; waiting costs no model turns). Start long work and do the rest meanwhile; never sleep, poll or loop checking. Run independent operations together with \`asyncio.gather\`.`;
+
+/**
+ * How detached work's completions reach the root: `wake` (native Ultron: an event starts a new turn), `next-call`
+ * (Claude Code over MCP: nothing wakes the root, events lead the next rlm result), or `off` (ULTRON_ASYNC_EVENTS=off).
+ */
+export type EventDelivery = "wake" | "next-call" | "off";
+
 const ASYNC_EVENTS_OFF =
 	"Completions are not announced in this session (ULTRON_ASYNC_EVENTS=off): when you need a result, wait for it with `await job.result()`, `await rlm.collect(...)` or `await agents.result(id)`. Run independent operations together with `asyncio.gather`.";
 
@@ -82,10 +94,11 @@ For many files or a large input, narrow with code first: 1. search the concept a
 const BOUNDED_INFERENCE = `## Bounded inference\n${INFERENCE_PROMPT}`;
 
 /** Delegation, with how to wait for children depending on whether their ends are announced (ULTRON_ASYNC_EVENTS). */
-function delegationPrompt(asyncEvents: boolean): string {
-	const wait = asyncEvents
-		? "`await rlm.collect(hs)` (free), or end your turn: each end arrives as a `child_done` event"
-		: "`await rlm.collect(hs)` (free)";
+function delegationPrompt(delivery: EventDelivery): string {
+	const wait =
+		delivery === "wake"
+			? "`await rlm.collect(hs)` (free), or end your turn: each end arrives as a `child_done` event"
+			: "`await rlm.collect(hs)` (free)";
 	return `## Delegation
 \`h = await rlm.spawn(brief, name=...)\` starts a subagent (own REPL, your tools and files, not your chat). Spawn only for independent multi-step work, with a self-contained brief (goal, paths, constraints, what to return), several at once; \`depth=N\` lets a child delegate too (≤3 levels) if its part splits again. Then do only your own work that no child owns; never check on children's files, logs or progress: results come to you. With nothing of your own left, ${wait}. Trust only verdicts whose \`check.outcome\` is "verified"; re-check the rest. \`help(rlm.spawn)\`.
 If you are a subagent, do the brief yourself (spawn only if given depth), then \`await rlm.finish(status, summary, evidence=[...], changed_files=[...])\` and reply briefly with paths and uncertainties.
@@ -93,6 +106,9 @@ Typed agents, graphs, background jobs: \`help(agents)\`, \`help(workflows)\`, \`
 }
 
 const CONTEXT = `## Other APIs\n${CONTEXT_PROMPT}\n${CODE_SKILLS_PROMPT}\n${AGENT_CLASS_PROMPT}`;
+
+/** Other APIs for a root whose conversation Claude Code owns: `ctx` edits only a native lane's transcript. */
+const CONTEXT_WITHOUT_CTX = `## Other APIs\n${CODE_SKILLS_PROMPT}\n${AGENT_CLASS_PROMPT}`;
 
 const MEMORY =
 	"- `memory.prepare(query)` recalls long-term memory, `memory.propose(text, evidence)` keeps a fact; `jev.triage(prompt)` rates a request.";
@@ -112,7 +128,7 @@ export const EXTENSION_TOOLS_LISTED = 12;
  */
 export function extensionToolsPrompt(
 	tools: readonly ExtensionToolSummary[],
-	options: { mcpServers?: readonly string[]; native?: readonly string[] } = {},
+	options: { mcpServers?: readonly string[]; native?: readonly string[]; delivery?: EventDelivery } = {},
 ): string | undefined {
 	const repl = tools.filter((tool) => !options.native?.includes(tool.name));
 	if (repl.length === 0) return undefined;
@@ -135,15 +151,16 @@ export function extensionToolsPrompt(
 		parts.push(
 			`MCP servers${servers.length > 0 ? ` (${servers.join(", ")})` : ""} are reached through the \`mcp\` namespace: \`await mcp.servers()\`, \`await mcp.tools("server")\` (tool names), \`await mcp.describe("tool")\` (its parameters), \`await mcp.search("query")\`, and \`r = await mcp.call("tool", key=value, ...)\`, whose keyword arguments are the MCP tool's arguments (or \`await mcp.<server>.<tool>(...)\`, with \`-\` in the server name written as \`_\`). Gateway errors (unknown tool, server not connected, auth required) raise McpError.`,
 		);
+	const nextCall = options.delivery === "next-call";
 	parts.push(
-		`Slow calls never hold you: a plain call still running after 30 s keeps running in the host (\`r.running\` True, \`r.call\` its ToolCall) and its completion arrives as a \`<runtime_event kind="tool_done">\` whose fetch returns the result (\`await tools.result(id)\`). \`yield_after=0\` returns a ToolCall handle at once (\`await call.result()\` waits, \`await call.cancel()\` stops it); \`yield_after=None\` waits however long it takes. Run independent calls together in one cell with \`asyncio.gather\` and keep ids and results in variables. For a start-run/wait-run pair (such as Exa's \`exa_agent_create_run\` and \`exa_agent_wait_run\`), start every run in one cell, then leave the waits running as calls instead of blocking the turn:
+		`Slow calls never hold you: a plain call still running after 30 s keeps running in the host (\`r.running\` True, \`r.call\` its ToolCall) and its completion arrives as a \`<runtime_event kind="tool_done">\`${nextCall ? " (at the top of your next rlm result)" : ""} whose fetch returns the result (\`await tools.result(id)\`). \`yield_after=0\` returns a ToolCall handle at once (\`await call.result()\` waits, \`await call.cancel()\` stops it); \`yield_after=None\` waits however long it takes. Run independent calls together in one cell with \`asyncio.gather\` and keep ids and results in variables. For a start-run/wait-run pair (such as Exa's \`exa_agent_create_run\` and \`exa_agent_wait_run\`), start every run in one cell, then leave the waits running as calls instead of blocking the turn:
 \`\`\`python
 queries = ["first question", "second question"]
 runs = await asyncio.gather(*(mcp.call("exa-agent_exa_agent_create_run", query=q, effort="medium") for q in queries))
 run_ids = [r.json()["id"] for r in runs]  # the id field as the reply names it: print(runs[0]) once if unsure
 waits = await asyncio.gather(*(mcp.call("exa-agent_exa_agent_wait_run", run_id=i, yield_after=0) for i in run_ids))
 \`\`\`
-Then do other work or end your turn: each wait's completion arrives as a runtime event.`,
+${nextCall ? "Then do other work: each wait's completion arrives as a runtime event with a later rlm result; await the ones your answer needs before replying." : "Then do other work or end your turn: each wait's completion arrives as a runtime event."}`,
 	);
 	return parts.join("\n\n");
 }
@@ -156,6 +173,10 @@ export function rlmRuntimePrompt(
 	activeTools: readonly string[],
 	options: {
 		asyncEvents?: boolean;
+		/** How completions reach the root; overrides `asyncEvents` (default: `wake`, or `off` when asyncEvents is false). */
+		delivery?: EventDelivery;
+		/** Claude Code owns the root's conversation: leave out `ctx`, which edits a native lane's transcript. */
+		externalRoot?: boolean;
 		/** Extension tools callable from the REPL, and MCP servers behind the `mcp` gateway. */
 		extensionTools?: readonly ExtensionToolSummary[];
 		mcpServers?: readonly string[];
@@ -164,6 +185,7 @@ export function rlmRuntimePrompt(
 	} = {},
 ): string | undefined {
 	if (!activeTools.includes("rlm")) return undefined;
+	const delivery: EventDelivery = options.delivery ?? (options.asyncEvents === false ? "off" : "wake");
 	const nativeBash = activeTools.includes("bash");
 	const nativeEdit = activeTools.includes("edit");
 	const skills = [
@@ -176,14 +198,17 @@ export function rlmRuntimePrompt(
 	const extensionTools = extensionToolsPrompt(options.extensionTools ?? [], {
 		...(options.mcpServers === undefined ? {} : { mcpServers: options.mcpServers }),
 		...(options.nativeExtensionTools === undefined ? {} : { native: options.nativeExtensionTools }),
+		delivery,
 	});
+	const events =
+		delivery === "off" ? ASYNC_EVENTS_OFF : delivery === "next-call" ? ASYNC_EVENTS_NEXT_CALL : ASYNC_EVENTS;
 	return [
-		`${RUNTIME}\n${options.asyncEvents === false ? ASYNC_EVENTS_OFF : ASYNC_EVENTS}`,
+		`${RUNTIME}\n${events}`,
 		skills.join("\n"),
 		SEARCH_FIRST,
 		BOUNDED_INFERENCE,
 		...(extensionTools === undefined ? [] : [extensionTools]),
-		delegationPrompt(options.asyncEvents !== false),
-		`${CONTEXT}\n${MEMORY}`,
+		delegationPrompt(delivery),
+		`${options.externalRoot === true ? CONTEXT_WITHOUT_CTX : CONTEXT}\n${MEMORY}`,
 	].join("\n\n");
 }

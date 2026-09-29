@@ -71,6 +71,20 @@
  * `--keep-all` keeps the same evidence for passing runs too, and runs the agent with a session instead of
  * `--no-session`, so the kept agent dir holds every lane's transcript and usage and the frame traces (cost diagnosis).
  * `--ultron-command` replaces the `ultron` binary (e.g. a worktree's source through the source resolver).
+ *
+ * Claude Code variants (drive only the official `claude` CLI; the login is the user's, e.g. a subscription):
+ * - `claude`: plain Claude Code, `claude -p` with its default tools and default system prompt;
+ * - `claude-ultron`: Claude Code as the root agent of Ultron, `ultron claude -p` (its only tool is Ultron's REPL).
+ * `--model claude-code/<alias>` (e.g. claude-code/sonnet) becomes `--model <alias>`; `--frame-model` sets the
+ * claude-ultron frames' model (default claude-code/sonnet, which falls back to the default model until the
+ * claude-code provider exists). Both run with `--output-format stream-json --input-format stream-json` (one user
+ * message per task prompt) and `--permission-mode bypassPermissions` inside the throwaway task dir.
+ * Isolation: HOME is the run's empty dir as for the other variants, but CLAUDE_CONFIG_DIR is passed through
+ * (the user's, default ~/.claude) because it holds the login; nothing is copied out of it. What would leak from it
+ * is switched off by flags: `--setting-sources ""` (no user, project or local settings: no hooks, permissions,
+ * plugins or CLAUDE.md), `--strict-mcp-config` (no MCP servers but Ultron's), `--disable-slash-commands` (no
+ * skills; `claude` variant only, the claude-ultron root has no Skill tool), and `--no-session-persistence` (no
+ * transcript is written). Claude Code's own global state file in that dir is still updated as by any `claude` run.
  */
 import { spawn } from "node:child_process";
 import {
@@ -198,12 +212,50 @@ const runVerify = (task, cwd) => sh(task.verify, cwd, task.verifyTimeoutMs ?? VE
 const VARIANTS = {
 	pi: { command: ["pi"], agentDirEnv: "PI_CODING_AGENT_DIR" },
 	ultron: { command: ["ultron"], agentDirEnv: "ULTRON_CODING_AGENT_DIR" },
+	claude: { command: ["claude"], agentDirEnv: "ULTRON_CODING_AGENT_DIR", claude: true },
+	"claude-ultron": { command: ["ultron", "claude"], agentDirEnv: "ULTRON_CODING_AGENT_DIR", claude: true },
 };
+
+/** `claude-code/sonnet` -> `sonnet` (Claude Code's own model alias); other ids pass through. */
+export function claudeModelArg(model) {
+	return model.startsWith("claude-code/") ? model.slice("claude-code/".length) : model;
+}
+
+/**
+ * The `claude` arguments of a Claude Code variant's run (after the command itself). See the header for what each
+ * isolation flag keeps out.
+ */
+export function claudeVariantArgs(variant, { model, frameModel }) {
+	const common = [
+		"-p",
+		"--input-format",
+		"stream-json",
+		"--output-format",
+		"stream-json",
+		"--verbose",
+		"--no-session-persistence",
+		"--model",
+		claudeModelArg(model),
+		"--permission-mode",
+		"bypassPermissions",
+	];
+	if (variant === "claude")
+		return [...common, "--setting-sources", "", "--strict-mcp-config", "--disable-slash-commands"];
+	// `ultron claude` adds --strict-mcp-config, --setting-sources "", --tools "" and its system prompt itself.
+	return [
+		...(frameModel ? ["--frame-model", frameModel] : []),
+		"--child-model",
+		claudeModelArg(model),
+		"--",
+		...common,
+	];
+}
 const DEFAULT_KEEP_DIR = "/tmp/ultron-quality-failed";
 
 const VALUE_FLAGS = [
 	"baseline",
 	"concurrency",
+	"frame-model",
 	"judge-command",
 	"judge-model",
 	"judge-thinking",
@@ -555,7 +607,123 @@ function createModelJudge({ command, model, thinking, keepDir }) {
 	};
 }
 
-async function runOne({ task, variant, trial, model, thinking, keepDir, keepAll, commands, judge, loki = false }) {
+/** Tool calls, cost, tokens and the final result of a Claude Code stream-json transcript (lines of JSON). */
+export function claudeStreamStats(lines) {
+	const stats = {
+		toolsByName: {},
+		toolCalls: 0,
+		frameCalls: 0,
+		spawnCalls: 0,
+		results: [],
+		firstRequestInputTokens: null,
+	};
+	const seen = new Set();
+	for (const line of lines) {
+		let message;
+		try {
+			message = JSON.parse(line);
+		} catch {
+			continue;
+		}
+		if (message.type === "assistant" && Array.isArray(message.message?.content)) {
+			const usage = message.message.usage;
+			if (stats.firstRequestInputTokens === null && usage)
+				stats.firstRequestInputTokens =
+					(usage.input_tokens ?? 0) + (usage.cache_creation_input_tokens ?? 0) + (usage.cache_read_input_tokens ?? 0);
+			for (const part of message.message.content) {
+				if (part.type !== "tool_use" || seen.has(part.id)) continue;
+				seen.add(part.id);
+				// Ultron's REPL counts as `rlm` whichever client called it.
+				const name = part.name === "mcp__ultron__rlm" ? "rlm" : part.name;
+				stats.toolsByName[name] = (stats.toolsByName[name] ?? 0) + 1;
+				stats.toolCalls += 1;
+				if (name === "rlm") {
+					const code = String(part.input?.code ?? "");
+					stats.frameCalls += code.match(FRAME_CALL)?.length ?? 0;
+					stats.spawnCalls += code.match(/\brlm\.spawn\s*\(/g)?.length ?? 0;
+				}
+			}
+		}
+		if (message.type === "result") stats.results.push(message);
+	}
+	const known = (value) => (typeof value === "number" && Number.isFinite(value) ? value : 0);
+	stats.cost = stats.results.length ? stats.results.reduce((sum, result) => sum + known(result.total_cost_usd), 0) : null;
+	stats.tokens = stats.results.length
+		? stats.results.reduce(
+				(sum, result) =>
+					sum +
+					known(result.usage?.input_tokens) +
+					known(result.usage?.cache_creation_input_tokens) +
+					known(result.usage?.cache_read_input_tokens) +
+					known(result.usage?.output_tokens),
+				0,
+			)
+		: null;
+	return stats;
+}
+
+/**
+ * A Claude Code variant's run: one `claude -p` (or `ultron claude -p`) process fed one stream-json user message per
+ * prompt; each prompt waits for its `result` message.
+ */
+async function runClaudeAgent({ command, args, cwd, env, prompts, log, timeoutMs }) {
+	const child = spawn(command[0], [...command.slice(1), ...args], { cwd, env, stdio: ["pipe", "pipe", "pipe"], detached: true });
+	const lines = [];
+	let stderr = "";
+	let buffered = "";
+	let waiting;
+	child.stdout.setEncoding("utf8");
+	child.stdout.on("data", (chunk) => {
+		buffered += chunk;
+		let newline = buffered.indexOf("\n");
+		while (newline !== -1) {
+			const line = buffered.slice(0, newline);
+			buffered = buffered.slice(newline + 1);
+			newline = buffered.indexOf("\n");
+			if (!line.trim()) continue;
+			lines.push(line);
+			appendFileSync(log, `${line}\n`);
+			if (line.includes('"type":"result"')) waiting?.();
+		}
+	});
+	child.stderr.setEncoding("utf8");
+	child.stderr.on("data", (chunk) => {
+		stderr = `${stderr}${chunk}`.slice(-20000);
+	});
+	const exited = new Promise((done) => child.once("close", (code) => done(code)));
+	const deadline = Date.now() + timeoutMs;
+	let timedOut = false;
+	try {
+		for (const prompt of prompts) {
+			appendFileSync(log, `${JSON.stringify({ sent: prompt })}\n`);
+			const result = new Promise((done) => {
+				waiting = done;
+			});
+			child.stdin.write(`${JSON.stringify({ type: "user", message: { role: "user", content: prompt } })}\n`);
+			const outcome = await Promise.race([
+				result.then(() => "result"),
+				exited.then(() => "exited"),
+				new Promise((done) => setTimeout(() => done("timeout"), Math.max(0, deadline - Date.now())).unref()),
+			]);
+			if (outcome === "timeout") {
+				timedOut = true;
+				break;
+			}
+			if (outcome === "exited") break;
+		}
+	} finally {
+		child.stdin.end();
+		const closed = await Promise.race([exited, new Promise((done) => setTimeout(() => done("stuck"), 30_000).unref())]);
+		if (closed === "stuck" || timedOut)
+			try {
+				process.kill(-child.pid, "SIGKILL");
+			} catch {}
+	}
+	return { lines, stderr, timedOut, exitCode: child.exitCode };
+}
+
+async function runOne({ task, variant, trial, model, thinking, keepDir, keepAll, commands, judge, loki = false, frameModel }) {
+	if (VARIANTS[variant]?.claude) return runClaudeOne({ task, variant, trial, model, keepDir, keepAll, commands, judge, loki, frameModel });
 	const work = mkdtempSync(join(tmpdir(), `ultron-quality-${task.id}-${variant}-`));
 	const project = join(work, "project");
 	const agentDir = join(work, "agent");
@@ -666,6 +834,107 @@ async function runOne({ task, variant, trial, model, thinking, keepDir, keepAll,
 		cpSync(project, join(keep, "project"), { recursive: true });
 		cpSync(agentDir, join(keep, "agent"), { recursive: true });
 		writeFileSync(join(keep, "stderr.txt"), session.stderr());
+		writeFileSync(join(keep, "verify.txt"), `status: ${record.verify.status}\n${record.verify.output}\n`);
+		writeFileSync(join(keep, "record.json"), `${JSON.stringify(record, null, 2)}\n`);
+	}
+	record.evidence = keep;
+	rmSync(work, { recursive: true, force: true });
+	return record;
+}
+
+/** The environment of a Claude Code variant: isolated HOME, the user's Claude Code config dir (it holds the login). */
+export function claudeVariantEnv({ work, agentDir, baseEnv = process.env }) {
+	return {
+		...isolatedAgentEnv({ work, agentDirEnv: "ULTRON_CODING_AGENT_DIR", agentDir, baseEnv }),
+		CLAUDE_CONFIG_DIR: baseEnv.CLAUDE_CONFIG_DIR || join(homedir(), ".claude"),
+	};
+}
+
+async function runClaudeOne({ task, variant, trial, model, keepDir, keepAll, commands, judge, loki, frameModel }) {
+	const work = mkdtempSync(join(tmpdir(), `ultron-quality-${task.id}-${variant}-`));
+	const project = join(work, "project");
+	const agentDir = join(work, "agent");
+	mkdirSync(project, { recursive: true });
+	mkdirSync(agentDir, { recursive: true });
+	// Ultron's own profile files, for claude-ultron's frames when they run on an Ultron model; never Claude's.
+	const profile = join(homedir(), ".ultron", "agent");
+	for (const file of ["models.json", "auth.json"])
+		if (existsSync(join(profile, file))) copyFileSync(join(profile, file), join(agentDir, file));
+	const { files, hidden } = materialize(task);
+	writeTree(project, files);
+	const runName = `${task.id}-${variant}-${trial}-${new Date().toISOString().replace(/[:.]/g, "-")}`;
+	const keep = join(keepDir, runName);
+	mkdirSync(keep, { recursive: true });
+	const env = {
+		...claudeVariantEnv({ work, agentDir }),
+		ULTRON_SERVER_DIR: mkdtempSync(join("/tmp", "u-q-")),
+		ULTRON_HINDSIGHT_URL: "off",
+		...lokiEnv(loki, join(keep, "loki.jsonl")),
+	};
+	const record = { task: task.id, category: task.category, variant, trial, model, passed: false, homeIsolated: true };
+	const started = Date.now();
+	let run;
+	try {
+		run = await runClaudeAgent({
+			command: commands[variant],
+			args: claudeVariantArgs(variant, { model, frameModel }),
+			cwd: project,
+			env,
+			prompts: task.prompts,
+			log: join(keep, "events.jsonl"),
+			timeoutMs: RUN_TIMEOUT_MS,
+		});
+		const stats = claudeStreamStats(run.lines);
+		Object.assign(record, {
+			toolsByName: stats.toolsByName,
+			toolCalls: stats.toolCalls,
+			framesSpawned: stats.toolsByName.rlm ? stats.frameCalls : null,
+			framesSource: stats.toolsByName.rlm ? "events" : undefined,
+			childrenSpawned: stats.toolsByName.rlm ? stats.spawnCalls : null,
+			childDepth: null,
+			rootUnseenBytes: null,
+			cost: stats.cost,
+			tokens: stats.tokens,
+			firstRequestInputTokens: stats.firstRequestInputTokens,
+			turns: stats.results.reduce((sum, result) => sum + (result.num_turns ?? 0), 0),
+		});
+		const failed = stats.results.find((result) => result.is_error);
+		if (run.timedOut) record.error = `timed out after ${RUN_TIMEOUT_MS} ms`;
+		else if (stats.results.length < task.prompts.length) {
+			record.error = `agent exited before answering (code ${run.exitCode}): ${run.stderr.trim().slice(-500)}`;
+			record.infrastructure = true;
+		} else if (failed) {
+			record.error = `claude error: ${failed.subtype ?? "error"} ${String(failed.result ?? "").slice(0, 300)}`;
+			// Rate limits and API errors never reached a verdict on the agent.
+			if (/rate|overloaded|api_error|authentication/i.test(record.error)) record.infrastructure = true;
+		}
+	} catch (error) {
+		record.error = error instanceof Error ? error.message.slice(0, 2000) : String(error);
+		record.infrastructure = true;
+	} finally {
+		record.durationMs = Date.now() - started;
+		if (loki) record.loki = summarizeLokiLog(existsSync(join(keep, "loki.jsonl")) ? readFileSync(join(keep, "loki.jsonl"), "utf8") : "");
+		if (task.timeBudgetMs) Object.assign(record, { timeBudgetMs: task.timeBudgetMs, withinBudget: record.durationMs <= task.timeBudgetMs });
+	}
+	if (task.judge && judge && !record.infrastructure) {
+		const judgeModel = task.judge.model ?? judge.model;
+		record.judge = await judgeRun({
+			task,
+			files: collectJudgeFiles(project, task.judge, files),
+			call: judge.call(judgeModel),
+			model: judgeModel,
+			thinking: judge.thinking,
+		});
+	}
+	writeTree(project, hidden);
+	record.verify = await runVerify(task, project);
+	const metrics = verifyMetrics(record.verify.output);
+	if (metrics) record.metrics = metrics;
+	record.passed = !record.error && record.verify.status === 0;
+	if (!record.passed || keepAll) {
+		cpSync(project, join(keep, "project"), { recursive: true });
+		cpSync(agentDir, join(keep, "agent"), { recursive: true });
+		writeFileSync(join(keep, "stderr.txt"), run?.stderr ?? "");
 		writeFileSync(join(keep, "verify.txt"), `status: ${record.verify.status}\n${record.verify.output}\n`);
 		writeFileSync(join(keep, "record.json"), `${JSON.stringify(record, null, 2)}\n`);
 	}
@@ -1047,9 +1316,18 @@ async function main() {
 	const keepAll = process.argv.includes("--keep-all");
 	const loki = process.argv.includes("--loki");
 	const ultronCommand = arg("ultron-command", "");
+	const unknownVariants = variants.filter((variant) => !VARIANTS[variant]);
+	if (unknownVariants.length) {
+		console.error(`Unknown variants: ${unknownVariants.join(", ")} (expected ${Object.keys(VARIANTS).join(", ")})`);
+		return 2;
+	}
+	const frameModel = arg("frame-model", "") || undefined;
+	const ultron = ultronCommand ? ultronCommand.trim().split(/\s+/) : VARIANTS.ultron.command;
 	const commands = {
 		pi: VARIANTS.pi.command,
-		ultron: ultronCommand ? ultronCommand.trim().split(/\s+/) : VARIANTS.ultron.command,
+		ultron,
+		claude: VARIANTS.claude.command,
+		"claude-ultron": [...ultron, "claude"],
 	};
 	// A default name never overwrites an earlier recorded comparison: the second run of a day gets "-2", and so on.
 	const explicitOut = arg("out", "");
@@ -1064,7 +1342,7 @@ async function main() {
 	const judge = process.argv.includes("--no-judge") ? undefined : makeJudge(keepDir);
 	const jobs = selected.flatMap((task) =>
 		variants.flatMap((variant) =>
-			Array.from({ length: trials }, (_, index) => ({ task, variant, trial: index + 1, model, thinking, keepDir, keepAll, commands, judge, loki })),
+			Array.from({ length: trials }, (_, index) => ({ task, variant, trial: index + 1, model, thinking, keepDir, keepAll, commands, judge, loki, frameModel })),
 		),
 	);
 	console.log(`Quality comparison (${taskSet} set): ${selected.length} tasks x ${variants.join("/")} x ${trials} trials = ${jobs.length} runs (${model}${thinking ? `, thinking ${thinking}` : ""}; Loki ${loki ? "on" : "off"})`);

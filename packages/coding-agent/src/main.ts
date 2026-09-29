@@ -601,6 +601,15 @@ export async function main(args: string[], options?: MainOptions) {
 		return;
 	}
 
+	// Claude Code as the root agent (`ultron claude|mcp|hook|watch|guide`); loaded only for these commands, so hooks
+	// that run on every prompt stay fast.
+	if (args[0] === "claude" || args[0] === "mcp" || args[0] === "hook" || args[0] === "watch" || args[0] === "guide") {
+		const { runClaudeCommand } = await import("./ultron/claude/cli.ts");
+		await runClaudeCommand(args);
+		if (args[0] !== "mcp") process.exit(process.exitCode ?? 0);
+		return;
+	}
+
 	if (process.platform === "win32") {
 		cleanupWindowsSelfUpdateQuarantine(getPackageDir());
 	}

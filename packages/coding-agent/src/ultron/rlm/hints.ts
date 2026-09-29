@@ -87,6 +87,11 @@ export interface CellHintsOptions {
 	maxPerTag?: number;
 	/** Whether completions are announced (ULTRON_ASYNC_EVENTS): the wait and polling hints point at events. */
 	asyncEvents?: boolean;
+	/**
+	 * `next-call`: nothing wakes the root lane ("main") between turns (Claude Code drives it over MCP), so its hints
+	 * point at the next rlm result instead of a new turn, and waiting for a needed result earns no hint.
+	 */
+	rootDelivery?: "wake" | "next-call";
 	/** A cell waiting at least this long on detached work gets `blocked-on-job`. */
 	blockedSeconds?: number;
 	/** `read` returns a handle above this size (ULTRON_READ_HANDLE_BYTES). */
@@ -270,7 +275,12 @@ export class CellHints {
 		const cell = state.cell;
 		state.cell = undefined;
 		if (!cell) return undefined;
-		const candidates = this.#candidates(state, cell, outcome);
+		const candidates = this.#candidates(
+			state,
+			cell,
+			outcome,
+			lane === "main" && this.#options.rootDelivery === "next-call",
+		);
 		const trip = this.#loops.cellEnded(
 			lane,
 			cell.code,
@@ -296,7 +306,7 @@ export class CellHints {
 	}
 
 	/** Every hint this cell earned, most specific first. */
-	#candidates(state: LaneState, cell: Cell, outcome: CellOutcome): Array<[HintTag, string]> {
+	#candidates(state: LaneState, cell: Cell, outcome: CellOutcome, nextCall: boolean): Array<[HintTag, string]> {
 		const events = this.#options.asyncEvents !== false;
 		const found: Array<[HintTag, string]> = [];
 		// Failure streaks count every cell, whether or not a hint fires for it.
@@ -312,13 +322,16 @@ export class CellHints {
 			const after = detached.waited === undefined ? "" : ` after ${detached.waited} s`;
 			found.push([
 				"job-detached",
-				events
-					? `The command was still running${after}, so it continues as job ${detached.id}. Do not wait for it: do other work or end your turn; its completion arrives as a <runtime_event> that starts your next turn. (\`yield_after=None\` blocks until a command ends; \`yield_after=0\` detaches at once.)`
-					: `The command was still running${after}, so it continues as job ${detached.id}; \`await <result>.job.result()\` waits for it. (\`yield_after=None\` blocks until a command ends.)`,
+				events && nextCall
+					? `The command was still running${after}, so it continues as job ${detached.id}. Do other work meanwhile: its completion is reported as a <runtime_event> at the top of a later rlm result, and \`await <result>.job.result()\` waits for it when your answer needs it (nothing wakes you after you reply). (\`yield_after=None\` blocks until a command ends; \`yield_after=0\` detaches at once.)`
+					: events
+						? `The command was still running${after}, so it continues as job ${detached.id}. Do not wait for it: do other work or end your turn; its completion arrives as a <runtime_event> that starts your next turn. (\`yield_after=None\` blocks until a command ends; \`yield_after=0\` detaches at once.)`
+						: `The command was still running${after}, so it continues as job ${detached.id}; \`await <result>.job.result()\` waits for it. (\`yield_after=None\` blocks until a command ends.)`,
 			]);
 		}
 		const waitedMs = unionMs(cell.waits);
-		if (events && waitedMs >= (this.#options.blockedSeconds ?? DEFAULT_BLOCKED_SECONDS) * 1000) {
+		// Without wake-ups, waiting for a result the answer needs is the right move, not a mistake.
+		if (events && !nextCall && waitedMs >= (this.#options.blockedSeconds ?? DEFAULT_BLOCKED_SECONDS) * 1000) {
 			const calls = [...cell.waitTypes].map(waitCall).join(", ");
 			found.push([
 				"blocked-on-job",
@@ -333,9 +346,11 @@ export class CellHints {
 			found.push([
 				"poll-loop",
 				`${what ? `Repeated status checks (${what.replace(":", " ")})` : "Sleeping in a loop around a status check"} look like polling. ${
-					events
-						? "Completions arrive as <runtime_event> messages on their own: do other work or end your turn instead of checking or sleeping."
-						: "Wait once with `await job.result()`, `await rlm.collect(...)` or `await agents.result(id)` instead of checking and sleeping."
+					events && nextCall
+						? "Completions are reported on their own at the top of your next rlm result: do other work instead of checking or sleeping, and when only that result is left, wait once (`await job.result()`, `await rlm.collect(...)`)."
+						: events
+							? "Completions arrive as <runtime_event> messages on their own: do other work or end your turn instead of checking or sleeping."
+							: "Wait once with `await job.result()`, `await rlm.collect(...)` or `await agents.result(id)` instead of checking and sleeping."
 				}`,
 			]);
 		}

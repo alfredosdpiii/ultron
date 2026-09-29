@@ -17,6 +17,9 @@
  *   seen with the lane's next run. Nothing is ever inserted before earlier messages: events are appended, which
  *   keeps the provider's prompt-cache prefix valid.
  *
+ * - With `rootSink` (Claude Code drives the root over MCP, and nothing can start a run of it), the root lane's events
+ *   go to the sink instead: they lead the root's next rlm result, or come with the user's next message.
+ *
  * Loop guards: only root-owned work re-invokes the root; a root whose turn the user aborted (Esc) never restarts
  * work (its jobs are cancelled and their ends are not announced); a spent turn or token budget, an exhausted wall
  * budget or cost cap, or more than `maxRuns` automatic runs in one chain turns re-invocation into quiet delivery.
@@ -113,12 +116,17 @@ export interface AsyncEventOptions {
 	refuse?: (rootId: string) => Promise<string | undefined>;
 	/** A root turn was aborted (Esc): stop its jobs. */
 	onRootAborted?: (rootId: string) => void | Promise<void>;
+	/**
+	 * Receives the root lane's events instead of the lane (a root driven from outside, such as Claude Code over MCP,
+	 * whose lane never runs). Child lanes are delivered as usual.
+	 */
+	rootSink?: (events: RuntimeEvent[]) => void;
 	/** Keeps the worker alive while an event waits for delivery; returns the release. */
 	holdActivity?: () => () => void;
 	/** Delivery decisions, for tests and diagnostics. */
 	onDelivery?: (delivery: {
 		lane: string;
-		mode: "run" | "steer" | "nextRun";
+		mode: "run" | "steer" | "nextRun" | "sink";
 		events: RuntimeEvent[];
 		reason?: string;
 	}) => void;
@@ -209,6 +217,12 @@ export class AsyncEventDispatcher {
 
 	async #deliver(laneName: string, events: RuntimeEvent[], context: Context = BACKGROUND_CONTEXT): Promise<void> {
 		if (this.#closed || events.length === 0) return;
+		const sink = this.#options.rootSink;
+		if (sink !== undefined && laneName === "main") {
+			sink(events);
+			this.#options.onDelivery?.({ lane: laneName, mode: "sink", events });
+			return;
+		}
 		const lane = await this.#options.harness.lane(laneName, context);
 		const execution = await lane.inspectExecution(context);
 		if (execution.current !== null) {

@@ -254,6 +254,59 @@ findings). It is bundled and on by default:
 
 `npm run loki:update -- <loki-checkout | version>` refreshes the bundled engine, pinned by sha256.
 
+## Claude Code as an RLM
+
+`ultron claude` runs [Claude Code](https://claude.com/claude-code) as Ultron's root agent: Claude Code keeps its
+TUI, its model and your login (for example a Pro or Max subscription), and its only tool is Ultron's REPL.
+
+```bash
+ultron claude                             # Claude Code's TUI; the REPL (rlm) is its only tool
+ultron claude -p "why does test_x fail?"  # print mode; any other argument goes to claude
+ultron watch                              # the RLM pane for the running session (or `ultron claude --watch` in tmux)
+ultron claude --print-config              # the exact claude command and configs, for other tools
+ultron guide --for claude                 # the system prompt Claude Code gets
+```
+
+How it works: `ultron claude` checks `claude auth status` (it never reads Claude Code's credentials or settings
+files) and starts `claude` with `--strict-mcp-config --mcp-config` pointing at `ultron mcp`, `--tools ""
+--allowedTools mcp__ultron__rlm` (no built-in tools, no permission prompts for the REPL), `--system-prompt-file`
+with Ultron's guide in place of Claude Code's default prompt, `--setting-sources ""` (your Claude Code settings,
+hooks and CLAUDE.md are not loaded; `--keep-settings` loads them, `--keep-mcp` keeps your MCP servers), and a
+temporary `--settings` file with three hooks. The configs live in a private temp dir removed on exit. `ultron mcp` is
+an MCP server that runs Ultron's own runtime, so you can also add it to any Claude Code setup yourself
+(`claude mcp add ultron -- ultron mcp`, then allow `mcp__ultron__rlm`).
+
+**The same as native Ultron:** the persistent kernel and its skills, output truncation, hints (stuck loops,
+polling, detached jobs), secret masking, Loki guardrails, `rlm.load`/`infer`/`map` frames, subagents with checked
+verdicts, typed agents, workflows, shell jobs, the usage ledger, kernel snapshots, and memory. Each Claude Code
+session has its own Ultron session, found again by Claude Code's session id, so `claude --resume` reopens the same
+tasks, `state` and ledger.
+
+**Different:**
+
+- Claude Code owns the conversation: its context, compaction and model loop. `ctx` context edits and Ultron's own
+  TUI panels are not available; `ultron watch` shows the RLM view (graph, waves of subagents, frames, jobs,
+  verdicts, kernels and Loki stats) in a second terminal.
+- Nothing can wake Claude Code between turns. A job, subagent or task that ends while it is not waiting is reported
+  at the top of the next `rlm` result, or with your next message (UserPromptSubmit hook); the guide says so.
+- Hooks: SessionStart adds Loki's note; UserPromptSubmit runs Jev's recall gate and Hindsight recall (when both are
+  configured) and delivers waiting events; Stop lets Jev keep or skip the exchange and closes the turn's budget.
+- Frames run on `claude-code/sonnet` (single completions through `claude -p`) when that provider is available,
+  else on your default Ultron model; `--frame-model` changes it. Subagents are Claude Code processes by default
+  (`claude -p` with their own `ultron mcp --child` server and kernel, reporting their verdict to the parent's host);
+  `--children ultron` runs them as Ultron lanes on your default model instead.
+- Per-turn budgets count frames and subagents; the root's own usage is Claude Code's.
+
+**Fair use.** Everything runs on your Claude Code login. Each frame and each subagent is its own Claude Code request
+or process and counts against your plan's limits. The defaults are conservative: frames and subagents use Sonnet,
+subagents may not delegate further unless given `depth=`, a turn admits at most 24 tasks, and the guide steers toward
+searching with code before any frame. Put frames on another provider with `--frame-model provider/model`.
+
+First measurements (Sonnet, one trial each, `acceptance/quality/2026-09-29-*-claude-code_sonnet.json`): plain Claude
+Code and `ultron claude` both passed the three hard tasks (median 16 s vs 18 s) and the research pilot (precision and
+recall 1.0 for both, 26 s vs 31 s). Ultron's system prompt is about 3.9k tokens against Claude Code's 19k, so the
+runs used 60k instead of 189k tokens on the hard tasks and 93k instead of 268k on the research pilot.
+
 ## Safety
 
 There is no sandbox. Model-written Python runs with your user's permissions, like Pi's `bash` tool. Resource limits

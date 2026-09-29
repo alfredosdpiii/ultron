@@ -1,0 +1,308 @@
+{
+  "taskSet": "hard",
+  "frozenAt": "2026-09-25-hard",
+  "thresholds": {
+    "maxPassRateDropPoints": 10,
+    "maxMedianLatencyRatio": 2,
+    "maxCostRatio": 2
+  },
+  "model": "claude-code/sonnet",
+  "ultronCommand": "node --import ~/Projects/personal/ultron-wt-ccroot/packages/coding-agent/src/experimental/source-resolver.ts ~/Projects/personal/ultron-wt-ccroot/packages/coding-agent/src/cli.ts",
+  "trials": 1,
+  "isolation": {
+    "home": "per-run empty HOME inside the run's work dir (no ~/.agents, ~/.pi, ~/.ultron or other user-global resources)",
+    "agentDir": "per-run agent dir holding only models.json and auth.json copied from ~/.ultron/agent",
+    "memory": "off (ULTRON_HINDSIGHT_URL=off)",
+    "loki": "off (ULTRON_LOKI=off, ULTRON_LOKI_AUTOINIT=off) unless --loki"
+  },
+  "loki": "off",
+  "judge": {
+    "model": "cliproxyapi/glm-5.3-flash",
+    "thinking": "low",
+    "command": "pi"
+  },
+  "summary": {
+    "byVariant": {
+      "claude": {
+        "runs": 3,
+        "infrastructure": 0,
+        "passRate": 1,
+        "categories": {
+          "large-data": {
+            "passed": 1,
+            "runs": 1
+          },
+          "multi-bug": {
+            "passed": 1,
+            "runs": 1
+          },
+          "log-forensics": {
+            "passed": 1,
+            "runs": 1
+          }
+        },
+        "medianDurationMs": 16257,
+        "totalCost": 0.14659840000000002,
+        "uptake": {
+          "toolsByName": {
+            "Bash": 6
+          },
+          "rlmRunShare": 0,
+          "framesSpawned": {
+            "runs": 0,
+            "total": null,
+            "median": null
+          },
+          "childrenSpawned": {
+            "runs": 0,
+            "total": null,
+            "median": null
+          },
+          "rootUnseenBytes": {
+            "runs": 0,
+            "total": null,
+            "median": null
+          }
+        }
+      },
+      "claude-ultron": {
+        "runs": 3,
+        "infrastructure": 0,
+        "passRate": 1,
+        "categories": {
+          "multi-bug": {
+            "passed": 1,
+            "runs": 1
+          },
+          "large-data": {
+            "passed": 1,
+            "runs": 1
+          },
+          "log-forensics": {
+            "passed": 1,
+            "runs": 1
+          }
+        },
+        "medianDurationMs": 17565,
+        "totalCost": 0.1237564,
+        "uptake": {
+          "toolsByName": {
+            "rlm": 7
+          },
+          "rlmRunShare": 1,
+          "framesSpawned": {
+            "runs": 3,
+            "total": 0,
+            "median": 0
+          },
+          "childrenSpawned": {
+            "runs": 3,
+            "total": 0,
+            "median": 0
+          },
+          "rootUnseenBytes": {
+            "runs": 0,
+            "total": null,
+            "median": null
+          }
+        }
+      }
+    },
+    "gate": [],
+    "comparison": "skipped",
+    "skipped": [
+      {
+        "check": "pass rate",
+        "detail": "needs both pi and ultron; this run has only claude, claude-ultron"
+      },
+      {
+        "check": "median latency",
+        "detail": "needs both pi and ultron; this run has only claude, claude-ultron"
+      },
+      {
+        "check": "cost",
+        "detail": "needs both pi and ultron; this run has only claude, claude-ultron"
+      }
+    ],
+    "checks": [
+      {
+        "check": "runs",
+        "ok": true,
+        "detail": "claude: 3 of 3 measured runs passed"
+      },
+      {
+        "check": "runs",
+        "ok": true,
+        "detail": "claude-ultron: 3 of 3 measured runs passed"
+      }
+    ],
+    "passed": true
+  },
+  "records": [
+    {
+      "task": "data-sessions",
+      "category": "large-data",
+      "variant": "claude",
+      "trial": 1,
+      "model": "claude-code/sonnet",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "Bash": 1
+      },
+      "toolCalls": 1,
+      "framesSpawned": null,
+      "childrenSpawned": null,
+      "childDepth": null,
+      "rootUnseenBytes": null,
+      "cost": 0.0333416,
+      "tokens": 40352,
+      "firstRequestInputTokens": 19206,
+      "turns": 2,
+      "durationMs": 12423,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/data-sessions-claude-1-2026-09-29T16-56-33-251Z"
+    },
+    {
+      "task": "bugs-invoicing",
+      "category": "multi-bug",
+      "variant": "claude",
+      "trial": 1,
+      "model": "claude-code/sonnet",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "Bash": 3
+      },
+      "toolCalls": 3,
+      "framesSpawned": null,
+      "childrenSpawned": null,
+      "childDepth": null,
+      "rootUnseenBytes": null,
+      "cost": 0.0680746,
+      "tokens": 86900,
+      "firstRequestInputTokens": 19015,
+      "turns": 4,
+      "durationMs": 20420,
+      "verify": {
+        "status": 0,
+        "output": "----------------------------------------------------------------------\nRan 7 tests in 0.020s\n\nOK\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/bugs-invoicing-claude-1-2026-09-29T16-56-31-459Z"
+    },
+    {
+      "task": "bugs-invoicing",
+      "category": "multi-bug",
+      "variant": "claude-ultron",
+      "trial": 1,
+      "model": "claude-code/sonnet",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "rlm": 4
+      },
+      "toolCalls": 4,
+      "framesSpawned": 0,
+      "framesSource": "events",
+      "childrenSpawned": 0,
+      "childDepth": null,
+      "rootUnseenBytes": null,
+      "cost": 0.0637076,
+      "tokens": 35156,
+      "firstRequestInputTokens": 3729,
+      "turns": 5,
+      "durationMs": 29523,
+      "verify": {
+        "status": 0,
+        "output": "----------------------------------------------------------------------\nRan 7 tests in 0.021s\n\nOK\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/bugs-invoicing-claude-ultron-1-2026-09-29T16-56-31-476Z"
+    },
+    {
+      "task": "data-sessions",
+      "category": "large-data",
+      "variant": "claude-ultron",
+      "trial": 1,
+      "model": "claude-code/sonnet",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "rlm": 1
+      },
+      "toolCalls": 1,
+      "framesSpawned": 0,
+      "framesSource": "events",
+      "childrenSpawned": 0,
+      "childDepth": null,
+      "rootUnseenBytes": null,
+      "cost": 0.026926199999999997,
+      "tokens": 9656,
+      "firstRequestInputTokens": 3918,
+      "turns": 2,
+      "durationMs": 16518,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/data-sessions-claude-ultron-1-2026-09-29T16-56-46-507Z"
+    },
+    {
+      "task": "logs-bruteforce",
+      "category": "log-forensics",
+      "variant": "claude",
+      "trial": 1,
+      "model": "claude-code/sonnet",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "Bash": 2
+      },
+      "toolCalls": 2,
+      "framesSpawned": null,
+      "childrenSpawned": null,
+      "childDepth": null,
+      "rootUnseenBytes": null,
+      "cost": 0.045182200000000006,
+      "tokens": 62001,
+      "firstRequestInputTokens": 19164,
+      "turns": 3,
+      "durationMs": 16257,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/logs-bruteforce-claude-1-2026-09-29T16-56-53-206Z"
+    },
+    {
+      "task": "logs-bruteforce",
+      "category": "log-forensics",
+      "variant": "claude-ultron",
+      "trial": 1,
+      "model": "claude-code/sonnet",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "rlm": 2
+      },
+      "toolCalls": 2,
+      "framesSpawned": 0,
+      "framesSource": "events",
+      "childrenSpawned": 0,
+      "childDepth": null,
+      "rootUnseenBytes": null,
+      "cost": 0.0331226,
+      "tokens": 15245,
+      "firstRequestInputTokens": 3878,
+      "turns": 3,
+      "durationMs": 17565,
+      "verify": {
+        "status": 0,
+        "output": "ok\n"
+      },
+      "evidence": "/tmp/ultron-quality-failed/logs-bruteforce-claude-ultron-1-2026-09-29T16-57-02-413Z"
+    }
+  ]
+}

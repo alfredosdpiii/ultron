@@ -69,6 +69,7 @@ import {
 	createLegacyRecall,
 	legacyBankFromEnv,
 } from "../ultron/auto-memory.ts";
+import { EXTERNAL_ROOT_OPERATION, ExternalRootController } from "../ultron/claude/external-root.ts";
 import { CodeSkills, codeSkillsDir, codeSkillsToolSection } from "../ultron/code-skills.ts";
 import { CONTEXT_EDIT_EVENT, CONTEXT_ENTRY_PROJECTORS, ContextControl } from "../ultron/context-control.ts";
 import { createFamilyModule } from "../ultron/family.ts";
@@ -99,7 +100,7 @@ import { createSessionModuleStore, type HostCaller } from "../ultron/rlm/host-mo
 import { createInferenceRuntime, createSessionFrameStore } from "../ultron/rlm/inference.ts";
 import { type KernelExecutionResult, type KernelHostHandler, RlmKernel } from "../ultron/rlm/kernel.ts";
 import { KernelPool, KernelPoolCapacityError } from "../ultron/rlm/kernel-pool.ts";
-import { type DetachedTaskEnd, NativeRlmHost } from "../ultron/rlm/native-host.ts";
+import { type DetachedTaskEnd, type NativeExternalChildRunner, NativeRlmHost } from "../ultron/rlm/native-host.ts";
 import { maskCellOutput } from "../ultron/rlm/output-secrets.ts";
 import { truncateToolOutput } from "../ultron/rlm/output-truncation.ts";
 import {
@@ -566,7 +567,40 @@ export const SessionWorkerOptionsSchema = StrictObject({
 });
 export type SessionWorkerOptions = Static<typeof SessionWorkerOptionsSchema>;
 
-type SessionWorkerRuntimeOptions = SessionWorkerOptions & { readonly apiKey?: string };
+/**
+ * Ultron's runtime for a root agent outside it (Claude Code over MCP, see ultron/claude/external-root.ts): the root
+ * lane never runs; the harness model serves frames (and harness-lane children), and root events go to an inbox.
+ */
+export type ExternalRootOptions = {
+	/** The harness model when it resolves (frames run on it); otherwise the profile's default model. */
+	readonly preferredModel?: { readonly provider: string; readonly model: string };
+	/** Model for `rlm.spawn` subagents on harness lanes (they need tool calls, which the frame model may lack). */
+	readonly childModel?: string;
+	/** Runs `rlm.spawn` subagents as processes of their own (Claude Code child agents). */
+	readonly externalChild?: NativeExternalChildRunner;
+	/** The root is itself a subagent: levels above it and how many more it may create. */
+	readonly rootSpawn?: { readonly level: number; readonly allowance: number };
+	/** Where a root that is itself a subagent sends its `rlm.finish` verdict. */
+	readonly rootFinish?: (payload: Record<string, unknown>, context: Context) => Promise<unknown>;
+};
+
+type SessionWorkerRuntimeOptions = SessionWorkerOptions & {
+	readonly apiKey?: string;
+	readonly externalRoot?: ExternalRootOptions;
+};
+
+/** The runtime with, for an external root, its controller and the model frames run on. */
+export type UltronRuntime = SessionWorkerRuntime & {
+	readonly externalRoot?: ExternalRootController;
+	readonly model: string;
+	/** A host request on behalf of a lane (a relayed subagent verdict names the subagent's lane). */
+	readonly hostRequest: (
+		type: string,
+		payload: Record<string, unknown>,
+		context: Context,
+		caller: HostCaller,
+	) => Promise<unknown>;
+};
 
 export const WorkerOperationScopeSchema = StrictObject({
 	serverConnectionId: Type.String(),
@@ -1430,11 +1464,17 @@ export async function runSessionWorkerWithHarness(
 	}
 }
 
-async function createCodingAgentHarness(
+/**
+ * Ultron's runtime on one session: the harness with the rlm tool, the host (tasks, subagents, frames, modules),
+ * hints, file hooks, completion events, memory and budgets. The session worker drives its root lane; with
+ * `options.externalRoot` an outside agent (Claude Code over MCP) drives the root through `externalRoot` instead.
+ */
+export async function createUltronRuntime(
 	session: Session<JsonlSessionMetadata>,
 	options: SessionWorkerRuntimeOptions,
 	executionEnv: NodeExecutionEnv,
-): Promise<SessionWorkerRuntime> {
+): Promise<UltronRuntime> {
+	const external = options.externalRoot;
 	traceStartup("worker.harness");
 	const modelRuntime = await ModelRuntime.create({ refreshOnCreate: false, allowModelNetwork: false });
 	// A project the user distrusted with `/trust` (or `defaultProjectTrust: "never"`) loads no project settings or resources.
@@ -1481,8 +1521,19 @@ async function createCodingAgentHarness(
 	loadedExtensions.runtime.pendingProviderRegistrations = [];
 	loadedExtensions.runtime.pendingNativeProviderRegistrations = [];
 	await modelRuntime.refresh({ allowNetwork: false });
-	let resolved: Awaited<ReturnType<typeof findInitialModel>> | ReturnType<typeof resolveCliModel>;
-	if (options.model === undefined) {
+	let resolved: Awaited<ReturnType<typeof findInitialModel>> | ReturnType<typeof resolveCliModel> | undefined;
+	// An external root prefers its frame model (for example claude-code/sonnet) and falls back to the default.
+	if (external?.preferredModel !== undefined) {
+		const preferred = resolveCliModel({
+			cliProvider: external.preferredModel.provider,
+			cliModel: external.preferredModel.model,
+			modelRuntime,
+		});
+		if (!preferred.error && preferred.model) resolved = preferred;
+	}
+	if (resolved !== undefined) {
+		// Resolved above.
+	} else if (options.model === undefined) {
 		resolved = await findInitialModel({
 			scopedModels: [],
 			isContinuing: true,
@@ -1578,6 +1629,7 @@ async function createCodingAgentHarness(
 		maxPerTag: hintMaxPerTag(),
 		asyncEvents: asyncEventsEnabled(process.env.ULTRON_ASYNC_EVENTS),
 		readHandleBytes: readHandleBytes(),
+		...(external === undefined ? {} : { rootDelivery: "next-call" as const }),
 	});
 	// Before-write and after-cell file hooks: Loki and extensions' `before_file_write`/`after_cell_changes` handlers.
 	const fileHooks = new FileHooks({
@@ -1588,6 +1640,8 @@ async function createCodingAgentHarness(
 		options.metadata.cwd,
 		hostHandler,
 		async (invocation, context) => {
+			// A cell of an external root (Claude Code over MCP) runs on the root lane; its turn is opened by the controller.
+			if (external !== undefined && invocation.operationId.startsWith(EXTERNAL_ROOT_OPERATION)) return "main";
 			const meta = await session.getValue(value<{ lane: string }>("pi.op.meta", invocation.operationId), context);
 			if (!meta || typeof meta.value.lane !== "string") throw new Error("RLM invocation has no owning lane");
 			// The invocation's operation is the main-lane run (root turn) its cells belong to; host requests from
@@ -1602,7 +1656,11 @@ async function createCodingAgentHarness(
 			snapshotKey: snapshotKey.key,
 			hints: cellHints,
 			// The lane's current model (it can change mid-session); the harness exists by the time a cell runs.
-			resolveModel: async (lane, context) => (await rlmHarness?.lane(lane, context))?.getModel(context),
+			// An external root's own model is not Ultron's to know (its images go to Claude Code as they are).
+			resolveModel: async (lane, context) =>
+				external !== undefined && lane === "main"
+					? undefined
+					: (await rlmHarness?.lane(lane, context))?.getModel(context),
 			autoResizeImages: () => settingsManager.getImageAutoResize(),
 			fileHooks,
 		},
@@ -1866,6 +1924,10 @@ async function createCodingAgentHarness(
 			rootTurns: true,
 			// Subagents' declared file changes are checked against snapshots of the session's working directory.
 			workspace: options.metadata.cwd,
+			...(external?.childModel === undefined ? {} : { childModel: external.childModel }),
+			...(external?.externalChild === undefined ? {} : { externalChild: external.externalChild }),
+			...(external?.rootSpawn === undefined ? {} : { rootSpawn: external.rootSpawn }),
+			...(external?.rootFinish === undefined ? {} : { rootFinish: external.rootFinish }),
 			pinLane: (lane, holder) => rlmTool.pin(lane, holder),
 			unpinLane: (lane, holder) => rlmTool.unpin(lane, holder),
 			onTaskEnd: (task, info) => contextControl.taskEnded(task, info),
@@ -1966,9 +2028,12 @@ async function createCodingAgentHarness(
 			],
 		});
 		const activeHost = host;
+		// The external root's inbox; the controller is completed below, once memory and Loki are known.
+		let externalSink: ((events: RuntimeEvent[]) => void) | undefined;
 		events = new AsyncEventDispatcher({
 			harness,
 			host: activeHost,
+			...(external === undefined ? {} : { rootSink: (batch: RuntimeEvent[]) => externalSink?.(batch) }),
 			enabled: asyncEventsEnabled(process.env.ULTRON_ASYNC_EVENTS),
 			maxRuns: maxEventRunsFromEnv(process.env.ULTRON_ASYNC_EVENTS_MAX_RUNS),
 			holdActivity: () => holdActivity?.() ?? (() => {}),
@@ -2008,7 +2073,8 @@ async function createCodingAgentHarness(
 						),
 					})
 				: undefined;
-		const removeAutoMemory = autoMemory?.install(harness) ?? (() => {});
+		// An external root's memory runs from its hooks (ExternalRootController), not from runs of the root lane.
+		const removeAutoMemory = external === undefined ? (autoMemory?.install(harness) ?? (() => {})) : () => {};
 		// Per-root turn, token and cost limits: every model response on any lane (the root's own, sub-agents, frames,
 		// typed agents, background jobs) is charged, tokens and cost, to the root that admitted its lane. Once a
 		// root's tree is spent its tool calls are refused with the limit error, its runs stop, and no lane of the tree
@@ -2073,6 +2139,36 @@ async function createCodingAgentHarness(
 			nudger.runEnded(event.runId);
 			skillNudger.runEnded(event.runId);
 		});
+		const externalRoot =
+			external === undefined
+				? undefined
+				: new ExternalRootController({
+						execute: (code, invocation, context) =>
+							rlmTool.execute(
+								invocation.invocationId,
+								{ code },
+								() => {},
+								{ env: executionEnv },
+								invocation,
+								context,
+							),
+						host: {
+							beginRootTurn: (runId) => activeHost.beginRootTurn(runId),
+							endRootTurn: (runId) => activeHost.endRootTurn(runId),
+							rootIdOfRun: (runId) => activeHost.rootIdOfRun(runId),
+							pendingRootNotifications: () => activeHost.pendingRootNotifications(),
+						},
+						usage: { turnBudgetExhausted: (rootId) => usage.turnBudgetExhausted(rootId) },
+						hints: cellHints,
+						fileHooks,
+						...(autoMemory === undefined ? {} : { autoMemory }),
+						lokiNotice: loki.notice,
+						...(loki.context === undefined ? {} : { lokiContext: loki.context }),
+						toolRoundsNudge: toolRoundsNudgeFromEnv(process.env.ULTRON_TOOL_ROUNDS_NUDGE),
+						skillNudge: skillNudgeFromEnv(process.env.ULTRON_SKILL_NUDGE),
+						asyncEvents: asyncEventsEnabled(process.env.ULTRON_ASYNC_EVENTS),
+					});
+		externalSink = externalRoot?.sink;
 		const currentActiveToolNames = await lane.getActiveTools(TODO_CONTEXT);
 		if (
 			currentActiveToolNames.length !== extensionActiveToolNames.length ||
@@ -2082,6 +2178,9 @@ async function createCodingAgentHarness(
 		}
 		return {
 			harness,
+			model: `${resolved.model.provider}/${resolved.model.id}`,
+			hostRequest: (type, payload, context, caller) => activeHost.handle(type, payload, context, caller),
+			...(externalRoot === undefined ? {} : { externalRoot }),
 			closeRlm: async () => {
 				removeLokiListeners();
 				removeRootTurnListener();
@@ -2342,7 +2441,7 @@ export function hindsightUrl(configured: string | undefined, setting?: string): 
 }
 
 export function runSessionWorkerProcess(args: readonly string[]): Promise<void> {
-	return runSessionWorkerWithHarness(args, createCodingAgentHarness);
+	return runSessionWorkerWithHarness(args, createUltronRuntime);
 }
 
 if (isDirectInternalProcessEntry(import.meta.url)) {
