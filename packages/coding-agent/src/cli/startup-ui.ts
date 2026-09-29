@@ -7,7 +7,15 @@ import {
 	TuiMainScreen,
 } from "@ultron/tui";
 import { existsSync } from "fs";
-import { APP_NAME, CONFIG_DIR_NAME, ENV_AGENT_DIR, getAgentDir, getSettingsPath, PACKAGE_NAME } from "../config.ts";
+import {
+	APP_NAME,
+	CONFIG_DIR_NAME,
+	ENV_AGENT_DIR,
+	getAgentDir,
+	getSettingsPath,
+	NPM_PACKAGE_NAME,
+	PACKAGE_NAME,
+} from "../config.ts";
 import { areExperimentalFeaturesEnabled } from "../core/experimental.ts";
 import { KeybindingsManager } from "../core/keybindings.ts";
 import { DefaultPackageManager, type ResolvedResource } from "../core/package-manager.ts";
@@ -47,7 +55,9 @@ function isOfficialDistribution({ packageName, appName, configDirName }: Distrib
 		(packageName === OFFICIAL_PACKAGE_NAME &&
 			appName === OFFICIAL_APP_NAME &&
 			configDirName === OFFICIAL_CONFIG_DIR_NAME) ||
-		(packageName === ULTRON_PACKAGE_NAME && appName === ULTRON_APP_NAME && configDirName === OFFICIAL_CONFIG_DIR_NAME)
+		((packageName === ULTRON_PACKAGE_NAME || packageName === NPM_PACKAGE_NAME) &&
+			appName === ULTRON_APP_NAME &&
+			configDirName === OFFICIAL_CONFIG_DIR_NAME)
 	);
 }
 
