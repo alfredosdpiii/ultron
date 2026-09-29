@@ -97,16 +97,18 @@ describe("default tool set", () => {
 			"help(ctx)",
 			"help(skills)",
 			"help(agent)",
-			"never check on children through their files, logs or progress",
-			"With nothing of your own left, `await rlm.collect(hs)` (the wait is free",
-			"or end your turn to hand back control: each end arrives as a `child_done` event",
+			"never check on children's files, logs or progress",
+			"With nothing of your own left, `await rlm.collect(hs)` (free",
+			"or end your turn: each end arrives as a `child_done` event",
+			"`depth=N` lets a child delegate too (≤3 levels)",
+			"spawn only if given depth",
 		])
 			expect(guide).toContain(rule);
 		expect(guide).not.toContain("keep working");
 		// Without completion events nothing wakes an idle root, so waiting means rlm.collect alone.
 		const quiet = rlmRuntimePrompt(["rlm"], { asyncEvents: false })!;
 		const delegation = quiet.slice(quiet.indexOf("## Delegation"), quiet.indexOf("## Other APIs"));
-		expect(delegation).toContain("With nothing of your own left, `await rlm.collect(hs)` (the wait is free");
+		expect(delegation).toContain("With nothing of your own left, `await rlm.collect(hs)` (free");
 		expect(delegation).not.toContain("child_done");
 		expect(delegation).not.toContain("end your turn");
 		expect(quiet).toContain("ULTRON_ASYNC_EVENTS=off");

@@ -49,7 +49,7 @@
 		"packages/coding-agent/test/ultron-a45-saturated-recursion.test.ts": "0d65ee5721e5f5141542bdaea14ed8da33582c3d18900772a43a57c476a88341",
 		"packages/coding-agent/test/ultron-a46-demo.test.ts": "7fee39d6469505d50021992cbd9359ad719ced7322ade51bee0fd5cf2d4a2168",
 		"packages/coding-agent/test/ultron-a46-live-demo.test.ts": "5a55669b11132a9e808645206730f04248f5c24f57e30c09740fce927c52d481",
-		"packages/coding-agent/test/ultron-a47-a50-bounded-inference.test.ts": "b8fde2cdd335cc79a327259833e114de7276c02e3a8e1afbbb22698c67552960",
+		"packages/coding-agent/test/ultron-a47-a50-bounded-inference.test.ts": "236e56b8f722652639f11017f288d188500c8955fcf3973d799968ed052617c6",
 		"packages/coding-agent/test/ultron-a47-large-input.test.ts": "e5350bb6749163a18b24d0335ca589a68800d7475116c39a64dc48ccd128c052",
 		"packages/coding-agent/test/ultron-a51-collapse-on-return.test.ts": "49d6dd9ab421e134c93d2d2befde01eb26c8ec1c03161d4820b19f1215c2ebf9",
 		"packages/coding-agent/test/ultron-a52-context-guards.test.ts": "c69850b06dd5aa233c7fd034c72efcc0a5dd6c6cdd41692fe8ae7e8729fd25c5",

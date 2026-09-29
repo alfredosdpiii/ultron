@@ -84,11 +84,11 @@ const BOUNDED_INFERENCE = `## Bounded inference\n${INFERENCE_PROMPT}`;
 /** Delegation, with how to wait for children depending on whether their ends are announced (ULTRON_ASYNC_EVENTS). */
 function delegationPrompt(asyncEvents: boolean): string {
 	const wait = asyncEvents
-		? "`await rlm.collect(hs)` (the wait is free; check each status), or end your turn to hand back control: each end arrives as a `child_done` event"
-		: "`await rlm.collect(hs)` (the wait is free; check each status)";
+		? "`await rlm.collect(hs)` (free; check each status), or end your turn: each end arrives as a `child_done` event"
+		: "`await rlm.collect(hs)` (free; check each status)";
 	return `## Delegation
-\`h = await rlm.spawn(brief, name=...)\` starts a subagent (own REPL, your tools and files, not your conversation). Spawn only for independent multi-step work, with a self-contained brief (goal, paths, constraints, what to return), several at once. Then do only your own work that no child owns; never check on children through their files, logs or progress: their results come to you. With nothing of your own left, ${wait}. Verify their reports against your evidence. \`help(rlm.spawn)\`.
-If you are a subagent, do the brief yourself (spawn only when it asks you to delegate); your final reply is your result: self-contained, with evidence, paths and uncertainties.
+\`h = await rlm.spawn(brief, name=...)\` starts a subagent (own REPL, your tools and files, not your chat). Spawn only for independent multi-step work, with a self-contained brief (goal, paths, constraints, what to return), several at once; \`depth=N\` lets a child delegate too (≤3 levels) if its part splits again. Then do only your own work that no child owns; never check on children's files, logs or progress: results come to you. With nothing of your own left, ${wait}. Check their reports against your evidence. \`help(rlm.spawn)\`.
+If you are a subagent, do the brief yourself (spawn only if given depth); your final reply is your result: self-contained, with evidence, paths and uncertainties.
 Typed agents, agent graphs and jobs that outlive the turn: \`help(agents)\`, \`help(workflows)\`, \`help(background)\`.`;
 }
 
