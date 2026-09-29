@@ -185,14 +185,23 @@ type Generation = {
 	knownDescendants: Map<number, number>;
 	buffer?: Buffer;
 	bufferedBytes: number;
-	protocolBytes: number;
 };
 
-// Limits apply to wire bytes, including JSON overhead, not JavaScript characters.
+// Protocol output is bounded per frame and per request, never over the kernel's lifetime: a long session sends
+// any amount in total. The frame limit applies to wire bytes, including JSON overhead; runtime.py shrinks its
+// own frames to fit, so only raw writes that bypass it (os.write(1, ...)) can exceed it.
 const MAX_FRAME_BYTES = 1024 * 1024;
-const MAX_PROTOCOL_BYTES = 4 * MAX_FRAME_BYTES;
+/**
+ * stdout or stderr kept for one request (cell). runtime.py sends each stream once, within a frame; this bounds
+ * a flood of repeated frames for one request. A result replaces, rather than grows, and fits a frame.
+ */
+const MAX_REQUEST_STREAM_CHARS = 4 * MAX_FRAME_BYTES;
+const REQUEST_STREAM_MARKER = `\n[... further output dropped: over the RLM kernel's 4 MiB per-cell output limit ...]\n`;
+/** Raw stderr of the kernel process is kept as a tail for diagnostics only. */
+const STDERR_TAIL_CHARS = 8000;
 const MAX_HOST_REQUESTS = 16;
 const STARTUP_TIMEOUT_MS = 10_000;
+const FRAME_DECODER = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 const SHUTDOWN_TIMEOUT_MS = 1_000;
 const PLACEHOLDER_ID = "00000000-0000-0000-0000-000000000000";
 
@@ -240,6 +249,14 @@ function frameString(value: unknown): string {
 	} catch {
 		return String(value);
 	}
+}
+
+/** `current` + `text` within the per-cell stream limit; the marker is added once, the first time it cuts. */
+function appendBounded(current: string, text: string): string {
+	const room = MAX_REQUEST_STREAM_CHARS - current.length;
+	if (text.length <= room) return current + text;
+	if (room < 0) return current;
+	return current + text.slice(0, room) + REQUEST_STREAM_MARKER;
 }
 
 function stringList(value: unknown): string[] {
@@ -432,7 +449,6 @@ export class RlmKernel {
 			restorePath: restoreSnapshot && this.autoRestore ? this.options.snapshotPath : undefined,
 			buffer: Buffer.allocUnsafe(MAX_FRAME_BYTES),
 			bufferedBytes: 0,
-			protocolBytes: 0,
 			treeBackend,
 			knownDescendants: new Map(),
 		};
@@ -444,9 +460,10 @@ export class RlmKernel {
 		}, timeout);
 		child.stdout.on("data", (chunk: Buffer) => this.handleData(generation, chunk));
 		child.stderr.on("data", (chunk: Buffer) => {
-			if (this.accountProtocol(generation, chunk.length)) {
-				this.stderr = (this.stderr + chunk.toString("utf8")).slice(-8000);
-			}
+			// Only a bounded tail is kept, so a chatty process never grows host memory or ends the kernel.
+			if (!this.isCurrent(generation)) return;
+			const text = chunk.subarray(Math.max(0, chunk.length - 4 * STDERR_TAIL_CHARS)).toString("utf8");
+			this.stderr = (this.stderr + text).slice(-STDERR_TAIL_CHARS);
 		});
 		child.once("error", (error) => {
 			generation.exited.resolve(undefined);
@@ -601,19 +618,8 @@ export class RlmKernel {
 		}
 	}
 
-	private accountProtocol(generation: Generation, bytes: number): boolean {
-		if (!this.isCurrent(generation)) return false;
-		generation.protocolBytes += bytes;
-		if (generation.protocolBytes > MAX_PROTOCOL_BYTES) {
-			this.fail(generation, new Error(`RLM kernel protocol output exceeds 4 MiB (${MAX_PROTOCOL_BYTES} bytes)`));
-			return false;
-		}
-		return true;
-	}
-
 	private handleData(generation: Generation, chunk: Buffer): void {
-		// Count all child output, including repeated valid frames and stderr.
-		if (!this.accountProtocol(generation, chunk.length)) return;
+		if (!this.isCurrent(generation)) return;
 		let offset = 0;
 		while (offset < chunk.length && this.isCurrent(generation)) {
 			const newline = chunk.indexOf(10, offset);
@@ -625,14 +631,13 @@ export class RlmKernel {
 				this.fail(generation, new Error(`RLM kernel protocol frame exceeds 1 MiB (${MAX_FRAME_BYTES} bytes)`));
 				return;
 			}
+			// One frame-sized buffer per generation is reused for every frame.
 			const buffer = generation.buffer!;
 			chunk.copy(buffer, generation.bufferedBytes, offset, end);
 			generation.bufferedBytes += length;
 			if (newline === -1) return;
 			try {
-				const line = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(
-					buffer.subarray(0, generation.bufferedBytes),
-				);
+				const line = FRAME_DECODER.decode(buffer.subarray(0, generation.bufferedBytes));
 				generation.bufferedBytes = 0;
 				this.handleLine(generation, line);
 			} catch (error) {
@@ -772,8 +777,8 @@ export class RlmKernel {
 		const waiter = generation.pending.get(requestId);
 		if (!waiter) throw new Error(`protocol frame references unknown request id: ${requestId}`);
 		const state = waiter.state;
-		if (frame.event === "stdout") state.stdout += frameString(frame.text);
-		if (frame.event === "stderr") state.stderr += frameString(frame.text);
+		if (frame.event === "stdout") state.stdout = appendBounded(state.stdout, frameString(frame.text));
+		if (frame.event === "stderr") state.stderr = appendBounded(state.stderr, frameString(frame.text));
 		if (frame.event === "result") state.result = frameString(frame.result);
 		if (frame.event === "error") {
 			state.status = "error";

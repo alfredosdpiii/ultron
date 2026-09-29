@@ -1,5 +1,5 @@
 {
-	"generated_at": "2026-09-29T11:56:04.487Z",
+	"generated_at": "2026-09-29T12:07:24.952Z",
 	"lock": {
 		"ok": true,
 		"lockMissing": false,
@@ -307,8 +307,8 @@
 			"status": "passed",
 			"declared": "passed",
 			"evidence": {
-				"listed": 9,
-				"passed": 9,
+				"listed": 13,
+				"passed": 13,
 				"failed": 0,
 				"missing": 0,
 				"skipped": 0,
@@ -375,6 +375,34 @@
 				{
 					"file": "packages/coding-agent/test/ultron-a06-limits.test.ts",
 					"test": "shutting down the kernel kills the whole process tree",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-kernel-long-session.test.ts",
+					"test": "200 cells of 64 KB output keep the same kernel generation and its variables",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-kernel-long-session.test.ts",
+					"test": "bridge requests totalling far over 4 MiB keep the same kernel generation",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-kernel-long-session.test.ts",
+					"test": "a single output over the 1 MiB frame is cut in the cell, not by killing the kernel",
+					"outcome": "passed",
+					"matched": 1,
+					"infra": null
+				},
+				{
+					"file": "packages/coding-agent/test/ultron-kernel-long-session.test.ts",
+					"test": "the host bounds a cell's accumulated output without failing the kernel",
 					"outcome": "passed",
 					"matched": 1,
 					"infra": null

@@ -856,9 +856,48 @@ class RuntimeState:
         # Agent classes and their instances live in `state`; define the classes again for the fresh scratch.
         agent_class_api.rehydrate()
 
+# Fields that identify a frame; never shortened to fit it.
+_FRAME_KEYS = frozenset({"event", "id", "status"})
+
+
+def _shrink_frame_value(value: Any, keep: int) -> Any:
+    """Keep the head and tail of every string (in characters) and list (in items) within `keep`."""
+    if isinstance(value, str):
+        if len(value) <= keep:
+            return value
+        half = keep // 2
+        cut = len(value) - 2 * half
+        return f"{value[:half]}\n[... {cut} characters cut to fit the 1 MiB protocol frame ...]\n{value[len(value) - half:]}"
+    if isinstance(value, (list, tuple)):
+        items = list(value)
+        if len(items) > keep:
+            half = keep // 2
+            items = [*items[:half], f"[... {len(items) - 2 * half} items cut to fit the 1 MiB protocol frame ...]",
+                     *items[len(items) - half:]]
+        return [_shrink_frame_value(item, keep) for item in items]
+    if isinstance(value, dict):
+        return {key: _shrink_frame_value(item, keep) for key, item in value.items()}
+    return value
+
+
+def _encode_frame(payload: dict[str, Any]) -> str:
+    """One protocol line within the host's 1 MiB frame. The host ends a kernel that sends a larger frame, losing
+    every variable, so an oversized output (a large capture budget, many names) is cut here, in the cell."""
+    line = json.dumps(payload, default=str, separators=(",", ":"))
+    keep = _MAX_HOST_FRAME_BYTES // 2
+    while len(line) > _MAX_HOST_FRAME_BYTES and keep > 0:
+        # JSON escaping can grow a character up to 12 bytes; halve until the frame fits.
+        keep //= 2
+        shrunk = {key: value if key in _FRAME_KEYS else _shrink_frame_value(value, keep) for key, value in payload.items()}
+        line = json.dumps(shrunk, default=str, separators=(",", ":"))
+    if len(line) > _MAX_HOST_FRAME_BYTES:
+        # Only values json.dumps renders with str() can still be this large: keep the frame's identity.
+        line = json.dumps({key: payload[key] for key in payload if key in _FRAME_KEYS}, separators=(",", ":"))
+    return line + "\n"
+
+
 def emit(event: str, **fields: Any) -> None:
-    payload = {"event": event, **fields}
-    sys.__stdout__.write(json.dumps(payload, default=str, separators=(",", ":")) + "\n")
+    sys.__stdout__.write(_encode_frame({"event": event, **fields}))
     sys.__stdout__.flush()
 
 

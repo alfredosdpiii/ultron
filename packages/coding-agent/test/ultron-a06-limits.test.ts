@@ -2,8 +2,9 @@
  * A06: output, artifact, wall-time, concurrency, and process limits hold.
  *
  * Profile under test (trusted-local, the only profile the native worker supports today):
- * - Output: 8 KiB preview per stdout/stderr/result stream (runtime.py); raw protocol output
- *   is capped at 1 MiB per frame and 4 MiB per kernel generation (kernel.ts).
+ * - Output: 8 KiB preview per stdout/stderr/result stream (runtime.py); protocol output is capped
+ *   at 1 MiB per frame (runtime.py shrinks its own frames to fit) and 4 MiB per cell stream
+ *   (kernel.ts), never cumulatively over a kernel's lifetime (ultron-kernel-long-session.test.ts).
  * - Artifacts: maxArtifactBytes (default 256 MiB) and maxArtifactStorageBytes (default 1 GiB)
  *   in NativeLocalServices; from Python, a host request over the 1 MiB frame raises in the cell.
  * - Wall time: per-task timeout_ms in NativeRlmHost and root maxWallMs in the usage ledger;
@@ -149,8 +150,9 @@ describe("A06 limits", () => {
 		test("raw writes that bypass Python's stdout are cut off at the protocol frame limit", async () => {
 			const kernel = new RlmKernel({ cwd: dir, runtimePath }, async () => null);
 			try {
+				// Raw bytes on the protocol stream cannot be resynchronized; the frame limit stops them.
 				await expect(kernel.execute("import os\nos.write(1, b'y' * (8 * 1024 * 1024))")).rejects.toThrow(
-					/exceeds (1|4) MiB/,
+					/protocol frame exceeds 1 MiB/,
 				);
 				// The next cell gets a fresh kernel generation instead of a wedged protocol.
 				expect(await kernel.execute("6 * 7")).toMatchObject({ status: "ok", result: "42" });

@@ -123,6 +123,15 @@
             "interrupting a cell kills its child and grandchild processes",
             "shutting down the kernel kills the whole process tree"
           ]
+        },
+        {
+          "file": "packages/coding-agent/test/ultron-kernel-long-session.test.ts",
+          "tests": [
+            "200 cells of 64 KB output keep the same kernel generation and its variables",
+            "bridge requests totalling far over 4 MiB keep the same kernel generation",
+            "a single output over the 1 MiB frame is cut in the cell, not by killing the kernel",
+            "the host bounds a cell's accumulated output without failing the kernel"
+          ]
         }
       ],
       "status_when_green": "passed",
