@@ -1,5 +1,6 @@
 import { visibleWidth } from "@ultron/tui";
 import { describe, expect, test } from "vitest";
+import { KeybindingsManager } from "../src/core/keybindings.ts";
 import {
 	applyDagAction,
 	buildDagRuns,
@@ -7,6 +8,7 @@ import {
 	initialDagState,
 	paneWorkRuns,
 	promptOf,
+	RlmPane,
 	type RlmPaneState,
 	renderRlmPane,
 	renderWaveSummary,
@@ -469,5 +471,45 @@ describe("wave summary", () => {
 		});
 		expect(renderWaveSummary(buildDagRuns(done), 80, { now: NOW })).toEqual([]);
 		expect(renderWaveSummary([], 80)).toEqual([]);
+	});
+});
+
+describe("RlmPane render cache", () => {
+	test("reuses its lines while the snapshot object, size and focus are unchanged, and redraws on any change", () => {
+		let snapshot = referenceSnapshot();
+		let focused = false;
+		let snapshots = 0;
+		const pane = new RlmPane({
+			snapshot: () => {
+				snapshots += 1;
+				return snapshot;
+			},
+			height: () => 30,
+			keybindings: KeybindingsManager.create(),
+			focused: () => focused,
+			onClose() {},
+			requestRender() {},
+		});
+		const first = pane.render(50);
+		// A frame that only scrolls the chat beside the pane: same snapshot, same lines (no re-layout).
+		expect(pane.render(50)).toBe(first);
+		expect(snapshots).toBe(2);
+		// Width, focus, a new snapshot, a key that moves the selection, and invalidate() each draw again.
+		expect(pane.render(60)).not.toBe(first);
+		const wide = pane.render(60);
+		focused = true;
+		const focusedLines = pane.render(60);
+		expect(focusedLines).not.toBe(wide);
+		expect(pane.render(60)).toBe(focusedLines);
+		snapshot = referenceSnapshot();
+		const fresh = pane.render(60);
+		expect(fresh).not.toBe(focusedLines);
+		expect(fresh).toEqual(focusedLines);
+		pane.handleInput("n");
+		const moved = pane.render(60);
+		expect(moved).not.toEqual(fresh);
+		pane.invalidate();
+		expect(pane.render(60)).not.toBe(moved);
+		expect(pane.render(60)).toEqual(moved);
 	});
 });

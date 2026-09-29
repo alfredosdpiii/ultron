@@ -8,10 +8,61 @@ import {
 	getActiveBackgroundAnsi,
 	getGraphemeCellRange,
 	sliceByColumn,
+	sliceWithWidth,
 	visibleWidth,
 } from "./utils.ts";
 
 const OSC133_ZONE_PREFIX = /^(?:\x1b\]133;[ABC](?:\x07|\x1b\\))+/;
+
+/** Written before each side-by-side box's text, as `compositeTuiLine` does, so no style or link leaks across. */
+const SEGMENT_RESET = "\x1b[0m\x1b]8;;\x07";
+
+/**
+ * Memo for per-row paint results, kept for one frame after last use. Scrolling shifts rows, so most rows of a
+ * frame paint a line the previous frame painted too (on another row); the memo makes those rows string lookups
+ * instead of another ANSI/grapheme pass.
+ */
+class FrameMemo {
+	#current = new Map<string, string>();
+	#previous = new Map<string, string>();
+
+	get(key: string): string | undefined {
+		let value = this.#current.get(key);
+		if (value === undefined) {
+			value = this.#previous.get(key);
+			if (value !== undefined) this.#current.set(key, value);
+		}
+		return value;
+	}
+
+	set(key: string, value: string): void {
+		this.#current.set(key, value);
+	}
+
+	rotate(): void {
+		this.#previous = this.#current;
+		this.#current = new Map();
+	}
+}
+
+const scrollbarCellMemo = new FrameMemo();
+const fittedLineMemo = new FrameMemo();
+
+/** A line cut and padded to exactly `width` columns, for painting a box left to right into a row. */
+function fitLine(line: string, width: number): string {
+	const key = `${width}\u0000${line}`;
+	let fitted = fittedLineMemo.get(key);
+	if (fitted === undefined) {
+		const lineWidth = visibleWidth(line);
+		if (lineWidth <= width) fitted = line + " ".repeat(width - lineWidth);
+		else {
+			const slice = sliceWithWidth(line, 0, width, true);
+			fitted = slice.text + " ".repeat(Math.max(0, width - slice.width));
+		}
+		fittedLineMemo.set(key, fitted);
+	}
+	return fitted;
+}
 
 export interface LayoutRect {
 	x: number;
@@ -254,7 +305,22 @@ function replaceScrollbarCell(
 	preserveTargetBackground: boolean,
 ): string {
 	if (isImageLine(line)) return line;
+	const key = `${column}\u0000${totalWidth}\u0000${preserveTargetBackground ? 1 : 0}\u0000${replacement}\u0000${line}`;
+	let result = scrollbarCellMemo.get(key);
+	if (result === undefined) {
+		result = composeScrollbarCell(line, column, totalWidth, replacement, preserveTargetBackground);
+		scrollbarCellMemo.set(key, result);
+	}
+	return result;
+}
 
+function composeScrollbarCell(
+	line: string,
+	column: number,
+	totalWidth: number,
+	replacement: string,
+	preserveTargetBackground: boolean,
+): string {
 	const graphemeRange = getGraphemeCellRange(line, column);
 	const start = graphemeRange?.start ?? column;
 	const end = graphemeRange?.end ?? column + 1;
@@ -306,7 +372,7 @@ export function getScrollbarGeometry(box: LayoutBox, includeHiddenAuto = false):
 	};
 }
 
-function paintScrollbar(box: LayoutBox, screen: string[], totalWidth: number): void {
+function paintScrollbar(box: LayoutBox, screen: string[], totalWidth: number, ends: (number | undefined)[]): void {
 	const geometry = getScrollbarGeometry(box);
 	if (!geometry || !box.scrollView) return;
 
@@ -324,10 +390,17 @@ function paintScrollbar(box: LayoutBox, screen: string[], totalWidth: number): v
 			replacement,
 			box.scrollView.scrollbar !== "always",
 		);
+		// The cell sits inside the row's painted text, so a left-to-right row still ends where it did.
+		if (ends[row] !== undefined && geometry.column >= ends[row]) ends[row] = undefined;
 	}
 }
 
-function paintBox(box: LayoutBox, screen: string[], totalWidth: number): void {
+/**
+ * `ends[row]` is the column where a row's text ends while the row has been painted strictly left to right with
+ * `fitLine` (0 for an untouched row, undefined once anything else painted it). A box that starts exactly there, as
+ * the columns of an hstack do, is appended instead of composited over the row.
+ */
+function paintBox(box: LayoutBox, screen: string[], totalWidth: number, ends: (number | undefined)[]): void {
 	if (box.lines) {
 		const offset = box.lineOffset ?? 0;
 		const firstRow = Math.max(box.rect.y, box.clip.y, 0);
@@ -349,12 +422,18 @@ function paintBox(box: LayoutBox, screen: string[], totalWidth: number): void {
 			// width clamp still truncates over-wide lines.
 			if (box.rect.x === 0 && box.rect.width >= totalWidth && (isImageLine(line) || !screen[row])) {
 				screen[row] = line;
+				ends[row] = undefined;
+			} else if (ends[row] === box.rect.x && !isImageLine(line) && box.rect.x + box.rect.width <= totalWidth) {
+				// Same result on screen as compositing onto the row, without re-scanning what is already there.
+				screen[row] = `${screen[row] ?? ""}${SEGMENT_RESET}${fitLine(line, box.rect.width)}`;
+				ends[row] = box.rect.x + box.rect.width;
 			} else {
 				screen[row] = compositeTuiLine(screen[row] ?? "", line, box.rect.x, box.rect.width, totalWidth);
+				ends[row] = undefined;
 			}
 		}
 	}
-	for (const child of box.children) paintBox(child, screen, totalWidth);
+	for (const child of box.children) paintBox(child, screen, totalWidth, ends);
 
 	if (box.scrollView && box.scrollContentLines && box.scrollView.scrollTop > 0 && box.rect.height > 0) {
 		for (let imageRow = box.scrollView.scrollTop - 1; imageRow >= 0; imageRow--) {
@@ -373,7 +452,7 @@ function paintBox(box: LayoutBox, screen: string[], totalWidth: number): void {
 		}
 	}
 
-	paintScrollbar(box, screen, totalWidth);
+	paintScrollbar(box, screen, totalWidth, ends);
 }
 
 export function renderLayoutFrame(
@@ -397,7 +476,14 @@ export function renderLayoutFrame(
 		height: safeHeight,
 	});
 	const lines = Array.from({ length: safeHeight }, () => "");
-	paintBox(rootBox, lines, safeWidth);
+	scrollbarCellMemo.rotate();
+	fittedLineMemo.rotate();
+	paintBox(
+		rootBox,
+		lines,
+		safeWidth,
+		Array.from({ length: safeHeight }, () => 0),
+	);
 	return {
 		root: rootBox,
 		width: safeWidth,

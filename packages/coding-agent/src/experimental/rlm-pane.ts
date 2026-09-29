@@ -1069,6 +1069,10 @@ export function rlmPaneHints(keybindings: KeyLabels): string[] {
 }
 
 export interface RlmPaneOptions {
+	/**
+	 * The data to draw. Returning the same object again (while nothing in it changed) lets the pane reuse its last
+	 * lines, e.g. on frames that only scroll the chat beside it.
+	 */
 	readonly snapshot: () => RlmSnapshot;
 	/** Rows the pane fills (the full terminal height beside the chat). */
 	readonly height: () => number;
@@ -1086,6 +1090,18 @@ export interface RlmPaneOptions {
 export class RlmPane implements Component {
 	#state = initialDagState();
 	#runs: DagRun[] = [];
+	/** The last render and what it was drawn from. */
+	#drawn:
+		| {
+				readonly snapshot: RlmSnapshot;
+				readonly width: number;
+				readonly height: number;
+				readonly focused: boolean;
+				readonly toggle: string | undefined;
+				readonly state: RlmPaneState;
+				readonly lines: string[];
+		  }
+		| undefined;
 	private readonly options: RlmPaneOptions;
 
 	constructor(options: RlmPaneOptions) {
@@ -1111,11 +1127,24 @@ export class RlmPane implements Component {
 
 	render(width: number): string[] {
 		const snapshot = this.options.snapshot();
-		this.#runs = buildDagRuns(snapshot);
-		const inner = Math.max(1, width - 1);
+		const height = Math.max(1, this.options.height());
 		const focused = this.options.focused();
 		const toggle = this.options.toggleKey?.();
-		const rendered = renderRlmPane(this.#runs, this.#state, inner, Math.max(1, this.options.height()), {
+		const drawn = this.#drawn;
+		if (
+			drawn !== undefined &&
+			drawn.snapshot === snapshot &&
+			drawn.width === width &&
+			drawn.height === height &&
+			drawn.focused === focused &&
+			drawn.toggle === toggle &&
+			drawn.state === this.#state
+		) {
+			return drawn.lines;
+		}
+		this.#runs = buildDagRuns(snapshot);
+		const inner = Math.max(1, width - 1);
+		const rendered = renderRlmPane(this.#runs, this.#state, inner, height, {
 			...(this.options.style === undefined ? {} : { style: this.options.style }),
 			now: snapshot.now,
 			hints: rlmPaneHints(this.options.keybindings),
@@ -1125,8 +1154,12 @@ export class RlmPane implements Component {
 			taskCount: snapshot.tasks.length,
 		});
 		this.#state = rendered.state;
-		return rendered.lines.map((line) => ` ${line}`);
+		const lines = rendered.lines.map((line) => ` ${line}`);
+		this.#drawn = { snapshot, width, height, focused, toggle, state: this.#state, lines };
+		return lines;
 	}
 
-	invalidate(): void {}
+	invalidate(): void {
+		this.#drawn = undefined;
+	}
 }

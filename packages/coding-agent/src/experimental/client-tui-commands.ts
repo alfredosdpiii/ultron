@@ -319,6 +319,15 @@ export class StartupHeader implements Component {
 	#details = "";
 	readonly #text = new Text("", 1, 0);
 	readonly #splash: SplashOptions | undefined;
+	#drawn:
+		| {
+				readonly text: string[];
+				readonly width: number;
+				readonly enabled: boolean;
+				readonly rows: number | undefined;
+				readonly lines: string[];
+		  }
+		| undefined;
 
 	constructor(splash?: SplashOptions) {
 		this.#splash = splash;
@@ -338,8 +347,14 @@ export class StartupHeader implements Component {
 	render(width: number): string[] {
 		if (this.#text.render(width).length === 0) this.#update();
 		const text = this.#text.render(width);
-		const splash = this.#splash?.enabled() ? splashLines(width, this.#splash.rows()) : [];
-		if (splash.length === 0) return text;
+		const enabled = this.#splash?.enabled() ?? false;
+		const rows = enabled ? this.#splash?.rows() : undefined;
+		const drawn = this.#drawn;
+		// The header sits at the top of the transcript, so it is drawn on every frame: reuse the coloured logo.
+		if (drawn?.text === text && drawn.width === width && drawn.enabled === enabled && drawn.rows === rows) {
+			return drawn.lines;
+		}
+		const splash = enabled ? splashLines(width, rows) : [];
 		const colored = splash.map((line) =>
 			colorLogoLine(
 				line,
@@ -347,10 +362,13 @@ export class StartupHeader implements Component {
 				(background) => theme.fg("dim", background),
 			),
 		);
-		return [...colored, "", ...text];
+		const lines = colored.length === 0 ? text : [...colored, "", ...text];
+		this.#drawn = { text, width, enabled, rows, lines };
+		return lines;
 	}
 
 	invalidate(): void {
+		this.#drawn = undefined;
 		this.#update();
 		this.#text.invalidate();
 	}

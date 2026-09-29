@@ -478,6 +478,8 @@ export abstract class TuiBase extends Container implements TUI {
 	private showHardwareCursor = false;
 	private clearOnShrink = false;
 	protected fullRedrawCount = 0;
+	/** Frames that moved rows with a terminal scroll instead of rewriting them (fullscreen only). */
+	protected regionScrollCount = 0;
 	protected stopped = false;
 	private pendingOsc11BackgroundReplies = 0;
 	private pendingOsc11BackgroundQueries: PendingOsc11BackgroundQuery[] = [];
@@ -519,6 +521,10 @@ export abstract class TuiBase extends Container implements TUI {
 
 	get fullRedraws(): number {
 		return this.fullRedrawCount;
+	}
+
+	get regionScrolls(): number {
+		return this.regionScrollCount;
 	}
 
 	getShowHardwareCursor(): boolean {
