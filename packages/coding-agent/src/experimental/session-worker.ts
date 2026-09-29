@@ -40,7 +40,7 @@ import lockfile from "proper-lockfile";
 import Type, { type Static } from "typebox";
 import { Check } from "typebox/value";
 import { isValidThinkingLevel } from "../cli/args.ts";
-import { getAgentDir, getRlmRuntimePath } from "../config.ts";
+import { getAgentDir, getBundledLokiPath, getRlmRuntimePath } from "../config.ts";
 import { DEFAULT_HINDSIGHT_URL } from "../core/defaults.ts";
 import { createEventBus } from "../core/event-bus.ts";
 import { configureHttpDispatcher } from "../core/http-dispatcher.ts";
@@ -72,12 +72,14 @@ import {
 import { CodeSkills, codeSkillsDir, codeSkillsToolSection } from "../ultron/code-skills.ts";
 import { CONTEXT_EDIT_EVENT, CONTEXT_ENTRY_PROJECTORS, ContextControl } from "../ultron/context-control.ts";
 import { createFamilyModule } from "../ultron/family.ts";
+import { BEFORE_WRITE_REQUEST, FileHooks, type GuardStats, type ProposedWrite } from "../ultron/file-hooks.ts";
 import { assertSessionFormatsReadable } from "../ultron/format-version.ts";
 import { createGrantModule } from "../ultron/grants.ts";
 import { createInstanceModule } from "../ultron/instances.ts";
 import { createNativeJevClient, JEV_RECALL_THRESHOLD } from "../ultron/jev.ts";
 import { JEV_DECISION_CAPACITY, JevDecisionLog, recordingJevClient } from "../ultron/jev-decisions.ts";
 import type { RefinementBranch } from "../ultron/local-services.ts";
+import { lokiLog, lokiMode, setupLoki } from "../ultron/loki.ts";
 import { createPredictAdapter } from "../ultron/predict-adapter.ts";
 import { createProgressModule } from "../ultron/progress.ts";
 import { createReleaseGateModule } from "../ultron/release-gate.ts";
@@ -274,7 +276,23 @@ export type RlmPoolStats = {
 	memoryBytes?: number;
 	/** Per-kernel tree memory cap, when one is set. */
 	memoryCapBytes?: number;
+	/** File-write guards (Loki, extensions): checks, blocks and time, per turn and in all. */
+	guards?: GuardStats[];
 };
+
+/** The `writes` of a `files.before_write` request, validated. */
+function proposedWrites(payload: Record<string, unknown>): ProposedWrite[] {
+	const writes = payload.writes;
+	if (!Array.isArray(writes) || writes.length === 0 || writes.length > 64)
+		throw new Error("files.before_write needs 1 to 64 writes");
+	return writes.map((write) => {
+		const path = (write as { path?: unknown } | null)?.path;
+		const content = (write as { content?: unknown } | null)?.content;
+		if (typeof path !== "string" || !path || typeof content !== "string")
+			throw new Error("files.before_write writes need a path and text content");
+		return { path, content };
+	});
+}
 
 /** Tree memory is read from /proc; inspection polls reuse a reading this recent. */
 const POOL_MEMORY_TTL_MS = 3000;
@@ -303,23 +321,36 @@ export function createUltronRlmTool(
 		readonly resolveModel?: (lane: string, context: Context) => Promise<Model<Api> | undefined>;
 		/** Pi's `images.autoResize` setting, read per cell. Default true. */
 		readonly autoResizeImages?: () => boolean;
+		/**
+		 * Before-write and after-cell file hooks (file-hooks.ts): the kernels' `edit()`/`write()` ask them before
+		 * writing, and each cell's other file changes are given to them in the background.
+		 */
+		readonly fileHooks?: FileHooks;
 	} = {},
 ): UltronRlmTool {
 	const hints = options.hints;
+	const fileHooks = options.fileHooks;
 	// Host requests are observed per lane so the hints can see what a cell waited on, polled or detached.
-	const observedHandler = (lane: string): KernelHostHandler =>
-		hints === undefined || !hints.enabled
-			? (type, payload, signal) => hostHandler(type, payload, signal, { lane })
-			: async (type, payload, signal) => {
-					const startedAt = Date.now();
-					let result: unknown;
-					try {
-						result = await hostHandler(type, payload, signal, { lane });
-						return result;
-					} finally {
-						hints.observe(lane, type, payload, result, startedAt);
-					}
-				};
+	const observedHandler = (lane: string): KernelHostHandler => {
+		const handler: KernelHostHandler =
+			hints === undefined || !hints.enabled
+				? (type, payload, signal) => hostHandler(type, payload, signal, { lane })
+				: async (type, payload, signal) => {
+						const startedAt = Date.now();
+						let result: unknown;
+						try {
+							result = await hostHandler(type, payload, signal, { lane });
+							return result;
+						} finally {
+							hints.observe(lane, type, payload, result, startedAt);
+						}
+					};
+		if (fileHooks === undefined) return handler;
+		return async (type, payload, signal) =>
+			type === BEFORE_WRITE_REQUEST
+				? { results: await fileHooks.beforeWrite(proposedWrites(payload), { lane, ...(signal ? { signal } : {}) }) }
+				: handler(type, payload, signal);
+	};
 	// Idle kernels are evicted after a snapshot, so a lane's declared state survives and a crowded session
 	// cannot keep unbounded Python processes alive (A43). Running cells are never evicted.
 	const snapshotPath = (lane: string): string | undefined =>
@@ -328,7 +359,15 @@ export function createUltronRlmTool(
 			: join(options.snapshotDir, `${lane.replace(/[^A-Za-z0-9._-]/g, "_")}.snapshot`);
 	const maxLive = options.maxLive ?? 16;
 	const kernels = new KernelPool<UltronRlmKernel>({
-		create: (lane) => new UltronRlmKernel(cwd, observedHandler(lane), snapshotPath(lane), options.snapshotKey),
+		create: (lane) =>
+			new UltronRlmKernel(
+				cwd,
+				observedHandler(lane),
+				snapshotPath(lane),
+				options.snapshotKey,
+				// The kernel's write skills ask the host before writing only when there are hooks to ask.
+				fileHooks === undefined ? undefined : { ULTRON_CODE_SKILLS_DIR: codeSkillsDir(), ULTRON_FILE_HOOKS: "1" },
+			),
 		maxLive,
 		maxPinned: options.maxPinned ?? Math.floor(maxLive / 2),
 		idleTtlMs: options.idleTtlMs ?? 30 * 60 * 1000,
@@ -398,6 +437,7 @@ export function createUltronRlmTool(
 					? {}
 					: { memoryBytes: [...reading.byLane.values()].reduce((sum, bytes) => sum + bytes, 0) }),
 				...(reading.cap === undefined ? {} : { memoryCapBytes: reading.cap }),
+				...(fileHooks === undefined || fileHooks.stats().length === 0 ? {} : { guards: fileHooks.stats() }),
 			};
 		},
 		name: "rlm",
@@ -424,10 +464,29 @@ export function createUltronRlmTool(
 				autoResizeImages: options.autoResizeImages?.() ?? true,
 				...(model === undefined ? {} : { model }),
 			};
-			const run = () => kernels.use(lane, (kernel) => kernel.executeCell(params.code, context, imageOptions));
+			// Files a cell changes by other means than checked writes are handed to the hooks after it, in the
+			// background; what they find arrives with this lane's next cell result.
+			const run = async () => {
+				fileHooks?.cellStarted();
+				try {
+					return await kernels.use(lane, (kernel) => kernel.executeCell(params.code, context, imageOptions));
+				} finally {
+					fileHooks?.cellEnded(lane);
+				}
+			};
+			const withFindings = (text: string): string => {
+				const findings = fileHooks?.takePending(lane);
+				return findings ? `${text}\n${findings}` : text;
+			};
 			if (hints === undefined) {
-				const { text, images } = await run();
-				return { content: images.content(text || "(no result)"), details: {} };
+				let output: UltronRlmCellOutput;
+				try {
+					output = await run();
+				} catch (error) {
+					if (error instanceof Error) error.message = withFindings(error.message);
+					throw error;
+				}
+				return { content: output.images.content(withFindings(output.text || "(no result)")), details: {} };
 			}
 			hints.beginCell(lane, params.code);
 			let output: UltronRlmCellOutput;
@@ -438,12 +497,12 @@ export function createUltronRlmTool(
 				const hint = await hints
 					.endCell(lane, { text: message, ename: error instanceof RlmCellError ? error.ename : "Error" })
 					.catch(() => undefined);
-				if (hint && error instanceof Error) error.message = `${message}\n${hint}`;
+				if (error instanceof Error) error.message = withFindings(hint ? `${message}\n${hint}` : message);
 				throw error;
 			}
 			const result = output.text;
 			const hint = await hints.endCell(lane, { text: result }).catch(() => undefined);
-			const text = result || "(no result)";
+			const text = withFindings(result || "(no result)");
 			return { content: output.images.content(hint ? `${text}\n${hint}` : text), details: {} };
 		},
 	};
@@ -1387,6 +1446,18 @@ async function createCodingAgentHarness(
 	configureHttpDispatcher(settingsManager.getHttpIdleTimeoutMs());
 	// Extensions (tool renderers, headless UI contexts) read the theme; Pi always has one initialized.
 	initTheme(settingsManager.getTheme(), false);
+	// Loki guardrails (loki.ts): set up in parallel with resource loading. The Loki Pi extension, if a project has it,
+	// defers to the built-in integration instead of checking every write twice.
+	const lokiSettings = settingsManager.getLokiSettings();
+	if (lokiMode(process.env, lokiSettings) !== "off") process.env.ULTRON_LOKI_BUILTIN = "1";
+	const lokiRecord = lokiLog(process.env.ULTRON_LOKI_LOG);
+	const lokiSetup = setupLoki({
+		cwd: session.metadata.cwd,
+		env: process.env,
+		settings: lokiSettings,
+		bundledEngine: getBundledLokiPath(),
+		...(lokiRecord === undefined ? {} : { record: lokiRecord }),
+	});
 	// Pi's shared extension event bus (`pi.events`); the worker also publishes context edits on it.
 	const extensionEvents = createEventBus();
 	const resourceLoader = new DefaultResourceLoader({
@@ -1508,6 +1579,11 @@ async function createCodingAgentHarness(
 		asyncEvents: asyncEventsEnabled(process.env.ULTRON_ASYNC_EVENTS),
 		readHandleBytes: readHandleBytes(),
 	});
+	// Before-write and after-cell file hooks: Loki and extensions' `before_file_write`/`after_cell_changes` handlers.
+	const fileHooks = new FileHooks({
+		cwd: options.metadata.cwd,
+		...(lokiRecord === undefined ? {} : { onRecord: lokiRecord }),
+	});
 	const rlmTool = createUltronRlmTool(
 		options.metadata.cwd,
 		hostHandler,
@@ -1528,6 +1604,7 @@ async function createCodingAgentHarness(
 			// The lane's current model (it can change mid-session); the harness exists by the time a cell runs.
 			resolveModel: async (lane, context) => (await rlmHarness?.lane(lane, context))?.getModel(context),
 			autoResizeImages: () => settingsManager.getImageAutoResize(),
+			fileHooks,
 		},
 	);
 	const tools = [createReadTool(), createEditTool(), createWriteTool(), createBashTool(), rlmTool];
@@ -1598,15 +1675,19 @@ async function createCodingAgentHarness(
 				rlm: rlmToolGuidelines(effectiveActiveToolNames),
 			},
 			// The REPL runtime guide (kernel, skills, delegation) as its own section after Pi's tool list and rules.
-			sections: sectionIfPresent(
-				"runtime",
-				rlmRuntimePrompt(effectiveActiveToolNames, {
-					asyncEvents: asyncEventsEnabled(process.env.ULTRON_ASYNC_EVENTS),
-					extensionTools,
-					mcpServers: mcpServerNames(extensionTools),
-					nativeExtensionTools: nativeExtensionTools(extensionTools.map((tool) => tool.name)),
-				}),
-			),
+			sections: {
+				...sectionIfPresent(
+					"runtime",
+					rlmRuntimePrompt(effectiveActiveToolNames, {
+						asyncEvents: asyncEventsEnabled(process.env.ULTRON_ASYNC_EVENTS),
+						extensionTools,
+						mcpServers: mcpServerNames(extensionTools),
+						nativeExtensionTools: nativeExtensionTools(extensionTools.map((tool) => tool.name)),
+					}),
+				),
+				// Loki's short policy note, kept apart from the runtime guide.
+				...sectionIfPresent("loki", loki.context),
+			},
 			contextFiles,
 			skills: resourceLoader.getSkills().skills,
 			appendSystemPrompt: resourceLoader.getAppendSystemPrompt().join("\n\n"),
@@ -1616,6 +1697,8 @@ async function createCodingAgentHarness(
 				!effectiveActiveToolNames.includes("rlm") ||
 				NATIVE_FILE_TOOLS.some((name) => effectiveActiveToolNames.includes(name)),
 		});
+	const loki = await lokiSetup;
+	if (loki.guard) fileHooks.add(loki.guard);
 	// Rendered again only when the extension tool list changes (the guide lists them), so the prompt-cache prefix
 	// stays stable.
 	let promptCache: { key: string; text: string } | undefined;
@@ -1682,6 +1765,10 @@ async function createCodingAgentHarness(
 		);
 		const extensionTools = legacyExtensions.tools;
 		await harness.setTools([...tools, ...extensionTools], TODO_CONTEXT);
+		for (const guard of legacyExtensions.fileGuards()) fileHooks.add(guard);
+		// The first snapshot, so the first cell's file changes are seen too.
+		void fileHooks.start();
+		const removeLokiListeners = installLokiNotice(harness, fileHooks, loki.notice);
 		// By default the model's tool list stays [rlm]: extension tools are Python skills (`tools`, `mcp`).
 		const extensionToolNames = nativeExtensionTools(extensionTools.map((tool) => tool.name));
 		const extensionActiveToolNames =
@@ -1996,6 +2083,7 @@ async function createCodingAgentHarness(
 		return {
 			harness,
 			closeRlm: async () => {
+				removeLokiListeners();
 				removeRootTurnListener();
 				removeToolCallListeners();
 				removeAsyncEvents();
@@ -2080,6 +2168,49 @@ async function createCodingAgentHarness(
 		}
 		throw error;
 	}
+}
+
+/**
+ * Per-turn guard time starts over with each root turn, and Loki's one-time setup note (created and committed, or why
+ * not) opens the first root turn that follows it.
+ */
+function installLokiNotice(
+	harness: AgentHarnessInstance,
+	fileHooks: FileHooks,
+	notice: Promise<string | undefined>,
+): () => void {
+	let text: string | undefined;
+	// True once the note was shown, or once it is known there is none.
+	let shown = false;
+	const known = notice.then(
+		(value) => {
+			text = value;
+			if (value === undefined) shown = true;
+		},
+		() => {
+			shown = true;
+		},
+	);
+	const removers = [
+		harness.events.on("run_start", (event) => {
+			if (event.lane === "main") fileHooks.beginTurn();
+		}),
+		harness.hooks.on("before_run", async (event) => {
+			if (event.lane !== "main" || shown) return undefined;
+			// A commit still running (a slow hook) is waited for briefly; otherwise the note opens a later turn.
+			await Promise.race([known, new Promise((done) => setTimeout(done, 5_000).unref?.())]);
+			if (text === undefined) return undefined;
+			shown = true;
+			return {
+				messages: [
+					{ role: "custom", customType: "loki", content: text, display: true, details: {}, timestamp: Date.now() },
+				],
+			};
+		}),
+	];
+	return () => {
+		for (const remove of removers) remove();
+	};
 }
 
 /** Read-only recall from the Pi extension's Hindsight bank, when Hindsight and that bank are configured. */

@@ -447,6 +447,22 @@ export function getRlmRuntimePath(): string {
 	return runtime;
 }
 
+/**
+ * The Loki engine shipped with Ultron (loki.py, its default policy template and license; see scripts/loki-update.mjs),
+ * or undefined when this installation lacks it.
+ */
+export function getBundledLokiPath(): string | undefined {
+	const packageDir = getPackageDir();
+	const candidates = isBunBinary
+		? [join(packageDir, "ultron/loki-engine/loki.py")]
+		: [
+				join(packageDir, "src/ultron/loki-engine/loki.py"),
+				join(packageDir, "dist/ultron/loki-engine/loki.py"),
+				join(packageDir, "packages/coding-agent/src/ultron/loki-engine/loki.py"),
+			];
+	return candidates.find((path) => existsSync(path));
+}
+
 /** Get path to package.json */
 export function getPackageJsonPath(): string {
 	return join(getPackageDir(), "package.json");

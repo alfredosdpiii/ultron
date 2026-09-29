@@ -110,3 +110,34 @@ test("two-variant gating is unchanged", () => {
 	assert.equal(slow.gate.find((entry) => entry.check === "median latency").ok, false);
 	assert.equal(slow.passed, false);
 });
+
+test("Loki is off in comparisons unless --loki, which logs every check", async () => {
+	const { lokiEnv, summarizeLoki, summarizeLokiLog } = await import("./eval-quality.mjs");
+	assert.deepEqual(unknownArgs(["--tasks", "hard", "--loki"]), []);
+	assert.deepEqual(lokiEnv(false, "/x/loki.jsonl"), { ULTRON_LOKI: "off", ULTRON_LOKI_AUTOINIT: "off" });
+	assert.deepEqual(lokiEnv(true, "/x/loki.jsonl"), { ULTRON_LOKI: "on", ULTRON_LOKI_LOG: "/x/loki.jsonl" });
+	const log = [
+		{ phase: "setup", outcome: "on", ms: 210 },
+		{ guard: "Loki", phase: "before_write", outcome: "allowed", ms: 120.4 },
+		{ guard: "Loki", phase: "before_write", outcome: "blocked", ms: 130, detail: "[Loki] a.py:1: loki/secret" },
+		{ guard: "Loki", phase: "before_write", outcome: "unchecked", ms: 5000 },
+		{ guard: "Loki", phase: "after_cell", outcome: "findings", ms: 300 },
+		{ guard: "extension", phase: "before_write", outcome: "allowed", ms: 1 },
+	]
+		.map((entry) => JSON.stringify(entry))
+		.join("\n");
+	const totals = summarizeLokiLog(`${log}\nnot json\n`);
+	assert.deepEqual(totals, {
+		checks: 3,
+		blocked: 1,
+		unchecked: 1,
+		afterChecks: 1,
+		afterFindings: 1,
+		ms: 5550,
+		setupMs: 210,
+		blocks: ["[Loki] a.py:1: loki/secret"],
+	});
+	const byVariant = summarizeLoki([{ task: "t1", variant: "ultron", loki: totals }, { task: "t2", variant: "pi" }], ["pi", "ultron"]);
+	assert.deepEqual(Object.keys(byVariant), ["ultron"]);
+	assert.deepEqual(byVariant.ultron.blocks, ["t1: [Loki] a.py:1: loki/secret"]);
+});

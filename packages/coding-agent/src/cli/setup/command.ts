@@ -7,12 +7,12 @@ import { join } from "node:path";
 import type { Api, Model } from "@ultron/ai";
 import type { Terminal } from "@ultron/tui";
 import chalk from "chalk";
-import { APP_NAME, getAgentDir } from "../../config.ts";
+import { APP_NAME, getAgentDir, getBundledLokiPath } from "../../config.ts";
 import { ModelRuntime } from "../../core/model-runtime.ts";
 import { SettingsManager } from "../../core/settings-manager.ts";
 import { NativeJevClient } from "../../ultron/jev.ts";
 import type { Args } from "../args.ts";
-import { probeCommand, shouldOfferSetup } from "./core.ts";
+import { bundledLokiVersion, probeCommand, shouldOfferSetup } from "./core.ts";
 import type { ModelTestResult, SetupDeps, SetupResult } from "./wizard.ts";
 
 const MODEL_TEST_TIMEOUT_MS = 90_000;
@@ -95,7 +95,13 @@ export function createSetupDeps(
 				child.on("close", (code) => resolve({ ok: code === 0, output }));
 			}),
 		hindsightWaitMs: HINDSIGHT_WAIT_MS,
+		...lokiVersionOption(),
 	};
+}
+
+function lokiVersionOption(): { lokiVersion?: string } {
+	const version = bundledLokiVersion(getBundledLokiPath());
+	return version === undefined ? {} : { lokiVersion: version };
 }
 
 /** Run the wizard on a terminal (the process terminal, or a virtual one in tests). */

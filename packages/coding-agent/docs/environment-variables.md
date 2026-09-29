@@ -83,6 +83,11 @@ These variables are read by Pi itself:
 | `PI_PACKAGE_DIR` | Override the package directory, useful for Nix/Guix store paths |
 | `PI_OFFLINE` | Disable automatic network activity, including model catalog refreshes |
 | `PI_SKIP_VERSION_CHECK`, `ULTRON_SKIP_VERSION_CHECK` | Disable the automatic startup update check (a request to `registry.npmjs.org/ultron-agent/latest`); `ultron update` still checks |
+| `ULTRON_LOKI` | Loki guardrails: `off` disables them, `advise` reports without blocking, anything else is on (the default); overrides the `loki.mode` setting |
+| `ULTRON_LOKI_AUTOINIT`, `ULTRON_LOKI_AUTOCOMMIT` | `off` stops Ultron from creating `.loki/` in a repository, or from committing the `.loki/` it created |
+| `ULTRON_LOKI_TIMEOUT_MS` | How long a before-write Loki check may take (default 5000) before the write proceeds with a "not checked" note |
+| `ULTRON_LOKI_PYTHON` | Python 3.11+ interpreter for Loki (default `python3`) |
+| `ULTRON_LOKI_LOG` | Append every Loki check (and setup) to this file as JSON lines |
 | `PI_TELEMETRY` | Override provider attribution headers: `1`/`true`/`yes` or `0`/`false`/`no` |
 | `PI_CACHE_RETENTION` | Set to `long` for extended provider prompt caching where supported |
 | `PI_SHARE_VIEWER_URL` | Override the base URL used by `/share` |

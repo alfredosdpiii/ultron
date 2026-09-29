@@ -149,6 +149,7 @@ describe("ultron setup wizard", () => {
 			{ select: /Check the key/, pick: /^Yes/ },
 			{ select: /Set up Hindsight/, pick: /manual install/ },
 			{ select: /Check again/, pick: /Continue without/ },
+			{ select: /^Loki guardrails$/, pick: /^Keep/ },
 		]);
 		const result = await runSetupWizard(ui, deps(agentDir, settings, { testModel, checkJevKey }));
 		expect(ui.remaining).toBe(0);
@@ -178,7 +179,8 @@ describe("ultron setup wizard", () => {
 		expect(text).toContain("The endpoint lists 2 models: m1, m2");
 		expect(text).toContain("✓ Live test passed");
 		expect(text).toContain("pip install hindsight-api");
-		expect(text).toContain("# Step 5/5: Summary");
+		expect(text).toContain("# Step 5/6: Loki guardrails");
+		expect(text).toContain("# Step 6/6: Summary");
 		// Secrets were read masked and never shown.
 		expect(ui.secrets).toEqual(["sk-proxy-secret", "jev-secret-key"]);
 		for (const secret of ui.secrets) expect(text).not.toContain(secret);
@@ -186,6 +188,7 @@ describe("ultron setup wizard", () => {
 			["Provider and model", "configured"],
 			["Jev", "configured"],
 			["Hindsight", "skipped"],
+			["Loki", "unchanged"],
 		]);
 	});
 
@@ -197,6 +200,7 @@ describe("ultron setup wizard", () => {
 				...CUSTOM_ENDPOINT,
 				{ select: /Jev API key/, pick: "esc" },
 				{ select: /Set up Hindsight/, pick: "esc" },
+				{ select: /^Loki guardrails$/, pick: "esc" },
 			]),
 			deps(agentDir, settings),
 		);
@@ -212,6 +216,7 @@ describe("ultron setup wizard", () => {
 			{ select: /reach a model/, pick: /^Keep proxy\/m2$/ },
 			{ select: /Jev API key/, pick: /^Skip/ },
 			{ select: /Set up Hindsight/, pick: /^Skip$/ },
+			{ select: /^Loki guardrails$/, pick: /^Keep/ },
 		]);
 		const result = await runSetupWizard(ui, deps(agentDir, settings));
 		expect(ui.remaining).toBe(0);
@@ -258,6 +263,7 @@ describe("ultron setup wizard", () => {
 			{ input: /API key for Anthropic/, text: "sk-ant-hindsight" },
 			{ input: /Model for Hindsight/, text: "" },
 			{ select: /Run it now/, pick: /Run docker/ },
+			{ select: /^Loki guardrails$/, pick: /^Keep/ },
 		]);
 		const result = await runSetupWizard(
 			ui,
@@ -286,6 +292,7 @@ describe("ultron setup wizard", () => {
 			{ select: /Jev API key/, pick: "esc" },
 			{ select: /Set up Hindsight/, pick: /set its URL/ },
 			{ input: /Hindsight URL/, text: "http://mem.local:9000/" },
+			{ select: /^Loki guardrails$/, pick: /^Keep/ },
 		]);
 		const result = await runSetupWizard(ui, deps(agentDir, settings, { fetch: fetcher }));
 		expect(ui.remaining).toBe(0);
@@ -299,9 +306,46 @@ describe("ultron setup wizard", () => {
 			{ select: /reach a model/, pick: /Skip/ },
 			{ select: /Jev API key/, pick: "esc" },
 			{ select: /^Hindsight$/, pick: /Use it/ },
+			{ select: /^Loki guardrails$/, pick: /^Keep/ },
 		]);
 		const second = await runSetupWizard(again, deps(agentDir, settings, { fetch: fetcher }));
 		expect(again.transcript.join("\n")).toContain("✓ Hindsight is running at http://mem.local:9000.");
 		expect(second.lines[2]).toMatchObject({ status: "unchanged" });
+	});
+
+	it("shows Loki's version and missing analyzers, and saves its toggles as global settings", async () => {
+		const { agentDir, settings } = profile();
+		const ui = new ScriptedUi([
+			{ select: /reach a model/, pick: /Skip/ },
+			{ select: /Jev API key/, pick: "esc" },
+			{ select: /Set up Hindsight/, pick: /^Skip$/ },
+			{ select: /^Loki guardrails$/, pick: /^Turn auto-commit off$/ },
+			{ select: /^Loki guardrails$/, pick: /^Advise only/ },
+			{ select: /^Loki guardrails$/, pick: /^Keep/ },
+		]);
+		const result = await runSetupWizard(
+			ui,
+			deps(agentDir, settings, {
+				lokiVersion: "0.1.2 (35aa99c2aeee)",
+				env: { ULTRON_LOKI_AUTOINIT: "off" },
+				probe: (command) => (command === "python3" || command === "ruff" ? "found" : undefined),
+			}),
+		);
+		expect(ui.remaining).toBe(0);
+		const text = ui.transcript.join("\n");
+		expect(text).toContain("✓ Bundled Loki 0.1.2 (35aa99c2aeee)");
+		expect(text).toContain("✓ ruff (Python)");
+		expect(text).toContain("– mypy (Python types): not found. uv tool install mypy");
+		expect(text).toContain("– clippy (Rust): not found. rustup component add clippy");
+		expect(text).toContain("ULTRON_LOKI_AUTOINIT=off is set");
+		expect(JSON.parse(readFileSync(join(agentDir, "settings.json"), "utf8")).loki).toEqual({
+			autoCommit: false,
+			mode: "advise",
+		});
+		expect(result.lines.at(-1)).toMatchObject({
+			step: "Loki",
+			status: "configured",
+			detail: "advise-only, auto-install on, auto-commit off",
+		});
 	});
 });

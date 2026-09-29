@@ -186,7 +186,9 @@ can be run again at any time.
 3. **Jev API key**: saved to `~/.ultron/agent/jev-api-key`, optionally checked with one small request.
 4. **Hindsight**: finds a running server, starts it with Docker (`ghcr.io/vectorize-io/hindsight`, asking for the
    LLM key Hindsight itself needs), saves a different URL, or shows the manual install.
-5. **Summary** of what changed and where it lives.
+5. **Loki guardrails**: shows the bundled Loki version and which analyzers it would use are missing (with install
+   hints), and turns auto-install, auto-commit and advise-only mode on or off.
+6. **Summary** of what changed and where it lives.
 
 ## Quick start
 
@@ -228,6 +230,30 @@ Opt-outs: `ULTRON_TOOLS=native` gives the model Pi's `read`, `edit`, `write` and
 - **Jev** gates memory and needs a key, from `ultron setup` (`~/.ultron/agent/jev-api-key`) or `TYPESAFE_API_KEY`.
   Without it, automatic memory stays off.
 
+## Loki guardrails
+
+[Loki](https://github.com/alfredosdpiii/loki) checks every file Ultron writes with deterministic rules and real
+analyzers (hardcoded secrets, XSS and injection sinks, protected files, net-new Ruff/mypy/tsc/Oxlint/Clippy/Credo
+findings). It is bundled and on by default:
+
+- `edit()` and `write()` are checked before the file changes; a finding raises `ValueError` and nothing is written.
+  A check that takes longer than 5 s (`ULTRON_LOKI_TIMEOUT_MS`) lets the write through with a visible "Loki did not
+  check this write" note.
+- Files a cell changes any other way (`bash('sed -i ...')`, `Path.write_text`) are checked after the cell, in the
+  background; findings arrive with the next cell result.
+- In a Git repository without `.loki/`, Ultron creates only `.loki/` (engine and default policy) and commits just
+  that directory as "Add Loki guardrails" with your Git identity, leaving your other staged and unstaged changes
+  alone. It never pushes and never skips hooks; if a hook or signing refuses the commit, or a merge or rebase is in
+  progress, HEAD is detached or `CI` is set, `.loki/` stays uncommitted and the session says why. **On a fork, that
+  commit rides along in your pull requests**; drop it or turn auto-commit off. A repository's own `.loki/` is used
+  as committed and never modified.
+- Turn it off with `ULTRON_LOKI=off` (or `ULTRON_LOKI=advise` to report without blocking), stop the auto-install or
+  auto-commit with `ULTRON_LOKI_AUTOINIT=off` / `ULTRON_LOKI_AUTOCOMMIT=off`, or use `ultron setup` (the global
+  `loki` setting, which also takes `ignoreRepos`). Loki needs `python3` 3.11 or newer; without it the session says
+  so and runs unchecked.
+
+`npm run loki:update -- <loki-checkout | version>` refreshes the bundled engine, pinned by sha256.
+
 ## Safety
 
 There is no sandbox. Model-written Python runs with your user's permissions, like Pi's `bash` tool. Resource limits
@@ -266,5 +292,6 @@ Design and status: [`docs/implementation-status.md`](docs/implementation-status.
 ## Credits and license
 
 Ultron is built on [Pi](https://github.com/badlogic/pi-mono) by Mario Zechner and contributors, and keeps Pi's
-MIT license (see [LICENSE](LICENSE)). Pi's documentation at [pi.dev](https://pi.dev) covers the interface,
+MIT license (see [LICENSE](LICENSE)). It bundles [Loki](https://github.com/alfredosdpiii/loki) (MIT, its license in
+`packages/coding-agent/src/ultron/loki-engine/LICENSE`). Pi's documentation at [pi.dev](https://pi.dev) covers the interface,
 providers, extensions and settings that Ultron shares.

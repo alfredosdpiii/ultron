@@ -941,6 +941,56 @@ export interface UserBashEvent {
 }
 
 // ============================================================================
+// Ultron File Events
+// ============================================================================
+
+/**
+ * Ultron: a file write the model's REPL proposes, before it happens (`edit()` and `write()` in the Python kernel,
+ * where Pi's edit/write tool events never fire). Return `{ block: true, reason }` to refuse it: the Python call
+ * raises ValueError with the reason and nothing is written. `{ message }` lets it through with a note in the cell's
+ * output. A handler that takes longer than 5 s lets the write proceed with a visible "not checked" note.
+ */
+export interface BeforeFileWriteEvent {
+	type: "before_file_write";
+	/** Absolute path of the file. */
+	path: string;
+	/** The complete new content. */
+	content: string;
+	/** The session's working directory. */
+	cwd: string;
+	/** The RLM lane (agent) whose cell writes. */
+	lane: string;
+}
+
+export interface BeforeFileWriteEventResult {
+	block?: boolean;
+	reason?: string;
+	message?: string;
+}
+
+/**
+ * Ultron: files one REPL cell changed by other means than a checked write (`bash('sed -i ...')`, `Path.write_text`),
+ * found by comparing workspace snapshots after the cell. Emitted in the background; a returned `message` reaches
+ * the model with that lane's next cell result. Paths are absolute.
+ */
+export interface AfterCellChangesEvent {
+	type: "after_cell_changes";
+	/** Added or modified files no before-write check saw. */
+	files: string[];
+	/** Files written through checked `edit()`/`write()` calls, content unchanged since the check. */
+	checked: string[];
+	deleted: string[];
+	/** False when the snapshot was bounded and changes may be missing. */
+	complete: boolean;
+	cwd: string;
+	lane: string;
+}
+
+export interface AfterCellChangesEventResult {
+	message?: string;
+}
+
+// ============================================================================
 // Input Events
 // ============================================================================
 
@@ -1197,7 +1247,9 @@ export type ExtensionEvent =
 	| UserBashEvent
 	| InputEvent
 	| ToolCallEvent
-	| ToolResultEvent;
+	| ToolResultEvent
+	| BeforeFileWriteEvent
+	| AfterCellChangesEvent;
 
 // ============================================================================
 // Event Results
@@ -1417,6 +1469,16 @@ export interface ExtensionAPI {
 	on(event: "tool_result", handler: ExtensionHandler<ToolResultEvent, ToolResultEventResult>): () => void;
 	on(event: "user_bash", handler: ExtensionHandler<UserBashEvent, UserBashEventResult>): () => void;
 	on(event: "input", handler: ExtensionHandler<InputEvent, InputEventResult>): () => void;
+	/** Ultron: a REPL file write, before it happens (can block). */
+	on(
+		event: "before_file_write",
+		handler: ExtensionHandler<BeforeFileWriteEvent, BeforeFileWriteEventResult>,
+	): () => void;
+	/** Ultron: files a REPL cell changed by other means, after it (advisory). */
+	on(
+		event: "after_cell_changes",
+		handler: ExtensionHandler<AfterCellChangesEvent, AfterCellChangesEventResult>,
+	): () => void;
 
 	// =========================================================================
 	// Tool Registration

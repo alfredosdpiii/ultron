@@ -25,6 +25,7 @@ import type { ModelRuntime } from "../core/model-runtime.ts";
 import type { ResourceLoader } from "../core/resource-loader.ts";
 import { SessionManager } from "../core/session-manager.ts";
 import { theme } from "../modes/interactive/theme/theme.ts";
+import type { FileWriteGuard } from "../ultron/file-hooks.ts";
 import { type ExtensionToolInfo, prepareToolArguments } from "../ultron/rlm/extension-tools.ts";
 import type { ExtensionUIBridge } from "./services/extension-ui-provider.ts";
 import type { LegacyExtensionCommandInfo, LegacyExtensionCommandResult } from "./services/legacy-extensions.ts";
@@ -181,6 +182,46 @@ export class LegacyExtensionAdapter {
 			// Plain JSON for the service contract: Pi leaves optional fields undefined.
 			sourceInfo: JSON.parse(JSON.stringify(command.sourceInfo)),
 		}));
+	}
+
+	/**
+	 * Ultron's file hooks as Pi extension events: `before_file_write` (can block a REPL write) and
+	 * `after_cell_changes` (files a cell changed by other means). Each is active only while an extension handles it.
+	 */
+	fileGuards(): FileWriteGuard[] {
+		return [
+			{
+				name: "extension",
+				enabled: () => this.#runner.hasHandlers("before_file_write"),
+				beforeWrite: async (write, context) => {
+					const result = await this.#runner.emitBeforeFileWrite({
+						type: "before_file_write",
+						path: write.path,
+						content: write.content,
+						cwd: context.cwd,
+						lane: context.lane,
+					});
+					if (result?.block) return { block: true, reason: result.reason ?? "blocked by an extension" };
+					return result?.message ? { message: result.message } : {};
+				},
+			},
+			{
+				name: "extension",
+				enabled: () => this.#runner.hasHandlers("after_cell_changes"),
+				afterCellChanges: async (changes, context) =>
+					(
+						await this.#runner.emitAfterCellChanges({
+							type: "after_cell_changes",
+							files: [...changes.files],
+							checked: [...changes.checked],
+							deleted: [...changes.deleted],
+							complete: changes.complete,
+							cwd: context.cwd,
+							lane: context.lane,
+						})
+					)?.message,
+			},
+		];
 	}
 
 	async runCommand(name: string, args: string): Promise<LegacyExtensionCommandResult> {

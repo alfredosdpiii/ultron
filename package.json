@@ -47,6 +47,7 @@
 		"version:set": "npm version --workspaces --no-workspaces-update",
 		"pack:release": "node scripts/pack-release.mjs",
 		"scan:secrets": "node scripts/secret-scan.mjs",
+		"loki:update": "node scripts/loki-update.mjs",
 		"publish:npm": "node scripts/publish-npm.mjs",
 		"shrinkwrap:coding-agent": "node scripts/generate-coding-agent-shrinkwrap.mjs",
 		"install-lock:coding-agent": "node scripts/generate-coding-agent-install-lock.mjs",

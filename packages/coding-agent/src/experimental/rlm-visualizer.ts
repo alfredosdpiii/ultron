@@ -99,6 +99,19 @@ export interface RlmPool {
 	/** Summed kernel tree memory, when the worker can read it. */
 	readonly memoryBytes?: number;
 	readonly memoryCapBytes?: number;
+	/** File-write guards (Loki, extensions): time this turn and in all, checks and blocks. */
+	readonly guards?: readonly RlmGuard[];
+}
+
+export interface RlmGuard {
+	readonly name: string;
+	readonly checks: number;
+	readonly blocked: number;
+	readonly unchecked: number;
+	readonly afterChecks: number;
+	readonly afterFindings: number;
+	readonly turnMs: number;
+	readonly totalMs: number;
 }
 
 /** One bounded inference frame (`rlm.infer`/`rlm.map`), from `rlm.frames`. */
@@ -464,7 +477,28 @@ export function parsePool(value: unknown): RlmPool | null {
 		lanes,
 		...(typeof body.evictions === "number" ? { evictions: body.evictions } : {}),
 		...pickNumbers(body, ["memoryBytes", "memoryCapBytes"]),
+		...(Array.isArray(body.guards) ? { guards: parseGuards(body.guards) } : {}),
 	};
+}
+
+function parseGuards(items: unknown[]): RlmGuard[] {
+	const guards: RlmGuard[] = [];
+	for (const item of items) {
+		const guard = record(item);
+		if (guard === undefined || typeof guard.name !== "string") continue;
+		const count = (key: string) => (typeof guard[key] === "number" ? (guard[key] as number) : 0);
+		guards.push({
+			name: guard.name,
+			checks: count("checks"),
+			blocked: count("blocked"),
+			unchecked: count("unchecked"),
+			afterChecks: count("afterChecks"),
+			afterFindings: count("afterFindings"),
+			turnMs: count("turnMs"),
+			totalMs: count("totalMs"),
+		});
+	}
+	return guards;
 }
 
 export function parseFrames(value: unknown): RlmFrame[] {

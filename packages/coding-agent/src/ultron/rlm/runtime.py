@@ -696,6 +696,58 @@ async def view_image(path_or_bytes: Any, *, detail: str | None = None) -> str:
     return f"{description}\n{note}" if note else description
 
 
+def _file_hooks_enabled() -> bool:
+    return os.environ.get("ULTRON_FILE_HOOKS") == "1"
+
+
+async def _check_write(filepath: Path, content: str, display: str) -> None:
+    """Show a proposed write to the host's before-write hooks (Loki, extensions) before it happens.
+
+    A hook that blocks raises ValueError with its diagnostic, and the caller writes nothing. Notes (advisory
+    findings, or a hook that could not check in time, so the write proceeds unchecked) are printed.
+    """
+    if not _file_hooks_enabled():
+        return
+    try:
+        reply = await _STATE.bridge.request(
+            "files.before_write", {"writes": [{"path": str(filepath), "content": content}]}
+        )
+    except (RuntimeError, ValueError) as error:
+        print(f"[write hooks] {display} was written unchecked: {error}")
+        return
+    results = reply.get("results") if isinstance(reply, dict) else None
+    result = results[0] if isinstance(results, list) and results and isinstance(results[0], dict) else {}
+    for note in result.get("notes") or []:
+        print(note)
+    if result.get("blocked"):
+        raise ValueError(f"{display} was not written: {result.get('reason') or 'a write hook blocked it'}")
+
+
+async def write(path: str | os.PathLike[str], text: str) -> str:
+    """Create or overwrite a text file (parent directories are created).
+
+    Args:
+        path: File path, relative to the working directory or absolute.
+        text: The complete new content.
+
+    Returns:
+        A confirmation message. The write is checked first (Loki guardrails, extension hooks): a check that
+        blocks raises ValueError with its finding and nothing is written. Several writes in one cell are
+        checked in parallel with ``await asyncio.gather(write(a, x), edit(b, ...))``.
+    """
+    if not isinstance(path, (str, os.PathLike)) or not str(path):
+        raise ValueError("write path must be a non-empty string")
+    if not isinstance(text, str):
+        raise TypeError(f"write text must be a str, not {type(text).__name__}")
+    filepath = Path(path)
+    if not filepath.is_absolute():
+        filepath = Path.cwd() / filepath
+    await _check_write(filepath, text, str(path))
+    filepath.parent.mkdir(parents=True, exist_ok=True)
+    filepath.write_text(text)
+    return f"Wrote {path} ({len(text.encode('utf-8')):,} bytes)"
+
+
 async def edit(path: str, old_str: str, new_str: str) -> str:
     """Replace a unique string in a file (nano-rlm's edit skill).
 
@@ -706,7 +758,8 @@ async def edit(path: str, old_str: str, new_str: str) -> str:
 
     Returns:
         A confirmation message. Raises FileNotFoundError when the file is missing and
-        ValueError when old_str is absent or appears more than once.
+        ValueError when old_str is absent or appears more than once, or when a write check
+        (Loki guardrails, extension hooks) blocks the new content; then nothing is written.
     """
     filepath = Path(path)
     if not filepath.is_absolute():
@@ -726,7 +779,9 @@ async def edit(path: str, old_str: str, new_str: str) -> str:
             )
     if count != 1:
         raise ValueError(f"old_str must appear exactly once in {path} (found {count})")
-    filepath.write_text(content.replace(old_str, new_str, 1))
+    updated = content.replace(old_str, new_str, 1)
+    await _check_write(filepath, updated, str(path))
+    filepath.write_text(updated)
     return f"Edited {path}"
 
 
@@ -847,6 +902,7 @@ class RuntimeState:
         self.namespace["background"] = BackgroundNamespace(self.bridge)
         self.namespace["bash"] = bash
         self.namespace["edit"] = edit
+        self.namespace["write"] = write
         self.namespace["read"] = read
         self.namespace["view_image"] = view_image
         self.namespace["hints"] = Hints(self.bridge)

@@ -20,6 +20,9 @@ export type {
 } from "./runner.ts";
 export { ExtensionRunner } from "./runner.ts";
 export type {
+	// Events - Ultron files
+	AfterCellChangesEvent,
+	AfterCellChangesEventResult,
 	AfterProviderResponseEvent,
 	AgentActivityOutcome,
 	AgentBeforeSettleEvent,
@@ -39,6 +42,8 @@ export type {
 	BashToolResultEvent,
 	BeforeAgentStartEvent,
 	BeforeAgentStartEventResult,
+	BeforeFileWriteEvent,
+	BeforeFileWriteEventResult,
 	BeforeProviderHeadersEvent,
 	BeforeProviderRequestEvent,
 	BeforeProviderRequestEventResult,

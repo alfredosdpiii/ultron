@@ -217,7 +217,7 @@ const VALUE_FLAGS = [
 	"ultron-command",
 	"variants",
 ];
-const SWITCH_FLAGS = ["self-check", "judge-live", "keep-all", "no-judge"];
+const SWITCH_FLAGS = ["self-check", "judge-live", "keep-all", "no-judge", "loki"];
 
 /**
  * Arguments that are not a known flag or a known flag's value. A typo or `--help` must never fall through to a
@@ -260,11 +260,78 @@ export function isolatedAgentEnv({ work, agentDirEnv, agentDir, baseEnv = proces
 	};
 }
 
+/**
+ * Loki guardrails in a run. Off by default, so a Pi-vs-Ultron comparison measures the agents alone and no `.loki/`
+ * lands in task directories that hidden checks inspect; `--loki` turns them on and logs every check to
+ * `loki.jsonl` in the run's evidence directory.
+ */
+export function lokiEnv(enabled, logPath) {
+	return enabled
+		? { ULTRON_LOKI: "on", ULTRON_LOKI_LOG: logPath }
+		: { ULTRON_LOKI: "off", ULTRON_LOKI_AUTOINIT: "off" };
+}
+
+/** One run's Loki log (JSON lines from ULTRON_LOKI_LOG) as totals: checks, blocks, unchecked writes, findings, time. */
+export function summarizeLokiLog(text) {
+	const totals = { checks: 0, blocked: 0, unchecked: 0, afterChecks: 0, afterFindings: 0, ms: 0, setupMs: 0, blocks: [] };
+	for (const line of text.split("\n")) {
+		if (!line.trim()) continue;
+		let entry;
+		try {
+			entry = JSON.parse(line);
+		} catch {
+			continue;
+		}
+		if (entry.phase === "setup") {
+			totals.setupMs += typeof entry.ms === "number" ? entry.ms : 0;
+			continue;
+		}
+		if (entry.guard !== "Loki") continue;
+		totals.ms += typeof entry.ms === "number" ? entry.ms : 0;
+		if (entry.phase === "before_write") {
+			totals.checks++;
+			if (entry.outcome === "blocked") {
+				totals.blocked++;
+				totals.blocks.push(String(entry.detail ?? "").slice(0, 300));
+			}
+			if (entry.outcome === "unchecked") totals.unchecked++;
+		} else if (entry.phase === "after_cell") {
+			totals.afterChecks++;
+			if (entry.outcome === "findings") totals.afterFindings++;
+		}
+	}
+	totals.ms = Math.round(totals.ms);
+	return totals;
+}
+
+/** Loki totals per variant, over the runs that logged any. */
+export function summarizeLoki(records, variants) {
+	const byVariant = {};
+	for (const variant of variants) {
+		const runs = records.filter((record) => record.variant === variant && record.loki);
+		if (runs.length === 0) continue;
+		const sum = (field) => runs.reduce((total, record) => total + record.loki[field], 0);
+		byVariant[variant] = {
+			runs: runs.length,
+			checks: sum("checks"),
+			blocked: sum("blocked"),
+			unchecked: sum("unchecked"),
+			afterChecks: sum("afterChecks"),
+			afterFindings: sum("afterFindings"),
+			ms: sum("ms"),
+			setupMs: sum("setupMs"),
+			blocks: runs.flatMap((record) => record.loki.blocks.map((block) => `${record.task}: ${block}`)),
+		};
+	}
+	return byVariant;
+}
+
 /** How every run is isolated from the user's setup; recorded in the result JSON. */
 export const ISOLATION = {
 	home: "per-run empty HOME inside the run's work dir (no ~/.agents, ~/.pi, ~/.ultron or other user-global resources)",
 	agentDir: "per-run agent dir holding only models.json and auth.json copied from ~/.ultron/agent",
 	memory: "off (ULTRON_HINDSIGHT_URL=off)",
+	loki: "off (ULTRON_LOKI=off, ULTRON_LOKI_AUTOINIT=off) unless --loki",
 };
 
 /** Minimal Pi RPC driver: JSONL commands on stdin, responses and events on stdout. */
@@ -488,7 +555,7 @@ function createModelJudge({ command, model, thinking, keepDir }) {
 	};
 }
 
-async function runOne({ task, variant, trial, model, thinking, keepDir, keepAll, commands, judge }) {
+async function runOne({ task, variant, trial, model, thinking, keepDir, keepAll, commands, judge, loki = false }) {
 	const work = mkdtempSync(join(tmpdir(), `ultron-quality-${task.id}-${variant}-`));
 	const project = join(work, "project");
 	const agentDir = join(work, "agent");
@@ -511,6 +578,7 @@ async function runOne({ task, variant, trial, model, thinking, keepDir, keepAll,
 		...isolatedAgentEnv({ work, agentDirEnv, agentDir }),
 		ULTRON_SERVER_DIR: mkdtempSync(join("/tmp", "u-q-")),
 		ULTRON_HINDSIGHT_URL: "off",
+		...lokiEnv(loki, join(keep, "loki.jsonl")),
 	};
 	const record = { task: task.id, category: task.category, variant, trial, model, passed: false, homeIsolated: true };
 	const started = Date.now();
@@ -571,6 +639,7 @@ async function runOne({ task, variant, trial, model, thinking, keepDir, keepAll,
 		if (/agent exited/.test(record.error)) record.infrastructure = true;
 	} finally {
 		record.durationMs = Date.now() - started;
+		if (loki) record.loki = summarizeLokiLog(existsSync(join(keep, "loki.jsonl")) ? readFileSync(join(keep, "loki.jsonl"), "utf8") : "");
 		if (task.timeBudgetMs) Object.assign(record, { timeBudgetMs: task.timeBudgetMs, withinBudget: record.durationMs <= task.timeBudgetMs });
 		await session.close().catch(() => {});
 	}
@@ -976,6 +1045,7 @@ async function main() {
 	const thinking = arg("thinking", "") || undefined;
 	const keepDir = resolve(arg("keep-failed", DEFAULT_KEEP_DIR));
 	const keepAll = process.argv.includes("--keep-all");
+	const loki = process.argv.includes("--loki");
 	const ultronCommand = arg("ultron-command", "");
 	const commands = {
 		pi: VARIANTS.pi.command,
@@ -994,10 +1064,10 @@ async function main() {
 	const judge = process.argv.includes("--no-judge") ? undefined : makeJudge(keepDir);
 	const jobs = selected.flatMap((task) =>
 		variants.flatMap((variant) =>
-			Array.from({ length: trials }, (_, index) => ({ task, variant, trial: index + 1, model, thinking, keepDir, keepAll, commands, judge })),
+			Array.from({ length: trials }, (_, index) => ({ task, variant, trial: index + 1, model, thinking, keepDir, keepAll, commands, judge, loki })),
 		),
 	);
-	console.log(`Quality comparison (${taskSet} set): ${selected.length} tasks x ${variants.join("/")} x ${trials} trials = ${jobs.length} runs (${model}${thinking ? `, thinking ${thinking}` : ""})`);
+	console.log(`Quality comparison (${taskSet} set): ${selected.length} tasks x ${variants.join("/")} x ${trials} trials = ${jobs.length} runs (${model}${thinking ? `, thinking ${thinking}` : ""}; Loki ${loki ? "on" : "off"})`);
 	const records = [];
 	let cursor = 0;
 	await Promise.all(
@@ -1027,6 +1097,12 @@ async function main() {
 			if (!variants.includes(variant)) variants.push(variant);
 	}
 	const summary = summarize(records, variants);
+	const lokiSummary = loki ? summarizeLoki(records, variants) : undefined;
+	if (lokiSummary)
+		for (const [variant, totals] of Object.entries(lokiSummary))
+			console.log(
+				`Loki (${variant}): ${totals.checks} before-write checks, ${totals.blocked} blocked, ${totals.unchecked} unchecked, ${totals.afterFindings}/${totals.afterChecks} after-cell checks with findings, ${(totals.ms / 1000).toFixed(1)}s checking (+${(totals.setupMs / 1000).toFixed(1)}s setup)`,
+			);
 	if (records.some((record) => typeof record.timeBudgetMs === "number")) {
 		console.log("\nWall time per run:");
 		for (const variant of variants)
@@ -1042,7 +1118,7 @@ async function main() {
 	}
 	mkdirSync(dirname(out), { recursive: true });
 	const judgeConfig = judge ? { model: judgeModel, thinking: judgeThinking ?? null, command: judgeCommand.join(" ") } : undefined;
-	writeFileSync(out, `${JSON.stringify({ taskSet, frozenAt: FROZEN_AT, thresholds: THRESHOLDS, model, thinking, ultronCommand: ultronCommand ? withoutHome(ultronCommand) : undefined, trials, isolation: ISOLATION, judge: judgeConfig, summary, records }, null, 2)}\n`);
+	writeFileSync(out, `${JSON.stringify({ taskSet, frozenAt: FROZEN_AT, thresholds: THRESHOLDS, model, thinking, ultronCommand: ultronCommand ? withoutHome(ultronCommand) : undefined, trials, isolation: ISOLATION, loki: loki ? "on" : "off", ...(lokiSummary ? { lokiSummary } : {}), judge: judgeConfig, summary, records }, null, 2)}\n`);
 	console.log(JSON.stringify(summary, null, 2));
 	for (const entry of summary.skipped ?? []) console.log(`Skipped the ${entry.check} gate: ${entry.detail}`);
 	console.log(`Wrote ${out}`);
