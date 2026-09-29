@@ -1,7 +1,8 @@
-import { type ChildProcessWithoutNullStreams, spawn } from "node:child_process";
+import { type ChildProcess, spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { existsSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
+import type { Readable, Writable } from "node:stream";
 import { rlmOutputBudget } from "./output-truncation.ts";
 import { processSnapshotKey, sha256Hex, signSnapshot, verifySnapshot } from "./snapshot-auth.ts";
 import {
@@ -149,8 +150,33 @@ type Deferred<T> = {
 	reject: (error: Error) => void;
 };
 type Frame = Record<string, unknown>;
+/** Raw fd 1 or fd 2 output of one cell: head and tail within the per-cell limit (see {@link captureRaw}). */
+type RawCapture = { head: string; tail: string[]; tailLength: number; dropped: number; markerSeen: boolean };
+type RawStreamName = "stdout" | "stderr";
+/** One of the kernel's plain output pipes (fd 1, fd 2) on the private-fd protocol. */
+type RawStream = {
+	decoder: InstanceType<typeof TextDecoder>;
+	/** Bytes that may be the start of the running cell's flush marker, held until the next chunk. */
+	held: Buffer;
+	/** Output that arrived while no cell owned the stream; reported at the start of the next cell. */
+	orphan: string;
+	orphanDropped: boolean;
+	/** Whether the runtime's startup marker has arrived; output before it is startup diagnostics. */
+	started: boolean;
+};
 type ExecutionWaiter = Deferred<KernelExecutionResult> & {
 	state: KernelExecutionResult;
+	requestId: string;
+	/** Raw output of an execute cell on the private-fd protocol, and the output from outside a cell before it. */
+	raw?: {
+		marker: Buffer;
+		stdout: RawCapture;
+		stderr: RawCapture;
+		orphan: Record<RawStreamName, string>;
+		/** Set by the done frame: the flush markers the runtime wrote and the host still waits for. */
+		awaiting?: Record<RawStreamName, boolean>;
+		timer?: ReturnType<typeof setTimeout>;
+	};
 	controller: AbortController;
 	hostRequests: Set<string>;
 	/** Serves this cell's host requests instead of the kernel's handler (see {@link RlmKernel.execute}). */
@@ -162,7 +188,15 @@ type Operation = Deferred<KernelExecutionResult> & {
 	hostHandler?: KernelHostHandler;
 };
 type Generation = {
-	child: ChildProcessWithoutNullStreams;
+	child: ChildProcess;
+	/** Frames from the kernel: fd 3 on the private-fd protocol, else the kernel's stdout. */
+	protocolOut: Readable;
+	/** Messages to the kernel: fd 4 on the private-fd protocol, else the kernel's stdin. */
+	protocolIn: Writable;
+	privateProtocol: boolean;
+	raw: Record<RawStreamName, RawStream>;
+	/** The execute cell that owns raw output until its flush markers arrive (or time out). */
+	outputCell?: ExecutionWaiter;
 	ownsProcessGroup: boolean;
 	started: Deferred<void>;
 	exited: Deferred<void>;
@@ -189,7 +223,15 @@ type Generation = {
 
 // Protocol output is bounded per frame and per request, never over the kernel's lifetime: a long session sends
 // any amount in total. The frame limit applies to wire bytes, including JSON overhead; runtime.py shrinks its
-// own frames to fit, so only raw writes that bypass it (os.write(1, ...)) can exceed it.
+// own frames to fit. Frames travel on the private fd 3 (fd 4 carries host messages), so raw writes to fd 1 or
+// fd 2 (os.write, subprocesses, C code) are the running cell's output, not protocol. On Windows (protocolChannel
+// "stdio") frames share the kernel's stdout, and a raw write there can still exceed the frame limit.
+//
+// Ordering: fd 1/fd 2 are separate pipes from fd 3. After a cell, runtime.py flushes Python and C stdio and writes
+// a flush marker naming the cell's request id to fd 1 and fd 2, then sends `done` listing the markers it wrote.
+// The host resolves the cell once it has read those markers, so all raw output the cell wrote is in its result:
+// Python's captured print output first, then the raw output in write order. Raw output arriving while no cell owns
+// the streams (a background process) is kept, bounded, and reported at the start of the next cell's output.
 const MAX_FRAME_BYTES = 1024 * 1024;
 /**
  * stdout or stderr kept for one request (cell). runtime.py sends each stream once, within a frame; this bounds
@@ -199,6 +241,14 @@ const MAX_REQUEST_STREAM_CHARS = 4 * MAX_FRAME_BYTES;
 const REQUEST_STREAM_MARKER = `\n[... further output dropped: over the RLM kernel's 4 MiB per-cell output limit ...]\n`;
 /** Raw stderr of the kernel process is kept as a tail for diagnostics only. */
 const STDERR_TAIL_CHARS = 8000;
+/** Raw output from outside any cell (a background thread or process), kept for the next cell. */
+const MAX_ORPHAN_CHARS = 64 * 1024;
+/**
+ * How long a finished cell waits for the flush markers the runtime wrote to fd 1 and fd 2. They normally arrive
+ * with (or before) the done frame; this only bounds a pathological case, such as a pipe the host is slow to drain.
+ */
+const RAW_FLUSH_TIMEOUT_MS = 5_000;
+const EMPTY_BUFFER = Buffer.alloc(0);
 const MAX_HOST_REQUESTS = 16;
 const STARTUP_TIMEOUT_MS = 10_000;
 const FRAME_DECODER = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
@@ -258,6 +308,64 @@ function appendBounded(current: string, text: string): string {
 	if (room < 0) return current;
 	return current + text.slice(0, room) + REQUEST_STREAM_MARKER;
 }
+
+/** The marker runtime.py writes to fd 1 and fd 2 after a cell's output; the id is a host-made random UUID. */
+function flushMarker(requestId: string): Buffer {
+	return Buffer.from(`\x1eultron-rlm-flush:${requestId}\x1e`, "utf8");
+}
+
+/** Length of the longest tail of `data` that is a proper prefix of `marker` (it may complete in the next chunk). */
+function markerPrefixLength(data: Buffer, marker: Buffer): number {
+	const from = Math.max(0, data.length - marker.length + 1);
+	for (let start = data.indexOf(marker[0]!, from); start !== -1; start = data.indexOf(marker[0]!, start + 1)) {
+		if (data.subarray(start).equals(marker.subarray(0, data.length - start))) return data.length - start;
+	}
+	return 0;
+}
+
+function rawCapture(): RawCapture {
+	return { head: "", tail: [], tailLength: 0, dropped: 0, markerSeen: false };
+}
+
+/** Keep the head and tail of a cell's raw output, each half the per-cell stream limit, and count the middle cut. */
+function captureRaw(capture: RawCapture, text: string): void {
+	const half = MAX_REQUEST_STREAM_CHARS / 2;
+	if (capture.head.length < half) {
+		const room = half - capture.head.length;
+		capture.head += text.slice(0, room);
+		text = text.slice(room);
+	}
+	if (!text) return;
+	capture.tail.push(text);
+	capture.tailLength += text.length;
+	while (capture.tail.length > 1 && capture.tailLength - capture.tail[0]!.length >= half) {
+		const first = capture.tail.shift()!;
+		capture.tailLength -= first.length;
+		capture.dropped += first.length;
+	}
+}
+
+function rawCaptureText(capture: RawCapture, fd: number): string {
+	const half = MAX_REQUEST_STREAM_CHARS / 2;
+	let tail = capture.tail.join("");
+	let dropped = capture.dropped;
+	if (tail.length > half) {
+		dropped += tail.length - half;
+		tail = tail.slice(tail.length - half);
+	}
+	if (!dropped) return capture.head + tail;
+	return `${capture.head}\n[... ${dropped} characters of raw fd ${fd} output cut from the middle: over the RLM kernel's 4 MiB per-cell output limit ...]\n${tail}`;
+}
+
+function orphanText(text: string, dropped: boolean): string {
+	if (!text) return "";
+	const cut = dropped ? `\n[... further output dropped: over the ${MAX_ORPHAN_CHARS / 1024} KiB limit ...]` : "";
+	const end = cut || !text.endsWith("\n") ? "\n" : "";
+	return `[kernel output written outside a cell, before this one (a background thread or process):]\n${text}${cut}${end}[end of output from outside a cell]\n`;
+}
+
+/** Written by runtime.py to fd 1 and fd 2 just before its ready frame. */
+const STARTUP_MARKER = flushMarker("ready");
 
 function stringList(value: unknown): string[] {
 	return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
@@ -347,6 +455,13 @@ export type RlmKernelOptions = {
 	snapshotKey?: Uint8Array;
 	/** Extra environment for the kernel process, applied after the credential filter (for example ULTRON_CODE_SKILLS_DIR). */
 	env?: Readonly<Record<string, string>>;
+	/**
+	 * Where protocol frames travel. "private-fd" (the default except on Windows): frames on fd 3, host messages on
+	 * fd 4, stdin is /dev/null, and fd 1/fd 2 are plain output attributed to the running cell. "stdio" (the Windows
+	 * default, where Python cannot rely on inheriting extra descriptors): frames on stdout and messages on stdin, so
+	 * raw writes to fd 1 corrupt the stream and a frame over 1 MiB ends the kernel.
+	 */
+	protocolChannel?: "private-fd" | "stdio";
 };
 
 export class RlmKernel {
@@ -407,18 +522,21 @@ export class RlmKernel {
 	private ensureStarted(restoreSnapshot = true): Promise<void> {
 		if (this.closed) return Promise.reject(new Error("RLM kernel is shut down"));
 		if (this.generation) return this.generation.started.promise;
-		let child: ChildProcessWithoutNullStreams;
+		let child: ChildProcess;
 		const ownsProcessGroup = process.platform !== "win32";
+		const privateProtocol =
+			(this.options.protocolChannel ?? (process.platform === "win32" ? "stdio" : "private-fd")) === "private-fd";
 		const treeBackend = treeMemoryBackend(this.treeMemoryMb, this.options.treeMemoryBackend);
 		try {
 			const python =
 				this.options.python ??
 				process.env.ULTRON_PYTHON ??
 				(process.platform === "linux" && existsSync("/usr/bin/python3") ? "/usr/bin/python3" : "python3");
+			const runtime = privateProtocol ? [this.options.runtimePath, "--protocol-fds"] : [this.options.runtimePath];
 			const command =
 				treeBackend === "cgroup"
-					? [...cgroupScopeCommand(this.treeMemoryMb), python, this.options.runtimePath]
-					: [python, this.options.runtimePath];
+					? [...cgroupScopeCommand(this.treeMemoryMb), python, ...runtime]
+					: [python, ...runtime];
 			child = spawn(command[0]!, command.slice(1), {
 				cwd: this.options.cwd,
 				env: {
@@ -431,14 +549,27 @@ export class RlmKernel {
 					ULTRON_RLM_OUTPUT_BYTES: String(rlmOutputBudget()),
 					...this.options.env,
 				},
-				stdio: ["pipe", "pipe", "pipe"],
+				stdio: privateProtocol ? ["ignore", "pipe", "pipe", "pipe", "pipe"] : ["pipe", "pipe", "pipe"],
 				detached: ownsProcessGroup,
 			});
 		} catch (error) {
 			return Promise.reject(asError(error));
 		}
+		const protocolOut = (privateProtocol ? child.stdio[3] : child.stdout) as Readable;
+		const protocolIn = (privateProtocol ? child.stdio[4] : child.stdin) as Writable;
+		const rawStream = (): RawStream => ({
+			decoder: new TextDecoder("utf-8"),
+			held: EMPTY_BUFFER,
+			orphan: "",
+			orphanDropped: false,
+			started: false,
+		});
 		const generation: Generation = {
 			child,
+			protocolOut,
+			protocolIn,
+			privateProtocol,
+			raw: { stdout: rawStream(), stderr: rawStream() },
 			ownsProcessGroup,
 			started: deferred<void>(),
 			exited: deferred<void>(),
@@ -458,13 +589,16 @@ export class RlmKernel {
 		generation.startupTimer = setTimeout(() => {
 			this.fail(generation, new Error(`RLM kernel startup timed out after ${timeout}ms${this.diagnostics()}`));
 		}, timeout);
-		child.stdout.on("data", (chunk: Buffer) => this.handleData(generation, chunk));
-		child.stderr.on("data", (chunk: Buffer) => {
-			// Only a bounded tail is kept, so a chatty process never grows host memory or ends the kernel.
-			if (!this.isCurrent(generation)) return;
-			const text = chunk.subarray(Math.max(0, chunk.length - 4 * STDERR_TAIL_CHARS)).toString("utf8");
-			this.stderr = (this.stderr + text).slice(-STDERR_TAIL_CHARS);
-		});
+		protocolOut.on("data", (chunk: Buffer) => this.handleData(generation, chunk));
+		if (privateProtocol) {
+			child.stdout!.on("data", (chunk: Buffer) => this.handleRaw(generation, "stdout", chunk));
+			child.stderr!.on("data", (chunk: Buffer) => this.handleRaw(generation, "stderr", chunk));
+		} else {
+			child.stderr!.on("data", (chunk: Buffer) => {
+				if (!this.isCurrent(generation)) return;
+				this.keepStderrTail(chunk.subarray(Math.max(0, chunk.length - 4 * STDERR_TAIL_CHARS)).toString("utf8"));
+			});
+		}
 		child.once("error", (error) => {
 			generation.exited.resolve(undefined);
 			this.fail(generation, error);
@@ -482,21 +616,22 @@ export class RlmKernel {
 		});
 		this.startCpuWatchdog(generation);
 		this.startTreeMemoryWatchdog(generation);
-		child.stdout.once("end", () => {
+		protocolOut.once("end", () => {
 			if (!this.isCurrent(generation)) return;
 			// Output usually ends just before the exit event; wait briefly so the exit code
 			// (for example a resource limit) is what gets reported.
 			const timer = setTimeout(() => {
 				if (this.isCurrent(generation)) {
-					this.fail(generation, new Error(`RLM kernel stdout closed${this.diagnostics()}`));
+					const channel = privateProtocol ? "protocol channel (fd 3)" : "stdout";
+					this.fail(generation, new Error(`RLM kernel ${channel} closed${this.diagnostics()}`));
 				}
 			}, 200);
 			void generation.exited.promise.then(() => clearTimeout(timer));
 		});
 		// Streams may still report errors after termination. Keep handlers scoped
 		// to their process so late EPIPE/exit/data events cannot affect a restart.
-		for (const stream of [child.stdin, child.stdout, child.stderr]) {
-			stream.on("error", (error) => this.fail(generation, error));
+		for (const stream of new Set([child.stdout, child.stderr, protocolOut, protocolIn])) {
+			stream?.on("error", (error) => this.fail(generation, error));
 		}
 		return generation.started.promise;
 	}
@@ -645,6 +780,99 @@ export class RlmKernel {
 			}
 			offset = newline + 1;
 		}
+	}
+
+	private keepStderrTail(text: string): void {
+		// Only a bounded tail is kept, so a chatty process never grows host memory or ends the kernel.
+		if (text) this.stderr = (this.stderr + text.slice(-STDERR_TAIL_CHARS)).slice(-STDERR_TAIL_CHARS);
+	}
+
+	/**
+	 * Raw bytes from the kernel's fd 1 or fd 2 (private-fd protocol). They belong to the cell that owns the output
+	 * until that cell's flush marker arrives on the stream; anything else is output from outside a cell.
+	 */
+	private handleRaw(generation: Generation, name: RawStreamName, chunk: Buffer): void {
+		if (!this.isCurrent(generation)) return;
+		const stream = generation.raw[name];
+		let data = stream.held.length ? Buffer.concat([stream.held, chunk]) : chunk;
+		stream.held = EMPTY_BUFFER;
+		if (!stream.started) {
+			// Before the startup marker: stderr only feeds the diagnostic tail, stdout is dropped.
+			const index = data.indexOf(STARTUP_MARKER);
+			const end = index === -1 ? data.length - markerPrefixLength(data, STARTUP_MARKER) : index;
+			if (name === "stderr") this.keepStderrTail(data.subarray(0, end).toString("utf8"));
+			if (index === -1) {
+				stream.held = Buffer.from(data.subarray(end));
+				return;
+			}
+			stream.started = true;
+			data = data.subarray(index + STARTUP_MARKER.length);
+		}
+		const cell = generation.outputCell;
+		const raw = cell?.raw;
+		if (cell && raw && !raw[name].markerSeen) {
+			const index = data.indexOf(raw.marker);
+			if (index !== -1) {
+				this.routeRaw(generation, name, data.subarray(0, index), raw[name]);
+				raw[name].markerSeen = true;
+				this.routeRaw(generation, name, data.subarray(index + raw.marker.length));
+				this.finishCellIfFlushed(generation, cell);
+				return;
+			}
+			const held = markerPrefixLength(data, raw.marker);
+			if (held) {
+				stream.held = Buffer.from(data.subarray(data.length - held));
+				data = data.subarray(0, data.length - held);
+			}
+			this.routeRaw(generation, name, data, raw[name]);
+			return;
+		}
+		this.routeRaw(generation, name, data);
+	}
+
+	private routeRaw(generation: Generation, name: RawStreamName, bytes: Buffer, capture?: RawCapture): void {
+		if (!bytes.length) return;
+		const stream = generation.raw[name];
+		const text = stream.decoder.decode(bytes, { stream: true });
+		if (name === "stderr") this.keepStderrTail(text);
+		if (capture) {
+			captureRaw(capture, text);
+			return;
+		}
+		const room = MAX_ORPHAN_CHARS - stream.orphan.length;
+		if (text.length > room) stream.orphanDropped = true;
+		if (room > 0) stream.orphan += text.slice(0, room);
+	}
+
+	/** Resolve a finished cell once every flush marker its done frame announced has arrived. */
+	private finishCellIfFlushed(generation: Generation, waiter: ExecutionWaiter): void {
+		const raw = waiter.raw;
+		if (!raw?.awaiting || generation.outputCell !== waiter) return;
+		if ((raw.awaiting.stdout && !raw.stdout.markerSeen) || (raw.awaiting.stderr && !raw.stderr.markerSeen)) return;
+		this.finishCell(generation, waiter);
+	}
+
+	/** Combine the output from outside a cell, the cell's captured frames and its raw output, and resolve it. */
+	private finishCell(generation: Generation, waiter: ExecutionWaiter): void {
+		const raw = waiter.raw;
+		if (raw) {
+			clearTimeout(raw.timer);
+			if (generation.outputCell === waiter) {
+				generation.outputCell = undefined;
+				// A held partial marker was output after all.
+				for (const name of ["stdout", "stderr"] as const) {
+					const stream = generation.raw[name];
+					if (!stream.started) continue;
+					const held = stream.held;
+					stream.held = EMPTY_BUFFER;
+					this.routeRaw(generation, name, held);
+				}
+			}
+			const state = waiter.state;
+			state.stdout = raw.orphan.stdout + state.stdout + rawCaptureText(raw.stdout, 1);
+			state.stderr = raw.orphan.stderr + state.stderr + rawCaptureText(raw.stderr, 2);
+		}
+		waiter.resolve(waiter.state);
 	}
 
 	private handleLine(generation: Generation, line: string): void {
@@ -808,16 +1036,28 @@ export class RlmKernel {
 			generation.pending.delete(requestId);
 			if (generation.activeCell === waiter) generation.activeCell = undefined;
 			waiter.controller.abort(new Error("RLM cell completed"));
-			waiter.resolve(state);
+			const raw = waiter.raw;
+			if (!raw || generation.outputCell !== waiter) {
+				waiter.resolve(state);
+				return;
+			}
+			// fd 1/fd 2 are separate pipes from fd 3: the cell's raw output may still be in flight. runtime.py wrote a
+			// flush marker after it on each stream it could; wait for those (bounded), so the result is complete.
+			const flush = frame.flush && typeof frame.flush === "object" ? (frame.flush as Record<string, unknown>) : {};
+			raw.awaiting = { stdout: flush.stdout === true, stderr: flush.stderr === true };
+			raw.timer = setTimeout(() => {
+				if (this.isCurrent(generation)) this.finishCell(generation, waiter);
+			}, RAW_FLUSH_TIMEOUT_MS);
+			this.finishCellIfFlushed(generation, waiter);
 		}
 	}
 
 	private write(generation: Generation, frame: Frame, encoded?: string): void {
-		if (!this.isCurrent(generation) || !generation.child.stdin.writable || this.closed) {
+		if (!this.isCurrent(generation) || !generation.protocolIn.writable || this.closed) {
 			throw generation.failure ?? new Error("RLM kernel is not running");
 		}
 		const line = encoded ?? encodeFrame(frame);
-		generation.child.stdin.write(line, (error) => {
+		generation.protocolIn.write(line, (error) => {
 			if (error) this.fail(generation, error);
 		});
 	}
@@ -832,6 +1072,7 @@ export class RlmKernel {
 		}
 		const waiter = Object.assign(deferred<KernelExecutionResult>(), {
 			state: { status: "ok" as const, stdout: "", stderr: "" },
+			requestId: id,
 			controller: new AbortController(),
 			hostRequests: new Set<string>(),
 			...(operation?.hostHandler === undefined ? {} : { hostHandler: operation.hostHandler }),
@@ -844,6 +1085,7 @@ export class RlmKernel {
 				generation.cellCpuStart = generation.child.pid ? processCpuSeconds(generation.child.pid) : undefined;
 				generation.activeCell = waiter;
 				if (operation) operation.cell = waiter;
+				if (generation.privateProtocol) this.takeRawOutput(generation, waiter);
 			}
 			try {
 				this.write(generation, { ...frame, id }, encoded);
@@ -855,6 +1097,19 @@ export class RlmKernel {
 			}
 		}
 		return waiter.promise;
+	}
+
+	/** The cell owns fd 1/fd 2 output from now on, and reports the output from outside a cell that came before it. */
+	private takeRawOutput(generation: Generation, waiter: ExecutionWaiter): void {
+		const orphan = { stdout: "", stderr: "" };
+		for (const name of ["stdout", "stderr"] as const) {
+			const stream = generation.raw[name];
+			orphan[name] = orphanText(stream.orphan, stream.orphanDropped);
+			stream.orphan = "";
+			stream.orphanDropped = false;
+		}
+		waiter.raw = { marker: flushMarker(waiter.requestId), stdout: rawCapture(), stderr: rawCapture(), orphan };
+		generation.outputCell = waiter;
 	}
 
 	private validateRequestFrame(frame: Frame): void {
@@ -883,6 +1138,12 @@ export class RlmKernel {
 		for (const waiter of generation.pending.values()) waiter.controller.abort(error);
 		generation.hostRequests.clear();
 		generation.activeCell = undefined;
+		// A finished cell still waiting for its flush markers is no longer in `pending`.
+		if (generation.outputCell) {
+			clearTimeout(generation.outputCell.raw?.timer);
+			generation.outputCell.reject(error);
+			generation.outputCell = undefined;
+		}
 		generation.started.reject(error);
 		for (const waiter of generation.pending.values()) waiter.reject(error);
 		generation.pending.clear();
@@ -907,9 +1168,10 @@ export class RlmKernel {
 				/* Already gone. */
 			}
 		}
-		generation.child.stdin.destroy();
-		generation.child.stdout.destroy();
-		generation.child.stderr.destroy();
+		for (const stream of [generation.child.stdin, generation.child.stdout, generation.child.stderr])
+			stream?.destroy();
+		generation.protocolIn.destroy();
+		generation.protocolOut.destroy();
 	}
 
 	private enqueue(

@@ -114,7 +114,7 @@
           "file": "packages/coding-agent/test/ultron-a06-limits.test.ts",
           "tests": [
             "stdout, stderr, and result previews stay bounded under a 50 MB flood",
-            "raw writes that bypass Python's stdout are cut off at the protocol frame limit",
+            "raw writes that bypass Python's stdout are bounded output, not protocol",
             "oversize artifacts and quota overflow are rejected without being stored",
             "an artifact larger than the RPC frame never reaches the service from Python",
             "a task past its timeout is cancelled with a durable cancelled result",
@@ -130,7 +130,17 @@
             "200 cells of 64 KB output keep the same kernel generation and its variables",
             "bridge requests totalling far over 4 MiB keep the same kernel generation",
             "a single output over the 1 MiB frame is cut in the cell, not by killing the kernel",
+            "raw fd 1 output across many cells (far over 4 MiB in total) keeps the same kernel generation",
             "the host bounds a cell's accumulated output without failing the kernel"
+          ]
+        },
+        {
+          "file": "packages/coding-agent/test/ultron-kernel-raw-output.test.ts",
+          "tests": [
+            "raw output over the 4 MiB per-cell limit keeps its head and tail with a marker",
+            "os.system, an uncaptured subprocess and sys.__stdout__ write into the cell",
+            "writes to fd 2 land in the cell's stderr",
+            "processes the kernel starts cannot reach the protocol descriptors"
           ]
         }
       ],

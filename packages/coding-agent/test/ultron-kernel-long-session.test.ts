@@ -2,7 +2,8 @@
  * A long session must not die from output that accumulates across cells. The kernel bounds protocol output
  * per frame (1 MiB) and per cell, never over the kernel's lifetime: 200 cells of 64 KB and hundreds of
  * bridge requests (far over 4 MiB in total) keep one kernel generation and its Python state, and a single
- * oversized output is cut in the cell instead of killing the kernel.
+ * oversized output is cut in the cell instead of killing the kernel. Raw writes to fd 1 are not protocol at all
+ * (frames travel on fd 3), so they are bounded per cell like any other output.
  */
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -98,6 +99,25 @@ describe("RLM kernel long sessions", () => {
 		}
 	}, 60_000);
 
+	test.skipIf(process.platform === "win32")(
+		"raw fd 1 output across many cells (far over 4 MiB in total) keeps the same kernel generation",
+		async () => {
+			const kernel = new RlmKernel({ cwd: process.cwd(), runtimePath }, () => null);
+			try {
+				const pid = (await kernel.execute("import os\nkept = 'raw'\nos.getpid()")).result;
+				for (let cell = 0; cell < 40; cell++) {
+					const result = await kernel.execute(`os.write(1, b'${cell % 10}' * ${512 * KiB})\nkept`);
+					expect(result).toMatchObject({ status: "ok", result: "'raw'" });
+					expect(result.stdout).toBe(String(cell % 10).repeat(512 * KiB));
+				}
+				expect(await kernel.execute("os.getpid()")).toMatchObject({ status: "ok", result: pid });
+			} finally {
+				await kernel.shutdown();
+			}
+		},
+		120_000,
+	);
+
 	test("the host bounds a cell's accumulated output without failing the kernel", async () => {
 		const directory = await mkdtemp(join(tmpdir(), "ultron-kernel-long-"));
 		try {
@@ -106,11 +126,14 @@ describe("RLM kernel long sessions", () => {
 			await writeFile(
 				flooding,
 				[
-					"import json, sys",
+					"import json, os, sys",
+					// The private-fd protocol (fd 3 out, fd 4 in), or stdout/stdin where the host uses stdio.
+					"private = '--protocol-fds' in sys.argv",
+					"out = os.fdopen(3, 'w') if private else sys.stdout",
 					"def emit(**frame):",
-					"    sys.stdout.write(json.dumps(frame) + '\\n'); sys.stdout.flush()",
+					"    out.write(json.dumps(frame) + '\\n'); out.flush()",
 					"emit(event='ready')",
-					"for line in sys.stdin:",
+					"for line in (os.fdopen(4) if private else sys.stdin):",
 					"    request = json.loads(line)",
 					"    if request.get('request') == 'execute':",
 					"        for _ in range(12): emit(event='stdout', id=request['id'], text='s' * (900 * 1024))",

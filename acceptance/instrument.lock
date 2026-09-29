@@ -1,7 +1,7 @@
 {
 	"version": 1,
 	"algorithm": "sha256",
-	"manifest": "3b3cd00703c523e13953eafd91db0ed89bf4b58ffbd094562a6f68fed28929b3",
+	"manifest": "52b9c14c59665fe5832d9c1235a8f3ec0a49ff190f5bc4e86b27ff51b93014f5",
 	"instrument": {
 		"acceptance/mutations.json": "1ff99ca3f89075496562a64bd2d5513c88e80c582d454125678f04bfc25fe23a",
 		"scripts/acceptance-lock.mjs": "0738f59da364f20af0634b28b9d32d70b2768f6d4cb6f2bf03cab13302923980",
@@ -14,7 +14,7 @@
 		"packages/coding-agent/test/ultron-a03-bounded-repair.test.ts": "277916fd3f5b6fb89119f48fba98eec69a248bc159ab3d792d9e7ca0fd0fb3bb",
 		"packages/coding-agent/test/ultron-a04-model-pinning.test.ts": "5c45f63e4c6843a2893c4d268c9b5d197155708c7435fc38b9bd326ec467f3cc",
 		"packages/coding-agent/test/ultron-a05-cancellation-process-tree.test.ts": "d9eff9206a1d624c9827f1146bcb04ffd6ee7a89a673cd966f50467c3c5cef91",
-		"packages/coding-agent/test/ultron-a06-limits.test.ts": "6f56ab4a0de48b46e595516c4e8df7051b4a43034a8a5e75a4b3e8b8c0ac512c",
+		"packages/coding-agent/test/ultron-a06-limits.test.ts": "fb8c78c74c81f5f45f25b12d4adc597ccfd27190e0dc541bc82d8c4e2446da32",
 		"packages/coding-agent/test/ultron-a07-branch-fork-resume.test.ts": "7973a7f613f3f74e8889181c30f34b2e4d77300ddefa637fdef7904c22e32939",
 		"packages/coding-agent/test/ultron-a07-lesson-branches.test.ts": "ae7022c7b71d93420e4d9e9c42e2e764c097c016e51ab73947006f6346baa1de",
 		"packages/coding-agent/test/ultron-a08-snapshot-restorability.test.ts": "d6738c0b8220852da30e1e406cc132f3b08d635b78572c63ab336e0400e75392",
@@ -66,7 +66,8 @@
 		"packages/coding-agent/test/ultron-grants.test.ts": "fc673e68e0c9418f8f202fad757f3020e218755730e412ccc54a1ca79d1a9a2f",
 		"packages/coding-agent/test/ultron-hints.test.ts": "6dfa99599a56380d33ef40adc3032d3adcfb58300d228ca4a9761c742466b223",
 		"packages/coding-agent/test/ultron-instances.test.ts": "740cffb33a17183701f88b27f3aca4f1268b28726ccbe736a93da6ac42765df4",
-		"packages/coding-agent/test/ultron-kernel-long-session.test.ts": "ebb16b29b201f2868ebabd8bdb624c7853c6dc66a127c0a30a4c1b8be2146bd3",
+		"packages/coding-agent/test/ultron-kernel-long-session.test.ts": "56fa23b0518bae59625761b0be6425155a4153bb2f38d48c1ae5573e9d41401e",
+		"packages/coding-agent/test/ultron-kernel-raw-output.test.ts": "fcea15d4f102324cdc6f3f648efd49b67ae3f8328c211c379440b5478aab961a",
 		"packages/coding-agent/test/ultron-memory-inspection.test.ts": "6f066ccf662be2e44b98bd9fe7de387361dc3b58eeb52a65f82690cae8a9d9b4",
 		"packages/coding-agent/test/ultron-migration.test.ts": "84fb8b5321bcc1d9876c43535fe0a53ef1ea4872a1fbf2e2b7e84407f16e2001",
 		"packages/coding-agent/test/ultron-native-host.test.ts": "c57a17446c5e8cf3e1dc7fc7649c6691a30f6451a1ed551049156413b814259c",
