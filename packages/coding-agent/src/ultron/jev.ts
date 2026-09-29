@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { getAgentDir } from "../config.ts";
+import { defaultSecretDetector } from "./rlm/output-secrets.ts";
 
 export type JevRoute = "fast" | "powerful" | "architecture" | "designer";
 export type JevTriage = {
@@ -77,9 +78,14 @@ const codeSecretPatterns = [
 	/\b\d{3}-\d{2}-\d{4}\b/,
 ];
 
-/** Deterministic secret check for code proposals; runs whether or not Jev is configured. */
+/**
+ * Deterministic secret check for code proposals; runs whether or not Jev is configured. The shared credential
+ * rules (rlm/secret-patterns.json, as masked in cell output) apply as well as the stricter patterns above.
+ */
 export function containsCodeSecret(text: string): boolean {
-	return codeSecretPatterns.some((pattern) => pattern.test(text));
+	return (
+		codeSecretPatterns.some((pattern) => pattern.test(text)) || defaultSecretDetector().scan(text, "mask").length > 0
+	);
 }
 function deterministicPolicy(prompt: string, text: string): JevMemoryPolicy | undefined {
 	const content = `${prompt}\n${text}`;

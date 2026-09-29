@@ -98,6 +98,7 @@ import { createInferenceRuntime, createSessionFrameStore } from "../ultron/rlm/i
 import { type KernelExecutionResult, type KernelHostHandler, RlmKernel } from "../ultron/rlm/kernel.ts";
 import { KernelPool, KernelPoolCapacityError } from "../ultron/rlm/kernel-pool.ts";
 import { type DetachedTaskEnd, NativeRlmHost } from "../ultron/rlm/native-host.ts";
+import { maskCellOutput } from "../ultron/rlm/output-secrets.ts";
 import { truncateToolOutput } from "../ultron/rlm/output-truncation.ts";
 import {
 	defaultBuiltinToolNames,
@@ -225,11 +226,15 @@ export class UltronRlmKernel {
 			const traceback = (result.error?.traceback ?? []).join("\n");
 			const failure = !traceback ? summary : traceback.endsWith(summary) ? traceback : `${traceback}\n${summary}`;
 			throw new RlmCellError(
-				truncateToolOutput([stdout, stderr, failure].filter(Boolean).join("\n")),
+				truncateToolOutput(maskCellOutput([stdout, stderr, failure].filter(Boolean).join("\n"))),
 				result.error?.ename ?? "PythonError",
 			);
 		}
-		return { text: truncateToolOutput([stdout, stderr, result.result].filter(Boolean).join("\n")), images };
+		// Secrets are masked before the cut, so a truncation boundary cannot split one past recognition.
+		return {
+			text: truncateToolOutput(maskCellOutput([stdout, stderr, result.result].filter(Boolean).join("\n"))),
+			images,
+		};
 	}
 
 	async resetScratch(): Promise<void> {
@@ -1972,6 +1977,8 @@ async function createCodingAgentHarness(
 			);
 		});
 		const removeNudgeRunListener = harness.events.on("run_end", (event) => {
+			// Every lane's stuck-loop detection starts over with its next run.
+			cellHints.runEnded(event.lane);
 			if (event.lane !== "main") return;
 			nudger.runEnded(event.runId);
 			skillNudger.runEnded(event.runId);

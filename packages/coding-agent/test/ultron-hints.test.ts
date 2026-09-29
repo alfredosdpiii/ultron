@@ -1,6 +1,6 @@
 /**
  * Situational hints and the `read` skill:
- * - each trigger (job-detached, blocked-on-job, poll-loop, output-truncated, large-read, repeated-failure) adds one
+ * - each trigger (job-detached, blocked-on-job, poll-loop, output-truncated, large-read, repeated-failure, stuck-loop) adds one
  *   `[hint:<tag>]` line to the cell's result; at most one per cell, the most specific first;
  * - `hints.mute`/`unmute`/`muted` work per lane from the kernel and persist; each tag fires at most N times per lane;
  *   ULTRON_HINTS=off disables hints;
@@ -154,6 +154,8 @@ describe("situational hints", () => {
 
 	test("repeated-failure: the same exception type three cells in a row", async () => {
 		const hints = make();
+		// The stuck-loop hint covers failure streaks first (see ultron-loop-detector.test.ts); muted, this one fires.
+		await mute(hints, "hints.mute", ["stuck-loop"]);
 		expect(await cell(hints, "a", [], { ename: "KeyError" })).toBe(undefined);
 		expect(await cell(hints, "b", [], { ename: "KeyError" })).toBe(undefined);
 		expect(await cell(hints, "c", [], { ename: "KeyError" })).toMatch(
