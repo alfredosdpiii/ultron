@@ -48,7 +48,6 @@
 		"prepublishOnly": "npm run clean && npm run build && npm run check",
 		"publish": "npm run prepublishOnly && node scripts/publish.mjs",
 		"publish:dry": "npm run prepublishOnly && node scripts/publish.mjs --dry-run",
-		"release:local": "node scripts/local-release.mjs",
 		"pack:release": "node scripts/pack-release.mjs",
 		"publish:npm": "node scripts/publish-npm.mjs",
 		"shrinkwrap:coding-agent": "node scripts/generate-coding-agent-shrinkwrap.mjs",
