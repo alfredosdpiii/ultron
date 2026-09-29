@@ -1,6 +1,17 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { BUNDLED, INLINED, NPM_NAME, npmReadme, OMITTED, releaseManifest } from "./pack-release.mjs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import {
+	BUNDLED,
+	INLINED,
+	NPM_NAME,
+	npmReadme,
+	OMITTED,
+	releaseManifest,
+	scanStagedPackage,
+} from "./pack-release.mjs";
 
 const manifest = {
 	name: "@bryandlp/ultron-coding-agent",
@@ -75,4 +86,24 @@ test("the npm README links into the repository", () => {
 	assert.match(out, /\]\(#install\)/);
 	assert.match(out, /\]\(mailto:a@b\.c\)/);
 	assert.doesNotMatch(out, /\]\((?!https:|#|mailto:)/);
+});
+
+test("a staged package with a secret or a home path is refused, with the value redacted", () => {
+	const stage = mkdtempSync(join(tmpdir(), "pack-scan-"));
+	try {
+		mkdirSync(join(stage, "dist"), { recursive: true });
+		writeFileSync(join(stage, "dist", "cli.js"), "console.log('hi');\n");
+		scanStagedPackage(stage, []);
+		const token = ["g", "hp_", "FAKE0a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P"].join("");
+		mkdirSync(join(stage, "node_modules", "@ultron", "chord"), { recursive: true });
+		writeFileSync(join(stage, "node_modules", "@ultron", "chord", "index.js"), `const t = "${token}";\n`);
+		assert.throws(
+			() => scanStagedPackage(stage, []),
+			(error) =>
+				/package\/node_modules\/@ultron\/chord\/index\.js:1:12 {2}github_token/.test(error.message) &&
+				!error.message.includes(token),
+		);
+	} finally {
+		rmSync(stage, { recursive: true, force: true });
+	}
 });

@@ -11,12 +11,16 @@
  * runtime). None of the `@ultron/*` packages are on the npm registry, so the release manifest drops the inlined ones,
  * ships `@ultron/chord` inside the tarball as a bundled dependency, and depends only on public npm packages. It leaves
  * out esbuild (see OMITTED), so the install runs no dependency install scripts.
+ *
+ * Before packing, the staged package is scanned for credentials and home-directory paths (scripts/secret-scan.mjs);
+ * a finding stops the release. `--skip-secret-scan` packs anyway, for investigating a finding only.
  */
 import { execFileSync } from "node:child_process";
 import { copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { DEFAULT_ALLOWLIST, formatFindings, loadAllowlist, scanDirectory } from "./secret-scan.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const agentDir = join(root, "packages", "coding-agent");
@@ -103,8 +107,17 @@ export function npmReadme(readme) {
 	});
 }
 
+/** Scan a staged package (node_modules included); throws with the redacted findings when there are any. */
+export function scanStagedPackage(stage, allowlist = loadAllowlist(DEFAULT_ALLOWLIST)) {
+	const { findings } = scanDirectory(stage, { allowlist, includeNodeModules: true, prefix: "package/" });
+	if (findings.length > 0)
+		throw new Error(
+			`The release package contains ${findings.length} possible secret(s) or home-directory path(s):\n${formatFindings(findings)}\nRemove them, or list a deliberate fake in .secret-scan-allow.`,
+		);
+}
+
 /** Pack the built CLI into `<outDir>/ultron-<version>.tgz`; returns the tarball path and the release manifest. */
-export function packRelease(outDir = join(root, "dist-release")) {
+export function packRelease(outDir = join(root, "dist-release"), { secretScan = true } = {}) {
 	if (!existsSync(join(agentDir, "dist", "bundle", "cli.js"))) throw new Error("Build first: npm run build:offline");
 	const work = mkdtempSync(join(tmpdir(), "ultron-release-"));
 	try {
@@ -126,6 +139,7 @@ export function packRelease(outDir = join(root, "dist-release")) {
 		// npm shows the package's README: the project README, not the coding-agent package's Pi README.
 		writeFileSync(join(stage, "README.md"), npmReadme(readFileSync(join(root, "README.md"), "utf8")));
 		copyFileSync(join(root, "LICENSE"), join(stage, "LICENSE"));
+		if (secretScan) scanStagedPackage(stage);
 		mkdirSync(outDir, { recursive: true });
 		const [packed] = JSON.parse(run("npm", ["pack", "--ignore-scripts", "--json", "--pack-destination", work], stage));
 		const target = join(outDir, `ultron-${manifest.version}.tgz`);
@@ -140,5 +154,7 @@ export function packRelease(outDir = join(root, "dist-release")) {
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
 	const outIndex = process.argv.indexOf("--out");
-	packRelease(resolve(root, outIndex === -1 ? "dist-release" : process.argv[outIndex + 1]));
+	packRelease(resolve(root, outIndex === -1 ? "dist-release" : process.argv[outIndex + 1]), {
+		secretScan: !process.argv.includes("--skip-secret-scan"),
+	});
 }

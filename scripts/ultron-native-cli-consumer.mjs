@@ -85,6 +85,8 @@ function assertShippedFiles(packageDirectory) {
 		"dist/bundle/server-entry.js",
 		"dist/bundle/session-worker-entry.js",
 		"dist/ultron/rlm/runtime.py",
+		"dist/ultron/rlm/secret_patterns.py",
+		"dist/ultron/rlm/secret-patterns.json",
 		"dist/modes/interactive/theme/dark.json",
 		"dist/modes/interactive/theme/light.json",
 		"dist/modes/interactive/assets/clankolas.png",

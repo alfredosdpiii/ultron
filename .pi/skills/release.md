@@ -25,6 +25,12 @@ Run commands from the repository root. All packages share one version.
 3. **Pack**: `npm run build:offline && node scripts/pack-release.mjs` writes `dist-release/ultron-X.Y.Z.tgz` (npm name `ultron-agent`, bin `ultron`).
 
 4. **Scan before pushing**: the diff since `origin/main` and the unpacked tarball must contain no home-directory paths, API keys or tokens.
+   ```bash
+   node scripts/secret-scan.mjs --diff origin/main...HEAD
+   node scripts/secret-scan.mjs --tarball dist-release/ultron-X.Y.Z.tgz
+   npm run scan:secrets    # the whole tracked tree, as CI runs it
+   ```
+   Each exits 1 and prints `path:line:col kind preview` (values redacted) on a finding. `pack-release.mjs` already scans the staged package and refuses to write the tarball on a finding (`--skip-secret-scan` only to investigate). Remove a real value; a deliberate fake in a test fixture goes in `.secret-scan-allow` (path glob and rule ids). The rules are `packages/coding-agent/src/ultron/rlm/secret-patterns.json`, the same ones that mask secrets in REPL output.
 
 5. **Push and publish**:
    ```bash

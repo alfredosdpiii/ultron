@@ -25,6 +25,7 @@
 import type { AgentHarness, AgentLane, CustomMessage } from "@ultron/agent-core";
 import type { Context } from "@ultron/chord";
 import { BACKGROUND_CONTEXT } from "@ultron/chord/context";
+import { maskCellOutput } from "./rlm/output-secrets.ts";
 
 export const RUNTIME_EVENT_MESSAGE_TYPE = "ultron-runtime-event";
 export const DEFAULT_COALESCE_MS = 500;
@@ -78,7 +79,7 @@ export function runtimeEventText(events: readonly RuntimeEvent[]): string {
 	return events
 		.map(
 			(event) =>
-				`<runtime_event kind="${event.kind}" id="${attribute(event.id)}" status="${attribute(event.status)}" summary="${attribute(boundedSummary(event.summary))}" fetch="${attribute(event.fetch)}" />`,
+				`<runtime_event kind="${event.kind}" id="${attribute(event.id)}" status="${attribute(event.status)}" summary="${attribute(boundedSummary(maskCellOutput(event.summary.slice(0, 4 * SUMMARY_CHARS))))}" fetch="${attribute(event.fetch)}" />`,
 		)
 		.join("\n");
 }

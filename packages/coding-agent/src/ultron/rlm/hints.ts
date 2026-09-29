@@ -2,7 +2,8 @@
  * Situational hints (nano-rlm's supervisor hints): the host watches how a lane uses the runtime and ends a cell's
  * result with at most one short tagged line, `[hint:<tag>] ...`, when something worth knowing happened in that cell
  * (a command detached into a job, a long wait on a job whose completion would have arrived as an event, polling,
- * truncated output, a large file read into a string, the same exception three cells in a row). A hint is part of
+ * truncated output, a large file read into a string, the same exception three cells in a row, a lane that looks stuck
+ * in a loop of failing or alternating cells; see loop-detector.ts). A hint is part of
  * the rlm tool result, which is appended, so it never changes an earlier message.
  *
  * A lane mutes tags it has understood with `await hints.mute(tag)` (`hints.unmute`, `hints.muted()`); each tag
@@ -12,8 +13,10 @@
 import type { JsonValue } from "@ultron/chord";
 import { readVersioned } from "../format-version.ts";
 import type { HostModuleStore, NativeHostModule } from "./host-module.ts";
+import { type LoopLimits, loopHintText, ToolLoopDetector } from "./loop-detector.ts";
 
 export const HINT_TAGS = [
+	"stuck-loop",
 	"job-detached",
 	"blocked-on-job",
 	"poll-loop",
@@ -88,6 +91,8 @@ export interface CellHintsOptions {
 	blockedSeconds?: number;
 	/** `read` returns a handle above this size (ULTRON_READ_HANDLE_BYTES). */
 	readHandleBytes?: number;
+	/** Thresholds of the stuck-loop detector. */
+	loopLimits?: Partial<LoopLimits>;
 	now?: () => number;
 }
 
@@ -107,6 +112,8 @@ type Cell = {
 	waits: Array<[number, number]>;
 	waitTypes: Set<string>;
 	statusCalls: Map<string, number>;
+	/** The cell's last `bash` command exited non-zero. */
+	bashFailed: boolean;
 };
 
 type LaneState = {
@@ -121,12 +128,14 @@ type Persisted = { muted: string[]; fired: Partial<Record<HintTag, number>> };
 export class CellHints {
 	readonly #options: CellHintsOptions;
 	readonly #lanes = new Map<string, LaneState>();
+	readonly #loops: ToolLoopDetector;
 	#persisted: Record<string, Persisted> = {};
 	#loaded?: Promise<void>;
 	#writes: Promise<void> = Promise.resolve();
 
 	constructor(options: CellHintsOptions) {
 		this.#options = options;
+		this.#loops = new ToolLoopDetector(options.loopLimits);
 	}
 
 	get enabled(): boolean {
@@ -193,6 +202,13 @@ export class CellHints {
 		this.#writes = this.#writes.then(() => this.#options.store.write(document)).catch(() => {});
 	}
 
+	/** `lane`'s run ended: failure streaks start over with its next run. */
+	runEnded(lane: string): void {
+		this.#loops.reset(lane);
+		const state = this.#lanes.get(lane);
+		if (state) state.failure = undefined;
+	}
+
 	/** Wait for journal writes (tests). */
 	settled(): Promise<void> {
 		return this.#writes;
@@ -210,7 +226,14 @@ export class CellHints {
 	/** A cell starts on `lane`. */
 	beginCell(lane: string, code: string): void {
 		if (!this.enabled) return;
-		this.#state(lane).cell = { code, detached: [], waits: [], waitTypes: new Set(), statusCalls: new Map() };
+		this.#state(lane).cell = {
+			code,
+			detached: [],
+			waits: [],
+			waitTypes: new Set(),
+			statusCalls: new Map(),
+			bashFailed: false,
+		};
 	}
 
 	/** A host request from `lane`'s kernel finished (`result` is undefined when it failed). */
@@ -218,6 +241,8 @@ export class CellHints {
 		const cell = this.#lanes.get(lane)?.cell;
 		if (!cell) return;
 		const reply = result && typeof result === "object" ? (result as Record<string, unknown>) : undefined;
+		if (type === "bash" && reply && reply.running !== true)
+			cell.bashFailed = bashFailed(String(payload.command ?? ""), reply.exit_code, reply.timed_out === true);
 		if ((type === "bash" || type === "shell.bash") && reply?.running === true) {
 			const job = reply.job as { id?: unknown } | undefined;
 			cell.detached.push({
@@ -246,13 +271,23 @@ export class CellHints {
 		state.cell = undefined;
 		if (!cell) return undefined;
 		const candidates = this.#candidates(state, cell, outcome);
+		const trip = this.#loops.cellEnded(
+			lane,
+			cell.code,
+			outcome.ename !== undefined || cell.bashFailed,
+			outcome.ename,
+		);
+		if (trip) candidates.unshift(["stuck-loop", loopHintText(trip)]);
 		state.previousStatus = new Set(cell.statusCalls.keys());
 		if (candidates.length === 0) return undefined;
 		await this.#load();
 		const persisted = this.#lane(lane);
 		const max = this.#options.maxPerTag ?? DEFAULT_HINT_MAX_PER_TAG;
+		const usable = (tag: HintTag) => !persisted.muted.includes(tag) && (persisted.fired[tag] ?? 0) < max;
+		// While the loop detector handles a stuck phase, the narrower repeated-failure hint would only repeat it.
+		const stuck = this.#loops.level(lane) > 0 && usable("stuck-loop");
 		for (const [tag, text] of candidates) {
-			if (persisted.muted.includes(tag) || (persisted.fired[tag] ?? 0) >= max) continue;
+			if (!usable(tag) || (stuck && tag === "repeated-failure")) continue;
 			persisted.fired[tag] = (persisted.fired[tag] ?? 0) + 1;
 			this.#persist();
 			return `[hint:${tag}] ${text} (Mute this hint: \`await hints.mute("${tag}")\`.)`;
@@ -328,6 +363,16 @@ export class CellHints {
 		}
 		return found;
 	}
+}
+
+/** Commands whose exit status 1 means "no match" or "differs", not an error. */
+const QUERY_COMMANDS = /^\s*(?:grep|egrep|fgrep|rg|diff|cmp|test|\[)\b/;
+
+/** Whether a finished `bash` command failed: a timeout, or a non-zero exit (1 is an answer for a query command). */
+export function bashFailed(command: string, exitCode: unknown, timedOut = false): boolean {
+	if (timedOut) return true;
+	if (typeof exitCode !== "number" || exitCode === 0) return false;
+	return !(exitCode === 1 && QUERY_COMMANDS.test(command));
 }
 
 function waitCall(type: string): string {

@@ -32,6 +32,7 @@ import agent_class_api
 from context_api import Context
 from infer_api import install as install_inference
 from hints_api import Hints
+from secret_patterns import REDACTION_MARKER
 from tools_api import Mcp, McpError, ToolCall, ToolError, ToolResult, Tools
 
 @dataclass
@@ -691,6 +692,15 @@ async def edit(path: str, old_str: str, new_str: str) -> str:
         raise FileNotFoundError(f"{path} not found")
     content = filepath.read_text()
     count = content.count(old_str)
+    if count == 0 and isinstance(old_str, str):
+        marker = REDACTION_MARKER.search(old_str)
+        if marker is not None:
+            # Cell output masks secrets, so text copied from it can hold a marker the file does not. Nothing is written.
+            raise ValueError(
+                f"old_str contains {marker.group(0)}, a mask that cell output shows in place of a secret; {path} "
+                "holds the real value, unchanged. Make old_str the text before or after the secret (not the marker), "
+                "or edit in code: `text = await read(path)` has the real content."
+            )
     if count != 1:
         raise ValueError(f"old_str must appear exactly once in {path} (found {count})")
     filepath.write_text(content.replace(old_str, new_str, 1))
