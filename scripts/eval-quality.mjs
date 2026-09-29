@@ -24,6 +24,10 @@
  * of the six passed as `metrics`; its second task, `six-services-deep`, hides each service's bugs behind a slow
  * staged harness that must be run and rerun, see tasks-delegation-deep.mjs).
  *
+ * Exit code: with both variants, 0 when the comparison gates (pass rate, median latency, cost, coverage) hold. With
+ * one variant (`--variants ultron`, no `--baseline`) there is nothing to compare: the comparison gates are skipped and
+ * printed as skipped, and the run exits 0 when every run that reached the model passed and coverage holds.
+ *
  * Wall time: a task with `timeBudgetMs` records `withinBudget` (durationMs <= budget) next to pass/fail, and the
  * summary reports per variant how many runs (and passing runs) finished within budget, with every run's time. The
  * budget is evidence only: `passed` stays correctness, and the gate below never reads it.
@@ -108,6 +112,9 @@ export const THRESHOLDS = {
  */
 export const MAX_INFRASTRUCTURE_SHARE = 0.2;
 
+/** The gates that compare the ultron candidate with the pi baseline; they need both variants in one result. */
+export const COMPARISON_CHECKS = ["pass rate", "median latency", "cost"];
+
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const RUN_TIMEOUT_MS = 20 * 60 * 1000;
 const VERIFY_TIMEOUT_MS = 60_000;
@@ -141,7 +148,11 @@ export const GATED_TASK_SET = "default";
 
 /** Whether a recorded result file is one the release gate reads: a full comparison (it has gate entries) of the gated set. */
 export function isGatedComparison(recorded) {
-	return (recorded?.taskSet ?? "default") === GATED_TASK_SET && (recorded?.summary?.gate?.length ?? 0) > 0;
+	return (
+		(recorded?.taskSet ?? "default") === GATED_TASK_SET &&
+		recorded?.summary?.comparison !== "skipped" &&
+		(recorded?.summary?.gate?.length ?? 0) > 0
+	);
 }
 
 /** Task files and hidden files; hard tasks generate their (large) data on demand. */
@@ -707,7 +718,9 @@ export function summarize(records, variants) {
 	const baseline = byVariant.pi;
 	const candidate = byVariant.ultron;
 	const gate = [];
-	if (baseline && candidate && baseline.passRate !== null && candidate.passRate !== null) {
+	// The comparison gates measure ultron against the pi baseline; a run of one variant has nothing to compare.
+	const compared = Boolean(baseline && candidate);
+	if (compared && baseline.passRate !== null && candidate.passRate !== null) {
 		const drop = (baseline.passRate - candidate.passRate) * 100;
 		gate.push({ check: "pass rate", ok: drop <= THRESHOLDS.maxPassRateDropPoints, detail: `${drop.toFixed(1)} points below baseline` });
 		const latency = candidate.medianDurationMs / baseline.medianDurationMs;
@@ -726,7 +739,31 @@ export function summarize(records, variants) {
 				detail: `${variant}: ${summary.infrastructure} of ${summary.runs} runs were infrastructure outcomes; rerun when the provider is healthy`,
 			});
 	}
-	return { byVariant, gate, passed: gate.length > 0 && gate.every((entry) => entry.ok !== false) };
+	if (compared) return { byVariant, gate, passed: gate.length > 0 && gate.every((entry) => entry.ok !== false) };
+	// One variant: the comparison gates are skipped (and recorded as skipped, outside `gate`, so the release gate never
+	// mistakes this run for a comparison). It passes when every run that reached the model passed and coverage holds.
+	const skipped = COMPARISON_CHECKS.map((check) => ({
+		check,
+		detail: `needs both pi and ultron; this run has only ${Object.keys(byVariant).join(", ") || "no variants"}`,
+	}));
+	const runs = Object.entries(byVariant).map(([variant, summary]) => {
+		const measured = summary.runs - summary.infrastructure;
+		const passedRuns = Object.values(summary.categories).reduce((total, category) => total + category.passed, 0);
+		return {
+			check: "runs",
+			ok: measured > 0 && passedRuns === measured,
+			detail: `${variant}: ${passedRuns} of ${measured} measured runs passed`,
+		};
+	});
+	const checks = [...runs, ...gate];
+	return {
+		byVariant,
+		gate,
+		comparison: "skipped",
+		skipped,
+		checks,
+		passed: checks.length > 0 && checks.every((entry) => entry.ok !== false),
+	};
 }
 
 async function applySolution(dir, solution, files) {
@@ -1007,6 +1044,7 @@ async function main() {
 	const judgeConfig = judge ? { model: judgeModel, thinking: judgeThinking ?? null, command: judgeCommand.join(" ") } : undefined;
 	writeFileSync(out, `${JSON.stringify({ taskSet, frozenAt: FROZEN_AT, thresholds: THRESHOLDS, model, thinking, ultronCommand: ultronCommand ? withoutHome(ultronCommand) : undefined, trials, isolation: ISOLATION, judge: judgeConfig, summary, records }, null, 2)}\n`);
 	console.log(JSON.stringify(summary, null, 2));
+	for (const entry of summary.skipped ?? []) console.log(`Skipped the ${entry.check} gate: ${entry.detail}`);
 	console.log(`Wrote ${out}`);
 	return summary.passed ? 0 : 1;
 }

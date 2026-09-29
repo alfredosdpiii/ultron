@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { allRowsPassed, rowRange } from "./acceptance-report.mjs";
-import { freePath, unknownArgs, withoutHome } from "./eval-quality.mjs";
+import { freePath, isGatedComparison, summarize, unknownArgs, withoutHome } from "./eval-quality.mjs";
 
 test("the gate requires every manifest row, not a fixed count", () => {
 	assert.equal(allRowsPassed({ total: 55, passed: 55 }), true);
@@ -44,4 +44,69 @@ test("unknownArgs rejects --help and typos so they never start a paid run", () =
 	assert.deepEqual(unknownArgs(["--help"]), ["--help"]);
 	assert.deepEqual(unknownArgs(["--tasks", "delegation", "--trails", "1"]), ["--trails", "1"]);
 	assert.deepEqual(unknownArgs(["--tasks", "hard", "--keep-all", "--only", "a,b", "--self-check"]), []);
+});
+
+/** A finished eval run as eval-quality.mjs records it (only the fields the summary reads). */
+function run(variant, trial, { passed = true, infrastructure = false, durationMs = 60_000, cost = 0.1 } = {}) {
+	return { variant, task: "task", category: "bugfix", trial, passed, infrastructure, durationMs, cost };
+}
+
+test("a single-variant run passes when its runs pass, with the comparison gates skipped", () => {
+	const summary = summarize([run("ultron", 1), run("ultron", 2)], ["ultron"]);
+	assert.equal(summary.passed, true);
+	assert.equal(summary.comparison, "skipped");
+	assert.deepEqual(
+		summary.skipped.map((entry) => entry.check),
+		["pass rate", "median latency", "cost"],
+	);
+	assert.match(summary.skipped[0].detail, /needs both pi and ultron; this run has only ultron/);
+	// Nothing lands in `gate`, so the release gate never reads a one-variant run as a comparison.
+	assert.deepEqual(summary.gate, []);
+	assert.equal(isGatedComparison({ taskSet: "default", summary }), false);
+});
+
+test("a single-variant run fails when a run fails or too many runs are infrastructure", () => {
+	const failed = summarize([run("ultron", 1), run("ultron", 2, { passed: false })], ["ultron"]);
+	assert.equal(failed.passed, false);
+	assert.deepEqual(failed.checks, [{ check: "runs", ok: false, detail: "ultron: 1 of 2 measured runs passed" }]);
+
+	const flaky = summarize(
+		[run("pi", 1), run("pi", 2, { passed: false, infrastructure: true })],
+		["pi"],
+	);
+	assert.equal(flaky.passed, false);
+	assert.ok(flaky.checks.some((entry) => entry.check === "coverage" && entry.ok === false));
+	// Coverage failures still stay out of the release gate for one-variant runs.
+	assert.equal(isGatedComparison({ taskSet: "default", summary: flaky }), false);
+
+	assert.equal(summarize([run("ultron", 1, { infrastructure: true })], ["ultron"]).passed, false);
+});
+
+test("two-variant gating is unchanged", () => {
+	const both = (candidate) => summarize([run("pi", 1), run("pi", 2), ...candidate], ["pi", "ultron"]);
+
+	const passing = both([run("ultron", 1), run("ultron", 2)]);
+	assert.equal(passing.passed, true);
+	assert.equal(passing.comparison, undefined);
+	assert.equal(passing.skipped, undefined);
+	assert.deepEqual(
+		passing.gate.map((entry) => [entry.check, entry.ok]),
+		[
+			["pass rate", true],
+			["median latency", true],
+			["cost", true],
+		],
+	);
+	assert.equal(isGatedComparison({ taskSet: "default", summary: passing }), true);
+	assert.equal(isGatedComparison({ taskSet: "hard", summary: passing }), false);
+
+	// A 50-point pass-rate drop fails the gate, as before.
+	const regressed = both([run("ultron", 1), run("ultron", 2, { passed: false })]);
+	assert.equal(regressed.passed, false);
+	assert.equal(regressed.gate.find((entry) => entry.check === "pass rate").ok, false);
+
+	// Slower than the latency threshold fails too.
+	const slow = both([run("ultron", 1, { durationMs: 600_000 }), run("ultron", 2, { durationMs: 600_000 })]);
+	assert.equal(slow.gate.find((entry) => entry.check === "median latency").ok, false);
+	assert.equal(slow.passed, false);
 });
