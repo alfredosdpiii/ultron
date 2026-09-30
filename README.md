@@ -360,6 +360,10 @@ Ultron works with the [Claude Code](https://claude.com/claude-code) CLI in three
 All three run on your Claude Code login (for example a Pro or Max subscription) and check it with
 `claude auth status`. Ultron never reads Claude credentials; the CLI logs itself in.
 
+Driving Claude Code headlessly with `claude -p` (stream-JSON in and out, sessions continued with `--resume`, a
+single MCP tool as the only door, credentials left to the CLI) is the approach of
+[xmpuspus](https://github.com/xmpuspus); Ultron's Claude Code integration follows it.
+
 Claude Opus 5.5 (`claude-opus-5-5`) is the default model of both Claude modes, for the root, the frames and the
 sub-agents. Under `ultron --claude`, frames and sub-agents follow the session model unless you set them in
 [`/settings → Models`](#models-settings--models).
@@ -531,6 +535,8 @@ Ultron combines ideas from several projects and papers:
 - **LLM-as-Code**: context that collapses when work returns, and self-improvement committed as tested code.
 - **Unreal Agent**: long work that never blocks the turn.
 - **waku-agent**: memory behind a retrieval gate.
+- **[xmpuspus](https://github.com/xmpuspus)**: driving Claude Code headlessly through `claude -p`, the basis of
+  `ultron claude`, `ultron --claude` and the `claude-code/*` provider.
 
 [`supremeplan.md`](supremeplan.md) records how each one landed and what was measured.
 
