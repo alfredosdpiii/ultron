@@ -561,6 +561,9 @@ export const SessionWorkerOptionsSchema = StrictObject({
 	extensionPaths: Type.Optional(Type.Array(Type.String({ minLength: 1 }))),
 	/** Pi `--no-extensions`: skip extension discovery; explicit `extensionPaths` still load. */
 	noExtensions: Type.Optional(Type.Boolean()),
+	/** Pi `--no-skills` / `--no-context-files`: skip skills / AGENTS.md and CLAUDE.md discovery and loading. */
+	noSkills: Type.Optional(Type.Boolean()),
+	noContextFiles: Type.Optional(Type.Boolean()),
 	/**
 	 * Pi's extension mode for the client this worker is started for: `ctx.mode`, and whether `ctx.hasUI` is true
 	 * (and UI queued) before that client attaches. Absent, extensions see "tui" and UI only while a client serves it.
@@ -1554,6 +1557,8 @@ export async function createUltronRuntime(
 		systemPrompt: options.systemPrompt,
 		...(options.extensionPaths === undefined ? {} : { additionalExtensionPaths: [...options.extensionPaths] }),
 		...(options.noExtensions === true ? { noExtensions: true } : {}),
+		...(options.noSkills === true ? { noSkills: true } : {}),
+		...(options.noContextFiles === true ? { noContextFiles: true } : {}),
 	});
 	await resourceLoader.reload();
 	traceStartup("worker.resources-loaded");

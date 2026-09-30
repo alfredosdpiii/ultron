@@ -367,6 +367,9 @@ export interface StartServerOptions {
 	readonly extensionPaths?: readonly string[];
 	/** Pi `--no-extensions` for new Session workers. */
 	readonly noExtensions?: boolean;
+	/** Pi `--no-skills` / `--no-context-files` for new Session workers. */
+	readonly noSkills?: boolean;
+	readonly noContextFiles?: boolean;
 	/** Pi's extension mode of this server's client ("tui", "rpc", "print", "json") for new Session workers. */
 	readonly extensionMode?: ExtensionMode;
 	/** Hold the server open without client or Session demand. Defaults to true for foreground servers. */
@@ -663,6 +666,8 @@ export async function startServer(options: StartServerOptions = {}): Promise<Run
 		options.excludeTools === undefined &&
 		options.extensionPaths === undefined &&
 		options.noExtensions === undefined &&
+		options.noSkills === undefined &&
+		options.noContextFiles === undefined &&
 		options.extensionMode === undefined
 			? undefined
 			: {
@@ -676,6 +681,8 @@ export async function startServer(options: StartServerOptions = {}): Promise<Run
 					...(options.excludeTools === undefined ? {} : { excludeTools: options.excludeTools }),
 					...(options.extensionPaths === undefined ? {} : { extensionPaths: options.extensionPaths }),
 					...(options.noExtensions === undefined ? {} : { noExtensions: options.noExtensions }),
+					...(options.noSkills === undefined ? {} : { noSkills: options.noSkills }),
+					...(options.noContextFiles === undefined ? {} : { noContextFiles: options.noContextFiles }),
 					...(options.extensionMode === undefined ? {} : { extensionMode: options.extensionMode }),
 				};
 	const directory = resolveServerDirectory(options.directory ?? process.env[LEGACY_ENV_SERVER_DIR]);

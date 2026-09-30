@@ -134,6 +134,8 @@ export class SessionWorkerManager {
 				readonly excludeTools?: readonly string[];
 				readonly extensionPaths?: readonly string[];
 				readonly noExtensions?: boolean;
+				readonly noSkills?: boolean;
+				readonly noContextFiles?: boolean;
 				readonly extensionMode?: ExtensionMode;
 		  }
 		| undefined;
@@ -174,6 +176,8 @@ export class SessionWorkerManager {
 			readonly excludeTools?: readonly string[];
 			readonly extensionPaths?: readonly string[];
 			readonly noExtensions?: boolean;
+			readonly noSkills?: boolean;
+			readonly noContextFiles?: boolean;
 			readonly extensionMode?: ExtensionMode;
 		},
 		onWorkerCountChanged?: (count: number) => void,
@@ -621,6 +625,8 @@ export class SessionWorkerManager {
 				...(this.#model?.excludeTools === undefined ? {} : { excludeTools: [...this.#model.excludeTools] }),
 				...(this.#model?.extensionPaths === undefined ? {} : { extensionPaths: [...this.#model.extensionPaths] }),
 				...(this.#model?.noExtensions === true ? { noExtensions: true } : {}),
+				...(this.#model?.noSkills === true ? { noSkills: true } : {}),
+				...(this.#model?.noContextFiles === true ? { noContextFiles: true } : {}),
 				...(this.#model?.extensionMode === undefined ? {} : { extensionMode: this.#model.extensionMode }),
 			};
 			traceStartup("server.spawn-worker");

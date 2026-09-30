@@ -252,6 +252,9 @@ export async function runNativeUltronCommand(parsed: Args, stdinContent: string 
 				? {}
 				: { extensionPaths: parsed.extensions.map((path) => (isLocalPath(path) ? resolvePath(path) : path)) }),
 			...(parsed.noExtensions ? { noExtensions: true } : {}),
+			// Pi's --no-skills / --no-context-files for this client's Session workers.
+			...(parsed.noSkills ? { noSkills: true } : {}),
+			...(parsed.noContextFiles ? { noContextFiles: true } : {}),
 			// Pi's extension mode for this client: `ctx.mode`, and `ctx.hasUI` from the Session's start.
 			extensionMode: parsed.mode === "rpc" ? "rpc" : runsTui ? "tui" : parsed.mode === "json" ? "json" : "print",
 		});
