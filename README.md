@@ -437,6 +437,10 @@ temporary `--settings` file with three hooks. The configs live in a private temp
 an MCP server that runs Ultron's own runtime, so you can also add it to any Claude Code setup yourself
 (`claude mcp add ultron -- ultron mcp`, then allow `mcp__ultron__rlm`).
 
+The system prompt (and each Claude Code subagent's) includes your AGENTS.md/CLAUDE.md context files and your skills,
+loaded exactly as native `ultron` loads them (same settings and project trust); `--no-context-files` and
+`--no-skills` leave them out.
+
 **The same as native Ultron:** the persistent kernel and its skills, output truncation, hints (stuck loops,
 polling, detached jobs), secret masking, Loki guardrails, `rlm.load`/`infer`/`map` frames, subagents with checked
 verdicts, typed agents, workflows, shell jobs, the usage ledger, kernel snapshots, and memory. Each Claude Code
