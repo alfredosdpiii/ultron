@@ -32,8 +32,13 @@ export interface ProposedWrite {
 
 export interface FileHookContext {
 	readonly lane: string;
-	/** The session's working directory. */
+	/** The lane's working directory: the session's, or a worktree subagent's own. */
 	readonly cwd: string;
+	/**
+	 * Set for a worktree subagent's lane (`rlm.spawn(..., worktree=True)`): the root of its Git worktree, which a
+	 * guard checks instead of the session's repository.
+	 */
+	readonly root?: string;
 	/** Aborted when the guard's time is up or the cell is cancelled. */
 	readonly signal: AbortSignal;
 }
@@ -104,6 +109,11 @@ export interface FileHooksOptions {
 	readonly now?: () => number;
 	/** Every guard outcome, for logs (ULTRON_LOKI_LOG). */
 	readonly onRecord?: (record: GuardRecord) => void;
+	/**
+	 * A lane that works elsewhere than `cwd` (a worktree subagent): its directory, and the root of its worktree.
+	 * Its writes resolve against that directory and its cells are compared against their own snapshots.
+	 */
+	readonly laneRoot?: (lane: string) => { cwd: string; root: string } | undefined;
 }
 
 export interface GuardRecord {
@@ -134,14 +144,23 @@ export class FileHooks {
 	/** Checked writes since the last after-cell snapshot: absolute path -> sha256 of the checked content. */
 	readonly #checked = new Map<string, string>();
 	readonly #pending = new Map<string, string[]>();
-	#baseline: Promise<WorkspaceSnapshot | undefined> | undefined;
+	/** The last snapshot per directory: the session's, and each worktree subagent's own. */
+	readonly #baselines = new Map<string, Promise<WorkspaceSnapshot | undefined>>();
 	#chain: Promise<void> = Promise.resolve();
+	readonly #laneRoot: FileHooksOptions["laneRoot"];
 
 	constructor(options: FileHooksOptions) {
 		this.cwd = resolve(options.cwd);
 		this.#snapshot = options.snapshot ?? ((cwd) => snapshotWorkspace(cwd));
 		this.#now = options.now ?? Date.now;
 		this.#onRecord = options.onRecord;
+		this.#laneRoot = options.laneRoot;
+	}
+
+	/** Where a lane works: its own directory and worktree root, or the session's directory. */
+	#where(lane: string | undefined): { cwd: string; root?: string } {
+		const own = lane === undefined ? undefined : this.#laneRoot?.(lane);
+		return own === undefined ? { cwd: this.cwd } : { cwd: resolve(own.cwd), root: resolve(own.root) };
 	}
 
 	/** Register a guard; returns its removal. */
@@ -197,8 +216,8 @@ export class FileHooks {
 		stats.turnMs += ms;
 	}
 
-	#display(path: string): string {
-		const rel = relative(this.cwd, path);
+	#display(path: string, cwd = this.cwd): string {
+		const rel = relative(cwd, path);
 		return rel && !rel.startsWith("..") && !isAbsolute(rel) ? rel.split(sep).join("/") : path;
 	}
 
@@ -238,17 +257,23 @@ export class FileHooks {
 		options: { lane: string; signal?: AbortSignal },
 	): Promise<BeforeWriteResult[]> {
 		const guards = this.#guards.filter((guard) => guard.beforeWrite !== undefined && this.#enabled(guard));
+		const where = this.#where(options.lane);
 		return Promise.all(
 			writes.map(async (write): Promise<BeforeWriteResult> => {
-				const path = resolve(this.cwd, write.path);
+				const path = resolve(where.cwd, write.path);
 				const proposed = { path, content: write.content };
-				const display = this.#display(path);
+				const display = this.#display(path, where.cwd);
 				const outcomes = await Promise.all(
 					guards.map(async (guard) => {
 						const timeoutMs = guard.timeoutMs ?? DEFAULT_BEFORE_WRITE_TIMEOUT_MS;
 						const started = this.#now();
 						const result = await this.#timed(timeoutMs, options.signal, (signal) =>
-							guard.beforeWrite!(proposed, { lane: options.lane, cwd: this.cwd, signal }),
+							guard.beforeWrite!(proposed, {
+								lane: options.lane,
+								cwd: where.cwd,
+								...(where.root === undefined ? {} : { root: where.root }),
+								signal,
+							}),
 						);
 						const ms = this.#now() - started;
 						this.#charge(guard, ms);
@@ -292,16 +317,20 @@ export class FileHooks {
 		);
 	}
 
-	/** A cell is starting: make sure a baseline snapshot exists to compare its end against. */
-	cellStarted(): void {
-		if (!this.watchesCells || this.#baseline !== undefined) return;
-		this.#baseline = this.#snapshot(this.cwd).catch(() => undefined);
+	/** A cell is starting (on `lane`): make sure a baseline snapshot of its directory exists to compare its end with. */
+	cellStarted(lane?: string): void {
+		const { cwd } = this.#where(lane);
+		if (!this.watchesCells || this.#baselines.has(cwd)) return;
+		this.#baselines.set(
+			cwd,
+			this.#snapshot(cwd).catch(() => undefined),
+		);
 	}
 
 	/** Take the first baseline now (at session start), so the first cell's changes are seen too. */
 	start(): Promise<void> {
 		this.cellStarted();
-		return (this.#baseline ?? Promise.resolve()).then(() => {});
+		return (this.#baselines.get(this.cwd) ?? Promise.resolve()).then(() => {});
 	}
 
 	/**
@@ -310,9 +339,9 @@ export class FileHooks {
 	 */
 	cellEnded(lane: string): void {
 		if (!this.watchesCells) return;
-		if (this.#baseline === undefined) {
+		if (!this.#baselines.has(this.#where(lane).cwd)) {
 			// No baseline yet (a guard became interested mid-session): this cell's changes cannot be told apart.
-			this.cellStarted();
+			this.cellStarted(lane);
 			return;
 		}
 		this.#chain = this.#chain.then(() => this.#afterCell(lane)).catch(() => {});
@@ -335,9 +364,10 @@ export class FileHooks {
 	}
 
 	async #afterCell(lane: string): Promise<void> {
-		const before = await this.#baseline;
-		const after = await this.#snapshot(this.cwd).catch(() => undefined);
-		if (after !== undefined) this.#baseline = Promise.resolve(after);
+		const where = this.#where(lane);
+		const before = await this.#baselines.get(where.cwd);
+		const after = await this.#snapshot(where.cwd).catch(() => undefined);
+		if (after !== undefined) this.#baselines.set(where.cwd, Promise.resolve(after));
 		if (before === undefined || after === undefined) return;
 		const diff = diffSnapshots(before, after);
 		if (diff.changed.length === 0) return;
@@ -366,7 +396,13 @@ export class FileHooks {
 				const result = await this.#timed(
 					guard.afterTimeoutMs ?? DEFAULT_AFTER_CELL_TIMEOUT_MS,
 					undefined,
-					(signal) => guard.afterCellChanges!(changes, { lane, cwd: this.cwd, signal }),
+					(signal) =>
+						guard.afterCellChanges!(changes, {
+							lane,
+							cwd: where.cwd,
+							...(where.root === undefined ? {} : { root: where.root }),
+							signal,
+						}),
 				);
 				const ms = this.#now() - started;
 				this.#charge(guard, ms);
@@ -383,7 +419,7 @@ export class FileHooks {
 					phase: "after_cell",
 					outcome: result.timedOut || result.error !== undefined ? "unchecked" : text ? "findings" : "clean",
 					ms,
-					paths: [...files, ...checked].map((path) => this.#display(path)),
+					paths: [...files, ...checked].map((path) => this.#display(path, where.cwd)),
 					lane,
 					...(text ? { detail: text } : {}),
 				});

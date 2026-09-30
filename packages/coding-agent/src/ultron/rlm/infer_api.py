@@ -381,6 +381,8 @@ class Inference:
         elif isinstance(source, str) and "\n" not in source and len(source) < _MAX_PATH_TEXT and os.path.isfile(source):
             file_path = Path(source)
         if file_path is not None:
+            from worktree_api import worktree_path
+            file_path = worktree_path(file_path)
             raw = file_path.read_bytes()
             content = raw.decode("utf-8", errors="replace")
             label = label or file_path.name

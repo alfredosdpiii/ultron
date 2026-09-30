@@ -12,7 +12,7 @@ import { join } from "node:path";
 import type { JsonValue } from "@ultron/chord";
 import type { BashOperations } from "../../core/tools/bash.ts";
 import { stripAnsi } from "../../utils/ansi.ts";
-import { sanitizeBinaryOutput } from "../../utils/shell.ts";
+import { getShellEnv, sanitizeBinaryOutput } from "../../utils/shell.ts";
 import { readVersioned } from "../format-version.ts";
 import { bashTimeoutSeconds } from "./host-bash.ts";
 import type { HostCaller, HostModuleStore, NativeHostApi, NativeHostModule } from "./host-module.ts";
@@ -89,6 +89,8 @@ type Live = {
 
 export interface ShellJobsOptions {
 	cwd: string;
+	/** A lane that works elsewhere (a worktree subagent): its jobs' directory and extra environment. */
+	laneWorkspace?: (lane: string) => { cwd: string; env: Record<string, string> } | undefined;
 	/** Directory for spill files (one `<job id>.log` per job). */
 	dir: string;
 	operations: () => BashOperations;
@@ -264,7 +266,7 @@ export class ShellJobs {
 			lane,
 			rootId,
 			command,
-			cwd: this.#options.cwd,
+			cwd: this.#options.laneWorkspace?.(lane)?.cwd ?? this.#options.cwd,
 			timeout: timeout ?? null,
 			status: "running",
 			exitCode: null,
@@ -315,10 +317,12 @@ export class ShellJobs {
 		let exitCode: number | null = null;
 		let error: string | undefined;
 		try {
+			const extra = this.#options.laneWorkspace?.(record.lane)?.env;
 			const result = await this.#options.operations().exec(record.command, record.cwd, {
 				onData: (data) =>
 					write(sanitizeBinaryOutput(stripAnsi(decoder.decode(data, { stream: true }))).replace(/\r/g, "")),
 				signal: controller.signal,
+				...(extra === undefined ? {} : { env: { ...getShellEnv(), ...extra } }),
 			});
 			exitCode = result.exitCode;
 		} catch (caught) {

@@ -34,6 +34,8 @@ export interface RlmTask {
 	readonly turns?: number;
 	readonly toolCallCount?: number;
 	readonly lastText?: string;
+	/** A worktree subagent's branch, and how its merge went (`ultron/ab12/fix · merged`). */
+	readonly worktree?: string;
 }
 
 /** A `workflows.run` plan from `agents.status {graph: true}`: every node, including those not admitted yet. */
@@ -358,7 +360,7 @@ export function parseAgentsStatus(value: unknown): {
 							...(typeof result.preview === "string" ? { preview: result.preview } : {}),
 						},
 					}),
-			...pickStrings(task, ["lane", "input", "fetch", "model", "lastText"]),
+			...pickStrings(task, ["lane", "input", "fetch", "model", "lastText", "worktree"]),
 			...pickNumbers(task, ["startedAt", "endedAt", "cost", "tokens", "turns", "toolCallCount"]),
 			...(workflow !== undefined && typeof workflow.run === "string" && typeof workflow.node === "string"
 				? {

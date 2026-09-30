@@ -105,6 +105,8 @@ export function installClaudeCodeLanes(input: {
 	session: Session<JsonlSessionMetadata>;
 	harness: AgentHarness<never> | AgentHarness<{ env: unknown }> | AgentHarness;
 	cwd: string;
+	/** A lane that works elsewhere (a worktree subagent): its Claude Code process starts there. */
+	cwdFor?: (lane: string) => string | undefined;
 	env?: NodeJS.ProcessEnv;
 }): ClaudeCodeLanes {
 	const { session, cwd } = input;
@@ -128,6 +130,7 @@ export function installClaudeCodeLanes(input: {
 			const self = workerSelfCommand(env);
 			runner = new ClaudeRootRunner({
 				cwd,
+				...(input.cwdFor === undefined ? {} : { cwdFor: (key: string) => input.cwdFor!(laneOf(key)) }),
 				env,
 				systemPromptNote: CLAUDE_CODE_LANE_NOTE,
 				bridgeCommand: (token) => ({

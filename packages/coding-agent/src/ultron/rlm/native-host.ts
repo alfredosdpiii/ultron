@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { lstat } from "node:fs/promises";
-import { join } from "node:path";
+import { isAbsolute, join, relative, sep } from "node:path";
 import type { AgentHarness, AgentLane, Context, Entry } from "@ultron/agent-core";
 import { isJsonValue, type JsonValue } from "@ultron/chord";
 import { BACKGROUND_CONTEXT, withAbortSignal, withoutAbortSignal } from "@ultron/chord/context";
@@ -26,6 +26,26 @@ import {
 	taskFingerprint,
 } from "./task-store.ts";
 import { checkFiles, MAX_VERDICT_REJECTIONS, type Verdict, type VerdictCheck, validateVerdict } from "./verdict.ts";
+import {
+	type ConflictFile,
+	commitChildWorktree,
+	commitMessage,
+	createChildWorktree,
+	keepWorktrees,
+	listDirty,
+	listRecords,
+	mergeChildWorktree,
+	pruneWorktrees,
+	removeChildWorktree,
+	runSetupCommand,
+	saveRecord,
+	WorktreeError,
+	type WorktreeInfo,
+	type WorktreeRecord,
+	type WorktreeSetup,
+	worktreeBriefNote,
+	worktreeEnv,
+} from "./worktrees.ts";
 
 type Payload = Record<string, unknown>;
 export type NativeResult = StoredTaskResult;
@@ -67,6 +87,14 @@ type TaskRecord = NativeTask & {
 	verdictProblems?: string[];
 	/** The rejections ran out with no valid verdict: the subagent's reply is returned unverified. */
 	verdictInvalid?: boolean;
+	/** A subagent started with `worktree=True`: its private Git worktree (see worktrees.ts). */
+	worktree?: WorktreeRecord;
+	/** The worktree's files when the child started (after setup): what it changed is committed on its branch. */
+	worktreeBaseline?: WorkspaceSnapshot;
+	/** The parent's tree when a worktree child started, to see writes it made outside its worktree. */
+	outsideBefore?: WorkspaceSnapshot;
+	/** How `rlm.merge` last ended for this child (in memory, for the graph view). */
+	mergeStatus?: string;
 };
 
 /** A task's place in a `workflows.run` graph: the run, its node id, and the dependencies it joined. */
@@ -133,6 +161,8 @@ type TaskRequest = {
 	lane?: string;
 	/** Set for a workflow node's task (read-only provenance for the graph view). */
 	workflow?: WorkflowMembership;
+	/** A subagent's private worktree, created before admission (`worktree=True`). */
+	worktree?: WorktreeRecord;
 };
 
 type RlmChildHandle = {
@@ -142,6 +172,8 @@ type RlmChildHandle = {
 	model: string;
 	timeout_ms: number;
 	parent_branch_anchor: string;
+	/** The child's worktree (`worktree=True`), else null. */
+	worktree: { branch: string; path: string; cwd: string } | null;
 };
 
 type WorkflowRoute = {
@@ -176,6 +208,8 @@ type WorkflowNode = Omit<TaskRequest, "input"> & {
 	/** `all`: runs only when every dependency succeeded. `any`: runs when at least one did, once all are terminal. */
 	join: "all" | "any";
 	revise?: WorkflowRevision;
+	/** An `rlm-child@1` node that runs in its own worktree (`worktree: true`), branched when the node starts. */
+	worktreeMode?: WorktreeMode;
 };
 
 type WorkflowRound = { round: number; work: WorkflowOutcome; review?: WorkflowOutcome };
@@ -403,6 +437,7 @@ function graphTask(task: TaskRecord): Record<string, unknown> {
 		...(task.turns === undefined ? {} : { turns: task.turns }),
 		...(task.toolCallCount === undefined ? {} : { toolCallCount: task.toolCallCount }),
 		...(task.lastText === undefined ? {} : { lastText: task.lastText }),
+		...(worktreeLine(task) === undefined ? {} : { worktree: worktreeLine(task) }),
 		...(result === undefined
 			? {}
 			: {
@@ -414,6 +449,13 @@ function graphTask(task: TaskRecord): Record<string, unknown> {
 				}),
 		fetch: fetchHint(task),
 	};
+}
+
+/** A worktree child's branch for the graph view, with how its merge went (`ultron/ab12/fix-parser · merged`). */
+function worktreeLine(task: TaskRecord): string | undefined {
+	const branch = task.worktree?.branch ?? ((task.result?.worktree ?? null) as WorktreeInfo | null)?.branch;
+	if (branch === undefined) return undefined;
+	return task.mergeStatus === undefined ? branch : `${branch} · ${task.mergeStatus}`;
 }
 
 function fields(payload: Payload, allowed: string[]): void {
@@ -470,6 +512,9 @@ export type NativeExternalChildRun = {
 	allowance: number;
 	/** The spawn's `model=`, when given. */
 	model?: string;
+	/** A worktree child's working directory and extra environment (`worktree=True`); else the host's own. */
+	cwd?: string;
+	env?: Record<string, string>;
 	signal: AbortSignal;
 	context: Context;
 	deadlineAt: number | null;
@@ -542,8 +587,61 @@ export type NativeHostOptions = {
 	rootSpawn?: { level: number; allowance: number };
 	/** A root that is itself a subagent relays its `rlm.finish` verdict to its parent host. */
 	rootFinish?: (payload: Payload, context: Context) => Promise<unknown>;
+	/** Names worktree branches (`ultron/<session>/<child>`); default "session". */
+	sessionId?: string;
+	/** Default worktree setup (the `worktrees` setting), read per spawn; a spawn's `worktree_setup=` overrides it. */
+	worktreeSetup?: () => WorktreeSetup | undefined;
 	now?: () => number;
 };
+
+/** A workflow node's `worktree` option, or a spawn's. */
+type WorktreeMode = boolean | "auto";
+
+function worktreeMode(value: unknown, name: string): WorktreeMode {
+	if (value === undefined || value === null || value === false) return false;
+	if (value === true || value === "auto") return value;
+	throw new Error(`${name} must be True, False or "auto" (each worktree child gets its own private worktree)`);
+}
+
+/** A spawn's `worktree_setup=`: which gitignored paths to link or copy, and a command to run first. */
+function worktreeSetupOption(value: unknown): WorktreeSetup | undefined {
+	if (value === undefined || value === null) return undefined;
+	const setup = objectInput(value);
+	fields(setup, ["link", "copy", "command", "timeout_ms"]);
+	const list = (item: unknown, name: string): string[] | undefined => {
+		if (item === undefined || item === null) return undefined;
+		if (!Array.isArray(item) || item.some((path) => typeof path !== "string" || !path.trim()))
+			throw new Error(`worktree_setup.${name} must be a list of relative paths`);
+		return item as string[];
+	};
+	const link = list(setup.link, "link");
+	const copy = list(setup.copy, "copy");
+	if (setup.command !== undefined && setup.command !== null && typeof setup.command !== "string")
+		throw new Error("worktree_setup.command must be a string");
+	const timeout = setup.timeout_ms;
+	if (timeout !== undefined && (typeof timeout !== "number" || !Number.isSafeInteger(timeout) || timeout < 1))
+		throw new Error("worktree_setup.timeout_ms must be a positive integer");
+	return {
+		...(link === undefined ? {} : { link }),
+		...(copy === undefined ? {} : { copy }),
+		...(typeof setup.command === "string" && setup.command.trim() ? { command: setup.command } : {}),
+		...(typeof timeout === "number" ? { timeoutMs: timeout } : {}),
+	};
+}
+
+/** An absolute path into the parent's checkout, as the same path in a child's worktree; any other path as it is. */
+function inWorktree(path: string, worktree: WorktreeRecord): string {
+	if (!isAbsolute(path)) return path;
+	const inside = relative(worktree.path, path);
+	if (!inside.startsWith("..") && !isAbsolute(inside)) return path;
+	const rel = relative(worktree.repo, path);
+	return rel.startsWith("..") || isAbsolute(rel) ? path : join(worktree.path, rel);
+}
+
+/** A worktree as a finished child's result reports it. */
+function worktreeSummary(record: WorktreeRecord): { branch: string; path: string; cwd: string } {
+	return { branch: record.branch, path: record.path, cwd: record.cwd };
+}
 
 export class NativeRlmHost {
 	private readonly tasks = new Map<string, TaskRecord>();
@@ -585,6 +683,11 @@ export class NativeRlmHost {
 	private readonly rootFinish: NativeHostOptions["rootFinish"];
 	/** Root-lane runs that continue an earlier root (a completion event re-invoking the model): run id -> root. */
 	private readonly rootAliases = new Map<string, string>();
+	private readonly sessionId: string;
+	private readonly worktreeSetup: NativeHostOptions["worktreeSetup"];
+	/** `rlm.merge` calls run one at a time: each writes into a working tree. */
+	private merging: Promise<void> = Promise.resolve();
+	private pruned = false;
 
 	constructor(harness: AgentHarness, _rootLane: AgentLane, options: NativeHostOptions) {
 		if (!options?.store) throw new Error("NativeRlmHost requires options.store");
@@ -609,6 +712,8 @@ export class NativeRlmHost {
 		this.childModel = options.childModel;
 		this.rootSpawn = options.rootSpawn;
 		this.rootFinish = options.rootFinish;
+		this.sessionId = options.sessionId ?? "session";
+		this.worktreeSetup = options.worktreeSetup;
 		this.registry = new NativeDefinitionRegistry(options.definitionStore, {
 			deterministic: options.deterministic,
 			predict: options.predict,
@@ -688,6 +793,44 @@ export class NativeRlmHost {
 		return this.registry.get(key);
 	}
 
+	/** The nearest worktree of a task and its ancestors: a child without its own works in its parent's. */
+	private worktreeOf(taskId: string | undefined): WorktreeRecord | undefined {
+		for (let id = taskId; id !== undefined; id = this.tasks.get(id)?.parentId) {
+			const worktree = this.tasks.get(id)?.worktree;
+			if (worktree !== undefined) return worktree;
+		}
+		return undefined;
+	}
+
+	/** The directory a task works in: its (or an ancestor's) worktree, else the shared workspace. */
+	private workspaceOf(taskId: string | undefined): string | undefined {
+		return this.worktreeOf(taskId)?.cwd ?? this.workspace;
+	}
+
+	/** Whether any subagent of this host has a worktree (so a lane may work elsewhere than the shared workspace). */
+	hasWorktrees(): boolean {
+		for (const task of this.tasks.values()) if (task.worktree !== undefined) return true;
+		return false;
+	}
+
+	/**
+	 * Where a lane works when it is not the shared workspace: a worktree child's lane (or a lane of its descendants)
+	 * gets the worktree's directory and environment for its kernel, shell commands, file tools and file hooks.
+	 */
+	laneWorkspace(
+		lane: string,
+	): { cwd: string; root: string; repo: string; branch: string; env: Record<string, string> } | undefined {
+		const worktree = this.worktreeOf(this.laneTasks.get(lane));
+		if (worktree === undefined) return undefined;
+		return {
+			cwd: worktree.cwd,
+			root: worktree.path,
+			repo: worktree.repo,
+			branch: worktree.branch,
+			env: worktreeEnv(worktree),
+		};
+	}
+
 	private async loadTasks(): Promise<void> {
 		this.loading ??= (async () => {
 			await this.registry.ready();
@@ -696,6 +839,11 @@ export class NativeRlmHost {
 			// No task of this owner is live yet, so every open reservation belongs to an ended owner.
 			// Settle them as unknown so the ledger agrees with the interrupted journal (A21/A24).
 			await this.usage?.reconcile?.([]);
+			// Worktrees of sessions that ended without cleaning up (a crash): their work is kept on its branch.
+			if (!this.pruned && this.workspace !== undefined && !keepWorktrees()) {
+				this.pruned = true;
+				void pruneWorktrees(this.workspace).catch(() => {});
+			}
 		})();
 		await this.loading;
 		await this.journal.ready();
@@ -911,7 +1059,7 @@ export class NativeRlmHost {
 				});
 			const basePrompt =
 				definition.id === "rlm-child"
-					? String(objectInput(request.input).prompt)
+					? this.childBrief(task, request)
 					: `${definition.instructions}\n\nInput data:\n${JSON.stringify(request.input)}\n\nOutput contract:\n${definition.outputDescription}`;
 			// Active refinements for this definition apply to every later run; a rollback removes them.
 			// Refinements are optional; an unavailable refinement service must not fail the task (A34).
@@ -927,7 +1075,7 @@ export class NativeRlmHost {
 							)
 							.join("\n\n")}`;
 			// A subagent's files are pictured before its first model turn, to check its verdict against at the end.
-			const before = definition.id === "rlm-child" ? await this.snapshot(signal) : undefined;
+			const before = definition.id === "rlm-child" ? await this.childStart(task, signal) : undefined;
 			signal.throwIfAborted();
 			modelReservation = await this.usage?.reserve({
 				kind: "model",
@@ -997,6 +1145,8 @@ export class NativeRlmHost {
 		if (task.finishing) return task.finishing;
 		task.finishing = (async () => {
 			try {
+				// A worktree child's work is committed on its branch before its result is published.
+				result = await this.finalizeWorktree(task, result);
 				const state = result.status === "succeeded" ? "completed" : result.status;
 				const committed = await this.journal.transition(task.id, state, result);
 				Object.assign(task, committed);
@@ -1051,6 +1201,83 @@ export class NativeRlmHost {
 		return task.finishing;
 	}
 
+	/**
+	 * Commit what a worktree child changed on its branch (message: its verdict's summary) and add the worktree to its
+	 * result. A child that changed nothing has its worktree and branch removed at once. Never fails the task: a Git
+	 * problem is reported in `worktree.error` and the worktree is kept for inspection.
+	 */
+	private async finalizeWorktree(task: TaskRecord, result: NativeResult): Promise<NativeResult> {
+		const record = task.worktree;
+		if (record === undefined || record.state !== "active") return result;
+		const verdict = task.verdict;
+		const status = verdict?.status ?? result.status;
+		let info: WorktreeInfo;
+		try {
+			const summary =
+				verdict?.summary ??
+				(typeof result.value === "string" ? result.value : result.error !== undefined ? result.error : "");
+			const commit = await commitChildWorktree(record, {
+				message: commitMessage(summary, record.name, task.id, status),
+				...(await this.worktreeChanges(task, record)),
+			});
+			record.state = commit.commit !== null && status !== "passed" && status !== "succeeded" ? "failed" : "ended";
+			record.commit = commit.commit;
+			const empty = commit.commit === null;
+			if (empty && !keepWorktrees()) await removeChildWorktree(record, { deleteBranch: true });
+			else await saveRecord(record);
+			info = {
+				task: task.id,
+				branch: record.branch,
+				path: record.path,
+				repo: record.repo,
+				base: record.base,
+				commit: commit.commit,
+				changed_files: commit.changedFiles,
+				diffstat: commit.diffstat,
+				...(empty && !keepWorktrees() ? { removed: true } : {}),
+			};
+			if (empty) task.mergeStatus = "empty";
+		} catch (error) {
+			record.state = "failed";
+			await saveRecord(record).catch(() => {});
+			info = {
+				task: task.id,
+				branch: record.branch,
+				path: record.path,
+				repo: record.repo,
+				base: record.base,
+				commit: null,
+				changed_files: [],
+				diffstat: "",
+				error: `committing the worktree failed: ${error instanceof Error ? error.message : String(error)}`,
+			};
+		}
+		return { ...result, worktree: structuredClone(info) as unknown as JsonValue };
+	}
+
+	/**
+	 * What a worktree child changed: Git's changes in its worktree, minus files unchanged since it started (its setup
+	 * command's output). Undefined lets the commit take every change (no picture at the start).
+	 */
+	private async worktreeChanges(task: TaskRecord, record: WorktreeRecord): Promise<{ paths?: string[] }> {
+		const baseline = task.worktreeBaseline;
+		if (baseline === undefined || !baseline.complete) return {};
+		const now = await snapshotWorkspace(baseline.root).catch(() => undefined);
+		if (now === undefined || !now.complete) return {};
+		const status = await listDirty(record.path);
+		if (status === undefined) return {};
+		const prefix = relative(record.path, baseline.root).split(sep).join("/");
+		return {
+			paths: status.filter((path) => {
+				const inside =
+					prefix === "" ? path : path.startsWith(`${prefix}/`) ? path.slice(prefix.length + 1) : undefined;
+				// Outside the pictured directory nothing is known: keep it.
+				if (inside === undefined) return true;
+				return baseline.entries.get(inside) !== now.entries.get(inside);
+			}),
+		};
+	}
+
 	private abortLane(task: TaskRecord): void {
 		// Lane cleanup is best effort. An uncooperative lane must not hold a durable result hostage.
 		void Promise.resolve()
@@ -1103,11 +1330,35 @@ export class NativeRlmHost {
 		return reason === undefined || result.error === reason ? result : { ...result, error: reason };
 	}
 
-	/** A picture of the shared workspace, an Error when it could not be taken, or undefined without a workspace. */
-	private async snapshot(signal: AbortSignal): Promise<WorkspaceSnapshot | Error | undefined> {
-		if (this.workspace === undefined) return undefined;
+	/** A subagent's brief; a worktree child is told where it works. */
+	private childBrief(task: TaskRecord, request: TaskRequest): string {
+		const prompt = String(objectInput(request.input).prompt);
+		return task.worktree === undefined ? prompt : `${prompt}\n\n${worktreeBriefNote(task.worktree)}`;
+	}
+
+	/**
+	 * Before a subagent's first turn: its worktree's setup command runs, and its files are pictured (its worktree's,
+	 * or the shared workspace), plus the parent's tree for a worktree child, to see writes it makes outside it.
+	 */
+	private async childStart(task: TaskRecord, signal: AbortSignal): Promise<WorkspaceSnapshot | Error | undefined> {
+		if (task.worktree !== undefined) await runSetupCommand(task.worktree, signal);
+		const before = await this.snapshot(signal, this.workspaceOf(task.id));
+		if (task.worktree !== undefined && before !== undefined && !(before instanceof Error)) {
+			task.worktreeBaseline = before;
+			const outside = await this.snapshot(signal, this.workspaceOf(task.parentId));
+			if (outside !== undefined && !(outside instanceof Error)) task.outsideBefore = outside;
+		}
+		return before;
+	}
+
+	/** A picture of a workspace (the shared one by default), an Error when it could not be taken, or undefined. */
+	private async snapshot(
+		signal: AbortSignal,
+		workspace: string | undefined = this.workspace,
+	): Promise<WorkspaceSnapshot | Error | undefined> {
+		if (workspace === undefined) return undefined;
 		try {
-			return await snapshotWorkspace(this.workspace, { signal });
+			return await snapshotWorkspace(workspace, { signal });
 		} catch (error) {
 			return error instanceof Error ? error : new Error(String(error));
 		}
@@ -1127,10 +1378,13 @@ export class NativeRlmHost {
 				if (id === task.id) return true;
 			return false;
 		};
+		// Work in another worktree writes elsewhere.
+		const workspace = this.workspaceOf(task.id);
 		return [...this.tasks.values()].filter(
 			(other) =>
 				other !== task &&
 				other.laneName !== undefined &&
+				this.workspaceOf(other.id) === workspace &&
 				!other.definition.startsWith("rlm-frame@") &&
 				other.startedAt !== undefined &&
 				other.startedAt <= end &&
@@ -1138,6 +1392,146 @@ export class NativeRlmHost {
 				!ancestors.has(other.id) &&
 				!descends(other),
 		);
+	}
+
+	/**
+	 * `rlm.merge`: each child's branch, in order, into the working tree at `target` as uncommitted changes. The first
+	 * conflict stops the rest (`on_conflict="skip"` goes on with the next child); nothing of a conflicting child is
+	 * written unless `on_conflict="markers"`. A merged or empty child's worktree and branch are removed; a conflicting
+	 * or failed one is kept for inspection.
+	 */
+	private async mergeChildren(
+		children: readonly TaskRecord[],
+		target: string,
+		onConflict: "stop" | "skip" | "markers",
+		includeFailed: boolean,
+	): Promise<Record<string, unknown>> {
+		const results: Record<string, unknown>[] = [];
+		let stoppedAt: string | null = null;
+		for (const task of children) {
+			const result = task.result;
+			const info = (result?.worktree ?? null) as WorktreeInfo | null;
+			const name = task.worktree?.name ?? info?.branch.split("/").pop() ?? task.id;
+			const base = { id: task.id, name, ...(info === null ? {} : { branch: info.branch }) };
+			if (stoppedAt !== null) {
+				results.push({ ...base, status: "not_attempted", reason: `stopped at the conflict of ${stoppedAt}` });
+				continue;
+			}
+			if (info === null) {
+				results.push({
+					...base,
+					status: "no_worktree",
+					reason: "it ran in the shared tree: its changes are already there",
+				});
+				continue;
+			}
+			if (task.mergeStatus === "merged") {
+				results.push({ ...base, status: "merged", files: info.changed_files, note: "already merged" });
+				continue;
+			}
+			const verdict = result?.verdict as Verdict | null | undefined;
+			const passed =
+				result?.status === "succeeded" &&
+				(verdict === null || verdict === undefined || verdict.status === "passed");
+			if (!passed && !includeFailed) {
+				results.push({
+					...base,
+					status: "skipped",
+					reason: `the child did not succeed (${result?.status ?? "unknown"}${verdict ? `, verdict ${verdict.status}` : ""}); include_failed=True merges it anyway`,
+					...(info.commit === null ? {} : { commit: info.commit }),
+				});
+				continue;
+			}
+			if (info.error !== undefined) {
+				results.push({ ...base, status: "failed", reason: info.error });
+				stoppedAt = onConflict === "skip" ? null : task.id;
+				continue;
+			}
+			let outcome: Awaited<ReturnType<typeof mergeChildWorktree>>;
+			try {
+				outcome = await mergeChildWorktree(
+					target,
+					{ name, branch: info.branch, base: info.base, commit: info.commit },
+					{ onConflict: onConflict === "markers" ? "markers" : "stop" },
+				);
+			} catch (error) {
+				results.push({ ...base, status: "failed", reason: error instanceof Error ? error.message : String(error) });
+				if (onConflict !== "skip") stoppedAt = task.id;
+				continue;
+			}
+			task.mergeStatus = outcome.status;
+			const record = task.worktree ?? (await listRecords(target)).find((item) => item.taskId === task.id);
+			if (outcome.status === "conflict") {
+				if (record !== undefined) {
+					record.state = "conflict";
+					await saveRecord(record).catch(() => {});
+				}
+				results.push({
+					...base,
+					status: "conflict",
+					files: outcome.files,
+					conflicts: outcome.conflicts.map((file: ConflictFile) => ({ ...file })),
+					markers: outcome.markers,
+					message: outcome.markers
+						? `conflict markers written in ${outcome.files.join(", ")}: resolve them, or restore those files`
+						: `nothing of ${name} was written: ${outcome.message || "the merge conflicts"}. Its branch ${info.branch} keeps the work (worktree ${info.path})`,
+					commit: info.commit,
+				});
+				if (onConflict !== "skip") stoppedAt = task.id;
+				continue;
+			}
+			// Merged or empty: its worktree and branch have done their job.
+			if (!keepWorktrees()) {
+				if (record !== undefined) await removeChildWorktree(record, { deleteBranch: true }).catch(() => {});
+			} else if (record !== undefined) {
+				record.state = "merged";
+				await saveRecord(record).catch(() => {});
+			}
+			results.push(
+				outcome.status === "merged"
+					? { ...base, status: "merged", files: outcome.files, diffstat: outcome.diffstat }
+					: { ...base, status: "empty" },
+			);
+		}
+		const ok = results.every((item) => ["merged", "empty", "no_worktree"].includes(String(item.status)));
+		return {
+			ok,
+			merged: results.filter((item) => item.status === "merged").map((item) => item.id),
+			...(stoppedAt === null ? {} : { stopped_at: stoppedAt }),
+			results,
+			note: "Merged changes are uncommitted modifications in your working tree (new files untracked); review and commit them yourself.",
+		};
+	}
+
+	/**
+	 * A new private worktree for a child of `parentId` (`worktree=True`), branched from the spawner's tree: its own
+	 * worktree when it has one, else the shared workspace. `"auto"` falls back to the shared tree without Git.
+	 */
+	private async newWorktree(
+		mode: WorktreeMode,
+		name: string,
+		setup: WorktreeSetup | undefined,
+		parentId: string | undefined,
+		context: Context,
+	): Promise<WorktreeRecord | undefined> {
+		if (mode === false) return undefined;
+		const from = this.workspaceOf(parentId);
+		if (from === undefined) {
+			if (mode === "auto") return undefined;
+			throw new Error("worktree=True needs a working directory, and this session has none");
+		}
+		try {
+			return await createChildWorktree({
+				cwd: from,
+				sessionId: this.sessionId,
+				name,
+				setup: { ...(this.worktreeSetup?.() ?? {}), ...(setup ?? {}) },
+				...(context.abortSignal === undefined ? {} : { signal: context.abortSignal }),
+			});
+		} catch (error) {
+			if (mode === "auto" && error instanceof WorktreeError && error.fallback) return undefined;
+			throw error instanceof WorktreeError ? new Error(`worktree=True: ${error.message}`) : error;
+		}
 	}
 
 	/** Nesting levels above a subagent task: its `rlm-child` ancestors, itself, and the levels above this host's root. */
@@ -1158,7 +1552,7 @@ export class NativeRlmHost {
 	): Promise<NativeResult> {
 		task.laneName = laneName;
 		this.laneTasks.set(laneName, task.id);
-		const basePrompt = String(objectInput(request.input).prompt);
+		const basePrompt = this.childBrief(task, request);
 		const refinements = (await this.refinements?.("rlm-child", context).catch(() => [])) ?? [];
 		const prompt =
 			refinements.length === 0
@@ -1169,7 +1563,7 @@ export class NativeRlmHost {
 								`Active refinement ${refinement.id} (version ${refinement.version ?? "unversioned"}):\n${refinement.text}`,
 						)
 						.join("\n\n")}`;
-		const before = await this.snapshot(signal);
+		const before = await this.childStart(task, signal);
 		signal.throwIfAborted();
 		const reservation = await this.usage?.reserve({
 			kind: "model",
@@ -1193,6 +1587,10 @@ export class NativeRlmHost {
 				level: this.childLevel(task),
 				allowance: spawnAllowance(task),
 				...(request.model === undefined ? {} : { model: request.model }),
+				// A worktree child (or a descendant of one) runs in that worktree.
+				...(this.worktreeOf(task.id) === undefined
+					? {}
+					: { cwd: this.worktreeOf(task.id)!.cwd, env: worktreeEnv(this.worktreeOf(task.id)!) }),
 				signal,
 				context,
 				deadlineAt: task.usageReservation?.deadlineAt ?? null,
@@ -1248,7 +1646,10 @@ export class NativeRlmHost {
 		if (!text.trim() && verdict === undefined)
 			throw new Error("Agent produced no assistant result at the completed tip");
 		const value = text.trim() ? text : verdict!.summary;
-		const after = before instanceof Error || before === undefined ? undefined : await this.snapshot(signal);
+		const after =
+			before instanceof Error || before === undefined
+				? undefined
+				: await this.snapshot(signal, this.workspaceOf(task.id));
 		signal.throwIfAborted();
 		const concurrent = this.concurrentWith(task);
 		const explained = new Set<string>();
@@ -1288,6 +1689,8 @@ export class NativeRlmHost {
 			}
 		}
 		if (task.verdictInvalid) check.problems = task.verdictProblems ?? [];
+		const outside = await this.outsideWrites(task, signal);
+		if (outside.length > 0) check.outside = outside;
 		// A child with no verdict and no workspace to observe has nothing to report beyond being unverified.
 		const nothingChecked = verdict === undefined && !task.verdictInvalid && before === undefined;
 		return {
@@ -1298,6 +1701,27 @@ export class NativeRlmHost {
 			...(nothingChecked ? {} : { check: check as unknown as JsonValue }),
 			...(verdict === undefined ? { unverified: true as const } : {}),
 		};
+	}
+
+	/**
+	 * Files in the parent's tree that changed while a worktree child ran, minus what concurrent work there declared:
+	 * a worktree child should write only in its worktree (its shell commands can still reach the parent's tree).
+	 */
+	private async outsideWrites(task: TaskRecord, signal: AbortSignal): Promise<string[]> {
+		const before = task.outsideBefore;
+		if (task.worktree === undefined || before === undefined) return [];
+		const after = await this.snapshot(signal, before.root);
+		if (after === undefined || after instanceof Error) return [];
+		const explained = new Set<string>();
+		for (const other of this.tasks.values()) {
+			if (other === task || this.workspaceOf(other.id) !== this.workspaceOf(task.parentId)) continue;
+			const declared =
+				(other.result?.verdict as Verdict | null | undefined)?.changed_files ?? other.verdict?.changed_files;
+			for (const path of Array.isArray(declared) ? declared : []) explained.add(path);
+		}
+		return diffSnapshots(before, after)
+			.changed.filter((path) => !explained.has(path))
+			.slice(0, 100);
 	}
 
 	/**
@@ -1377,6 +1801,7 @@ export class NativeRlmHost {
 				startedAt: this.now(),
 				inputPreview: preview(request.input),
 				...(request.workflow === undefined ? {} : { workflow: request.workflow }),
+				...(request.worktree === undefined ? {} : { worktree: request.worktree }),
 			};
 			task.promise = new Promise<NativeResult>((resolve, reject) => {
 				task.resolve = resolve;
@@ -1436,6 +1861,14 @@ export class NativeRlmHost {
 					.filter((task) => !task.result)
 					.map((task) => this.cancel(task, "Ultron task host closed")),
 			);
+			// This session's finished, unmerged children: the directory goes, the branch keeps the work. Conflicted and
+			// failed ones stay for inspection until a later session prunes them.
+			if (this.workspace !== undefined && !keepWorktrees())
+				await pruneWorktrees(this.workspace, {
+					force: true,
+					select: (record) =>
+						record.sessionId === this.sessionId && record.owner.pid === process.pid && record.state === "ended",
+				}).catch(() => {});
 			const failed = results.find((result) => result.status === "rejected");
 			if (failed?.status === "rejected") throw failed.reason;
 		})();
@@ -1469,9 +1902,17 @@ export class NativeRlmHost {
 				"when",
 				"join",
 				"revise",
+				"worktree",
 			]);
 			const id = nonemptyString(node.id, "Workflow node ID");
 			const definition = definitionKey(node.definition);
+			const mode = worktreeMode(node.worktree, `Workflow node ${id} worktree`);
+			if (mode !== false && definition !== "rlm-child@1")
+				throw new Error(`Workflow node ${id}: worktree applies only to rlm-child@1 nodes (subagents)`);
+			if (mode !== false && node.revise !== undefined)
+				throw new Error(
+					`Workflow node ${id}: a revised node cannot use a worktree (each round would start over from your tree)`,
+				);
 			const item = this.definition(definition);
 			// A node that could never execute is a validation error, not a runtime failure after effects.
 			this.registry.canExecute(item);
@@ -1542,6 +1983,7 @@ export class NativeRlmHost {
 				join,
 				...(when === undefined ? {} : { when }),
 				...(revise === undefined ? {} : { revise }),
+				...(mode === false ? {} : { worktreeMode: mode }),
 				...options,
 				// A keyed workflow gives every node a stable key; an explicit node key wins.
 				key: options.key ?? (workflowKey === undefined ? undefined : `${workflowKey}:${id}`),
@@ -1655,11 +2097,28 @@ export class NativeRlmHost {
 				verification: "unverified",
 			};
 		let task: TaskRecord;
+		let worktree: WorktreeRecord | undefined;
 		try {
 			const workflow =
 				run === undefined ? undefined : { run, node: node.id, dependsOn: [...node.dependsOn], join: node.join };
-			task = await this.spawnTask({ ...node, input, key, workflow }, context, parentId);
+			const { worktreeMode: mode, ...request } = node;
+			// A worktree node branches from the caller's tree as it is when the node starts.
+			worktree = await this.newWorktree(mode ?? false, node.id, undefined, parentId, context);
+			task = await this.spawnTask(
+				{ ...request, input, key, workflow, ...(worktree === undefined ? {} : { worktree }) },
+				context,
+				parentId,
+			);
+			if (worktree !== undefined && task.worktree !== worktree) {
+				// An idempotent retry found the node's earlier task: the new worktree is not needed.
+				await removeChildWorktree(worktree, { deleteBranch: true }).catch(() => {});
+			} else if (worktree !== undefined) {
+				worktree.taskId = task.id;
+				await saveRecord(worktree).catch(() => {});
+			}
 		} catch (error) {
+			if (worktree !== undefined && this.tasks.get(worktree.taskId ?? "")?.worktree !== worktree)
+				await removeChildWorktree(worktree, { deleteBranch: true }).catch(() => {});
 			// Refused admission (capacity, deadline, closed host) is an explicit node failure.
 			return {
 				status: "failed",
@@ -1972,8 +2431,11 @@ export class NativeRlmHost {
 				);
 			const prompt = nonemptyString(payload.prompt, "prompt");
 			const kwargs = payload.kwargs === undefined ? {} : objectInput(payload.kwargs);
-			fields(kwargs, ["name", "model", "timeout_ms", "depth"]);
+			fields(kwargs, ["name", "model", "timeout_ms", "depth", "worktree", "worktree_setup"]);
 			const name = nonemptyString(kwargs.name, "name");
+			const mode = worktreeMode(kwargs.worktree, "worktree");
+			const setup = worktreeSetupOption(kwargs.worktree_setup);
+			if (setup !== undefined && mode === false) throw new Error("worktree_setup needs worktree=True");
 			const childDepth = kwargs.depth === undefined ? 0 : kwargs.depth;
 			const maxChildDepth = Math.min(allowance - 1, limit > 0 ? limit - depth - 1 : Number.POSITIVE_INFINITY);
 			if (typeof childDepth !== "number" || !Number.isSafeInteger(childDepth) || childDepth < 0)
@@ -1997,9 +2459,22 @@ export class NativeRlmHost {
 			};
 			if (!Number.isSafeInteger(request.timeoutMs) || request.timeoutMs < 1 || request.timeoutMs > 60 * 60 * 1000)
 				throw new Error("timeout_ms must be an integer between 1 and 3600000");
-			// A spawned child outlives the cell that started it; its subtree still stops with its parent task.
-			const task = await this.spawnTask(request, context, parentId, true, "child_done");
+			// The worktree branches from the spawner's tree as it is now, before the child is admitted.
+			const worktree = await this.newWorktree(mode, name, setup, parentId, context);
+			if (worktree !== undefined) request.worktree = worktree;
+			let task: TaskRecord;
+			try {
+				// A spawned child outlives the cell that started it; its subtree still stops with its parent task.
+				task = await this.spawnTask(request, context, parentId, true, "child_done");
+			} catch (error) {
+				if (worktree !== undefined) await removeChildWorktree(worktree, { deleteBranch: true }).catch(() => {});
+				throw error;
+			}
 			if (childDepth > 0) task.spawnDepth = childDepth;
+			if (worktree !== undefined) {
+				worktree.taskId = task.id;
+				await saveRecord(worktree).catch(() => {});
+			}
 			return {
 				rlm_child_id: task.id,
 				name,
@@ -2007,6 +2482,7 @@ export class NativeRlmHost {
 				model: request.model ?? "",
 				timeout_ms: request.timeoutMs,
 				parent_branch_anchor: "",
+				worktree: worktree === undefined ? null : worktreeSummary(worktree),
 			} satisfies RlmChildHandle;
 		}
 		if (type === "rlm.finish") {
@@ -2019,7 +2495,13 @@ export class NativeRlmHost {
 				throw new Error("rlm.finish: this subagent has already ended");
 			if (task.verdictInvalid)
 				throw new Error("rlm.finish: no attempts left; end your turn, your reply is returned unverified");
-			const checked = validateVerdict(payload, this.workspace);
+			const worktree = this.worktreeOf(task.id);
+			// A worktree child may name files by their path in its parent's checkout: they mean its own copies.
+			if (worktree !== undefined && Array.isArray(payload.changed_files))
+				payload.changed_files = payload.changed_files.map((path) =>
+					typeof path === "string" ? inWorktree(path, worktree) : path,
+				);
+			const checked = validateVerdict(payload, this.workspaceOf(task.id));
 			if ("verdict" in checked) {
 				task.verdict = checked.verdict;
 				return {
@@ -2072,6 +2554,84 @@ export class NativeRlmHost {
 			const task = this.tasks.get(selector);
 			if (!task || task.definition !== "rlm-child@1" || !visible(task.id)) throw new Error("Unknown RLM child");
 			return { deleted: (await this.cancel(task, "RLM child deleted")).status === "cancelled" };
+		}
+		if (type === "rlm.merge") {
+			fields(payload, ["selectors", "on_conflict", "include_failed"]);
+			const onConflict = payload.on_conflict === undefined ? "stop" : payload.on_conflict;
+			if (onConflict !== "stop" && onConflict !== "markers" && onConflict !== "skip")
+				throw new Error('on_conflict must be "stop", "skip" or "markers"');
+			const selectors = Array.isArray(payload.selectors)
+				? payload.selectors.map((selector) => nonemptyString(selector, "selector"))
+				: [];
+			const children =
+				selectors.length > 0
+					? selectors.map((id) => {
+							const task = this.tasks.get(id);
+							if (!task || task.definition !== "rlm-child@1" || task.id === parentId || !visible(id))
+								throw new Error(`Unknown RLM child: ${id}`);
+							return task;
+						})
+					: // Default: the caller's own worktree children, in the order they were spawned.
+						[...this.tasks.values()].filter(
+							(task) =>
+								task.definition === "rlm-child@1" &&
+								task.parentId === parentId &&
+								(task.worktree !== undefined || (task.result?.worktree ?? null) !== null),
+						);
+			if (new Set(children).size !== children.length) throw new Error("rlm.merge: a child is listed twice");
+			// Every child ends first; the merges then run in the given order, one call at a time.
+			await Promise.all(children.map((task) => this.awaitTask(task).catch(() => undefined)));
+			const target = this.workspaceOf(parentId);
+			if (target === undefined) throw new Error("rlm.merge needs a working directory, and this session has none");
+			const run = this.merging.then(() =>
+				this.mergeChildren(children, target, onConflict, payload.include_failed === true),
+			);
+			this.merging = run.then(
+				() => {},
+				() => {},
+			);
+			return run;
+		}
+		if (type === "rlm.worktrees.list") {
+			fields(payload, ["all"]);
+			const records = await listRecords(this.workspaceOf(parentId) ?? this.workspace ?? process.cwd());
+			return {
+				worktrees: records
+					.filter((record) => payload.all === true || record.sessionId === this.sessionId)
+					.map((record) => ({
+						id: record.id,
+						task: record.taskId ?? null,
+						name: record.name,
+						branch: record.branch,
+						path: record.path,
+						state: record.state,
+						commit: record.commit ?? null,
+						running: record.taskId !== undefined && this.tasks.get(record.taskId)?.result === undefined,
+						session: record.sessionId,
+					})),
+			};
+		}
+		if (type === "rlm.worktrees.cleanup") {
+			fields(payload, ["branches"]);
+			const workspace = this.workspaceOf(parentId) ?? this.workspace;
+			if (workspace === undefined) return { removed: [], kept_branches: [], running: [] };
+			const running = (record: WorktreeRecord) =>
+				record.taskId !== undefined &&
+				this.tasks.get(record.taskId) !== undefined &&
+				this.tasks.get(record.taskId)!.result === undefined;
+			const records = (await listRecords(workspace)).filter((record) => record.sessionId === this.sessionId);
+			// This session's ended children, and anything whose owner is gone.
+			const own = await pruneWorktrees(workspace, {
+				force: true,
+				deleteBranches: payload.branches === true,
+				select: (record) => record.sessionId === this.sessionId && !running(record),
+			});
+			const orphans = await pruneWorktrees(workspace, { deleteBranches: payload.branches === true });
+			return {
+				removed: [...own.removed, ...orphans.removed],
+				kept_branches: [...own.keptBranches, ...orphans.keptBranches],
+				running: records.filter(running).map((record) => record.branch),
+			};
 		}
 		if (type === "agents.spawn" || type === "agents.invoke") {
 			// invoke waits inside the cell, so the cell's cancellation applies; spawn hands the task back to be

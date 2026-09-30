@@ -168,6 +168,7 @@ export interface Settings {
 	loki?: LokiSettings; // Ultron: built-in Loki guardrails (checked file writes, auto-installed .loki/); global only
 	claudeCode?: ClaudeCodeSettings; // Ultron: Claude Code as the root agent (`ultron claude`, `ultron mcp`); global only
 	rlm?: RlmModelSettings; // Ultron: models of RLM frames and sub-agents (/settings → Models); global only
+	worktrees?: WorktreeSettings; // Ultron: how `rlm.spawn(..., worktree=True)` prepares a sub-agent's worktree
 	review?: ReviewSettings; // Ultron: /review (/settings → Models); global only
 }
 
@@ -243,6 +244,19 @@ export interface LokiSettings {
 export interface ExtensionToolsSettings {
 	mode?: "repl" | "native";
 	native?: string[];
+}
+
+/**
+ * Ultron: how a sub-agent's Git worktree is prepared (`rlm.spawn(..., worktree=True)`); a spawn's `worktree_setup=`
+ * overrides each field. Unset: gitignored node_modules/.venv/venv are linked and small .env files copied.
+ */
+export interface WorktreeSettings {
+	/** Gitignored paths (relative to the repository root) to link from the parent's checkout; [] links nothing. */
+	link?: string[];
+	/** Gitignored files to copy; [] copies nothing. */
+	copy?: string[];
+	/** A shell command run in the worktree before the sub-agent starts (for example `npm ci`). */
+	setupCommand?: string;
 }
 
 /** Ultron per-root policy knobs; `ULTRON_MAX_TOTAL_TOKENS` / `ULTRON_MAX_TOTAL_TURNS` override them. Unset: no limit. */
@@ -1043,6 +1057,24 @@ export class SettingsManager {
 		return {
 			...(maxTotalTokens === undefined ? {} : { maxTotalTokens }),
 			...(maxTotalTurns === undefined ? {} : { maxTotalTurns }),
+		};
+	}
+
+	/** Ultron: sub-agent worktree setup (`worktrees`), as `rlm.spawn`'s `worktree_setup=` takes it. */
+	getWorktreeSettings(): { link?: string[]; copy?: string[]; command?: string } {
+		const configured = this.settings.worktrees;
+		if (!isMergeableObject(configured)) return {};
+		const paths = (value: unknown): string[] | undefined =>
+			Array.isArray(value)
+				? value.filter((path): path is string => typeof path === "string" && path.trim().length > 0)
+				: undefined;
+		const link = paths(configured.link);
+		const copy = paths(configured.copy);
+		const command = typeof configured.setupCommand === "string" ? configured.setupCommand.trim() : "";
+		return {
+			...(link === undefined ? {} : { link }),
+			...(copy === undefined ? {} : { copy }),
+			...(command ? { command } : {}),
 		};
 	}
 

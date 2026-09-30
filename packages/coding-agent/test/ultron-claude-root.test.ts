@@ -54,6 +54,7 @@ type Call = {
 	tools?: string[];
 	env?: Record<string, string | null>;
 	result?: unknown;
+	cwd?: string;
 };
 
 describe("prepareClaudeRoot (--claude model selection)", () => {
@@ -534,6 +535,43 @@ describe("ultron --claude: the root lane on Claude Code", () => {
 		expect(last.content.find((part) => part.type === "text")).toMatchObject({
 			text: expect.stringContaining("Echo: Echo the word kiwi"),
 		});
+	}, 120_000);
+
+	test("a worktree subagent runs its Claude Code process and its cells in its own worktree", async () => {
+		const git = (...args: string[]) => execFileSync("git", args, { cwd: project, encoding: "utf8" });
+		git("init", "-q");
+		git("config", "user.email", "test@example.com");
+		git("config", "user.name", "Test");
+		writeFileSync(join(project, "wt.txt"), "base");
+		git("add", "wt.txt");
+		git("commit", "-q", "-m", "base");
+		try {
+			const lane = first.runtime.lane!;
+			const before = calls().length;
+			const run = await lane.prompt(
+				"CELL: h = await rlm.spawn(\"CELL: import os; print('cwd=' + os.getcwd()); open('wt.txt', 'w').write('child')\", name='wt', worktree=True)\\nr = await rlm.collect([h])\\nprint(r[0]['result']['worktree']['changed_files'])",
+				undefined,
+				BACKGROUND_CONTEXT,
+			);
+			expect(run.ok).toBe(true);
+			const childPrompt = calls()
+				.slice(before)
+				.find((call) => call.phase === "prompt" && String(call.prompt).startsWith("CELL: import os"))!;
+			expect(childPrompt.prompt).toContain("[Worktree] You work in your own Git worktree");
+			const childSpawn = calls().find((call) => call.phase === "spawn" && call.pid === childPrompt.pid)!;
+			expect(childSpawn.cwd).toContain(`${join(".git", "ultron-worktrees")}`);
+			const cell = calls().find((call) => call.phase === "tool-result" && call.pid === childPrompt.pid)!;
+			expect(JSON.stringify(cell.result)).toContain(`cwd=${childSpawn.cwd}`);
+			// The parent's file is untouched; the child's change is on its branch.
+			expect(readFileSync(join(project, "wt.txt"), "utf8")).toBe("base");
+			const last = (await messagesOf(first.runtime)).at(-1) as AssistantMessage;
+			expect(last.content.find((part) => part.type === "text")).toMatchObject({
+				text: expect.stringContaining("['wt.txt']"),
+			});
+		} finally {
+			rmSync(join(project, ".git"), { recursive: true, force: true });
+			rmSync(join(project, "wt.txt"), { force: true });
+		}
 	}, 120_000);
 
 	test("after another model answered (/model), Claude Code starts a fresh session with the conversation so far", async () => {

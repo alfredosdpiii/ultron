@@ -40,7 +40,7 @@ function check(extra) {
 test("the delegation set is one timed task over six distinct services with an agent-neutral prompt", () => {
 	assert.deepEqual(
 		tasks().map((entry) => entry.id),
-		["six-services", "six-services-deep"],
+		["six-services", "six-services-deep", "twelve-tickets"],
 	);
 	assert.equal(task.timeBudgetMs, TIME_BUDGET_MS);
 	for (const prompt of task.prompts) {

@@ -61,7 +61,7 @@ export type FrameModelSettings = { rlm: RlmModelSettings; reviewModel?: string }
  * to the `rlm` tool description.
  */
 export const INFERENCE_PROMPT = [
-	"Large inputs stay out of your context as handles; details and examples: `help(rlm.load)`, `help(rlm.map)`.",
+	"Large inputs stay out of your context as handles; examples: `help(rlm.load)`, `help(rlm.map)`.",
 	"- `h = await rlm.load(path_or_text)`: `h.search(regex)`, `h.count(regex)`, `h.lines(a, b)`, `h.chunks(n)`; views print their text.",
 	"- `await rlm.infer(task, context=[views], contract=T, budget=Budget(calls, tokens, depth))`: one private sub-model call (no transcript, no tools), contract-validated and re-asked; running out returns a falsy `Incomplete`.",
 	`- \`await rlm.map(task, items, contract=T)\`: one frame per item, in order, under one shared budget (default ${DEFAULT_MAP_TOKENS.toLocaleString("en-US")} tokens; \`budget=Budget(tokens=...)\` for more).`,

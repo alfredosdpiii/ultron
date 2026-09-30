@@ -37,6 +37,8 @@ const resultSchema = Type.Object(
 		check: Type.Optional(Type.Unknown()),
 		/** Set when a subagent ended without a valid verdict: its reply is all there is. */
 		unverified: Type.Optional(Type.Literal(true)),
+		/** A worktree subagent's branch, commit and changed files (`rlm.spawn(..., worktree=True)`). */
+		worktree: Type.Optional(Type.Unknown()),
 	},
 	{ additionalProperties: false },
 );
@@ -77,6 +79,8 @@ export type NativeResult = {
 	check?: JsonValue;
 	/** A subagent ended without a valid verdict: its reply text is all there is. */
 	unverified?: true;
+	/** A worktree subagent's branch, commit and changed files (`rlm.spawn(..., worktree=True)`; see worktrees.ts). */
+	worktree?: JsonValue;
 };
 export type NativeTask = {
 	id: string;

@@ -108,6 +108,8 @@ export interface ClaudeRateLimits {
 export interface ClaudeRootHost {
 	/** The lane's working directory (Claude Code runs there, with no tools of its own). */
 	readonly cwd: string;
+	/** A lane's own working directory when it has one (a worktree subagent), by lane key. */
+	cwdFor?(key: string): string | undefined;
 	/** The MCP server command for a lane process: the bridge back to this worker, serving `token`'s tools. */
 	bridgeCommand(token: string): { command: string; args: string[] };
 	/** Route bridge calls for `token` to `lane` until the returned function is called. */
@@ -576,7 +578,8 @@ export class ClaudeRootRunner {
 		const env = childEnv(options);
 		if (!env.MCP_TOOL_TIMEOUT) env.MCP_TOOL_TIMEOUT = String(MCP_TOOL_TIMEOUT_MS);
 		const bin = resolveClaudeCli(env);
-		const capabilities = await ensureClaudeCli(bin, env, this.#host.cwd);
+		const cwd = this.#host.cwdFor?.(key) ?? this.#host.cwd;
+		const capabilities = await ensureClaudeCli(bin, env, cwd);
 		warnings.push(...capabilities.warnings);
 		for (const flag of ["--session-id", "--resume", "--allowedtools"])
 			if (!capabilities.flags.has(flag))
@@ -622,7 +625,7 @@ export class ClaudeRootRunner {
 			...(effort && capabilities.flags.has("--effort") ? [`--effort=${effort}`] : []),
 			...(resume ? [`--resume=${sessionId}`] : [`--session-id=${sessionId}`]),
 		];
-		const child = new CliProcess(bin, args, env, this.#host.cwd);
+		const child = new CliProcess(bin, args, env, cwd);
 		const lane: LaneProcess = {
 			key,
 			child,

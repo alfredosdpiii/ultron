@@ -1,7 +1,8 @@
 /**
  * Reference solutions for tasks-delegation.mjs, used only by `eval-quality.mjs --tasks delegation --self-check`.
  * Never shown to the agents.
- * This header covers `six-services`; `six-services-deep` has its own section (calibration included) further down.
+ * This header covers `six-services`; `six-services-deep` and `twelve-tickets` have their own sections (calibration
+ * included) further down.
  *
  * Budget calibration (TIME_BUDGET_MS = 300 s in tasks-delegation.mjs). Measured in our recent eval logs:
  * gpt-6-sol takes about 5-15 s per model turn, and fixing one small service (read SPEC and code, reproduce, fix,
@@ -40,6 +41,15 @@ import {
 	SERVICES as DEEP_SERVICES,
 	fixedFiles as deepFixedFiles,
 } from "./tasks-delegation-deep.mjs";
+import {
+	applyChanges,
+	COUPLED,
+	T08_ALONE,
+	TICKET_IDS,
+	TICKETS,
+	ticketFiles,
+	UNITS,
+} from "./tasks-delegation-tickets.mjs";
 
 export const AGENT_TURN_SECONDS = 10;
 export const TURNS_PER_SERVICE = 8;
@@ -286,5 +296,187 @@ solutions["six-services-deep"] = {
 			...deepFinal(deepEvery([0, 1, 2]), (service) => `(cd services/${service} && python3 -c "${FAST_HARNESS}" > /dev/null 2>&1 || true)`),
 			expect: "fail",
 		},
+	],
+};
+
+/*
+ * `twelve-tickets` (tasks-delegation-tickets.mjs): what it measures and how the budget is calibrated.
+ *
+ * What it measures: whether twelve small tickets in ONE shared checkout are worked concurrently without losing
+ * work. Several tickets touch the same files (four in pricing.py, three in orders.py, two in inventory.py and in
+ * text.py), always in different functions, and one pair (T07, then T08 "builds on T07") touches the same function.
+ * The references below make the three ways of splitting the work concrete, with real git:
+ *
+ * - `parallel-worktrees` (the reference): one git worktree per unit of work, branched from HEAD, the coupled pair
+ *   being ONE unit done in order; each unit copies in its tickets' change to the base file (only its own change),
+ *   runs the quick tests and commits in its worktree; afterwards every branch is merged back into the main tree
+ *   one after another (stopping at the first conflict, as a sequential merge would), and the merges are reset to
+ *   uncommitted changes. All twelve pass: the per-ticket changes merge without conflicts.
+ * - `sequential`: the tickets one after another in the main tree. Correct, over budget.
+ * - `naive-shared-parallel`: the same units at the same time in the shared checkout, each reading its files at the
+ *   start and writing its whole-file version back at the end (the base plus only its own change, which is what a
+ *   worker computing from its early read writes). The last writer of each shared file wins: most of the tickets in
+ *   pricing.py, orders.py, inventory.py and text.py are lost and the hidden check fails. Concurrency alone is not
+ *   enough on a shared checkout.
+ * - `split-coupled-pair`: worktrees as in the reference, but T07 and T08 as two units from the same base; T08's
+ *   worker has to add the coupon argument itself (T08_ALONE), so both branches rewrite the same lines of
+ *   order_total and merging T08 after T07 conflicts. The merge stops there (T08 and every later branch stay out)
+ *   and the hidden check fails. Coupled tickets belong to one worker.
+ * - The wrong ones must fail the hidden check: every single ticket left undone (twelve trials; leaving T07 undone
+ *   leaves T08 undone too, since T08 builds on it).
+ *
+ * Budget calibration (TIME_BUDGET_MS = 300 s), with the method of the header above: TICKETS_CALIBRATION.turnSeconds
+ * = 10 s per model turn (gpt-6-sol measured 5-15 s), turnsPerTicket = 5 (read the ticket and the function, edit,
+ * run the quick tests, fix up, confirm), orchestrationTurns = 2 around the whole job (look at the repo and hand the
+ * work out; merge and confirm). A ticket is about 50 s of agent time; the coupled unit about 100 s.
+ * - Parallel: the longest unit bounds it: 10 + 100 + 10 = 120 s, well within 300 s. At the slow end (15 s x 7 turns
+ *   per ticket, 2 x 15 s around it) 210 + 30 = 240 s, still within.
+ * - Sequential: 10 + 12 x 50 + 10 = 620 s, about twice the budget; the self-check runs it at 4 turns per ticket and
+ *   no orchestration (480 s), since a solution run is limited to 10 minutes. At the fast end (5 s x 3 turns per ticket) a
+ *   sequential agent needs about 190 s and fits, as in `six-services`: these tickets are small, so a very fast
+ *   agent that batches them can pass within budget; a typical one cannot.
+ * The references model the agent's latency with sleeps; the changes are copied in, and git and the quick tests run
+ * for real.
+ *
+ * Self-check (2026-09-30, 17 trials, 485 s): parallel-worktrees 120.8 s, 12/12, no merge conflicts; sequential
+ * 482.0 s, 12/12, over budget; naive-shared-parallel 6/12 (which writer wins varies per run); split-coupled-pair 7/12
+ * (T08's merge conflicts and the merge stops, so T08-T12 stay out); every single ticket left undone fails.
+ */
+export const TICKETS_CALIBRATION = { turnSeconds: 10, turnsPerTicket: 5, orchestrationTurns: 2 };
+
+const ticketSeconds = TICKETS_CALIBRATION.turnSeconds * TICKETS_CALIBRATION.turnsPerTicket;
+const ticketsOrchestration = `sleep ${(TICKETS_CALIBRATION.turnSeconds * TICKETS_CALIBRATION.orchestrationTurns) / 2}`;
+/** Signing and hooks off for every commit and merge, whatever the user's global git config says. */
+const GIT = "git -c commit.gpgsign=false -c core.hooksPath=/dev/null";
+const quickTests = (dir) => `(cd "${dir}" && python3 -B -m unittest discover -s tests -q > /dev/null 2>&1 || true)`;
+const unitName = (unit) => unit.join("-");
+
+/**
+ * A unit's work, staged: after each of its tickets, the files that ticket touches as the unit has them then (the
+ * base plus the unit's tickets so far, nothing from other units): `_fixed/<unit>/<ticket>/<project path>`.
+ * `changes` overrides a ticket's replacements (T08_ALONE for the split pair).
+ */
+function unitStage(unit, changes = {}) {
+	const staged = {};
+	for (let index = 0; index < unit.length; index++) {
+		const done = unit.slice(0, index + 1).flatMap((id) => changes[id] ?? TICKETS[id]);
+		const files = applyChanges(done);
+		for (const change of changes[unit[index]] ?? TICKETS[unit[index]])
+			staged[`_fixed/${unitName(unit)}/${unit[index]}/${change.path}`] = files[change.path];
+	}
+	return staged;
+}
+
+/** The unit's tickets one after another in `dir`: the agent's turns (a sleep), the change copied in, quick tests. */
+function unitSteps(unit, dir, changes = {}) {
+	return unit.flatMap((id) => [
+		`sleep ${ticketSeconds}`,
+		...[...new Set((changes[id] ?? TICKETS[id]).map((change) => change.path))].map(
+			(path) => `cp "$MAIN/_fixed/${unitName(unit)}/${id}/${path}" "${dir}/${path}"`,
+		),
+		quickTests(dir),
+	]);
+}
+
+/**
+ * One git worktree per unit, worked at the same time, then merged back one branch after another into the main
+ * tree, stopping at the first conflict (aborted, so the main tree keeps what merged before it). The merges are
+ * reset to uncommitted changes and the worktrees removed. Worktrees are created up front, one after another (they
+ * share the repository's refs); the work in them runs concurrently.
+ */
+function worktreeSolve(units, changes = {}) {
+	const names = units.map(unitName);
+	return {
+		files: {
+			...Object.assign({}, ...units.map((unit) => unitStage(unit, changes))),
+			"_solve.sh": [
+				"set -e",
+				'MAIN="$(pwd)"',
+				'WT="$(mktemp -d)"',
+				'BASE="$(git rev-parse HEAD)"',
+				ticketsOrchestration,
+				...names.map((name) => `${GIT} worktree add -q -b "unit-${name}" "$WT/${name}" HEAD`),
+				...units.map(
+					(unit, index) =>
+						`( ${[...unitSteps(unit, `$WT/${names[index]}`, changes), `${GIT} -C "$WT/${names[index]}" commit -q -a -m "${names[index]}"`].join(" && ")} ) &`,
+				),
+				"wait",
+				`for name in ${names.join(" ")}; do`,
+				`  if ! ${GIT} merge -q --no-ff --no-edit "unit-$name" > /dev/null 2>&1; then`,
+				`    ${GIT} merge --abort`,
+				'    echo "merge conflict on $name: stopped merging" >&2',
+				"    break",
+				"  fi",
+				"done",
+				'git reset -q "$BASE"',
+				`for name in ${names.join(" ")}; do git worktree remove --force "$WT/$name"; git branch -q -D "unit-$name"; done`,
+				'rm -rf "$WT"',
+				ticketsOrchestration,
+			].join("\n"),
+		},
+		run: "sh _solve.sh",
+	};
+}
+
+/** The same units at the same time in the shared checkout, each writing back its whole-file version at the end. */
+function naiveShared(units) {
+	return {
+		files: {
+			...Object.assign({}, ...units.map((unit) => unitStage(unit))),
+			"_solve.sh": [
+				"set -e",
+				'MAIN="$(pwd)"',
+				ticketsOrchestration,
+				...units.map((unit) => `( ${unitSteps(unit, "$MAIN").join(" && ")} ) &`),
+				"wait",
+				ticketsOrchestration,
+			].join("\n"),
+		},
+		run: "sh _solve.sh",
+	};
+}
+
+/**
+ * Every ticket in order in the main tree: each step copies in the file as all tickets so far have it. Run at a
+ * conservative pace, one turn per ticket fewer than the reference and no orchestration turns (12 x 40 = 480 s):
+ * the calibrated pace (620 s) would exceed the self-check's 10 minute limit on a solution run, and the floor is
+ * already well over budget.
+ */
+function sequentialTickets() {
+	const seconds = TICKETS_CALIBRATION.turnSeconds * (TICKETS_CALIBRATION.turnsPerTicket - 1);
+	const staged = {};
+	const steps = [];
+	TICKET_IDS.forEach((id, index) => {
+		const files = ticketFiles(TICKET_IDS.slice(0, index + 1));
+		const paths = [...new Set(TICKETS[id].map((change) => change.path))];
+		for (const path of paths) staged[`_fixed/seq/${id}/${path}`] = files[path];
+		steps.push(`sleep ${seconds}`, ...paths.map((path) => `cp "_fixed/seq/${id}/${path}" "${path}"`), quickTests("."));
+	});
+	return { files: { ...staged, "_solve.sh": ["set -e", ...steps].join("\n") }, run: "sh _solve.sh" };
+}
+
+solutions["twelve-tickets"] = {
+	...worktreeSolve(UNITS),
+	expectWithinBudget: true,
+	alternatives: [
+		{ name: "sequential: one ticket after another, at a conservative pace", ...sequentialTickets(), expect: "pass", expectWithinBudget: false },
+		{ name: "naive-shared-parallel: every unit at once in the shared checkout, whole files written back", ...naiveShared(UNITS), expect: "fail" },
+		{
+			name: "split-coupled-pair: T07 and T08 in separate worktrees from the same base, then merged",
+			...worktreeSolve(
+				TICKET_IDS.map((id) => [id]),
+				{ T08: T08_ALONE },
+			),
+			expect: "fail",
+		},
+		...TICKET_IDS.map((id) => {
+			// T07 undone leaves T08 undone too: T08 builds on T07's code.
+			const undone = id === COUPLED[0] ? COUPLED : [id];
+			return {
+				name: `all tickets done but ${id}${undone.length > 1 ? ` (and ${COUPLED[1]}, which builds on it)` : ""}`,
+				files: ticketFiles(TICKET_IDS.filter((other) => !undone.includes(other))),
+				expect: "fail",
+			};
+		}),
 	],
 };

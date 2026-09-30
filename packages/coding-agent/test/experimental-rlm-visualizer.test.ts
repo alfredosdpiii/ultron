@@ -667,6 +667,14 @@ describe("RLM inspection parsing", () => {
 		});
 		expect(parsed.tasks).toHaveLength(2);
 		expect(parsed.truncatedTasks).toBe(3);
+		// A worktree subagent's branch and merge status show in its node's details.
+		const child = parseAgentsStatus({
+			tasks: [{ id: "c1", definition: "rlm-child@1", state: "completed", worktree: "ultron/ab12/fix · merged" }],
+		}).tasks[0]!;
+		expect(child.worktree).toBe("ultron/ab12/fix · merged");
+		const node = buildRlmGraph({ tasks: [child] } as unknown as RlmSnapshot);
+		const found = JSON.stringify(node);
+		expect(found).toContain('["worktree","ultron/ab12/fix · merged"]');
 		expect(parsed.jobs[0]).toMatchObject({ lane: "main", tail: "a" });
 		expect(parsed.limits).toEqual({ maxAdmittedTasks: 4, maxWallMs: null });
 		expect(parseAgentsStatus(null).tasks).toEqual([]);

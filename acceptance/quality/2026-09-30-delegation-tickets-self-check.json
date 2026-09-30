@@ -1,0 +1,429 @@
+{
+  "taskSet": "delegation",
+  "frozenAt": "2026-09-27-delegation",
+  "passed": true,
+  "results": [
+    {
+      "task": "twelve-tickets",
+      "category": "delegation",
+      "ok": true,
+      "durationMs": 484934,
+      "outcomes": [
+        {
+          "trial": "unsolved",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 1149,
+          "metrics": {
+            "passed": 0,
+            "total": 12,
+            "tickets": {
+              "T01": false,
+              "T02": false,
+              "T03": false,
+              "T04": false,
+              "T05": false,
+              "T06": false,
+              "T07": false,
+              "T08": false,
+              "T09": false,
+              "T10": false,
+              "T11": false,
+              "T12": false
+            }
+          }
+        },
+        {
+          "trial": "solved",
+          "expect": "pass, within budget",
+          "ok": true,
+          "verifyMs": 1130,
+          "metrics": {
+            "passed": 12,
+            "total": 12,
+            "tickets": {
+              "T01": true,
+              "T02": true,
+              "T03": true,
+              "T04": true,
+              "T05": true,
+              "T06": true,
+              "T07": true,
+              "T08": true,
+              "T09": true,
+              "T10": true,
+              "T11": true,
+              "T12": true
+            }
+          },
+          "solveMs": 120757,
+          "timeBudgetMs": 300000,
+          "withinBudget": true
+        },
+        {
+          "trial": "sequential: one ticket after another, at a conservative pace",
+          "expect": "pass, over budget",
+          "ok": true,
+          "verifyMs": 1600,
+          "metrics": {
+            "passed": 12,
+            "total": 12,
+            "tickets": {
+              "T01": true,
+              "T02": true,
+              "T03": true,
+              "T04": true,
+              "T05": true,
+              "T06": true,
+              "T07": true,
+              "T08": true,
+              "T09": true,
+              "T10": true,
+              "T11": true,
+              "T12": true
+            }
+          },
+          "solveMs": 481984,
+          "timeBudgetMs": 300000,
+          "withinBudget": false
+        },
+        {
+          "trial": "naive-shared-parallel: every unit at once in the shared checkout, whole files written back",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 1137,
+          "metrics": {
+            "passed": 6,
+            "total": 12,
+            "tickets": {
+              "T01": false,
+              "T02": true,
+              "T03": false,
+              "T04": false,
+              "T05": false,
+              "T06": true,
+              "T07": true,
+              "T08": true,
+              "T09": false,
+              "T10": false,
+              "T11": true,
+              "T12": true
+            }
+          }
+        },
+        {
+          "trial": "split-coupled-pair: T07 and T08 in separate worktrees from the same base, then merged",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 1187,
+          "metrics": {
+            "passed": 7,
+            "total": 12,
+            "tickets": {
+              "T01": true,
+              "T02": true,
+              "T03": true,
+              "T04": true,
+              "T05": true,
+              "T06": true,
+              "T07": true,
+              "T08": false,
+              "T09": false,
+              "T10": false,
+              "T11": false,
+              "T12": false
+            }
+          }
+        },
+        {
+          "trial": "all tickets done but T01",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 1967,
+          "metrics": {
+            "passed": 11,
+            "total": 12,
+            "tickets": {
+              "T01": false,
+              "T02": true,
+              "T03": true,
+              "T04": true,
+              "T05": true,
+              "T06": true,
+              "T07": true,
+              "T08": true,
+              "T09": true,
+              "T10": true,
+              "T11": true,
+              "T12": true
+            }
+          }
+        },
+        {
+          "trial": "all tickets done but T02",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 1902,
+          "metrics": {
+            "passed": 11,
+            "total": 12,
+            "tickets": {
+              "T01": true,
+              "T02": false,
+              "T03": true,
+              "T04": true,
+              "T05": true,
+              "T06": true,
+              "T07": true,
+              "T08": true,
+              "T09": true,
+              "T10": true,
+              "T11": true,
+              "T12": true
+            }
+          }
+        },
+        {
+          "trial": "all tickets done but T03",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 1904,
+          "metrics": {
+            "passed": 11,
+            "total": 12,
+            "tickets": {
+              "T01": true,
+              "T02": true,
+              "T03": false,
+              "T04": true,
+              "T05": true,
+              "T06": true,
+              "T07": true,
+              "T08": true,
+              "T09": true,
+              "T10": true,
+              "T11": true,
+              "T12": true
+            }
+          }
+        },
+        {
+          "trial": "all tickets done but T04",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 1819,
+          "metrics": {
+            "passed": 11,
+            "total": 12,
+            "tickets": {
+              "T01": true,
+              "T02": true,
+              "T03": true,
+              "T04": false,
+              "T05": true,
+              "T06": true,
+              "T07": true,
+              "T08": true,
+              "T09": true,
+              "T10": true,
+              "T11": true,
+              "T12": true
+            }
+          }
+        },
+        {
+          "trial": "all tickets done but T05",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 2008,
+          "metrics": {
+            "passed": 11,
+            "total": 12,
+            "tickets": {
+              "T01": true,
+              "T02": true,
+              "T03": true,
+              "T04": true,
+              "T05": false,
+              "T06": true,
+              "T07": true,
+              "T08": true,
+              "T09": true,
+              "T10": true,
+              "T11": true,
+              "T12": true
+            }
+          }
+        },
+        {
+          "trial": "all tickets done but T06",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 1853,
+          "metrics": {
+            "passed": 11,
+            "total": 12,
+            "tickets": {
+              "T01": true,
+              "T02": true,
+              "T03": true,
+              "T04": true,
+              "T05": true,
+              "T06": false,
+              "T07": true,
+              "T08": true,
+              "T09": true,
+              "T10": true,
+              "T11": true,
+              "T12": true
+            }
+          }
+        },
+        {
+          "trial": "all tickets done but T07 (and T08, which builds on it)",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 1937,
+          "metrics": {
+            "passed": 10,
+            "total": 12,
+            "tickets": {
+              "T01": true,
+              "T02": true,
+              "T03": true,
+              "T04": true,
+              "T05": true,
+              "T06": true,
+              "T07": false,
+              "T08": false,
+              "T09": true,
+              "T10": true,
+              "T11": true,
+              "T12": true
+            }
+          }
+        },
+        {
+          "trial": "all tickets done but T08",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 1904,
+          "metrics": {
+            "passed": 11,
+            "total": 12,
+            "tickets": {
+              "T01": true,
+              "T02": true,
+              "T03": true,
+              "T04": true,
+              "T05": true,
+              "T06": true,
+              "T07": true,
+              "T08": false,
+              "T09": true,
+              "T10": true,
+              "T11": true,
+              "T12": true
+            }
+          }
+        },
+        {
+          "trial": "all tickets done but T09",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 1910,
+          "metrics": {
+            "passed": 11,
+            "total": 12,
+            "tickets": {
+              "T01": true,
+              "T02": true,
+              "T03": true,
+              "T04": true,
+              "T05": true,
+              "T06": true,
+              "T07": true,
+              "T08": true,
+              "T09": false,
+              "T10": true,
+              "T11": true,
+              "T12": true
+            }
+          }
+        },
+        {
+          "trial": "all tickets done but T10",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 1972,
+          "metrics": {
+            "passed": 11,
+            "total": 12,
+            "tickets": {
+              "T01": true,
+              "T02": true,
+              "T03": true,
+              "T04": true,
+              "T05": true,
+              "T06": true,
+              "T07": true,
+              "T08": true,
+              "T09": true,
+              "T10": false,
+              "T11": true,
+              "T12": true
+            }
+          }
+        },
+        {
+          "trial": "all tickets done but T11",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 1923,
+          "metrics": {
+            "passed": 11,
+            "total": 12,
+            "tickets": {
+              "T01": true,
+              "T02": true,
+              "T03": true,
+              "T04": true,
+              "T05": true,
+              "T06": true,
+              "T07": true,
+              "T08": true,
+              "T09": true,
+              "T10": true,
+              "T11": false,
+              "T12": true
+            }
+          }
+        },
+        {
+          "trial": "all tickets done but T12",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 1925,
+          "metrics": {
+            "passed": 11,
+            "total": 12,
+            "tickets": {
+              "T01": true,
+              "T02": true,
+              "T03": true,
+              "T04": true,
+              "T05": true,
+              "T06": true,
+              "T07": true,
+              "T08": true,
+              "T09": true,
+              "T10": true,
+              "T11": true,
+              "T12": false
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -56,6 +56,11 @@ export type VerdictCheck = {
 	problems?: string[];
 	/** How many undeclared changes there were, when more than `unreported` lists. */
 	unreportedCount?: number;
+	/**
+	 * A worktree child only: files in its parent's tree that changed while it ran and no other task declared. It
+	 * should have written only in its worktree ("wrote outside its worktree"), unless its parent wrote them meanwhile.
+	 */
+	outside?: string[];
 };
 
 /** Rejected `rlm.finish` calls a child may fix; the next rejection ends its verdict as `invalid`. */
@@ -241,16 +246,30 @@ export async function checkFiles(input: FileCheckInput): Promise<VerdictCheck> {
 }
 
 /** One-line tag for a completion event: `[passed, verified]`, `[failed, contradicted]`, `[unverified]`. */
-export function verdictTag(result: { verdict?: unknown; check?: unknown; unverified?: unknown }): string | undefined {
+export function verdictTag(result: {
+	verdict?: unknown;
+	check?: unknown;
+	unverified?: unknown;
+	worktree?: unknown;
+}): string | undefined {
 	const verdict = result.verdict as Verdict | null | undefined;
 	const check = result.check as VerdictCheck | undefined;
+	// A worktree child's work waits on its branch until the parent merges it (`rlm.merge`).
+	const worktree = result.worktree as { branch?: unknown; commit?: unknown; changed_files?: unknown } | undefined;
+	const unmerged =
+		typeof worktree?.commit === "string" && Array.isArray(worktree.changed_files)
+			? `${worktree.changed_files.length} file(s) on ${String(worktree.branch)}, not merged yet`
+			: "";
 	if (verdict) {
 		const extra = [
+			unmerged,
 			check?.unobserved.length ? `declared but unchanged: ${check.unobserved.slice(0, 3).join(", ")}` : "",
 			check?.unreported.length ? `${check.unreported.length} undeclared change(s)` : "",
+			check?.outside?.length ? `${check.outside.length} change(s) outside its worktree` : "",
 		].filter(Boolean);
 		return `[${verdict.status}, ${check?.outcome ?? "unchecked"}${extra.length ? `; ${extra.join("; ")}` : ""}]`;
 	}
-	if (result.unverified === true) return `[unverified${check?.outcome === "invalid" ? ": verdict rejected" : ""}]`;
+	if (result.unverified === true)
+		return `[unverified${check?.outcome === "invalid" ? ": verdict rejected" : ""}${unmerged ? `; ${unmerged}` : ""}]`;
 	return undefined;
 }
