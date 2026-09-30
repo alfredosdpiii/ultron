@@ -61,6 +61,9 @@ function launch(args: string[], env: Record<string, string> = {}) {
 			ULTRON_CLAUDE_BIN: fake,
 			FAKE_RECORD: record,
 			XDG_RUNTIME_DIR: work,
+			// Never the user's own AGENTS.md or skills.
+			HOME: join(work, "home"),
+			ULTRON_CODING_AGENT_DIR: join(work, "home", "agent"),
 			MCP_TOOL_TIMEOUT: "",
 			...env,
 		},

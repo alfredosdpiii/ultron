@@ -8,7 +8,8 @@
  * - `--tools "" --allowedTools mcp__ultron__rlm`: no built-in tools, and the REPL runs without permission prompts;
  * - `--system-prompt-file <guide>`: `ultron guide --for claude` replaces Claude Code's default system prompt;
  * - `--setting-sources ""`: the user's and project's Claude Code settings (their hooks, permissions, CLAUDE.md) are
- *   not loaded (`--keep-settings` loads them);
+ *   not loaded (`--keep-settings` loads them); the system prompt carries the context files (AGENTS.md, CLAUDE.md) and
+ *   skills native Ultron loads for the directory instead (`resources.ts`; `--no-context-files`, `--no-skills`);
  * - `--settings <hooks>`: SessionStart, UserPromptSubmit and Stop hooks that call `ultron hook ...`.
  *
  * Other arguments go to `claude` unchanged (`-p`, `--model`, `--resume`, ...). The config files live in a private
@@ -33,6 +34,12 @@ import {
 } from "./claude-cli.ts";
 import { socketPathFor } from "./control-socket.ts";
 import { CLAUDE_RLM_TOOL, claudeSystemPrompt } from "./guide.ts";
+import {
+	type ClaudePromptResources,
+	describeClaudePromptResources,
+	loadClaudePromptResources,
+	NO_PROMPT_RESOURCES,
+} from "./resources.ts";
 import { type SelfCommand, selfCommand, shellCommand, shellQuote } from "./self.ts";
 
 export interface LauncherOptions {
@@ -41,6 +48,10 @@ export interface LauncherOptions {
 	keepSettings: boolean;
 	watch: boolean;
 	hooks: boolean;
+	/** `--no-context-files`: no AGENTS.md / CLAUDE.md in the system prompt (root and subagents). */
+	noContextFiles?: boolean;
+	/** `--no-skills`: no skills listed in the system prompt (root and subagents). */
+	noSkills?: boolean;
 	frameModel?: string;
 	children?: "claude" | "ultron";
 	childModel?: string;
@@ -59,6 +70,8 @@ Options (before any claude args, or anywhere before --):
   --keep-mcp             Also load your own Claude Code MCP servers (default: only Ultron's)
   --keep-settings        Load your user/project Claude Code settings and CLAUDE.md (default: none)
   --no-hooks             No Ultron hooks (no automatic memory, events only in rlm results)
+  --no-context-files, -nc  Leave AGENTS.md / CLAUDE.md out of the system prompt (included by default, as in ultron)
+  --no-skills, -ns       Leave your skills out of the system prompt (listed by default, as in ultron)
   --watch                Open \`ultron watch\` in a tmux split (inside tmux)
   --frame-model <p/m>    Model of rlm.map/rlm.infer frames (default claude-code/claude-opus-5-5)
   --children <mode>      rlm.spawn subagents: claude (Claude Code processes, default) or ultron
@@ -96,6 +109,8 @@ export function parseLauncherArgs(args: readonly string[]): LauncherOptions | "h
 		else if (arg === "--keep-settings") options.keepSettings = true;
 		else if (arg === "--watch") options.watch = true;
 		else if (arg === "--no-hooks") options.hooks = false;
+		else if (arg === "--no-context-files" || arg === "-nc") options.noContextFiles = true;
+		else if (arg === "--no-skills" || arg === "-ns") options.noSkills = true;
 		else if (arg === "--frame-model") options.frameModel = value();
 		else if (arg === "--child-model") options.childModel = value();
 		else if (arg === "--children") {
@@ -115,6 +130,8 @@ export interface ClaudeLaunch {
 	readonly files: Record<string, string>;
 	readonly socket: string;
 	readonly watchCommand: string;
+	/** The system prompt's length in characters. */
+	readonly promptChars: number;
 }
 
 /** Everything `claude` is started with, for a session whose files go in `dir` (inline when `dir` is undefined). */
@@ -128,6 +145,8 @@ export function buildClaudeLaunch(input: {
 	socket: string;
 	env: NodeJS.ProcessEnv;
 	date?: string;
+	/** Context files and skills for the system prompt (`loadClaudePromptResources`); none when absent. */
+	resources?: ClaudePromptResources;
 }): ClaudeLaunch {
 	const { options, self, socket } = input;
 	const files: Record<string, string> = {};
@@ -140,6 +159,9 @@ export function buildClaudeLaunch(input: {
 		...(options.frameModel === undefined ? [] : ["--frame-model", options.frameModel]),
 		...(options.children === undefined ? [] : ["--children", options.children]),
 		...(options.childModel === undefined ? [] : ["--child-model", options.childModel]),
+		// Subagents get the same context files and skills as the root.
+		...(options.noContextFiles === true ? ["--no-context-files"] : []),
+		...(options.noSkills === true ? ["--no-skills"] : []),
 	];
 	const mcpConfig = JSON.stringify({
 		mcpServers: { ultron: { type: "stdio", command: self.command, args: mcpArgs } },
@@ -163,6 +185,7 @@ export function buildClaudeLaunch(input: {
 		cwd: input.cwd,
 		platform: process.platform,
 		date: input.date ?? new Date().toISOString().slice(0, 10),
+		resources: input.resources ?? NO_PROMPT_RESOURCES,
 	});
 	const file = (name: string, content: string): string | undefined => {
 		if (input.dir === undefined) return undefined;
@@ -200,6 +223,7 @@ export function buildClaudeLaunch(input: {
 		files,
 		socket,
 		watchCommand: shellCommand(self, ["watch", "--socket", socket]),
+		promptChars: prompt.length,
 	};
 }
 
@@ -243,8 +267,19 @@ export async function runClaudeLauncher(argv: readonly string[]): Promise<void> 
 	const cwd = process.cwd();
 	const launchId = `L-${Date.now().toString(36)}-${randomBytes(4).toString("hex")}`;
 	const socket = socketPathFor(launchId);
+	const resources = await loadClaudePromptResources(cwd, parsed);
 	if (parsed.printConfig) {
-		const launch = buildClaudeLaunch({ claude, flags, self, options: parsed, cwd, dir: undefined, socket, env });
+		const launch = buildClaudeLaunch({
+			claude,
+			flags,
+			self,
+			options: parsed,
+			cwd,
+			dir: undefined,
+			socket,
+			env,
+			resources,
+		});
 		const envPrefix = Object.entries(launch.env).map(([key, value]) => `${key}=${shellQuote(value)} `);
 		process.stdout.write(
 			`${JSON.stringify(
@@ -255,6 +290,8 @@ export async function runClaudeLauncher(argv: readonly string[]): Promise<void> 
 					env: launch.env,
 					socket,
 					watch: launch.watchCommand,
+					// Paths and skill names only; the prompt itself is in args.
+					systemPrompt: { chars: launch.promptChars, ...describeClaudePromptResources(resources) },
 					command: `${envPrefix.join("")}${[claude, ...launch.args].map(shellQuote).join(" ")}`,
 				},
 				null,
@@ -266,7 +303,7 @@ export async function runClaudeLauncher(argv: readonly string[]): Promise<void> 
 	const dir = mkdtempSync(join(tmpdir(), "ultron-claude-"));
 	const cleanup = (): void => rmSync(dir, { recursive: true, force: true });
 	process.once("exit", cleanup);
-	const launch = buildClaudeLaunch({ claude, flags, self, options: parsed, cwd, dir, socket, env });
+	const launch = buildClaudeLaunch({ claude, flags, self, options: parsed, cwd, dir, socket, env, resources });
 	for (const [path, content] of Object.entries(launch.files)) writeFileSync(path, content, { mode: 0o600 });
 	const interactive = !parsed.claudeArgs.some((arg) => arg === "-p" || arg === "--print");
 	if (parsed.watch && env.TMUX) {

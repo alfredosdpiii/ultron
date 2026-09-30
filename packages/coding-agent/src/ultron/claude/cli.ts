@@ -6,21 +6,24 @@ import { runtimeGuide } from "./guide.ts";
 import { runHookCommand } from "./hooks.ts";
 import { runClaudeLauncher } from "./launcher.ts";
 import { runMcpServer } from "./mcp-server.ts";
+import { loadClaudePromptResources } from "./resources.ts";
 import { runWatchCommand } from "./watch.ts";
 
 export const CLAUDE_COMMANDS = ["claude", "mcp", "hook", "watch", "guide"] as const;
 
-const GUIDE_HELP = `Usage: ultron guide [--for ultron|claude|claude-child] [--cwd <dir>]
+const GUIDE_HELP = `Usage: ultron guide [--for ultron|claude|claude-child] [--cwd <dir>] [--no-context-files] [--no-skills]
 
 Print the runtime guide: Ultron's own (default), or the system prompt \`ultron claude\` gives Claude Code
-(--for claude; --for claude-child for a Claude Code subagent).`;
+(--for claude; --for claude-child for a Claude Code subagent), with the directory's context files and skills.`;
 
 /** A usage error: printed without a stack, exit code 2. */
 class UsageError extends Error {}
 
-function runGuide(args: readonly string[]): void {
+async function runGuide(args: readonly string[]): Promise<void> {
 	let audience: "ultron" | "claude" | "claude-child" = "ultron";
 	let cwd: string | undefined;
+	let noContextFiles = false;
+	let noSkills = false;
 	for (let index = 0; index < args.length; index += 1) {
 		const arg = args[index]!;
 		if (arg === "--help" || arg === "-h") {
@@ -35,13 +38,21 @@ function runGuide(args: readonly string[]): void {
 		} else if (arg === "--cwd") {
 			cwd = args[++index];
 			if (cwd === undefined) throw new UsageError("--cwd needs a directory");
-		} else throw new UsageError(`unknown option for ultron guide: ${arg}`);
+		} else if (arg === "--no-context-files" || arg === "-nc") noContextFiles = true;
+		else if (arg === "--no-skills" || arg === "-ns") noSkills = true;
+		else throw new UsageError(`unknown option for ultron guide: ${arg}`);
 	}
+	const dir = cwd ?? process.cwd();
 	const text = runtimeGuide(
 		audience,
 		audience === "ultron"
 			? {}
-			: { cwd: cwd ?? process.cwd(), platform: process.platform, date: new Date().toISOString().slice(0, 10) },
+			: {
+					cwd: dir,
+					platform: process.platform,
+					date: new Date().toISOString().slice(0, 10),
+					resources: await loadClaudePromptResources(dir, { noContextFiles, noSkills }),
+				},
 	);
 	process.stdout.write(`${text}\n`);
 }
@@ -65,7 +76,7 @@ async function runBridge(args: readonly string[]): Promise<void> {
 export async function runClaudeCommand(args: readonly string[]): Promise<void> {
 	const [command, ...rest] = args;
 	try {
-		if (command === "guide") runGuide(rest);
+		if (command === "guide") await runGuide(rest);
 		else if (command === "hook") await runHookCommand(rest);
 		else if (command === "watch") await runWatchCommand(rest);
 		else if (command === "mcp" && rest.includes("--bridge")) await runBridge(rest);

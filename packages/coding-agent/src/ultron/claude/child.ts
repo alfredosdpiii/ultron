@@ -16,6 +16,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { NativeExternalChildResult, NativeExternalChildRun } from "../rlm/native-host.ts";
 import { CLAUDE_RLM_TOOL, claudeSystemPrompt } from "./guide.ts";
+import type { ClaudePromptResources, ClaudeResourceFlags } from "./resources.ts";
 import type { SelfCommand } from "./self.ts";
 
 export interface ClaudeChildOptions {
@@ -32,6 +33,9 @@ export interface ClaudeChildOptions {
 	/** Registers a child's one-time token, so only that child can give its task's verdict. */
 	readonly registerChild: (token: string, laneName: string) => () => void;
 	readonly env?: NodeJS.ProcessEnv;
+	/** Context files and skills for the child's system prompt, and the flags its own children inherit. */
+	readonly resources?: ClaudePromptResources;
+	readonly resourceFlags?: ClaudeResourceFlags;
 }
 
 /** Environment a child Claude Code must not inherit from the session that started its parent server. */
@@ -130,6 +134,7 @@ export function runClaudeChild(
 			platform: process.platform,
 			date: new Date().toISOString().slice(0, 10),
 			allowance: run.allowance,
+			...(options.resources === undefined ? {} : { resources: options.resources }),
 		}),
 		{ mode: 0o600 },
 	);
@@ -152,6 +157,8 @@ export function runClaudeChild(
 		"--child-model",
 		model,
 		...(options.frameModel === undefined ? [] : ["--frame-model", options.frameModel]),
+		...(options.resourceFlags?.noContextFiles === true ? ["--no-context-files"] : []),
+		...(options.resourceFlags?.noSkills === true ? ["--no-skills"] : []),
 	];
 	const mcpConfig = JSON.stringify({
 		mcpServers: {

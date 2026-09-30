@@ -41,6 +41,7 @@ import {
 } from "./control-socket.ts";
 import { claudeRuntimeGuide, claudeSystemPrompt } from "./guide.ts";
 import { type McpContent, serveMcp } from "./mcp-protocol.ts";
+import { type ClaudePromptResources, loadClaudePromptResources, NO_PROMPT_RESOURCES } from "./resources.ts";
 import { selfCommand } from "./self.ts";
 
 export const DEFAULT_FRAME_MODEL = `claude-code/${DEFAULT_CLAUDE_MODEL}`;
@@ -59,6 +60,9 @@ export interface McpServerArgs {
 	ultronChildModel?: string;
 	socket?: string;
 	instructions: boolean;
+	/** Claude Code subagents' system prompts leave out context files / skills (`ultron claude --no-...`). */
+	noContextFiles?: boolean;
+	noSkills?: boolean;
 }
 
 /** Parse `ultron mcp` flags; unknown flags are an error. */
@@ -115,6 +119,12 @@ export function parseMcpArgs(args: readonly string[]): McpServerArgs {
 				break;
 			case "--socket":
 				parsed.socket = value(index++, arg);
+				break;
+			case "--no-context-files":
+				parsed.noContextFiles = true;
+				break;
+			case "--no-skills":
+				parsed.noSkills = true;
 				break;
 			default:
 				throw new Error(`unknown option for ultron mcp: ${arg}`);
@@ -326,14 +336,26 @@ export async function runMcpServer(argv: readonly string[]): Promise<void> {
 	if (args.child) parent = await connectControl(args.parentSocket!, 10_000);
 
 	const self = selfCommand(env);
+	// Claude Code subagents get the context files and skills native Ultron loads here, read once.
+	const resourceFlags = {
+		...(args.noContextFiles === true ? { noContextFiles: true } : {}),
+		...(args.noSkills === true ? { noSkills: true } : {}),
+	};
+	let childResources: Promise<ClaudePromptResources> | undefined;
+	const loadChildResources = (): Promise<ClaudePromptResources> => {
+		childResources ??= loadClaudePromptResources(cwd, resourceFlags).catch(() => NO_PROMPT_RESOURCES);
+		return childResources;
+	};
 	const external: ExternalRootOptions = {
 		...(splitModel(frameModel) === undefined ? {} : { preferredModel: splitModel(frameModel)! }),
 		...(childrenMode === "ultron" && ultronChildModel !== undefined ? { childModel: ultronChildModel } : {}),
 		...(childrenMode === "claude" && claude !== undefined
 			? {
-					externalChild: (run) =>
+					externalChild: async (run) =>
 						runClaudeChild(
 							{
+								resources: await loadChildResources(),
+								resourceFlags,
 								claude,
 								self,
 								cwd,

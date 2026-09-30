@@ -5,6 +5,7 @@
  * with Claude Code's delivery of completion events (nothing wakes the root between turns).
  */
 import { RLM_TOOL_DESCRIPTION, rlmRuntimePrompt } from "../rlm/prompt.ts";
+import { type ClaudePromptResources, renderClaudePromptResources } from "./resources.ts";
 
 /** The tool as Claude Code names it: server `ultron`, tool `rlm`. */
 export const CLAUDE_RLM_TOOL = "mcp__ultron__rlm";
@@ -18,6 +19,8 @@ export interface ClaudeGuideOptions {
 	readonly date?: string;
 	/** For a subagent: how many more levels it may delegate (0: it does its brief itself). */
 	readonly allowance?: number;
+	/** Context files and skills as native Ultron loads them (`resources.ts`); rendered as native renders them. */
+	readonly resources?: ClaudePromptResources;
 }
 
 /** The runtime guide for Claude Code: next-call event delivery, no `ctx` (Claude Code owns its context). */
@@ -69,7 +72,8 @@ export function claudeSystemPrompt(audience: "claude" | "claude-child", options:
 		audience === "claude"
 			? [ROOT_IDENTITY, WORKING_WITH_THE_USER, claudeRuntimeGuide()]
 			: [CHILD_IDENTITY, delegationAllowance(options.allowance ?? 0), claudeRuntimeGuide()];
-	return [...parts, ...(env === undefined ? [] : [env])].join("\n\n");
+	const resources = options.resources === undefined ? [] : renderClaudePromptResources(options.resources);
+	return [...parts, ...resources, ...(env === undefined ? [] : [env])].join("\n\n");
 }
 
 /** The guide for an audience: Ultron's own runtime guide, or Claude Code's system prompt. */
