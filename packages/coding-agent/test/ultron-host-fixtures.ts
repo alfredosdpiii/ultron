@@ -63,6 +63,7 @@ export function scriptedHarness(script: LaneScript) {
 	const laneCalls: string[] = [];
 	const prompts: Array<{ lane: string; prompt: string }> = [];
 	const aborts: string[] = [];
+	const thinkingLevels: Array<{ lane: string; level: string }> = [];
 	const lanes = new Map<string, object>();
 	// Harness events (`harness.events.on`), which a test fires with `emit` to drive live lane stats.
 	const listeners = new Map<string, Set<(event: unknown) => void>>();
@@ -87,6 +88,9 @@ export function scriptedHarness(script: LaneScript) {
 				lane = {
 					getActiveTools: async () => [],
 					setModel: async () => {},
+					setThinkingLevel: async (level: string) => {
+						thinkingLevels.push({ lane: name, level });
+					},
 					steer: async () => ({ ok: true, value: {} }),
 					abort: async () => {
 						aborts.push(name);
@@ -112,7 +116,7 @@ export function scriptedHarness(script: LaneScript) {
 			return lane;
 		},
 	};
-	return { harness, laneCalls, prompts, aborts, emit };
+	return { harness, laneCalls, prompts, aborts, thinkingLevels, emit };
 }
 
 export type HostFixtureOptions = {

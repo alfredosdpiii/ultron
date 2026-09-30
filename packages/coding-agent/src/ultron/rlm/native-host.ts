@@ -4,6 +4,7 @@ import { isAbsolute, join, relative, sep } from "node:path";
 import type { AgentHarness, AgentLane, Context, Entry } from "@ultron/agent-core";
 import { isJsonValue, type JsonValue } from "@ultron/chord";
 import { BACKGROUND_CONTEXT, withAbortSignal, withoutAbortSignal } from "@ultron/chord/context";
+import { FRAME_THINKING_LEVELS, type FrameThinkingLevel } from "../../core/settings-manager.ts";
 import type {
 	NativeUsageCallStatus,
 	NativeUsageLedgerLike,
@@ -163,6 +164,8 @@ type TaskRequest = {
 	workflow?: WorkflowMembership;
 	/** A subagent's private worktree, created before admission (`worktree=True`). */
 	worktree?: WorktreeRecord;
+	/** `rlm.spawn(thinking=...)`: the child lane's thinking level. */
+	thinking?: FrameThinkingLevel;
 };
 
 type RlmChildHandle = {
@@ -1044,6 +1047,10 @@ export class NativeRlmHost {
 				// The lane's default model, for the graph view; an unreadable model is simply not shown.
 				const current = await lane.getModel(taskContext).catch(() => undefined);
 				if (current) task.model = preview(`${current.provider}/${current.id}`, GRAPH_MODEL_CHARS);
+			}
+			if (request.thinking !== undefined && typeof lane.setThinkingLevel === "function") {
+				await lane.setThinkingLevel(request.thinking, taskContext);
+				signal.throwIfAborted();
 			}
 			if (definition.id === "rlm-frame" && this.frames)
 				return await this.frames({
@@ -2431,7 +2438,7 @@ export class NativeRlmHost {
 				);
 			const prompt = nonemptyString(payload.prompt, "prompt");
 			const kwargs = payload.kwargs === undefined ? {} : objectInput(payload.kwargs);
-			fields(kwargs, ["name", "model", "timeout_ms", "depth", "worktree", "worktree_setup"]);
+			fields(kwargs, ["name", "model", "thinking", "timeout_ms", "depth", "worktree", "worktree_setup"]);
 			const name = nonemptyString(kwargs.name, "name");
 			const mode = worktreeMode(kwargs.worktree, "worktree");
 			const setup = worktreeSetupOption(kwargs.worktree_setup);
@@ -2462,6 +2469,11 @@ export class NativeRlmHost {
 			// The worktree branches from the spawner's tree as it is now, before the child is admitted.
 			const worktree = await this.newWorktree(mode, name, setup, parentId, context);
 			if (worktree !== undefined) request.worktree = worktree;
+			if (kwargs.thinking !== undefined) {
+				const thinking = FRAME_THINKING_LEVELS.find((level) => level === kwargs.thinking);
+				if (thinking === undefined) throw new Error(`thinking must be one of ${FRAME_THINKING_LEVELS.join(", ")}`);
+				request.thinking = thinking;
+			}
 			let task: TaskRecord;
 			try {
 				// A spawned child outlives the cell that started it; its subtree still stops with its parent task.
