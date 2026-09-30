@@ -1,6 +1,6 @@
 {
 	"name": "@ultron/telemetry",
-	"version": "0.87.18",
+	"version": "0.87.19",
 	"description": "Vendor-neutral telemetry contracts and typed schema utilities for pi",
 	"type": "module",
 	"main": "./dist/index.js",

@@ -1,6 +1,6 @@
 {
 	"name": "@ultron/ai",
-	"version": "0.87.18",
+	"version": "0.87.19",
 	"description": "Unified LLM API with automatic model discovery and provider configuration",
 	"type": "module",
 	"main": "./dist/index.js",
@@ -66,7 +66,7 @@
 	"dependencies": {
 		"@anthropic-ai/sdk": "0.124.0",
 		"@aws-sdk/client-bedrock-runtime": "3.1127.0",
-		"@ultron/telemetry": "^0.87.18",
+		"@ultron/telemetry": "^0.87.19",
 		"@google/genai": "2.21.0",
 		"@smithy/node-http-handler": "4.12.1",
 		"http-proxy-agent": "9.1.0",
