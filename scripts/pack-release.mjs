@@ -93,18 +93,28 @@ export function releaseManifest(manifest, chordManifest) {
 	};
 }
 
+/** Images in the README load from here on npm: a `blob` page is HTML, so an image must point at the raw file. */
+const REPOSITORY_RAW = "https://raw.githubusercontent.com/alfredosdpiii/ultron/main/";
+
+/** A relative README target made absolute; absolute URLs, anchors and `mailto:` are returned unchanged. */
+function absoluteTarget(target, image) {
+	if (/^([a-z][a-z0-9+.-]*:|#|\/\/)/i.test(target)) return target;
+	const path = target.replace(/^\.\//, "");
+	if (image) return `${REPOSITORY_RAW}${path}`;
+	const file = path.split("#")[0].split("/").pop() ?? "";
+	const base = file.includes(".") || file === "LICENSE" ? REPOSITORY_BLOB : REPOSITORY_TREE;
+	return `${base}${path}`;
+}
+
 /**
  * The repository README with its relative links made absolute, for the npm package page. Anchors, absolute URLs and
- * `mailto:` links are left alone; a path without an extension is treated as a directory.
+ * `mailto:` links are left alone; a path without an extension is treated as a directory. Images (`![alt](path)` and
+ * `<img src="path">`) point at raw.githubusercontent.com, since npm renders only an image URL that serves the file.
  */
 export function npmReadme(readme) {
-	return readme.replace(/\]\(([^)\s]+)\)/g, (match, target) => {
-		if (/^([a-z][a-z0-9+.-]*:|#|\/\/)/i.test(target)) return match;
-		const path = target.replace(/^\.\//, "");
-		const file = path.split("#")[0].split("/").pop() ?? "";
-		const base = file.includes(".") || file === "LICENSE" ? REPOSITORY_BLOB : REPOSITORY_TREE;
-		return `](${base}${path})`;
-	});
+	return readme
+		.replace(/(!\[[^\]]*)?\]\(([^)\s]+)\)/g, (_match, image, target) => `${image ?? ""}](${absoluteTarget(target, image)})`)
+		.replace(/(<img\b[^>]*\bsrc=")([^"]+)(")/gi, (_match, before, target, after) => `${before}${absoluteTarget(target, true)}${after}`);
 }
 
 /** Scan a staged package (node_modules included); throws with the redacted findings when there are any. */
