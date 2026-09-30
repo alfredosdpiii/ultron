@@ -141,3 +141,10 @@ test("Loki is off in comparisons unless --loki, which logs every check", async (
 	assert.deepEqual(Object.keys(byVariant), ["ultron"]);
 	assert.deepEqual(byVariant.ultron.blocks, ["t1: [Loki] a.py:1: loki/secret"]);
 });
+
+test("kept eval evidence never copies the run's auth.json", async () => {
+	const { keepableAgentFile } = await import("./eval-quality.mjs");
+	assert.equal(keepableAgentFile("/tmp/run/agent/auth.json"), false);
+	assert.equal(keepableAgentFile("/tmp/run/agent/models.json"), true);
+	assert.equal(keepableAgentFile("/tmp/run/agent/sessions/x.jsonl"), true);
+});

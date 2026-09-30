@@ -99,7 +99,7 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { homedir, tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
 	checkJudgeWiring,
@@ -554,6 +554,11 @@ export function childUptake(tasks) {
 }
 
 /** One judge call through stock Pi in RPC mode with no tools, extensions, skills or context files. */
+/** Kept evidence never includes the copied credentials: auth.json stays behind when a run's agent dir is kept. */
+export function keepableAgentFile(source) {
+	return basename(source) !== "auth.json";
+}
+
 function createModelJudge({ command, model, thinking, keepDir }) {
 	const split = model.indexOf("/");
 	let calls = 0;
@@ -832,7 +837,7 @@ async function runOne({ task, variant, trial, model, thinking, keepDir, keepAll,
 	if (!record.passed || keepAll) {
 		// Evidence for failed runs (and every run with --keep-all): the files the agent left, its session files, stderr and the hidden check output.
 		cpSync(project, join(keep, "project"), { recursive: true });
-		cpSync(agentDir, join(keep, "agent"), { recursive: true });
+		cpSync(agentDir, join(keep, "agent"), { recursive: true, filter: keepableAgentFile });
 		writeFileSync(join(keep, "stderr.txt"), session.stderr());
 		writeFileSync(join(keep, "verify.txt"), `status: ${record.verify.status}\n${record.verify.output}\n`);
 		writeFileSync(join(keep, "record.json"), `${JSON.stringify(record, null, 2)}\n`);
@@ -933,7 +938,7 @@ async function runClaudeOne({ task, variant, trial, model, keepDir, keepAll, com
 	record.passed = !record.error && record.verify.status === 0;
 	if (!record.passed || keepAll) {
 		cpSync(project, join(keep, "project"), { recursive: true });
-		cpSync(agentDir, join(keep, "agent"), { recursive: true });
+		cpSync(agentDir, join(keep, "agent"), { recursive: true, filter: keepableAgentFile });
 		writeFileSync(join(keep, "stderr.txt"), run?.stderr ?? "");
 		writeFileSync(join(keep, "verify.txt"), `status: ${record.verify.status}\n${record.verify.output}\n`);
 		writeFileSync(join(keep, "record.json"), `${JSON.stringify(record, null, 2)}\n`);
