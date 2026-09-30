@@ -200,7 +200,8 @@ describe("ultron --claude: the root lane on Claude Code", () => {
 			if (value === undefined) delete process.env[name];
 			else process.env[name] = value;
 		}
-		rmSync(work, { recursive: true, force: true });
+		// A Claude Code child or kernel may still be writing into it for a moment after the last test under load.
+		rmSync(work, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
 	});
 
 	const calls = (): Call[] => {
