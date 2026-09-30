@@ -1,0 +1,233 @@
+{
+  "taskSet": "awb-fast-check",
+  "benchmark": "AI Workflow Benchmark (AWB), https://github.com/alfredosdpiii/ai-workflow-benchmark (commit cccb083)",
+  "mode": "awb run <tool> --fast-check -y: 8 representative tasks, 1 run each; the tool's own note: an exploratory sample, not an estimate of full-suite performance",
+  "date": "2026-09-30",
+  "model": "claude-opus-5-5 through Claude Code (Max subscription; costs are notional)",
+  "variants": {
+    "ultron": {
+      "command": "ULTRON_ROOT=claude AWB_ULTRON_MODEL=claude-code/claude-opus-5-5 awb run ultron --fast-check -y  (ultron --claude, release 0.87.17)",
+      "toolVersion": "ultron 0.87.17",
+      "tasks": [
+        {
+          "task": "BF-001",
+          "success": false,
+          "score": 100,
+          "wallClockSeconds": 44.6,
+          "iterations": 7,
+          "toolCalls": {
+            "rlm": 6
+          },
+          "estimatedCostUsd": 0.173
+        },
+        {
+          "task": "CR-001",
+          "success": false,
+          "score": 80,
+          "wallClockSeconds": 92.5,
+          "iterations": 12,
+          "toolCalls": {
+            "rlm": 11
+          },
+          "estimatedCostUsd": 0.3089
+        },
+        {
+          "task": "DB-001",
+          "success": true,
+          "score": 100,
+          "wallClockSeconds": 43.9,
+          "iterations": 6,
+          "toolCalls": {
+            "rlm": 5
+          },
+          "estimatedCostUsd": 0.1654
+        },
+        {
+          "task": "FA-001",
+          "success": false,
+          "score": 80,
+          "wallClockSeconds": 33.9,
+          "iterations": 6,
+          "toolCalls": {
+            "rlm": 5
+          },
+          "estimatedCostUsd": 0.1512
+        },
+        {
+          "task": "LC-001",
+          "success": true,
+          "score": 100,
+          "wallClockSeconds": 23.6,
+          "iterations": 3,
+          "toolCalls": {
+            "rlm": 2
+          },
+          "estimatedCostUsd": 0.1442
+        },
+        {
+          "task": "MF-001",
+          "success": false,
+          "score": 90,
+          "wallClockSeconds": 158.8,
+          "iterations": 12,
+          "toolCalls": {
+            "rlm": 11
+          },
+          "estimatedCostUsd": 0.654
+        },
+        {
+          "task": "RF-001",
+          "success": true,
+          "score": 100,
+          "wallClockSeconds": 156.5,
+          "iterations": 8,
+          "toolCalls": {
+            "rlm": 7
+          },
+          "estimatedCostUsd": 0.6081
+        },
+        {
+          "task": "WF-001",
+          "success": true,
+          "score": 100,
+          "wallClockSeconds": 12.6,
+          "iterations": 3,
+          "toolCalls": {
+            "rlm": 2
+          },
+          "estimatedCostUsd": 0.0735
+        }
+      ],
+      "summary": {
+        "passed": 4,
+        "of": 8,
+        "meanScore": 93.75,
+        "wallClockSeconds": 566.4,
+        "estimatedCostUsd": 2.28
+      }
+    },
+    "claude-code-vanilla": {
+      "command": "awb run claude-code-vanilla --fast-check -y",
+      "toolVersion": "2.1.284 (Claude Code)",
+      "tasks": [
+        {
+          "task": "BF-001",
+          "success": false,
+          "score": 0,
+          "wallClockSeconds": 39.5,
+          "iterations": 7,
+          "toolCalls": {
+            "Bash": 10,
+            "Write": 2
+          },
+          "estimatedCostUsd": 0.2678
+        },
+        {
+          "task": "CR-001",
+          "success": false,
+          "score": 80,
+          "wallClockSeconds": 101.5,
+          "iterations": 17,
+          "toolCalls": {
+            "Bash": 20,
+            "Write": 8,
+            "Edit": 4
+          },
+          "estimatedCostUsd": 0.4687
+        },
+        {
+          "task": "DB-001",
+          "success": true,
+          "score": 100,
+          "wallClockSeconds": 93.6,
+          "iterations": 10,
+          "toolCalls": {
+            "Bash": 18
+          },
+          "estimatedCostUsd": 0.3159
+        },
+        {
+          "task": "FA-001",
+          "success": false,
+          "score": 80,
+          "wallClockSeconds": 33.8,
+          "iterations": 6,
+          "toolCalls": {
+            "Bash": 10
+          },
+          "estimatedCostUsd": 0.2407
+        },
+        {
+          "task": "LC-001",
+          "success": true,
+          "score": 100,
+          "wallClockSeconds": 25.9,
+          "iterations": 5,
+          "toolCalls": {
+            "Bash": 8
+          },
+          "estimatedCostUsd": 0.2424
+        },
+        {
+          "task": "MF-001",
+          "success": false,
+          "score": 90,
+          "wallClockSeconds": 231.8,
+          "iterations": 18,
+          "toolCalls": {
+            "Bash": 30,
+            "Write": 4
+          },
+          "estimatedCostUsd": 0.9311
+        },
+        {
+          "task": "RF-001",
+          "success": false,
+          "score": 75,
+          "wallClockSeconds": 207.6,
+          "iterations": 20,
+          "toolCalls": {
+            "Bash": 22,
+            "Write": 12,
+            "Edit": 4
+          },
+          "estimatedCostUsd": 0.9058
+        },
+        {
+          "task": "WF-001",
+          "success": true,
+          "score": 100,
+          "wallClockSeconds": 12.8,
+          "iterations": 3,
+          "toolCalls": {
+            "Bash": 4
+          },
+          "estimatedCostUsd": 0.1566
+        }
+      ],
+      "summary": {
+        "passed": 3,
+        "of": 8,
+        "meanScore": 78.12,
+        "wallClockSeconds": 746.5,
+        "estimatedCostUsd": 3.53
+      }
+    }
+  },
+  "workflowLift": {
+    "command": "awb lift <vanilla run> <ultron run>",
+    "lift": "+15.6 pts",
+    "p": 0.5,
+    "significant": false,
+    "n": 8,
+    "wins": {
+      "ultron": 2,
+      "vanilla": 0,
+      "ties": 6
+    },
+    "biggestMovers": {
+      "BF-001": "0 -> 100 (still marked failed by the task's success check)",
+      "RF-001": "75 -> 100"
+    }
+  }
+}

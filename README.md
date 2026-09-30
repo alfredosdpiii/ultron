@@ -9,12 +9,35 @@ inside it. The model writes a cell that loops, filters, fans out and keeps the r
 it prints comes back into its context.
 
 It is a fork of [Pi](https://github.com/badlogic/pi-mono) and keeps Pi's interface, so the TUI, `-p` print mode,
-`--mode json`, `--mode rpc`, providers, extensions, skills and prompt templates all work the same.
+`--mode json`, `--mode rpc`, providers, extensions, skills and prompt templates all work the same. It can also run
+with [Claude Code](https://claude.com/claude-code) as the model underneath, or inside Claude Code as its only tool.
 
 ```bash
 npm install -g ultron-agent
 ultron setup
 ```
+
+![Native ultron: a cell reads a CSV, one rlm.map tags every row, and the RLM pane opens beside the chat](docs/demos/native.gif)
+
+*Native `ultron` on glm-5.3-flash. The first cell fails and the next one fixes it, then one `rlm.map` runs 8
+sub-model frames. The RLM pane opens by itself when the fan-out starts, and Loki set itself up on the first turn.*
+
+## Which mode should I use?
+
+Ultron runs in three ways. All three use the same runtime: the REPL, handles, frames, sub-agents, jobs, Loki and
+budgets. What differs is whose interface you see and which model drives the root agent.
+
+| | `ultron` | `ultron --claude` | `ultron claude` |
+|---|---|---|---|
+| You see | Ultron's TUI | Ultron's TUI | Claude Code's TUI, plus `ultron watch` for the RLM view |
+| Root model | any provider: API key, subscription login, or a custom OpenAI-compatible endpoint | Claude Code on your login, `claude-opus-5-5` by default | Claude Code on your login, `claude-opus-5-5` by default |
+| Who manages the context | Ultron (`ctx.*`, compaction, results that collapse to one line) | Claude Code | Claude Code |
+| A finished job or sub-agent wakes the model | yes | yes | no: the event arrives with the next `rlm` result or your next message |
+| Ultron's panels and commands (`/review`, `/settings`, `/jev`) | yes | yes | no (`ultron watch` shows the RLM view) |
+| Use it when | you use a non-Claude model, or want every Ultron feature | you want Claude on your Pro or Max plan in Ultron's UI | you prefer Claude Code's own UI and keybindings |
+
+The [Claude Code](#claude-code) section has the details of both Claude modes, and of using Claude Code only for
+sub-model frames.
 
 ## What makes Ultron different
 
@@ -47,6 +70,7 @@ causes = await rlm.map("Root cause in 10 words.",      # one bounded sub-model c
 validated against a JSON-schema contract (malformed answers are re-asked), and draw on one shared budget of calls,
 tokens and depth. Running out returns an `Incomplete` with its evidence rather than an exception. On a research task
 over 157 incident reports, Ultron chose 99 of these frames on its own and finished 20% faster than stock Pi.
+Frames can run on a different, cheaper model than the root (see [Models](#models-settings--models)).
 
 ### 3. Long work never blocks the turn
 
@@ -58,6 +82,13 @@ and a test suite can run while it fixes something else.
 
 - **Sub-agents with their own kernels** (`rlm.spawn`), typed agents with validated inputs and outputs
   (`agents.invoke`), and agent graphs with joins and bounded revision loops (`workflows.run`).
+- **Checked sub-agent verdicts.** A sub-agent ends with `rlm.finish(status, summary, evidence=..., changed_files=...)`.
+  `passed` needs concrete evidence (a test command and its result, or file lines), and a malformed verdict is sent
+  back to be fixed. The host snapshots the workspace before and after the child runs. If a file the child says it
+  changed did not change, the verdict is `contradicted`, and a workflow node with a contradicted verdict fails. A
+  child that ends without a verdict keeps its result but is marked unverified.
+- **Nesting is opt-in.** A sub-agent cannot spawn its own sub-agents unless it was started with `depth=N`, and no
+  chain goes deeper than 3 levels (`ULTRON_SPAWN_DEPTH`). The limit also holds across Claude Code child processes.
 - **Agents as Python classes**: the docstring is the prompt, `...` methods are model-driven with typed returns
   checked by the host, and fields are durable state.
 - **Code skills**: a procedure that worked is saved as Python with a test, and only goes live when the test passes.
@@ -66,6 +97,10 @@ and a test suite can run while it fixes something else.
   results collapse to one line after the model has seen them.
 - **Durable state**: a task journal, per-turn budgets for tokens, turns, wall time and cost, a memory cap over the
   kernel's whole process tree, and kernel snapshots that survive restarts.
+- **A kernel that stays up.** The kernel speaks its protocol on private pipes (fds 3 and 4). Anything a cell writes
+  straight to stdout or stderr (`os.write`, subprocesses, C extensions) becomes cell output instead of breaking the
+  connection. There is no lifetime output cap any more: an earlier 4 MiB cap per kernel restarted the kernel after
+  about 85 large cells and lost its variables. Now each cell's stdout and stderr are capped at 4 MiB each.
 
 ### 5. Memory with judgement
 
@@ -85,6 +120,11 @@ lookup, so unrelated memories never leak into answers.
   with the `rlmPaneAutoOpen` setting or `ULTRON_RLM_PANE_AUTO=off`). While nodes run, a wave summary sits above the input.
 - **Jev's presence**: a footer indicator that pulses when Jev decides, one-line notes in the transcript showing what
   memory was used and whether the turn was kept, and a `/jev` view with a decision timeline and threshold gauges.
+- **A TUI that keeps up with long sessions.** Streaming a token, polling the RLM state or ticking a spinner used to
+  lay out the whole transcript again. In a 400-entry session that took over 300 ms per event, with 1.1 to 1.5 s
+  stalls on every idle poll. Now only the part that changed is redrawn, and a poll redraws only when its data changed.
+  Scrolling uses the terminal's scroll region, so a one-line scroll writes about 1 KB instead of the whole screen
+  ([render cost tests](packages/tui/test/render-cost.test.ts)).
 
 ### 7. Reviews that check their own findings (`/review`)
 
@@ -97,6 +137,24 @@ with counts, cost and what was not checked. One token cap covers it all (`--budg
 `--model`, `--deep` (a sub-agent re-checks undecided findings) and `--post` (only after you say yes) adjust it.
 It adds nothing to the prompt of ordinary turns. Details: [`docs/review.md`](docs/review.md).
 
+![/review --only bugs finds a percent coupon that is not divided by 100, and the verifier confirms it](docs/demos/review.gif)
+
+*`/review --only bugs` on an uncommitted change with a planted bug (a percent coupon that is not divided by 100): one
+finder frame and one verifier frame, 2,319 tokens in all, on glm-5.3-flash.*
+
+### 8. Guardrails on by default
+
+- **[Loki](#loki-guardrails)** checks every file Ultron writes (hardcoded secrets, injection sinks, protected files,
+  new linter and type-checker findings) and blocks a bad write before it happens.
+- **Secret masking.** Cell output is scanned before it reaches the model or the transcript. API keys, tokens,
+  private keys, credentials in URLs and similar values become `[REDACTED:<kind>]`; the values in the kernel are left
+  as they are. `ULTRON_MASK_SECRETS=off` turns it off. The same rules
+  ([`secret-patterns.json`](packages/coding-agent/src/ultron/rlm/secret-patterns.json)) drive `npm run scan:secrets`,
+  which checks this repository in CI and every release package before it is packed.
+- **A stuck-loop detector** watches for three failing cells in a row, the same two cells alternating, or eight
+  failures in one turn. It does not stop the run. The first time, it asks the model for three hypotheses and one cell
+  that tests the likeliest; the second time, it tells the model to stop repeating the approach and say what blocks it.
+
 ## How it compares
 
 | | Typical tool-calling agent | Ultron |
@@ -107,12 +165,13 @@ It adds nothing to the prompt of ordinary turns. Details: [`docs/review.md`](doc
 | MCP servers | separate tools | Python functions in the REPL |
 | Slow commands | the turn waits | background jobs, completion events |
 | Reading lots of text | the model reads it all | bounded sub-model frames under a budget |
-| Delegation | sub-agent tools, if any | sub-agents, typed agents, workflows, agent classes |
+| Delegation | sub-agent tools, if any | sub-agents with checked verdicts, typed agents, workflows, agent classes |
 
 ## Results so far
 
 Measured with [`scripts/eval-quality.mjs`](scripts/eval-quality.mjs) against stock Pi on the same model. Every
-result file is in [`acceptance/quality/`](acceptance/quality).
+result file is in [`acceptance/quality/`](acceptance/quality). All of these are small samples (one or two trials per
+task), so read them as indicative, not as benchmarks.
 
 **glm-5.3-flash** (a small, fast model), thinking `max`, 2 trials per task (release 0.87.12):
 
@@ -147,22 +206,53 @@ fewer tokens on research. Releases 0.87.10 and 0.87.11 closed the short-task spe
 34 s; the rest is run-to-run noise): the extra time was extra model turns caused by shell text mangled by Python string escapes, which the kernel
 now passes to bash as written. Before release 0.87.6, the research task cost Ultron 8.0M tokens because it handed the
 corpus to nested sub-agents instead of searching first ([`docs/performance.md`](docs/performance.md) has the
-breakdown). Two trials is still a small sample; treat these as evidence, not benchmarks. Behaviour is also covered by
-56 acceptance rows (A01-A56) judged by a runner.
+breakdown). Behaviour is also covered by 56 acceptance rows (A01-A56) judged by a runner.
+
+### With Claude Code underneath
+
+Early evidence from one trial each. Treat it as indicative only.
+
+**`ultron --claude` against vanilla Claude Code**, both on Claude Opus 5.5, on the 8-task fast check of the
+[AI Workflow Benchmark](https://github.com/alfredosdpiii/ai-workflow-benchmark) (release 0.87.17,
+[`2026-09-30-awb-fast-check-claude-opus-5-5.json`](acceptance/quality/2026-09-30-awb-fast-check-claude-opus-5-5.json)):
+
+| | Claude Code | `ultron --claude` |
+|---|---|---|
+| Mean score | 78.1 | **93.8** |
+| Tasks passed | 3/8 | **4/8** |
+| Wall time, all 8 tasks | 747 s | **566 s** |
+| Notional cost reported by Claude Code | $3.53 | **$2.28** |
+
+AWB's Workflow Lift is +15.6 points: 2 tasks better, none worse, 6 tied. That is not significant at n=8 (p=0.50).
+The two tasks that moved are a bug fix (0 to 100) and a refactor (75 to 100). AWB itself calls a fast check an
+exploratory sample, not an estimate of full-suite performance.
+
+**`ultron claude` against plain Claude Code**, both on Sonnet (`acceptance/quality/2026-09-29-*-claude-code_sonnet.json`):
+
+| | Claude Code | `ultron claude` |
+|---|---|---|
+| Hard tasks (3) | 3/3, median 16 s, 189k tokens | 3/3, median 18 s, **60k** tokens |
+| Research pilot (25 incidents to find) | precision and recall 1.0, 26 s, 268k tokens | precision and recall 1.0, 31 s, **93k** tokens |
+
+Same accuracy for about a third of the tokens. Most of the difference is the system prompt, which is sent with every
+request: Ultron's guide is about 3.9k tokens against Claude Code's 19k. Neither run used a frame or a sub-agent.
 
 ## Install
 
 Requirements: **Node.js 22.19 or newer** and **Python 3** on your `PATH` (the REPL uses the system `python3`).
+The Claude modes also need the [Claude Code](https://claude.com/claude-code) CLI, installed and logged in.
 
 ```bash
 npm install -g ultron-agent     # the package is ultron-agent; the command is ultron
-ultron setup                    # guided setup: provider and model, Jev key, Hindsight memory
+ultron setup                    # guided setup: provider and model, Jev key, Hindsight memory, Loki
 ```
 
-The same install command updates an existing install, and so does `ultron update`, which checks the npm registry for
-a newer `ultron-agent` (set `ULTRON_SKIP_VERSION_CHECK=1` to turn off the startup check). No dependency runs an install
-script, so npm 11's allow-scripts prompt does not apply. The experimental plugin packages (`-e` with the experimental
-server) are the one feature that needs esbuild; install it next to ultron with `npm install -g esbuild` if you use them.
+`ultron update` updates an existing install: it asks the npm registry for the latest `ultron-agent` and installs
+that version with the package manager that installed Ultron. Running the install command again does the same.
+Ultron also checks for a newer version at startup; set `ULTRON_SKIP_VERSION_CHECK=1` to turn that off. No dependency
+runs an install script, so npm 11's allow-scripts prompt does not apply. The experimental plugin packages (`-e` with
+the experimental server) are the one feature that needs esbuild; install it next to ultron with
+`npm install -g esbuild` if you use them.
 
 The same package is attached to every GitHub release, for installing without the npm registry:
 
@@ -196,6 +286,8 @@ can be run again at any time.
 cd your-project
 ultron                                   # interactive TUI
 ultron -p "why does test_parser fail?"   # one-shot print mode
+ultron --claude                          # the same TUI, with Claude Code (Opus 5.5) as the model
+ultron claude                            # Claude Code's own TUI, with Ultron's REPL as its only tool
 ultron --mode rpc                        # Pi-compatible JSONL RPC
 ```
 
@@ -203,29 +295,29 @@ ultron --mode rpc                        # Pi-compatible JSONL RPC
 `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY` and the like. Custom OpenAI-compatible endpoints go in
 `~/.ultron/agent/models.json`.
 
-### Claude Code as a frame model
-
-If the [Claude Code](https://docs.claude.com/en/docs/claude-code) CLI is installed and logged in, the `claude-code`
-provider runs model calls through it (`claude -p`) with no API key: `claude-code/haiku`, `claude-code/sonnet`,
-`claude-code/opus`, `claude-code/claude-opus-5-5`. Tool-free calls serve inference frames, `/review` frames and judges;
-a lane with tools (the root agent under `ultron --claude`, its subagents) runs as a Claude Code session whose tools are
-served back to Ultron over MCP (see below):
-
-```bash
-ULTRON_RLM_FRAME_MODEL=claude-code/haiku ultron   # code-free rlm.infer/rlm.map frames go to the CLI
-```
-
-Or pick it in the TUI without restarting: `/settings → Models` sets the frame model (`rlm.frameModel`), the `/review`
-model, the sub-agent model (tool-capable models only) and the frame thinking level, each from a list of the models
-your providers offer, and the next frame uses it. The same section holds the `ultron claude` models. See
-[settings](packages/coding-agent/docs/settings.md#models-of-rlm-work-ultron).
-
-Each call is isolated (no tools, MCP servers, settings, hooks or `CLAUDE.md`, and its own system prompt) and uses your
-subscription's shared limits, so at most four run at once (`ULTRON_CLAUDE_CODE_CONCURRENCY`). Ultron never touches
-Claude credentials; the CLI logs itself in. Details: [providers](packages/coding-agent/docs/providers.md#claude-code-cli-claude-code).
-
 Useful keys: Up/Down and Alt+R for prompt history, Ctrl+R for the RLM panel, Alt+W for the RLM pane, Alt+G for the full-screen graph,
 Alt+J for Jev, Ctrl+O to expand cells and help. `/hotkeys` lists them all.
+
+### Models (`/settings → Models`)
+
+Every model Ultron uses can be picked in the TUI while a session runs. `/settings → Models` has one row per role, each
+with a picker over the models your providers offer:
+
+- **Session model**: the root agent's model. Changing it switches the running session and saves it as the default,
+  as `/model` does.
+- **Frame model** (`rlm.frameModel`): code-free `rlm.infer` and `rlm.map` frames that name no `model=`.
+- **Review model** (`review.model`): `/review` frames. By default it follows the frame model.
+- **Sub-agent model** (`rlm.childModel`): `rlm.spawn` sub-agents. Only tool-capable models are offered.
+- **Frame thinking** (`rlm.frameThinking`): off, low, medium or high.
+- **Claude Code mode**: the root, frame and sub-agent models of `ultron claude`, and the model of its Ultron
+  sub-agents.
+
+The first five apply to the running session: the next frame, review or sub-agent uses the new value. The Claude Code
+mode rows apply the next time `ultron claude` starts. When an environment variable (for example
+`ULTRON_RLM_FRAME_MODEL`) sets a role, its row says so and stays locked until you unset it. See
+[settings](packages/coding-agent/docs/settings.md#models-of-rlm-work-ultron).
+
+![/settings, Models: the frame model is switched to Claude Haiku through Claude Code, and frame thinking to low](docs/demos/settings.gif)
 
 ## The REPL at a glance
 
@@ -235,13 +327,142 @@ Alt+J for Jev, Ctrl+O to expand cells and help. `/hotkeys` lists them all.
 | `await view_image(path_or_figure)` | show the model a screenshot, diagram or matplotlib figure |
 | `await mcp.call(tool, **args)`, `await tools.call(name, {...})` | MCP servers and any Pi extension tool |
 | `await rlm.load(...)`, `rlm.infer(...)`, `rlm.map(...)` | handles and bounded sub-model frames |
-| `await rlm.spawn(task)`, `agents.invoke(...)`, `workflows.run(...)` | sub-agents, typed agents, agent graphs |
+| `await rlm.spawn(task, depth=0)`, `agents.invoke(...)`, `workflows.run(...)` | sub-agents, typed agents, agent graphs |
+| `rlm.finish(status, summary, evidence=...)` | a sub-agent's checked verdict |
 | `@agent class ...` | agents as Python classes |
 | `ctx.*`, `skills.propose_code(...)`, `memory.*` | context control, tested code skills, memory |
 | `state` | a dict that survives kernel restarts |
 
 Opt-outs: `ULTRON_TOOLS=native` gives the model Pi's `read`, `edit`, `write` and `bash` tools again, and
 `ULTRON_EXTENSION_TOOLS=native` makes extension and MCP tools separate model tools again.
+
+## Claude Code
+
+Ultron works with the [Claude Code](https://claude.com/claude-code) CLI in three ways:
+
+- as the root agent's model in Ultron's TUI (`ultron --claude`);
+- as the host, with Ultron's REPL as its only tool (`ultron claude`);
+- as a provider for sub-model frames (`claude-code/*`).
+
+All three run on your Claude Code login (for example a Pro or Max subscription) and check it with
+`claude auth status`. Ultron never reads Claude credentials; the CLI logs itself in.
+
+Claude Opus 5.5 (`claude-opus-5-5`) is the default model of both Claude modes, for the root, the frames and the
+sub-agents. Under `ultron --claude`, frames and sub-agents follow the session model unless you set them in
+[`/settings → Models`](#models-settings--models).
+
+### Ultron's UI with Claude Code underneath: `ultron --claude`
+
+`ultron --claude` is Ultron as usual (its TUI, runtime, RLM pane, Jev, Loki, budgets and session files) with the
+root agent's model calls made by Claude Code.
+
+```bash
+ultron --claude                           # claude-opus-5-5 through Claude Code
+ultron --claude --model claude-code/haiku # another Claude Code model (sonnet, opus, haiku, a full id)
+ultron --claude -c                        # continue the last session: its Claude Code session is resumed
+ULTRON_ROOT=claude ultron                 # the same as --claude (or the global setting claudeCode.root: true)
+```
+
+![ultron --claude: a cell spawns a sub-agent and counts lines while the RLM pane shows both, and the footer shows Claude Code usage](docs/demos/claude-root.gif)
+
+*`ultron --claude --model claude-code/haiku`: one cell spawns a sub-agent (its own Claude Code session) and runs a
+shell command, and the RLM pane shows both. The footer shows the subscription windows Claude Code reports.*
+
+How it works: each root run is one headless `claude -p` process speaking stream-json (`--input-format
+stream-json --output-format stream-json --include-partial-messages`), started with `--session-id` on the first run and
+`--resume` after it; the session id is kept in the Ultron session, so `ultron --claude -c` continues the same Claude
+Code conversation. Claude Code gets no tools of its own (`--tools ""`, `--strict-mcp-config`, `--setting-sources ""`,
+`--disable-slash-commands`, `--permission-prompts none`) and Ultron's own system prompt (`--system-prompt-file`, with
+a note that `rlm` is listed as `mcp__ultron__rlm`). Its one MCP server is a bridge (`ultron mcp --bridge`) back to the
+session worker: when Claude calls `rlm`, the call is handed to Ultron's harness as an ordinary tool call, which runs
+the cell on the root kernel exactly as in a native turn, and the result goes back to Claude Code.
+
+**The same as native Ultron:** the transcript (streamed text, `rlm` cells with their code and output, errors), the
+RLM pane and its waves, Esc to interrupt (the `claude` process group is stopped; the next turn resumes), typing
+while a turn runs (the message goes to Claude Code's input queue and reaches the model with the next tool result),
+wake-ups (a job, subagent or task that finishes while the root is idle starts a new resumed turn with its
+`<runtime_event>`), Jev recall and retention, Loki, per-root turn, token and cost limits (Claude Code's reported
+usage and cost are charged per response), `/review`, `/settings`, sessions, `/tree` and forks. Subagents
+(`rlm.spawn`) inherit the root's model, so each one is its own Claude Code session on its own Ultron lane and kernel;
+frames without tools use the plain `claude-code` provider.
+
+**Different:** Claude Code manages the context (Ultron's compaction is declined for these lanes; the footer shows the
+context Claude Code reports), the footer shows `claude-opus-5-5 (Claude Code)` and your subscription windows (`Claude
+Code 5h 18% · 7d 63%`), costs are the CLI's notional figures (`(sub)`), and Claude's thinking is not shown (Claude
+Code streams none). `/model` can switch to any other model; the transcript carries on there, and switching back to a
+Claude Code model starts a new Claude Code session that gets the conversation so far as text.
+
+### Claude Code's UI with Ultron's REPL: `ultron claude`
+
+`ultron claude` runs Claude Code as Ultron's root agent: Claude Code keeps its TUI, its model and your login, and its
+only tool is Ultron's REPL.
+
+```bash
+ultron claude                             # Claude Code's TUI; the REPL (rlm) is its only tool
+ultron claude --watch                     # inside tmux: the RLM view opens in a split beside it
+ultron watch                              # the RLM view of the running session, in another terminal
+ultron claude -p "why does test_x fail?"  # print mode; any other argument goes to claude
+ultron claude --print-config              # the exact claude command and configs, for other tools
+ultron guide --for claude                 # the system prompt Claude Code gets
+```
+
+![ultron claude --watch in tmux: Claude Code on the left runs one rlm.map, the RLM view on the right shows the cells and the frames](docs/demos/claude-tui.gif)
+
+*`ultron claude --watch --model haiku --frame-model cliproxyapi/glm-5.3-flash` in tmux: Claude Code runs the cells,
+and the `rlm.map` frames go to another provider. The RLM view on the right follows the session.*
+
+How it works: `ultron claude` checks `claude auth status` (it never reads Claude Code's credentials or settings
+files) and starts `claude` with `--strict-mcp-config --mcp-config` pointing at `ultron mcp`, `--tools ""
+--allowedTools mcp__ultron__rlm` (no built-in tools, no permission prompts for the REPL), `--system-prompt-file`
+with Ultron's guide in place of Claude Code's default prompt, `--setting-sources ""` (your Claude Code settings,
+hooks and CLAUDE.md are not loaded; `--keep-settings` loads them, `--keep-mcp` keeps your MCP servers), and a
+temporary `--settings` file with three hooks. The configs live in a private temp dir removed on exit. `ultron mcp` is
+an MCP server that runs Ultron's own runtime, so you can also add it to any Claude Code setup yourself
+(`claude mcp add ultron -- ultron mcp`, then allow `mcp__ultron__rlm`).
+
+**The same as native Ultron:** the persistent kernel and its skills, output truncation, hints (stuck loops,
+polling, detached jobs), secret masking, Loki guardrails, `rlm.load`/`infer`/`map` frames, subagents with checked
+verdicts, typed agents, workflows, shell jobs, the usage ledger, kernel snapshots, and memory. Each Claude Code
+session has its own Ultron session, found again by Claude Code's session id, so `claude --resume` reopens the same
+tasks, `state` and ledger.
+
+**Different:**
+
+- Claude Code owns the conversation: its context, compaction and model loop. `ctx` context edits and Ultron's own
+  TUI panels are not available; `ultron watch` shows the RLM view (graph, waves of subagents, frames, jobs,
+  verdicts, kernels and Loki stats) in a second terminal, or in a tmux split with `--watch`.
+- Nothing can wake Claude Code between turns. A job, subagent or task that ends while it is not waiting is reported
+  at the top of the next `rlm` result, or with your next message (UserPromptSubmit hook); the guide says so.
+- Hooks: SessionStart adds Loki's note; UserPromptSubmit runs Jev's recall gate and Hindsight recall (when both are
+  configured) and delivers waiting events; Stop lets Jev keep or skip the exchange and closes the turn's budget.
+- Frames run on `claude-code/claude-opus-5-5` (single completions through `claude -p`) when that provider is
+  available, else on your default Ultron model; `--frame-model` changes it. Subagents are Claude Code processes by
+  default (`claude -p` with their own `ultron mcp --child` server and kernel, reporting their verdict to the parent's
+  host) on `claude-opus-5-5`, which `--child-model` changes. `--children ultron` runs them as Ultron lanes on your
+  default model instead.
+- Per-turn budgets count frames and subagents; the root's own usage is Claude Code's.
+
+**Fair use.** Everything runs on your Claude Code login. Each frame and each subagent is its own Claude Code request
+or process and counts against your plan's limits. By default all of them run Opus 5.5, so move the high-volume work
+when a task fans out: `--frame-model claude-code/haiku` (or any `provider/model`) for frames, and
+`--child-model sonnet` for subagents. The other defaults are conservative: subagents may not delegate further unless
+given `depth=`, a turn admits at most 24 tasks, and the guide steers toward searching with code before any frame.
+
+### Claude Code as a frame model
+
+With the CLI installed and logged in, the `claude-code` provider runs model calls through it (`claude -p`) with no
+API key, in any mode: `claude-code/haiku`, `claude-code/sonnet`, `claude-code/opus`, `claude-code/claude-opus-5-5`.
+Tool-free calls serve inference frames, `/review` frames and judges. A lane with tools (the root agent under
+`ultron --claude`, its subagents) runs as a Claude Code session whose tools are served back to Ultron over MCP.
+
+```bash
+ULTRON_RLM_FRAME_MODEL=claude-code/haiku ultron   # code-free rlm.infer/rlm.map frames go to the CLI
+```
+
+Or pick it in [`/settings → Models`](#models-settings--models) without restarting. Each call is isolated (no tools,
+MCP servers, settings, hooks or `CLAUDE.md`, and its own system prompt) and uses your subscription's shared limits, so
+at most four run at once (`ULTRON_CLAUDE_CODE_CONCURRENCY`). Details:
+[providers](packages/coding-agent/docs/providers.md#claude-code-cli-claude-code).
 
 ## Optional services
 
@@ -273,105 +494,19 @@ findings). It is bundled and on by default:
   `loki` setting, which also takes `ignoreRepos`). Loki needs `python3` 3.11 or newer; without it the session says
   so and runs unchecked.
 
+![Loki blocks an edit that would write a live-looking Stripe key into config.py](docs/demos/loki.gif)
+
+*Asked to put a made-up live Stripe key into `config.py`, the model's `edit()` raises `loki/secret: hardcoded
+credential (Stripe live key)` and the file stays unchanged. glm-5.3-flash.*
+
 `npm run loki:update -- <loki-checkout | version>` refreshes the bundled engine, pinned by sha256.
-
-## Ultron's UI with Claude Code underneath: `ultron --claude`
-
-`ultron --claude` is Ultron as usual (its TUI, runtime, RLM pane, Jev, Loki, budgets and session files) with the
-root agent's model calls made by [Claude Code](https://claude.com/claude-code) on your login (for example a Pro or
-Max subscription). `ultron claude` is the other way round: Claude Code's own TUI, with Ultron's REPL as its tool.
-
-```bash
-ultron --claude                           # claude-opus-5-5 through Claude Code
-ultron --claude --model claude-code/haiku # another Claude Code model (sonnet, opus, haiku, a full id)
-ultron --claude -c                        # continue the last session: its Claude Code session is resumed
-ULTRON_ROOT=claude ultron                 # the same as --claude (or the global setting claudeCode.root: true)
-```
-
-How it works: each root run is one headless `claude -p` process speaking stream-json (`--input-format
-stream-json --output-format stream-json --include-partial-messages`), started with `--session-id` on the first run and
-`--resume` after it; the session id is kept in the Ultron session, so `ultron --claude -c` continues the same Claude
-Code conversation. Claude Code gets no tools of its own (`--tools ""`, `--strict-mcp-config`, `--setting-sources ""`,
-`--disable-slash-commands`, `--permission-prompts none`) and Ultron's own system prompt (`--system-prompt-file`, with
-a note that `rlm` is listed as `mcp__ultron__rlm`). Its one MCP server is a bridge (`ultron mcp --bridge`) back to the
-session worker: when Claude calls `rlm`, the call is handed to Ultron's harness as an ordinary tool call, which runs
-the cell on the root kernel exactly as in a native turn, and the result goes back to Claude Code. Ultron never reads
-Claude credentials; the CLI logs itself in (`claude auth status` is checked first).
-
-**The same as native Ultron:** the transcript (streamed text, `rlm` cells with their code and output, errors), the
-RLM pane and its waves, Esc to interrupt (the `claude` process group is stopped; the next turn resumes), typing
-while a turn runs (the message goes to Claude Code's input queue and reaches the model with the next tool result),
-wake-ups (a job, subagent or task that finishes while the root is idle starts a new resumed turn with its
-`<runtime_event>`), Jev recall and retention, Loki, per-root turn, token and cost limits (Claude Code's reported
-usage and cost are charged per response), `/review`, sessions, `/tree` and forks. Subagents (`rlm.spawn`) inherit the
-root's model, so each one is its own Claude Code session on its own Ultron lane and kernel; frames without tools use
-the plain `claude-code` provider.
-
-**Different:** Claude Code manages the context (Ultron's compaction is declined for these lanes; the footer shows the
-context Claude Code reports), the footer shows `claude-opus-5-5 (Claude Code)` and your subscription windows (`Claude
-Code 5h 18% · 7d 63%`), costs are the CLI's notional figures (`(sub)`), and Claude's thinking is not shown (Claude
-Code streams none). `/model` can switch to any other model; the transcript carries on there, and switching back to a
-Claude Code model starts a new Claude Code session that gets the conversation so far as text.
-
-## Claude Code as an RLM
-
-`ultron claude` runs [Claude Code](https://claude.com/claude-code) as Ultron's root agent: Claude Code keeps its
-TUI, its model and your login (for example a Pro or Max subscription), and its only tool is Ultron's REPL.
-
-```bash
-ultron claude                             # Claude Code's TUI; the REPL (rlm) is its only tool
-ultron claude -p "why does test_x fail?"  # print mode; any other argument goes to claude
-ultron watch                              # the RLM pane for the running session (or `ultron claude --watch` in tmux)
-ultron claude --print-config              # the exact claude command and configs, for other tools
-ultron guide --for claude                 # the system prompt Claude Code gets
-```
-
-How it works: `ultron claude` checks `claude auth status` (it never reads Claude Code's credentials or settings
-files) and starts `claude` with `--strict-mcp-config --mcp-config` pointing at `ultron mcp`, `--tools ""
---allowedTools mcp__ultron__rlm` (no built-in tools, no permission prompts for the REPL), `--system-prompt-file`
-with Ultron's guide in place of Claude Code's default prompt, `--setting-sources ""` (your Claude Code settings,
-hooks and CLAUDE.md are not loaded; `--keep-settings` loads them, `--keep-mcp` keeps your MCP servers), and a
-temporary `--settings` file with three hooks. The configs live in a private temp dir removed on exit. `ultron mcp` is
-an MCP server that runs Ultron's own runtime, so you can also add it to any Claude Code setup yourself
-(`claude mcp add ultron -- ultron mcp`, then allow `mcp__ultron__rlm`).
-
-**The same as native Ultron:** the persistent kernel and its skills, output truncation, hints (stuck loops,
-polling, detached jobs), secret masking, Loki guardrails, `rlm.load`/`infer`/`map` frames, subagents with checked
-verdicts, typed agents, workflows, shell jobs, the usage ledger, kernel snapshots, and memory. Each Claude Code
-session has its own Ultron session, found again by Claude Code's session id, so `claude --resume` reopens the same
-tasks, `state` and ledger.
-
-**Different:**
-
-- Claude Code owns the conversation: its context, compaction and model loop. `ctx` context edits and Ultron's own
-  TUI panels are not available; `ultron watch` shows the RLM view (graph, waves of subagents, frames, jobs,
-  verdicts, kernels and Loki stats) in a second terminal.
-- Nothing can wake Claude Code between turns. A job, subagent or task that ends while it is not waiting is reported
-  at the top of the next `rlm` result, or with your next message (UserPromptSubmit hook); the guide says so.
-- Hooks: SessionStart adds Loki's note; UserPromptSubmit runs Jev's recall gate and Hindsight recall (when both are
-  configured) and delivers waiting events; Stop lets Jev keep or skip the exchange and closes the turn's budget.
-- Frames run on `claude-code/sonnet` (single completions through `claude -p`) when that provider is available,
-  else on your default Ultron model; `--frame-model` changes it. Subagents are Claude Code processes by default
-  (`claude -p` with their own `ultron mcp --child` server and kernel, reporting their verdict to the parent's host);
-  `--children ultron` runs them as Ultron lanes on your default model instead.
-- Per-turn budgets count frames and subagents; the root's own usage is Claude Code's.
-
-**Fair use.** Everything runs on your Claude Code login. Each frame and each subagent is its own Claude Code request
-or process and counts against your plan's limits. The defaults are conservative: frames and subagents use Sonnet,
-subagents may not delegate further unless given `depth=`, a turn admits at most 24 tasks, and the guide steers toward
-searching with code before any frame. Put frames on another provider with `--frame-model provider/model`.
-
-First measurements (Sonnet, one trial each, `acceptance/quality/2026-09-29-*-claude-code_sonnet.json`): plain Claude
-Code and `ultron claude` both passed the three hard tasks (median 16 s vs 18 s) and the research pilot (precision and
-recall 1.0 for both, 26 s vs 31 s). Ultron's system prompt is about 3.9k tokens against Claude Code's 19k, so the
-runs used 60k instead of 189k tokens on the hard tasks and 93k instead of 268k on the research pilot.
 
 ## Safety
 
 There is no sandbox. Model-written Python runs with your user's permissions, like Pi's `bash` tool. Resource limits
-apply (the process-tree memory cap, CPU and wall-time budgets, per-turn token and turn limits), but they are not
-isolation. Run Ultron in a container or VM if you need a boundary; Pi's
-[containerization guide](packages/coding-agent/docs/containerization.md) applies.
+apply (the process-tree memory cap, CPU and wall-time budgets, per-turn token and turn limits), and Loki and secret
+masking catch some mistakes, but none of this is isolation. Run Ultron in a container or VM if you need a boundary;
+Pi's [containerization guide](packages/coding-agent/docs/containerization.md) applies.
 
 ## Where the ideas come from
 
@@ -394,8 +529,10 @@ npm run build:offline           # build all packages without refreshing model da
 npm run check                   # lint, format, type check
 ./test.sh                       # all tests
 npm run test:acceptance         # acceptance rows A01-A56, judged by the runner
+npm run scan:secrets            # credentials and home-directory paths in tracked files
 node scripts/pack-release.mjs   # build the self-contained release tarball (after a build)
 npm run publish:npm -- --dry-run   # build, pack and check the ultron-agent npm package (drop --dry-run to publish)
+docs/demos/record.sh            # re-record this README's demo GIFs (makes real model calls; see the script)
 ```
 
 Design and status: [`docs/implementation-status.md`](docs/implementation-status.md),

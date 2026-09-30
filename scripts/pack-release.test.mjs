@@ -88,6 +88,20 @@ test("the npm README links into the repository", () => {
 	assert.doesNotMatch(out, /\]\((?!https:|#|mailto:)/);
 });
 
+test("the npm README loads images from raw.githubusercontent.com", () => {
+	const readme = [
+		"![native ultron](docs/demos/native.gif)",
+		'<img src="./docs/demos/claude-tui.gif" alt="ultron claude" width="720">',
+		"![badge](https://img.shields.io/npm/v/ultron-agent) and [a link](docs/review.md)",
+	].join("\n");
+	const out = npmReadme(readme);
+	const raw = "https://raw.githubusercontent.com/alfredosdpiii/ultron/main/docs/demos/";
+	assert.ok(out.includes(`![native ultron](${raw}native.gif)`));
+	assert.ok(out.includes(`<img src="${raw}claude-tui.gif" alt="ultron claude" width="720">`));
+	assert.ok(out.includes("![badge](https://img.shields.io/npm/v/ultron-agent)"));
+	assert.ok(out.includes("[a link](https://github.com/alfredosdpiii/ultron/blob/main/docs/review.md)"));
+});
+
 test("a staged package with a secret or a home path is refused, with the value redacted", () => {
 	const stage = mkdtempSync(join(tmpdir(), "pack-scan-"));
 	try {
