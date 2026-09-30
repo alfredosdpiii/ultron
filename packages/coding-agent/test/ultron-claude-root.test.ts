@@ -267,7 +267,7 @@ describe("ultron --claude: the root lane on Claude Code", () => {
 		const lane = first.runtime.lane!;
 		expect((await lane.getModel(TODO_CONTEXT))?.provider).toBe("claude-code");
 		const run = await lane.prompt("CELL: x = 6 * 7\\nprint(x)", undefined, BACKGROUND_CONTEXT);
-		expect(run.ok).toBe(true);
+		expect(run, JSON.stringify(run).slice(0, 2000)).toMatchObject({ ok: true });
 		const messages = await messagesOf(first.runtime);
 		const assistants = messages.filter((message): message is AssistantMessage => message.role === "assistant");
 		expect(assistants).toHaveLength(2);
@@ -390,7 +390,7 @@ describe("ultron --claude: the root lane on Claude Code", () => {
 		const lane = first.runtime.lane!;
 		const firstSession = calls().find((call) => call.phase === "spawn")!.sessionId;
 		const run = await lane.prompt("CELL: print(x + 1)", undefined, BACKGROUND_CONTEXT);
-		expect(run.ok).toBe(true);
+		expect(run, JSON.stringify(run).slice(0, 2000)).toMatchObject({ ok: true });
 		const spawns = calls().filter((call) => call.phase === "spawn");
 		expect(spawns).toHaveLength(2);
 		expect(spawns[1]).toMatchObject({ sessionId: firstSession, resumed: true });
@@ -495,7 +495,7 @@ describe("ultron --claude: the root lane on Claude Code", () => {
 			undefined,
 			BACKGROUND_CONTEXT,
 		);
-		expect(run.ok).toBe(true);
+		expect(run, JSON.stringify(run).slice(0, 2000)).toMatchObject({ ok: true });
 		await vi.waitFor(
 			() =>
 				expect(
@@ -511,6 +511,8 @@ describe("ultron --claude: the root lane on Claude Code", () => {
 		const spawn = calls().find((call) => call.phase === "spawn" && call.pid === wake.pid)!;
 		expect(spawn.resumed).toBe(true);
 		expect(wake.prompt).toContain("job_done");
+		// The wake-up turn runs on its own; later tests prompt the same lane, so let it finish first.
+		await first.runtime.lane!.waitForIdle(BACKGROUND_CONTEXT);
 	}, 120_000);
 
 	test("a subagent (rlm.spawn) is a lane of its own on Claude Code: its own claude -p process and session", async () => {
@@ -522,7 +524,7 @@ describe("ultron --claude: the root lane on Claude Code", () => {
 			undefined,
 			BACKGROUND_CONTEXT,
 		);
-		expect(run.ok).toBe(true);
+		expect(run, JSON.stringify(run).slice(0, 2000)).toMatchObject({ ok: true });
 		const childPrompt = calls()
 			.slice(before)
 			.find((call) => call.phase === "prompt" && String(call.prompt).startsWith("Echo the word kiwi"))!;
@@ -553,7 +555,7 @@ describe("ultron --claude: the root lane on Claude Code", () => {
 				undefined,
 				BACKGROUND_CONTEXT,
 			);
-			expect(run.ok).toBe(true);
+			expect(run, JSON.stringify(run).slice(0, 2000)).toMatchObject({ ok: true });
 			const childPrompt = calls()
 				.slice(before)
 				.find((call) => call.phase === "prompt" && String(call.prompt).startsWith("CELL: import os"))!;
@@ -667,7 +669,7 @@ describe("ultron --claude: the root lane on Claude Code", () => {
 		const reopened = await open(metadata);
 		const before = calls().length;
 		const run = await reopened.runtime.lane!.prompt("after restart", undefined, BACKGROUND_CONTEXT);
-		expect(run.ok).toBe(true);
+		expect(run, JSON.stringify(run).slice(0, 2000)).toMatchObject({ ok: true });
 		const spawn = calls()
 			.slice(before)
 			.find((call) => call.phase === "spawn")!;
