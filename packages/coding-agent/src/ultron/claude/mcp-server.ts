@@ -284,6 +284,8 @@ export async function runMcpServer(argv: readonly string[]): Promise<void> {
 	console.log = console.error;
 	console.info = console.error;
 
+	// A worktree subagent's server works in the worktree its parent gave it, wherever Claude Code started it.
+	if (args.child && process.env.ULTRON_CHILD_CWD?.trim()) process.chdir(process.env.ULTRON_CHILD_CWD.trim());
 	const cwd = process.cwd();
 	const settings = SettingsManager.create(cwd, getAgentDir(), { projectTrusted: false });
 	const claudeSettings = settings.getClaudeCodeSettings();

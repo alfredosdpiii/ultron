@@ -223,6 +223,7 @@ function taskNode(task: RlmTask, snapshot: RlmSnapshot): GraphNode {
 	];
 	if (task.lane) details.push(["lane", task.lane]);
 	if (task.parentId) details.push(["parent", task.parentId]);
+	if (task.worktree) details.push(["worktree", task.worktree]);
 	if (task.workflow)
 		details.push([
 			"workflow",

@@ -27,11 +27,16 @@
  * The set's second task, `six-services-deep` (tasks-delegation-deep.mjs), was added after gpt-6-sol fixed all six
  * services here from one batched read: its bugs are found only by running a slow, staged check harness and
  * iterating, and the hidden check needs a logged passing harness run on each service's final code.
+ *
+ * The third, `twelve-tickets` (tasks-delegation-tickets.mjs), is twelve small tickets in one shared git repository,
+ * several in the same files and one pair coupled in the same function: it measures whether concurrent work on one
+ * checkout pays off when workers can clobber each other's files.
  */
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { fixtureDigest, readTree } from "./fixture-tree.mjs";
 import { TASK as DEEP_TASK } from "./tasks-delegation-deep.mjs";
+import { TASK as TICKETS_TASK } from "./tasks-delegation-tickets.mjs";
 
 export { fixtureDigest };
 
@@ -226,5 +231,6 @@ export function tasks() {
 			timeBudgetMs: TIME_BUDGET_MS,
 		},
 		DEEP_TASK,
+		TICKETS_TASK,
 	];
 }

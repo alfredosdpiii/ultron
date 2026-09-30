@@ -123,6 +123,8 @@ export function runClaudeChild(
 	run: NativeExternalChildRun,
 ): Promise<NativeExternalChildResult> {
 	const model = childClaudeModel(run.model, options.model);
+	// A worktree child (`worktree=True`) runs in its worktree: Claude Code and its own `ultron mcp --child` server.
+	const cwd = run.cwd ?? options.cwd;
 	const dir = mkdtempSync(join(tmpdir(), "ultron-child-"));
 	const token = randomBytes(24).toString("base64url");
 	const unregister = options.registerChild(token, run.laneName);
@@ -130,7 +132,7 @@ export function runClaudeChild(
 	writeFileSync(
 		systemPromptFile,
 		claudeSystemPrompt("claude-child", {
-			cwd: options.cwd,
+			cwd,
 			platform: process.platform,
 			date: new Date().toISOString().slice(0, 10),
 			allowance: run.allowance,
@@ -167,14 +169,18 @@ export function runClaudeChild(
 				command: options.self.command,
 				args: serverArgs,
 				// The token stays out of process listings.
-				env: { ULTRON_PARENT_TOKEN: token },
+				env: {
+					ULTRON_PARENT_TOKEN: token,
+					...run.env,
+					...(run.cwd === undefined ? {} : { ULTRON_CHILD_CWD: cwd }),
+				},
 			},
 		},
 	});
-	const env: NodeJS.ProcessEnv = { ...(options.env ?? process.env) };
+	const env: NodeJS.ProcessEnv = { ...(options.env ?? process.env), ...run.env };
 	for (const name of PARENT_ONLY_ENV) delete env[name];
 	const child = spawn(options.claude, childClaudeArgs({ model, mcpConfig, systemPromptFile }), {
-		cwd: options.cwd,
+		cwd,
 		env,
 		stdio: ["pipe", "pipe", "pipe"],
 		detached: process.platform !== "win32",

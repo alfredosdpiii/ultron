@@ -1,0 +1,244 @@
+{
+  "taskSet": "delegation",
+  "frozenAt": "2026-09-27-delegation",
+  "thresholds": {
+    "maxPassRateDropPoints": 10,
+    "maxMedianLatencyRatio": 2,
+    "maxCostRatio": 2
+  },
+  "model": "cliproxyapi/gpt-6-sol",
+  "ultronCommand": "node ~/Projects/personal/ultron-wt-spawnwt/packages/coding-agent/dist/bundle/cli.js",
+  "trials": 1,
+  "isolation": {
+    "home": "per-run empty HOME inside the run's work dir (no ~/.agents, ~/.pi, ~/.ultron or other user-global resources)",
+    "agentDir": "per-run agent dir holding only models.json and auth.json copied from ~/.ultron/agent",
+    "memory": "off (ULTRON_HINDSIGHT_URL=off)",
+    "loki": "off (ULTRON_LOKI=off, ULTRON_LOKI_AUTOINIT=off) unless --loki"
+  },
+  "loki": "off",
+  "judge": {
+    "model": "cliproxyapi/glm-5.3-flash",
+    "thinking": "low",
+    "command": "pi"
+  },
+  "summary": {
+    "byVariant": {
+      "pi": {
+        "runs": 1,
+        "infrastructure": 0,
+        "passRate": 0,
+        "categories": {
+          "delegation": {
+            "passed": 0,
+            "runs": 1
+          }
+        },
+        "medianDurationMs": 85159,
+        "totalCost": 0.0399784,
+        "uptake": {
+          "toolsByName": {
+            "bash": 4,
+            "edit": 5
+          },
+          "rlmRunShare": 0,
+          "framesSpawned": {
+            "runs": 0,
+            "total": null,
+            "median": null
+          },
+          "childrenSpawned": {
+            "runs": 0,
+            "total": null,
+            "median": null
+          },
+          "rootUnseenBytes": {
+            "runs": 0,
+            "total": null,
+            "median": null
+          }
+        },
+        "timing": {
+          "runs": 1,
+          "withinBudget": 1,
+          "passedWithinBudget": 0,
+          "passed": 0,
+          "medianDurationMs": 85159,
+          "perRun": [
+            {
+              "task": "twelve-tickets",
+              "trial": 1,
+              "durationMs": 85159,
+              "timeBudgetMs": 300000,
+              "withinBudget": true,
+              "passed": false
+            }
+          ]
+        }
+      },
+      "ultron": {
+        "runs": 1,
+        "infrastructure": 0,
+        "passRate": 1,
+        "categories": {
+          "delegation": {
+            "passed": 1,
+            "runs": 1
+          }
+        },
+        "medianDurationMs": 148305,
+        "totalCost": 0.069828,
+        "uptake": {
+          "toolsByName": {
+            "rlm": 7
+          },
+          "rlmRunShare": 1,
+          "framesSpawned": {
+            "runs": 1,
+            "total": 0,
+            "median": 0
+          },
+          "childrenSpawned": {
+            "runs": 1,
+            "total": 0,
+            "median": 0
+          },
+          "rootUnseenBytes": {
+            "runs": 0,
+            "total": null,
+            "median": null
+          }
+        },
+        "timing": {
+          "runs": 1,
+          "withinBudget": 1,
+          "passedWithinBudget": 1,
+          "passed": 1,
+          "medianDurationMs": 148305,
+          "perRun": [
+            {
+              "task": "twelve-tickets",
+              "trial": 1,
+              "durationMs": 148305,
+              "timeBudgetMs": 300000,
+              "withinBudget": true,
+              "passed": true
+            }
+          ]
+        }
+      }
+    },
+    "gate": [
+      {
+        "check": "pass rate",
+        "ok": true,
+        "detail": "-100.0 points below baseline"
+      },
+      {
+        "check": "median latency",
+        "ok": true,
+        "detail": "1.74x baseline"
+      },
+      {
+        "check": "cost",
+        "ok": true,
+        "detail": "1.75x baseline"
+      }
+    ],
+    "passed": true
+  },
+  "records": [
+    {
+      "task": "twelve-tickets",
+      "category": "delegation",
+      "variant": "pi",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": false,
+      "homeIsolated": true,
+      "toolsByName": {
+        "bash": 4,
+        "edit": 5
+      },
+      "framesSpawned": null,
+      "childrenSpawned": null,
+      "childDepth": null,
+      "rootUnseenBytes": null,
+      "toolCalls": 9,
+      "cost": 0.0399784,
+      "tokens": 23986,
+      "durationMs": 85159,
+      "timeBudgetMs": 300000,
+      "withinBudget": true,
+      "verify": {
+        "status": 1,
+        "output": "IL FAIL: test_save10 (hidden_tests.test_tickets.T07.test_save10) | AssertionError: 2295 != 2294 | FAILED (failures=1)\nT08: FAIL FAIL: test_case_insensitive (hidden_tests.test_tickets.T08.test_case_insensitive) | AssertionError: 2295 != 2294 | FAIL: test_t07_still_holds (hidden_tests.test\nT09: pass\nT10: pass\nT11: pass\nT12: pass\n{\"passed\":10,\"total\":12,\"tickets\":{\"T01\":true,\"T02\":true,\"T03\":true,\"T04\":true,\"T05\":true,\"T06\":true,\"T07\":false,\"T08\":false,\"T09\":true,\"T10\":true,\"T11\":true,\"T12\":true}}\n"
+      },
+      "metrics": {
+        "passed": 10,
+        "total": 12,
+        "tickets": {
+          "T01": true,
+          "T02": true,
+          "T03": true,
+          "T04": true,
+          "T05": true,
+          "T06": true,
+          "T07": false,
+          "T08": false,
+          "T09": true,
+          "T10": true,
+          "T11": true,
+          "T12": true
+        }
+      },
+      "evidence": "/tmp/claude-1000/-home-bryan--pi/5d60a779-e265-418c-9996-f27f1acf766b/scratchpad/evalkeep/twelve-tickets-pi-1-2026-09-30T12-22-10-853Z"
+    },
+    {
+      "task": "twelve-tickets",
+      "category": "delegation",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "rlm": 7
+      },
+      "framesSpawned": 0,
+      "childrenSpawned": 0,
+      "childDepth": 0,
+      "rootUnseenBytes": null,
+      "toolCalls": 7,
+      "tasksByDefinition": {},
+      "framesSource": "inspect",
+      "cost": 0.069828,
+      "tokens": 53594,
+      "durationMs": 148305,
+      "timeBudgetMs": 300000,
+      "withinBudget": true,
+      "verify": {
+        "status": 0,
+        "output": "T01: pass\nT02: pass\nT03: pass\nT04: pass\nT05: pass\nT06: pass\nT07: pass\nT08: pass\nT09: pass\nT10: pass\nT11: pass\nT12: pass\n{\"passed\":12,\"total\":12,\"tickets\":{\"T01\":true,\"T02\":true,\"T03\":true,\"T04\":true,\"T05\":true,\"T06\":true,\"T07\":true,\"T08\":true,\"T09\":true,\"T10\":true,\"T11\":true,\"T12\":true}}\n"
+      },
+      "metrics": {
+        "passed": 12,
+        "total": 12,
+        "tickets": {
+          "T01": true,
+          "T02": true,
+          "T03": true,
+          "T04": true,
+          "T05": true,
+          "T06": true,
+          "T07": true,
+          "T08": true,
+          "T09": true,
+          "T10": true,
+          "T11": true,
+          "T12": true
+        }
+      },
+      "evidence": "/tmp/claude-1000/-home-bryan--pi/5d60a779-e265-418c-9996-f27f1acf766b/scratchpad/evalkeep/twelve-tickets-ultron-1-2026-09-30T12-22-10-869Z"
+    }
+  ]
+}

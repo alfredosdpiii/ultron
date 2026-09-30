@@ -21,6 +21,7 @@ import { homedir } from "node:os";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import type { LokiSettings } from "../core/settings-manager.ts";
 import type { BeforeWriteVerdict, CellChanges, FileHookContext, FileWriteGuard, GuardRecord } from "./file-hooks.ts";
+import { isUltronWorktreePath } from "./rlm/worktrees.ts";
 
 export type LokiMode = "on" | "advise" | "off";
 
@@ -217,6 +218,9 @@ export async function autoInitEligibility(
 	if (options.env.CI?.trim()) return { reason: "CI is set" };
 	const root = await gitRoot(cwd);
 	if (root === undefined) return { reason: "not a Git repository" };
+	// A sub-agent's worktree has its parent's checkout (`.loki/` included, if the parent has it); its branch must
+	// hold only the sub-agent's own work.
+	if (isUltronWorktreePath(root, options.env)) return { reason: "this is an Ultron sub-agent worktree" };
 	const home = resolve(options.home ?? homedir());
 	if (root === home) return { reason: "the repository root is the home directory" };
 	if (root === resolve("/") || dirname(root) === root) return { reason: "the repository root is the filesystem root" };
@@ -248,6 +252,7 @@ export async function autoCommitSkipReason(root: string, options: EligibilityOpt
 			? "auto-commit is off (ULTRON_LOKI_AUTOCOMMIT)"
 			: "auto-commit is off (loki.autoCommit setting)";
 	if (options.env.CI?.trim()) return "CI is set";
+	if (isUltronWorktreePath(root, options.env)) return "this is an Ultron sub-agent worktree";
 	for (const [name, reason] of IN_PROGRESS) {
 		const path = await git(root, ["rev-parse", "--git-path", name]);
 		if (path.status !== 0) return "Git state could not be read";
@@ -341,13 +346,21 @@ export class LokiGuard implements FileWriteGuard {
 		return this.options.postWrite;
 	}
 
-	#args(...args: string[]): string[] {
-		return [this.options.engine, "--root", this.options.root, ...args];
+	#args(root: string, ...args: string[]): string[] {
+		return [this.options.engine, "--root", root, ...args];
+	}
+
+	/**
+	 * The repository Loki checks for a write: a worktree subagent's own worktree (the same repository, its policy
+	 * committed there too), else the session's.
+	 */
+	#root(context: FileHookContext): string {
+		return context.root ?? this.options.root;
 	}
 
 	/** The repository-relative path, or undefined outside the repository (Loki guards only the repository). */
-	#inside(path: string): string | undefined {
-		const rel = relative(this.options.root, path);
+	#inside(path: string, root: string = this.options.root): string | undefined {
+		const rel = relative(root, path);
 		if (!rel || rel.startsWith("..") || isAbsolute(rel)) return undefined;
 		return rel.split(sep).join("/");
 	}
@@ -367,13 +380,14 @@ export class LokiGuard implements FileWriteGuard {
 	}
 
 	async beforeWrite(write: { path: string; content: string }, context: FileHookContext): Promise<BeforeWriteVerdict> {
-		const rel = this.#inside(write.path);
+		const root = this.#root(context);
+		const rel = this.#inside(write.path, root);
 		if (rel === undefined) return {};
 		const result = await runProcess(
 			this.options.python,
-			this.#args("protect", "--file", rel, "--preview", this.options.previewHost),
+			this.#args(root, "protect", "--file", rel, "--preview", this.options.previewHost),
 			{
-				cwd: this.options.root,
+				cwd: root,
 				timeoutMs: this.timeoutMs + 1_000,
 				signal: context.signal,
 				input: JSON.stringify({
@@ -396,16 +410,17 @@ export class LokiGuard implements FileWriteGuard {
 	}
 
 	async afterCellChanges(changes: CellChanges, context: FileHookContext): Promise<string | undefined> {
+		const root = this.#root(context);
 		const targets = [...new Set([...changes.files, ...changes.checked])]
-			.map((path) => this.#inside(path))
+			.map((path) => this.#inside(path, root))
 			.filter((path): path is string => path !== undefined);
 		if (targets.length === 0) return undefined;
 		const checked = targets.slice(0, MAX_HOOK_FILES);
 		const result = await runProcess(
 			this.options.python,
-			this.#args("hook", ...checked.flatMap((path) => ["--file", path])),
+			this.#args(root, "hook", ...checked.flatMap((path) => ["--file", path])),
 			{
-				cwd: this.options.root,
+				cwd: root,
 				timeoutMs: this.afterTimeoutMs,
 				signal: context.signal,
 				...(this.options.env === undefined ? {} : { env: this.options.env }),

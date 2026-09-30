@@ -22,7 +22,11 @@
  * `delegation` is tasks-delegation.mjs (six independent buggy services to fix under a wall-clock budget that one
  * sequential agent is unlikely to meet: working on them in parallel pays off; the hidden check reports how many
  * of the six passed as `metrics`; its second task, `six-services-deep`, hides each service's bugs behind a slow
- * staged harness that must be run and rerun, see tasks-delegation-deep.mjs).
+ * staged harness that must be run and rerun, see tasks-delegation-deep.mjs; its third, `twelve-tickets`, is twelve
+ * small tickets in one shared project, several in the same files, see tasks-delegation-tickets.mjs).
+ * A task with `git: true` (twelve-tickets) starts as a git repository: after the task files are written, live runs
+ * (every variant) and every self-check trial run `git init` and commit them once (initGitRepo), before the agent or
+ * the reference solution sees them; the hidden files are written afterwards and stay untracked.
  *
  * Exit code: with both variants, 0 when the comparison gates (pass rate, median latency, cost, coverage) hold. With
  * one variant (`--variants ultron`, no `--baseline`) there is nothing to compare: the comparison gates are skipped and
@@ -208,6 +212,29 @@ function sh(command, cwd, timeoutMs) {
 }
 
 const runVerify = (task, cwd) => sh(task.verify, cwd, task.verifyTimeoutMs ?? VERIFY_TIMEOUT_MS);
+
+/**
+ * For a task with `git: true`: make the freshly written task files a git repository with one commit, as a real
+ * checkout would be (the agent may branch, use worktrees or diff against it). The identity is local to the repo,
+ * and signing and hooks are off, so the user's global git config can neither block nor alter the commit. Hidden
+ * files are written later and stay untracked; the hidden check reads the working tree.
+ */
+export async function initGitRepo(dir) {
+	const git = "git -c init.defaultBranch=main -c commit.gpgsign=false -c core.hooksPath=/dev/null";
+	const result = await sh(
+		[
+			"unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE",
+			`${git} init -q`,
+			"git config user.name Eval",
+			"git config user.email eval@localhost",
+			"git add -A",
+			`${git} commit -q --no-verify -m "Initial commit"`,
+		].join(" && "),
+		dir,
+		60_000,
+	);
+	if (result.status !== 0) throw new Error(`git init of the task files failed: ${result.output}`);
+}
 
 const VARIANTS = {
 	pi: { command: ["pi"], agentDirEnv: "PI_CODING_AGENT_DIR" },
@@ -739,6 +766,7 @@ async function runOne({ task, variant, trial, model, thinking, keepDir, keepAll,
 		if (existsSync(join(profile, file))) copyFileSync(join(profile, file), join(agentDir, file));
 	const { files, hidden } = materialize(task);
 	writeTree(project, files);
+	if (task.git) await initGitRepo(project);
 	const { agentDirEnv } = VARIANTS[variant];
 	const command = commands[variant];
 	const runName = `${task.id}-${variant}-${trial}-${new Date().toISOString().replace(/[:.]/g, "-")}`;
@@ -867,6 +895,7 @@ async function runClaudeOne({ task, variant, trial, model, keepDir, keepAll, com
 		if (existsSync(join(profile, file))) copyFileSync(join(profile, file), join(agentDir, file));
 	const { files, hidden } = materialize(task);
 	writeTree(project, files);
+	if (task.git) await initGitRepo(project);
 	const runName = `${task.id}-${variant}-${trial}-${new Date().toISOString().replace(/[:.]/g, "-")}`;
 	const keep = join(keepDir, runName);
 	mkdirSync(keep, { recursive: true });
@@ -1136,6 +1165,7 @@ async function checkTask(task, solution, liveJudge) {
 		const dir = join(work, name.replace(/[^a-z0-9.-]+/gi, "_"));
 		mkdirSync(dir);
 		writeTree(dir, files);
+		if (task.git) await initGitRepo(dir);
 		const solveStarted = Date.now();
 		const failure = applied ? await applySolution(dir, applied, applied.files ?? {}) : null;
 		const solveMs = Date.now() - solveStarted;

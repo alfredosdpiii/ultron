@@ -102,6 +102,48 @@ and a test suite can run while it fixes something else.
   connection. There is no lifetime output cap any more: an earlier 4 MiB cap per kernel restarted the kernel after
   about 85 large cells and lost its variables. Now each cell's stdout and stderr are capped at 4 MiB each.
 
+#### Sub-agents in their own Git worktrees
+
+Children that edit files at the same time can overwrite each other's work in a shared checkout.
+`rlm.spawn(brief, name=..., worktree=True)` gives a child a private Git worktree instead. It is branched from the
+parent's tree as it is at that moment, uncommitted changes included, on `ultron/<session>/<name>`. It lives under
+`.git/ultron-worktrees/`, so the parent's tools and `git status` never see it. The parent's index and files are not
+touched.
+
+- The child's kernel, `bash`, `edit`/`write`/`read`, jobs, Loki checks and verdict check all run in the worktree.
+  An absolute path into the parent's checkout (as briefs often give them) is mapped to the worktree's copy. Files
+  the child still changes in the parent's tree show up as `check["outside"]`.
+- When the child ends, its changes are committed on its branch. The commit message is its verdict's summary, with
+  no hooks, no signing and no trailers. Its result gains
+  `worktree: {branch, path, commit, changed_files, diffstat}`. A child that changed nothing has its worktree and
+  branch removed right away.
+- `await rlm.merge(hs)` merges each child's branch into the parent's working tree in order, three-way, against a
+  snapshot of the tree as it is now. The changes land as uncommitted edits (new files untracked). Nothing is
+  committed on your branch: you review and commit. The first conflict stops the merge and writes nothing of that
+  child: the report names the files and hunks, and the tree stays as the earlier merges left it.
+  `on_conflict="skip"` goes on with the next child, and `"markers"` writes conflict markers for you to resolve.
+  Children that did not pass are skipped unless `include_failed=True`. Merged and empty children's worktrees and
+  branches are removed; conflicted or failed ones are kept for inspection.
+- Group before spawning: put coupled tasks (the same function, or one building on another) in one child's brief,
+  and give independent tasks their own children. Every worktree child gets its own worktree; worktrees are never
+  shared. A child's own children branch from its worktree and merge back into it. `workflows.run` nodes take
+  `worktree: true`, and Claude Code children (`ultron --claude`, `ultron claude`) run in their worktree too.
+- Git ignores the parent's `node_modules`, `.venv` and `.env`, so a new worktree would not have them. Gitignored
+  `node_modules`, `.venv` and `venv` directories are linked in by default (a `node_modules` entry by entry, so
+  workspace packages resolve to the worktree's own sources), and small `.env` files are copied.
+  `worktree_setup={"link": [...], "copy": [...], "command": "npm ci"}`, or the `worktrees` setting (`link`, `copy`,
+  `setupCommand`), changes this. Linked dependencies are shared, so children must not install different ones at the
+  same time. A package installed in editable mode (`pip install -e .`) still imports the parent's sources, and
+  dev servers or databases that children start share the parent's ports.
+- Cleanup: when a session ends, its finished children's worktrees are removed and their unmerged branches are kept.
+  Worktrees of a crashed session are pruned when the next session starts in the repository. Uncommitted work is
+  committed to the branch first, and only Ultron's own worktrees and branches are touched.
+  `await rlm.worktrees.list()` and `await rlm.worktrees.cleanup(branches=False)` manage them by hand, and
+  `ULTRON_KEEP_WORKTREES=1` keeps everything.
+- Limits: this needs Git and a repository with at least one commit. `worktree="auto"` falls back to the shared
+  tree when either is missing. Submodules are not initialized in a worktree, and Git LFS files are checked out only
+  if git-lfs is installed.
+
 ### 5. Memory with judgement
 
 Automatic memory through Hindsight is gated by Jev: before each turn
@@ -194,12 +236,15 @@ turn that ran past the 20-minute limit.
 | Parallel work | 2/2, median 162 s | 2/2, median 162 s |
 | Delegation: 6 services, bugs readable from the code, 300 s budget | 2/2, 119 s and 145 s | 2/2, **113 s and 78 s**, 6 sub-agents each |
 | Delegation, deep: 6 services, bugs only a slow harness reveals, 300 s budget (0.87.11) | 6/6 both times, but **over budget**: 355 s and 366 s, $0.47 avg | 6/6 both times, **within budget: 165 s and 176 s**, $0.63 avg, 6 sub-agents each |
+| Delegation, tickets: 12 small tickets in shared files, one coupled pair, 300 s budget (1 trial, worktree build) | 10/12 (the coupled pair failed), 85 s, $0.04 | **12/12**, 148 s, $0.07, no sub-agents |
 
 The deep delegation task is where the runtime matters most: each service hides three bugs behind a 21-second test
 harness that stops at the first failure, so working through six services one at a time cannot fit the budget.
 Ultron split the work into one sub-agent per service on its own, without being told to, waited for them without
 checking in, and finished in less than half of Pi's time for about 1.35x the cost. Pi fixed everything too, but
-sequentially, and ran over the budget in both trials.
+sequentially, and ran over the budget in both trials. On the tickets task gpt-6-sol read all twelve tickets and the code in
+three turns and made every edit in one cell, so it never needed sub-agents or worktrees (the self-check shows why
+they matter when it does: children writing whole files in one checkout lose half the tickets).
 
 Ultron has been at least as accurate as Pi on every set so far, at about the same token cost on hard tasks and 40%
 fewer tokens on research. Releases 0.87.10 and 0.87.11 closed the short-task speed gap (median 60 s, then 40 s, then 36 s against Pi's
@@ -341,6 +386,7 @@ mode rows apply the next time `ultron claude` starts. When an environment variab
 | `await mcp.call(tool, **args)`, `await tools.call(name, {...})` | MCP servers and any Pi extension tool |
 | `await rlm.load(...)`, `rlm.infer(...)`, `rlm.map(...)` | handles and bounded sub-model frames |
 | `await rlm.spawn(task, depth=0)`, `agents.invoke(...)`, `workflows.run(...)` | sub-agents, typed agents, agent graphs |
+| `rlm.spawn(task, name=..., worktree=True)`, `await rlm.merge(hs)` | a sub-agent in its own Git worktree, and merging its work back |
 | `rlm.finish(status, summary, evidence=...)` | a sub-agent's checked verdict |
 | `@agent class ...` | agents as Python classes |
 | `ctx.*`, `skills.propose_code(...)`, `memory.*` | context control, tested code skills, memory |

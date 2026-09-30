@@ -77,7 +77,8 @@ describe("default tool set", () => {
 		const guide = rlmRuntimePrompt(["rlm"])!;
 		// 13,976 characters and a 2,185-character tool description before the cost pass (2026-09-27); 9,462 and
 		// 1,117 before the compact guide (5,084 and 439 after, same day); 5,318 before the wait-for-children wording
-		// replaced "keep working" (5,493 after, 2026-09-28); 5,485 with the subagent verdict lines (2026-09-29).
+		// replaced "keep working" (5,493 after, 2026-09-28); 5,485 with the subagent verdict lines (2026-09-29); 5,486
+		// with the worktree line, after trimming the search example and two phrasings (2026-09-30).
 		expect(guide.length).toBeLessThan(5_500);
 		expect(RLM_TOOL_DESCRIPTION.length).toBeLessThan(600);
 		expect(rlmRuntimePrompt(["rlm"])).toBe(guide);
@@ -105,6 +106,8 @@ describe("default tool set", () => {
 			// Subagents finish with a checked verdict; the root trusts only verified ones.
 			"`await rlm.finish(status, summary, evidence=[...], changed_files=[...])`",
 			'Trust only verdicts whose `check.outcome` is "verified"',
+			// Children that edit files get private worktrees; coupled work stays in one child; the root merges.
+			"Children editing files: `worktree=True` each (coupled work in one brief), then `await rlm.merge(hs)`",
 		])
 			expect(guide).toContain(rule);
 		expect(guide).not.toContain("keep working");

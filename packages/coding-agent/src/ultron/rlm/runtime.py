@@ -34,6 +34,7 @@ from infer_api import install as install_inference
 from hints_api import Hints
 from secret_patterns import REDACTION_MARKER
 from tools_api import Mcp, McpError, ToolCall, ToolError, ToolResult, Tools
+from worktree_api import Worktrees, worktree_path
 
 @dataclass
 class SpawnHandle:
@@ -43,6 +44,8 @@ class SpawnHandle:
     model: str
     timeout_ms: int
     parent_branch_anchor: str
+    # `worktree=True`: {"branch", "path", "cwd"} of the child's private worktree, else None.
+    worktree: dict[str, Any] | None = None
 
     @property
     def id(self) -> str:
@@ -50,7 +53,8 @@ class SpawnHandle:
         return self.rlm_child_id
 
     def __repr__(self) -> str:
-        return f"SpawnHandle(name={self.name!r}, rlm_child_id={self.rlm_child_id!r})"
+        branch = f", branch={self.worktree['branch']!r}" if self.worktree else ""
+        return f"SpawnHandle(name={self.name!r}, rlm_child_id={self.rlm_child_id!r}{branch})"
 
 
 # json.dumps escapes non-ASCII, so a line's length is its byte count; kept under kernel.ts MAX_FRAME_BYTES.
@@ -101,7 +105,8 @@ class RLMNamespace:
     `h = await rlm.spawn(task, name=...)` starts a subagent with its own REPL (a full agent: it re-sends the
     system prompt and its own transcript on every turn, so use it for independent multi-step work, not for
     reading files); `await rlm.collect([h])` waits for results; a subagent ends with `rlm.finish(...)`;
-    `rlm.list_subagents()`, `rlm.delete_subagent(id)`. `rlm.load`, `rlm.open`, `rlm.infer`, `rlm.map` and `rlm.frames` are the
+    `worktree=True` gives a child its own Git worktree and `await rlm.merge(hs)` brings the work back
+    (`help(rlm.merge)`, `rlm.worktrees`); `rlm.list_subagents()`, `rlm.delete_subagent(id)`. `rlm.load`, `rlm.open`, `rlm.infer`, `rlm.map` and `rlm.frames` are the
     bounded-inference API (`help(rlm.map)`). `rlm.jobs()` / `rlm.job(id)` recover shell jobs.
 
     Search before delegating, over many files or a large input: search the concept and its synonyms in code,
@@ -122,10 +127,11 @@ class RLMNamespace:
 
     def __init__(self, bridge: HostBridge) -> None:
         self._bridge = bridge
+        self.worktrees = Worktrees(bridge)
 
     async def spawn(self, prompt: str, **kwargs: Any) -> SpawnHandle:
         """Start a subagent and return its SpawnHandle at once (`h.rlm_child_id`); options: name (required),
-        model, thinking, timeout_ms, depth.
+        model, thinking, timeout_ms, depth, worktree, worktree_setup.
 
         The child has its own REPL and your tools and shares your filesystem, but not your conversation: give
         a self-contained brief (goal, paths, constraints, what to return). Its final reply is its result.
@@ -139,13 +145,23 @@ class RLMNamespace:
         files that changed while it ran without being declared (maybe by concurrent work). A subagent does its brief itself unless you pass `depth=N` (1 lets it spawn its
         own subagents, 2 lets those spawn too; at most 3 levels in all), and every response they make counts
         toward the root's turn, token and cost limits. Spawn for independent multi-step work, never to read or
-        classify documents (narrow with code and `rlm.map` instead)."""
+        classify documents (narrow with code and `rlm.map` instead).
+
+        worktree=True: the child works in its own private Git worktree (`h.worktree["branch"]`), branched from
+        your tree as it is now (uncommitted changes included), so children editing the same files cannot clobber
+        each other. Use it whenever several children edit files. Put tightly coupled tasks (the same functions,
+        or one building on another) in ONE child's brief, independent ones in their own children, then
+        `await rlm.merge(hs)` to bring their work into your tree. Its result gains `worktree` (branch, commit,
+        changed_files, diffstat). worktree="auto" falls back to your shared tree outside Git. Gitignored
+        node_modules/.venv/venv are linked in and small .env files copied; worktree_setup={"link": [...],
+        "copy": [...], "command": "npm ci"} changes that (linked dependencies are shared: children must not
+        install different ones; servers they start share your ports). Its own children branch from its worktree."""
         if not isinstance(prompt, str) or not prompt.strip():
             raise ValueError("rlm.spawn prompt must be a non-empty string")
         name = kwargs.get("name")
         if not isinstance(name, str) or not name.strip():
             raise ValueError("rlm.spawn name must be a non-empty string")
-        allowed = {"name", "model", "thinking", "timeout_ms", "depth"}
+        allowed = {"name", "model", "thinking", "timeout_ms", "depth", "worktree", "worktree_setup"}
         unknown = sorted(set(kwargs) - allowed)
         if unknown:
             raise TypeError(f"rlm.spawn unknown options: {', '.join(unknown)}")
@@ -155,6 +171,11 @@ class RLMNamespace:
         depth = kwargs.get("depth")
         if depth is not None and (isinstance(depth, bool) or not isinstance(depth, int) or depth < 0):
             raise ValueError("rlm.spawn depth must be a non-negative integer")
+        worktree = kwargs.get("worktree")
+        if worktree is not None and worktree not in (True, False, "auto"):
+            raise ValueError('rlm.spawn worktree must be True, False or "auto" (every worktree child gets its own)')
+        if kwargs.get("worktree_setup") is not None and not isinstance(kwargs["worktree_setup"], dict):
+            raise ValueError('rlm.spawn worktree_setup must be a dict: {"link": [...], "copy": [...], "command": "..."}')
         result = await self._bridge.request("rlm.spawn", {
             "prompt": prompt,
             "kwargs": kwargs,
@@ -181,6 +202,49 @@ class RLMNamespace:
             "changed_files": [str(p) for p in changed_files] if isinstance(changed_files, (list, tuple, set)) else changed_files,
         }
         return await self._bridge.request("rlm.finish", payload)
+
+    async def merge(self, children: Any = None, *, strategy: str = "sequential", on_conflict: str = "stop",
+                    include_failed: bool = False) -> dict[str, Any]:
+        """Bring worktree children's work into your working tree, in the order given (waits for them first).
+
+        children: SpawnHandles, ids, `rlm.collect` items or results with a `worktree` (workflow outcomes); all of
+        your worktree children when omitted. Each child's branch is three-way merged into your tree as uncommitted
+        changes (new files untracked); nothing is committed on your branch, so review and commit yourself.
+        The first conflict stops the rest and writes nothing of that child; its report names the files and hunks
+        (`on_conflict="skip"` goes on with the next child; `"markers"` writes conflict markers to resolve).
+        Children that did not pass are skipped unless include_failed=True. Returns `{"ok": bool, "merged": [ids],
+        "results": [{"id", "name", "branch", "status": "merged"|"empty"|"conflict"|"skipped"|"not_attempted"|
+        "no_worktree"|"failed", "files", "conflicts": [{"path", "hunks": [{"line", "ours", "theirs"}]}]}]}`.
+        A merged or empty child's worktree and branch are removed; a conflicting one is kept for inspection."""
+        if strategy != "sequential":
+            raise ValueError('rlm.merge strategy must be "sequential"')
+        if on_conflict not in ("stop", "skip", "markers"):
+            raise ValueError('rlm.merge on_conflict must be "stop", "skip" or "markers"')
+        if children is None:
+            items: list[Any] = []
+        elif isinstance(children, (str, SpawnHandle, dict)):
+            items = [children]
+        else:
+            items = list(children)
+        selectors: list[str] = []
+        for item in items:
+            if isinstance(item, SpawnHandle):
+                selectors.append(item.rlm_child_id)
+            elif isinstance(item, str) and item:
+                selectors.append(item)
+            elif isinstance(item, dict) and isinstance(item.get("id"), str):
+                selectors.append(item["id"])
+            elif isinstance(item, dict) and isinstance(item.get("worktree"), dict) and item["worktree"].get("task"):
+                selectors.append(item["worktree"]["task"])
+            elif isinstance(item, dict) and isinstance(item.get("result"), dict) and isinstance(item["result"].get("worktree"), dict):
+                selectors.append(item["result"]["worktree"]["task"])
+            else:
+                raise TypeError(f"rlm.merge cannot tell which child {item!r} is: pass SpawnHandles, ids or results")
+        return await self._bridge.request("rlm.merge", {
+            "selectors": selectors,
+            "on_conflict": on_conflict,
+            "include_failed": bool(include_failed),
+        })
 
     async def list_subagents(self) -> list[dict[str, Any]]:
         result = await self._bridge.request("rlm.list_subagents")
@@ -574,7 +638,7 @@ async def read(path: str | os.PathLike[str]) -> Any:
     """
     if not isinstance(path, (str, os.PathLike)) or not str(path):
         raise ValueError("read path must be a non-empty string")
-    filepath = Path(path)
+    filepath = worktree_path(Path(path))
     if not filepath.is_absolute():
         filepath = Path.cwd() / filepath
     size = filepath.stat().st_size
@@ -650,7 +714,7 @@ async def view_image(path_or_bytes: Any, *, detail: str | None = None) -> str:
     if isinstance(path_or_bytes, (str, os.PathLike)):
         if not str(path_or_bytes):
             raise ValueError("view_image path must be a non-empty string")
-        filepath = Path(path_or_bytes)
+        filepath = worktree_path(Path(path_or_bytes))
         if not filepath.is_absolute():
             filepath = Path.cwd() / filepath
         if not filepath.is_file():
@@ -739,7 +803,7 @@ async def write(path: str | os.PathLike[str], text: str) -> str:
         raise ValueError("write path must be a non-empty string")
     if not isinstance(text, str):
         raise TypeError(f"write text must be a str, not {type(text).__name__}")
-    filepath = Path(path)
+    filepath = worktree_path(Path(path))
     if not filepath.is_absolute():
         filepath = Path.cwd() / filepath
     await _check_write(filepath, text, str(path))
@@ -761,7 +825,7 @@ async def edit(path: str, old_str: str, new_str: str) -> str:
         ValueError when old_str is absent or appears more than once, or when a write check
         (Loki guardrails, extension hooks) blocks the new content; then nothing is written.
     """
-    filepath = Path(path)
+    filepath = worktree_path(Path(path))
     if not filepath.is_absolute():
         filepath = Path.cwd() / filepath
     if not filepath.exists():

@@ -51,7 +51,11 @@ import { ModelRuntime } from "../core/model-runtime.ts";
 import { DefaultResourceLoader, type ResourceLoader } from "../core/resource-loader.ts";
 import { SettingsManager } from "../core/settings-manager.ts";
 import { buildSystemPrompt } from "../core/system-prompt.ts";
-import { bashToolSystemPromptContribution, createLocalBashOperations } from "../core/tools/bash.ts";
+import {
+	type BashOperations,
+	bashToolSystemPromptContribution,
+	createLocalBashOperations,
+} from "../core/tools/bash.ts";
 import { editToolSystemPromptContribution } from "../core/tools/edit.ts";
 import { readToolSystemPromptContribution } from "../core/tools/read.ts";
 import { writeToolSystemPromptContribution } from "../core/tools/write.ts";
@@ -129,6 +133,7 @@ import {
 } from "../ultron/tool-round-nudge.ts";
 import { createSessionUsageLedger, nativeUsageLimitsFromEnv } from "../ultron/usage.ts";
 import { AUTOMATIC_KEEP_THRESHOLD, createWorkerServices } from "../ultron/worker-services.ts";
+import { getShellEnv } from "../utils/shell.ts";
 import { COORDINATOR_PROTOCOL_VERSION } from "./coordinator.ts";
 import { LegacyExtensionAdapter } from "./legacy-extension-adapter.ts";
 import { createSessionPluginFacetLoader } from "./plugins/bundled.ts";
@@ -303,6 +308,39 @@ const POOL_MEMORY_TTL_MS = 3000;
 
 export { RLM_TOOL_DESCRIPTION } from "../ultron/rlm/prompt.ts";
 
+/** Shell operations that add `env` to every command's environment (a worktree subagent's variables). */
+function withShellEnv(operations: BashOperations, env: Record<string, string> | undefined): BashOperations {
+	if (env === undefined) return operations;
+	return {
+		exec: (command, cwd, options) =>
+			operations.exec(command, cwd, { ...options, env: { ...(options.env ?? getShellEnv()), ...env } }),
+	};
+}
+
+/**
+ * A native file tool (read, edit, write, bash) that runs in the calling lane's own directory when it has one (a
+ * worktree subagent), instead of the session's.
+ */
+function inLaneWorkspace<T extends AgentHarnessTool<{ env: NodeExecutionEnv }>>(
+	tool: T,
+	cwdOf: (invocation: AgentHarnessToolInvocation, context: Context) => Promise<string | undefined>,
+): T {
+	const environments = new Map<string, NodeExecutionEnv>();
+	return {
+		...tool,
+		execute: async (toolCallId, params, onUpdate, toolContext, invocation, context) => {
+			const cwd = await cwdOf(invocation, context).catch(() => undefined);
+			if (cwd === undefined) return tool.execute(toolCallId, params, onUpdate, toolContext, invocation, context);
+			let env = environments.get(cwd);
+			if (env === undefined) {
+				env = new NodeExecutionEnv({ cwd });
+				environments.set(cwd, env);
+			}
+			return tool.execute(toolCallId, params, onUpdate, { ...toolContext, env }, invocation, context);
+		},
+	};
+}
+
 function sectionIfPresent(name: string, content: string | undefined): Record<string, string> {
 	return content === undefined ? {} : { [name]: content };
 }
@@ -330,6 +368,11 @@ export function createUltronRlmTool(
 		 * writing, and each cell's other file changes are given to them in the background.
 		 */
 		readonly fileHooks?: FileHooks;
+		/**
+		 * A lane that works elsewhere than `cwd` (a worktree subagent, `rlm.spawn(..., worktree=True)`): its kernel's
+		 * directory and extra environment. Read when the lane's kernel starts.
+		 */
+		readonly laneWorkspace?: (lane: string) => { cwd: string; env: Record<string, string> } | undefined;
 	} = {},
 ): UltronRlmTool {
 	const hints = options.hints;
@@ -363,15 +406,21 @@ export function createUltronRlmTool(
 			: join(options.snapshotDir, `${lane.replace(/[^A-Za-z0-9._-]/g, "_")}.snapshot`);
 	const maxLive = options.maxLive ?? 16;
 	const kernels = new KernelPool<UltronRlmKernel>({
-		create: (lane) =>
-			new UltronRlmKernel(
-				cwd,
+		create: (lane) => {
+			const workspace = options.laneWorkspace?.(lane);
+			return new UltronRlmKernel(
+				workspace?.cwd ?? cwd,
 				observedHandler(lane),
 				snapshotPath(lane),
 				options.snapshotKey,
 				// The kernel's write skills ask the host before writing only when there are hooks to ask.
-				fileHooks === undefined ? undefined : { ULTRON_CODE_SKILLS_DIR: codeSkillsDir(), ULTRON_FILE_HOOKS: "1" },
-			),
+				{
+					ULTRON_CODE_SKILLS_DIR: codeSkillsDir(),
+					...(fileHooks === undefined ? {} : { ULTRON_FILE_HOOKS: "1" }),
+					...workspace?.env,
+				},
+			);
+		},
 		maxLive,
 		maxPinned: options.maxPinned ?? Math.floor(maxLive / 2),
 		idleTtlMs: options.idleTtlMs ?? 30 * 60 * 1000,
@@ -471,7 +520,7 @@ export function createUltronRlmTool(
 			// Files a cell changes by other means than checked writes are handed to the hooks after it, in the
 			// background; what they find arrives with this lane's next cell result.
 			const run = async () => {
-				fileHooks?.cellStarted();
+				fileHooks?.cellStarted(lane);
 				try {
 					return await kernels.use(lane, (kernel) => kernel.executeCell(params.code, context, imageOptions));
 				} finally {
@@ -1642,10 +1691,12 @@ export async function createUltronRuntime(
 				caller,
 			);
 		if (type === "bash") {
+			// A worktree subagent's commands run in its worktree, with ULTRON_WORKTREE and ULTRON_PARENT_REPO set.
+			const workspace = caller === undefined ? undefined : host?.laneWorkspace(caller.lane);
 			return runHostBash(
 				payload,
-				options.metadata.cwd,
-				createLocalBashOperations({ shellPath: settingsManager.getShellPath() }),
+				workspace?.cwd ?? options.metadata.cwd,
+				withShellEnv(createLocalBashOperations({ shellPath: settingsManager.getShellPath() }), workspace?.env),
 				signal,
 			);
 		}
@@ -1686,6 +1737,11 @@ export async function createUltronRuntime(
 	const fileHooks = new FileHooks({
 		cwd: options.metadata.cwd,
 		...(lokiRecord === undefined ? {} : { onRecord: lokiRecord }),
+		// A worktree subagent's writes resolve against, and are checked in, its own worktree.
+		laneRoot: (lane) => {
+			const workspace = host?.laneWorkspace(lane);
+			return workspace === undefined ? undefined : { cwd: workspace.cwd, root: workspace.root };
+		},
 	});
 	const rlmTool = createUltronRlmTool(
 		options.metadata.cwd,
@@ -1714,9 +1770,25 @@ export async function createUltronRuntime(
 					: (await rlmHarness?.lane(lane, context))?.getModel(context),
 			autoResizeImages: () => settingsManager.getImageAutoResize(),
 			fileHooks,
+			laneWorkspace: (lane) => host?.laneWorkspace(lane),
 		},
 	);
-	const tools = [createReadTool(), createEditTool(), createWriteTool(), createBashTool(), rlmTool];
+	// Pi's native file tools (ULTRON_TOOLS=native) work in a worktree subagent's own worktree.
+	const laneOfInvocation = async (invocation: AgentHarnessToolInvocation, context: Context): Promise<string> => {
+		const meta = await session.getValue(value<{ lane: string }>("pi.op.meta", invocation.operationId), context);
+		return typeof meta?.value.lane === "string" ? meta.value.lane : "main";
+	};
+	const tools = [
+		...[createReadTool(), createEditTool(), createWriteTool(), createBashTool()].map((tool) =>
+			inLaneWorkspace(tool, async (invocation, context) => {
+				// Nothing to look up while no subagent has a worktree.
+				if (host?.hasWorktrees() !== true) return undefined;
+				const workspace = host?.laneWorkspace(await laneOfInvocation(invocation, context).catch(() => "main"));
+				return workspace?.cwd;
+			}),
+		),
+		rlmTool,
+	];
 	const loadedSkills = await Promise.all(
 		resourceLoader.getSkills().skills.map(async (skill) => ({
 			name: skill.name,
@@ -1843,7 +1915,15 @@ export async function createUltronRuntime(
 	// Lanes on a claude-code model with tools run through Claude Code (`ultron --claude`, see
 	// ultron/claude/worker-root.ts); an external root (`ultron mcp`) already is Claude Code.
 	const claudeLanes =
-		external === undefined ? installClaudeCodeLanes({ session, harness, cwd: options.metadata.cwd }) : undefined;
+		external === undefined
+			? installClaudeCodeLanes({
+					session,
+					harness,
+					cwd: options.metadata.cwd,
+					// A worktree subagent on Claude Code runs in its worktree.
+					cwdFor: (lane) => host?.laneWorkspace(lane)?.cwd,
+				})
+			: undefined;
 	// A worker started for an interactive client (Pi's TUI or RPC mode) queues extension UI for it until it attaches.
 	const extensionUI = new ExtensionUIBridge({
 		expectClient: options.extensionMode === "tui" || options.extensionMode === "rpc",
@@ -1938,6 +2018,12 @@ export async function createUltronRuntime(
 			observe: (event) => extensionEvents.emit(CONTEXT_EDIT_EVENT, event),
 		});
 		const removeContextControl = contextControl.install();
+		// A worktree subagent's system prompt names its worktree as the working directory, not the parent's checkout.
+		const removeWorktreePrompt = harness.hooks.on("transform_context", (event) => {
+			const workspace = host?.laneWorkspace(event.lane);
+			if (workspace === undefined || !event.systemPrompt.includes(options.metadata.cwd)) return undefined;
+			return { systemPrompt: event.systemPrompt.split(options.metadata.cwd).join(workspace.cwd) };
+		});
 		traceStartup("worker.host");
 		// Budgets apply per root turn; the turn and token limits (rootBudget settings, ULTRON_MAX_TOTAL_*) count
 		// every model turn of a root and its descendants.
@@ -1964,6 +2050,8 @@ export async function createUltronRuntime(
 		let events: AsyncEventDispatcher | undefined;
 		const shellJobs = new ShellJobs({
 			cwd: options.metadata.cwd,
+			// A worktree subagent's jobs run in its worktree.
+			laneWorkspace: (lane) => host?.laneWorkspace(lane),
 			dir: join(dirname(options.metadata.path), "rlm-jobs", options.metadata.id),
 			operations: () => createLocalBashOperations({ shellPath: settingsManager.getShellPath() }),
 			store: createSessionModuleStore(session, "jobs"),
@@ -1999,6 +2087,9 @@ export async function createUltronRuntime(
 			rootTurns: true,
 			// Subagents' declared file changes are checked against snapshots of the session's working directory.
 			workspace: options.metadata.cwd,
+			// Worktree branches are named after the session (`ultron/<session>/<child>`); setup from `worktrees`.
+			sessionId: options.metadata.id,
+			worktreeSetup: () => settingsManager.getWorktreeSettings(),
 			// Read per spawn: `ultron claude`'s child model, else `rlm.childModel` (/settings → Models).
 			childModel: () => external?.childModel ?? settingsManager.getRlmModelSettings().childModel,
 			...(external?.externalChild === undefined ? {} : { externalChild: external.externalChild }),
@@ -2265,6 +2356,7 @@ export async function createUltronRuntime(
 				removeAsyncEvents();
 				await events?.close();
 				removeContextControl();
+				removeWorktreePrompt();
 				removeInferenceHooks();
 				removeAutoMemory();
 				await autoMemory?.settle();
