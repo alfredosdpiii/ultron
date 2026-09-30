@@ -534,6 +534,8 @@ export const SESSION_WORKER_CONTROL_TOKEN_ENV = "PI_SESSION_WORKER_CONTROL_TOKEN
 export const SESSION_WORKER_SESSION_KEY_ENV = "PI_SESSION_WORKER_SESSION_KEY_BASE64";
 export const SESSION_WORKER_PEER_ID_ENV = "PI_SESSION_WORKER_PEER_ID";
 export const SESSION_WORKER_API_KEY_ENV = "PI_SESSION_WORKER_API_KEY";
+/** The coordinator connection ID of the server that launched the worker: its first owner. */
+export const SESSION_WORKER_OWNER_ENV = "PI_SESSION_WORKER_OWNER";
 
 export const SessionWorkerMetadataSchema = StrictObject({
 	id: Type.String({ minLength: 1 }),
@@ -677,6 +679,13 @@ export const SessionWorkerEventSchema = Type.Union([
 		sessionKey: Type.String(),
 		message: Type.String(),
 	}),
+	/** Answers another server's discovery: this worker stays with the server that owns it. */
+	Type.Object({
+		type: Type.Literal("worker_owned"),
+		sessionKey: Type.String(),
+		sessionId: Type.String(),
+		pid: Type.Integer({ minimum: 1 }),
+	}),
 	/** Sent before a worker retires on its own (no demand left), so its exit is not reported as unexpected. */
 	Type.Object({
 		type: Type.Literal("worker_retiring"),
@@ -755,6 +764,12 @@ export class WorkerLifecycle {
 		this.#initialTimer.unref();
 	}
 
+	/** The server that owns this worker; undefined while it is orphaned and open to adoption. */
+	get owner(): string | undefined {
+		return this.#currentServerConnectionId;
+	}
+
+	/** A server took ownership (it launched or discovered this worker). */
 	serverConnected(serverConnectionId: string): void {
 		this.#currentServerConnectionId = serverConnectionId;
 		for (const demand of this.#demands.values()) {
@@ -859,6 +874,7 @@ export class WorkerLifecycle {
 
 	/** Forget every demand owned by a departing server so the worker retires once its work is idle. */
 	releaseServer(serverConnectionId: string): void {
+		if (this.#currentServerConnectionId === serverConnectionId) this.#currentServerConnectionId = undefined;
 		for (const [key, demand] of this.#demands) {
 			if (demand.serverConnectionId !== serverConnectionId) continue;
 			if (demand.timer) clearTimeout(demand.timer);
@@ -926,7 +942,7 @@ const CoordinatorInputSchema = Type.Union([
 	}),
 	Type.Object({ type: Type.Literal("server_connected"), serverConnectionId: Type.String() }),
 	Type.Object({ type: Type.Literal("server_disconnected"), serverConnectionId: Type.String() }),
-	Type.Object({ type: Type.Literal("message"), from: Type.Literal("server"), payload: Type.Unknown() }),
+	Type.Object({ type: Type.Literal("message"), from: Type.String(), payload: Type.Unknown() }),
 ]);
 type CoordinatorInput = Static<typeof CoordinatorInputSchema>;
 
@@ -934,10 +950,16 @@ interface WorkerControl {
 	readonly initialServerConnectionId?: string;
 	readonly messages: AsyncIterable<unknown>;
 	readonly socket: Socket;
-	send(event: SessionWorkerEvent): Promise<void>;
+	/** Send to one server: `to` defaults to the worker's current owner. */
+	send(event: SessionWorkerEvent, to?: string): Promise<void>;
 }
 
 let failureControl: WorkerControl | undefined;
+let ownerSource: (() => string | undefined) | undefined;
+
+function currentOwner(): string | undefined {
+	return ownerSource === undefined ? process.env[SESSION_WORKER_OWNER_ENV] || undefined : ownerSource();
+}
 
 async function connectControl(): Promise<WorkerControl> {
 	const address = process.env[SESSION_WORKER_CONTROL_ADDRESS_ENV];
@@ -961,21 +983,24 @@ async function connectControl(): Promise<WorkerControl> {
 	) {
 		throw new Error("Coordinator rejected the session worker registration");
 	}
+	// The launching server owns the worker from the start; any other server only sees it through discovery.
+	const owner = process.env[SESSION_WORKER_OWNER_ENV] || registered.value.serverConnectionId;
 	return {
-		...(registered.value.serverConnectionId === undefined
-			? {}
-			: { initialServerConnectionId: registered.value.serverConnectionId }),
+		...(owner === undefined ? {} : { initialServerConnectionId: owner }),
 		messages,
 		socket,
-		send: (event) => writeJsonLine(socket, { type: "send", to: "server", payload: event }),
+		send: (event, to) =>
+			writeJsonLine(socket, { type: "send", to: to ?? currentOwner() ?? "server", payload: event }),
 	};
 }
 
 async function readCommands(
 	control: WorkerControl,
 	handlers: {
+		/** The server that sent a command; commands other than discovery are only taken from the owner. */
+		isOwner(serverConnectionId: string): boolean;
 		onShutdown(): void;
-		onDiscovery(): void;
+		onDiscovery(from: string): void;
 		onRelease(command: Extract<SessionWorkerCommand, { type: "release" }>): Promise<void>;
 		onDemand(command: Extract<SessionWorkerCommand, { type: "session_demand" }>): Promise<void>;
 		onOperation(command: WorkerOperationRequest): void;
@@ -1000,8 +1025,13 @@ async function readCommands(
 		}
 		if (message.type !== "message" || !Check(SessionWorkerCommandSchema, message.payload)) continue;
 		const command: SessionWorkerCommand = message.payload;
+		if (command.type === "discover_workers") {
+			handlers.onDiscovery(message.from);
+			continue;
+		}
+		// Another live server must not steer (or stop) a worker it does not own.
+		if (!handlers.isOwner(message.from)) continue;
 		if (command.type === "shutdown") handlers.onShutdown();
-		else if (command.type === "discover_workers") handlers.onDiscovery();
 		else if (command.type === "release") await handlers.onRelease(command);
 		else if (command.type === "session_demand") await handlers.onDemand(command);
 		else if (command.type === "operation_cancel") handlers.onOperationCancel(command);
@@ -1250,6 +1280,7 @@ async function run(options: SessionWorkerRuntimeOptions, createHarness: CreateSe
 		harness.events.on("fault", closeAndExit),
 	];
 	const activeLifecycle = lifecycle;
+	ownerSource = () => activeLifecycle.owner;
 	bindActivity?.(() => activeLifecycle.holdActivity());
 
 	const handleOperation = async (request: WorkerOperationRequest): Promise<void> => {
@@ -1301,8 +1332,18 @@ async function run(options: SessionWorkerRuntimeOptions, createHarness: CreateSe
 
 	let ready = false;
 	const discoveryGraceMs = lifecycleDelay(SESSION_WORKER_DISCOVERY_GRACE_ENV, DEFAULT_DISCOVERY_GRACE_MS);
-	const announce = (): void => {
-		if (!ready || lifecycle?.retiring) return;
+	const announce = (from: string): void => {
+		if (!ready || lifecycle === undefined || lifecycle.retiring) return;
+		const owner = lifecycle.owner;
+		if (owner !== undefined && owner !== from) {
+			// Owned by another live server: say so, so the asking server neither waits for nor duplicates it.
+			void control
+				.send({ type: "worker_owned", sessionKey, sessionId, pid: process.pid }, from)
+				.catch(() => closeAndExit());
+			return;
+		}
+		// An orphan (its server released it or died) is adopted by the server that discovered it.
+		if (owner === undefined) lifecycle.serverConnected(from);
 		// A detached worker that a new server just discovered must not retire before that server attaches.
 		const releaseDiscovery = lifecycle?.holdRetirement();
 		if (releaseDiscovery) setTimeout(releaseDiscovery, discoveryGraceMs).unref();
@@ -1319,6 +1360,7 @@ async function run(options: SessionWorkerRuntimeOptions, createHarness: CreateSe
 			.catch(() => closeAndExit());
 	};
 	void readCommands(control, {
+		isOwner: (serverConnectionId) => lifecycle?.owner === serverConnectionId,
 		onShutdown: closeAndExit,
 		onDiscovery: announce,
 		onRelease: async (command) => {
@@ -1379,7 +1421,8 @@ async function run(options: SessionWorkerRuntimeOptions, createHarness: CreateSe
 				active.cancel(new DOMException("Service operation cancelled", "AbortError"));
 			}
 		},
-		onServerConnected: (serverConnectionId) => lifecycle?.serverConnected(serverConnectionId),
+		// Several servers share the coordinator: a server joining does not take this worker; discovery adopts orphans.
+		onServerConnected: () => {},
 		onServerDisconnected: (serverConnectionId) => {
 			// A crashed server's calls stop waiting; lane operations they started are not aborted (see AgentController).
 			const matches = (scope: WorkerOperationScope): boolean => scope.serverConnectionId === serverConnectionId;

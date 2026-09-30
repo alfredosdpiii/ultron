@@ -2,7 +2,8 @@ import { BACKGROUND_CONTEXT, type JsonlSessionMetadata } from "@ultron/agent-cor
 import type { ServiceCall } from "@ultron/chord";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import type { CoordinatorConnectionEvent } from "../src/experimental/coordinator.ts";
-import { SessionWorkerManager } from "../src/experimental/session-worker-manager.ts";
+import * as processRuntime from "../src/experimental/process.ts";
+import { SessionInUseError, SessionWorkerManager } from "../src/experimental/session-worker-manager.ts";
 
 const metadata: JsonlSessionMetadata = {
 	id: "session-1",
@@ -16,7 +17,8 @@ const metadata: JsonlSessionMetadata = {
 class FakeCoordinator {
 	readonly controlPath = "/tmp/control.sock";
 	readonly serverConnectionId = "server-generation-1";
-	readonly wasReplaced = false;
+	readonly wasLost = false;
+	readonly peerIds = new Set<string>();
 	readonly sent: { peerId: string; payload: unknown }[] = [];
 	readonly #listeners = new Set<(event: CoordinatorConnectionEvent) => void>();
 	onSend?: (peerId: string, payload: Record<string, unknown>) => void;
@@ -291,15 +293,76 @@ describe("Session worker operations", () => {
 		await release();
 	});
 
-	test("rejects pending service calls on replacement without stopping the worker", async () => {
+	test("rejects pending service calls when the coordinator is lost without stopping the worker", async () => {
 		const { coordinator, workers, attachment } = await createAttachedWorker();
 		coordinator.onSend = () => {};
 		const calling = attachment.invokeService(serviceCall, () => {}, BACKGROUND_CONTEXT);
 		workers.detach();
 
-		await expect(calling).rejects.toThrow(/replaced during a worker operation/);
+		await expect(calling).rejects.toThrow(/lost its coordinator during a worker operation/);
 		expect(coordinator.sent.map(({ payload }) => asObject(payload).type)).not.toContain("shutdown");
 		expect(workers.workerPids.size).toBe(0);
+	});
+});
+
+describe("Session workers of servers sharing one coordinator", () => {
+	test("adopts an orphaned worker when its Session is opened instead of launching a second one", async () => {
+		const spawn = vi.spyOn(processRuntime, "spawnInternalProcess").mockImplementation(() => {
+			throw new Error("must not launch a worker");
+		});
+		const coordinator = new FakeCoordinator();
+		// The orphan appeared after this server started, so only the open's discovery finds it.
+		coordinator.peerIds.add("worker-1");
+		const workers = new SessionWorkerManager(coordinator, "/tmp");
+		await workers.openSession(metadata, BACKGROUND_CONTEXT, []);
+		expect(workers.workerPids.get(metadata.id)).toBe(123);
+		expect(spawn).not.toHaveBeenCalled();
+		workers.detach();
+	});
+
+	test("refuses a Session whose worker another live server owns, without launching or stopping anything", async () => {
+		const spawn = vi.spyOn(processRuntime, "spawnInternalProcess").mockImplementation(() => {
+			throw new Error("must not launch a worker");
+		});
+		const coordinator = new FakeCoordinator();
+		coordinator.peerIds.add("worker-other");
+		coordinator.broadcast = async () => {
+			coordinator.emit({
+				type: "message",
+				from: "worker-other",
+				payload: { type: "worker_owned", sessionKey: metadata.path, sessionId: metadata.id, pid: 4242 },
+			});
+		};
+		const workers = new SessionWorkerManager(coordinator, "/tmp");
+		const opening = workers.openSession(metadata, BACKGROUND_CONTEXT, []);
+		await expect(opening).rejects.toBeInstanceOf(SessionInUseError);
+		await expect(opening).rejects.toThrow(/open in another Ultron process \(worker pid 4242\)/);
+		expect(spawn).not.toHaveBeenCalled();
+		expect(coordinator.sent.map(({ payload }) => asObject(payload).type)).not.toContain("shutdown");
+		expect(workers.workerPids.size).toBe(0);
+		workers.detach();
+	});
+
+	test("launches its own worker once the other server's worker for the Session is gone", async () => {
+		const coordinator = new FakeCoordinator();
+		coordinator.peerIds.add("worker-other");
+		coordinator.broadcast = async () => {
+			coordinator.emit({
+				type: "message",
+				from: "worker-other",
+				payload: { type: "worker_owned", sessionKey: metadata.path, sessionId: metadata.id, pid: 4242 },
+			});
+		};
+		const workers = new SessionWorkerManager(coordinator, "/tmp");
+		await expect(workers.openSession(metadata, BACKGROUND_CONTEXT, [])).rejects.toBeInstanceOf(SessionInUseError);
+		coordinator.peerIds.delete("worker-other");
+		coordinator.emit({ type: "peer_disconnected", peerId: "worker-other" });
+		const spawn = vi.spyOn(processRuntime, "spawnInternalProcess").mockImplementation(() => {
+			throw new Error("launched");
+		});
+		await expect(workers.openSession(metadata, BACKGROUND_CONTEXT, [])).rejects.toThrow("launched");
+		expect(spawn).toHaveBeenCalledOnce();
+		workers.detach();
 	});
 });
 

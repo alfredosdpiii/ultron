@@ -227,6 +227,19 @@ Claude credentials; the CLI logs itself in. Details: [providers](packages/coding
 Useful keys: Up/Down and Alt+R for prompt history, Ctrl+R for the RLM panel, Alt+W for the RLM pane, Alt+G for the full-screen graph,
 Alt+J for Jev, Ctrl+O to expand cells and help. `/hotkeys` lists them all.
 
+### Running several sessions
+
+Any number of `ultron` processes can run side by side, TUIs and `-p`/`--mode json`/`--mode rpc` runs alike, even
+with different models, flags or environment (`ULTRON_LOKI=off`, `ULTRON_RLM_FRAME_MODEL=…`). Each process runs its own
+server with its own settings; starting one never disconnects another or stops its turns and background jobs. A Session
+lives in one process at a time: opening a Session that another `ultron` still has open fails with "is open in another
+Ultron process" instead of taking it over.
+
+After an upgrade, sessions started by the old version keep running under the old version until they end; new
+processes run beside them. If a server or Session worker is lost anyway (a crash, a kill), the TUI restarts the worker
+once on its own, and otherwise says so: the Session file is saved, so `ultron -c` resumes it. Background jobs that
+were running in the lost worker are gone.
+
 ## The REPL at a glance
 
 | | |

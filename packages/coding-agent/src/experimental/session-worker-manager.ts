@@ -19,6 +19,7 @@ import {
 	SESSION_WORKER_API_KEY_ENV,
 	SESSION_WORKER_CONTROL_ADDRESS_ENV,
 	SESSION_WORKER_CONTROL_TOKEN_ENV,
+	SESSION_WORKER_OWNER_ENV,
 	SESSION_WORKER_PEER_ID_ENV,
 	SESSION_WORKER_SESSION_KEY_ENV,
 	type SessionWorkerEvent,
@@ -99,12 +100,26 @@ interface PendingLaunch {
 	reject(error: Error): void;
 }
 
-/** Session and process bookkeeping owned by one replaceable server process. */
+/** A Session's worker is owned by another live server sharing this coordinator (another Ultron client). */
+export class SessionInUseError extends ServerError {
+	constructor(sessionId: string, pid: number) {
+		super(
+			"service_invalid_value",
+			`Session ${sessionId} is open in another Ultron process (worker pid ${pid}); close it there, or wait for its work to finish, then resume it`,
+		);
+		this.name = "SessionInUseError";
+	}
+}
+
+/**
+ * Session and process bookkeeping owned by one server process. Several servers may share one coordinator (one per
+ * running `ultron` client); each owns only the workers it launched or adopted as orphans.
+ */
 export class SessionWorkerManager {
 	readonly workerPids = new Map<string, number>();
 	readonly #coordinator: Pick<
 		CoordinatorConnection,
-		"controlPath" | "serverConnectionId" | "wasReplaced" | "onEvent" | "send" | "broadcast"
+		"controlPath" | "serverConnectionId" | "wasLost" | "onEvent" | "send" | "broadcast" | "peerIds"
 	>;
 	readonly #sessionDir: string;
 	readonly #model:
@@ -129,6 +144,9 @@ export class SessionWorkerManager {
 	readonly #pendingOperations = new Map<string, PendingWorkerOperation>();
 	readonly #serviceSubscriptions = new Map<string, WorkerServiceSubscription>();
 	readonly #pendingReleases = new Map<string, PendingRelease>();
+	/** Sessions whose workers other servers own, by Session key, as their last discovery answer reported. */
+	readonly #foreignSessions = new Map<string, { readonly peerId: string; readonly pid: number }>();
+	#discovery: Promise<void> | undefined;
 	/** Workers that exited cleanly, by peer, until their disconnect shows whether they announced a retirement. */
 	readonly #exitedAwaitingDisconnect = new Map<string, { readonly worker: WorkerRecord; settle(): void }>();
 	readonly #removeListener: () => void;
@@ -142,7 +160,7 @@ export class SessionWorkerManager {
 	constructor(
 		coordinator: Pick<
 			CoordinatorConnection,
-			"controlPath" | "serverConnectionId" | "wasReplaced" | "onEvent" | "send" | "broadcast"
+			"controlPath" | "serverConnectionId" | "wasLost" | "onEvent" | "send" | "broadcast" | "peerIds"
 		>,
 		sessionDir: string,
 		model?: {
@@ -186,28 +204,46 @@ export class SessionWorkerManager {
 		}
 	}
 
+	/**
+	 * Ask the coordinator's other workers who they belong to: orphans (their server released them or died) are
+	 * adopted and announce themselves as ready; workers other servers own answer that they are taken.
+	 */
 	async discover(peerIds: ReadonlySet<string>): Promise<void> {
+		while (this.#discovery !== undefined) await this.#discovery;
 		if (this.#detached) return;
 		const undiscovered = new Set(
 			[...peerIds].filter((peerId) => !this.#workersByPeer.has(peerId) && !this.#pendingPeer(peerId)),
 		);
 		if (undiscovered.size === 0) return;
+		for (const [sessionKey, foreign] of this.#foreignSessions) {
+			if (undiscovered.has(foreign.peerId)) this.#foreignSessions.delete(sessionKey);
+		}
+		this.#discovery = this.#runDiscovery(undiscovered).finally(() => {
+			this.#discovery = undefined;
+		});
+		await this.#discovery;
+	}
+
+	async #runDiscovery(undiscovered: Set<string>): Promise<void> {
 		this.#discoveryPeers = undiscovered;
 		const discovered = new Promise<void>((resolve) => {
 			this.#resolveDiscovery = resolve;
 		});
-		await this.#coordinator.broadcast({ type: "discover_workers" });
 		let timer: NodeJS.Timeout | undefined;
-		await Promise.race([
-			discovered,
-			new Promise<void>((resolve) => {
-				timer = setTimeout(resolve, WORKER_DISCOVERY_TIMEOUT_MS);
-				timer.unref();
-			}),
-		]);
-		if (timer) clearTimeout(timer);
-		this.#discoveryPeers = undefined;
-		this.#resolveDiscovery = undefined;
+		try {
+			await this.#coordinator.broadcast({ type: "discover_workers" });
+			await Promise.race([
+				discovered,
+				new Promise<void>((resolve) => {
+					timer = setTimeout(resolve, WORKER_DISCOVERY_TIMEOUT_MS);
+					timer.unref();
+				}),
+			]);
+		} finally {
+			if (timer) clearTimeout(timer);
+			this.#discoveryPeers = undefined;
+			this.#resolveDiscovery = undefined;
+		}
 	}
 
 	async openSession(
@@ -221,6 +257,16 @@ export class SessionWorkerManager {
 		if (existing) return this.#routedHandle(existing);
 		const pending = this.#pending.get(metadata.path);
 		if (pending) return this.#routedHandle(await pending.promise);
+		// Another server may own this Session's worker, or have released it as an orphan since this server started.
+		await this.discover(this.#coordinator.peerIds);
+		const adopted = this.#workersBySession.get(metadata.path);
+		if (adopted) return this.#routedHandle(adopted);
+		const racing = this.#pending.get(metadata.path);
+		if (racing) return this.#routedHandle(await racing.promise);
+		const foreign = this.#foreignSessions.get(metadata.path);
+		if (foreign !== undefined && this.#coordinator.peerIds.has(foreign.peerId)) {
+			throw new SessionInUseError(metadata.id, foreign.pid);
+		}
 		return this.#routedHandle(await this.#launch(metadata, context, pluginManifestPaths));
 	}
 
@@ -265,7 +311,7 @@ export class SessionWorkerManager {
 				try {
 					await this.#applyDemand(worker, attachmentId, false, true, releaseContext);
 				} catch (error) {
-					if (!this.#detached && !this.#coordinator.wasReplaced) throw error;
+					if (!this.#detached && !this.#coordinator.wasLost) throw error;
 				} finally {
 					worker.attachmentIds.delete(attachmentId);
 					this.#removeServiceSubscriptions((entry) => entry.worker === worker && sameScope(entry.scope, scope));
@@ -531,16 +577,16 @@ export class SessionWorkerManager {
 		await this.#stopWorkerInternal(worker);
 	}
 
-	/** Forget workers without stopping them when this server is replaced. */
+	/** Forget workers without stopping them when this server loses its coordinator. */
 	detach(): void {
 		if (this.#detached) return;
 		this.#detached = true;
 		for (const pending of this.#pending.values()) {
 			clearTimeout(pending.timer);
-			pending.reject(new Error("Experimental server was replaced"));
+			pending.reject(new Error("Ultron server lost its coordinator"));
 		}
 		for (const requestId of [...this.#pendingOperations.keys()]) {
-			this.#rejectOperation(requestId, new Error("Experimental server was replaced during a worker operation"));
+			this.#rejectOperation(requestId, new Error("Ultron server lost its coordinator during a worker operation"));
 		}
 		this.#detachState();
 	}
@@ -584,6 +630,7 @@ export class SessionWorkerManager {
 					[SESSION_WORKER_CONTROL_TOKEN_ENV]: token,
 					[SESSION_WORKER_SESSION_KEY_ENV]: Buffer.from(sessionKey).toString("base64url"),
 					[SESSION_WORKER_PEER_ID_ENV]: peerId,
+					[SESSION_WORKER_OWNER_ENV]: this.#coordinator.serverConnectionId,
 					...(this.#model?.apiKey === undefined ? {} : { [SESSION_WORKER_API_KEY_ENV]: this.#model.apiKey }),
 				},
 			});
@@ -633,6 +680,9 @@ export class SessionWorkerManager {
 		}
 		if (event.type === "peer_disconnected") {
 			this.#markDiscovered(event.peerId);
+			for (const [sessionKey, foreign] of this.#foreignSessions) {
+				if (foreign.peerId === event.peerId) this.#foreignSessions.delete(sessionKey);
+			}
 			this.#exitedAwaitingDisconnect.get(event.peerId)?.settle();
 			const worker = this.#workersByPeer.get(event.peerId);
 			if (worker) {
@@ -662,6 +712,13 @@ export class SessionWorkerManager {
 			return;
 		}
 		const message: SessionWorkerEvent = event.payload;
+		if (message.type === "worker_owned") {
+			if (!this.#workersByPeer.has(event.from)) {
+				this.#foreignSessions.set(message.sessionKey, { peerId: event.from, pid: message.pid });
+			}
+			this.#markDiscovered(event.from);
+			return;
+		}
 		if (message.type === "worker_failed") {
 			const pending = this.#pending.get(message.sessionKey);
 			if (pending?.peerId === event.from && pending.token === message.token) {
@@ -796,6 +853,8 @@ export class SessionWorkerManager {
 			return;
 		}
 		this.#markDiscovered(peerId);
+		if (this.#foreignSessions.get(message.sessionKey)?.peerId === peerId)
+			this.#foreignSessions.delete(message.sessionKey);
 		const pending = this.#pending.get(message.sessionKey);
 		if (pending?.peerId === peerId && !sameStrings(message.pluginManifestPaths, pending.pluginManifestPaths)) {
 			this.#failPending(message.sessionKey, new Error("Session worker started with stale plugin packages"));
@@ -991,6 +1050,7 @@ export class SessionWorkerManager {
 			pending.resolve();
 		}
 		this.#pending.clear();
+		this.#foreignSessions.clear();
 		this.#serviceSubscriptions.clear();
 		this.#workersByPeer.clear();
 		this.#workersBySession.clear();

@@ -3,6 +3,7 @@ import type { LaneWatchEvent } from "@ultron/agent-core";
 import type { AssistantMessage } from "@ultron/ai";
 import type { Context } from "@ultron/chord";
 import { awaitWithContext, BACKGROUND_CONTEXT, withAbortSignal, withoutAbortSignal } from "@ultron/chord/context";
+import type { UnixServerRoute } from "@ultron/client/unix";
 import type { ClientCommand } from "../cli/experimental/commands/client.ts";
 import {
 	type ActivatedClientRuntimeServer,
@@ -26,6 +27,8 @@ export interface RunClientOptions {
 	readonly directory?: string;
 	/** Session storage directory used when a server is automatically activated. */
 	readonly sessionDir?: string;
+	/** Connect to exactly this server (see OpenClientRuntimeOptions.route). */
+	readonly route?: UnixServerRoute;
 	/** Create a child session by forking this session before prompting. */
 	readonly forkFromSessionId?: string;
 	/** Do not persist a newly created session. */
@@ -52,7 +55,11 @@ export async function runClient(command: ClientCommand, options: RunClientOption
 	const context =
 		options.signal === undefined ? BACKGROUND_CONTEXT : withAbortSignal(options.signal, BACKGROUND_CONTEXT);
 	const runtime = await awaitOperation(
-		openClientRuntime(command, { directory: options.directory, sessionDir: options.sessionDir }),
+		openClientRuntime(command, {
+			directory: options.directory,
+			sessionDir: options.sessionDir,
+			...(options.route === undefined ? {} : { route: options.route }),
+		}),
 		context,
 	);
 	let createdSession:

@@ -49,6 +49,11 @@ export interface OpenClientRuntimeOptions {
 	readonly directory?: string;
 	/** Session storage directory used when a server is automatically activated. */
 	readonly sessionDir?: string;
+	/**
+	 * Connect to exactly this server instead of discovering one: the native `ultron` command passes its own
+	 * server's endpoint, so another client's server sharing the directory is never picked up by mistake.
+	 */
+	readonly route?: UnixServerRoute;
 }
 
 /** Open live server/session service namespaces for one experimental presentation. */
@@ -71,7 +76,10 @@ export async function openClientRuntime(
 	const directory = resolveServerDirectory(options.directory);
 	let routes: ClientRuntimeRoute[];
 	let activatedClient: Client | undefined;
-	if (command.connect) {
+	if (options.route !== undefined) {
+		if (command.connect !== undefined) throw new Error("An explicit server route cannot be combined with --connect");
+		routes = [{ transport: "unix", ...options.route }];
+	} else if (command.connect) {
 		routes = [
 			command.connect.transport === "radius"
 				? { transport: "radius", serverId: command.connect.serverId }
@@ -136,6 +144,7 @@ export async function openClientRuntime(
 				} catch (error) {
 					if (
 						command.connect !== undefined ||
+						options.route !== undefined ||
 						route.transport !== "unix" ||
 						!(error instanceof ServerError) ||
 						error.code !== "version"

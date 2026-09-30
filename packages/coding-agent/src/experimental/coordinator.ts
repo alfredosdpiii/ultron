@@ -11,7 +11,11 @@ import {
 	spawnInternalProcess,
 } from "./process.ts";
 
-export const COORDINATOR_PROTOCOL_VERSION = 3;
+/**
+ * Version 4: several server generations share one coordinator. A new server joins instead of replacing the
+ * current one, each worker is owned by exactly one server, and routed messages name the sending server.
+ */
+export const COORDINATOR_PROTOCOL_VERSION = 4;
 const COORDINATOR_START_TIMEOUT_MS = 10_000;
 const COORDINATOR_RETRY_MS = 10;
 
@@ -21,7 +25,6 @@ const CoordinatorMessageSchema = Type.Union([
 		serverConnectionId: Type.String(),
 		peers: Type.Array(Type.String()),
 	}),
-	Type.Object({ type: Type.Literal("server_replaced") }),
 	Type.Object({ type: Type.Literal("peer_connected"), peerId: Type.String() }),
 	Type.Object({ type: Type.Literal("peer_disconnected"), peerId: Type.String() }),
 	Type.Object({ type: Type.Literal("message"), from: Type.String(), payload: Type.Unknown() }),
@@ -42,7 +45,8 @@ export interface CoordinatorConnectionOptions {
 /** The server-side endpoint of the coordinator's intentionally opaque message router. */
 export class CoordinatorConnection {
 	readonly serverConnectionId: string;
-	readonly replaced: Promise<void>;
+	/** Settles when the coordinator connection is lost: the coordinator exited or was killed. */
+	readonly lost: Promise<void>;
 	readonly peerIds = new Set<string>();
 	readonly #controlPath: string;
 	readonly #endpoint: string;
@@ -50,17 +54,17 @@ export class CoordinatorConnection {
 	#socket?: Socket;
 	#registered = false;
 	#closed = false;
-	#replacedValue = false;
+	#lostValue = false;
 	#resolveRegistered?: () => void;
 	#rejectRegistered?: (error: Error) => void;
-	#resolveReplaced!: () => void;
+	#resolveLost!: () => void;
 
 	constructor(options: CoordinatorConnectionOptions) {
 		this.serverConnectionId = options.serverConnectionId ?? randomUUID();
 		this.#controlPath = options.controlPath;
 		this.#endpoint = options.endpoint;
-		this.replaced = new Promise((resolve) => {
-			this.#resolveReplaced = resolve;
+		this.lost = new Promise((resolve) => {
+			this.#resolveLost = resolve;
 		});
 	}
 
@@ -68,8 +72,8 @@ export class CoordinatorConnection {
 		return this.#controlPath;
 	}
 
-	get wasReplaced(): boolean {
-		return this.#replacedValue;
+	get wasLost(): boolean {
+		return this.#lostValue;
 	}
 
 	onEvent(listener: (event: CoordinatorConnectionEvent) => void): () => void {
@@ -86,8 +90,18 @@ export class CoordinatorConnection {
 			this.#resolveRegistered = resolve;
 			this.#rejectRegistered = reject;
 		});
-		socket.once("close", () => this.#disconnected(new Error("Coordinator connection closed")));
-		socket.once("error", (error) => this.#disconnected(error));
+		// A failed registration write still ends in a close that rejects this; the write's error is what surfaces.
+		registered.catch(() => {});
+		socket.once("close", () =>
+			this.#disconnected(
+				this.#registered
+					? new Error("Coordinator connection closed")
+					: new CoordinatorRegistrationRejectedError(this.#controlPath),
+			),
+		);
+		socket.once("error", (error) => {
+			if (this.#registered) this.#disconnected(error);
+		});
 		await writeJsonLine(socket, {
 			type: "register_server",
 			protocol: COORDINATOR_PROTOCOL_VERSION,
@@ -139,10 +153,6 @@ export class CoordinatorConnection {
 			this.#rejectRegistered = undefined;
 			return;
 		}
-		if (message.type === "server_replaced") {
-			this.#markReplaced();
-			return;
-		}
 		if (message.type === "peer_connected") {
 			this.peerIds.add(message.peerId);
 			this.#emit({ type: "peer_connected", peerId: message.peerId });
@@ -170,13 +180,24 @@ export class CoordinatorConnection {
 		this.#rejectRegistered?.(error);
 		this.#resolveRegistered = undefined;
 		this.#rejectRegistered = undefined;
-		this.#markReplaced();
+		this.#markLost();
 	}
 
-	#markReplaced(): void {
-		if (this.#replacedValue) return;
-		this.#replacedValue = true;
-		this.#resolveReplaced();
+	#markLost(): void {
+		if (this.#lostValue) return;
+		this.#lostValue = true;
+		this.#resolveLost();
+	}
+}
+
+/**
+ * The coordinator closed the connection before accepting the server: it speaks another coordinator protocol (an
+ * older or newer Ultron release owns it) or it is shutting down. The caller must not take over its endpoints.
+ */
+export class CoordinatorRegistrationRejectedError extends Error {
+	constructor(controlPath: string) {
+		super(`Coordinator at ${controlPath} rejected the server registration`);
+		this.name = "CoordinatorRegistrationRejectedError";
 	}
 }
 
@@ -291,7 +312,12 @@ let running = false;
 const peers = new Map<string, RoutedPeer>();
 const controlConnections = new Set<Socket>();
 const publicConnections = new Map<Socket, Socket>();
-let currentServer: ServerPeer | undefined;
+/**
+ * Every registered server generation, oldest first. None replaces another: a server leaves only when its own
+ * process disconnects, so a second Ultron client can never cut off a live one. New public connections go to the
+ * newest server, and each worker talks to the server that owns it.
+ */
+const servers = new Map<string, ServerPeer>();
 let shuttingDown = false;
 let emptyTimer: NodeJS.Timeout | undefined;
 
@@ -348,20 +374,20 @@ function acceptControlConnection(socket: Socket): void {
 			throw new Error("Coordinator connection did not register a role");
 		}
 		if (server) {
-			if (server === currentServer) handleRoutedMessage("server", message);
+			if (servers.get(server.serverConnectionId) === server) handleRoutedMessage(server.serverConnectionId, message);
 			return;
 		}
 		handleRoutedMessage(peer!.peerId, message);
 	});
 	const disconnect = (): void => {
 		controlConnections.delete(socket);
-		if (server && currentServer === server) {
-			currentServer = undefined;
+		if (server && servers.get(server.serverConnectionId) === server) {
+			servers.delete(server.serverConnectionId);
 			notifyPeers({ type: "server_disconnected", serverConnectionId: server.serverConnectionId });
 		}
 		if (peer && peers.get(peer.peerId) === peer) {
 			peers.delete(peer.peerId);
-			if (currentServer) writeRoutedLine(currentServer.socket, { type: "peer_disconnected", peerId: peer.peerId });
+			notifyServers({ type: "peer_disconnected", peerId: peer.peerId });
 		}
 		checkEmpty();
 	};
@@ -378,22 +404,26 @@ function registerServer(socket: Socket, message: ControlMessage): ServerPeer {
 		throw new Error("Coordinator endpoint must be a string");
 	}
 	const { serverConnectionId, endpoint } = message;
+	if (serverConnectionId === "server" || servers.has(serverConnectionId) || peers.has(serverConnectionId)) {
+		throw new Error(`Coordinator server is already connected: ${serverConnectionId}`);
+	}
 	const server = { serverConnectionId, endpoint, socket };
-	const previous = currentServer;
-	currentServer = server;
+	servers.set(serverConnectionId, server);
 	cancelEmptyShutdown();
 	writeRoutedLine(socket, {
 		type: "server_registered",
 		serverConnectionId,
 		peers: [...peers.keys()],
 	});
-	if (previous && previous !== server) {
-		closePublicConnections();
-		notifyPeers({ type: "server_disconnected", serverConnectionId: previous.serverConnectionId });
-		writeRoutedLine(previous.socket, { type: "server_replaced" });
-	}
 	notifyPeers({ type: "server_connected", serverConnectionId });
 	return server;
+}
+
+/** The newest registered server: new public connections and legacy `to: "server"` messages go there. */
+function primaryServer(): ServerPeer | undefined {
+	let newest: ServerPeer | undefined;
+	for (const server of servers.values()) newest = server;
+	return newest;
 }
 
 function registerPeer(socket: Socket, message: ControlMessage): RoutedPeer {
@@ -402,23 +432,23 @@ function registerPeer(socket: Socket, message: ControlMessage): RoutedPeer {
 		throw new Error("Coordinator peerId must be a string");
 	}
 	const { peerId } = message;
-	if (peerId === "server" || peers.has(peerId)) throw new Error(`Coordinator peer is already connected: ${peerId}`);
+	if (peerId === "server" || peers.has(peerId) || servers.has(peerId)) {
+		throw new Error(`Coordinator peer is already connected: ${peerId}`);
+	}
 	const peer = { peerId, socket };
 	peers.set(peerId, peer);
 	cancelEmptyShutdown();
-	writeRoutedLine(socket, {
-		type: "peer_registered",
-		peerId,
-		...(currentServer === undefined ? {} : { serverConnectionId: currentServer.serverConnectionId }),
-	});
-	if (currentServer) {
-		writeRoutedLine(currentServer.socket, { type: "peer_connected", peerId });
-	}
+	writeRoutedLine(socket, { type: "peer_registered", peerId });
+	notifyServers({ type: "peer_connected", peerId });
 	return peer;
 }
 
 function notifyPeers(message: unknown): void {
 	for (const peer of peers.values()) writeRoutedLine(peer.socket, message);
+}
+
+function notifyServers(message: unknown): void {
+	for (const server of servers.values()) writeRoutedLine(server.socket, message);
 }
 
 function handleRoutedMessage(from: string, message: ControlMessage): void {
@@ -427,12 +457,13 @@ function handleRoutedMessage(from: string, message: ControlMessage): void {
 			throw new Error("Coordinator message target must be a string");
 		}
 		const { to } = message;
-		const target = to === "server" ? currentServer?.socket : peers.get(to)?.socket;
+		// Workers address their owning server by its connection ID; "server" is the newest one (protocol 3 style).
+		const target = to === "server" ? primaryServer()?.socket : (servers.get(to)?.socket ?? peers.get(to)?.socket);
 		if (target) writeRoutedLine(target, { type: "message", from, payload: message.payload });
 		return;
 	}
 	if (message.type === "broadcast") {
-		if (from !== "server") throw new Error("Only the current server may broadcast");
+		if (!servers.has(from)) throw new Error("Only a server may broadcast");
 		for (const peer of peers.values()) {
 			writeRoutedLine(peer.socket, { type: "message", from, payload: message.payload });
 		}
@@ -442,12 +473,13 @@ function handleRoutedMessage(from: string, message: ControlMessage): void {
 }
 
 function acceptPublicConnection(client: Socket): void {
-	if (shuttingDown || !currentServer) {
+	const server = primaryServer();
+	if (shuttingDown || !server) {
 		client.destroy();
 		return;
 	}
 	cancelEmptyShutdown();
-	const upstream = createConnection(currentServer.endpoint);
+	const upstream = createConnection(server.endpoint);
 	publicConnections.set(client, upstream);
 	let finalized = false;
 	const finalize = (): void => {
@@ -481,7 +513,13 @@ function closePublicConnections(): void {
 }
 
 function checkEmpty(): void {
-	if (shuttingDown || currentServer || peers.size > 0 || publicConnections.size > 0 || controlConnections.size > 0) {
+	if (
+		shuttingDown ||
+		servers.size > 0 ||
+		peers.size > 0 ||
+		publicConnections.size > 0 ||
+		controlConnections.size > 0
+	) {
 		cancelEmptyShutdown();
 		return;
 	}
@@ -492,7 +530,7 @@ function scheduleEmptyShutdown(delayMs: number): void {
 	if (emptyTimer || shuttingDown) return;
 	emptyTimer = setTimeout(() => {
 		emptyTimer = undefined;
-		if (!currentServer && peers.size === 0 && publicConnections.size === 0 && controlConnections.size === 0) {
+		if (servers.size === 0 && peers.size === 0 && publicConnections.size === 0 && controlConnections.size === 0) {
 			void shutdownCoordinator();
 		}
 	}, delayMs);

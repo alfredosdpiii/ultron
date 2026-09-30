@@ -12,6 +12,7 @@ import type { Api, ImageContent, Model } from "@ultron/ai";
 import { type Context, isJsonValue } from "@ultron/chord";
 import { awaitWithContext, BACKGROUND_CONTEXT, withAbortSignal } from "@ultron/chord/context";
 import { ServerError } from "@ultron/client";
+import type { UnixServerRoute } from "@ultron/client/unix";
 import { flushRawStdout, takeOverStdout, waitForRawStdoutBackpressure, writeRawStdout } from "../core/output-guard.ts";
 import { attachJsonlLineReader, serializeJsonLine } from "../modes/rpc/jsonl.ts";
 import { writeNativeSessionHtml } from "../ultron/native-export.ts";
@@ -20,6 +21,7 @@ import {
 	activateBuiltinClientServices,
 	openClientRuntime,
 } from "./client-runtime.ts";
+import { describeLostServer } from "./lost-server.ts";
 import { PiSessionView } from "./pi-session-view.ts";
 import { messageText, queueUpdate, RpcEventTranslator } from "./rpc-events.ts";
 import { serverErrorLogPath } from "./server-log.ts";
@@ -36,6 +38,8 @@ export interface NativeRpcOptions {
 	readonly forkFromSessionId?: string;
 	readonly noSession?: boolean;
 	readonly name?: string;
+	/** The caller's own server (see OpenClientRuntimeOptions.route). */
+	readonly route?: UnixServerRoute;
 }
 
 type RpcCommand = { id?: string; type: string } & Record<string, unknown>;
@@ -50,7 +54,10 @@ export async function runNativeRpcMode(options: NativeRpcOptions): Promise<void>
 	};
 	const context = BACKGROUND_CONTEXT;
 	traceStartup("rpc.open");
-	const runtime = await openClientRuntime({ command: "client" }, { sessionDir: options.sessionDir });
+	const runtime = await openClientRuntime(
+		{ command: "client" },
+		{ sessionDir: options.sessionDir, ...(options.route === undefined ? {} : { route: options.route }) },
+	);
 	const cleanups: Array<() => Promise<void> | void> = [() => runtime.dispose()];
 	const createdSessions = new Set<string>();
 	try {
@@ -64,6 +71,8 @@ export async function runNativeRpcMode(options: NativeRpcOptions): Promise<void>
 				? serverErrorLogPath(dirname(server.route.path), server.route.serverId)
 				: undefined;
 		const errorMessage = (error: unknown): string => {
+			const lost = describeLostServer(error);
+			if (lost !== undefined) return lost;
 			const message = error instanceof Error ? error.message : String(error);
 			return error instanceof ServerError && error.code === "internal_error" && internalErrorLog !== undefined
 				? `${message} (details in ${internalErrorLog})`

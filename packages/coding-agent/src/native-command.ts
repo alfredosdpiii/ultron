@@ -6,6 +6,7 @@ import type { ClientCommand } from "./cli/experimental/commands/client.ts";
 import { processFileArguments } from "./cli/file-processor.ts";
 import { runClient } from "./experimental/client.ts";
 import { runClientTui } from "./experimental/client-tui.ts";
+import { describeLostServer } from "./experimental/lost-server.ts";
 import { runNativeRpcMode } from "./experimental/rpc-native.ts";
 import { type RunningServer, resolveSessionDirectory, startForegroundServer } from "./experimental/server.ts";
 import { traceStartup } from "./experimental/startup-trace.ts";
@@ -255,9 +256,12 @@ export async function runNativeUltronCommand(parsed: Args, stdinContent: string 
 			extensionMode: parsed.mode === "rpc" ? "rpc" : runsTui ? "tui" : parsed.mode === "json" ? "json" : "print",
 		});
 		traceStartup("cli.server-started");
+		// This process's own server generation, reached directly: other `ultron` processes run their own beside it.
+		const route = { serverId: server.serverId, path: server.endpointPath };
 		if (parsed.mode === "rpc") {
 			await runNativeRpcMode({
 				sessionDir,
+				route,
 				...(sessionId === undefined ? {} : { sessionId }),
 				...(parsed.continue || parsed.resume ? { continue: true } : {}),
 				...(forkSourceId === undefined ? {} : { forkFromSessionId: forkSourceId }),
@@ -267,11 +271,15 @@ export async function runNativeUltronCommand(parsed: Args, stdinContent: string 
 			return;
 		}
 		if (runsTui) {
-			await runClientTui(forkSourceId === undefined ? command : { ...command, fork: forkSourceId }, { sessionDir });
+			await runClientTui(forkSourceId === undefined ? command : { ...command, fork: forkSourceId }, {
+				sessionDir,
+				route,
+			});
 			return;
 		}
 		const run = runClient(command, {
 			sessionDir,
+			route,
 			forkFromSessionId: forkSourceId,
 			noSession: parsed.noSession,
 			...(command.prompt === undefined ? {} : { interrupt: interrupt.signal, followEvents: true }),
@@ -295,6 +303,11 @@ export async function runNativeUltronCommand(parsed: Args, stdinContent: string 
 		} else {
 			for (const session of result.sessions) process.stdout.write(`${session.serverId}\t${session.sessionId}\n`);
 		}
+	} catch (error) {
+		// A lost server or worker surfaces as a transport-level error; say what happened and how to resume.
+		const lost = describeLostServer(error);
+		if (lost !== undefined) throw new Error(lost, { cause: error });
+		throw error;
 	} finally {
 		for (const name of Object.keys(signalExitCodes)) process.off(name, onSignal);
 		await server?.close();

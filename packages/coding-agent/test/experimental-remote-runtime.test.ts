@@ -1,8 +1,9 @@
 import { lstat, mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
+import { createServer } from "node:net";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { type Context, createFacetHost, defineFacet, defineService } from "@ultron/chord";
-import { BACKGROUND_CONTEXT } from "@ultron/chord/context";
+import { BACKGROUND_CONTEXT, withAbortSignal } from "@ultron/chord/context";
 import { Client, ServerError as ClientServerError } from "@ultron/client";
 import { createUnixTransportFactory } from "@ultron/client/unix";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
@@ -11,7 +12,7 @@ import { runClient } from "../src/experimental/client.ts";
 import { activateBuiltinClientServices, openClientRuntime } from "../src/experimental/client-runtime.ts";
 import { createPresentationFacetLoaders } from "../src/experimental/plugins/bundled.ts";
 import * as processRuntime from "../src/experimental/process.ts";
-import { type RunningServer, startServer } from "../src/experimental/server.ts";
+import { fallbackServerId, type RunningServer, startServer } from "../src/experimental/server.ts";
 import { AgentController } from "../src/experimental/services/agent-controller.ts";
 import { createSessionServiceSource, type SessionAttachmentState } from "../src/experimental/services/connection.ts";
 import { Models } from "../src/experimental/services/models.ts";
@@ -787,81 +788,170 @@ describe("experimental durable server composition", () => {
 		expect(replacementPid).not.toBe(firstPid);
 	});
 
-	test("discovers workers after replacing the server", async () => {
-		const firstDirectory = await mkdtemp(join("/tmp", "per-"));
-		directories.add(firstDirectory);
-		const first = await startServer({ ...sessionWorkerModel, directory: firstDirectory });
+	test("a second client's server runs beside a live one without disturbing its worker operation", async ({
+		onTestFinished,
+	}) => {
+		const spawn = vi
+			.spyOn(processRuntime, "spawnInternalProcess")
+			.mockImplementation((role, args, options) =>
+				realSpawnInternalProcess(
+					role,
+					args,
+					role === "session-worker" ? { ...options, entryUrl: fauxWorkerEntryUrl } : options,
+				),
+			);
+		onTestFinished(() => spawn.mockRestore());
+		const directory = await mkdtemp(join("/tmp", "pes-side-"));
+		directories.add(directory);
+		// Client A: its own server, attached to demo-1, with a worker operation in flight.
+		const first = await startServer({ ...sessionWorkerModel, directory });
 		servers.add(first);
-		await attachClient(first, "demo-1");
-		const firstWorkerPid = first.workerPids.get("demo-1");
-		expect(firstWorkerPid).toEqual(expect.any(Number));
-
-		const replacement = await startServer({ ...sessionWorkerModel, directory: firstDirectory });
-		servers.add(replacement);
-		await first.closed;
-
-		expect(replacement.serverId).toBe(first.serverId);
-		expect(replacement.workerPids.get("demo-1")).toBe(firstWorkerPid);
-		await expect.poll(() => first.workerPids.size).toBe(0);
-		expect(processExists(firstWorkerPid!)).toBe(true);
-
-		await expect(runClient({ command: "client" }, { directory: firstDirectory })).resolves.toMatchObject({
-			kind: "list",
-			sessions: [
-				{ serverId: first.serverId, sessionId: "demo-1" },
-				{ serverId: first.serverId, sessionId: "demo-2" },
+		const clientA = await Client.connect({
+			serverId: first.serverId,
+			transportFactory: createUnixTransportFactory({ path: first.endpointPath }),
+		});
+		clients.add(clientA);
+		await attachSession(clientA, "demo-1");
+		const workerA = first.workerPids.get("demo-1");
+		expect(workerA).toEqual(expect.any(Number));
+		const sessionA = createSessionServiceSource(clientA);
+		const probes: KeyedProbe[] = [];
+		const facetHost = await createFacetHost({
+			facets: [
+				defineFacet({
+					id: "@test/probe-holder",
+					setup(env) {
+						env.observe(KeyedProbe, (service) => {
+							probes.push(service);
+						});
+					},
+				}),
 			],
+			serviceSources: [sessionA],
 		});
-		await attachClient(replacement, "demo-1");
-		expect(replacement.workerPids.get("demo-1")).toBe(firstWorkerPid);
-		await attachClient(replacement, "demo-2");
-		expect(replacement.workerPids.get("demo-2")).toEqual(expect.any(Number));
-		expect(replacement.workerPids.get("demo-2")).not.toBe(firstWorkerPid);
+		onTestFinished(async () => {
+			await facetHost.dispose();
+			await sessionA.dispose(BACKGROUND_CONTEXT);
+		});
+		await vi.waitFor(() => expect(probes).toHaveLength(1));
+		const abortA = new AbortController();
+		const operationA = probes[0]!.wait(withAbortSignal(abortA.signal, BACKGROUND_CONTEXT));
+		let operationASettled = false;
+		void operationA.then(
+			() => {
+				operationASettled = true;
+			},
+			() => {
+				operationASettled = true;
+			},
+		);
+		let firstClosed = false;
+		void first.closed.finally(() => {
+			firstClosed = true;
+		});
+
+		// Client B starts in the same server directory with a different environment.
+		vi.stubEnv("ULTRON_LOKI", "off");
+		const second = await startServer({ ...sessionWorkerModel, directory });
+		servers.add(second);
+		expect(second.serverId).toBe(first.serverId);
+		expect(second.endpointPath).not.toBe(first.endpointPath);
+		const route = { serverId: second.serverId, path: second.endpointPath };
+		await expect(
+			runClient({ command: "client", sessionId: "demo-2", prompt: "question" }, { route }),
+		).resolves.toMatchObject({ kind: "prompted", sessionId: "demo-2", text: "deterministic remote answer" });
+		// B cannot take A's live Session: it is told so, and A keeps it.
+		await expect(runClient({ command: "client", sessionId: "demo-1" }, { route })).rejects.toThrow(
+			/demo-1 is open in another Ultron process/,
+		);
+		await second.close();
+
+		// A was never disconnected: its operation is still running on the same worker and completes normally.
+		await new Promise((resolve) => setTimeout(resolve, 200));
+		expect(firstClosed).toBe(false);
+		expect(operationASettled).toBe(false);
+		expect(clientA.connectionState).toBe("connected");
+		expect(first.workerPids.get("demo-1")).toBe(workerA);
+		expect(processExists(workerA!)).toBe(true);
+		abortA.abort(new Error("done waiting"));
+		await expect(operationA).rejects.toThrow("done waiting");
+		await expect(
+			runClient(
+				{ command: "client", sessionId: "demo-1", prompt: "again" },
+				{ route: { serverId: first.serverId, path: first.endpointPath } },
+			),
+		).resolves.toMatchObject({ kind: "prompted", sessionId: "demo-1", text: "deterministic remote answer" });
+		expect(first.workerPids.get("demo-1")).toBe(workerA);
 	});
 
-	test("retires an unclaimed idle worker after replacement demand expires", async () => {
-		const directory = await mkdtemp(join("/tmp", "pi-orphan-worker-"));
+	test("an idle older server generation retires while a newer one keeps serving, then the coordinator exits", async () => {
+		const directory = await mkdtemp(join("/tmp", "pes-drain-"));
 		directories.add(directory);
-		vi.stubEnv("__PI_SESSION_WORKER_ORPHAN_DEMAND_GRACE_MS", "50");
-		const first = await startServer({ ...sessionWorkerModel, directory });
-		servers.add(first);
-		await attachClient(first, "demo-1");
-		const workerPid = first.workerPids.get("demo-1");
-		expect(workerPid).toEqual(expect.any(Number));
-
-		const replacement = await startServer({ ...sessionWorkerModel, directory });
-		servers.add(replacement);
-		await first.closed;
-		expect(replacement.workerPids.get("demo-1")).toBe(workerPid);
-
-		await expect.poll(() => replacement.workerPids.has("demo-1"), { timeout: RETIREMENT_TIMEOUT_MS }).toBe(false);
-		expect(processExists(workerPid!)).toBe(false);
-	});
-
-	test("restores tracked sessions that are outside the replacement catalog", async () => {
-		const directory = await mkdtemp(join("/tmp", "pet-"));
-		const emptySessionDir = await mkdtemp(join("/tmp", "pet-sessions-"));
-		directories.add(directory);
-		directories.add(emptySessionDir);
-		const first = await startServer({ ...sessionWorkerModel, directory });
-		servers.add(first);
-		await attachClient(first, "demo-1");
-		const workerPid = first.workerPids.get("demo-1");
-
-		const replacement = await startServer({
-			...sessionWorkerModel,
-			directory,
-			sessionDir: emptySessionDir,
+		const older = await startServer({ ...sessionWorkerModel, directory, keepAlive: false });
+		servers.add(older);
+		const client = await Client.connect({
+			serverId: older.serverId,
+			transportFactory: createUnixTransportFactory({ path: older.endpointPath }),
 		});
-		servers.add(replacement);
-		await first.closed;
+		clients.add(client);
+		await attachSession(client, "demo-1");
+		const olderWorker = older.workerPids.get("demo-1");
+		const newer = await startServer({ ...sessionWorkerModel, directory });
+		servers.add(newer);
+		// The older generation keeps its client until the client leaves on its own.
+		await new Promise((resolve) => setTimeout(resolve, 200));
+		expect(client.connectionState).toBe("connected");
+		expect(older.workerPids.get("demo-1")).toBe(olderWorker);
 
-		await expect(runClient({ command: "client" }, { directory })).resolves.toEqual({
+		await client.dispose();
+		clients.delete(client);
+		await older.closed;
+		await expect.poll(() => processExists(olderWorker!), { timeout: RETIREMENT_TIMEOUT_MS }).toBe(false);
+		// The public socket now reaches the newer generation.
+		await expect(runClient({ command: "client" }, { directory })).resolves.toMatchObject({
 			kind: "list",
-			sessions: [{ serverId: first.serverId, sessionId: "demo-1" }],
+			sessions: [{ sessionId: "demo-1" }, { sessionId: "demo-2" }],
 		});
-		await attachClient(replacement, "demo-1");
-		expect(replacement.workerPids.get("demo-1")).toBe(workerPid);
+		await newer.close();
+		await expect
+			.poll(() => pathExists(join(directory, `control-${newer.serverId}.sock`)), { timeout: RETIREMENT_TIMEOUT_MS })
+			.toBe(false);
+		await expect
+			.poll(() => pathExists(join(directory, `${newer.serverId}.sock`)), { timeout: RETIREMENT_TIMEOUT_MS })
+			.toBe(false);
+	});
+
+	test("runs beside another release's coordinator instead of taking over its server ID", async ({
+		onTestFinished,
+	}) => {
+		const directory = await mkdtemp(join("/tmp", "pes-upgrade-"));
+		directories.add(directory);
+		const serverId = "00000000-0000-4000-8000-000000000001";
+		// An older release's coordinator: it owns the ID's sockets and drops a registration it cannot speak.
+		const registrations: unknown[] = [];
+		const oldCoordinator = createServer((socket) => {
+			socket.setEncoding("utf8");
+			socket.once("data", (line: string) => {
+				registrations.push(JSON.parse(line.split("\n")[0]!));
+				socket.destroy();
+			});
+		});
+		await new Promise<void>((resolve) => oldCoordinator.listen(join(directory, `control-${serverId}.sock`), resolve));
+		onTestFinished(() => new Promise<void>((resolve) => oldCoordinator.close(() => resolve())));
+
+		const runtime = await startServer({ ...sessionWorkerModel, directory, serverId });
+		servers.add(runtime);
+		expect(registrations).toMatchObject([{ type: "register_server" }]);
+		expect(runtime.serverId).toBe(fallbackServerId(serverId));
+		expect(runtime.serverId).not.toBe(serverId);
+		expect(oldCoordinator.listening).toBe(true);
+		await expect(
+			runClient({ command: "client" }, { route: { serverId: runtime.serverId, path: runtime.endpointPath } }),
+		).resolves.toMatchObject({ kind: "list", sessions: [{ sessionId: "demo-1" }, { sessionId: "demo-2" }] });
+		// Every client of this release shares the same fallback ID while the old coordinator lives.
+		const next = await startServer({ ...sessionWorkerModel, directory, serverId });
+		servers.add(next);
+		expect(next.serverId).toBe(runtime.serverId);
 	});
 
 	test("reports missing and ambiguous session selections", async () => {

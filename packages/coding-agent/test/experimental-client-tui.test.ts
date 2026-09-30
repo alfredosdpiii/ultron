@@ -203,6 +203,8 @@ interface HarnessOptions {
 	readonly transcript?: LaneSnapshot["transcript"];
 	readonly settingsManager?: SettingsManager;
 	readonly environment?: ClientTuiEnvironment;
+	/** Reached over Radius (the default) or a local Unix server. */
+	readonly radius?: boolean;
 }
 
 /** The worker's settings as the fake SessionControl reports them. */
@@ -518,6 +520,9 @@ async function openHarness(command: ClientCommand, options: HarnessOptions = {})
 	const steer = vi.fn(async () => ({ ok: true as const, value: { entryId: "queued-steer" } }));
 	const followUp = vi.fn(async () => ({ ok: true as const, value: { entryId: "queued-follow-up" } }));
 	const cancelQueued = vi.fn(async () => ({ ok: true as const, value: { kind: "cancelled" } }));
+	const attachSession = vi.fn(async (sessionId: string) => {
+		publishReplacement(attachment, { status: "attaching", sessionId });
+	});
 	const serverProvider = new RemoteServiceProvider([SessionDirectory, SessionManagement, PresentationPlugins]);
 	serverProvider.provide(SessionDirectory, { state: directoryState });
 	serverProvider.provide(PresentationPlugins, {
@@ -530,9 +535,7 @@ async function openHarness(command: ClientCommand, options: HarnessOptions = {})
 		create,
 		async remove() {},
 		async rename() {},
-		async attach(sessionId) {
-			publishReplacement(attachment, { status: "attaching", sessionId });
-		},
+		attach: attachSession,
 		async detach() {
 			publishReplacement(attachment, { status: "detached" });
 		},
@@ -663,7 +666,7 @@ async function openHarness(command: ClientCommand, options: HarnessOptions = {})
 	});
 	const server: ClientTuiServer = {
 		serverId,
-		radius: true,
+		radius: options.radius ?? true,
 		server: serverServices,
 		session: sessionServices,
 	};
@@ -725,6 +728,7 @@ async function openHarness(command: ClientCommand, options: HarnessOptions = {})
 		debugInfo,
 		describeSessions,
 		importPi,
+		attachSession,
 		extensionUIBridgeContext: () => extensionUIBridge.createContext({} as ExtensionUIContext),
 	};
 }
@@ -1087,6 +1091,54 @@ const ALT_R = "\u001br";
 function type(component: ExperimentalClientTui, text: string): void {
 	for (const character of text) component.handleInput(character);
 }
+
+describe("experimental client TUI on a local server that loses its worker or server", () => {
+	beforeAll(() => initTheme("dark"));
+
+	test("reattaches the Session after its worker stops, and explains a stopped server with how to resume", async () => {
+		const { component, dispose, attachment, connectionState, attachSession } = await openHarness(
+			{ command: "client" },
+			{ radius: false },
+		);
+		const screen = (): string => plain(component.render(400));
+		try {
+			expect(attachment.value).toEqual({ status: "attached", sessionId: "two" });
+			const attachesBefore = attachSession.mock.calls.length;
+
+			// The server drops the attachment on its own: the Session worker stopped. The client attaches again.
+			publishReplacement(attachment, { status: "detached" });
+			await vi.waitFor(() => expect(attachSession.mock.calls.length).toBe(attachesBefore + 1));
+			expect(attachSession).toHaveBeenLastCalledWith("two", expect.anything());
+			await vi.waitFor(() => expect(attachment.value).toEqual({ status: "attached", sessionId: "two" }));
+			await vi.waitFor(() =>
+				expect(screen()).toContain("The session worker stopped unexpectedly and was restarted"),
+			);
+			expect(screen()).toContain("Session: two");
+
+			// A worker that stops again right away is not restarted in a loop.
+			publishReplacement(attachment, { status: "detached" });
+			await vi.waitFor(() => expect(screen()).toContain("The session worker stopped again"));
+			expect(screen()).toContain("run `ultron -c` to resume");
+			expect(attachSession.mock.calls.length).toBe(attachesBefore + 1);
+
+			// The local server itself went away: no bare transport error, but what happened and how to resume.
+			publishReplacement(connectionState, {
+				status: "disconnected",
+				since: "later",
+				reason: "Unix connection is closed",
+				retryAt: null,
+			});
+			await vi.waitFor(() =>
+				expect(screen()).toContain(
+					"The Ultron server stopped (Unix connection is closed); your session is saved — run `ultron -c` to resume",
+				),
+			);
+			expect(screen()).not.toContain("Radius");
+		} finally {
+			await dispose();
+		}
+	});
+});
 
 describe("experimental client TUI prompt history", () => {
 	beforeAll(() => initTheme("dark"));

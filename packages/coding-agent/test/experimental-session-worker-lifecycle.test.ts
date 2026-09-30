@@ -171,6 +171,21 @@ describe("Session worker lifecycle", () => {
 		lifecycle.close();
 	});
 
+	test("is owned by its launching server until that server releases it or disconnects", () => {
+		vi.useFakeTimers();
+		const { lifecycle } = createLifecycle();
+		expect(lifecycle.owner).toBe(GENERATION);
+		lifecycle.operationStarted("run", "main", "operation-1");
+		lifecycle.releaseServer(GENERATION);
+		expect(lifecycle.owner).toBeUndefined();
+		// A server that discovers the orphan adopts it.
+		lifecycle.serverConnected("generation-2");
+		expect(lifecycle.owner).toBe("generation-2");
+		lifecycle.serverDisconnected("generation-2");
+		expect(lifecycle.owner).toBeUndefined();
+		lifecycle.close();
+	});
+
 	test("retires a launched worker that never receives initial demand", async () => {
 		vi.useFakeTimers();
 		const { lifecycle, retire } = createLifecycle();

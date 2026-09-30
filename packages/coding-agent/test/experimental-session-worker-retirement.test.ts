@@ -43,7 +43,8 @@ const metadata: JsonlSessionMetadata = {
 class FakeCoordinator {
 	readonly controlPath = "/tmp/control.sock";
 	readonly serverConnectionId = "server-generation-1";
-	readonly wasReplaced = false;
+	readonly wasLost = false;
+	readonly peerIds = new Set<string>();
 	readonly #listeners = new Set<(event: CoordinatorConnectionEvent) => void>();
 
 	onEvent(listener: (event: CoordinatorConnectionEvent) => void): () => void {

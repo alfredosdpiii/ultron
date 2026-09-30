@@ -69,6 +69,7 @@ import {
 	renderJevPanel,
 	renderJevPresence,
 } from "./jev-visualizer.ts";
+import { clientErrorMessage, friendlyStatus, lostServerMessage, RESUME_HINT } from "./lost-server.ts";
 import { PiSessionView } from "./pi-session-view.ts";
 import { createPresentationFacetLoaders } from "./plugins/bundled.ts";
 import { PROMPT_HISTORY_LIMIT, PromptHistoryStore, promptHistoryPath, sessionPromptHistory } from "./prompt-history.ts";
@@ -163,6 +164,9 @@ interface PreparedClientSession {
 	readonly summary: SessionSummary;
 	readonly presentationPlugins: JsonValue;
 }
+
+/** A Session worker that stops again within this window is not restarted automatically a second time. */
+const WORKER_RECOVERY_INTERVAL_MS = 30_000;
 
 /** Pi exits on a second Ctrl-C within this window. */
 const CTRL_C_EXIT_WINDOW_MS = 500;
@@ -368,6 +372,9 @@ export class ExperimentalClientTui implements Component {
 	#closed = false;
 	#closePromise: Promise<void> | undefined;
 	#recoveryTransition: Promise<void> = Promise.resolve();
+	/** Deliberate Session switches in progress; their attachment changes are not a lost worker. */
+	#sessionChanges = 0;
+	#lastWorkerRecovery = 0;
 	#laneUnsubscribe: (() => void) | undefined;
 	#chatView: ExperimentalChatView | undefined;
 	readonly #fdPath: string | null;
@@ -583,7 +590,7 @@ export class ExperimentalClientTui implements Component {
 	}
 
 	showError(error: string): void {
-		this.#status = `Error: ${error}`;
+		this.#status = friendlyStatus(`Error: ${error}`);
 		this.#rebuild();
 	}
 
@@ -744,6 +751,17 @@ export class ExperimentalClientTui implements Component {
 						);
 						env.own(
 							server.session.attachment.subscribe((state) => this.#handleAttachmentState(sessionFeature, state)),
+						);
+					} else {
+						env.own(
+							server.server.connection.subscribe((state) =>
+								this.#handleLocalConnectionState(server.serverId, state),
+							),
+						);
+						env.own(
+							server.session.attachment.subscribe((state) =>
+								this.#handleLocalAttachmentState(sessionFeature, state),
+							),
 						);
 					}
 				});
@@ -947,6 +965,47 @@ export class ExperimentalClientTui implements Component {
 			this.#status = "Reattaching Session…";
 			this.#rebuild();
 		}
+	}
+
+	/** A local server has no reconnect: say plainly that it stopped and how to get the Session back. */
+	#handleLocalConnectionState(serverId: string, state: ServerConnectionState): void {
+		if (this.#closed || this.#selectedServerId !== serverId || state.status !== "disconnected") return;
+		this.#busy = false;
+		this.#status = `Error: ${lostServerMessage(state.reason)}`;
+		this.#rebuild();
+	}
+
+	/**
+	 * The server dropped this client's attachment without being asked to: the Session worker stopped (it crashed or
+	 * was killed). The Session file is intact, so attach again, which starts a fresh worker on it.
+	 */
+	#handleLocalAttachmentState(feature: SessionFeature, state: SessionAttachmentState): void {
+		if (this.#closed || this.#sessionChanges > 0 || state.status !== "detached") return;
+		if (this.#selectedServerId !== feature.serverId || this.#sessionId === undefined) return;
+		const sessionId = this.#sessionId;
+		this.#queueRecovery(async () => {
+			if (this.#sessionChanges > 0 || this.#sessionId !== sessionId) return;
+			if (feature.session.attachment.value?.status !== "detached") return;
+			if (this.#server?.server.connection.value?.status !== "connected") return;
+			const now = Date.now();
+			if (now - this.#lastWorkerRecovery < WORKER_RECOVERY_INTERVAL_MS) {
+				this.#status = `Error: The session worker stopped again; ${RESUME_HINT}`;
+				this.#rebuild();
+				return;
+			}
+			this.#lastWorkerRecovery = now;
+			await this.#closeLane();
+			this.#busy = true;
+			this.#status = "The session worker stopped unexpectedly; reattaching the Session…";
+			this.#rebuild();
+			await this.#withManagement((management) => management.attach(sessionId, BACKGROUND_CONTEXT));
+			await feature.session.whenAttached(sessionId, BACKGROUND_CONTEXT);
+			await this.#openLane(feature);
+			this.#busy = false;
+			this.#status =
+				"The session worker stopped unexpectedly and was restarted; the Session is intact, but work running in the old worker (such as background jobs) was lost.";
+			this.#rebuild();
+		});
 	}
 
 	#queueRecovery(operation: () => Promise<void>): void {
@@ -1273,7 +1332,8 @@ export class ExperimentalClientTui implements Component {
 	}
 
 	/** Short text in the status line; long output (an inspection, a report) goes to the transcript instead. */
-	#showStatus(status: string): void {
+	#showStatus(text: string): void {
+		const status = friendlyStatus(text);
 		if (status.split("\n").length > MAX_STATUS_LINES && this.#chatView !== undefined) {
 			this.#chatView.appendNotice(new Text(status, 1, 0));
 			this.#status = "";
@@ -1498,12 +1558,18 @@ export class ExperimentalClientTui implements Component {
 		plugins: PresentationPlugins,
 		sessionId: string,
 	): Promise<void> {
-		const presentationPlugins = await plugins.prepareSession({ sessionId, packagePaths: null }, BACKGROUND_CONTEXT);
-		await this.#closeLane();
-		this.#uiGeneration += 1;
-		await management.attach(sessionId, BACKGROUND_CONTEXT);
-		await server.session.whenAttached(sessionId, BACKGROUND_CONTEXT);
-		this.#sessionId = sessionId;
+		this.#sessionChanges += 1;
+		let presentationPlugins: JsonValue;
+		try {
+			presentationPlugins = await plugins.prepareSession({ sessionId, packagePaths: null }, BACKGROUND_CONTEXT);
+			await this.#closeLane();
+			this.#uiGeneration += 1;
+			await management.attach(sessionId, BACKGROUND_CONTEXT);
+			await server.session.whenAttached(sessionId, BACKGROUND_CONTEXT);
+			this.#sessionId = sessionId;
+		} finally {
+			this.#sessionChanges -= 1;
+		}
 		await this.#reloadPresentationPlugins?.(presentationPlugins);
 		const feature = this.#session;
 		if (feature === undefined) throw new Error("No Session service is available after the switch");
@@ -2597,5 +2663,5 @@ function requireSingleServer<T>(features: readonly T[]): T {
 }
 
 function message(error: unknown): string {
-	return error instanceof Error ? error.message : String(error);
+	return clientErrorMessage(error);
 }

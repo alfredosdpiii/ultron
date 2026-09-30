@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { chmod, lstat, mkdir, mkdtemp, readdir, readFile, rm, unlink, writeFile } from "node:fs/promises";
 import { createConnection } from "node:net";
 import { homedir, tmpdir } from "node:os";
@@ -24,7 +24,13 @@ import { ENV_SESSION_DIR, getAgentDir } from "../config.ts";
 import type { ExtensionMode } from "../core/extensions/types.ts";
 import { importPiSession, PiSessionAlreadyImportedError } from "../ultron/migration.ts";
 import { resolvePath } from "../utils/paths.ts";
-import { CoordinatorConnection, type CoordinatorStartupLease, ensureCoordinator } from "./coordinator.ts";
+import {
+	COORDINATOR_PROTOCOL_VERSION,
+	CoordinatorConnection,
+	CoordinatorRegistrationRejectedError,
+	type CoordinatorStartupLease,
+	ensureCoordinator,
+} from "./coordinator.ts";
 import { createPresentationFacetData } from "./plugins/bundled.ts";
 import {
 	createServerPluginPackage,
@@ -327,7 +333,10 @@ export class ServerLifetime {
 export interface RunningServer {
 	readonly serverId: string;
 	readonly sessionDir: string;
+	/** The coordinator's public socket: it reaches the newest server generation of this server ID. */
 	readonly socketPath: string;
+	/** This generation's own endpoint: a client that must reach exactly this server connects here. */
+	readonly endpointPath: string;
 	readonly server: Server;
 	readonly workerPids: ReadonlyMap<string, number>;
 	readonly closed: Promise<void>;
@@ -390,7 +399,7 @@ interface StartServerBackendOptions {
 	reloadPresentationFacetBundles(packagePaths: readonly string[]): Promise<readonly FacetBundleArtifact[]>;
 }
 
-interface RunningServerBackend extends RunningServer {
+interface RunningServerBackend extends Omit<RunningServer, "endpointPath"> {
 	refreshSessions(): Promise<void>;
 }
 
@@ -635,7 +644,10 @@ async function startServerBackend(
 	};
 }
 
-/** Start a replaceable experimental server behind the stable coordinator endpoint. */
+/**
+ * Start a server generation behind the logical server's coordinator. Generations share the coordinator side by
+ * side: starting one never replaces or disconnects another, so each `ultron` client keeps its own server.
+ */
 export async function startServer(options: StartServerOptions = {}): Promise<RunningServer> {
 	if (options.provider !== undefined && options.model === undefined) {
 		throw new Error("Server model provider requires a model");
@@ -667,25 +679,65 @@ export async function startServer(options: StartServerOptions = {}): Promise<Run
 					...(options.extensionMode === undefined ? {} : { extensionMode: options.extensionMode }),
 				};
 	const directory = resolveServerDirectory(options.directory ?? process.env[LEGACY_ENV_SERVER_DIR]);
-	const { serverId, release } = await acquireServerProfile(
+	const { serverId: profileId, release } = await acquireServerProfile(
 		directory,
 		options.serverId ?? process.env[ENV_SERVER_ID] ?? process.env[LEGACY_ENV_SERVER_ID],
 	);
+	try {
+		try {
+			return await startServerGeneration(options, workerModel, directory, profileId, profileId);
+		} catch (error) {
+			if (!(error instanceof CoordinatorRegistrationRejectedError)) throw error;
+			// Another Ultron release's coordinator owns this ID (and its live sessions): leave it alone and run beside
+			// it under an ID derived from this one, shared by every client of this release until the old one drains.
+			return await startServerGeneration(options, workerModel, directory, profileId, fallbackServerId(profileId));
+		}
+	} finally {
+		await release();
+	}
+}
+
+/**
+ * The ID a server uses when its logical ID's coordinator speaks another coordinator protocol. It is a stable,
+ * canonical UUIDv4 derived from the logical ID and this protocol version.
+ */
+export function fallbackServerId(serverId: string): ServerId {
+	const hex = createHash("sha256")
+		.update(`${serverId}\0ultron-coordinator-${COORDINATOR_PROTOCOL_VERSION}`)
+		.digest("hex");
+	const variant = ((Number.parseInt(hex[16]!, 16) & 0x3) | 0x8).toString(16);
+	const id = `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-${variant}${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
+	if (!isServerId(id)) throw new Error(`Derived an invalid server ID from ${serverId}`);
+	return id;
+}
+
+type WorkerModelOptions = ConstructorParameters<typeof SessionWorkerManager>[2];
+
+/**
+ * Start one server generation under `serverId`. `profileId` is the logical server whose plugin profile it uses; it
+ * differs from `serverId` only for a fallback beside another release's coordinator.
+ */
+async function startServerGeneration(
+	options: StartServerOptions,
+	workerModel: WorkerModelOptions,
+	directory: string,
+	profileId: ServerId,
+	serverId: ServerId,
+): Promise<RunningServer> {
 	const lifetime = new ServerLifetime(options.keepAlive ?? true);
 	let backend: RunningServerBackend | undefined;
 	let coordinator: CoordinatorConnection | undefined;
 	let startupLease: CoordinatorStartupLease | undefined;
 	let workers: SessionWorkerManager | undefined;
 	let relay: RadiusRelayHost | undefined;
-	let released = false;
 	try {
 		await ensurePrivateServerDirectory(directory);
-		const pluginPackagePaths = await restoreServerPluginPackageProfile(directory, serverId, options.pluginPackages);
+		const pluginPackagePaths = await restoreServerPluginPackageProfile(directory, profileId, options.pluginPackages);
 		const pluginPackages = new Map<string, ReturnType<typeof createServerPluginPackage>>();
 		const getPluginPackage = (packagePath: string): ReturnType<typeof createServerPluginPackage> => {
 			let plugin = pluginPackages.get(packagePath);
 			if (plugin === undefined) {
-				plugin = createServerPluginPackage(directory, serverId, packagePath);
+				plugin = createServerPluginPackage(directory, profileId, packagePath);
 				pluginPackages.set(packagePath, plugin);
 			}
 			return plugin;
@@ -717,24 +769,24 @@ export async function startServer(options: StartServerOptions = {}): Promise<Run
 				workers?.assertSessionPluginManifestPaths(metadata, requestedManifestPaths);
 				const candidate = await buildPluginSelection(normalizedPackagePaths);
 				workers?.assertSessionPluginManifestPaths(metadata, candidate.manifestPaths);
-				await writeSessionPluginPackageProfile(directory, serverId, metadata.path, candidate.packagePaths);
+				await writeSessionPluginPackageProfile(directory, profileId, metadata.path, candidate.packagePaths);
 				sessionPluginSelections.set(metadata.path, candidate);
 				return candidate;
 			}
 			const cached = sessionPluginSelections.get(metadata.path);
 			if (cached !== undefined) return cached;
-			const storedPackagePaths = await readSessionPluginPackageProfile(directory, serverId, metadata.path);
+			const storedPackagePaths = await readSessionPluginPackageProfile(directory, profileId, metadata.path);
 			const selected =
 				storedPackagePaths === undefined ? defaultPluginSelection : await buildPluginSelection(storedPackagePaths);
 			if (storedPackagePaths === undefined) {
-				await writeSessionPluginPackageProfile(directory, serverId, metadata.path, selected.packagePaths);
+				await writeSessionPluginPackageProfile(directory, profileId, metadata.path, selected.packagePaths);
 			}
 			sessionPluginSelections.set(metadata.path, selected);
 			return selected;
 		};
 		const removeSessionPlugins = async (metadata: JsonlSessionMetadata): Promise<void> => {
 			sessionPluginSelections.delete(metadata.path);
-			await removeSessionPluginPackageProfile(directory, serverId, metadata.path);
+			await removeSessionPluginPackageProfile(directory, profileId, metadata.path);
 		};
 		const reloadPresentationFacetBundles = async (
 			packagePaths: readonly string[],
@@ -794,7 +846,8 @@ export async function startServer(options: StartServerOptions = {}): Promise<Run
 		const activeCoordinator = coordinator;
 		const activeWorkers = workers;
 		const activeRelay = relay;
-		void activeCoordinator.replaced
+		// No other server can take this one's place; only losing the coordinator itself ends it early.
+		void activeCoordinator.lost
 			.then(async () => {
 				lifetime.stop();
 				activeWorkers.detach();
@@ -808,19 +861,20 @@ export async function startServer(options: StartServerOptions = {}): Promise<Run
 			serverId,
 			sessionDir: activeBackend.sessionDir,
 			socketPath,
+			endpointPath: serverPath,
 			server: activeBackend.server,
 			workerPids: activeWorkers.workerPids,
 			closed: activeBackend.closed.finally(() => activeRelay.close()),
 			close() {
 				lifetime.stop();
 				closePromise ??= (async () => {
-					if (!activeCoordinator.wasReplaced) activeWorkers.prepareShutdown();
+					if (!activeCoordinator.wasLost) activeWorkers.prepareShutdown();
 					try {
 						await activeRelay.close();
 						await activeBackend.close();
 					} finally {
 						try {
-							if (activeCoordinator.wasReplaced) activeWorkers.detach();
+							if (activeCoordinator.wasLost) activeWorkers.detach();
 							else await activeWorkers.shutdown();
 						} finally {
 							activeCoordinator.close();
@@ -833,19 +887,16 @@ export async function startServer(options: StartServerOptions = {}): Promise<Run
 		lifetime.start(() => {
 			void runtime.close().catch(() => {});
 		});
-		released = true;
-		await release();
 		return runtime;
 	} catch (error) {
 		lifetime.stop();
 		startupLease?.close();
-		if (coordinator?.wasReplaced) workers?.detach();
+		if (coordinator?.wasLost) workers?.detach();
 		const cleanup = await Promise.allSettled([
 			relay?.close(),
 			backend?.close(),
-			coordinator?.wasReplaced ? undefined : workers?.shutdown(),
+			coordinator?.wasLost ? undefined : workers?.shutdown(),
 			Promise.resolve(coordinator?.close()),
-			released ? undefined : release(),
 		]);
 		const cleanupErrors = cleanup.flatMap((result) => (result.status === "rejected" ? [result.reason] : []));
 		if (cleanupErrors.length > 0) {
