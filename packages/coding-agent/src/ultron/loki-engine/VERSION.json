@@ -1,12 +1,13 @@
 {
-	"version": "0.1.3",
+	"version": "0.1.4",
 	"source": {
-		"kind": "git",
-		"commit": "17de84aa520a4f86b51f1183e2a747603bd56e5d",
-		"repository": "https://github.com/alfredosdpiii/loki"
+		"kind": "pypi",
+		"project": "loki-guardrails",
+		"url": "https://files.pythonhosted.org/packages/5d/55/4ab80a4a783b45bf9b50a41bbadf2f38a71056b9410693ef6d2374c4a306/loki_guardrails-0.1.4.tar.gz",
+		"sdistSha256": "c17e8bb5c5e3c12229de3434f2d50774f50f5375cf0e1e054f9a1eae6abf4c01"
 	},
 	"files": {
-		"loki.py": "4ba2f03772f00d2810cb7063f76fa3a03384eb9abd445c035293d31cbcdb4f30",
+		"loki.py": "dbe5214f8ca942403851452a1e576e6538a82f8cb1b2a4c393e00d127051a98b",
 		"templates/loki.json": "a397f86c9287ad96505a2e31ecaf898afdc0f3c8b0f83b3a9e6ef13d12507f88",
 		"LICENSE": "107c3b93ec7cdd2aa8314e6184c176d794899630266774c204f870a3198e75fe"
 	}
