@@ -17,7 +17,7 @@ export function unreachableCallbackHint(reach: BrowserReach): string {
 	if (reach === "local")
 		return `If the browser ends on a page that can't be reached (localhost refused to connect), ${UNREACHABLE_CALLBACK_STEP}`;
 	const where = reach === "container" ? "in a container" : "over SSH";
-	return `Ultron is running ${where}, so the browser on your computer cannot reach this login's callback: after you sign in it will end on a page that can't be reached (localhost refused to connect). That is expected; ${UNREACHABLE_CALLBACK_STEP}`;
+	return `Ultron is running ${where}, so the browser on your computer may not reach this login's callback. If it ends on a page that can't be reached (localhost refused to connect) after you sign in, that is expected: ${UNREACHABLE_CALLBACK_STEP}`;
 }
 
 /**

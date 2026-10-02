@@ -145,7 +145,7 @@ describe("LoginDialogComponent: when the browser cannot reach the login's localh
 		const text = flowed(dialog);
 		expect(text).toContain("Open this address in a browser on your computer.");
 		expect(text).toContain(
-			`${opening}, so the browser on your computer cannot reach this login's callback: after you sign in it will end on a page that can't be reached (localhost refused to connect). That is expected; copy that page's full address from the address bar and paste it here.`,
+			`${opening}, so the browser on your computer may not reach this login's callback. If it ends on a page that can't be reached (localhost refused to connect) after you sign in, that is expected: copy that page's full address from the address bar and paste it here.`,
 		);
 		// The provider's own "complete login in your browser" line is dropped: with a real sign-in URL (five or six
 		// lines at 80 columns) the dialog must still show its input on a 24-row terminal.
