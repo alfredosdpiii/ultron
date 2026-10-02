@@ -1,31 +1,52 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+	ARM_RUNTIMES,
+	ARM_STOPPERS,
+	ARMS,
 	agentScript,
+	armAuth,
+	armDescriptions,
+	armModel,
 	armSpec,
 	buildPrompt,
+	CLAUDE_ARMS,
+	claudeAuthPlan,
+	claudeCheck,
+	claudeRateLimit,
+	claudeSecrets,
+	claudeStats,
+	claudeTranscriptStats,
 	cleanPatch,
 	codexConfigToml,
 	codexStats,
 	DEFAULT_SEED,
 	evalVerdict,
+	fullestWindow,
+	HARNESS_FAILURES,
 	headToHead,
+	isClaudeAuthError,
 	isStreamingNoise,
 	ledgerStats,
 	modelsJson,
 	networkLookups,
 	notionalCost,
+	overLimit,
 	piStats,
 	prediction,
 	priceTable,
+	RERUN_STATUSES,
 	renderMarkdown,
 	repoCounts,
+	runModel,
 	runStatus,
 	sample,
 	sampleOrder,
 	scrubSecret,
+	subscriptionUse,
 	summarize,
 	ultronStats,
+	ultronUsageSummary,
 } from "../evals/swebench/lib.mjs";
 import { requestFacts, responseFacts, splitRunPath } from "../evals/swebench/recorder.mjs";
 
@@ -141,7 +162,99 @@ test("agentScript: testbed environment, private dirs, wall-clock limit, no key",
 	assert.match(codex, /'exec' '--json' '--sandbox' 'danger-full-access' '--cd' '\/testbed' "\$PROMPT"/);
 	assert.match(agentScript("pi", { limitSeconds: 60 }), /export PI_CODING_AGENT_DIR='\/agent\/pi-agent'/);
 	for (const arm of ["ultron", "codex", "pi"]) assert.ok(!/API_KEY=/.test(agentScript(arm, { limitSeconds: 60 })));
-	assert.throws(() => armSpec("claude"), /unknown arm/);
+	assert.throws(() => armSpec("gemini"), /unknown arm "gemini" \(known: ultron, codex, pi, claude, ultron-claude\)/);
+});
+
+test("agentScript: plain Claude Code, vanilla and without a permission bypass", () => {
+	const claude = agentScript("claude", { limitSeconds: 1800 });
+	assert.match(claude, /conda activate testbed/);
+	assert.match(claude, /export CLAUDE_CONFIG_DIR='\/agent\/claude-config'/);
+	assert.match(claude, /export DISABLE_AUTOUPDATER='1'/);
+	assert.match(
+		claude,
+		/exec timeout --signal=TERM --kill-after=30 1800s '\/opt\/agent\/claude\/claude' '-p' '--output-format' 'stream-json' '--verbose' '--model' 'claude-opus-5-5' '--strict-mcp-config' '--setting-sources' '' '--allowedTools' 'Bash,Edit,Write,NotebookEdit' '--' "\$PROMPT" < \/dev\/null/,
+	);
+	// The default system prompt, tools, permission mode and effort are left alone; nothing bypasses permissions.
+	for (const flag of ["--dangerously-skip-permissions", "bypassPermissions", "--permission-mode", "--system-prompt", "--tools", "--effort", "--mcp-config", "IS_SANDBOX"])
+		assert.ok(!claude.includes(flag), flag);
+	// No credential is ever part of the script: the login is a read-only mount or an environment variable of docker exec.
+	assert.ok(!/TOKEN|API_KEY|credentials/i.test(claude));
+	const spec = armSpec("claude");
+	assert.deepEqual(spec.dirs, ["/agent/claude-config"]);
+	assert.deepEqual(spec.configFiles({}), {});
+	// Only the session transcripts are copied out, never the config dir (it holds the login).
+	assert.deepEqual(spec.keep, [["/agent/claude-config/projects", "claude-projects"]]);
+	assert.deepEqual(ARM_RUNTIMES.claude, ["claude"]);
+});
+
+test("agentScript: ultron --claude, a clean Ultron on the same Claude Code and config dir", () => {
+	const script = agentScript("ultron-claude", { limitSeconds: 1800 });
+	for (const line of [
+		"export ULTRON_CODING_AGENT_DIR='/agent/ultron-agent'",
+		"export ULTRON_SERVER_DIR='/agent/ultron-server'",
+		"export ULTRON_PYTHON='/opt/agent/python/bin/python3'",
+		"export ULTRON_LOKI_PYTHON='/opt/agent/python/bin/python3'",
+		"export ULTRON_LOKI_AUTOINIT='off'",
+		"export ULTRON_HINDSIGHT_URL='off'",
+		"export ULTRON_CLAUDE_CODE_BIN='/opt/agent/claude/claude'",
+		"export CLAUDE_CONFIG_DIR='/agent/claude-config'",
+		"export DISABLE_AUTOUPDATER='1'",
+	])
+		assert.ok(script.includes(line), line);
+	assert.match(script, /1800s .*cli\.js' '--claude' '--mode' 'json' '-p' '--model' 'claude-code\/claude-opus-5-5' '--' "\$PROMPT" < \/dev\/null/);
+	// Ultron's default thinking level is left alone, as in the proxy arm.
+	assert.ok(!script.includes("--thinking") && !/TOKEN|API_KEY|credentials/i.test(script));
+	const spec = armSpec("ultron-claude");
+	assert.deepEqual(spec.dirs, ["/agent/ultron-agent", "/agent/ultron-server", "/agent/claude-config"]);
+	assert.deepEqual(spec.configFiles({ modelsJson: "{}" }), {});
+	assert.deepEqual(
+		spec.keep.map(([, to]) => to),
+		["sessions", "traces", "loki.jsonl", "claude-projects"],
+	);
+	assert.deepEqual(spec.usageReport("s-1").slice(-3), ["usage", "s-1", "--json"]);
+	assert.deepEqual(spec.usageReport(null).slice(-2), ["usage", "--json"]);
+	assert.deepEqual(ARM_RUNTIMES["ultron-claude"], ["node", "ultron", "python", "claude"]);
+});
+
+test("arms: the Claude arms are opt-in, on their own login and model", () => {
+	assert.deepEqual(ARMS, ["ultron", "codex", "pi"]);
+	assert.deepEqual(CLAUDE_ARMS, ["claude", "ultron-claude"]);
+	assert.deepEqual([...ARMS, ...CLAUDE_ARMS].map(armAuth), ["proxy", "proxy", "proxy", "claude", "claude"]);
+	assert.equal(armModel("pi"), "cliproxyapi/gpt-6.1-sol");
+	assert.equal(armModel("claude"), "claude-code/claude-opus-5-5");
+	assert.equal(runModel(CLAUDE_ARMS), "claude-code/claude-opus-5-5");
+	assert.equal(runModel(["ultron", "claude"]), "cliproxyapi/gpt-6.1-sol + claude-code/claude-opus-5-5");
+	const described = armDescriptions({ claude: "2.1.284 (Claude Code)", ultron: "0.87.22" });
+	assert.equal(described.claude.version, "2.1.284 (Claude Code)");
+	assert.equal(described["ultron-claude"].claudeVersion, "2.1.284 (Claude Code)");
+	assert.match(described.claude.command, /^claude -p .*--allowedTools Bash,Edit,Write,NotebookEdit$/);
+	assert.equal(described["ultron-claude"].command, "ultron --claude --mode json -p --model claude-code/claude-opus-5-5");
+});
+
+const LOGIN = (expiresInSeconds) => ({
+	claudeAiOauth: { accessToken: "at-secret-0123456789", refreshToken: "rt-secret-0123456789", expiresAt: 1_000_000_000 + expiresInSeconds * 1000 },
+});
+
+test("claudeAuthPlan: the environment token first, else the mounted login while its token outlives the run", () => {
+	const nowMs = 1_000_000_000;
+	assert.deepEqual(claudeAuthPlan({ envToken: "tok-0123456789", credentials: null, nowMs, limitSeconds: 1800 }), { ok: true, mode: "env" });
+	assert.deepEqual(claudeAuthPlan({ envToken: null, credentials: LOGIN(4 * 3600), nowMs, limitSeconds: 1800 }), { ok: true, mode: "mount", secondsLeft: 14400 });
+	// Exactly the limit plus the 15-minute margin is enough; a second less is not.
+	assert.equal(claudeAuthPlan({ envToken: null, credentials: LOGIN(1800 + 900), nowMs, limitSeconds: 1800 }).ok, true);
+	const short = claudeAuthPlan({ envToken: null, credentials: LOGIN(1800 + 899), nowMs, limitSeconds: 1800 });
+	assert.equal(short.ok, false);
+	assert.match(short.reason, /expires in 44 min, less than the run's limit plus margin \(45 min\).*never from a container/);
+	const expired = claudeAuthPlan({ envToken: null, credentials: LOGIN(-5), nowMs, limitSeconds: 300 });
+	assert.equal(expired.ok, false);
+	assert.match(expired.reason, /has expired/);
+	for (const credentials of [null, {}, { claudeAiOauth: {} }])
+		assert.match(claudeAuthPlan({ envToken: null, credentials, nowMs, limitSeconds: 300 }).reason, /no claude\.ai login/);
+	// A plan never carries a secret.
+	for (const seconds of [-5, 100, 99999])
+		assert.ok(!JSON.stringify(claudeAuthPlan({ envToken: null, credentials: LOGIN(seconds), nowMs, limitSeconds: 300 })).includes("secret"));
+	assert.deepEqual(claudeSecrets({ envToken: null, credentials: LOGIN(1) }), ["at-secret-0123456789", "rt-secret-0123456789"]);
+	assert.deepEqual(claudeSecrets({ envToken: "tok-0123456789", credentials: null }), ["tok-0123456789"]);
+	assert.deepEqual(claudeSecrets({ envToken: null, credentials: null }), []);
 });
 
 const DIFF = [
@@ -264,7 +377,7 @@ test("ultronStats: cells, helpers, frames and tokens from the session journal", 
 	assert.deepEqual(stats.helpers, { bash: 1, read: 1, "rlm.spawn": 1, "rlm.infer": 1, edit: 1 });
 	assert.equal(stats.childSessions, 1);
 	assert.equal(stats.childTurns, 1);
-	assert.deepEqual(stats.tokens, { input: 200, cacheRead: 220, output: 27, reasoning: 0, total: 447 });
+	assert.deepEqual(stats.tokens, { input: 200, cacheRead: 220, cacheWrite: 0, output: 27, reasoning: 0, total: 447 });
 	assert.equal(stats.lastStopReason, "stop");
 	assert.equal(stats.finalText, "Fixed.");
 	assert.equal(stats.commands.length, 3);
@@ -284,7 +397,7 @@ test("piStats: turns, tools and tokens from the json event stream", () => {
 	assert.equal(stats.turns, 2);
 	assert.equal(stats.toolCalls, 2);
 	assert.deepEqual(stats.toolsByName, { bash: 1, edit: 1 });
-	assert.deepEqual(stats.tokens, { input: 1050, cacheRead: 1000, output: 30, reasoning: 0, total: 2080 });
+	assert.deepEqual(stats.tokens, { input: 1050, cacheRead: 1000, cacheWrite: 0, output: 30, reasoning: 0, total: 2080 });
 	assert.equal(stats.reportedCostUsd, 0.02);
 	assert.equal(stats.finalText, "Done.");
 	assert.equal(stats.errorMessage, null);
@@ -314,7 +427,7 @@ test("codexStats: cached tokens split out of input, turns from the rollout", () 
 	assert.equal(stats.turns, 2);
 	assert.equal(stats.toolCalls, 2);
 	assert.deepEqual(stats.toolsByName, { command_execution: 1, file_change: 1 });
-	assert.deepEqual(stats.tokens, { input: 9000, cacheRead: 15000, output: 150, reasoning: 30, total: 24150 });
+	assert.deepEqual(stats.tokens, { input: 9000, cacheRead: 15000, cacheWrite: 0, output: 150, reasoning: 30, total: 24150 });
 	assert.equal(stats.completed, true);
 	assert.equal(stats.errorMessage, null);
 	assert.equal(stats.finalText, "Patched.");
@@ -394,7 +507,7 @@ test("ledgerStats: outcomes, models and tokens counted alike for every arm", () 
 	assert.deepEqual(stats.requestModels, ["gpt-6.1-sol"]);
 	assert.deepEqual(stats.responseModels, ["gpt-6.1-sol"]);
 	assert.deepEqual(stats.efforts, ["medium"]);
-	assert.deepEqual(stats.tokens, { input: 40, cacheRead: 60, output: 10, reasoning: 2, total: 110 });
+	assert.deepEqual(stats.tokens, { input: 40, cacheRead: 60, cacheWrite: 0, output: 10, reasoning: 2, total: 110 });
 });
 
 test("runStatus: timeouts, provider errors and crashes are told apart from a finished run", () => {
@@ -482,6 +595,329 @@ test("headToHead and renderMarkdown", () => {
 	assert.match(markdown, /gold patches of the same tasks: 4\/4 resolved/);
 	assert.match(markdown, /\| t5 \| 5 \| 1 \| bash 4, edit 1 \| 0 \| 0 \| 1 \/ 0 \/ 1 \|/);
 	assert.match(markdown, /\| ultron \| 1\/4 \| 1 \| 1 \| 1 \| 1 \| 33m00s \|/);
-	assert.match(markdown, /\| t2 \| no \[timeout\], 30m00s, 10, 6,200 \| yes, 1m00s, 10, 6,200 \|/);
+	assert.match(markdown, /\| t2 \| no \[timeout\], 30m00s, 10, 6,200, \$0\.50 \| yes, 1m00s, 10, 6,200, \$0\.50 \|/);
+	assert.match(markdown, /tokens \(in \/ cached \/ out\) \| notional cost \|/);
 	assert.match(markdown, /Cost is notional/);
+});
+
+// ---------------------------------------------------------------------------------------------------------------
+// Claude arms: the shapes are those of Claude Code 2.1.284's `-p --output-format stream-json --verbose` output and
+// of its session transcripts.
+
+const WINDOWS = (fiveHour, sevenDay) => ({ five_hour: { utilization: fiveHour, resetsAt: 1790929800 }, seven_day: { utilization: sevenDay, resetsAt: 1791302400 } });
+const rateLimitEvent = (fiveHour, extra = {}) => ({
+	type: "rate_limit_event",
+	rate_limit_info: { status: "allowed", resetsAt: 1790929800, rateLimitType: "five_hour", overageStatus: "allowed", isUsingOverage: false, unifiedWindows: WINDOWS(fiveHour, 0.19), ...extra },
+});
+const streamUsage = (output) => ({ input_tokens: 2, cache_creation_input_tokens: 100, cache_read_input_tokens: 1000, output_tokens: output });
+const streamAssistant = (id, content, extra = {}) => ({ type: "assistant", message: { id, model: "claude-opus-5-5", content, usage: streamUsage(16) }, parent_tool_use_id: null, ...extra });
+
+function claudeStream({ result = true } = {}) {
+	const events = [
+		{ type: "system", subtype: "init", cwd: "/testbed", model: "claude-opus-5-5", permissionMode: "default", apiKeySource: "none", claude_code_version: "2.1.284", mcp_servers: [], tools: ["Bash", "Edit"] },
+		// One message, one event per content block: a turn once, two tool calls.
+		streamAssistant("msg_1", [{ type: "tool_use", id: "tu_1", name: "Bash", input: { command: "git fetch origin" } }]),
+		streamAssistant("msg_1", [{ type: "tool_use", id: "tu_2", name: "Read", input: { file_path: "/testbed/a.py" } }]),
+		rateLimitEvent(0.71),
+		{ type: "user", message: { role: "user", content: [{ type: "tool_result", tool_use_id: "tu_1", content: "ok" }] } },
+		streamAssistant("msg_2", [{ type: "tool_use", id: "tu_3", name: "Task", input: { prompt: "look" } }]),
+		// A subagent's response and its tool call.
+		streamAssistant("msg_3", [{ type: "tool_use", id: "tu_4", name: "Bash", input: { command: "ls" } }, { type: "text", text: "sub text" }], { parent_tool_use_id: "tu_3" }),
+		{ type: "assistant", message: { id: "synthetic-1", model: "<synthetic>", content: [{ type: "text", text: "noise" }] }, parent_tool_use_id: null },
+		streamAssistant("msg_4", [{ type: "tool_use", id: "tu_5", name: "WebFetch", input: { url: "https://github.com/django/django/pull/1" } }]),
+		streamAssistant("msg_5", [{ type: "text", text: "Fixed the widget." }]),
+		rateLimitEvent(0.73),
+	];
+	if (result)
+		events.push({
+			type: "result",
+			subtype: "success",
+			is_error: false,
+			num_turns: 6,
+			result: "Fixed the widget.",
+			total_cost_usd: 0.4321,
+			usage: { input_tokens: 8, output_tokens: 561 },
+			modelUsage: {
+				"claude-opus-5-5": { inputTokens: 8, outputTokens: 561, cacheReadInputTokens: 58224, cacheCreationInputTokens: 6217, thinkingTokens: 40, costUSD: 0.43 },
+				"claude-haiku-5": { inputTokens: 100, outputTokens: 10, cacheReadInputTokens: 0, cacheCreationInputTokens: 0, thinkingTokens: 0, costUSD: 0.0021 },
+			},
+			permission_denials: [{ tool_name: "WebFetch", tool_use_id: "tu_5", tool_input: {} }],
+			subagent_stats: { spawned: 1 },
+		});
+	return `${events.map((event) => JSON.stringify(event)).join("\n")}\n{"type":"assistant","message":{"id":"cut`;
+}
+
+test("claudeStats: turns, tools, totals and cost from the stream's result event", () => {
+	const stats = claudeStats(claudeStream());
+	assert.equal(stats.turns, 5);
+	assert.equal(stats.subagentTurns, 1);
+	assert.equal(stats.reportedTurns, 6);
+	assert.equal(stats.toolCalls, 5);
+	assert.deepEqual(stats.toolsByName, { Bash: 2, Read: 1, Task: 1, WebFetch: 1 });
+	// The CLI's own totals over every model it billed, cache writes apart from uncached input.
+	assert.equal(stats.hasTotals, true);
+	assert.deepEqual(stats.tokens, { input: 108, cacheRead: 58224, cacheWrite: 6217, output: 571, reasoning: 40, total: 65120 });
+	assert.equal(stats.reportedCostUsd, 0.4321);
+	// The model of the session, of every response, and every model billed: a helper model shows here.
+	assert.deepEqual(stats.models, ["claude-opus-5-5", "claude-haiku-5"]);
+	assert.equal(stats.version, "2.1.284");
+	assert.equal(stats.apiKeySource, "none");
+	assert.equal(stats.permissionMode, "default");
+	assert.deepEqual(stats.mcpServers, []);
+	assert.deepEqual(stats.permissionDenials, ["WebFetch"]);
+	assert.equal(stats.subagentsSpawned, 1);
+	assert.equal(stats.completed, true);
+	assert.equal(stats.errorMessage, null);
+	assert.equal(stats.usageLimit, false);
+	assert.equal(stats.finalText, "Fixed the widget.");
+	assert.deepEqual(stats.rateLimits.first.windows, WINDOWS(0.71, 0.19));
+	assert.equal(stats.rateLimits.last.windows.five_hour.utilization, 0.73);
+	assert.deepEqual(networkLookups(stats.commands), ["git fetch origin", "WebFetch https://github.com/django/django/pull/1"]);
+});
+
+test("claudeStats: a run cut off before its result has no totals; errors and the usage limit are told apart", () => {
+	const cut = claudeStats(claudeStream({ result: false }));
+	assert.equal(cut.turns, 5);
+	assert.equal(cut.hasTotals, false);
+	assert.equal(cut.tokens.total, 0);
+	assert.equal(cut.reportedCostUsd, undefined);
+	assert.equal(cut.completed, false);
+	assert.equal(cut.finalText, "Fixed the widget.");
+	const result = (extra) => JSON.stringify({ type: "result", subtype: "success", is_error: true, num_turns: 1, total_cost_usd: 0.01, ...extra });
+	const limit = claudeStats(result({ result: "You've hit your limit · resets 3pm", api_error_status: 429 }));
+	assert.equal(limit.usageLimit, true);
+	assert.equal(limit.completed, false);
+	assert.match(limit.errorMessage, /^429 You've hit your limit/);
+	const overloaded = claudeStats(result({ result: "API Error: Overloaded", api_error_status: 529 }));
+	assert.equal(overloaded.usageLimit, false);
+	assert.equal(runStatus({ exitCode: 1, timedOut: false, turns: 1, errorMessage: overloaded.errorMessage, ledger: null }), "provider_error");
+	const login = claudeStats(result({ result: "Invalid API key · Please run /login" }));
+	assert.ok(isClaudeAuthError(login.errorMessage));
+	assert.ok(!isClaudeAuthError(overloaded.errorMessage) && !isClaudeAuthError(null));
+	// A rejected request, paid overage, or a full window each mean the subscription is spent, whatever the result says.
+	for (const extra of [{ status: "rejected" }, { isUsingOverage: true }, { unifiedWindows: WINDOWS(1, 0.2) }])
+		assert.equal(claudeStats(JSON.stringify(rateLimitEvent(0.99, extra))).usageLimit, true, JSON.stringify(extra));
+	assert.equal(claudeStats(JSON.stringify(rateLimitEvent(0.99))).usageLimit, false);
+});
+
+test("claudeRateLimit, overLimit and fullestWindow", () => {
+	assert.deepEqual(claudeRateLimit(rateLimitEvent(0.71)), { status: "allowed", overage: false, windows: WINDOWS(0.71, 0.19) });
+	assert.equal(claudeRateLimit({ type: "rate_limit_event" }), null);
+	// Without the unified windows, the event's own window.
+	assert.deepEqual(claudeRateLimit({ rate_limit_info: { status: "allowed_warning", rateLimitType: "seven_day", utilization: 0.8, resetsAt: 5 } }), {
+		status: "allowed_warning",
+		overage: false,
+		windows: { seven_day: { utilization: 0.8, resetsAt: 5 } },
+	});
+	assert.equal(overLimit(null), false);
+	assert.equal(overLimit({ status: "allowed", windows: WINDOWS(0.99, 0.5) }), false);
+	assert.equal(overLimit({ status: "allowed", windows: WINDOWS(0.5, 1) }), true);
+	assert.equal(overLimit({ status: "rejected", windows: {} }), true);
+	assert.deepEqual(fullestWindow({ windows: WINDOWS(0.4, 0.6) }), { name: "seven_day", utilization: 0.6, resetsAt: 1791302400 });
+	assert.equal(fullestWindow(null), null);
+});
+
+function claudeTranscript() {
+	const usage = (output) => ({ input_tokens: 2, cache_creation_input_tokens: 100, cache_read_input_tokens: 1000, output_tokens: output, output_tokens_details: { thinking_tokens: 5 } });
+	const assistant = (id, output, effort = "medium") => ({ type: "assistant", effort, perTurnEffort: effort, requestId: `req_${id}`, message: { id, model: "claude-opus-5-5", content: [], usage: usage(output) } });
+	return [
+		{ type: "queue-operation", operation: "enqueue" },
+		{ type: "user", message: { role: "user", content: "hi" } },
+		{ type: "attachment", attachment: { type: "credential_org", organizationUuid: "org" } },
+		// One line per content block of a message; each carries the message's usage.
+		assistant("msg_1", 154),
+		assistant("msg_1", 154),
+		assistant("msg_2", 117),
+		{ type: "assistant", message: { id: "s1", model: "<synthetic>", content: [], usage: usage(9999) } },
+		{ type: "cost-state", totalCostUSD: 0.07 },
+	]
+		.map((line) => JSON.stringify(line))
+		.join("\n");
+}
+
+test("claudeTranscriptStats: one response per message id, with the model and the effort it ran at", () => {
+	const subagent = JSON.stringify({ type: "assistant", isSidechain: true, effort: "medium", message: { id: "msg_9", model: "claude-opus-5-5", usage: { input_tokens: 1, output_tokens: 10 } } });
+	const stats = claudeTranscriptStats([claudeTranscript(), subagent, ""]);
+	assert.equal(stats.responses, 3);
+	assert.deepEqual(stats.models, ["claude-opus-5-5"]);
+	assert.deepEqual(stats.efforts, ["medium"]);
+	assert.deepEqual(stats.tokens, { input: 5, cacheRead: 2000, cacheWrite: 200, output: 281, reasoning: 10, total: 2486 });
+	assert.deepEqual(claudeTranscriptStats([]), { responses: 0, models: [], efforts: [], tokens: { input: 0, cacheRead: 0, cacheWrite: 0, output: 0, reasoning: 0, total: 0 } });
+});
+
+test("claudeCheck: one model, the subscription login, one effort, nothing denied", () => {
+	const transcript = claudeTranscriptStats([claudeTranscript()]);
+	const good = { arm: "claude", status: "completed", models: ["claude-opus-5-5"], transcript, apiKeySource: "none", mcpServers: [], permissionDenials: [] };
+	assert.deepEqual(claudeCheck(good), { ok: true, problems: [] });
+	// Ultron names the model with its provider and serves its REPL as the one MCP server.
+	assert.equal(claudeCheck({ ...good, arm: "ultron-claude", models: ["claude-code/claude-opus-5-5"], apiKeySource: undefined, mcpServers: undefined, permissionDenials: undefined }).ok, true);
+	const bad = (change, pattern) => {
+		const check = claudeCheck({ ...good, ...change });
+		assert.equal(check.ok, false);
+		assert.match(check.problems.join("; "), pattern);
+	};
+	bad({ status: "timeout" }, /ended as timeout/);
+	bad({ models: ["claude-opus-5-5", "claude-haiku-5"] }, /models seen by the tool: claude-opus-5-5, claude-haiku-5/);
+	bad({ models: [] }, /models seen by the tool: none/);
+	bad({ transcript: { ...transcript, models: ["claude-sonnet-5"] } }, /transcript: claude-sonnet-5/);
+	bad({ transcript: { ...transcript, responses: 0, models: [] } }, /transcript: none/);
+	bad({ transcript: { ...transcript, efforts: ["medium", "high"] } }, /efforts .*medium, high/);
+	bad({ transcript: { ...transcript, efforts: [] } }, /none recorded/);
+	bad({ apiKeySource: "ANTHROPIC_API_KEY" }, /an API key is in use/);
+	bad({ mcpServers: ["github"] }, /MCP servers loaded: github/);
+	bad({ permissionDenials: ["Bash"] }, /tool calls denied: Bash/);
+});
+
+test("ultronStats: a Claude Code lane's models, cache writes, subscription windows and usage limit", () => {
+	const claudeUsage = (input, output, cacheRead, cacheWrite, cost) => ({ input, output, cacheRead, cacheWrite, totalTokens: input + output + cacheRead + cacheWrite, cost: { total: cost } });
+	const assistant = (id, extra) => ({ kind: "entry", id, type: "message", message: { role: "assistant", provider: "claude-code", model: "claude-opus-5-5", content: [{ type: "toolCall", name: "rlm", arguments: { code: "await bash('ls')" } }], stopReason: "toolUse", ...extra } });
+	const diagnostic = (fiveHour) => ({ type: "claude_code_usage", timestamp: 1, details: { status: "allowed", windows: WINDOWS(fiveHour, 0.19) } });
+	const session = [
+		JSON.stringify([assistant("e1", { diagnostics: [diagnostic(0.2)] }), { kind: "usage", id: "u1", usage: claudeUsage(2, 67, 0, 3657, 0) }]),
+		JSON.stringify([
+			assistant("e2", { content: [{ type: "text", text: "Done." }], stopReason: "stop", diagnostics: [{ type: "claude_code_warning", error: { message: "w" } }, diagnostic(0.25)] }),
+			{ kind: "usage", id: "u2", usage: claudeUsage(2, 10, 3657, 104, 0.0324) },
+		]),
+	].join("\n");
+	const stats = ultronStats([{ name: "sessions/x_root-1.jsonl", text: session }], "root-1");
+	assert.deepEqual(stats.models, ["claude-code/claude-opus-5-5"]);
+	assert.deepEqual(stats.tokens, { input: 4, cacheRead: 3657, cacheWrite: 3761, output: 77, reasoning: 0, total: 7499 });
+	assert.equal(Number(stats.reportedCostUsd.toFixed(4)), 0.0324);
+	assert.equal(stats.rateLimits.first.windows.five_hour.utilization, 0.2);
+	assert.equal(stats.rateLimits.last.windows.five_hour.utilization, 0.25);
+	assert.equal(stats.usageLimit, false);
+	assert.equal(stats.cells, 1);
+	const failed = JSON.stringify(assistant("e3", { content: [], stopReason: "error", errorMessage: "Claude Code usage limit reached (five_hour window)", responseModel: "claude-opus-5-5-20260901", diagnostics: [{ type: "provider_usage_limit", error: { message: "x" } }] }));
+	const limited = ultronStats([{ name: "sessions/x_root-1.jsonl", text: `${session}\n${failed}` }], "root-1");
+	assert.equal(limited.usageLimit, true);
+	assert.match(limited.errorMessage, /usage limit reached/);
+	assert.deepEqual(limited.models, ["claude-code/claude-opus-5-5", "claude-opus-5-5-20260901"]);
+	// The proxy arm's journal has none of this.
+	const plain = ultronStats([{ name: "sessions/x_root-1.jsonl", text: ultronSession() }], "root-1");
+	assert.deepEqual([plain.models, plain.usageLimit, plain.rateLimits], [[], false, null]);
+});
+
+test("ultronUsageSummary: what `ultron usage --json` says about cells, depth, models and guards", () => {
+	const bucket = { responses: 9, input: 4, output: 77, cacheRead: 3657, cacheWrite: 3761, totalTokens: 7499, cost: { reportedUsd: null, subscriptionUsd: 0.5, unpricedResponses: 0 }, unmeasured: 0 };
+	const report = {
+		schema: "ultron.session-report/1",
+		session: { id: "s", path: "/agent/ultron-agent/experimental/sessions/--testbed--/x_s.jsonl", cwd: "/testbed" },
+		mode: "ultron --claude",
+		turns: { count: 1, completed: 1 },
+		cells: { source: "transcript", total: { count: 7, failed: 1, apis: { bash: 6 } }, root: { count: 5, failed: 1, apis: {} }, subagents: { count: 2, failed: 0, apis: {} } },
+		depth: {
+			verdict: "depth 1: 2 frames, 1 sub-agent",
+			level: 1,
+			frames: { count: 2, calls: { infer: 1, map: 1 } },
+			subagents: { count: 1, verdicts: { verified: 1, contradicted: 0, unverified: 0 } },
+			workflows: { runs: 0 },
+			backgroundJobs: { count: 3 },
+		},
+		usage: { models: [{ model: "claude-code/claude-opus-5-5", ...bucket }], total: bucket },
+		guardrails: { guards: { Loki: { checks: 4, blocked: 1 } }, hints: { "bash-grep": 2 }, usageLimitBlocks: 0 },
+	};
+	assert.deepEqual(ultronUsageSummary(report), {
+		mode: "ultron --claude",
+		rootTurns: 1,
+		cells: { total: 7, failed: 1, root: 5, subagents: 2 },
+		depth: "depth 1: 2 frames, 1 sub-agent",
+		frames: 2,
+		frameCalls: { infer: 1, map: 1 },
+		subagents: 1,
+		subagentVerdicts: { verified: 1, contradicted: 0, unverified: 0 },
+		workflows: 0,
+		backgroundJobs: 3,
+		models: [{ model: "claude-code/claude-opus-5-5", responses: 9, totalTokens: 7499 }],
+		subscriptionUsd: 0.5,
+		unmeasured: 0,
+		guards: { Loki: { checks: 4, blocked: 1 } },
+		hints: { "bash-grep": 2 },
+		usageLimitBlocks: 0,
+	});
+	// The session's path (a home directory on a host) is not part of what is kept.
+	assert.ok(!JSON.stringify(ultronUsageSummary(report)).includes("/agent/"));
+	for (const notAReport of [null, {}, { schema: "other/1" }, "text"]) assert.equal(ultronUsageSummary(notAReport), null);
+	const bare = ultronUsageSummary({ schema: "ultron.session-report/1" });
+	assert.deepEqual([bare.cells, bare.frames, bare.subagents, bare.models], [null, 0, 0, []]);
+});
+
+test("runStatus: a spent subscription and a lost login are harness failures that stop the Claude arms", () => {
+	const base = { exitCode: 1, timedOut: false, turns: 4, errorMessage: "x", ledger: null };
+	assert.equal(runStatus({ ...base, usageLimit: true }), "usage_limit");
+	// Even when the limit ended the run by the clock, or it finished on paid overage.
+	assert.equal(runStatus({ ...base, timedOut: true, usageLimit: true }), "usage_limit");
+	assert.equal(runStatus({ exitCode: 0, timedOut: false, turns: 9, errorMessage: null, ledger: null, usageLimit: true }), "usage_limit");
+	assert.equal(runStatus({ ...base, authError: true }), "auth_error");
+	assert.equal(runStatus({ ...base }), "agent_crash");
+	assert.equal(runStatus({ exitCode: 0, timedOut: false, turns: 9, errorMessage: null, ledger: null }), "completed");
+	assert.equal(runStatus({ exitCode: 124, timedOut: false, turns: 9, errorMessage: null, ledger: null }), "timeout");
+	for (const status of ["usage_limit", "auth_error", "auth_unavailable", "not_run"]) {
+		assert.ok(HARNESS_FAILURES.has(status), status);
+		assert.ok(RERUN_STATUSES.has(status), status);
+	}
+	assert.deepEqual([...ARM_STOPPERS].sort(), ["auth_error", "auth_unavailable", "usage_limit"]);
+	assert.ok(!RERUN_STATUSES.has("timeout") && !RERUN_STATUSES.has("completed") && !ARM_STOPPERS.has("not_run"));
+});
+
+function claudeRecords() {
+	const tokens = { input: 100, cacheRead: 50_000, cacheWrite: 6000, output: 900, reasoning: 0, total: 57_000 };
+	const transcript = { responses: 6, models: ["claude-opus-5-5"], efforts: ["medium"], tokens };
+	const claude = (fiveHour, denied = []) => ({ models: ["claude-opus-5-5"], permissionDenials: denied, transcript, rateLimits: { first: { status: "allowed", windows: WINDOWS(fiveHour, 0.19) }, last: { status: "allowed", windows: WINDOWS(fiveHour + 0.02, 0.2) } } });
+	const base = { wallMs: 120_000, turns: 6, toolCalls: 5, tokens, ledger: null };
+	const ultron = { cells: 4, errorCells: 0, helpers: { bash: 4 }, frameCalls: 0, childSessions: 0, loki: { beforeWriteChecks: 1, blocked: 0, afterCellFindings: 0 } };
+	return [
+		{ ...base, instance_id: "t1", arm: "claude", status: "completed", verdict: "resolved", notionalCostUsd: 0.4, startedAt: "2026-10-02T09:00:00.000Z", claude: claude(0.1, ["WebFetch"]) },
+		{ ...base, instance_id: "t1", arm: "ultron-claude", status: "completed", verdict: "resolved", notionalCostUsd: 0.25, startedAt: "2026-10-02T09:00:01.000Z", claude: claude(0.1), ultron },
+		{ ...base, instance_id: "t2", arm: "claude", status: "completed", verdict: "unresolved", notionalCostUsd: 0.6, startedAt: "2026-10-02T09:03:00.000Z", wallMs: 600_000, claude: claude(0.2) },
+		{ ...base, instance_id: "t2", arm: "ultron-claude", status: "usage_limit", verdict: "empty_patch", notionalCostUsd: null, startedAt: "2026-10-02T09:03:01.000Z", claude: claude(0.3), ultron },
+		{ instance_id: "t3", arm: "claude", status: "not_run", verdict: "empty_patch", startedAt: "2026-10-02T09:14:00.000Z", error: "not run: usage_limit on t2" },
+	];
+}
+
+test("summarize, subscriptionUse and renderMarkdown for the Claude arms", () => {
+	const summary = summarize(claudeRecords(), ["claude", "ultron-claude"]);
+	assert.equal(summary.claude.resolved, 1);
+	assert.equal(summary.claude.unresolved, 1);
+	// A task the arm never started, and one ended by the usage limit, are harness failures, not misses.
+	assert.deepEqual(summary.claude.harnessFailures, [{ instance_id: "t3", status: "not_run" }]);
+	assert.deepEqual(summary["ultron-claude"].harnessFailures, [{ instance_id: "t2", status: "usage_limit" }]);
+	assert.equal(summary["ultron-claude"].unresolved, 0);
+	assert.equal(summary.claude.tokens.cacheWrite, 12_000);
+	assert.equal(summary.claude.notionalCostUsd, 1);
+	assert.equal(summary["ultron-claude"].notionalCostUsd, 0.25);
+	const subscription = subscriptionUse(claudeRecords());
+	assert.equal(subscription.first.at, "2026-10-02T09:00:00.000Z");
+	assert.equal(subscription.first.windows.five_hour.utilization, 0.1);
+	// The run that ended last, not the one that started last.
+	assert.equal(subscription.last.at, "2026-10-02T09:13:00.000Z");
+	assert.equal(subscription.last.windows.five_hour.utilization, 0.22);
+	assert.equal(subscriptionUse(records()), null);
+	const markdown = renderMarkdown({
+		runId: "pilot10-opus",
+		date: "2026-10-02",
+		model: runModel(CLAUDE_ARMS),
+		swebenchVersion: "5.0.2",
+		sample: { n: 3, seed: "s" },
+		limits: { wallClockMinutes: 30, concurrency: 2 },
+		costNote: "notionalCostUsd is what Claude Code reports for each run",
+		summary,
+		subscription,
+		headToHead: { "claude vs ultron-claude": headToHead(claudeRecords(), "claude", "ultron-claude") },
+		harnessFailures: [{ instance_id: "t2", arm: "ultron-claude", status: "usage_limit", verdict: "empty_patch", error: "limit" }],
+		verification: {
+			claude: { ok: true, responseModels: ["claude-opus-5-5"], paths: ["claude -p"], reasoningEfforts: ["medium"], requests: 2, source: "responses in Claude Code's session transcript" },
+		},
+		records: claudeRecords(),
+	});
+	assert.match(markdown, /^# SWE-bench Verified, 3 tasks, claude-code\/claude-opus-5-5$/m);
+	assert.match(markdown, /tokens \(in \/ cache read \/ cache write \/ out\) \| notional cost \|/);
+	assert.match(markdown, /\| claude \| 1\/3 \| 1 \| 0 \| 1 \| 0 \| 12m00s \| 12 \| 10 \| 200 \/ 100,000 \/ 12,000 \/ 1,800 \| \$1\.00 \|/);
+	assert.match(markdown, /Cost is notional: what Claude Code reports for each run\./);
+	assert.match(markdown, /\| t2 \| no, 10m00s, 6, 57,000, \$0\.60 \| no \(empty patch\) \[usage_limit\], 2m00s, 6, 57,000, - \|/);
+	assert.match(markdown, /\| t3 \| no \(empty patch\) \[not_run\], -, -, -, - \| - \|/);
+	assert.match(markdown, /- claude: verified on claude-opus-5-5 via claude -p, reasoning effort medium \(2 responses in Claude Code's session transcript\)/);
+	assert.match(markdown, /- claude: model claude-opus-5-5, effort medium \(Claude Code's session transcripts, 12 responses\); tool calls denied: WebFetch/);
+	assert.match(markdown, /- ultron-claude: model claude-opus-5-5, effort medium .* tool calls denied: none/);
+	assert.match(markdown, /first run to last: five_hour 10% to 22%, seven_day 19% to 20%\. The windows are the account's/);
+	assert.match(markdown, /\| t1 \| 4 \| 0 \| bash 4 \| 0 \| 0 \| 1 \/ 0 \/ 0 \|/);
 });

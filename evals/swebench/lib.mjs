@@ -20,12 +20,30 @@ export const PROVIDER = "cliproxyapi";
 export const KEY_ENV = "CLIPROXY_API_KEY";
 /** Ultron's and Pi's default thinking level; Codex is set to the same so all three send the same effort. */
 export const REASONING_EFFORT = "medium";
+/** The default arms: the three tools on the proxy model. */
 export const ARMS = ["ultron", "codex", "pi"];
+/**
+ * The Claude Code arms: plain `claude -p` and `ultron --claude`, both on the user's Claude subscription. They are
+ * never run by default (`--arms claude,ultron-claude`).
+ */
+export const CLAUDE_ARMS = ["claude", "ultron-claude"];
+export const CLAUDE_PROVIDER = "claude-code";
+export const CLAUDE_MODEL_ID = "claude-opus-5-5";
+/** The built-in tools of Claude Code that ask for permission and are approved up front by name (no bypass flag). */
+export const CLAUDE_ALLOWED_TOOLS = ["Bash", "Edit", "Write", "NotebookEdit"];
+/** A long-lived token (`claude setup-token`); when the harness's environment has it, nothing is mounted. */
+export const CLAUDE_TOKEN_ENV = "CLAUDE_CODE_OAUTH_TOKEN";
+/** A run starts only when the mounted login's access token outlives the run's limit by this much. */
+export const CLAUDE_TOKEN_MARGIN_SECONDS = 15 * 60;
+/** No run starts once a subscription window is this full: the rest is the user's, and overage is real money. */
+export const CLAUDE_MAX_UTILIZATION = 0.9;
 /** Where the read-only runtimes are mounted in every task container. */
 export const MOUNT = "/opt/agent";
 /** The per-run scratch directory inside the container: agent dirs, sessions, the prompt. Never mounted. */
 export const AGENT_DIR = "/agent";
 export const REPO_DIR = "/testbed";
+/** Claude Code's config dir inside the container: fresh, holding only the read-only mounted login. */
+export const CLAUDE_CONFIG_DIR = `${AGENT_DIR}/claude-config`;
 /** Paths the agents' own tooling may create in the repository; never part of a prediction. */
 export const EXCLUDED_PATCH_PREFIXES = [".loki/"];
 
@@ -205,14 +223,128 @@ const ARM_SPECS = {
 	},
 };
 
+const CLAUDE_ENV = {
+	// A fresh config dir: none of the user's settings, CLAUDE.md, hooks, skills, plugins, MCP servers or history.
+	CLAUDE_CONFIG_DIR,
+	// The binary is mounted read-only; it must not try to update itself.
+	DISABLE_AUTOUPDATER: "1",
+};
+
+/** Plain Claude Code, headless: its default system prompt and default tools, on the subscription login. */
+ARM_SPECS.claude = {
+	auth: "claude",
+	env: CLAUDE_ENV,
+	command: [
+		`${MOUNT}/claude/claude`,
+		"-p",
+		"--output-format",
+		"stream-json",
+		"--verbose",
+		"--model",
+		CLAUDE_MODEL_ID,
+		// No MCP servers and no user, project or local settings: a fresh install's behaviour.
+		"--strict-mcp-config",
+		"--setting-sources",
+		"",
+		// Commands and edits run without a prompt because they are allowed by name; no permission bypass. Anything
+		// else that would ask (WebFetch, WebSearch) is denied, as nobody answers prompts in print mode.
+		"--allowedTools",
+		CLAUDE_ALLOWED_TOOLS.join(","),
+		"--",
+	],
+	configFiles: () => ({}),
+	dirs: [CLAUDE_CONFIG_DIR],
+	keep: [[`${CLAUDE_CONFIG_DIR}/projects`, "claude-projects"]],
+};
+
+/** `ultron --claude`: Ultron's root lane on Claude Code (the same CLI, the same login), its only tool the REPL. */
+ARM_SPECS["ultron-claude"] = {
+	auth: "claude",
+	env: { ...ARM_SPECS.ultron.env, ...CLAUDE_ENV, ULTRON_CLAUDE_CODE_BIN: `${MOUNT}/claude/claude` },
+	command: [
+		`${MOUNT}/node/bin/node`,
+		`${MOUNT}/node/lib/node_modules/ultron-agent/dist/bundle/cli.js`,
+		"--claude",
+		"--mode",
+		"json",
+		"-p",
+		"--model",
+		`${CLAUDE_PROVIDER}/${CLAUDE_MODEL_ID}`,
+		"--",
+	],
+	configFiles: () => ({}),
+	dirs: [...ARM_SPECS.ultron.dirs, CLAUDE_CONFIG_DIR],
+	keep: [...ARM_SPECS.ultron.keep, [`${CLAUDE_CONFIG_DIR}/projects`, "claude-projects"]],
+	// `ultron usage --json` of the root session, read in the container before it is removed.
+	usageReport: (sessionId) => [
+		`${MOUNT}/node/bin/node`,
+		`${MOUNT}/node/lib/node_modules/ultron-agent/dist/bundle/cli.js`,
+		"usage",
+		...(sessionId ? [sessionId] : []),
+		"--json",
+	],
+};
+
 /** The read-only runtimes an arm needs mounted under MOUNT (ripgrep, under `tools`, goes to every arm). */
-export const ARM_RUNTIMES = { ultron: ["node", "ultron", "python"], codex: ["codex"], pi: ["pi"] };
+export const ARM_RUNTIMES = {
+	ultron: ["node", "ultron", "python"],
+	codex: ["codex"],
+	pi: ["pi"],
+	claude: ["claude"],
+	"ultron-claude": ["node", "ultron", "python", "claude"],
+};
 
 /** What an arm needs inside the container: environment, directories, config files and what to copy out. */
 export function armSpec(arm) {
 	const spec = ARM_SPECS[arm];
-	if (!spec) throw new Error(`unknown arm "${arm}" (known: ${ARMS.join(", ")})`);
+	if (!spec) throw new Error(`unknown arm "${arm}" (known: ${[...ARMS, ...CLAUDE_ARMS].join(", ")})`);
 	return spec;
+}
+
+/** How an arm reaches its model: `proxy` (the CLIProxyAPI key) or `claude` (the Claude Code login). */
+export function armAuth(arm) {
+	return armSpec(arm).auth ?? "proxy";
+}
+
+/** The model an arm runs on, as `provider/id`. */
+export function armModel(arm) {
+	return armAuth(arm) === "claude" ? `${CLAUDE_PROVIDER}/${CLAUDE_MODEL_ID}` : `${PROVIDER}/${MODEL_ID}`;
+}
+
+/** The model of a run for the report's title: one name when every arm shares it. */
+export function runModel(arms) {
+	return [...new Set(arms.map(armModel))].join(" + ");
+}
+
+/**
+ * How the Claude Code login gets into a container, decided before every run from what the harness can see without
+ * touching the login: the long-lived token in the environment if there is one, else the credentials file mounted
+ * read-only. A mounted login is used only while its access token outlives the run (limit plus a margin), so the
+ * CLI in the container never refreshes it: a refresh there would rotate the refresh token without being able to
+ * store the new one, and the user's own sessions would be logged out at their next refresh. Returns no secret.
+ */
+export function claudeAuthPlan({ envToken, credentials, nowMs, limitSeconds }) {
+	if (envToken) return { ok: true, mode: "env" };
+	const oauth = credentials?.claudeAiOauth;
+	if (!oauth?.accessToken) return { ok: false, mode: "mount", reason: "no claude.ai login in the credentials file (run `claude auth login` on the host)" };
+	const secondsLeft = Math.floor(((oauth.expiresAt ?? 0) - nowMs) / 1000);
+	const needed = Math.round(limitSeconds) + CLAUDE_TOKEN_MARGIN_SECONDS;
+	if (secondsLeft <= 0)
+		return { ok: false, mode: "mount", secondsLeft, reason: "the login's access token has expired; any Claude Code session on the host refreshes it (the harness never refreshes it from a container)" };
+	if (secondsLeft < needed)
+		return {
+			ok: false,
+			mode: "mount",
+			secondsLeft,
+			reason: `the login's access token expires in ${Math.floor(secondsLeft / 60)} min, less than the run's limit plus margin (${Math.ceil(needed / 60)} min); it is refreshed by a Claude Code session on the host, never from a container`,
+		};
+	return { ok: true, mode: "mount", secondsLeft };
+}
+
+/** The strings of a Claude Code login that must never reach the evidence or the results. */
+export function claudeSecrets({ envToken, credentials }) {
+	const oauth = credentials?.claudeAiOauth ?? {};
+	return [envToken, oauth.accessToken, oauth.refreshToken].filter((value) => typeof value === "string" && value.length >= 6);
 }
 
 /**
@@ -272,6 +404,29 @@ export function armDescriptions(versions = {}) {
 			reasoningEffort: `${REASONING_EFFORT} (Pi's default thinking level; not set by the harness)`,
 			configuration: "fresh agent dir holding only models.json; the four default tools (read, bash, edit, write)",
 			limits: "the tool's defaults; the harness's wall-clock limit",
+		},
+		claude: {
+			version: versions.claude ?? null,
+			command: `claude -p --output-format stream-json --verbose --model ${CLAUDE_MODEL_ID} --strict-mcp-config --setting-sources "" --allowedTools ${CLAUDE_ALLOWED_TOOLS.join(",")}`,
+			api: "Claude Code's own (the claude.ai subscription login)",
+			reasoningEffort: "Claude Code's default for the model (not set by the harness); the effort it ran with is read from its session transcript",
+			configuration:
+				"default system prompt and default tools; a fresh CLAUDE_CONFIG_DIR holding only the login, so no user CLAUDE.md, settings, hooks, skills, plugins or MCP servers; no setting sources (no project settings either)",
+			permissions: `default permission mode; ${CLAUDE_ALLOWED_TOOLS.join(", ")} allowed by name, so commands and edits run without a prompt and without a bypass flag; whatever else would ask (WebFetch, WebSearch) is denied, as print mode has nobody to ask`,
+			limits: "the tool's defaults (no turn or budget limit); the harness's wall-clock limit",
+		},
+		"ultron-claude": {
+			version: versions.ultron ?? null,
+			claudeVersion: versions.claude ?? null,
+			command: `ultron --claude --mode json -p --model ${CLAUDE_PROVIDER}/${CLAUDE_MODEL_ID}`,
+			api: "Claude Code's own (the claude.ai subscription login), driven by Ultron: `claude -p` with no built-in tools, Ultron's REPL served over MCP, Ultron's system prompt",
+			reasoningEffort: "Ultron's default thinking level (medium), passed to Claude Code as --effort; the effort it ran with is read from Claude Code's session transcript",
+			configuration:
+				"fresh Ultron agent dir (no models.json, settings.json, skills, AGENTS.md or extensions); Hindsight off; the same fresh CLAUDE_CONFIG_DIR as the claude arm",
+			python:
+				"kernel and Loki on a mounted standalone CPython 3.12 (ULTRON_PYTHON, ULTRON_LOKI_PYTHON); Loki's import check asks the testbed interpreter",
+			loki: "guard on (default mode) with the bundled engine; ULTRON_LOKI_AUTOINIT=off, so no .loki/ is created",
+			limits: "the tool's defaults (no turn or token limit); the harness's wall-clock limit",
 		},
 	};
 }
@@ -338,15 +493,17 @@ export function scrubSecret(text, secret) {
 // Usage
 
 function emptyTokens() {
-	return { input: 0, cacheRead: 0, output: 0, reasoning: 0, total: 0 };
+	return { input: 0, cacheRead: 0, cacheWrite: 0, output: 0, reasoning: 0, total: 0 };
 }
 
-function addTokens(target, { input = 0, cacheRead = 0, output = 0, reasoning = 0 }) {
+/** Add a usage to a total. Cache writes are a separate count only for Claude; the proxy model reports none. */
+function addTokens(target, { input = 0, cacheRead = 0, cacheWrite = 0, output = 0, reasoning = 0 }) {
 	target.input += input;
 	target.cacheRead += cacheRead;
+	target.cacheWrite = (target.cacheWrite ?? 0) + cacheWrite;
 	target.output += output;
 	target.reasoning += reasoning;
-	target.total = target.input + target.cacheRead + target.output;
+	target.total = target.input + target.cacheRead + target.cacheWrite + target.output;
 	return target;
 }
 
@@ -398,9 +555,18 @@ export function ultronStats(files, rootSessionId = null) {
 		errorMessage: null,
 		finalText: null,
 		commands: [],
+		// What answered (`provider/model`, and the response's own model when it differs), on any lane.
+		models: [],
+		// Claude Code lanes only: a response that failed on the subscription's usage limit, and the subscription
+		// windows Claude Code reported with the first and the last response.
+		usageLimit: false,
+		rateLimits: null,
 	};
 	const seenUsage = new Set();
 	const seenEntries = new Set();
+	const note = (value) => {
+		if (value && !stats.models.includes(value)) stats.models.push(value);
+	};
 	for (const file of files) {
 		const isRoot = rootSessionId ? file.name.includes(rootSessionId) : files.length === 1;
 		let assistantTurns = 0;
@@ -417,6 +583,14 @@ export function ultronStats(files, rootSessionId = null) {
 				const message = record.message ?? {};
 				if (message.role === "assistant") {
 					assistantTurns++;
+					if (message.model) note(message.provider ? `${message.provider}/${message.model}` : message.model);
+					note(message.responseModel);
+					for (const diagnostic of message.diagnostics ?? []) {
+						if (diagnostic.type === "provider_usage_limit") stats.usageLimit = true;
+						if (diagnostic.type !== "claude_code_usage" || !diagnostic.details) continue;
+						const snapshot = { status: diagnostic.details.status ?? null, windows: diagnostic.details.windows ?? {} };
+						stats.rateLimits = { first: stats.rateLimits?.first ?? snapshot, last: snapshot };
+					}
 					for (const block of message.content ?? []) {
 						if (block.type !== "toolCall") continue;
 						stats.toolCalls++;
@@ -494,6 +668,223 @@ export function piStats(text) {
 /** Events of `pi --mode json` that repeat the whole partial message; dropped from the kept transcript. */
 export function isStreamingNoise(line) {
 	return line.startsWith('{"type":"message_update"') || line.startsWith('{"type":"tool_execution_update"');
+}
+
+const USAGE_LIMIT_TEXT = /usage limit|limit reached|hit your limit|out of (?:extra )?usage/i;
+
+/** One `rate_limit_event` of Claude Code's stream as `{ status, overage, windows: { name: { utilization, resetsAt } } }`. */
+export function claudeRateLimit(event) {
+	const info = event?.rate_limit_info;
+	if (!info || typeof info !== "object") return null;
+	const windows = {};
+	for (const [name, window] of Object.entries(info.unifiedWindows ?? {})) {
+		if (!window || typeof window !== "object") continue;
+		windows[name] = { utilization: window.utilization ?? null, resetsAt: window.resetsAt ?? null };
+	}
+	if (typeof info.rateLimitType === "string" && !windows[info.rateLimitType])
+		windows[info.rateLimitType] = { utilization: info.utilization ?? null, resetsAt: info.resetsAt ?? null };
+	return { status: info.status ?? null, overage: info.isUsingOverage === true, windows };
+}
+
+/**
+ * Whether a rate-limit snapshot says the subscription is spent: a rejected request, a request served from paid
+ * overage, or a window at 100%. Such a run is a harness failure and ends the Claude arms.
+ */
+export function overLimit(snapshot) {
+	if (!snapshot) return false;
+	if (snapshot.status === "rejected" || snapshot.overage === true) return true;
+	return Object.values(snapshot.windows ?? {}).some((window) => (window.utilization ?? 0) >= 1);
+}
+
+/** The fullest window of a snapshot as `{ name, utilization, resetsAt }`, or null. */
+export function fullestWindow(snapshot) {
+	let fullest = null;
+	for (const [name, window] of Object.entries(snapshot?.windows ?? {}))
+		if (typeof window.utilization === "number" && (!fullest || window.utilization > fullest.utilization)) fullest = { name, ...window };
+	return fullest;
+}
+
+/**
+ * What a plain Claude Code run did, from `claude -p --output-format stream-json --verbose`. Turns are the model's
+ * responses (distinct message ids, subagents' included); tool calls are the distinct `tool_use` blocks. Tokens and
+ * cost are the CLI's own totals from the final `result` event (`modelUsage`, every model and subagent included);
+ * a run cut off before its result has no totals here (the stream's per-message output counts are taken at the
+ * start of a message and are too low), so the caller falls back to the session transcript
+ * (`claudeTranscriptStats`). `models` are the model the session started on, every model that answered and every
+ * model the CLI billed.
+ */
+export function claudeStats(text) {
+	const stats = {
+		turns: 0,
+		toolCalls: 0,
+		toolsByName: {},
+		tokens: emptyTokens(),
+		hasTotals: false,
+		reportedCostUsd: undefined,
+		models: [],
+		version: null,
+		permissionMode: null,
+		apiKeySource: null,
+		mcpServers: [],
+		reportedTurns: null,
+		subagentTurns: 0,
+		subagentsSpawned: 0,
+		permissionDenials: [],
+		rateLimits: null,
+		usageLimit: false,
+		completed: false,
+		errorMessage: null,
+		finalText: null,
+		commands: [],
+	};
+	const note = (value) => {
+		if (typeof value === "string" && value && value !== "<synthetic>" && !stats.models.includes(value)) stats.models.push(value);
+	};
+	const messages = new Set();
+	const toolUses = new Set();
+	for (const event of jsonLines(text)) {
+		if (event.type === "system" && event.subtype === "init") {
+			note(event.model);
+			stats.version = event.claude_code_version ?? null;
+			stats.permissionMode = event.permissionMode ?? null;
+			stats.apiKeySource = event.apiKeySource ?? null;
+			stats.mcpServers = (event.mcp_servers ?? []).map((server) => server?.name ?? String(server));
+		} else if (event.type === "rate_limit_event") {
+			const snapshot = claudeRateLimit(event);
+			if (!snapshot) continue;
+			stats.rateLimits = { first: stats.rateLimits?.first ?? snapshot, last: snapshot };
+			if (overLimit(snapshot)) stats.usageLimit = true;
+		} else if (event.type === "assistant" && event.message) {
+			const message = event.message;
+			if (message.model === "<synthetic>") continue;
+			note(message.model);
+			if (typeof message.id === "string" && !messages.has(message.id)) {
+				messages.add(message.id);
+				stats.turns++;
+				if (event.parent_tool_use_id) stats.subagentTurns++;
+			}
+			for (const block of message.content ?? []) {
+				if (block.type === "text" && block.text && !event.parent_tool_use_id) stats.finalText = block.text;
+				if (block.type !== "tool_use" || toolUses.has(block.id)) continue;
+				toolUses.add(block.id);
+				stats.toolCalls++;
+				stats.toolsByName[block.name] = (stats.toolsByName[block.name] ?? 0) + 1;
+				if (typeof block.input?.command === "string") stats.commands.push(block.input.command);
+				else if (typeof block.input?.url === "string") stats.commands.push(`${block.name} ${block.input.url}`);
+			}
+		} else if (event.type === "result") {
+			stats.reportedTurns = event.num_turns ?? null;
+			stats.subagentsSpawned = event.subagent_stats?.spawned ?? 0;
+			stats.permissionDenials = (event.permission_denials ?? []).map((denial) => denial?.tool_name ?? "unknown");
+			if (typeof event.total_cost_usd === "number") stats.reportedCostUsd = event.total_cost_usd;
+			const billed = Object.entries(event.modelUsage ?? {});
+			if (billed.length > 0) {
+				stats.hasTotals = true;
+				stats.tokens = emptyTokens();
+				for (const [model, usage] of billed) {
+					note(model);
+					addTokens(stats.tokens, {
+						input: usage.inputTokens ?? 0,
+						cacheRead: usage.cacheReadInputTokens ?? 0,
+						cacheWrite: usage.cacheCreationInputTokens ?? 0,
+						output: usage.outputTokens ?? 0,
+						reasoning: usage.thinkingTokens ?? 0,
+					});
+				}
+			}
+			if (event.is_error === true) {
+				const detail = typeof event.result === "string" && event.result ? event.result : (event.subtype ?? "error");
+				stats.errorMessage = `${event.api_error_status ? `${event.api_error_status} ` : ""}${detail}`.slice(0, 500);
+				if (USAGE_LIMIT_TEXT.test(detail)) stats.usageLimit = true;
+			} else {
+				stats.completed = true;
+				stats.errorMessage = null;
+				if (typeof event.result === "string" && event.result) stats.finalText = event.result;
+			}
+		}
+	}
+	return stats;
+}
+
+/**
+ * Claude Code's own session transcripts (`<config dir>/projects/**.jsonl`, subagents' included) as totals: one
+ * response per message id with its final usage, the model that answered and the effort the CLI ran it with. This
+ * is the second count taken the same way for both Claude arms, and the proof of model and effort.
+ */
+export function claudeTranscriptStats(texts) {
+	const responses = new Map();
+	const stats = { responses: 0, models: [], efforts: [], tokens: emptyTokens() };
+	const note = (list, value) => {
+		if (typeof value === "string" && value && !list.includes(value)) list.push(value);
+	};
+	for (const text of texts) {
+		for (const line of jsonLines(text)) {
+			const message = line?.message;
+			if (line?.type !== "assistant" || !message || message.model === "<synthetic>" || typeof message.id !== "string") continue;
+			note(stats.models, message.model);
+			note(stats.efforts, line.effort);
+			// A message is written once per content block; the last line carries its final usage.
+			responses.set(message.id, message.usage ?? {});
+		}
+	}
+	stats.responses = responses.size;
+	for (const usage of responses.values())
+		addTokens(stats.tokens, {
+			input: usage.input_tokens ?? 0,
+			cacheRead: usage.cache_read_input_tokens ?? 0,
+			cacheWrite: usage.cache_creation_input_tokens ?? 0,
+			output: usage.output_tokens ?? 0,
+			reasoning: usage.output_tokens_details?.thinking_tokens ?? 0,
+		});
+	return stats;
+}
+
+/**
+ * The part of `ultron usage --json` (schema ultron.session-report/1) kept with a run: how the root worked (cells),
+ * how deep it delegated (frames, sub-agents, background jobs), which models answered and what the guards did.
+ * Null when the report is missing or not a session report.
+ */
+export function ultronUsageSummary(report) {
+	if (!report || typeof report !== "object" || !String(report.schema ?? "").startsWith("ultron.session-report/")) return null;
+	const depth = report.depth ?? {};
+	return {
+		mode: report.mode ?? null,
+		rootTurns: report.turns?.count ?? null,
+		cells: report.cells ? { total: report.cells.total?.count ?? 0, failed: report.cells.total?.failed ?? 0, root: report.cells.root?.count ?? 0, subagents: report.cells.subagents?.count ?? 0 } : null,
+		depth: depth.verdict ?? null,
+		frames: depth.frames?.count ?? 0,
+		frameCalls: depth.frames?.calls ?? null,
+		subagents: depth.subagents?.count ?? 0,
+		subagentVerdicts: depth.subagents?.verdicts ?? null,
+		workflows: depth.workflows?.runs ?? null,
+		backgroundJobs: depth.backgroundJobs?.count ?? 0,
+		models: (report.usage?.models ?? []).map((model) => ({ model: model.model, responses: model.responses, totalTokens: model.totalTokens })),
+		subscriptionUsd: report.usage?.total?.cost?.subscriptionUsd ?? null,
+		unmeasured: report.usage?.total?.unmeasured ?? 0,
+		guards: report.guardrails?.guards ?? null,
+		hints: report.guardrails?.hints ?? {},
+		usageLimitBlocks: report.guardrails?.usageLimitBlocks ?? null,
+	};
+}
+
+/**
+ * Whether a Claude arm's run proves what the comparison claims: it finished, every response came from the one
+ * model (by the tool's own account and by Claude Code's transcript), on the subscription login (no API key), at
+ * one effort, with no MCP server of the user's and nothing denied. Returns `{ ok, problems }`.
+ */
+export function claudeCheck({ arm, status, models, transcript, apiKeySource, mcpServers, permissionDenials }) {
+	const expected = arm === "ultron-claude" ? `${CLAUDE_PROVIDER}/${CLAUDE_MODEL_ID}` : CLAUDE_MODEL_ID;
+	const problems = [];
+	if (status !== "completed") problems.push(`the run ended as ${status}`);
+	if (models.length === 0 || models.some((model) => model !== expected && model !== CLAUDE_MODEL_ID))
+		problems.push(`models seen by the tool: ${models.join(", ") || "none"} (expected ${expected})`);
+	if (transcript.responses === 0 || transcript.models.length !== 1 || transcript.models[0] !== CLAUDE_MODEL_ID)
+		problems.push(`models in Claude Code's transcript: ${transcript.models.join(", ") || "none"} (expected ${CLAUDE_MODEL_ID})`);
+	if (transcript.efforts.length !== 1) problems.push(`efforts in Claude Code's transcript: ${transcript.efforts.join(", ") || "none recorded"}`);
+	if (apiKeySource && apiKeySource !== "none") problems.push(`an API key is in use (apiKeySource ${apiKeySource}), not the subscription login`);
+	if ((mcpServers ?? []).some((name) => name !== "ultron")) problems.push(`MCP servers loaded: ${mcpServers.join(", ")}`);
+	if ((permissionDenials ?? []).length > 0) problems.push(`tool calls denied: ${permissionDenials.join(", ")}`);
+	return { ok: problems.length === 0, problems };
 }
 
 const CODEX_NON_TOOL_ITEMS = new Set(["agent_message", "reasoning", "error", "todo_list"]);
@@ -616,10 +1007,15 @@ export function networkLookups(commands) {
  * - `completed`: the agent finished by itself;
  * - `timeout`: the wall-clock limit ended it (its working tree is still the prediction);
  * - `provider_error`: its last model request failed (rate limit, proxy or upstream error); the harness retries these;
- * - `agent_crash`: the agent process failed for another reason, or never reached the model.
- * `harness_error` (image pull, container start) is set by the runner, not here.
+ * - `agent_crash`: the agent process failed for another reason, or never reached the model;
+ * - `usage_limit` (Claude arms): the subscription's usage limit was reached, or paid overage was used;
+ * - `auth_error` (Claude arms): Claude Code was not, or no longer, logged in.
+ * `harness_error` (image pull, container start), `auth_unavailable` (the login cannot be passed safely) and
+ * `not_run` (the arm was stopped before this task) are set by the runner, not here.
  */
-export function runStatus({ exitCode, timedOut, turns, errorMessage, ledger }) {
+export function runStatus({ exitCode, timedOut, turns, errorMessage, ledger, usageLimit = false, authError = false }) {
+	if (usageLimit) return "usage_limit";
+	if (authError) return "auth_error";
 	if (timedOut || exitCode === 124 || exitCode === 137) return "timeout";
 	const providerTrouble = ledger && ledger.rateLimited + ledger.failed > 0;
 	if (errorMessage) return providerTrouble || /rate|429|5\d\d|overloaded|timeout|connection/i.test(errorMessage) ? "provider_error" : "agent_crash";
@@ -628,8 +1024,19 @@ export function runStatus({ exitCode, timedOut, turns, errorMessage, ledger }) {
 	return "completed";
 }
 
+const CLAUDE_AUTH_ERROR = /not logged in|please run \/login|invalid api key|authentication[_ ](?:error|failed)|oauth token (?:has )?expired|\b401\b/i;
+
+/** Whether an error text of a Claude arm says the login is missing or was rejected. */
+export function isClaudeAuthError(message) {
+	return typeof message === "string" && CLAUDE_AUTH_ERROR.test(message);
+}
+
 /** Statuses that say nothing about the agent's ability; their tasks are reported apart from unresolved ones. */
-export const HARNESS_FAILURES = new Set(["harness_error", "provider_error", "agent_crash"]);
+export const HARNESS_FAILURES = new Set(["harness_error", "provider_error", "agent_crash", "usage_limit", "auth_error", "auth_unavailable", "not_run"]);
+/** Harness failures that end every arm on the same login: running on would fail the same way, or cost money. */
+export const ARM_STOPPERS = new Set(["usage_limit", "auth_error", "auth_unavailable"]);
+/** Statuses a resumed run does again instead of keeping: the arm was stopped, not the task tried and failed. */
+export const RERUN_STATUSES = new Set(["usage_limit", "auth_error", "auth_unavailable", "not_run"]);
 
 /**
  * The official evaluation's verdict on one instance from its report (`<model>.<run_id>.json`): `resolved`,
@@ -694,6 +1101,25 @@ export function summarize(records, arms = ARMS) {
 	return summary;
 }
 
+/**
+ * How full the subscription's windows were when the first Claude run of a set started and when the last one ended,
+ * as Claude Code reported them. The windows are the account's, shared with everything else running on it, so the
+ * difference bounds what the runs used from above; it means nothing across a window's reset (`resetsAt` differs).
+ */
+export function subscriptionUse(records) {
+	const runs = records.filter((record) => record.claude?.rateLimits?.first && record.startedAt);
+	if (runs.length === 0) return null;
+	const start = (record) => Date.parse(record.startedAt);
+	const end = (record) => start(record) + (record.wallMs ?? 0);
+	const first = runs.reduce((earliest, record) => (start(record) < start(earliest) ? record : earliest));
+	const last = runs.reduce((latest, record) => (end(record) > end(latest) ? record : latest));
+	return {
+		first: { at: first.startedAt, ...first.claude.rateLimits.first },
+		last: { at: new Date(end(last)).toISOString(), ...last.claude.rateLimits.last },
+		note: "The windows are the account's and are shared with everything else running on it, so the difference is an upper bound on what these runs used, and means nothing across a window's reset.",
+	};
+}
+
 /** Tasks where the arms disagree, and the head-to-head counts between two arms. */
 export function headToHead(records, a, b) {
 	const verdicts = (arm) =>
@@ -727,27 +1153,33 @@ const VERDICT_MARK = { resolved: "yes", unresolved: "no", empty_patch: "no (empt
 /** The results as a Markdown document: per-arm summary, then one row per task. */
 export function renderMarkdown(result) {
 	const arms = Object.keys(result.summary);
+	// Claude reports cache writes apart from uncached input; the proxy model has none, and its column stays out.
+	const cacheWrites = arms.some((arm) => (result.summary[arm].tokens.cacheWrite ?? 0) > 0);
 	const lines = [
 		`# SWE-bench Verified, ${result.sample.n} tasks, ${result.model}`,
 		"",
 		`Run \`${result.runId}\`, ${result.date}. Seed \`${result.sample.seed}\`, one run per task and arm, ${result.limits.wallClockMinutes} min wall-clock limit, ${result.limits.concurrency} tasks at a time. Scored by the official SWE-bench evaluation (swebench ${result.swebenchVersion}) in the prebuilt instance images.`,
 		"",
-		"| arm | resolved | unresolved | timeouts | harness failures | eval errors | wall time | turns | tool calls | tokens (in / cached / out) | notional cost |",
+		`| arm | resolved | unresolved | timeouts | harness failures | eval errors | wall time | turns | tool calls | tokens (${cacheWrites ? "in / cache read / cache write / out" : "in / cached / out"}) | notional cost |`,
 		"| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
 	];
 	for (const arm of arms) {
 		const row = result.summary[arm];
+		const tokens = [row.tokens.input, row.tokens.cacheRead, ...(cacheWrites ? [row.tokens.cacheWrite ?? 0] : []), row.tokens.output];
 		lines.push(
-			`| ${arm} | ${row.resolved}/${row.tasks} | ${row.unresolved} | ${row.timeouts} | ${row.harnessFailures.length} | ${row.evalErrors.length} | ${duration(row.wallSeconds * 1000)} | ${thousands(row.turns)} | ${thousands(row.toolCalls)} | ${thousands(row.tokens.input)} / ${thousands(row.tokens.cacheRead)} / ${thousands(row.tokens.output)} | $${row.notionalCostUsd.toFixed(2)} |`,
+			`| ${arm} | ${row.resolved}/${row.tasks} | ${row.unresolved} | ${row.timeouts} | ${row.harnessFailures.length} | ${row.evalErrors.length} | ${duration(row.wallSeconds * 1000)} | ${thousands(row.turns)} | ${thousands(row.toolCalls)} | ${tokens.map(thousands).join(" / ")} | $${row.notionalCostUsd.toFixed(2)} |`,
 		);
 	}
 	lines.push(
 		"",
-		"Cost is notional: tokens at the model's list prices from models.json. The proxy bills a subscription.",
+		// A run with Claude arms says how its cost was taken; the proxy-only sentence is the original one.
+		result.costNote && result.records.some((record) => record.claude)
+			? `Cost is notional: ${result.costNote.replace(/^notionalCostUsd is /, "")}.`
+			: "Cost is notional: tokens at the model's list prices from models.json. The proxy bills a subscription.",
 		"",
 		"## Per task",
 		"",
-		`| instance | ${arms.map((arm) => `${arm}: resolved, time, turns, tokens`).join(" | ")} |`,
+		`| instance | ${arms.map((arm) => `${arm}: resolved, time, turns, tokens, cost`).join(" | ")} |`,
 		`| --- | ${arms.map(() => "---").join(" | ")} |`,
 	);
 	const ids = [...new Set(result.records.map((record) => record.instance_id))];
@@ -756,7 +1188,8 @@ export function renderMarkdown(result) {
 			const record = result.records.find((candidate) => candidate.arm === arm && candidate.instance_id === id);
 			if (!record) return "-";
 			const status = record.status === "completed" ? "" : ` [${record.status}]`;
-			return `${VERDICT_MARK[record.verdict] ?? record.verdict}${status}, ${duration(record.wallMs)}, ${record.turns ?? "-"}, ${thousands(record.tokens?.total)}`;
+			const cost = typeof record.notionalCostUsd === "number" ? `$${record.notionalCostUsd.toFixed(2)}` : "-";
+			return `${VERDICT_MARK[record.verdict] ?? record.verdict}${status}, ${duration(record.wallMs)}, ${record.turns ?? "-"}, ${thousands(record.tokens?.total)}, ${cost}`;
 		});
 		lines.push(`| ${id} | ${cells.join(" | ")} |`);
 	}
@@ -777,11 +1210,35 @@ export function renderMarkdown(result) {
 	lines.push("", "## Checks", "");
 	for (const [arm, check] of Object.entries(result.verification ?? {}))
 		lines.push(
-			`- ${arm}: ${check.ok ? "verified" : "NOT verified"} on ${check.responseModels.join(", ") || "no model"} via ${check.paths.join(", ")}, reasoning effort ${check.reasoningEfforts.join(", ") || "none sent"} (${check.requests} requests seen by the recorder)`,
+			`- ${arm}: ${check.ok ? "verified" : "NOT verified"} on ${check.responseModels.join(", ") || "no model"} via ${check.paths.join(", ")}, reasoning effort ${check.reasoningEfforts.join(", ") || "none sent"} (${check.requests} ${check.source ?? "requests seen by the recorder"})`,
 		);
 	if (result.goldCheck) lines.push(`- gold patches of the same tasks: ${result.goldCheck.resolved}/${result.goldCheck.of} resolved by the same evaluation`);
+	const claudeRuns = result.records.filter((record) => record.claude);
+	if (claudeRuns.length > 0) {
+		lines.push("", "## Claude Code", "");
+		for (const arm of arms) {
+			const runs = claudeRuns.filter((record) => record.arm === arm);
+			if (runs.length === 0) continue;
+			const distinct = (pick) => [...new Set(runs.flatMap(pick))].join(", ") || "none recorded";
+			const denied = runs.flatMap((record) => record.claude.permissionDenials ?? []);
+			lines.push(
+				`- ${arm}: model ${distinct((record) => record.claude.transcript?.models ?? [])}, effort ${distinct((record) => record.claude.transcript?.efforts ?? [])} (Claude Code's session transcripts, ${thousands(sum(runs, (record) => record.claude.transcript?.responses))} responses); tool calls denied: ${denied.length === 0 ? "none" : denied.join(", ")}`,
+			);
+		}
+		const subscription = result.subscription;
+		if (subscription?.first && subscription?.last) {
+			const names = [...new Set([...Object.keys(subscription.first.windows), ...Object.keys(subscription.last.windows)])];
+			const percent = (value) => (typeof value === "number" ? `${Math.round(value * 100)}%` : "?");
+			lines.push(
+				"",
+				`Subscription windows as Claude Code reported them (rate_limit events), first run to last: ${names.map((name) => `${name} ${percent(subscription.first.windows[name]?.utilization)} to ${percent(subscription.last.windows[name]?.utilization)}`).join(", ")}. ${subscription.note}`,
+			);
+		}
+	}
 	const ultronRuns = result.records.filter((record) => record.ultron);
 	if (ultronRuns.length > 0) {
+		// With more than one Ultron arm in a run, the rows say which.
+		const named = new Set(ultronRuns.map((record) => record.arm)).size > 1;
 		lines.push(
 			"",
 			"## How Ultron worked",
@@ -795,7 +1252,7 @@ export function renderMarkdown(result) {
 				.map(([name, count]) => `${name} ${count}`)
 				.join(", ");
 			lines.push(
-				`| ${record.instance_id} | ${cells} | ${errorCells} | ${used} | ${frameCalls} | ${childSessions} | ${loki.beforeWriteChecks} / ${loki.blocked} / ${loki.afterCellFindings} |`,
+				`| ${record.instance_id}${named ? ` (${record.arm})` : ""} | ${cells} | ${errorCells} | ${used} | ${frameCalls} | ${childSessions} | ${loki.beforeWriteChecks} / ${loki.blocked} / ${loki.afterCellFindings} |`,
 			);
 		}
 	}
