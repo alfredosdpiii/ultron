@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { PassThrough } from "node:stream";
 import { fileURLToPath } from "node:url";
-import { afterAll, beforeAll, describe, expect, test } from "vitest";
+import { afterAll, beforeAll, describe, expect, test, vi } from "vitest";
 import { ENV_AGENT_DIR } from "../src/config.ts";
 import { KeybindingsManager } from "../src/core/keybindings.ts";
 import { RlmPane } from "../src/experimental/rlm-pane.ts";
@@ -23,6 +23,8 @@ import { runHook } from "../src/ultron/claude/hooks.ts";
 import { type McpServerHandlers, serveMcp } from "../src/ultron/claude/mcp-protocol.ts";
 import { parseMcpArgs } from "../src/ultron/claude/mcp-server.ts";
 import { parseWatchArgs, pollSnapshot, renderWatchFrame } from "../src/ultron/claude/watch.ts";
+import { readSessionLog } from "../src/ultron/session-log.ts";
+import { buildSessionReport, type SessionReport } from "../src/ultron/session-report.ts";
 
 /**
  * `ultron mcp`: Ultron's REPL as an MCP server for Claude Code. The protocol layer, the control socket (hooks, the
@@ -387,6 +389,51 @@ describe("ultron mcp end to end", () => {
 		} finally {
 			client.close();
 		}
+	}, 30_000);
+
+	test("the session report: Claude Code's turns and cells are counted by the runtime, live and in the file", async () => {
+		const socket = join(runtimeDir, "ultron-claude", "e2e-session.sock");
+		const client = await connectControl(socket);
+		let live: SessionReport;
+		try {
+			live = (await client.request("inspect", { request: "usage.report", payload: {} })) as SessionReport;
+		} finally {
+			client.close();
+		}
+		expect(live.mode).toBe("ultron claude");
+		expect(live.session.name).toBe("claude code");
+		// Two user turns were opened by the UserPromptSubmit hook; cells outside them opened turns of their own.
+		expect(live.turns?.count).toBeGreaterThanOrEqual(2);
+		// Every cell above: 4 + 4 + 2, of which `1/0` failed; none of them is in Ultron's transcript.
+		expect(live.cells).toMatchObject({ source: "counters", total: { count: 10, failed: 1 } });
+		expect(live.cells?.total.apis).toEqual({ bash: 2, "rlm.infer": 1 });
+		expect(live.cells?.root.count).toBe(10);
+		expect(live.guardrails.secretsMasked).toBe(1);
+		expect(live.guardrails.usageLimitBlocks).toBe(0);
+		expect(live.depth.verdict).toBe("depth 1: 1 frame, 0 sub-agents");
+		expect(live.depth.frames).toMatchObject({ count: 1, complete: 1, calls: { infer: 1, map: 0 } });
+		expect(live.depth.frames.byModel).toMatchObject([{ model: "stub/frames", count: 1 }]);
+		// The root's own tokens are Claude Code's; the frame's are Ultron's, on a priced model.
+		expect(live.root.models).toEqual([]);
+		expect(live.usage.lanes.root.responses).toBe(0);
+		expect(live.usage.lanes.frames).toMatchObject({ responses: 1, totalTokens: 12 });
+		expect(live.usage.lanes.frames.cost.reportedUsd).toBeGreaterThan(0);
+		expect(Object.keys(live.unrecorded).sort()).toEqual(["memory.jev", "root.models"]);
+		// The counters reach the session file shortly after a change, so `ultron usage` reads the same offline.
+		const remembered = JSON.parse(
+			readFileSync(join(work, "agent", "claude-code", "sessions", "e2e-session.json"), "utf8"),
+		) as { path: string };
+		await vi.waitFor(
+			async () => {
+				const offline = buildSessionReport(await readSessionLog(remembered.path));
+				expect(offline.mode).toBe("ultron claude");
+				expect(offline.cells).toEqual(live.cells);
+				expect(offline.turns?.count).toBe(live.turns?.count);
+				expect(offline.depth).toEqual(live.depth);
+				expect(offline.guardrails.secretsMasked).toBe(1);
+			},
+			{ timeout: 10_000, interval: 200 },
+		);
 	}, 30_000);
 
 	test("the session is remembered by Claude Code's session id", () => {

@@ -17,6 +17,7 @@ import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { getBundledLokiPath } from "../src/config.ts";
 import { RpcClient } from "../src/modes/rpc/rpc-client.ts";
 import { findPython } from "../src/ultron/loki.ts";
+import type { SessionReport } from "../src/ultron/session-report.ts";
 import {
 	ScriptedProvider,
 	type ScriptedReply,
@@ -160,5 +161,17 @@ describe.skipIf(!ready)("Loki in a real session", () => {
 		expect(later).toContain("leaked.py:1: loki/secret");
 		// The notice is shown once.
 		expect(provider.requests.at(-1)!.raw.match(/Loki set up and committed/g)).toHaveLength(1);
+
+		// The session report (`/usage`) holds what Loki did: the counters outlive the worker's memory.
+		const response = (await (
+			client as unknown as { send(command: object): Promise<{ success: boolean; data?: unknown }> }
+		).send({ type: "inspect", request: "usage.report", payload: {} })) as { success: boolean; data?: unknown };
+		const loki = (response.data as SessionReport).guardrails.guards?.Loki;
+		expect(loki).toBeDefined();
+		expect(loki!.checks).toBeGreaterThanOrEqual(2);
+		expect(loki!.blocked).toBe(1);
+		expect(loki!.afterChecks).toBeGreaterThanOrEqual(1);
+		expect(loki!.afterFindings).toBeGreaterThanOrEqual(1);
+		expect(loki!.ms).toBeGreaterThan(0);
 	}, 240_000);
 });

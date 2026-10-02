@@ -648,6 +648,7 @@ export class NativeUsageLedger implements NativeUsageLedgerLike {
 	private readonly defaultRootId: string;
 	private readonly now: () => number;
 	private readonly detailedRoots: number;
+	private readonly onRefused: NativeUsageLedgerOptions["onRefused"];
 	private document: StoredDocument = emptyDocument();
 	private loading?: Promise<void>;
 	private tail: Promise<void> = Promise.resolve();
@@ -662,6 +663,17 @@ export class NativeUsageLedger implements NativeUsageLedgerLike {
 		this.limits = normalizeLimits(options.limits);
 		this.defaultRootId = options.rootId ?? DEFAULT_ROOT_ID;
 		this.now = options.now ?? Date.now;
+		this.onRefused = options.onRefused;
+	}
+
+	/** A limit refusal, reported to `onRefused` before it is thrown. */
+	private refused(message: string): Error {
+		try {
+			this.onRefused?.(message);
+		} catch {
+			// Observers never change the refusal.
+		}
+		return new Error(message);
 	}
 
 	private assertHealthy(): void {
@@ -767,22 +779,22 @@ export class NativeUsageLedger implements NativeUsageLedgerLike {
 				root.deadlineAt = Number.isFinite(this.limits.maxWallMs) ? now + this.limits.maxWallMs : null;
 			}
 			if (root.deadlineAt !== null && now >= root.deadlineAt)
-				throw new Error(`Usage wall deadline exceeded for root ${rootId}`);
+				throw this.refused(`Usage wall deadline exceeded for root ${rootId}`);
 			if (
 				request.kind === "task" &&
 				root.reservations.filter((reservation) => reservation.kind === "task").length >=
 					this.limits.maxAdmittedTasks
 			)
-				throw new Error(`Usage admitted-task limit exceeded for root ${rootId}`);
+				throw this.refused(`Usage admitted-task limit exceeded for root ${rootId}`);
 			const modelWork = request.kind === "model" || (request.kind === "task" && request.modelBacked !== false);
 			const exhausted = modelWork ? rootExhaustion(root, this.limits) : undefined;
-			if (exhausted) throw new Error(exhausted);
+			if (exhausted) throw this.refused(exhausted);
 			const asked = request.deadlineAt ?? (request.timeoutMs === undefined ? null : now + request.timeoutMs);
 			// A child inherits whatever remains of the root's wall budget; a longer request is capped, not refused.
 			const requestedDeadline =
 				asked === null ? root.deadlineAt : root.deadlineAt === null ? asked : Math.min(asked, root.deadlineAt);
 			if (requestedDeadline !== null && requestedDeadline <= now)
-				throw new Error(`Usage deadline has expired for root ${rootId}`);
+				throw this.refused(`Usage deadline has expired for root ${rootId}`);
 			const reservation: StoredReservation = {
 				id: `ultron-usage-${cryptoRandomUUID()}`,
 				rootId,
@@ -998,6 +1010,8 @@ export type NativeUsageLedgerOptions = {
 	limits?: NativeUsageLimits;
 	rootId?: string;
 	now?: () => number;
+	/** Told when a reservation is refused because a limit was reached (wall, admitted tasks, turns, tokens, cost). */
+	onRefused?: (reason: string) => void;
 	/** Most recently active roots kept call by call (default 50); older idle roots fold into the history summary. */
 	detailedRoots?: number;
 };

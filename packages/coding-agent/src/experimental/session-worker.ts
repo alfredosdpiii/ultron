@@ -108,7 +108,7 @@ import { createInferenceRuntime, createSessionFrameStore } from "../ultron/rlm/i
 import { type KernelExecutionResult, type KernelHostHandler, RlmKernel } from "../ultron/rlm/kernel.ts";
 import { KernelPool, KernelPoolCapacityError } from "../ultron/rlm/kernel-pool.ts";
 import { type DetachedTaskEnd, type NativeExternalChildRunner, NativeRlmHost } from "../ultron/rlm/native-host.ts";
-import { maskCellOutput } from "../ultron/rlm/output-secrets.ts";
+import { maskCellOutputCounted } from "../ultron/rlm/output-secrets.ts";
 import { truncateToolOutput } from "../ultron/rlm/output-truncation.ts";
 import {
 	defaultBuiltinToolNames,
@@ -124,6 +124,9 @@ import { createSessionTaskStore } from "../ultron/rlm/task-store.ts";
 import { verdictTag } from "../ultron/rlm/verdict.ts";
 import { CellImages, VIEW_IMAGE_REQUEST, type ViewImageOptions } from "../ultron/rlm/view-image.ts";
 import { createScheduleModule } from "../ultron/schedules.ts";
+import { readSessionLog } from "../ultron/session-log.ts";
+import { buildSessionReport, SESSION_REPORT_REQUEST } from "../ultron/session-report.ts";
+import { SESSION_STATS_MODULE, SessionStatsRecorder } from "../ultron/session-stats.ts";
 import { createSkillModule } from "../ultron/skills.ts";
 import {
 	SkillExtractionNudger,
@@ -167,16 +170,19 @@ type RlmHostHandler = (
 /** A cell that raised: the message is the (truncated) output and traceback; `ename` is the exception type. */
 export class RlmCellError extends Error {
 	readonly ename: string;
-	constructor(message: string, ename: string) {
+	/** Secrets masked in the message. */
+	readonly masked: number;
+	constructor(message: string, ename: string, masked = 0) {
 		super(message);
 		this.name = "RlmCellError";
 		this.ename = ename;
+		this.masked = masked;
 	}
 }
 
 /** Worker adapter around the shared, bounded Python protocol implementation. */
-/** One cell's tool result: its text and the images `view_image` attached. */
-export type UltronRlmCellOutput = { text: string; images: CellImages };
+/** One cell's tool result: its text, the images `view_image` attached, and how many secrets were masked in the text. */
+export type UltronRlmCellOutput = { text: string; images: CellImages; masked: number };
 
 export class UltronRlmKernel {
 	private readonly kernel: RlmKernel;
@@ -237,16 +243,12 @@ export class UltronRlmKernel {
 			const summary = `${result.error?.ename ?? "PythonError"}: ${result.error?.evalue ?? "Execution failed"}`;
 			const traceback = (result.error?.traceback ?? []).join("\n");
 			const failure = !traceback ? summary : traceback.endsWith(summary) ? traceback : `${traceback}\n${summary}`;
-			throw new RlmCellError(
-				truncateToolOutput(maskCellOutput([stdout, stderr, failure].filter(Boolean).join("\n"))),
-				result.error?.ename ?? "PythonError",
-			);
+			const masked = maskCellOutputCounted([stdout, stderr, failure].filter(Boolean).join("\n"));
+			throw new RlmCellError(truncateToolOutput(masked.text), result.error?.ename ?? "PythonError", masked.masked);
 		}
 		// Secrets are masked before the cut, so a truncation boundary cannot split one past recognition.
-		return {
-			text: truncateToolOutput(maskCellOutput([stdout, stderr, result.result].filter(Boolean).join("\n"))),
-			images,
-		};
+		const masked = maskCellOutputCounted([stdout, stderr, result.result].filter(Boolean).join("\n"));
+		return { text: truncateToolOutput(masked.text), images, masked: masked.masked };
 	}
 
 	async resetScratch(): Promise<void> {
@@ -373,10 +375,13 @@ export function createUltronRlmTool(
 		 * directory and extra environment. Read when the lane's kernel starts.
 		 */
 		readonly laneWorkspace?: (lane: string) => { cwd: string; env: Record<string, string> } | undefined;
+		/** Counts each cell and each host request a kernel makes, for the session report (session-stats.ts). */
+		readonly stats?: Pick<SessionStatsRecorder, "cell" | "hostCall">;
 	} = {},
 ): UltronRlmTool {
 	const hints = options.hints;
 	const fileHooks = options.fileHooks;
+	const stats = options.stats;
 	// Host requests are observed per lane so the hints can see what a cell waited on, polled or detached.
 	const observedHandler = (lane: string): KernelHostHandler => {
 		const handler: KernelHostHandler =
@@ -392,11 +397,23 @@ export function createUltronRlmTool(
 							hints.observe(lane, type, payload, result, startedAt);
 						}
 					};
-		if (fileHooks === undefined) return handler;
-		return async (type, payload, signal) =>
-			type === BEFORE_WRITE_REQUEST
-				? { results: await fileHooks.beforeWrite(proposedWrites(payload), { lane, ...(signal ? { signal } : {}) }) }
-				: handler(type, payload, signal);
+		const checked: KernelHostHandler =
+			fileHooks === undefined
+				? handler
+				: async (type, payload, signal) =>
+						type === BEFORE_WRITE_REQUEST
+							? {
+									results: await fileHooks.beforeWrite(proposedWrites(payload), {
+										lane,
+										...(signal ? { signal } : {}),
+									}),
+								}
+							: handler(type, payload, signal);
+		if (stats === undefined) return checked;
+		return (type, payload, signal) => {
+			stats.hostCall(type);
+			return checked(type, payload, signal);
+		};
 	};
 	// Idle kernels are evicted after a snapshot, so a lane's declared state survives and a crowded session
 	// cannot keep unbounded Python processes alive (A43). Running cells are never evicted.
@@ -522,7 +539,17 @@ export function createUltronRlmTool(
 			const run = async () => {
 				fileHooks?.cellStarted(lane);
 				try {
-					return await kernels.use(lane, (kernel) => kernel.executeCell(params.code, context, imageOptions));
+					const output = await kernels.use(lane, (kernel) =>
+						kernel.executeCell(params.code, context, imageOptions),
+					);
+					stats?.cell(lane, params.code, { failed: false, masked: output.masked });
+					return output;
+				} catch (error) {
+					stats?.cell(lane, params.code, {
+						failed: true,
+						masked: error instanceof RlmCellError ? error.masked : 0,
+					});
+					throw error;
 				} finally {
 					fileHooks?.cellEnded(lane);
 				}
@@ -1733,10 +1760,18 @@ export async function createUltronRuntime(
 		readHandleBytes: readHandleBytes(),
 		...(external === undefined ? {} : { rootDelivery: "next-call" as const }),
 	});
+	// Counters for the session report (`/usage`, `ultron usage`): cells, guard outcomes, steers, refused work.
+	const sessionStats = new SessionStatsRecorder({
+		store: createSessionModuleStore(session, SESSION_STATS_MODULE),
+		root: external === undefined ? "lane" : "external",
+	});
 	// Before-write and after-cell file hooks: Loki and extensions' `before_file_write`/`after_cell_changes` handlers.
 	const fileHooks = new FileHooks({
 		cwd: options.metadata.cwd,
-		...(lokiRecord === undefined ? {} : { onRecord: lokiRecord }),
+		onRecord: (record) => {
+			lokiRecord?.(record);
+			sessionStats.guard(record);
+		},
 		// A worktree subagent's writes resolve against, and are checked in, its own worktree.
 		laneRoot: (lane) => {
 			const workspace = host?.laneWorkspace(lane);
@@ -1771,6 +1806,7 @@ export async function createUltronRuntime(
 			autoResizeImages: () => settingsManager.getImageAutoResize(),
 			fileHooks,
 			laneWorkspace: (lane) => host?.laneWorkspace(lane),
+			stats: sessionStats,
 		},
 	);
 	// Pi's native file tools (ULTRON_TOOLS=native) work in a worktree subagent's own worktree.
@@ -2029,6 +2065,7 @@ export async function createUltronRuntime(
 		// every model turn of a root and its descendants.
 		const usage = createSessionUsageLedger(session, {
 			limits: nativeUsageLimitsFromEnv(process.env, settingsManager.getRootBudgetSettings()),
+			onRefused: () => sessionStats.usageLimitBlock(),
 		});
 		// A session written by a newer Ultron fails here, naming the value and its format version, before any of
 		// it is loaded or rewritten.
@@ -2097,7 +2134,12 @@ export async function createUltronRuntime(
 			...(external?.rootFinish === undefined ? {} : { rootFinish: external.rootFinish }),
 			pinLane: (lane, holder) => rlmTool.pin(lane, holder),
 			unpinLane: (lane, holder) => rlmTool.unpin(lane, holder),
-			onTaskEnd: (task, info) => contextControl.taskEnded(task, info),
+			onTaskEnd: (task, info) => {
+				contextControl.taskEnded(task, info);
+				if (task.definition.startsWith("rlm-child@") && info.model !== undefined)
+					sessionStats.childModel(task.id, info.model);
+			},
+			onMerge: (taskId, status) => sessionStats.merge(taskId, status),
 			onDetachedEnd: (end) => {
 				if (!end.awaited) events?.publish(taskEvent(end));
 			},
@@ -2224,6 +2266,10 @@ export async function createUltronRuntime(
 		const removeRootTurnListener = harness.events.on("run_end", (event) => {
 			if (event.lane === "main") host?.endRootTurn(event.runId);
 		});
+		// A session in which the root ran keeps its counters, even when they are all zero.
+		const removeStatsListener = harness.events.on("run_start", (event) => {
+			if (event.lane === "main") sessionStats.touch();
+		});
 		// Automatic per-turn memory for the root lane (ULTRON_AUTO_MEMORY=off|recall|on, default on). It needs
 		// both Hindsight and Jev: without Jev nothing could pass the gate, so it stays out of the way.
 		const autoMemoryMode = autoMemoryModeFromEnv(process.env.ULTRON_AUTO_MEMORY);
@@ -2264,7 +2310,9 @@ export async function createUltronRuntime(
 		});
 		const removeBudgetToolHook = harness.hooks.on("before_tool", async (event) => {
 			const reason = await usage.turnBudgetExhausted(host?.usageRootForLane(event.lane, event.runId));
-			return reason === undefined ? undefined : { block: { reason, terminate: true } };
+			if (reason === undefined) return undefined;
+			sessionStats.usageLimitBlock();
+			return { block: { reason, terminate: true } };
 		});
 		// Tool calls the harness rejects before `before_tool` (an unknown tool, invalid arguments) would otherwise
 		// loop past the limit, so a spent root's next model request is refused as well.
@@ -2272,20 +2320,22 @@ export async function createUltronRuntime(
 			if (event.step !== "assistant") return undefined;
 			await pendingTurnRecords.settled();
 			const reason = await usage.turnBudgetExhausted(host?.usageRootForLane(event.lane, event.runId));
-			return reason === undefined ? undefined : { block: { reason } };
+			if (reason === undefined) return undefined;
+			sessionStats.usageLimitBlock();
+			return { block: { reason } };
 		});
 		// Brake for open-ended research loops on the root agent (ULTRON_TOOL_ROUNDS_NUDGE, 0 disables). While
 		// subagents or tasks the root started are running it says to wait for them instead of checking on them.
-		const nudger = new ToolRoundNudger(
-			toolRoundsNudgeFromEnv(process.env.ULTRON_TOOL_ROUNDS_NUDGE),
-			(message) => lane.steer(message, undefined, BACKGROUND_CONTEXT),
-			{ asyncEvents: asyncEventsEnabled(process.env.ULTRON_ASYNC_EVENTS) },
-		);
+		const steerRoot = (message: string) => {
+			sessionStats.nudge(message);
+			return lane.steer(message, undefined, BACKGROUND_CONTEXT);
+		};
+		const nudger = new ToolRoundNudger(toolRoundsNudgeFromEnv(process.env.ULTRON_TOOL_ROUNDS_NUDGE), steerRoot, {
+			asyncEvents: asyncEventsEnabled(process.env.ULTRON_ASYNC_EVENTS),
+		});
 		// After a long streak of successful tool rounds, suggest saving the procedure as a code skill
 		// (ULTRON_SKILL_NUDGE, 0 disables).
-		const skillNudger = new SkillExtractionNudger(skillNudgeFromEnv(process.env.ULTRON_SKILL_NUDGE), (message) =>
-			lane.steer(message, undefined, BACKGROUND_CONTEXT),
-		);
+		const skillNudger = new SkillExtractionNudger(skillNudgeFromEnv(process.env.ULTRON_SKILL_NUDGE), steerRoot);
 		const removeNudgeTurnListener = harness.events.on("turn_end", (event) => {
 			if (event.lane !== "main") return;
 			const toolCalls = event.message.content.filter((part) => part.type === "toolCall").length;
@@ -2320,14 +2370,23 @@ export async function createUltronRuntime(
 								context,
 							),
 						host: {
-							beginRootTurn: (runId) => activeHost.beginRootTurn(runId),
-							endRootTurn: (runId) => activeHost.endRootTurn(runId),
+							// Claude Code's turns leave no run in the session: the counters keep their number and time.
+							beginRootTurn: (runId) => {
+								sessionStats.externalTurnStarted(runId);
+								activeHost.beginRootTurn(runId);
+							},
+							endRootTurn: (runId) => {
+								sessionStats.externalTurnEnded(runId);
+								activeHost.endRootTurn(runId);
+							},
 							rootIdOfRun: (runId) => activeHost.rootIdOfRun(runId),
 							pendingRootNotifications: () => activeHost.pendingRootNotifications(),
 						},
 						usage: { turnBudgetExhausted: (rootId) => usage.turnBudgetExhausted(rootId) },
 						hints: cellHints,
 						fileHooks,
+						onNudge: (message) => sessionStats.nudge(message),
+						onUsageLimit: () => sessionStats.usageLimitBlock(),
 						...(autoMemory === undefined ? {} : { autoMemory }),
 						lokiNotice: loki.notice,
 						...(loki.context === undefined ? {} : { lokiContext: loki.context }),
@@ -2352,6 +2411,7 @@ export async function createUltronRuntime(
 				await claudeLanes?.close();
 				removeLokiListeners();
 				removeRootTurnListener();
+				removeStatsListener();
 				removeToolCallListeners();
 				removeAsyncEvents();
 				await events?.close();
@@ -2368,6 +2428,7 @@ export async function createUltronRuntime(
 				await legacyExtensions?.close();
 				await rlmTool.close();
 				await host?.close();
+				await sessionStats.close();
 			},
 			lane,
 			modelRuntime,
@@ -2377,6 +2438,17 @@ export async function createUltronRuntime(
 			},
 			inspect: async (request, payload, context) => {
 				if (request === "rlm.pool") return rlmTool.poolStats();
+				// The session report (`/usage`): the session file as written so far, plus the counters still in memory.
+				if (request === SESSION_REPORT_REQUEST) {
+					const providers = new Set<string>();
+					for (const model of modelRuntime.getModels()) providers.add(model.provider);
+					return buildSessionReport(await readSessionLog(options.metadata.path), {
+						stats: await sessionStats.snapshot(),
+						subscriptionProviders: [...providers].filter((provider) =>
+							modelRuntime.isUsingSubscription(provider),
+						),
+					});
+				}
 				// Root-owned work whose completion may still re-invoke the root (print clients wait for it).
 				if (request === "async.pending") {
 					if (!events?.enabled) return { pending: false, jobs: 0, tasks: 0, events: 0 };

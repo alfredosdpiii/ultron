@@ -51,6 +51,9 @@ export interface ExternalRootDeps {
 	toolRoundsNudge: number;
 	skillNudge: number;
 	asyncEvents: boolean;
+	/** Told each steer appended to a cell result, and each cell refused because the turn's budget was spent. */
+	onNudge?: (message: string) => void;
+	onUsageLimit?: () => void;
 	now?: () => number;
 }
 
@@ -72,6 +75,7 @@ export class ExternalRootController {
 		this.#deps = deps;
 		const note = async (message: string) => {
 			this.#notes.push(message);
+			deps.onNudge?.(message);
 		};
 		this.#nudger = new ToolRoundNudger(deps.toolRoundsNudge, note, { asyncEvents: deps.asyncEvents, nextCall: true });
 		this.#skillNudger = new SkillExtractionNudger(deps.skillNudge, note);
@@ -188,11 +192,13 @@ export class ExternalRootController {
 		const exhausted = await this.#deps.usage
 			.turnBudgetExhausted(this.#deps.host.rootIdOfRun(turn))
 			.catch(() => undefined);
-		if (exhausted !== undefined)
+		if (exhausted !== undefined) {
+			this.#deps.onUsageLimit?.();
 			return {
 				content: [{ type: "text", text: `${lead}[Ultron] ${exhausted}; answer with what you have.` }],
 				isError: true,
 			};
+		}
 		const invocation: AgentHarnessToolInvocation = {
 			invocationId: `${turn}:${this.#cells}`,
 			operationId: `${EXTERNAL_ROOT_OPERATION}${turn}`,

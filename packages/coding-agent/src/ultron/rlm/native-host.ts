@@ -566,7 +566,9 @@ export type NativeHostOptions = {
 	pinLane?: (lane: string, holder: string) => boolean;
 	unpinLane?: (lane: string, holder: string) => void;
 	/** Called once a task's terminal result is durable (context control collapses returned results on it). */
-	onTaskEnd?: (task: NativeTask, info: { cost: number | null }) => void;
+	onTaskEnd?: (task: NativeTask, info: { cost: number | null; model?: string }) => void;
+	/** Called when `rlm.merge` settles how a worktree child's branch ended (`merged`, `conflict`, `empty`). */
+	onMerge?: (taskId: string, status: string) => void;
 	/** Called once a detached task's terminal result is durable (completion events). */
 	onDetachedEnd?: (end: DetachedTaskEnd) => void;
 	/** Extra fields for `agents.status` (for example shell jobs), per calling lane. */
@@ -678,6 +680,7 @@ export class NativeRlmHost {
 	private readonly unpinLane: NativeHostOptions["unpinLane"];
 	private readonly onTaskEnd: NativeHostOptions["onTaskEnd"];
 	private readonly onDetachedEnd: NativeHostOptions["onDetachedEnd"];
+	private readonly onMerge: NativeHostOptions["onMerge"];
 	private readonly statusExtras: NativeHostOptions["statusExtras"];
 	private readonly workspace: string | undefined;
 	private readonly externalChild: NativeHostOptions["externalChild"];
@@ -709,6 +712,7 @@ export class NativeRlmHost {
 		this.unpinLane = options.unpinLane;
 		this.onTaskEnd = options.onTaskEnd;
 		this.onDetachedEnd = options.onDetachedEnd;
+		this.onMerge = options.onMerge;
 		this.statusExtras = options.statusExtras;
 		this.workspace = options.workspace;
 		this.externalChild = options.externalChild;
@@ -1175,7 +1179,10 @@ export class NativeRlmHost {
 				const awaited = (task.waiters ?? 0) > 0;
 				task.resolve?.(committed.result);
 				try {
-					this.onTaskEnd?.(publicRecord(task), { cost: task.cost ?? null });
+					this.onTaskEnd?.(publicRecord(task), {
+						cost: task.cost ?? null,
+						...(task.model === undefined ? {} : { model: task.model }),
+					});
 				} catch {
 					// Observers never affect a task's durable result.
 				}
@@ -1243,7 +1250,7 @@ export class NativeRlmHost {
 				diffstat: commit.diffstat,
 				...(empty && !keepWorktrees() ? { removed: true } : {}),
 			};
-			if (empty) task.mergeStatus = "empty";
+			if (empty) this.merged(task, "empty");
 		} catch (error) {
 			record.state = "failed";
 			await saveRecord(record).catch(() => {});
@@ -1283,6 +1290,16 @@ export class NativeRlmHost {
 				return baseline.entries.get(inside) !== now.entries.get(inside);
 			}),
 		};
+	}
+
+	/** How a worktree child's merge ended: kept for the graph view and told to the session's counters. */
+	private merged(task: TaskRecord, status: string): void {
+		task.mergeStatus = status;
+		try {
+			this.onMerge?.(task.id, status);
+		} catch {
+			// Observers never affect a merge.
+		}
 	}
 
 	private abortLane(task: TaskRecord): void {
@@ -1466,7 +1483,7 @@ export class NativeRlmHost {
 				if (onConflict !== "skip") stoppedAt = task.id;
 				continue;
 			}
-			task.mergeStatus = outcome.status;
+			this.merged(task, outcome.status);
 			const record = task.worktree ?? (await listRecords(target)).find((item) => item.taskId === task.id);
 			if (outcome.status === "conflict") {
 				if (record !== undefined) {

@@ -60,6 +60,7 @@ Pi saves sessions automatically unless session persistence is disabled.
 - `/resume` opens another saved session.
 - `/name` gives the current session a recognizable name.
 - `/session` shows its file, ID, message count, token usage, and cost.
+- `/usage` shows what the session did: depth (frames, sub-agents), cells, tokens and cost per lane and model, and guardrail outcomes. `ultron usage` prints the same for any saved session.
 
 Use `/tree`, `/fork`, or `/clone` when you want to explore another approach without losing existing work. Use `/compact` to reduce the conversation history sent to the model. See [Sessions and Context](sessions.md) for these workflows.
 

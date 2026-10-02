@@ -162,6 +162,67 @@ lookup, so unrelated memories never leak into answers.
   with the `rlmPaneAutoOpen` setting or `ULTRON_RLM_PANE_AUTO=off`). While nodes run, a wave summary sits above the input.
 - **Jev's presence**: a footer indicator that pulses when Jev decides, one-line notes in the transcript showing what
   memory was used and whether the turn was kept, and a `/jev` view with a decision timeline and threshold gauges.
+- **The session report** (`/usage`, `ultron usage`) answers "did this session use depth, or only the root?" without
+  a script over the session file: turns and wall time, cells and the REPL APIs they named, frames and sub-agents
+  (by model, with verdict checks, worktree branches and merges), tokens and cost per lane kind and per model, what the
+  guardrails did (Loki, masked secrets, hints, steers, refused work) and Jev's decisions. `/usage` reports the
+  running session; `ultron usage [session-id|path]` reads any session file offline (no model call, no server, nothing
+  written), `--last N` prints one line per recent session, and `--json` is the same report for scripts
+  (`ultron.session-report/1`). It works for `ultron`, `ultron --claude` and `ultron claude` sessions; a number a
+  session did not keep is printed as `not recorded`, and a cost nobody reported as `unknown`, never as zero.
+
+  ```text
+  $ ultron usage
+  Session 01a0fae6-d1e8-716d-b0c4-c136bcf29a2a  [ultron]
+  ~/work/demo  ·  2026-10-02 08:37 to 2026-10-02 08:37  ·  348.8 kB
+
+  Depth      depth 2: 4 frames, 4 sub-agents (1 nested)
+  Turns      1 turn, 1s wall
+  Root       scripted/scripted (4 responses)
+  Cells      6 cells, 1 failed
+             bash 1 · write 1 · rlm.infer 1 · rlm.map 1 · rlm.spawn 2 · rlm.collect 2 · rlm.merge 1
+             root 3 · sub-agents 3
+  Frames     4: 4 complete · 906 tokens
+             from 1 rlm.map call and 1 rlm.infer call
+             scripted/scripted  4 frames  906 tokens
+  Sub-agents 4: 4 completed · max depth 2 (1 nested)
+             verdicts: 2 verified · 0 contradicted · 2 unverified (2 without a verdict)
+             scripted/scripted  4 sub-agents  18.7k tokens
+             worktree ultron/01a0fae6/writer: 1 file, merge merged
+  Workflows  0 runs
+  Other work 0 typed-agent tasks · 0 background jobs
+
+  Tokens and cost
+    lane        responses  input  output  cache read  cache write  total  cost
+    root                4  11.1k      32           0            0  11.1k  unknown
+    frames              4    874      32           0            0    906  unknown
+    sub-agents          7  18.7k      56           0            0  18.7k  unknown
+    total              15  30.6k     120           0            0  30.7k  unknown
+    model              responses  input  output  cache read  cache write  total  cost
+    scripted/scripted         15  30.6k     120           0            0  30.7k  unknown
+    unknown: 15 responses used tokens and reported no price.
+
+  Guardrails
+    Loki     no write was checked
+    Secrets  0 masked
+    Hints    stuck-loop 0
+    Nudges   tool rounds 0 · wait 0 · skill 0
+    Limits   0 usage-limit blocks
+
+  Memory
+    Jev      not recorded (no decision recorded: Jev not configured, or never asked)
+
+  $ ultron usage --last 3
+  LAST ACTIVE       ID             CWD    MODE           MODEL           TURNS  CELLS  FRAMES  SUBS    TOKENS  COST                           DEPTH
+  2026-09-01 15:00  cccccccc-0003  ~/lib  ultron         priced/model-a      1      4       1     6     14.9k  $0.560                         depth 2: 1 frame, 6 sub-agents (1 nested), 1 typed-agent task, 1 background job
+  2026-09-01 14:00  bbbbbbbb-0002  ~/app  ultron         priced/model-a      1      1       4     0      1.9k  $0.030 + unknown (3 unpriced)  depth 1: 4 frames, 0 sub-agents
+  2026-09-01 13:00  eeeeeeee-0005  ~/app  ultron claude  Claude Code       n/r    n/r       1     2  11.2k +?  $0.610 (sub)                   depth 1: 1 frame, 2 sub-agents
+  n/r: not recorded by that session (never zero). Tokens and cost of an `ultron claude` session leave out the root, which is Claude Code's.
+  ```
+
+  The first report is a scripted test session (its model has no price); the table is the test fixtures'. Under
+  `ultron claude` the root's transcript, tokens and cost are Claude Code's, so Ultron counts that session's turns and
+  cells itself; a session written before it did reports them as `n/r`.
 - **A TUI that keeps up with long sessions.** Streaming a token, polling the RLM state or ticking a spinner used to
   lay out the whole transcript again. In a 400-entry session that took over 300 ms per event, with 1.1 to 1.5 s
   stalls on every idle poll. Now only the part that changed is redrawn, and a poll redraws only when its data changed.
@@ -334,6 +395,7 @@ ultron -p "why does test_parser fail?"   # one-shot print mode
 ultron --claude                          # the same TUI, with Claude Code (Opus 5.5) as the model
 ultron claude                            # Claude Code's own TUI, with Ultron's REPL as its only tool
 ultron --mode rpc                        # Pi-compatible JSONL RPC
+ultron usage --last 5                    # what recent sessions did: depth, cells, tokens, cost
 ```
 
 `ultron setup` configures a provider. Pi's ways work too: `/login` for subscription providers, or
@@ -341,7 +403,7 @@ ultron --mode rpc                        # Pi-compatible JSONL RPC
 `~/.ultron/agent/models.json`.
 
 Useful keys: Up/Down and Alt+R for prompt history, Ctrl+R for the RLM panel, Alt+W for the RLM pane, Alt+G for the full-screen graph,
-Alt+J for Jev, Ctrl+O to expand cells and help. `/hotkeys` lists them all.
+Alt+J for Jev, Ctrl+O to expand cells and help. `/hotkeys` lists them all, and `/usage` reports what the session did.
 
 ### Running several sessions
 

@@ -242,6 +242,30 @@ Add `--force` to reinstall Pi when the selected update includes Pi.
 - `-a`, `--approve` trusts project-local files for one command. `-na`, `--no-approve` ignores trust-gated project-local files.
 - Append `-h` or `--help` to a command for its exact usage and option constraints.
 
+## Session report (Ultron)
+
+```sh
+ultron usage                 # the most recent session of this folder in which something ran
+ultron usage 01a0ee49        # a session by ID or ID prefix, a session file path, or a Claude Code session ID
+ultron usage --last 10       # one line per recent session, across folders
+ultron usage --json          # the same report as JSON (schema ultron.session-report/1)
+```
+
+`ultron usage` prints what a session did: turns and wall time, RLM cells and the REPL APIs they named, depth (frames, sub-agents with verdict checks and worktree merges, workflows, typed-agent tasks, background jobs) with a one-line verdict such as `root only` or `depth 2: 6 sub-agents (2 nested)`, tokens and cost per lane kind (root, frames, sub-agents) and per model, guardrail outcomes, and Jev decisions. `/usage` shows the same report for the running session.
+
+It reads session files only: no model call, no server, and nothing is written, so it is safe on a session that is running. It reports `ultron`, `ultron --claude`, and `ultron claude` sessions. A value the session did not keep is printed as `not recorded` (`n/r` in the table, `null` in JSON with the reason under `unrecorded`), and a cost nobody reported as `unknown`; neither is printed as zero. A cost marked `(sub)` is the notional figure of a subscription login, not a charge.
+
+| Option | Description |
+|---|---|
+| `--last <N>` | A table of the N most recent sessions: last activity, folder, mode, root model, turns, cells, frames, sub-agents, tokens, cost, depth verdict |
+| `--here` | With `--last`: only sessions of the current folder |
+| `--all` | With `--last`: include sessions in which nothing ran |
+| `--json` | The report as JSON; with `--last`, `{ "schema": "ultron.session-report-list/1", "sessions": [...] }` |
+| `--utc` | Print times in UTC |
+| `--sessions-root <dir>` | Where sessions are kept; default `ULTRON_CODING_AGENT_SESSION_DIR`, else the profile's sessions directory |
+
+Usage errors exit with status `2`; a session that cannot be found or read exits with status `1`.
+
 ## Credential commands
 
 ```sh

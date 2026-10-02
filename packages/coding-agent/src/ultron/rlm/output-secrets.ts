@@ -19,6 +19,14 @@ export function defaultSecretDetector(): SecretDetector {
 
 /** `text` with secrets masked, unless ULTRON_MASK_SECRETS turns masking off. */
 export function maskCellOutput(text: string, env: NodeJS.ProcessEnv = process.env): string {
-	if (!text || !maskSecretsEnabled(env)) return text;
-	return defaultSecretDetector().redact(text);
+	return maskCellOutputCounted(text, env).text;
+}
+
+/** {@link maskCellOutput}, with how many secrets were masked (for the session report's count). */
+export function maskCellOutputCounted(
+	text: string,
+	env: NodeJS.ProcessEnv = process.env,
+): { text: string; masked: number } {
+	if (!text || !maskSecretsEnabled(env)) return { text, masked: 0 };
+	return defaultSecretDetector().redactCounted(text);
 }

@@ -71,6 +71,7 @@ import { runNativeUltronCommand } from "./native-command.ts";
 import { handleConfigCommand, handlePackageCommand } from "./package-manager-cli.ts";
 import { runMigrationCommand } from "./ultron/migration-cli.ts";
 import { exportNativeSessionFile, isNativeSessionFile } from "./ultron/native-export.ts";
+import { runUsageCommand } from "./ultron/usage-cli.ts";
 import { isLocalPath, normalizePath, resolvePath } from "./utils/paths.ts";
 import { cleanupWindowsSelfUpdateQuarantine } from "./utils/windows-self-update.ts";
 
@@ -597,6 +598,12 @@ export async function main(args: string[], options?: MainOptions) {
 	}
 
 	if (await runMigrationCommand(args)) {
+		process.exit(process.exitCode ?? 0);
+		return;
+	}
+
+	// `ultron usage`: the session report, read from session files (no server, no model).
+	if (await runUsageCommand(args)) {
 		process.exit(process.exitCode ?? 0);
 		return;
 	}

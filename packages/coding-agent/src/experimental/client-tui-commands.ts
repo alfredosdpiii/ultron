@@ -1,6 +1,6 @@
 /**
  * Pi's interactive-mode commands and help text for the native TUI: `/name`, `/session`, `/copy`, `/export`,
- * `/hotkeys`, `/changelog`, `/quit`, and the startup header with keybinding hints.
+ * `/hotkeys`, `/changelog`, `/quit`, and the startup header with keybinding hints; and Ultron's `/usage`.
  *
  * Each command does what Pi's does, over the native Session: reads go through the worker's tree read (as Pi
  * entries, so Pi's stats, export and HTML renderer apply unchanged) and writes through `SessionControl`.
@@ -16,6 +16,8 @@ import { CURRENT_SESSION_VERSION, type SessionHeader } from "../core/session-man
 import { formatTokens } from "../modes/interactive/components/footer.ts";
 import { keyDisplayText, keyHint, keyText, rawKeyHint } from "../modes/interactive/components/keybinding-hints.ts";
 import { getMarkdownTheme, theme } from "../modes/interactive/theme/theme.ts";
+import { isSessionReport, SESSION_REPORT_REQUEST } from "../ultron/session-report.ts";
+import { renderSessionReport } from "../ultron/session-report-text.ts";
 import { getChangelogPath, normalizeChangelogLinks, parseChangelog } from "../utils/changelog.ts";
 import { copyToClipboard } from "../utils/clipboard.ts";
 import { ExperimentalChatView } from "./client-tui-chat.ts";
@@ -74,6 +76,20 @@ export function nativeCommands(host: NativeCommandHost): SlashCommandContributio
 				const sessionId = host.sessionId();
 				if (view === undefined || sessionId === undefined) return undefined;
 				host.notice(new Text(sessionInfo(view, sessionId, host.sessionName(), host.currentModel()), 1, 0));
+				return undefined;
+			},
+		},
+		{
+			name: "usage",
+			description: "What this session did: depth (frames, sub-agents), cells, tokens and cost, guardrails",
+			async run(_args, context) {
+				const control = host.control();
+				if (control === undefined) throw new Error("No Session is attached");
+				// Built by the worker from the session file and its own counters; `ultron usage` prints the same offline.
+				const report = await control.inspect(SESSION_REPORT_REQUEST, {}, context);
+				if (!isSessionReport(report)) throw new Error("The Session worker returned no session report");
+				const style = { bold: (text: string) => theme.bold(text), dim: (text: string) => theme.fg("dim", text) };
+				host.notice(new Text(renderSessionReport(report, { style }).join("\n"), 1, 0));
 				return undefined;
 			},
 		},
@@ -300,6 +316,7 @@ export function hotkeysMarkdown(): string {
 | \`${k("app.rlm.pane")}\` | Open the RLM pane beside the chat, or move the focus between it and the chat |
 | \`${k("app.jev.notes.toggle")}\` | Expand or fold Jev's memory notes |
 | \`/\` | Slash commands |
+| \`/usage\` | What this session did: depth (frames, sub-agents), cells, tokens and cost, guardrails |
 | \`!\` | Run bash command |
 | \`!!\` | Run bash command (excluded from context) |
 `;

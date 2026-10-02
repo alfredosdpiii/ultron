@@ -67,6 +67,9 @@ import {
 } from "../src/experimental/services/sessions.ts";
 import { Transcript, type TranscriptState } from "../src/experimental/services/transcript.ts";
 import { initTheme } from "../src/modes/interactive/theme/theme.ts";
+import { readSessionLog } from "../src/ultron/session-log.ts";
+import { buildSessionReport } from "../src/ultron/session-report.ts";
+import { subagentSession } from "./support/report-sessions.ts";
 
 const serverId = "00000000-0000-4000-8000-000000000001";
 
@@ -1503,6 +1506,42 @@ describe("experimental client TUI parity with Pi's interactive mode", () => {
 			runCommand(component, "/new");
 			await vi.waitFor(() => expect(create).toHaveBeenCalledWith({}, expect.anything()));
 			await vi.waitFor(() => expect(plain(component.render(100))).toContain("New session started"));
+		} finally {
+			await harness.dispose();
+			rmSync(directory, { recursive: true, force: true });
+		}
+	});
+
+	test("/usage shows the worker's session report; a worker without one is an error, not an empty report", async () => {
+		const directory = mkdtempSync(join(tmpdir(), "ultron-usage-tui-"));
+		const harness = await openHarness({ command: "client" });
+		const { component, inspect } = harness;
+		try {
+			const report = buildSessionReport(await readSessionLog(subagentSession().write(directory)));
+			inspect.mockImplementation(async (request: string) =>
+				request === "usage.report" ? (JSON.parse(JSON.stringify(report)) as JsonValue) : inspectFixture(request),
+			);
+			runCommand(component, "/usage");
+			await vi.waitFor(() => expect(inspect).toHaveBeenCalledWith("usage.report", {}, expect.anything()));
+			await vi.waitFor(() => expect(plain(component.render(160))).toContain("Tokens and cost"));
+			const screen = plain(component.render(160));
+			expect(screen).toContain(
+				"Depth      depth 2: 1 frame, 6 sub-agents (1 nested), 1 typed-agent task, 1 background job",
+			);
+			expect(screen).toContain("verdicts: 1 verified · 1 contradicted · 3 unverified");
+			expect(screen).toContain("worktree ultron/cccccccc/fix-parser: 2 files, merge merged");
+			expect(screen).toMatch(/sub-agents\s+7\s+7\.0k/);
+			// The command is listed with the others.
+			runCommand(component, "/hotkeys");
+			await vi.waitFor(() => expect(plain(component.render(160))).toContain("What this session did"));
+
+			inspect.mockImplementation(async (request: string) =>
+				request === "usage.report" ? { tasks: [] } : inspectFixture(request),
+			);
+			runCommand(component, "/usage");
+			await vi.waitFor(() =>
+				expect(plain(component.render(160))).toContain("The Session worker returned no session report"),
+			);
 		} finally {
 			await harness.dispose();
 			rmSync(directory, { recursive: true, force: true });

@@ -183,6 +183,7 @@ const READ_ONLY_INSPECTIONS = new Set([
 	"rlm.frames",
 	"progress.assess",
 	"async.pending",
+	"usage.report",
 ]);
 
 type OpenedRuntime = {

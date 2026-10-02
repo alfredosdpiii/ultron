@@ -24,6 +24,7 @@ Extensions, prompt templates, and skills can add commands. The command menu in P
 | `/resume` | Switch to another saved session |
 | `/name [name]` | Set the session display name, or show the current name when omitted |
 | `/session` | Show current session information and statistics |
+| `/usage` | What the session did: depth (frames, sub-agents, workflows), cells and the REPL APIs they named, tokens and cost per lane and model, guardrails, memory decisions (Ultron; `ultron usage` prints the same for any session file) |
 | `/tree` | Navigate the session tree |
 | `/fork` | Create a new session from an earlier user message |
 | `/clone` | Duplicate the current session at its current position |

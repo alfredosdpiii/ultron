@@ -24,6 +24,8 @@ import { createUltronRuntime, type UltronRuntime } from "../src/experimental/ses
 import { initTheme } from "../src/modes/interactive/theme/theme.ts";
 import { rateLimitsFromEvent, renderInput, usageDiagnostic } from "../src/ultron/claude/root-runner.ts";
 import { claudeRootRequested, prepareClaudeRoot } from "../src/ultron/claude/worker-root.ts";
+import { readSessionLog } from "../src/ultron/session-log.ts";
+import { buildSessionReport, type SessionReport } from "../src/ultron/session-report.ts";
 
 /**
  * `ultron --claude`: Ultron's own runtime and UI with Claude Code (`claude -p`, stream-json, an MCP bridge back to
@@ -539,6 +541,34 @@ describe("ultron --claude: the root lane on Claude Code", () => {
 			text: expect.stringContaining("Echo: Echo the word kiwi"),
 		});
 	}, 120_000);
+
+	test("the session report names the mode, counts the cells and prices Claude Code as a subscription", async () => {
+		const report = (await first.runtime.inspect!("usage.report", {}, BACKGROUND_CONTEXT)) as SessionReport;
+		expect(report.mode).toBe("ultron --claude");
+		// The turns so far: two cells, a steered turn, and the one that spawned a subagent.
+		expect(report.turns?.count).toBeGreaterThanOrEqual(3);
+		expect(report.turns?.running).toBe(0);
+		expect(report.root.models).toEqual([
+			{ model: "claude-code/claude-opus-5-5", responses: report.usage.lanes.root.responses },
+		]);
+		expect(report.cells?.source).toBe("transcript");
+		expect(report.cells?.root.count).toBeGreaterThanOrEqual(3);
+		expect(report.cells?.root.apis).toMatchObject({ "rlm.spawn": 1, "rlm.collect": 1 });
+		expect(report.depth.verdict).toBe("depth 1: 0 frames, 1 sub-agent");
+		expect(report.depth.subagents.byModel).toMatchObject([{ model: "claude-code/claude-opus-5-5", count: 1 }]);
+		expect(report.usage.lanes.subagents.responses).toBeGreaterThan(0);
+		// Claude Code's reported cost is a notional figure of the user's plan: never an API charge, never unknown.
+		expect(report.usage.total.cost.reportedUsd).toBeNull();
+		expect(report.usage.total.cost.unpricedResponses).toBe(0);
+		expect(report.usage.total.cost.subscriptionUsd).toBeGreaterThan(0);
+		expect(report.guardrails.countersSince).toBeNull();
+		expect(report.unrecorded.turns).toBeUndefined();
+		// The same report from the file alone.
+		const offline = buildSessionReport(await readSessionLog(first.session.metadata.path));
+		expect(offline.mode).toBe("ultron --claude");
+		expect(offline.depth).toEqual(report.depth);
+		expect(offline.usage).toEqual(report.usage);
+	}, 60_000);
 
 	test("a worktree subagent runs its Claude Code process and its cells in its own worktree", async () => {
 		const git = (...args: string[]) => execFileSync("git", args, { cwd: project, encoding: "utf8" });

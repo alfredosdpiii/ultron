@@ -172,15 +172,20 @@ export class SecretDetector {
 
 	/** `text` with every masking finding replaced by `[REDACTED:<kind>]`. */
 	redact(text: string): string {
+		return this.redactCounted(text).text;
+	}
+
+	/** {@link redact}, with how many findings were replaced. */
+	redactCounted(text: string): { text: string; masked: number } {
 		const findings = this.scan(text, "mask");
-		if (findings.length === 0) return text;
+		if (findings.length === 0) return { text, masked: 0 };
 		let out = "";
 		let cursor = 0;
 		for (const finding of findings) {
 			out += `${text.slice(cursor, finding.start)}[REDACTED:${finding.kind}]`;
 			cursor = finding.end;
 		}
-		return out + text.slice(cursor);
+		return { text: out + text.slice(cursor), masked: findings.length };
 	}
 
 	#plausible(rule: CompiledRule, value: string): boolean {
