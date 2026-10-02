@@ -272,9 +272,36 @@ finder frame and one verifier frame, 2,319 tokens in all, on glm-5.3-flash.*
 
 ## Results so far
 
-Measured with [`scripts/eval-quality.mjs`](scripts/eval-quality.mjs) against stock Pi on the same model. Every
-result file is in [`acceptance/quality/`](acceptance/quality). All of these are small samples (one or two trials per
-task), so read them as indicative, not as benchmarks.
+Every result file is in [`acceptance/quality/`](acceptance/quality). All of these are small samples (one or two
+trials per task), so read them as indicative.
+
+### SWE-bench Verified
+
+A seeded 50-task sample of [SWE-bench Verified](https://www.swebench.com/), one run per task, every agent on
+`gpt-6.1-sol` at medium reasoning and given only the issue text, working inside the task's official container and
+scored by the official evaluation (release 0.87.22, harness in [`evals/swebench/`](evals/swebench),
+[results](acceptance/quality/2026-10-03-swebench-verified-50-v0.87.22-cliproxyapi_gpt-6.1-sol.md)):
+
+| | Resolved | Wall time, 50 tasks | Tokens | Notional cost |
+|---|---|---|---|---|
+| **Ultron** | **44/50 (88%)** | **72 min** | **2.69M** | **$2.37** |
+| Codex CLI 0.152.1 | 44/50 (88%) | 100 min | 9.43M | $4.33 |
+| Pi 0.84.4 | 43/50 (86%) | 83 min | 3.16M | $2.84 |
+
+Accuracy is a tie: a one-task gap at n=50 is noise, and in an earlier 10-task run of the same sample the single
+differing task went the other way. What separates the agents is cost: Ultron resolved as many tasks as Codex with
+29% of its tokens and 28% less time. OpenAI publishes no SWE-bench Verified score for this model to compare with, and
+Codex ran without a catalogue entry for it, which may have cost it something. Ultron used no frames or sub-agents on
+these tasks; they are single-file fixes.
+
+The same first 10 tasks on Claude Opus 5.5 through Claude Code
+([results](acceptance/quality/2026-10-03-swebench-verified-pilot10-claude-opus-5-5.md)): `ultron --claude` and plain
+Claude Code each resolved 9/10 with the same verdict on every task, Ultron with 27% of the tokens (328k against
+1.21M) and 47% of the notional cost.
+
+### Against Pi
+
+Measured with [`scripts/eval-quality.mjs`](scripts/eval-quality.mjs) against stock Pi on the same model.
 
 **glm-5.3-flash** (a small, fast model), thinking `max`, 2 trials per task (release 0.87.12):
 
