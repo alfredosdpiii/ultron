@@ -12,8 +12,8 @@
  */
 
 import { createServer, type Server, type ServerResponse } from "node:http";
-import { getProviderEnvValue } from "../../utils/provider-env.ts";
 import type { OAuthAuth, OAuthCredential, ProviderAuthInteraction } from "../types.ts";
+import { oauthCallbackHost, oauthRedirectHost } from "./callback-host.ts";
 import { oauthErrorHtml, oauthSuccessHtml } from "./oauth-page.ts";
 import { generatePKCE } from "./pkce.ts";
 
@@ -21,10 +21,6 @@ const AUTHORIZE_URL = "https://openrouter.ai/auth";
 const TOKEN_URL = "https://openrouter.ai/api/v1/auth/keys";
 const LOGIN_TIMEOUT_MS = 5 * 60 * 1000;
 const TOKEN_EXCHANGE_TIMEOUT_MS = 30_000;
-
-function getCallbackHost(): string {
-	return getProviderEnvValue("PI_OAUTH_CALLBACK_HOST") || "127.0.0.1";
-}
 
 type JsonObject = Record<string, unknown>;
 
@@ -138,7 +134,7 @@ async function startCallbackServer(
 	signal: AbortSignal,
 ): Promise<OpenRouterCallbackServer> {
 	if (signal.aborted) throw new Error("Login cancelled");
-	const callbackHost = getCallbackHost();
+	const callbackHost = oauthCallbackHost();
 	let resolveCredential: (credential: OAuthCredential | null) => void = () => {};
 	let rejectCredential: (error: Error) => void = () => {};
 	const credential = new Promise<OAuthCredential | null>((resolve, reject) => {
@@ -229,7 +225,7 @@ async function startCallbackServer(
 	}
 
 	return {
-		callbackUrl: `http://${callbackHost}:${address.port}${callbackPath}`,
+		callbackUrl: `http://${oauthRedirectHost(callbackHost)}:${address.port}${callbackPath}`,
 		close,
 		// A claimed callback is already exchanging its code; let that exchange settle the login.
 		cancelWait: () => {

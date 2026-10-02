@@ -1,3 +1,4 @@
+import { get as httpGet } from "node:http";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createRadiusOAuth } from "../src/auth/oauth/radius.ts";
 import type { AuthEvent, ProviderAuthInteraction } from "../src/auth/types.ts";
@@ -125,5 +126,118 @@ describe("Radius OAuth", () => {
 		const oauth = createRadiusOAuth({ name: "Radius", gateway: GATEWAY });
 		await expect(oauth.login(interaction("browser"))).rejects.toThrow(`Invalid Radius OAuth config from ${GATEWAY}`);
 		expect(fetchMock).toHaveBeenCalledOnce();
+	});
+
+	function stubBrowserLoginGateway(): { tokenForms: URLSearchParams[] } {
+		const tokenForms: URLSearchParams[] = [];
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(async (input: unknown, init?: RequestInit) => {
+				const url = requestUrl(input);
+				if (url === `${GATEWAY}/v1/oauth`)
+					return jsonResponse({ authorizationEndpoint: "https://radius-ui.example/authorize" });
+				if (url === `${GATEWAY}/v1/oauth/token`) {
+					tokenForms.push(new URLSearchParams(String(init?.body)));
+					return jsonResponse({ access_token: "access", refresh_token: "refresh", expires_in: 3600 });
+				}
+				throw new Error(`Unexpected request: ${url}`);
+			}),
+		);
+		return { tokenForms };
+	}
+
+	/** A browser login whose paste prompt answers with `pasted(state)`; `undefined` leaves the prompt open. */
+	function browserInteraction(
+		events: AuthEvent[],
+		pasted: (state: string) => string | undefined,
+		signal: AbortSignal = new AbortController().signal,
+	): ProviderAuthInteraction {
+		return {
+			signal,
+			notify: (event) => events.push(event),
+			prompt: async (prompt) => {
+				if (prompt.type === "select") return "browser";
+				if (prompt.type !== "manual_code") throw new Error(`Unexpected prompt: ${prompt.type}`);
+				const authUrl = events.find((event) => event.type === "auth_url");
+				if (authUrl?.type !== "auth_url") throw new Error("The sign-in URL was not shown before the prompt");
+				const answer = pasted(new URL(authUrl.url).searchParams.get("state") ?? "");
+				if (answer !== undefined) return answer;
+				return new Promise<string>((_resolve, reject) => {
+					prompt.signal?.addEventListener("abort", () => reject(new Error("Login cancelled")), { once: true });
+				});
+			},
+		};
+	}
+
+	// The browser login had no way to finish when the browser cannot reach 127.0.0.1:1456 (a container, SSH).
+	it.each([
+		[
+			"the full redirect URL",
+			(state: string) => `http://127.0.0.1:1456/oauth/callback?code=pasted-code&state=${state}`,
+		],
+		[
+			"the address without its scheme",
+			(state: string) => `127.0.0.1:1456/oauth/callback?code=pasted-code&state=${state}`,
+		],
+		["the bare code", () => "pasted-code"],
+	])("completes browser login from %s pasted into the prompt", async (_name, pasted) => {
+		const { tokenForms } = stubBrowserLoginGateway();
+		const events: AuthEvent[] = [];
+		const oauth = createRadiusOAuth({ name: "Radius", gateway: GATEWAY });
+		const credential = await oauth.login(browserInteraction(events, pasted));
+
+		expect(credential).toMatchObject({ type: "oauth", access: "access", refresh: "refresh" });
+		expect(tokenForms).toHaveLength(1);
+		expect(tokenForms[0]?.get("grant_type")).toBe("authorization_code");
+		expect(tokenForms[0]?.get("code")).toBe("pasted-code");
+		expect(tokenForms[0]?.get("redirect_uri")).toBe("http://127.0.0.1:1456/oauth/callback");
+	});
+
+	it("still completes browser login through the callback server, and closes the paste prompt", async () => {
+		const { tokenForms } = stubBrowserLoginGateway();
+		const events: AuthEvent[] = [];
+		let promptSignal: AbortSignal | undefined;
+		const base = browserInteraction(events, () => undefined);
+		const oauth = createRadiusOAuth({ name: "Radius", gateway: GATEWAY });
+		const login = oauth.login({
+			...base,
+			prompt: (prompt) => {
+				if (prompt.type === "manual_code") promptSignal = prompt.signal;
+				return base.prompt(prompt);
+			},
+		});
+		const authUrl = await vi.waitFor(() => {
+			const event = events.find((candidate) => candidate.type === "auth_url");
+			if (event?.type !== "auth_url") throw new Error("waiting for the sign-in URL");
+			return new URL(event.url);
+		});
+		const status = await new Promise<number>((resolve, reject) => {
+			httpGet(
+				`http://127.0.0.1:1456/oauth/callback?code=browser-code&state=${authUrl.searchParams.get("state")}`,
+				(response) => {
+					response.resume();
+					response.on("end", () => resolve(response.statusCode ?? 0));
+				},
+			).on("error", reject);
+		});
+		expect(status).toBe(200);
+		expect(await login).toMatchObject({ type: "oauth", access: "access" });
+		expect(tokenForms[0]?.get("code")).toBe("browser-code");
+		expect(promptSignal?.aborted).toBe(true);
+	});
+
+	it("rejects a pasted redirect URL that belongs to another login, and cancels cleanly", async () => {
+		stubBrowserLoginGateway();
+		const oauth = createRadiusOAuth({ name: "Radius", gateway: GATEWAY });
+		await expect(
+			oauth.login(browserInteraction([], () => "http://127.0.0.1:1456/oauth/callback?code=x&state=someone-else")),
+		).rejects.toThrow("OAuth state mismatch");
+
+		const controller = new AbortController();
+		const events: AuthEvent[] = [];
+		const login = oauth.login(browserInteraction(events, () => undefined, controller.signal));
+		await vi.waitFor(() => expect(events.some((event) => event.type === "auth_url")).toBe(true));
+		controller.abort();
+		await expect(login).rejects.toThrow("Login cancelled");
 	});
 });

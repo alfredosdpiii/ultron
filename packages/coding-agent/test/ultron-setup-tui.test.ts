@@ -1,5 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
+import { get as httpGet } from "node:http";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -7,9 +8,14 @@ import { VirtualTerminal } from "../../tui/test/virtual-terminal.ts";
 import { createProfileRuntime, runSetupOnTerminal } from "../src/cli/setup/command.ts";
 import type { SetupDeps } from "../src/cli/setup/wizard.ts";
 import { SettingsManager } from "../src/core/settings-manager.ts";
+import { openBrowser } from "../src/utils/open-browser.ts";
+
+// The login dialog opens the provider's sign-in page; a test run must never launch the developer's browser.
+vi.mock("../src/utils/open-browser.ts", () => ({ openBrowser: vi.fn() }));
 
 const ENTER = "\r";
 const DOWN = "\x1b[B";
+const ESC = "\x1b";
 const CTRL_C = "\x03";
 
 const dirs: string[] = [];
@@ -118,6 +124,105 @@ describe("ultron setup in a terminal", () => {
 			defaultModel: "m1",
 		});
 		expect(testModel).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe("ultron setup: signing in with a subscription", () => {
+	afterEach(() => vi.unstubAllGlobals());
+
+	// OpenRouter's browser login listens on a free port, so this test cannot collide with the fixed callback ports
+	// (Anthropic 53692, OpenAI Codex 1455) that experimental-client-tui.test.ts binds in a parallel worker.
+	it("runs the provider's browser login, saves the credentials and offers that provider's models", async () => {
+		const root = mkdtempSync(join(tmpdir(), "ultron-setup-oauth-"));
+		dirs.push(root);
+		const agentDir = join(root, "agent");
+		mkdirSync(agentDir);
+		const settings = SettingsManager.create(root, agentDir, { projectTrusted: false });
+		const tokenRequests: string[] = [];
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(async (url: string | URL | Request) => {
+				tokenRequests.push(String(url));
+				if (String(url) !== "https://openrouter.ai/api/v1/auth/keys")
+					throw new Error(`Unexpected request during login: ${String(url)}`);
+				return new Response(JSON.stringify({ key: "sk-or-setup-key" }));
+			}),
+		);
+		vi.mocked(openBrowser).mockClear();
+		const testModel = vi.fn<SetupDeps["testModel"]>(async () => ({ ok: true, reply: "ok", ms: 300 }));
+		const deps: SetupDeps = {
+			agentDir,
+			env: {},
+			nodeVersion: "22.19.0",
+			probe: (command) => (command === "python3" ? "Python 3.12.0" : undefined),
+			fetch: (async () => {
+				throw new TypeError("fetch failed");
+			}) as typeof fetch,
+			settings,
+			createRuntime: () => createProfileRuntime(agentDir),
+			testModel,
+			checkJevKey: async () => ({ ok: true }),
+			runDocker: async () => ({ ok: false, output: "unexpected" }),
+			hindsightWaitMs: 10,
+		};
+		const terminal = new VirtualTerminal(120, 50);
+		const run = runSetupOnTerminal(settings, deps, terminal);
+
+		await waitFor(terminal, "How should Ultron reach a model?");
+		terminal.sendInput(ENTER); // Sign in with a subscription
+		await waitFor(terminal, "Select provider to configure");
+		type(terminal, "openrouter");
+		await waitFor(terminal, "→ OpenRouter");
+		terminal.sendInput(ENTER);
+		await waitFor(terminal, "Login to OpenRouter");
+		await vi.waitFor(() => expect(openBrowser).toHaveBeenCalledTimes(1));
+
+		// The wizard's login shows what to do when the browser cannot reach the callback page.
+		expect(screen(terminal).replace(/\s+/g, " ")).toContain(
+			"copy that page's full address from the address bar and paste it here.",
+		);
+		// Enter on the empty paste prompt changes nothing; Esc leaves the login, and the wizard says so.
+		terminal.sendInput(ENTER);
+		await terminal.flush();
+		expect(screen(terminal)).not.toContain("Missing authorization code");
+		terminal.sendInput(ESC);
+		await waitFor(terminal, "Sign-in to OpenRouter cancelled; nothing was saved.");
+		await waitFor(terminal, "Select provider to configure");
+		expect(tokenRequests).toEqual([]);
+
+		type(terminal, "openrouter");
+		await waitFor(terminal, "→ OpenRouter");
+		terminal.sendInput(ENTER);
+		await vi.waitFor(() => expect(openBrowser).toHaveBeenCalledTimes(2));
+		const signIn = new URL(vi.mocked(openBrowser).mock.calls[1]![0]);
+		const callbackUrl = signIn.searchParams.get("callback_url");
+		expect(callbackUrl).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/oauth\/callback\//);
+		// The browser returns to the login's callback server after the user approves.
+		const status = await new Promise<number>((resolveStatus, reject) => {
+			httpGet(`${callbackUrl}?code=approved`, (response) => {
+				response.resume();
+				response.on("end", () => resolveStatus(response.statusCode ?? 0));
+			}).on("error", reject);
+		});
+		expect(status).toBe(200);
+
+		await waitFor(terminal, "Default model (");
+		expect(screen(terminal)).toContain(`✓ Signed in to OpenRouter. Saved to ${join(agentDir, "auth.json")}.`);
+		expect(screen(terminal)).toMatch(/Default model \(\d+ from OpenRouter\)/);
+		expect(JSON.parse(readFileSync(join(agentDir, "auth.json"), "utf8")).openrouter).toMatchObject({
+			type: "oauth",
+			access: "sk-or-setup-key",
+		});
+		expect(statSync(join(agentDir, "auth.json")).mode & 0o777).toBe(0o600);
+		expect(screen(terminal)).not.toContain("sk-or-setup-key");
+
+		terminal.sendInput(ENTER); // the first model
+		await waitFor(terminal, "Step 3/6: Jev API key", 10_000);
+		expect(screen(terminal)).toContain("✓ Live test passed in 0.3s");
+		expect(testModel.mock.calls[0]?.[1].provider).toBe("openrouter");
+		terminal.sendInput(CTRL_C);
+		await run;
+		expect(JSON.parse(readFileSync(join(agentDir, "settings.json"), "utf8")).defaultProvider).toBe("openrouter");
 	});
 });
 

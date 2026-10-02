@@ -319,4 +319,23 @@ describe.sequential("OpenRouter OAuth", () => {
 		await expect(login).rejects.toThrow("Login cancelled");
 		expect(callbackUrl?.hostname).toBe("localhost");
 	});
+
+	it("prefers ULTRON_OAUTH_CALLBACK_HOST, and never puts a wildcard address in the callback URL", async () => {
+		vi.stubEnv("PI_OAUTH_CALLBACK_HOST", "localhost");
+		vi.stubEnv("ULTRON_OAUTH_CALLBACK_HOST", "0.0.0.0");
+		const controller = new AbortController();
+		let callbackUrl: URL | undefined;
+		const login = openRouterOAuth.login({
+			signal: controller.signal,
+			prompt: () => new Promise<string>(() => {}),
+			notify: (event) => {
+				if (event.type !== "auth_url") return;
+				callbackUrl = new URL(new URL(event.url).searchParams.get("callback_url") ?? "");
+				controller.abort();
+			},
+		});
+
+		await expect(login).rejects.toThrow("Login cancelled");
+		expect(callbackUrl?.hostname).toBe("127.0.0.1");
+	});
 });

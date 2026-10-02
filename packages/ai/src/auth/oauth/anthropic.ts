@@ -6,8 +6,8 @@
  */
 
 import type { Server } from "node:http";
-import { getProviderEnvValue } from "../../utils/provider-env.ts";
 import type { OAuthAuth, OAuthCredential, ProviderAuthInteraction } from "../types.ts";
+import { oauthCallbackHost } from "./callback-host.ts";
 import { oauthErrorHtml, oauthSuccessHtml } from "./oauth-page.ts";
 import { generatePKCE } from "./pkce.ts";
 
@@ -29,7 +29,6 @@ const decode = (s: string) => atob(s);
 const CLIENT_ID = decode("OWQxYzI1MGEtZTYxYi00NGQ5LTg4ZWQtNTk0NGQxOTYyZjVl");
 const AUTHORIZE_URL = "https://claude.ai/oauth/authorize";
 const TOKEN_URL = "https://platform.claude.com/v1/oauth/token";
-const CALLBACK_HOST = getProviderEnvValue("PI_OAUTH_CALLBACK_HOST") || "127.0.0.1";
 const CALLBACK_PORT = 53692;
 const CALLBACK_PATH = "/callback";
 const REDIRECT_URI = `http://localhost:${CALLBACK_PORT}${CALLBACK_PATH}`;
@@ -154,7 +153,7 @@ async function startCallbackServer(expectedState: string): Promise<CallbackServe
 			reject(err);
 		});
 
-		server.listen(CALLBACK_PORT, CALLBACK_HOST, () => {
+		server.listen(CALLBACK_PORT, oauthCallbackHost(), () => {
 			resolve({
 				server,
 				redirectUri: REDIRECT_URI,

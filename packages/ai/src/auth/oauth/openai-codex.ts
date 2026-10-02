@@ -17,8 +17,8 @@ if (typeof process !== "undefined" && (process.versions?.node || process.version
 	});
 }
 
-import { getProviderEnvValue } from "../../utils/provider-env.ts";
 import type { OAuthAuth, OAuthCredential, ProviderAuthInteraction } from "../types.ts";
+import { oauthCallbackHost } from "./callback-host.ts";
 import { pollOAuthDeviceCodeFlow } from "./device-code.ts";
 import { oauthErrorHtml, oauthSuccessHtml } from "./oauth-page.ts";
 import { generatePKCE } from "./pkce.ts";
@@ -40,10 +40,6 @@ const JWT_CLAIM_PATH = "https://api.openai.com/auth";
 
 type OAuthToken = { access: string; refresh: string; expires: number };
 type TokenOperation = "exchange" | "refresh";
-
-function getCallbackHost(): string {
-	return getProviderEnvValue("PI_OAUTH_CALLBACK_HOST") || "127.0.0.1";
-}
 
 type DeviceAuthInfo = {
 	deviceAuthId: string;
@@ -367,7 +363,7 @@ function startLocalOAuthServer(state: string): Promise<OAuthServerInfo> {
 
 	return new Promise((resolve) => {
 		server
-			.listen(1455, getCallbackHost(), () => {
+			.listen(1455, oauthCallbackHost(), () => {
 				resolve({
 					close: () => server.close(),
 					cancelWait: () => {
@@ -456,7 +452,8 @@ async function loginOpenAICodex(interaction: ProviderAuthInteraction): Promise<O
 	interaction.notify({
 		type: "auth_url",
 		url,
-		instructions: "A browser window should open. Complete login to finish.",
+		instructions:
+			"Complete login in your browser. If the browser is on another machine, paste the final redirect URL here.",
 	});
 
 	try {
