@@ -69,6 +69,14 @@ Replace `ANTHROPIC_API_KEY` with the credential required by your provider. The n
 
 Do not mount the host's `~/.pi/agent` unless the container should have access to your host Pi configuration and credentials.
 
+### Sign in to a subscription from inside the container
+
+A browser login (`/login`, or the provider step of `ultron setup`) ends with the browser being redirected to a callback server on `localhost` inside the container. The browser on the host cannot reach it and shows "localhost refused to connect"; on macOS and Windows this also happens with `--network host`. Any of these completes the login:
+
+- Copy the failed page's full address from the browser's address bar (`http://localhost:1455/auth/callback?code=...&state=...`) and paste it into the login prompt, which is still waiting.
+- Publish the callback port and listen on the container's interface: `-p 127.0.0.1:1455:1455 -p 127.0.0.1:53692:53692 -e ULTRON_OAUTH_CALLBACK_HOST=0.0.0.0` (OpenAI Codex and Anthropic). The default, loopback only, is not reachable through a published port. `PI_OAUTH_CALLBACK_HOST` is read as well.
+- Choose a device-code login (GitHub Copilot, xAI, Kimi, Meta, or "Device code login" for OpenAI Codex and Radius), which needs no callback.
+
 ### Verify the workspace
 
 Inside Pi, run:

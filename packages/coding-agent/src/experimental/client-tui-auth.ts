@@ -224,7 +224,13 @@ export interface LoginDialogHost {
 
 export type LoginOutcome =
 	| { readonly ok: true }
-	| { readonly ok: false; readonly cancelled: boolean; readonly error: string };
+	| {
+			readonly ok: false;
+			readonly cancelled: boolean;
+			readonly error: string;
+			/** Cancelled by the screen (another dialog took the login dialog's place), not by the user. */
+			readonly interrupted?: boolean;
+	  };
 
 /**
  * Pi's login dialog around `ModelRuntime.login`: browser/device-code flows for subscriptions, a masked prompt for
@@ -238,9 +244,13 @@ export async function runProviderLogin(
 	const dialog = new LoginDialogComponent(host.ui, option.id, () => {}, option.name);
 	const slot = new Slot(dialog);
 	let closed = false;
+	let interrupted = false;
 	const close = host.showComponent(slot, slot, {
 		// Replaced by another dialog: stop the login, as Esc does.
-		cancel: () => dialog.handleInput("\u001b"),
+		cancel: () => {
+			interrupted = !dialog.signal.aborted;
+			dialog.handleInput("\u001b");
+		},
 	});
 	const finish = (): void => {
 		if (closed) return;
@@ -299,7 +309,8 @@ export async function runProviderLogin(
 	} catch (error) {
 		finish();
 		const message = error instanceof Error ? error.message : String(error);
-		return { ok: false, cancelled: message === CANCELLED || dialog.signal.aborted, error: message };
+		const cancelled = message === CANCELLED || dialog.signal.aborted;
+		return { ok: false, cancelled, error: message, ...(cancelled && interrupted ? { interrupted } : {}) };
 	}
 	finish();
 	return { ok: true };
@@ -309,7 +320,10 @@ export async function runProviderLogin(
 async function runLoginDialog(host: PiCommandHost, runtime: LoginRuntime, option: AuthSelectorProvider): Promise<void> {
 	const outcome = await runProviderLogin(host, runtime, option);
 	if (!outcome.ok) {
-		if (!outcome.cancelled) {
+		if (outcome.interrupted) {
+			// Esc closes silently; a login ended by something else must not look like nothing happened.
+			host.showStatus(`Login to ${option.name} stopped: another dialog opened. Run /login again.`);
+		} else if (!outcome.cancelled) {
 			host.showStatus(
 				option.authType === "oauth"
 					? `Error: Failed to login to ${option.name}: ${outcome.error}`
@@ -320,11 +334,29 @@ async function runLoginDialog(host: PiCommandHost, runtime: LoginRuntime, option
 	}
 	const action = option.authType === "oauth" ? `Logged in to ${option.name}` : `Saved API key for ${option.name}`;
 	host.showStatus(`${action}. Credentials saved to ${host.authPath}. Reloading the Session's credentials…`);
-	await reloadWorkerAuth(host, option.id, `${action}. Credentials saved to ${host.authPath}`);
+	await reloadWorkerAuth(host, option.id, `${action}. Credentials saved to ${host.authPath}`, () =>
+		modelHint(host, option),
+	);
+}
+
+/**
+ * Logging in does not change the Session's model. Say so when it is another provider's, so a login made to get
+ * away from a model that does not work is not mistaken for one that failed.
+ */
+function modelHint(host: PiCommandHost, option: AuthSelectorProvider): string {
+	const current = host.currentModel();
+	if (current === undefined) return `. Use /model to select one of ${option.name}'s models`;
+	if (current.provider === option.id) return "";
+	return `. The Session still uses ${current.provider}/${current.modelId}; /model switches to ${option.name}'s models`;
 }
 
 /** Tell the worker to re-read `auth.json`, then refresh the replicated model catalog (as Pi does after login). */
-async function reloadWorkerAuth(host: PiCommandHost, providerId: string, done: string): Promise<void> {
+async function reloadWorkerAuth(
+	host: PiCommandHost,
+	providerId: string,
+	done: string,
+	hint: () => string = () => "",
+): Promise<void> {
 	const control = host.control();
 	if (control === undefined) {
 		host.showStatus(`${done}. No Session is attached to reload them.`);
@@ -351,7 +383,7 @@ async function reloadWorkerAuth(host: PiCommandHost, providerId: string, done: s
 			clearTimeout(timeout);
 		}
 	}
-	host.showStatus(done);
+	host.showStatus(`${done}${hint()}`);
 }
 
 /** Pi's `/logout`: remove a stored credential, then the worker reloads. */

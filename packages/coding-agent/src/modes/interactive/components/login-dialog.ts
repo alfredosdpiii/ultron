@@ -1,9 +1,24 @@
 import type { AuthInfoLink, OAuthDeviceCodeInfo } from "@ultron/ai";
 import { Container, type Focusable, getKeybindings, Input, Spacer, Text, type TUI } from "@ultron/tui";
 import { openBrowser } from "../../../utils/open-browser.ts";
+import { type BrowserReach, browserReach } from "../../../utils/remote-browser.ts";
 import { theme } from "../theme/theme.ts";
 import { DynamicBorder } from "./dynamic-border.ts";
 import { keyHint } from "./keybinding-hints.ts";
+
+const UNREACHABLE_CALLBACK_STEP = "copy that page's full address from the address bar and paste it here.";
+
+/**
+ * What to do when the browser cannot load the login's `localhost` callback page; shown with every paste prompt.
+ * In a container or over SSH the browser is known to be out of reach of this process's `localhost`, so the failed
+ * page is announced as the expected outcome rather than as a possibility.
+ */
+export function unreachableCallbackHint(reach: BrowserReach): string {
+	if (reach === "local")
+		return `If the browser ends on a page that can't be reached (localhost refused to connect), ${UNREACHABLE_CALLBACK_STEP}`;
+	const where = reach === "container" ? "in a container" : "over SSH";
+	return `Ultron is running ${where}, so the browser on your computer cannot reach this login's callback: after you sign in it will end on a page that can't be reached (localhost refused to connect). That is expected; ${UNREACHABLE_CALLBACK_STEP}`;
+}
 
 /**
  * Login dialog component - replaces editor during OAuth login flow
@@ -12,7 +27,10 @@ export class LoginDialogComponent extends Container implements Focusable {
 	private contentContainer: Container;
 	private input: Input;
 	private secretInput = false;
+	/** The active prompt has no meaningful empty answer (paste-the-code), so Enter on an empty input is ignored. */
+	private requireValue = false;
 	private tui: TUI;
+	private readonly reach: BrowserReach;
 	private abortController = new AbortController();
 	private inputResolver?: (value: string) => void;
 	private inputRejecter?: (error: Error) => void;
@@ -34,9 +52,11 @@ export class LoginDialogComponent extends Container implements Focusable {
 		onComplete: (success: boolean, message?: string) => void,
 		providerNameOverride?: string,
 		titleOverride?: string,
+		reach: BrowserReach = browserReach(),
 	) {
 		super();
 		this.tui = tui;
+		this.reach = reach;
 		this.onComplete = onComplete;
 
 		const providerName = providerNameOverride || providerId;
@@ -65,6 +85,9 @@ export class LoginDialogComponent extends Container implements Focusable {
 		input.onSubmit = () => {
 			if (this.inputResolver) {
 				const value = input.getValue();
+				// A stray Enter while the browser sign-in is still under way must not end the login: the provider
+				// would take the empty answer as the pasted code and fail with "Missing authorization code".
+				if (this.requireValue && value.trim() === "") return;
 				this.replaceInputWithSubmittedText(secret ? "•".repeat(Math.min(value.length, 12)) : value);
 				this.inputResolver(value);
 				this.inputResolver = undefined;
@@ -110,8 +133,16 @@ export class LoginDialogComponent extends Container implements Focusable {
 		const clickHint = process.platform === "darwin" ? "Cmd+click to open" : "Ctrl+click to open";
 		const hyperlink = `\x1b]8;;${url}\x07${clickHint}\x1b]8;;\x07`;
 		this.contentContainer.addChild(new Text(theme.fg("dim", hyperlink), 1, 0));
+		if (this.reach !== "local") {
+			// No browser can be launched from here; "a browser window should open" would leave the user waiting.
+			this.contentContainer.addChild(
+				new Text(theme.fg("warning", "Open this address in a browser on your computer."), 1, 0),
+			);
+		}
 
-		if (instructions) {
+		// Away from the browser the paste prompt carries the full instruction; the provider's own line would only
+		// repeat it and push the input off a small terminal.
+		if (instructions && this.reach === "local") {
 			this.contentContainer.addChild(new Spacer(1));
 			this.contentContainer.addChild(new Text(theme.fg("warning", instructions), 1, 0));
 		}
@@ -142,9 +173,21 @@ export class LoginDialogComponent extends Container implements Focusable {
 	 * Show input for manual code/URL entry (for callback server providers)
 	 */
 	showManualInput(prompt: string): Promise<string> {
+		// A pasted code or redirect URL is not a secret to hide, whatever an earlier prompt asked for.
+		if (this.secretInput) {
+			this.input = this.createInput(false);
+			this.input.focused = this._focused;
+		}
+		this.requireValue = true;
 		this.input.setValue("");
+		// The paste prompt belongs to logins that redirect the browser to a callback server on localhost. When the
+		// browser cannot reach it (a container, SSH, a blocked port) the redirect fails in the browser; say what to
+		// do then, since nothing in the browser does.
 		this.contentContainer.addChild(new Spacer(1));
 		this.contentContainer.addChild(new Text(theme.fg("dim", prompt), 1, 0));
+		this.contentContainer.addChild(
+			new Text(theme.fg(this.reach === "local" ? "dim" : "warning", unreachableCallbackHint(this.reach)), 1, 0),
+		);
 		this.contentContainer.addChild(this.input);
 		this.contentContainer.addChild(new Text(`(${keyHint("tui.select.cancel", "to cancel")})`, 1, 0));
 		this.tui.requestRender();
@@ -165,6 +208,8 @@ export class LoginDialogComponent extends Container implements Focusable {
 			this.input = this.createInput(secret);
 			this.input.focused = this._focused;
 		}
+		// Some prompts take an empty answer (GitHub Copilot: "blank for github.com").
+		this.requireValue = false;
 		this.contentContainer.addChild(new Spacer(1));
 		this.contentContainer.addChild(new Text(theme.fg("text", message), 1, 0));
 		if (placeholder) {

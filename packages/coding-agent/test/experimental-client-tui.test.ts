@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { get as httpGet } from "node:http";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import {
@@ -69,7 +70,11 @@ import { Transcript, type TranscriptState } from "../src/experimental/services/t
 import { initTheme } from "../src/modes/interactive/theme/theme.ts";
 import { readSessionLog } from "../src/ultron/session-log.ts";
 import { buildSessionReport } from "../src/ultron/session-report.ts";
+import { openBrowser } from "../src/utils/open-browser.ts";
 import { subagentSession } from "./support/report-sessions.ts";
+
+// The login dialog opens the provider's sign-in page; a test run must never launch the developer's browser.
+vi.mock("../src/utils/open-browser.ts", () => ({ openBrowser: vi.fn() }));
 
 const serverId = "00000000-0000-4000-8000-000000000001";
 
@@ -1706,6 +1711,106 @@ describe("experimental client TUI parity with Pi's interactive mode", () => {
 	});
 });
 
+function oauthJson(body: unknown): Response {
+	return new Response(JSON.stringify(body), { headers: { "Content-Type": "application/json" } });
+}
+
+/** A JWT-shaped access token carrying the ChatGPT account id that OpenAI Codex credentials are built from. */
+function fakeCodexAccessToken(): string {
+	const encode = (value: unknown): string => Buffer.from(JSON.stringify(value)).toString("base64");
+	return `${encode({ alg: "none" })}.${encode({ "https://api.openai.com/auth": { chatgpt_account_id: "acct-test" } })}.sig`;
+}
+
+/** The provider's side of a login: token endpoints answer as after a real sign-in; nothing else is reachable. */
+function stubOAuthEndpoints(copilotModelId: string): { requests: string[] } {
+	const requests: string[] = [];
+	vi.stubGlobal(
+		"fetch",
+		vi.fn(async (input: string | URL | Request): Promise<Response> => {
+			const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+			requests.push(url);
+			if (url === "https://platform.claude.com/v1/oauth/token")
+				return oauthJson({
+					access_token: "anthropic-access",
+					refresh_token: "anthropic-refresh",
+					expires_in: 3600,
+				});
+			if (url === "https://auth.openai.com/oauth/token")
+				return oauthJson({
+					access_token: fakeCodexAccessToken(),
+					refresh_token: "codex-refresh",
+					expires_in: 3600,
+				});
+			if (url === "https://github.com/login/device/code")
+				return oauthJson({
+					device_code: "device-code",
+					user_code: "ABCD-EFGH",
+					verification_uri: "https://github.com/login/device",
+					interval: 1,
+					expires_in: 900,
+				});
+			if (url === "https://github.com/login/oauth/access_token") return oauthJson({ access_token: "ghu_refresh" });
+			if (url === "https://api.github.com/copilot_internal/v2/token")
+				return oauthJson({
+					token: "tid=test;exp=9999999999;proxy-ep=proxy.individual.githubcopilot.com;",
+					expires_at: 9999999999,
+				});
+			if (url === "https://api.individual.githubcopilot.com/models")
+				return oauthJson({
+					data: [
+						{ id: copilotModelId, model_picker_enabled: true, capabilities: { supports: { tool_calls: true } } },
+					],
+				});
+			throw new Error(`Unexpected request during login: ${url}`);
+		}),
+	);
+	return { requests };
+}
+
+/** What the browser does after the user approves: load the redirect URI on the login's loopback callback server. */
+function browserRedirect(url: string): Promise<number> {
+	return new Promise((resolveStatus, reject) => {
+		httpGet(url, (response) => {
+			response.resume();
+			response.on("end", () => resolveStatus(response.statusCode ?? 0));
+		}).on("error", reject);
+	});
+}
+
+/** The sign-in URL the dialog asked the (mocked) browser to open. */
+function openedSignInUrl(): URL {
+	const target = vi.mocked(openBrowser).mock.calls.at(-1)?.[0];
+	if (target === undefined) throw new Error("The login dialog did not open a sign-in page");
+	return new URL(target);
+}
+
+/**
+ * A profile as `/login` sees it in the native TUI: the client's runtime runs the flow and saves to `auth.json`; the
+ * Session worker's own runtime over the same profile is told to reload, as `SessionControl.reloadAuth` does.
+ */
+async function loginProfile() {
+	const agentDir = mkdtempSync(join(tmpdir(), "ultron-oauth-login-"));
+	const create = (): Promise<ModelRuntime> =>
+		ModelRuntime.create({
+			authPath: join(agentDir, "auth.json"),
+			modelsPath: null,
+			refreshOnCreate: false,
+			allowModelNetwork: false,
+		});
+	const client = await create();
+	const worker = await create();
+	await worker.refresh({ allowNetwork: false });
+	const workerModels = (providerId: string): number =>
+		worker.getAvailableSnapshot().filter((model) => model.provider === providerId).length;
+	const reloadWorker = async (providerId: string): Promise<{ availableModels: number }> => {
+		await worker.refresh({ allowNetwork: false, providers: [providerId] });
+		return { availableModels: worker.getAvailableSnapshot().length };
+	};
+	const saved = (): Record<string, Record<string, unknown>> =>
+		JSON.parse(readFileSync(join(agentDir, "auth.json"), "utf8")) as Record<string, Record<string, unknown>>;
+	return { agentDir, client, worker, workerModels, reloadWorker, saved };
+}
+
 function fakeOAuthProvider(id: string, name: string): Provider {
 	return {
 		id,
@@ -2134,6 +2239,214 @@ describe("experimental client TUI: Pi's settings, auth, session and diagnostic c
 		} finally {
 			await harness.dispose();
 			rmSync(agentDir, { recursive: true, force: true });
+		}
+	});
+
+	// The three shapes of subscription login, with the provider's token endpoints mocked: the reporter of "none of
+	// the OAuth logins worked" had no error text, so each shape is pinned end to end (dialog, auth.json, worker).
+	test("/login with a browser redirect: the callback server finishes the login and the worker gets the models", async () => {
+		const profile = await loginProfile();
+		stubOAuthEndpoints("unused");
+		vi.mocked(openBrowser).mockClear();
+		const harness = await openHarness(
+			{ command: "client" },
+			{ environment: { agentDir: profile.agentDir, loginRuntime: async () => profile.client } },
+		);
+		const { component, reloadAuth } = harness;
+		reloadAuth.mockImplementation(() => profile.reloadWorker("anthropic"));
+		try {
+			expect(profile.workerModels("anthropic")).toBe(0);
+			runCommand(component, "/login anthropic");
+			await vi.waitFor(() => expect(plain(component.render(120))).toContain("Select authentication method"));
+			component.handleInput("\r"); // the subscription, not an API key
+			await vi.waitFor(() => expect(openBrowser).toHaveBeenCalledTimes(1));
+			const signIn = openedSignInUrl();
+			expect(`${signIn.origin}${signIn.pathname}`).toBe("https://claude.ai/oauth/authorize");
+			expect(signIn.searchParams.get("redirect_uri")).toBe("http://localhost:53692/callback");
+			expect(signIn.searchParams.get("code_challenge_method")).toBe("S256");
+			// Without a browser (SSH), the URL is on screen to copy and the redirect URL can be pasted.
+			expect(plain(component.render(400))).toContain("https://claude.ai/oauth/authorize?");
+			expect(plain(component.render(120))).toContain("paste the authorization code / redirect URL here");
+			// What to do when the browser cannot reach the callback (Ultron in a container: "localhost refused to
+			// connect") is on screen with the prompt, whatever machine the test runs on.
+			expect(plain(component.render(400))).toContain(
+				"copy that page's full address from the address bar and paste it here.",
+			);
+
+			const state = signIn.searchParams.get("state");
+			expect(await browserRedirect(`http://127.0.0.1:53692/callback?code=browser-code&state=${state}`)).toBe(200);
+
+			await vi.waitFor(() => expect(reloadAuth).toHaveBeenCalledWith("anthropic", expect.anything()));
+			// The final status, once the worker has reloaded: the Session keeps its model, and the status says how to
+			// get to the new provider's.
+			await vi.waitFor(() =>
+				expect(plain(component.render(400))).toContain(
+					"The Session still uses test/one; /model switches to Anthropic's models",
+				),
+			);
+			expect(plain(component.render(400))).toContain("Logged in to Anthropic. Credentials saved to ");
+			expect(profile.saved().anthropic).toMatchObject({
+				type: "oauth",
+				access: "anthropic-access",
+				refresh: "anthropic-refresh",
+			});
+			expect(statSync(join(profile.agentDir, "auth.json")).mode & 0o777).toBe(0o600);
+			expect(profile.workerModels("anthropic")).toBeGreaterThan(0);
+			const model = profile.worker.getAvailableSnapshot().find((candidate) => candidate.provider === "anthropic")!;
+			expect((await profile.worker.getAuth(model))?.auth.apiKey).toBe("anthropic-access");
+		} finally {
+			vi.unstubAllGlobals();
+			await harness.dispose();
+			rmSync(profile.agentDir, { recursive: true, force: true });
+		}
+	});
+
+	test("/login with a pasted redirect URL: a stray Enter does not end the login, the paste completes it", async () => {
+		const profile = await loginProfile();
+		stubOAuthEndpoints("unused");
+		vi.mocked(openBrowser).mockClear();
+		const harness = await openHarness(
+			{ command: "client" },
+			{ environment: { agentDir: profile.agentDir, loginRuntime: async () => profile.client } },
+		);
+		const { component, reloadAuth } = harness;
+		reloadAuth.mockImplementation(() => profile.reloadWorker("openai-codex"));
+		try {
+			runCommand(component, "/login openai-codex");
+			await vi.waitFor(() => expect(plain(component.render(120))).toContain("Select OpenAI Codex login method"));
+			component.handleInput("\r"); // browser login
+			await vi.waitFor(() => expect(openBrowser).toHaveBeenCalledTimes(1));
+			const signIn = openedSignInUrl();
+			expect(`${signIn.origin}${signIn.pathname}`).toBe("https://auth.openai.com/oauth/authorize");
+			expect(signIn.searchParams.get("redirect_uri")).toBe("http://localhost:1455/auth/callback");
+			await vi.waitFor(() =>
+				expect(plain(component.render(120))).toContain("paste the authorization code / redirect URL here"),
+			);
+			expect(plain(component.render(400))).toContain(
+				"copy that page's full address from the address bar and paste it here.",
+			);
+
+			// Enter on the empty paste prompt (pressed while the browser sign-in is still under way) used to end the
+			// login with "Missing authorization code" and close the callback server under the browser.
+			component.handleInput("\r");
+			await new Promise((resolveWait) => setTimeout(resolveWait, 50));
+			expect(plain(component.render(200))).not.toContain("Missing authorization code");
+			expect(plain(component.render(120))).toContain("Login to OpenAI Codex");
+			expect(reloadAuth).not.toHaveBeenCalled();
+
+			// The browser could not load the callback page: its address is pasted (bracketed paste, a long URL).
+			const state = signIn.searchParams.get("state");
+			component.handleInput(
+				`\u001b[200~http://localhost:1455/auth/callback?code=pasted-code&scope=openid+profile+email+offline_access&state=${state}\u001b[201~`,
+			);
+			component.handleInput("\r");
+
+			await vi.waitFor(() => expect(reloadAuth).toHaveBeenCalledWith("openai-codex", expect.anything()));
+			await vi.waitFor(() =>
+				expect(plain(component.render(400))).toContain("/model switches to OpenAI Codex's models"),
+			);
+			expect(plain(component.render(400))).toContain("Logged in to OpenAI Codex");
+			expect(profile.saved()["openai-codex"]).toMatchObject({
+				type: "oauth",
+				refresh: "codex-refresh",
+				accountId: "acct-test",
+			});
+			expect(profile.workerModels("openai-codex")).toBeGreaterThan(0);
+		} finally {
+			vi.unstubAllGlobals();
+			await harness.dispose();
+			rmSync(profile.agentDir, { recursive: true, force: true });
+		}
+	});
+
+	test("/login with a device code: the code is shown, no browser is launched, polling completes the login", async () => {
+		const profile = await loginProfile();
+		const copilotModelId = profile.client.getProvider("github-copilot")!.getModels()[0]!.id;
+		const { requests } = stubOAuthEndpoints(copilotModelId);
+		vi.mocked(openBrowser).mockClear();
+		const harness = await openHarness(
+			{ command: "client" },
+			{ environment: { agentDir: profile.agentDir, loginRuntime: async () => profile.client } },
+		);
+		const { component, reloadAuth } = harness;
+		reloadAuth.mockImplementation(() => profile.reloadWorker("github-copilot"));
+		try {
+			runCommand(component, "/login github-copilot");
+			await vi.waitFor(() => expect(plain(component.render(120))).toContain("Select authentication method"));
+			component.handleInput("\r"); // the subscription
+			await vi.waitFor(() => expect(plain(component.render(120))).toContain("GitHub Enterprise URL/domain"));
+			component.handleInput("\r"); // blank: github.com (an empty answer is valid here)
+			await vi.waitFor(() => expect(plain(component.render(120))).toContain("Enter code: ABCD-EFGH"));
+			expect(plain(component.render(120))).toContain("https://github.com/login/device");
+			expect(openBrowser).not.toHaveBeenCalled();
+
+			await vi.waitFor(() => expect(reloadAuth).toHaveBeenCalledWith("github-copilot", expect.anything()), {
+				timeout: 15_000,
+			});
+			await vi.waitFor(() =>
+				expect(plain(component.render(400))).toContain("/model switches to GitHub Copilot's models"),
+			);
+			expect(plain(component.render(400))).toContain("Logged in to GitHub Copilot");
+			expect(requests).toContain("https://github.com/login/oauth/access_token");
+			expect(profile.saved()["github-copilot"]).toMatchObject({
+				type: "oauth",
+				refresh: "ghu_refresh",
+				availableModelIds: [copilotModelId],
+			});
+			expect(profile.workerModels("github-copilot")).toBe(1);
+		} finally {
+			vi.unstubAllGlobals();
+			await harness.dispose();
+			rmSync(profile.agentDir, { recursive: true, force: true });
+		}
+	});
+
+	test("/login reports a provider's refusal, and a login ended by another dialog, instead of closing silently", async () => {
+		const profile = await loginProfile();
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(
+				async () =>
+					new Response('{"error": "invalid_grant", "error_description": "Invalid \'code\' in request."}', {
+						status: 400,
+					}),
+			),
+		);
+		vi.mocked(openBrowser).mockClear();
+		const harness = await openHarness(
+			{ command: "client" },
+			{ environment: { agentDir: profile.agentDir, loginRuntime: async () => profile.client } },
+		);
+		const { component, reloadAuth } = harness;
+		try {
+			runCommand(component, "/login anthropic");
+			await vi.waitFor(() => expect(plain(component.render(120))).toContain("Select authentication method"));
+			component.handleInput("\r");
+			await vi.waitFor(() => expect(openBrowser).toHaveBeenCalledTimes(1));
+			const state = openedSignInUrl().searchParams.get("state");
+			await browserRedirect(`http://127.0.0.1:53692/callback?code=rejected&state=${state}`);
+			await vi.waitFor(() => expect(plain(component.render(400))).toContain("Error: Failed to login to Anthropic"));
+			expect(plain(component.render(400))).toContain("invalid_grant");
+			expect(profile.saved().anthropic).toBeUndefined();
+
+			runCommand(component, "/login anthropic");
+			await vi.waitFor(() => expect(plain(component.render(120))).toContain("Select authentication method"));
+			component.handleInput("\r");
+			await vi.waitFor(() => expect(openBrowser).toHaveBeenCalledTimes(2));
+			// An extension's dialog takes the editor slot while the browser sign-in is under way.
+			await vi.waitFor(() => expect(harness.extensionUIBridge.serving).toBe(true));
+			const answer = harness.extensionUIBridgeContext().select("Pick one", ["a", "b"]);
+			await vi.waitFor(() => expect(plain(component.render(200))).toContain("Pick one"));
+			expect(plain(component.render(200))).toContain(
+				"Login to Anthropic stopped: another dialog opened. Run /login again.",
+			);
+			component.handleInput("\u001b");
+			await answer;
+			expect(reloadAuth).not.toHaveBeenCalled();
+		} finally {
+			vi.unstubAllGlobals();
+			await harness.dispose();
+			rmSync(profile.agentDir, { recursive: true, force: true });
 		}
 	});
 

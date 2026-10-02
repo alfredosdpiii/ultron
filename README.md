@@ -429,6 +429,26 @@ ultron usage --last 5                    # what recent sessions did: depth, cell
 `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY` and the like. Custom OpenAI-compatible endpoints go in
 `~/.ultron/agent/models.json`.
 
+### Signing in from Docker or over SSH
+
+A subscription login in the browser (Claude Pro/Max, ChatGPT, OpenRouter, Radius) ends with the browser being sent
+to a callback server that Ultron runs on `localhost` (ports 53692, 1455, a free port and 1456). When Ultron runs in
+a Docker container or over SSH, the browser on your computer cannot reach that server and ends on "This site can't
+be reached: localhost refused to connect". On macOS and Windows that is also the case with
+`docker run --network host`, which joins the network of Docker's VM, not your computer's (unless Docker Desktop's
+host networking is enabled). The login has not failed at that point:
+
+- **Paste the address of that page.** Copy the failed page's full address from the address bar
+  (`http://localhost:1455/auth/callback?code=…&state=…`) and paste it into the login prompt in the terminal, which
+  is still waiting. The login dialog says the same.
+- **Or publish the callback port** and let the callback server listen on the container's interface instead of
+  loopback only, which a published port cannot reach:
+  `docker run -p 127.0.0.1:1455:1455 -p 127.0.0.1:53692:53692 -e ULTRON_OAUTH_CALLBACK_HOST=0.0.0.0 …` (ChatGPT
+  and Claude; without `--network host`).
+- **Or sign in without a callback:** a device-code login (GitHub Copilot, xAI, Kimi, Meta, and "Device code login"
+  for ChatGPT and Radius), an API key (`docker run -e ANTHROPIC_API_KEY …`, or "Use an API key" in `ultron setup`),
+  or an OpenAI-compatible proxy on the host such as CLIProxyAPI, added as a custom endpoint in `ultron setup`.
+
 Useful keys: Up/Down and Alt+R for prompt history, Ctrl+R for the RLM panel, Alt+W for the RLM pane, Alt+G for the full-screen graph,
 Alt+J for Jev, Ctrl+O to expand cells and help. `/hotkeys` lists them all, and `/usage` reports what the session did.
 

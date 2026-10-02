@@ -177,6 +177,69 @@ describe("OpenAI Codex OAuth", () => {
 		expect(pollTimes).toEqual([startTime.getTime(), startTime.getTime() + 5000]);
 	});
 
+	// The browser could not reach the callback server (Ultron in a container on a Mac: "localhost refused to
+	// connect"), so the address of the failed page is pasted. Chrome shows and may copy it without the scheme.
+	it.each([
+		[
+			"the full redirect URL",
+			(state: string) =>
+				`http://localhost:1455/auth/callback?code=pasted-code&scope=openid+profile+email+offline_access&state=${state}`,
+		],
+		[
+			"the address without its scheme",
+			(state: string) =>
+				`localhost:1455/auth/callback?code=pasted-code&scope=openid+profile+email+offline_access&state=${state}`,
+		],
+		["the query string alone", (state: string) => `code=pasted-code&state=${state}`],
+		["the bare code", () => "  pasted-code  "],
+	])("completes browser login from %s pasted into the prompt", async (_name, pasted) => {
+		const accessToken = createAccessToken("account-789");
+		const fetchMock = vi.fn(async (input: unknown, init?: RequestInit): Promise<Response> => {
+			expect(getUrl(input)).toBe("https://auth.openai.com/oauth/token");
+			const body = new URLSearchParams(String(init?.body));
+			expect(body.get("grant_type")).toBe("authorization_code");
+			expect(body.get("code")).toBe("pasted-code");
+			expect(body.get("redirect_uri")).toBe("http://localhost:1455/auth/callback");
+			expect(body.get("code_verifier")).toBeTruthy();
+			return jsonResponse({ access_token: accessToken, refresh_token: "refresh-token", expires_in: 3600 });
+		});
+		vi.stubGlobal("fetch", fetchMock);
+
+		let authUrl = "";
+		const credentials = await openaiCodexOAuth.login({
+			signal: neverAbortedSignal,
+			notify: (event) => {
+				if (event.type === "auth_url") authUrl = event.url;
+			},
+			prompt: async (prompt) => {
+				if (prompt.type === "select") return "browser";
+				if (prompt.type !== "manual_code") throw new Error(`Unexpected prompt: ${prompt.type}`);
+				const state = new URL(authUrl).searchParams.get("state");
+				if (!state) throw new Error("Missing OAuth state in auth URL");
+				return pasted(state);
+			},
+		});
+
+		expect(new URL(authUrl).searchParams.get("redirect_uri")).toBe("http://localhost:1455/auth/callback");
+		expect(credentials).toMatchObject({ type: "oauth", access: accessToken, refresh: "refresh-token" });
+		expect(credentials.accountId).toBe("account-789");
+		expect(fetchMock).toHaveBeenCalledOnce();
+	});
+
+	it("rejects a pasted redirect URL that belongs to another login", async () => {
+		const fetchMock = vi.fn();
+		vi.stubGlobal("fetch", fetchMock);
+		await expect(
+			openaiCodexOAuth.login({
+				signal: neverAbortedSignal,
+				notify: () => {},
+				prompt: async (prompt) =>
+					prompt.type === "select" ? "browser" : "http://localhost:1455/auth/callback?code=x&state=someone-else",
+			}),
+		).rejects.toThrow("State mismatch");
+		expect(fetchMock).not.toHaveBeenCalled();
+	});
+
 	it("offers browser login first and uses the selected OpenAI Codex device code flow", async () => {
 		const accessToken = createAccessToken("account-456");
 		const selectPrompts: Array<{

@@ -5,6 +5,7 @@
 import { spawn } from "node:child_process";
 import { join } from "node:path";
 import type { Api, Model } from "@ultron/ai";
+import { isClaudeCodeModel } from "@ultron/ai/providers/claude-code";
 import type { Terminal } from "@ultron/tui";
 import chalk from "chalk";
 import { APP_NAME, getAgentDir, getBundledLokiPath } from "../../config.ts";
@@ -171,11 +172,41 @@ export async function runSetupCommand(args: readonly string[]): Promise<boolean>
 	return true;
 }
 
-/** A model the worker could start with: a saved default, or any model whose provider has credentials. */
-export async function hasUsableModel(agentDir: string, settings: SettingsManager): Promise<boolean> {
+/**
+ * What the session worker would start on, by its own rules (`findInitialModel`): the saved default when its provider
+ * has credentials, else any available model. Claude Code CLI models are listed whenever a `claude` executable is on
+ * PATH, but the worker never falls back to them (they cannot drive a root lane on their own), so they only count
+ * under `ultron --claude` (ULTRON_ROOT=claude).
+ */
+async function startModelState(
+	agentDir: string,
+	settings: SettingsManager,
+	env: NodeJS.ProcessEnv,
+): Promise<"usable" | "none" | "default-without-credentials" | "unknown-default"> {
+	const runtime = await createProfileRuntime(agentDir);
+	const provider = settings.getDefaultProvider();
+	const id = settings.getDefaultModel();
+	const saved = provider && id ? runtime.getModel(provider, id) : undefined;
+	if (saved && runtime.hasConfiguredAuth(saved.provider)) return "usable";
+	const claudeRoot = env.ULTRON_ROOT?.trim().toLowerCase() === "claude";
+	if (runtime.getAvailableSnapshot().some((model) => claudeRoot || !isClaudeCodeModel(model))) return "usable";
+	if (!provider || !id) return "none";
+	// A default this profile does not know may come from an extension's provider, which only the worker loads.
+	return saved ? "default-without-credentials" : "unknown-default";
+}
+
+/**
+ * A model the worker could start with: a saved default (taken on trust, so a normal start does not load the model
+ * catalog), or any model the worker would fall back to.
+ */
+export async function hasUsableModel(
+	agentDir: string,
+	settings: SettingsManager,
+	env: NodeJS.ProcessEnv = process.env,
+): Promise<boolean> {
 	if (settings.getDefaultProvider() && settings.getDefaultModel()) return true;
 	try {
-		return (await createProfileRuntime(agentDir)).getAvailableSnapshot().length > 0;
+		return (await startModelState(agentDir, settings, env)) === "usable";
 	} catch {
 		// A broken models.json or auth.json is reported by the normal start; do not stand in its way.
 		return true;
@@ -243,10 +274,19 @@ export async function offerSetupOnFirstRun(parsed: Args): Promise<boolean> {
 	return false;
 }
 
-/** A hint for a failed non-interactive run that had no model to start with. */
-export async function noModelHint(): Promise<string | undefined> {
-	const agentDir = getAgentDir();
+/**
+ * A hint for a failed start that had no model to start with: nothing configured, or a saved default whose provider
+ * has no credentials any more (after `/logout`, or a default saved although its live test failed).
+ */
+export async function noModelHint(
+	agentDir: string = getAgentDir(),
+	env: NodeJS.ProcessEnv = process.env,
+): Promise<string | undefined> {
 	const settings = SettingsManager.create(process.cwd(), agentDir, { projectTrusted: false });
-	if (await hasUsableModel(agentDir, settings)) return undefined;
-	return `No model is configured. Run "${APP_NAME} setup", or set a provider key such as ANTHROPIC_API_KEY or OPENAI_API_KEY.`;
+	const state = await startModelState(agentDir, settings, env);
+	if (state === "none")
+		return `No model is configured. Run "${APP_NAME} setup", or set a provider key such as ANTHROPIC_API_KEY or OPENAI_API_KEY.`;
+	if (state === "default-without-credentials")
+		return `The default model ${settings.getDefaultProvider()}/${settings.getDefaultModel()} has no credentials, and no other model is set up. Run "${APP_NAME} setup" to sign in again or choose another model.`;
+	return undefined;
 }

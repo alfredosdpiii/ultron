@@ -19,6 +19,7 @@ if (typeof process !== "undefined" && (process.versions?.node || process.version
 
 import { normalizeRadiusGatewayUrl } from "../../providers/radius-config.ts";
 import type { OAuthAuth, OAuthCredential, ProviderAuthInteraction } from "../types.ts";
+import { oauthCallbackHost } from "./callback-host.ts";
 import { pollOAuthDeviceCodeFlow } from "./device-code.ts";
 import { oauthErrorHtml, oauthSuccessHtml } from "./oauth-page.ts";
 import { generatePKCE } from "./pkce.ts";
@@ -140,9 +141,34 @@ async function requestOAuthToken(
 }
 
 type OAuthCallbackServer = {
+	/** The code from the browser's redirect, or null once the wait ends without one. */
 	waitForCode(): Promise<string | null>;
+	/** Stop waiting for the browser: the login continues with a pasted redirect URL or code. */
+	cancelWait(): void;
+	/** The provider redirected back with an error instead of a code. */
+	denied(): boolean;
 	close(): void;
 };
+
+/** A pasted redirect URL (`…/oauth/callback?code=…&state=…`), its query string, or the bare code. */
+function parseAuthorizationInput(input: string): { code?: string; state?: string } {
+	const value = input.trim();
+	if (!value) return {};
+	try {
+		const url = new URL(value);
+		return {
+			code: url.searchParams.get("code") ?? undefined,
+			state: url.searchParams.get("state") ?? undefined,
+		};
+	} catch {
+		// not a URL
+	}
+	if (value.includes("code=")) {
+		const params = new URLSearchParams(value.replace(/^[^?]*\?/, ""));
+		return { code: params.get("code") ?? undefined, state: params.get("state") ?? undefined };
+	}
+	return { code: value };
+}
 
 function startOAuthCallbackServer(expectedState: string, signal: AbortSignal): Promise<OAuthCallbackServer> {
 	if (!_http) {
@@ -164,6 +190,7 @@ function startOAuthCallbackServer(expectedState: string, signal: AbortSignal): P
 	};
 	const onAbort = () => finish(null);
 	signal.addEventListener("abort", onAbort, { once: true });
+	let denied = false;
 
 	const sendPage = (response: import("node:http").ServerResponse, status: number, html: string) => {
 		response.statusCode = status;
@@ -185,6 +212,7 @@ function startOAuthCallbackServer(expectedState: string, signal: AbortSignal): P
 		const error = url.searchParams.get("error");
 		if (error) {
 			sendPage(response, 400, oauthErrorHtml(url.searchParams.get("error_description") ?? error));
+			denied = true;
 			finish(null);
 			return;
 		}
@@ -201,9 +229,11 @@ function startOAuthCallbackServer(expectedState: string, signal: AbortSignal): P
 
 	return new Promise((resolve) => {
 		server
-			.listen(CALLBACK_PORT, CALLBACK_HOST, () => {
+			.listen(CALLBACK_PORT, oauthCallbackHost(), () => {
 				resolve({
 					waitForCode: () => wait,
+					cancelWait: () => finish(null),
+					denied: () => denied,
 					close: () => {
 						finish(null);
 						server.close();
@@ -211,8 +241,9 @@ function startOAuthCallbackServer(expectedState: string, signal: AbortSignal): P
 				});
 			})
 			.once("error", () => {
+				// The port is taken: the login can still finish with a pasted redirect URL.
 				finish(null);
-				resolve({ waitForCode: async () => null, close: () => {} });
+				resolve({ waitForCode: async () => null, cancelWait: () => {}, denied: () => false, close: () => {} });
 			});
 	});
 }
@@ -241,11 +272,40 @@ async function loginWithBrowser(
 	interaction.notify({
 		type: "auth_url",
 		url: authorizeUrl.toString(),
-		instructions: "Continue in your browser.",
+		instructions:
+			"Continue in your browser. If the browser is on another machine, paste the final redirect URL here.",
 	});
 
+	// As in the other browser logins: when the browser cannot reach the callback server (it runs on another
+	// machine, or this process is in a container), the redirect URL it ended on is pasted instead.
+	const manualAbort = new AbortController();
+	let manualInput: string | undefined;
+	let manualError: Error | undefined;
+	const manualPromise = interaction
+		.prompt({
+			type: "manual_code",
+			message: "Complete sign-in in your browser, or paste the authorization code / redirect URL here:",
+			placeholder: REDIRECT_URI,
+			signal: manualAbort.signal,
+		})
+		.then((input) => {
+			manualInput = input;
+			callbackServer.cancelWait();
+		})
+		.catch((error) => {
+			manualError = error instanceof Error ? error : new Error(String(error));
+			callbackServer.cancelWait();
+		});
+
 	try {
-		const code = await callbackServer.waitForCode();
+		let code = await callbackServer.waitForCode();
+		if (!code && !callbackServer.denied() && !interaction.signal.aborted) {
+			await manualPromise;
+			if (manualError && !interaction.signal.aborted) throw manualError;
+			const parsed = parseAuthorizationInput(manualInput ?? "");
+			if (parsed.state && parsed.state !== state) throw new Error("OAuth state mismatch");
+			code = parsed.code ?? null;
+		}
 		if (!code) {
 			if (interaction.signal.aborted) {
 				throw new Error("Login cancelled");
@@ -264,6 +324,7 @@ async function loginWithBrowser(
 			interaction.signal,
 		);
 	} finally {
+		manualAbort.abort();
 		callbackServer.close();
 	}
 }

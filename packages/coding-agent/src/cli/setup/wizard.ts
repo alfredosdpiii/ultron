@@ -304,7 +304,10 @@ async function loginProvider(
 			);
 			return option.id;
 		}
-		if (outcome.cancelled) continue;
+		if (outcome.cancelled) {
+			ui.note(`Sign-in to ${option.name} cancelled; nothing was saved.`, "dim");
+			continue;
+		}
 		ui.note(`✗ ${option.name}: ${outcome.error}`, "error");
 	}
 }
