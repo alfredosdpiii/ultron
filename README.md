@@ -611,7 +611,13 @@ findings). It is bundled and on by default:
   A check that takes longer than 5 s (`ULTRON_LOKI_TIMEOUT_MS`) lets the write through with a visible "Loki did not
   check this write" note.
 - Files a cell changes any other way (`bash('sed -i ...')`, `Path.write_text`) are checked after the cell, in the
-  background; findings arrive with the next cell result.
+  background; findings arrive with the next cell result. Only what the cell introduced is reported, in three kinds
+  that are never mixed: new findings ("fix these"), advisory lines such as a function grown complex (an FYI, no
+  change required), and checks that could not run (a missing analyzer, said once per session). Existing code in an
+  edited file is not reported.
+- A newly imported Python module is checked against the project's interpreter, not the one Loki runs on:
+  `ULTRON_LOKI_PROJECT_PYTHON`, else the `python` that `bash()` runs when it belongs to a virtual or conda
+  environment, else a `.venv`. Without one the import is "not checked", never "unresolved".
 - In a Git repository without `.loki/`, Ultron creates only `.loki/` (engine and default policy) and commits just
   that directory as "Add Loki guardrails" with your Git identity, leaving your other staged and unstaged changes
   alone. It never pushes and never skips hooks; if a hook or signing refuses the commit, or a merge or rebase is in

@@ -236,7 +236,7 @@ export interface SessionStatsOptions {
 export type GuardOutcome = {
 	readonly guard: string;
 	readonly phase: "before_write" | "after_cell";
-	readonly outcome: "allowed" | "blocked" | "unchecked" | "clean" | "findings";
+	readonly outcome: "allowed" | "blocked" | "unchecked" | "clean" | "advisory" | "findings";
 	readonly ms: number;
 };
 
@@ -354,7 +354,8 @@ export class SessionStatsRecorder {
 				if (record.outcome === "unchecked") guard.unchecked += 1;
 			} else {
 				guard.afterChecks += 1;
-				if (record.outcome !== "clean") guard.afterFindings += 1;
+				// Advisory-only reports are not findings to fix.
+				if (record.outcome === "findings" || record.outcome === "unchecked") guard.afterFindings += 1;
 			}
 		});
 	}

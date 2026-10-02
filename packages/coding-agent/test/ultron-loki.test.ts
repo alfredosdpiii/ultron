@@ -5,7 +5,11 @@
  *   hook or a failing or hanging signer leaves `.loki/` uncommitted and unstaged with the reason;
  * - with the real bundled engine (python3 >= 3.11; skipped otherwise): setup creates only `.loki/` and commits it,
  *   an edit introducing a hardcoded credential is blocked before the write, a clean edit passes, advise mode only
- *   reports, and a secret written through bash is reported after the cell.
+ *   reports, and a secret written through bash is reported after the cell;
+ * - what the model is told after a cell: new findings to fix, advisory lines as FYI, missing checks once per session,
+ *   and nothing about code the cell did not change (the SWE-bench pilot's noise: an untouched abstract method, the
+ *   project's own imports, another function's complexity);
+ * - which interpreter is passed to Loki as the project's.
  *
  * Fake credentials are built from parts at run time, so this file never holds a whole one.
  */
@@ -28,16 +32,20 @@ import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { getBundledLokiPath } from "../src/config.ts";
 import type { LokiSettings } from "../src/core/settings-manager.ts";
 import { createUltronRlmTool } from "../src/experimental/session-worker.ts";
-import { FileHooks } from "../src/ultron/file-hooks.ts";
+import { FileHooks, type GuardRecord } from "../src/ultron/file-hooks.ts";
 import {
 	autoCommitSkipReason,
 	autoInitEligibility,
+	classifyLokiText,
 	commitLoki,
+	findProjectPython,
 	findPython,
+	LokiGuard,
 	lokiAutoCommit,
 	lokiAutoInit,
 	lokiMode,
 	lokiTimeoutMs,
+	parseLokiReport,
 	setupLoki,
 } from "../src/ultron/loki.ts";
 
@@ -248,6 +256,310 @@ describe("auto-commit", () => {
 	});
 });
 
+function executable(path: string, script: string): string {
+	mkdirSync(join(path, ".."), { recursive: true });
+	writeFileSync(path, script);
+	chmodSync(path, 0o755);
+	return path;
+}
+
+describe("Loki reports", () => {
+	test("a JSON report keeps blocking, advisory and not-checked apart", () => {
+		const report = parseLokiReport(
+			JSON.stringify({
+				loki: "0.1.3",
+				command: "hook",
+				status: "blocked",
+				blocking: [{ text: "app.py:3: python-ast: stub body in todo", path: "app.py", line: 3 }],
+				advisory: [{ text: "app.py:9: loki/slop-complexity: f cyclomatic complexity 9 -> 11 (> 10)" }, { line: 1 }],
+				not_checked: ["NOT CHECKED python: missing ruff"],
+			}),
+		);
+		expect(report).toEqual({
+			blocking: ["app.py:3: python-ast: stub body in todo"],
+			advisory: ["app.py:9: loki/slop-complexity: f cyclomatic complexity 9 -> 11 (> 10)"],
+			notChecked: ["NOT CHECKED python: missing ruff"],
+		});
+		expect(
+			parseLokiReport(JSON.stringify({ status: "error", blocking: [], error: "invalid hook input: x" })),
+		).toEqual({ blocking: [], advisory: [], notChecked: [], error: "invalid hook input: x" });
+		// Not a report: a harness envelope, other JSON, text, nothing.
+		expect(parseLokiReport('{"hookSpecificOutput": {}}')).toBeUndefined();
+		expect(parseLokiReport("[]")).toBeUndefined();
+		expect(parseLokiReport("loki: post-write check failed")).toBeUndefined();
+		expect(parseLokiReport("")).toBeUndefined();
+	});
+
+	test("an older engine's text is sorted into the same tiers", () => {
+		// 0.1.3: one stream, advisory lines only recognizable by their rule.
+		expect(
+			classifyLokiText(
+				[
+					"loki: post-write check failed; files are already changed.",
+					"app.py:3: python-ast: stub body in todo",
+					"app.py:9: loki/slop-complexity: f cyclomatic complexity 9 -> 11 (> 10); split it into smaller functions",
+					"NOT CHECKED python: missing ruff",
+					"",
+				].join("\n"),
+				true,
+			),
+		).toEqual({
+			blocking: ["app.py:3: python-ast: stub body in todo"],
+			advisory: [
+				"app.py:9: loki/slop-complexity: f cyclomatic complexity 9 -> 11 (> 10); split it into smaller functions",
+			],
+			notChecked: ["NOT CHECKED python: missing ruff"],
+		});
+		// The labelled text of a newer engine: everything after the label is advisory.
+		expect(
+			classifyLokiText(
+				"loki: post-write check failed; files are already changed.\na.ts:1: loki/xss: x\nloki: advisory (not blocking):\na.ts:2: something new\nNOT CHECKED typescript: missing oxlint",
+				true,
+			),
+		).toEqual({
+			blocking: ["a.ts:1: loki/xss: x"],
+			advisory: ["a.ts:2: something new"],
+			notChecked: ["NOT CHECKED typescript: missing oxlint"],
+		});
+		// A check that passed has nothing blocking, whatever it printed.
+		expect(classifyLokiText("copy.py:1: loki/slop-duplication: lines 1-10 duplicate lib.py:1-10", false)).toEqual({
+			blocking: [],
+			advisory: ["copy.py:1: loki/slop-duplication: lines 1-10 duplicate lib.py:1-10"],
+			notChecked: [],
+		});
+		expect(classifyLokiText("loki: invalid hook input: bad path", true).error).toBe(
+			"loki: invalid hook input: bad path",
+		);
+	});
+});
+
+describe("what the model is told after a cell", () => {
+	/**
+	 * A stand-in engine: `sh <engine> --root <root> hook --file ... [--format json]` prints the report in `report.json`
+	 * (or the text in `report.txt` on stderr), exits with `status`, and records its arguments and LOKI_PYTHON.
+	 */
+	function standIn(root: string, options: { json?: boolean; projectPython?: string } = {}) {
+		const state = join(work, "state");
+		mkdirSync(state, { recursive: true });
+		const script = executable(
+			join(work, "engine.sh"),
+			[
+				`echo "$@" >> '${state}/args'`,
+				`echo "python=$LOKI_PYTHON" >> '${state}/args'`,
+				`[ -f '${state}/report.json' ] && cat '${state}/report.json'`,
+				`[ -f '${state}/report.txt' ] && cat '${state}/report.txt' >&2`,
+				`exit "$(cat '${state}/status')"`,
+				"",
+			].join("\n"),
+		);
+		const guard = new LokiGuard({
+			root,
+			engine: script,
+			python: "sh",
+			mode: "on",
+			timeoutMs: 5_000,
+			previewHost: "ultron",
+			postWrite: true,
+			jsonReports: options.json ?? true,
+			...(options.projectPython === undefined ? {} : { projectPython: options.projectPython }),
+			env: ENV,
+		});
+		const records: GuardRecord[] = [];
+		const hooks = new FileHooks({ cwd: root, onRecord: (record) => records.push(record) });
+		hooks.add(guard);
+		let cell = 0;
+		return {
+			hooks,
+			records,
+			args: () => readFileSync(join(state, "args"), "utf8"),
+			/** Change `file` as a cell would, with the engine answering `report`; returns what the model is told. */
+			cell: async (
+				report: {
+					blocking?: string[];
+					advisory?: string[];
+					not_checked?: string[];
+					text?: string;
+					status?: number;
+				},
+				file = "app.py",
+			): Promise<string | undefined> => {
+				rmSync(join(state, "report.json"), { force: true });
+				rmSync(join(state, "report.txt"), { force: true });
+				const blocking = report.blocking ?? [];
+				if (report.text === undefined)
+					writeFileSync(
+						join(state, "report.json"),
+						JSON.stringify({
+							status: blocking.length > 0 ? "blocked" : "passed",
+							blocking: blocking.map((text) => ({ text })),
+							advisory: (report.advisory ?? []).map((text) => ({ text })),
+							not_checked: report.not_checked ?? [],
+						}),
+					);
+				else writeFileSync(join(state, "report.txt"), report.text);
+				writeFileSync(join(state, "status"), String(report.status ?? (blocking.length > 0 ? 2 : 0)));
+				await hooks.start();
+				hooks.cellStarted();
+				cell += 1;
+				writeFileSync(join(root, file), `VALUE = ${cell}\n`);
+				hooks.cellEnded("main");
+				await hooks.settled();
+				return hooks.takePending("main");
+			},
+		};
+	}
+
+	const STUB = "app.py:12: python-ast: stub body in todo";
+	const HOTSPOT =
+		"app.py:20: loki/slop-complexity: f cyclomatic complexity 9 -> 11 (> 10); split it into smaller functions";
+	const NO_RUFF = "NOT CHECKED python: missing ruff";
+
+	test("new findings say fix these, advisory lines are FYI, and a missing analyzer is one short note", async () => {
+		const session = standIn(repository(work));
+		const told = await session.cell({ blocking: [STUB], advisory: [HOTSPOT], not_checked: [NO_RUFF] });
+		expect(told).toBe(
+			[
+				"[Loki] 1 new finding from this cell's changes; fix these:",
+				STUB,
+				"FYI (advisory, not blocking; no change required):",
+				HOTSPOT,
+				"not checked in this session (said once): python: missing ruff",
+			].join("\n"),
+		);
+		expect(told).not.toContain("post-write check failed");
+		expect(session.records.at(-1)).toMatchObject({ phase: "after_cell", outcome: "findings" });
+		expect(session.args()).toContain("hook --file app.py --format json");
+	});
+
+	test("what was said is not said again: open findings shrink to a count, the rest to nothing", async () => {
+		const session = standIn(repository(work));
+		await session.cell({ blocking: [STUB], advisory: [HOTSPOT], not_checked: [NO_RUFF] });
+		// The same finding two lines further down after another edit of the file: still the same finding.
+		const again = await session.cell({
+			blocking: [STUB.replace(":12:", ":14:")],
+			advisory: [HOTSPOT.replace(":20:", ":22:")],
+			not_checked: [NO_RUFF],
+		});
+		expect(again).toBe("[Loki] 1 finding reported earlier is still open in app.py.");
+		expect(session.records.at(-1)).toMatchObject({ outcome: "findings" });
+		// A second finding next to the open one: only the new one is spelled out.
+		const second = "app.py:30: python-ast: stub body in later";
+		expect(await session.cell({ blocking: [STUB, second], not_checked: [NO_RUFF] })).toBe(
+			`[Loki] 1 new finding from this cell's changes; fix these:\n${second}\n1 finding reported earlier is still open in app.py.`,
+		);
+		// Fixed: nothing to say, and the record is clean.
+		expect(await session.cell({ not_checked: [NO_RUFF] })).toBeUndefined();
+		expect(session.records.at(-1)).toMatchObject({ outcome: "clean" });
+		expect(session.records.at(-1)!.detail).toBeUndefined();
+		// Introduced again later, it is new again.
+		expect(await session.cell({ blocking: [STUB] })).toContain("1 new finding from this cell's changes; fix these:");
+		expect(session.hooks.stats()[0]).toMatchObject({ afterChecks: 5, afterFindings: 4 });
+	});
+
+	test("advisory lines alone never say fix, and a missing check alone is only the note", async () => {
+		const session = standIn(repository(work));
+		const advisory = await session.cell({ advisory: [HOTSPOT] });
+		expect(advisory).toBe(`[Loki] FYI (advisory, not blocking; no change required):\n${HOTSPOT}`);
+		expect(advisory).not.toMatch(/fix th/);
+		expect(session.records.at(-1)).toMatchObject({ outcome: "advisory" });
+		const note = await session.cell({ not_checked: [NO_RUFF] }, "other.py");
+		expect(note).toBe("[Loki] not checked in this session (said once): python: missing ruff");
+		expect(session.records.at(-1)).toMatchObject({ outcome: "clean" });
+		// A different missing check later is said once too, the first one never again.
+		expect(
+			await session.cell(
+				{
+					not_checked: [
+						NO_RUFF,
+						"NOT CHECKED python imports: no project interpreter found (set LOKI_PYTHON or pass --python)",
+					],
+				},
+				"other.py",
+			),
+		).toBe(
+			"[Loki] not checked in this session (said once): python imports: no project interpreter found (set LOKI_PYTHON or pass --python)",
+		);
+		expect(await session.cell({ not_checked: [NO_RUFF] }, "other.py")).toBeUndefined();
+		expect(session.hooks.stats()[0]).toMatchObject({ afterChecks: 4, afterFindings: 0 });
+	});
+
+	test("an older engine's text gets the same presentation, without --format", async () => {
+		const session = standIn(repository(work), { json: false });
+		const told = await session.cell({
+			status: 2,
+			text: `loki: post-write check failed; files are already changed.\n${STUB}\n${HOTSPOT}\n${NO_RUFF}\n`,
+		});
+		expect(told).toBe(
+			[
+				"[Loki] 1 new finding from this cell's changes; fix these:",
+				STUB,
+				"FYI (advisory, not blocking; no change required):",
+				HOTSPOT,
+				"not checked in this session (said once): python: missing ruff",
+			].join("\n"),
+		);
+		expect(session.args()).not.toContain("--format");
+		expect(await session.cell({ status: 0, text: `${NO_RUFF}\n` })).toBeUndefined();
+	});
+
+	test("an engine that cannot check says so instead of reporting findings", async () => {
+		const session = standIn(repository(work));
+		expect(await session.cell({ status: 2, text: "loki: invalid hook input: git: cannot resolve HEAD\n" })).toBe(
+			"[Loki] Loki could not check the files this cell changed: loki: invalid hook input: git: cannot resolve HEAD",
+		);
+		expect(session.records.at(-1)).toMatchObject({ outcome: "unchecked" });
+	});
+
+	test("the project's interpreter reaches the engine as LOKI_PYTHON", async () => {
+		const session = standIn(repository(work), { projectPython: "/opt/project/bin/python" });
+		await session.cell({});
+		expect(session.args()).toContain("python=/opt/project/bin/python\n");
+		const plain = standIn(repository(work, "plain"));
+		await plain.cell({});
+		expect(plain.args().trim().split("\n").at(-1)).toBe(`python=${ENV.LOKI_PYTHON ?? ""}`);
+	});
+});
+
+describe("the project's interpreter", () => {
+	const fakePython = (dir: string, name: string, kind: "environment" | "system"): string =>
+		executable(join(dir, name), `#!/bin/sh\necho '${join(dir, name)}'\necho ${kind === "environment" ? 1 : 0}\n`);
+	const env = (path: string, extra: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv => ({ PATH: path, ...extra });
+
+	test("ULTRON_LOKI_PROJECT_PYTHON wins; an inherited LOKI_PYTHON is left to the engine", async () => {
+		const bin = join(work, "bin");
+		fakePython(bin, "python", "environment");
+		expect(await findProjectPython(work, env(bin, { ULTRON_LOKI_PROJECT_PYTHON: " /named/python " }))).toBe(
+			"/named/python",
+		);
+		expect(await findProjectPython(work, env(bin, { LOKI_PYTHON: "/set/by/user" }))).toBeUndefined();
+	});
+
+	test("the python bash() would run is used when it belongs to an environment", async () => {
+		const bin = join(work, "bin");
+		const python = fakePython(bin, "python", "environment");
+		expect(await findProjectPython(work, env(bin))).toBe(python);
+		// Only python3 on PATH.
+		const bin3 = join(work, "bin3");
+		const python3 = fakePython(bin3, "python3", "environment");
+		expect(await findProjectPython(work, env(bin3))).toBe(python3);
+	});
+
+	test("a bare system interpreter is not the project's; a .venv in the session directory is", async () => {
+		const bin = join(work, "bin");
+		fakePython(bin, "python", "system");
+		fakePython(bin, "python3", "environment");
+		const project = join(work, "project");
+		mkdirSync(project);
+		expect(await findProjectPython(project, env(bin))).toBeUndefined();
+		const venv = executable(join(project, "venv", "bin", "python3"), "#!/bin/sh\n");
+		expect(await findProjectPython(project, env(bin))).toBe(venv);
+		const dotVenv = executable(join(project, ".venv", "bin", "python"), "#!/bin/sh\n");
+		expect(await findProjectPython(project, env(bin))).toBe(dotVenv);
+		// No python at all.
+		expect(await findProjectPython(work, env(join(work, "empty")))).toBeUndefined();
+	});
+});
+
 const python = await findPython(ENV);
 const engine = getBundledLokiPath();
 const realLoki = "command" in python && engine !== undefined;
@@ -309,7 +621,7 @@ describe.skipIf(!realLoki)("with the real bundled Loki engine", () => {
 		hooks.cellEnded("main");
 		await hooks.settled();
 		const findings = hooks.takePending("main");
-		expect(findings).toContain("[Loki] findings in files this cell changed");
+		expect(findings).toContain("[Loki] 1 new finding from this cell's changes; fix these:");
 		expect(findings).toContain("loki/secret");
 		expect(hooks.stats()[0]).toMatchObject({ name: "Loki", checks: 3, blocked: 1, afterChecks: 1, afterFindings: 1 });
 	});
@@ -434,6 +746,155 @@ describe.skipIf(!realLoki)("with the real bundled Loki engine", () => {
 			lane: "main",
 		});
 		expect(blocked!.blocked).toBe(true);
+	});
+
+	/** A Django-like module: an abstract method, a placeholder and third-party imports, all committed. */
+	const WIDGETS = [
+		"import datetime",
+		"",
+		"import numpy",
+		"from docutils import nodes",
+		"",
+		"",
+		"class MultiWidget:",
+		"    def decompress(self, value):",
+		'        raise NotImplementedError("Subclasses must implement this method.")',
+		"",
+		"",
+		"def unfinished():",
+		"    pass",
+		"",
+		"",
+		"class Other:",
+		"    def __init__(self, x):",
+		...Array.from({ length: 13 }, (_, i) => `        if x == ${i}:\n            x += ${i}`),
+		"        self.x = x",
+		"",
+		"",
+		"class SelectDateWidget:",
+		"    def __init__(self, x):",
+		"        self.x = x",
+		"",
+		"    def value_from_datadict(self, y, m, d):",
+		"        try:",
+		"            date_value = datetime.date(int(y), int(m), int(d))",
+		"        except ValueError:",
+		'            return "%s-%s-%s" % (y or 0, m or 0, d or 0)',
+		"        return date_value.isoformat()",
+		"",
+	].join("\n");
+
+	/** A session in a repository without `.loki/` (the bundled engine, the default policy), as in the pilot. */
+	async function pilotSession(extraEnv: NodeJS.ProcessEnv = {}) {
+		const root = repository(work);
+		mkdirSync(join(root, "django", "forms"), { recursive: true });
+		const file = join(root, "django", "forms", "widgets.py");
+		writeFileSync(file, WIDGETS);
+		git(root, "add", "django");
+		git(root, "commit", "-qm", "widgets");
+		const records: Record<string, unknown>[] = [];
+		const setup = await setupLoki({
+			cwd: root,
+			env: { ...ENV, ULTRON_LOKI_AUTOINIT: "off", ...extraEnv },
+			settings: {},
+			bundledEngine: engine,
+			home: work,
+			record: (record) => records.push(record),
+		});
+		expect(existsSync(join(root, ".loki"))).toBe(false);
+		const outcomes: GuardRecord[] = [];
+		const hooks = new FileHooks({ cwd: root, onRecord: (record) => outcomes.push(record) });
+		hooks.add(setup.guard!);
+		await hooks.start();
+		const cell = async (content: string): Promise<string | undefined> => {
+			hooks.cellStarted();
+			writeFileSync(file, content);
+			hooks.cellEnded("main");
+			await hooks.settled();
+			return hooks.takePending("main");
+		};
+		return { root, setup, records, outcomes, cell };
+	}
+
+	const FIX = WIDGETS.replace(
+		"        except ValueError:\n",
+		'        except OverflowError:\n            return ""\n        except ValueError:\n',
+	);
+
+	test("a small edit in a file full of existing debt tells the model nothing about that debt", async () => {
+		const session = await pilotSession();
+		expect(session.setup.guard!.options.jsonReports).toBe(true);
+		expect(session.records.at(-1)).toMatchObject({ phase: "setup", engine: "bundled", reports: "json" });
+		const first = await session.cell(FIX);
+		// At most the once-per-session note that Ruff did not run here (not installed, or no committed .ruff.toml).
+		if (first !== undefined)
+			expect(first).toMatch(/^\[Loki\] not checked in this session \(said once\): python[^\n]*$/);
+		expect(session.outcomes.at(-1)).toMatchObject({ phase: "after_cell", outcome: "clean" });
+		// The same again says nothing at all.
+		expect(await session.cell(`${FIX}\nVALUE = 1\n`)).toBeUndefined();
+
+		// A placeholder the cell itself adds is the only thing to fix; the existing one is not mentioned.
+		const added = await session.cell(`${FIX}\n\ndef todo():\n    pass\n`);
+		expect(added).toBe(
+			`[Loki] 1 new finding from this cell's changes; fix these:\ndjango/forms/widgets.py:${FIX.split("\n").length + 2}: python-ast: stub body in todo`,
+		);
+		expect(session.outcomes.at(-1)).toMatchObject({ outcome: "findings" });
+		for (const text of [first ?? "", added!])
+			for (const noise of ["decompress", "unfinished", "unresolved import", "post-write check failed", "__init__"])
+				expect(text).not.toContain(noise);
+	});
+
+	test("a function the cell makes complex is an FYI, never something to fix", async () => {
+		const session = await pilotSession();
+		await session.cell(FIX);
+		const grown = FIX.replace("        if x == 0:\n", "        if x == 0 or x == 99:\n");
+		const told = await session.cell(grown);
+		expect(told).toMatch(
+			/^\[Loki\] FYI \(advisory, not blocking; no change required\):\ndjango\/forms\/widgets\.py:17: loki\/slop-complexity: __init__ cyclomatic complexity 14 -> 15 \(> 10\)/,
+		);
+		expect(told).not.toMatch(/fix th/);
+		expect(told!.split("\n")).toHaveLength(2);
+		expect(session.outcomes.at(-1)).toMatchObject({ outcome: "advisory" });
+	});
+
+	test("a new import is checked with the project's interpreter, and not checked without one", async () => {
+		const missing = executable(join(work, "project-python"), "#!/bin/sh\necho '[\"invented_package\"]'\n");
+		const withPython = await pilotSession({ ULTRON_LOKI_PROJECT_PYTHON: missing });
+		expect(withPython.setup.guard!.options.projectPython).toBe(missing);
+		expect(withPython.records.at(-1)).toMatchObject({ projectPython: missing });
+		const told = await withPython.cell(`import invented_package\n${WIDGETS}`);
+		expect(told).toContain(
+			"1 new finding from this cell's changes; fix these:\ndjango/forms/widgets.py:1: python-ast: unresolved import invented_package",
+		);
+		expect(told).not.toContain("numpy");
+		rmSync(withPython.root, { recursive: true, force: true });
+
+		// No interpreter named or found: the import is a note, once, not a finding.
+		const bare = { ...ENV };
+		delete bare.VIRTUAL_ENV;
+		delete bare.CONDA_PREFIX;
+		delete bare.LOKI_PYTHON;
+		const guard = new LokiGuard({
+			root: repository(work, "bare"),
+			engine: engine!,
+			python: (python as { command: string }).command,
+			mode: "on",
+			timeoutMs: 5_000,
+			previewHost: "ultron",
+			postWrite: true,
+			jsonReports: true,
+			env: bare,
+		});
+		const root = guard.options.root;
+		writeFileSync(join(root, "app.py"), "import invented_package\n");
+		const controller = new AbortController();
+		const report = await guard.afterCellChanges(
+			{ files: [join(root, "app.py")], checked: [], deleted: [], complete: true },
+			{ lane: "main", cwd: root, signal: controller.signal },
+		);
+		expect(report?.outcome).toBe("clean");
+		expect(report?.message).toContain("python imports: no project interpreter found");
+		expect(report?.message).not.toContain("unresolved import");
 	});
 
 	test("ULTRON_LOKI=off does nothing", async () => {

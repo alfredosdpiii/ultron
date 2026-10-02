@@ -7,8 +7,10 @@
  * Then it checks writes:
  * - before `edit()`/`write()` change a file: `protect --file <path> --preview ultron` on the proposed content; a
  *   finding blocks the write (or, with ULTRON_LOKI=advise, is only reported);
- * - after each cell, in the background: `hook --file ...` on the files the cell changed (the post-write analyzers,
- *   and the only check for writes made through `bash` or `Path.write_text`).
+ * - after each cell, in the background: `hook --file ... --format json` on the files the cell changed (the
+ *   post-write analyzers, and the only check for writes made through `bash` or `Path.write_text`). The model is told
+ *   three different things, never mixed: new findings to fix, advisory lines as FYI, and (once per session) what
+ *   could not be checked.
  * `context --host ultron` adds a short policy note to the system prompt.
  *
  * A repository's own `.loki/loki.py` (committed by its owners) is used when present and never modified; otherwise
@@ -20,7 +22,14 @@ import { access, appendFile, mkdir, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import type { LokiSettings } from "../core/settings-manager.ts";
-import type { BeforeWriteVerdict, CellChanges, FileHookContext, FileWriteGuard, GuardRecord } from "./file-hooks.ts";
+import type {
+	AfterCellReport,
+	BeforeWriteVerdict,
+	CellChanges,
+	FileHookContext,
+	FileWriteGuard,
+	GuardRecord,
+} from "./file-hooks.ts";
 import { isUltronWorktreePath } from "./rlm/worktrees.ts";
 
 export type LokiMode = "on" | "advise" | "off";
@@ -179,6 +188,138 @@ export async function findPython(env: NodeJS.ProcessEnv = process.env): Promise<
 	return { command, version };
 }
 
+/** Prints the interpreter's path, then 1 when it belongs to a virtual or conda environment (any Python 2.7+). */
+const ENVIRONMENT_PROBE = [
+	"import os, sys",
+	"print(sys.executable)",
+	"base = getattr(sys, 'base_prefix', sys.prefix)",
+	"conda = os.path.isdir(os.path.join(sys.prefix, 'conda-meta'))",
+	"print(int(base != sys.prefix or hasattr(sys, 'real_prefix') or conda))",
+].join("\n");
+
+/**
+ * The interpreter the project runs on, which Loki asks whether a newly imported module exists (LOKI_PYTHON). Not the
+ * interpreter Loki runs on (ULTRON_LOKI_PYTHON), whose packages are not the project's. In order:
+ * - ULTRON_LOKI_PROJECT_PYTHON;
+ * - the `python` (else `python3`) that `bash()` runs in the session directory, when it belongs to a virtual or conda
+ *   environment. A bare system interpreter says nothing about the project's dependencies and is not used;
+ * - `.venv` or `venv` in the session directory.
+ * Otherwise undefined: Loki looks in the repository root itself and reports new imports as not checked when it
+ * finds no interpreter. An inherited LOKI_PYTHON is left to the engine.
+ */
+export async function findProjectPython(
+	cwd: string,
+	env: NodeJS.ProcessEnv = process.env,
+): Promise<string | undefined> {
+	const named = env.ULTRON_LOKI_PROJECT_PYTHON?.trim();
+	if (named) return named;
+	if (env.LOKI_PYTHON?.trim()) return undefined;
+	for (const command of ["python", "python3"]) {
+		const result = await runProcess(command, ["-c", ENVIRONMENT_PROBE], { cwd, timeoutMs: 5_000, env });
+		if (result.error || result.status !== 0) continue;
+		const [executable, environment] = result.stdout.trim().split(/\r?\n/);
+		// The first one found is what `python` means here, whichever kind it is.
+		if (executable && isAbsolute(executable) && environment === "1") return executable;
+		break;
+	}
+	for (const directory of [".venv", "venv"]) {
+		for (const relativePath of ["bin/python", "bin/python3", "Scripts/python.exe"]) {
+			const candidate = join(cwd, directory, relativePath);
+			if (
+				await stat(candidate).then(
+					(info) => info.isFile(),
+					() => false,
+				)
+			)
+				return candidate;
+		}
+	}
+	return undefined;
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// What a check reported
+
+/** One `hook` run's findings by tier. Only `blocking` fails the check. */
+export interface LokiReport {
+	readonly blocking: readonly string[];
+	readonly advisory: readonly string[];
+	/** `NOT CHECKED ...` notes: an analyzer or an interpreter is missing. */
+	readonly notChecked: readonly string[];
+	/** The engine could not run the check (invalid input or policy). */
+	readonly error?: string;
+}
+
+function texts(value: unknown): string[] {
+	if (!Array.isArray(value)) return [];
+	return value
+		.map((item: unknown) =>
+			typeof item === "string"
+				? item
+				: typeof item === "object" && item !== null && "text" in item && typeof item.text === "string"
+					? item.text
+					: "",
+		)
+		.filter((text) => text.trim() !== "");
+}
+
+/** The report an engine prints on stdout for `--format json`; undefined when stdout is not one. */
+export function parseLokiReport(stdout: string): LokiReport | undefined {
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(stdout);
+	} catch {
+		return undefined;
+	}
+	if (typeof parsed !== "object" || parsed === null || !("status" in parsed) || !("blocking" in parsed))
+		return undefined;
+	const error = "error" in parsed && typeof parsed.error === "string" ? parsed.error : undefined;
+	return {
+		blocking: texts(parsed.blocking),
+		advisory: texts("advisory" in parsed ? parsed.advisory : []),
+		notChecked: texts("not_checked" in parsed ? parsed.not_checked : []),
+		...(error === undefined ? {} : { error }),
+	};
+}
+
+const ADVISORY_LABEL = "loki: advisory (not blocking):";
+const ADVISORY_LINE = /: loki\/slop-[\w-]+: |\[Warning\/|^oxlint advisory \(not blocking\)/;
+const ENGINE_ERROR = /^loki: (invalid hook input|guard error)/;
+
+/**
+ * The same tiers from the text an engine without `--format json` prints on stderr (a repository's older
+ * `.loki/loki.py`): `NOT CHECKED` lines, structural-sloppiness and analyzer-warning lines as advisory, and when the
+ * check failed everything else as blocking.
+ */
+export function classifyLokiText(stderr: string, failed: boolean): LokiReport {
+	const blocking: string[] = [];
+	const advisory: string[] = [];
+	const notChecked: string[] = [];
+	let labelled = false;
+	for (const raw of stderr.split("\n")) {
+		const line = raw.trim();
+		if (!line || line.startsWith("loki: post-write check failed")) continue;
+		if (failed && ENGINE_ERROR.test(line)) return { blocking: [], advisory: [], notChecked: [], error: line };
+		if (line === ADVISORY_LABEL) labelled = true;
+		else if (line.startsWith("NOT CHECKED")) notChecked.push(line);
+		else if (!failed || labelled || ADVISORY_LINE.test(line)) advisory.push(line);
+		else blocking.push(line);
+	}
+	return { blocking, advisory, notChecked };
+}
+
+const FINDING_PATH = /^([^:\s][^:\n]*?)(?::\d+)?: /;
+
+/** A finding's file and its identity without the line number, which moves as the file is edited. */
+function findingKey(line: string): { path: string; key: string } {
+	const match = FINDING_PATH.exec(line);
+	return match ? { path: match[1]!, key: `${match[1]}: ${line.slice(match[0].length)}` } : { path: "", key: line };
+}
+
+function count(n: number, noun: string): string {
+	return `${n} ${noun}${n === 1 ? "" : "s"}`;
+}
+
 // ---------------------------------------------------------------------------------------------------------------
 // Where `.loki/` may be created and committed
 
@@ -323,6 +464,10 @@ export interface LokiGuardOptions {
 	readonly previewHost: "ultron" | "pi";
 	/** Post-write checks compare against Git; outside a repository only before-write checks run. */
 	readonly postWrite: boolean;
+	/** The engine knows `hook --format json` (false for an older repository engine: its text is classified). */
+	readonly jsonReports?: boolean;
+	/** The project's interpreter (findProjectPython), passed to the engine as LOKI_PYTHON. */
+	readonly projectPython?: string;
 	readonly env?: NodeJS.ProcessEnv;
 }
 
@@ -335,6 +480,8 @@ export class LokiGuard implements FileWriteGuard {
 	readonly options: LokiGuardOptions;
 	/** NOT CHECKED lines (a missing analyzer) are shown once per session, not after every write. */
 	readonly #shownNotices = new Set<string>();
+	/** Findings already shown and not fixed since, per file, so a later cell is not told again in full. */
+	readonly #open = { blocking: new Map<string, Set<string>>(), advisory: new Map<string, Set<string>>() };
 	#pausedShown = false;
 
 	constructor(options: LokiGuardOptions) {
@@ -350,6 +497,13 @@ export class LokiGuard implements FileWriteGuard {
 		return [this.options.engine, "--root", root, ...args];
 	}
 
+	/** The engine's environment: the session's, plus the project's interpreter when Ultron found one. */
+	#env(): { env?: NodeJS.ProcessEnv } {
+		const { env, projectPython } = this.options;
+		if (projectPython === undefined) return env === undefined ? {} : { env };
+		return { env: { ...(env ?? process.env), LOKI_PYTHON: projectPython } };
+	}
+
 	/**
 	 * The repository Loki checks for a write: a worktree subagent's own worktree (the same repository, its policy
 	 * committed there too), else the session's.
@@ -363,20 +517,6 @@ export class LokiGuard implements FileWriteGuard {
 		const rel = relative(root, path);
 		if (!rel || rel.startsWith("..") || isAbsolute(rel)) return undefined;
 		return rel.split(sep).join("/");
-	}
-
-	/** Drop NOT CHECKED lines already shown this session. */
-	#fresh(text: string): string {
-		return text
-			.split("\n")
-			.filter((line) => {
-				if (!line.startsWith("NOT CHECKED")) return true;
-				if (this.#shownNotices.has(line)) return false;
-				this.#shownNotices.add(line);
-				return true;
-			})
-			.join("\n")
-			.trim();
 	}
 
 	async beforeWrite(write: { path: string; content: string }, context: FileHookContext): Promise<BeforeWriteVerdict> {
@@ -395,74 +535,118 @@ export class LokiGuard implements FileWriteGuard {
 					tool_name: "write",
 					tool_input: { path: write.path, content: write.content },
 				}),
-				...(this.options.env === undefined ? {} : { env: this.options.env }),
+				...this.#env(),
 			},
 		);
 		if (result.error) throw new Error(result.error);
 		const text = result.stderr.trim();
 		if (result.status === 0) {
-			const fresh = this.#fresh(text);
-			return fresh ? { message: fresh } : {};
+			// Nothing blocks: advisory lines pass through, a missing check is the once-per-session note.
+			const report = classifyLokiText(text, false);
+			const notice = this.#notice(report.notChecked);
+			const lines = notice === undefined ? report.advisory : [...report.advisory, notice];
+			return lines.length > 0 ? { message: lines.join("\n") } : {};
 		}
 		const reason = text || `the checker failed (exit status ${result.status})`;
 		if (this.options.mode === "advise") return { message: `would block this write (advise-only mode):\n${reason}` };
 		return { block: true, reason };
 	}
 
-	async afterCellChanges(changes: CellChanges, context: FileHookContext): Promise<string | undefined> {
+	/** The lines of one tier not yet shown for their file, and how many shown earlier are still there. */
+	#unseen(tier: "blocking" | "advisory", lines: readonly string[], checked: readonly string[]) {
+		const memory = this.#open[tier];
+		const now = new Map<string, Set<string>>();
+		const fresh: string[] = [];
+		const stale = new Set<string>();
+		for (const line of lines) {
+			const { path, key } = findingKey(line);
+			if (path !== "" && memory.get(path)?.has(key)) stale.add(path);
+			else fresh.push(line);
+			// A line that names no file cannot be followed from cell to cell.
+			if (path !== "") now.set(path, (now.get(path) ?? new Set()).add(key));
+		}
+		// A finding that is gone from a file checked now was fixed; if it comes back it is new again.
+		for (const path of checked) memory.delete(path);
+		for (const [path, keys] of now) memory.set(path, keys);
+		return { fresh, earlier: lines.length - fresh.length, paths: [...stale] };
+	}
+
+	/** NOT CHECKED notes not yet shown this session, as one short line. */
+	#notice(lines: readonly string[]): string | undefined {
+		const fresh = lines.filter((line) => !this.#shownNotices.has(line));
+		for (const line of fresh) this.#shownNotices.add(line);
+		if (fresh.length === 0) return undefined;
+		const reasons = fresh.map((line) => line.replace(/^NOT CHECKED\s*/, ""));
+		return `not checked in this session (said once): ${reasons.join("; ")}`;
+	}
+
+	async afterCellChanges(changes: CellChanges, context: FileHookContext): Promise<AfterCellReport | undefined> {
 		const root = this.#root(context);
 		const targets = [...new Set([...changes.files, ...changes.checked])]
 			.map((path) => this.#inside(path, root))
 			.filter((path): path is string => path !== undefined);
 		if (targets.length === 0) return undefined;
 		const checked = targets.slice(0, MAX_HOOK_FILES);
+		const json = this.options.jsonReports === true;
 		const result = await runProcess(
 			this.options.python,
-			this.#args(root, "hook", ...checked.flatMap((path) => ["--file", path])),
-			{
-				cwd: root,
-				timeoutMs: this.afterTimeoutMs,
-				signal: context.signal,
-				...(this.options.env === undefined ? {} : { env: this.options.env }),
-			},
+			this.#args(
+				root,
+				"hook",
+				...checked.flatMap((path) => ["--file", path]),
+				...(json ? ["--format", "json"] : []),
+			),
+			{ cwd: root, timeoutMs: this.afterTimeoutMs, signal: context.signal, ...this.#env() },
 		);
 		if (result.error) throw new Error(result.error);
-		const skipped =
-			targets.length > checked.length
-				? `\n(${targets.length - checked.length} more changed files were not checked)`
-				: "";
-		const text = result.stderr.trim();
-		if (result.status === 0) {
-			const fresh = this.#fresh(text);
-			return fresh ? `${fresh}${skipped}` : skipped.trim() || undefined;
-		}
+		const failed = result.status !== 0;
+		const report = (json ? parseLokiReport(result.stdout) : undefined) ?? classifyLokiText(result.stderr, failed);
+		if (report.error !== undefined) throw new Error(report.error);
+		if (failed && report.blocking.length === 0)
+			throw new Error(firstLine(result.stderr) || `the checker failed (exit status ${result.status})`);
 		// Loki compares against the committed policy: while .loki/ itself has uncommitted changes (a new install whose
 		// commit was skipped or refused) every post-write check reports that and stops. Say so once.
-		const findings = text
-			.split("\n")
-			.filter((line) => line.trim() && !line.startsWith("loki: post-write check failed"));
-		if (findings.length > 0 && findings.every((line) => PROTECTED_LOKI.test(line.trim()))) {
+		if (report.blocking.length > 0 && report.blocking.every((line) => PROTECTED_LOKI.test(line.trim()))) {
 			if (this.#pausedShown) return undefined;
 			this.#pausedShown = true;
-			return "post-write checks are paused: .loki/ has uncommitted changes, and Loki checks against the committed policy. Before-write checks of edit() and write() still run. Commit .loki/ to resume them (git add .loki && git commit -m 'Add Loki guardrails' -- .loki).";
+			return {
+				outcome: "clean",
+				message:
+					"post-write checks are paused: .loki/ has uncommitted changes, and Loki checks against the committed policy. Before-write checks of edit() and write() still run. Commit .loki/ to resume them (git add .loki && git commit -m 'Add Loki guardrails' -- .loki).",
+			};
 		}
-		const label =
-			changes.files.length > 0
-				? `findings in files this cell changed (${changes.files.length} outside edit()/write()); fix them:`
-				: "findings after this cell's writes; fix them:";
-		return `${label}\n${this.#fresh(text) || text}${skipped}`;
+		const blocking = this.#unseen("blocking", report.blocking, checked);
+		const advisory = this.#unseen("advisory", report.advisory, checked);
+		const sections: string[] = [];
+		if (blocking.fresh.length > 0)
+			sections.push(
+				`${count(blocking.fresh.length, "new finding")} from this cell's changes; fix these:\n${blocking.fresh.join("\n")}`,
+			);
+		if (blocking.earlier > 0)
+			sections.push(
+				`${count(blocking.earlier, "finding")} reported earlier ${blocking.earlier === 1 ? "is" : "are"} still open in ${blocking.paths.join(", ")}.`,
+			);
+		if (advisory.fresh.length > 0)
+			sections.push(`FYI (advisory, not blocking; no change required):\n${advisory.fresh.join("\n")}`);
+		const notice = this.#notice(report.notChecked);
+		if (notice !== undefined) sections.push(notice);
+		if (targets.length > checked.length)
+			sections.push(`(${targets.length - checked.length} more changed files were not checked)`);
+		const outcome = report.blocking.length > 0 ? "findings" : advisory.fresh.length > 0 ? "advisory" : "clean";
+		return sections.length === 0 ? undefined : { outcome, message: sections.join("\n") };
 	}
 }
 
 /**
- * Loki's policy note for the system prompt (`context --host ultron`), and which preview host the engine knows: an
- * older repository engine rejects `--host ultron` and gets `pi`, whose write envelope is the same.
+ * Loki's policy note for the system prompt (`context --host ultron`), which preview host the engine knows (an older
+ * repository engine rejects `--host ultron` and gets `pi`, whose write envelope is the same) and whether it names
+ * `json` among its report formats.
  */
 async function readContext(
 	python: string,
 	engine: string,
 	root: string,
-): Promise<{ previewHost: "ultron" | "pi"; context?: string }> {
+): Promise<{ previewHost: "ultron" | "pi"; jsonReports: boolean; context?: string }> {
 	const run = (args: string[]) =>
 		runProcess(python, [engine, "--root", root, ...args], { cwd: root, timeoutMs: DEFAULT_LOKI_TIMEOUT_MS });
 	let previewHost: "ultron" | "pi" = "ultron";
@@ -471,13 +655,20 @@ async function readContext(
 		previewHost = "pi";
 		result = await run(["context"]);
 	}
-	if (result.status !== 0) return { previewHost };
+	if (result.status !== 0) return { previewHost, jsonReports: false };
 	try {
-		const parsed = JSON.parse(result.stdout) as { hookSpecificOutput?: { additionalContext?: unknown } };
+		const parsed = JSON.parse(result.stdout) as {
+			hookSpecificOutput?: { additionalContext?: unknown };
+			loki?: { formats?: unknown };
+		};
 		const text = parsed.hookSpecificOutput?.additionalContext;
-		return typeof text === "string" && text.trim() ? { previewHost, context: text.trim() } : { previewHost };
+		const formats = parsed.loki?.formats;
+		const jsonReports = Array.isArray(formats) && formats.includes("json");
+		return typeof text === "string" && text.trim()
+			? { previewHost, jsonReports, context: text.trim() }
+			: { previewHost, jsonReports };
 	} catch {
-		return { previewHost };
+		return { previewHost, jsonReports: false };
 	}
 }
 
@@ -562,7 +753,10 @@ export async function setupLoki(options: LokiSetupOptions): Promise<LokiSetup> {
 	}
 	// Outside Git only before-write checks run (post-write checks compare against a base revision); that is
 	// documented rather than announced in every such session.
-	const { previewHost, context } = await readContext(python.command, engine, root);
+	const [{ previewHost, jsonReports, context }, projectPython] = await Promise.all([
+		readContext(python.command, engine, root),
+		findProjectPython(resolve(options.cwd), options.env),
+	]);
 	const guard = new LokiGuard({
 		root,
 		engine,
@@ -571,12 +765,16 @@ export async function setupLoki(options: LokiSetupOptions): Promise<LokiSetup> {
 		timeoutMs: lokiTimeoutMs(options.env),
 		previewHost,
 		postWrite: repository !== undefined,
+		jsonReports,
+		...(projectPython === undefined ? {} : { projectPython }),
 	});
 	options.record?.({
 		phase: "setup",
 		outcome: "on",
 		mode,
 		engine: engine === repositoryEngine ? "repository" : "bundled",
+		reports: jsonReports ? "json" : "text",
+		projectPython: projectPython ?? null,
 		ms: Date.now() - started,
 	});
 	return { mode, guard, ...(context === undefined ? {} : { context }), notice };

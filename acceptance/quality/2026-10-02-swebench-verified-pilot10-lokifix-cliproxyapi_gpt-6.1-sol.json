@@ -1,0 +1,1130 @@
+{
+	"taskSet": "swebench-verified",
+	"dataset": "SWE-bench/SWE-bench_Verified",
+	"split": "test",
+	"swebenchVersion": "5.0.2",
+	"runId": "pilot10-lokifix",
+	"date": "2026-10-02",
+	"model": "cliproxyapi/gpt-6.1-sol",
+	"sample": {
+		"seed": "ultron-swebench-1",
+		"n": 10,
+		"instanceIds": [
+			"django__django-16667",
+			"django__django-14855",
+			"astropy__astropy-7166",
+			"django__django-16485",
+			"sympy__sympy-12419",
+			"django__django-14771",
+			"django__django-13363",
+			"sphinx-doc__sphinx-8638",
+			"django__django-13516",
+			"pydata__xarray-3095"
+		],
+		"repos": {
+			"astropy/astropy": 1,
+			"django/django": 6,
+			"pydata/xarray": 1,
+			"sphinx-doc/sphinx": 1,
+			"sympy/sympy": 1
+		}
+	},
+	"limits": {
+		"wallClockMinutes": 30,
+		"concurrency": 2,
+		"containerMemory": "16g",
+		"attempts": 3
+	},
+	"versions": {
+		"ultron": "0.87.21 (--ultron-package: a local build, not the installed release)",
+		"codex": "codex-cli 0.152.1",
+		"pi": "0.84.4",
+		"node": "v26.8.1",
+		"kernelPython": "Python 3.12.12",
+		"swebench": "5.0.2",
+		"docker": "Docker version 29.7.2, build a7dcaa6fdb"
+	},
+	"arms": {
+		"ultron": {
+			"version": "0.87.21 (--ultron-package: a local build, not the installed release)",
+			"command": "ultron --mode json -p --model cliproxyapi/gpt-6.1-sol",
+			"api": "Chat Completions (/v1/chat/completions)",
+			"reasoningEffort": "medium (Ultron's default thinking level; not set by the harness)",
+			"configuration": "fresh agent dir holding only models.json; no settings.json, skills, AGENTS.md or extensions; Hindsight off",
+			"python": "kernel and Loki on a mounted standalone CPython 3.12 (ULTRON_PYTHON, ULTRON_LOKI_PYTHON); Loki's import check asks the testbed interpreter, which Ultron finds as the active environment's `python`",
+			"loki": "guard on (default mode) with the bundled engine; ULTRON_LOKI_AUTOINIT=off, so no .loki/ is created",
+			"limits": "the tool's defaults (no turn or token limit); the harness's wall-clock limit"
+		},
+		"codex": {
+			"version": "codex-cli 0.152.1",
+			"command": "codex exec --json --sandbox danger-full-access",
+			"api": "Responses (/v1/responses)",
+			"reasoningEffort": "medium (model_reasoning_effort in the isolated config.toml)",
+			"configuration": "fresh CODEX_HOME holding only config.toml (custom model provider on the proxy); no AGENTS.md, prompts or MCP servers",
+			"sandbox": "Codex's own sandbox off (danger-full-access): bubblewrap and the legacy Landlock sandbox both fail in an unprivileged container; the container is the sandbox",
+			"modelMetadata": "Codex 0.152.1 has no catalog entry for gpt-6.1-sol and runs it on its fallback model metadata (it says so at the start of every run)",
+			"limits": "the tool's defaults; the harness's wall-clock limit"
+		},
+		"pi": {
+			"version": "0.84.4",
+			"command": "pi --mode json -p --model cliproxyapi/gpt-6.1-sol",
+			"api": "Chat Completions (/v1/chat/completions)",
+			"reasoningEffort": "medium (Pi's default thinking level; not set by the harness)",
+			"configuration": "fresh agent dir holding only models.json; the four default tools (read, bash, edit, write)",
+			"limits": "the tool's defaults; the harness's wall-clock limit"
+		}
+	},
+	"isolation": {
+		"where": "each run in a fresh container of the task's official prebuilt image (swebench/sweb.eval.x86_64.*), --network host, removed afterwards",
+		"runtimes": "the installed CLIs, Node and a standalone CPython mounted read-only under /opt/agent; ripgrep for every arm",
+		"agentState": "agent dirs, sessions and config live in /agent inside the container; nothing of the user's ~/.ultron, ~/.pi or ~/.codex is mounted or copied except the proxy provider entry of models.json, without its key",
+		"key": "passed as CLIPROXY_API_KEY in the environment of docker exec; never written to a file; evidence is scrubbed of it",
+		"prompt": "the issue text only (problem_statement): no hints, no gold or test patch, no failing-test names"
+	},
+	"costNote": "notionalCostUsd is tokens at the model's list prices in models.json; the proxy bills a subscription, not tokens",
+	"verification": {
+		"ultron": {
+			"ok": true,
+			"status": "completed",
+			"error": null,
+			"requests": 2,
+			"paths": [
+				"/v1/chat/completions"
+			],
+			"requestModels": [
+				"gpt-6.1-sol"
+			],
+			"responseModels": [
+				"gpt-6.1-sol"
+			],
+			"reasoningEfforts": [
+				"medium"
+			],
+			"answer": "Python 3.11.10",
+			"warnings": []
+		}
+	},
+	"goldCheck": null,
+	"summary": {
+		"ultron": {
+			"tasks": 10,
+			"resolved": 9,
+			"unresolved": 1,
+			"emptyPatches": 0,
+			"timeouts": 0,
+			"harnessFailures": [],
+			"evalErrors": [],
+			"resolvedRate": 0.9,
+			"resolvedRateOfScored": 0.9,
+			"wallSeconds": 659,
+			"medianWallSeconds": 59,
+			"turns": 68,
+			"toolCalls": 58,
+			"tokens": {
+				"input": 100256,
+				"cacheRead": 328192,
+				"output": 11194,
+				"reasoning": 1407,
+				"total": 439642
+			},
+			"ledgerTokens": {
+				"input": 100256,
+				"cacheRead": 328192,
+				"output": 11194,
+				"reasoning": 1407,
+				"total": 439642
+			},
+			"notionalCostUsd": 0.3452,
+			"rateLimited": 0
+		}
+	},
+	"headToHead": {},
+	"harnessFailures": [],
+	"docker": {
+		"images": 10,
+		"sumOfImageSizesBytes": 31400130328,
+		"note": "each image's size counts the layers it shares with the others, so the disk actually used is much lower; see `docker system df -v`"
+	},
+	"records": [
+		{
+			"instance_id": "django__django-16667",
+			"repo": "django/django",
+			"arm": "ultron",
+			"attempt": 1,
+			"status": "completed",
+			"startedAt": "2026-10-02T05:42:41.444Z",
+			"startCommit": "33fcdba9bbab3c37b4bd19ab431bef30b71a0138",
+			"baseCommit": "02c356f2f3945b8075735d485c3cf48cad991011",
+			"wallMs": 63109,
+			"exitCode": 0,
+			"timedOut": false,
+			"patch": {
+				"bytes": 591,
+				"files": [
+					"django/forms/widgets.py"
+				],
+				"dropped": []
+			},
+			"keyScrubbedFiles": 0,
+			"turns": 7,
+			"toolCalls": 6,
+			"toolsByName": {
+				"rlm": 6
+			},
+			"tokens": {
+				"input": 11733,
+				"cacheRead": 28032,
+				"output": 1280,
+				"reasoning": 176,
+				"total": 41045
+			},
+			"notionalCostUsd": 0.0391,
+			"reportedCostUsd": 0.0391,
+			"ledger": {
+				"requests": 7,
+				"ok": 7,
+				"rateLimited": 0,
+				"failed": 0,
+				"requestModels": [
+					"gpt-6.1-sol"
+				],
+				"responseModels": [
+					"gpt-6.1-sol"
+				],
+				"efforts": [
+					"medium"
+				],
+				"paths": [
+					"/v1/chat/completions"
+				],
+				"tokens": {
+					"input": 11733,
+					"cacheRead": 28032,
+					"output": 1280,
+					"reasoning": 176,
+					"total": 41045
+				},
+				"missingUsage": 0
+			},
+			"networkCommands": [],
+			"finalText": "Fixed `django/forms/widgets.py`: `SelectDateWidget.value_from_datadict()` now catches `OverflowError` and returns an invalid date value (`\"0-0-0\"`), allowing form validation to reject oversized year, month, or day inputs without crashing. Existing handling of other invalid dates is unchanged.\n\nVerified:\n- All 15 SelectDateWidget tests pass.\n- Nine oversized positive/negative input cases validate and render without crashing.\n- A valid-date control passes.\n- `git diff --check` passes.\n\nChanges remain uncommitted.",
+			"ultron": {
+				"cells": 6,
+				"frameCalls": 0,
+				"spawnCalls": 0,
+				"childSessions": 0,
+				"childTurns": 0,
+				"errorCells": 0,
+				"helpers": {
+					"bash": 6,
+					"edit": 1
+				},
+				"loki": {
+					"beforeWriteChecks": 1,
+					"blocked": 0,
+					"afterCellChecks": 1,
+					"afterCellFindings": 0,
+					"afterCellAdvisories": 0,
+					"setupNotes": [
+						"on"
+					]
+				}
+			},
+			"verdict": "resolved",
+			"tests": {
+				"failToPass": {
+					"passed": 2,
+					"total": 2
+				},
+				"passToPass": {
+					"passed": 24,
+					"total": 24
+				}
+			},
+			"evidence": "pilot10-lokifix/ultron/django__django-16667"
+		},
+		{
+			"instance_id": "django__django-14855",
+			"repo": "django/django",
+			"arm": "ultron",
+			"attempt": 1,
+			"status": "completed",
+			"startedAt": "2026-10-02T05:42:41.446Z",
+			"startCommit": "733b23f805ff982d0fca173c4057e6e025ccab1e",
+			"baseCommit": "475cffd1d64c690cdad16ede4d5e81985738ceb4",
+			"wallMs": 53763,
+			"exitCode": 0,
+			"timedOut": false,
+			"patch": {
+				"bytes": 698,
+				"files": [
+					"django/contrib/admin/helpers.py"
+				],
+				"dropped": []
+			},
+			"keyScrubbedFiles": 0,
+			"turns": 6,
+			"toolCalls": 5,
+			"toolsByName": {
+				"rlm": 5
+			},
+			"tokens": {
+				"input": 6430,
+				"cacheRead": 23040,
+				"output": 894,
+				"reasoning": 42,
+				"total": 30364
+			},
+			"notionalCostUsd": 0.0241,
+			"reportedCostUsd": 0.0241,
+			"ledger": {
+				"requests": 6,
+				"ok": 6,
+				"rateLimited": 0,
+				"failed": 0,
+				"requestModels": [
+					"gpt-6.1-sol"
+				],
+				"responseModels": [
+					"gpt-6.1-sol"
+				],
+				"efforts": [
+					"medium"
+				],
+				"paths": [
+					"/v1/chat/completions"
+				],
+				"tokens": {
+					"input": 6430,
+					"cacheRead": 23040,
+					"output": 894,
+					"reasoning": 42,
+					"total": 30364
+				},
+				"missingUsage": 0
+			},
+			"networkCommands": [],
+			"finalText": "Updated `django/contrib/admin/helpers.py` so `AdminReadonlyField.get_admin_url()` passes `current_app=self.model_admin.admin_site.name` to `reverse()`.\n\nReadonly related-object links now resolve within the current admin site, while preserving primary-key quoting and the existing fallback when no URL is available.\n\nValidation:\n- `admin_views` and `admin_utils`: 457 tests passed, 22 skipped.\n- Confirmed links use `/admin/` for the default site and `/custom-admin/` for a custom site.\n- `git diff --check` passed.\n\nChanges remain uncommitted.",
+			"ultron": {
+				"cells": 5,
+				"frameCalls": 0,
+				"spawnCalls": 0,
+				"childSessions": 0,
+				"childTurns": 0,
+				"errorCells": 0,
+				"helpers": {
+					"bash": 5,
+					"edit": 1
+				},
+				"loki": {
+					"beforeWriteChecks": 1,
+					"blocked": 0,
+					"afterCellChecks": 1,
+					"afterCellFindings": 0,
+					"afterCellAdvisories": 0,
+					"setupNotes": [
+						"on"
+					]
+				}
+			},
+			"verdict": "resolved",
+			"tests": {
+				"failToPass": {
+					"passed": 1,
+					"total": 1
+				},
+				"passToPass": {
+					"passed": 325,
+					"total": 325
+				}
+			},
+			"evidence": "pilot10-lokifix/ultron/django__django-14855"
+		},
+		{
+			"instance_id": "astropy__astropy-7166",
+			"repo": "astropy/astropy",
+			"arm": "ultron",
+			"attempt": 1,
+			"status": "completed",
+			"startedAt": "2026-10-02T05:43:36.418Z",
+			"startCommit": "e4f19c1063ddfd213eb2c215a93ec91fb253a61d",
+			"baseCommit": "26d147868f8a891a6009a25cd6a8576d2e1bd747",
+			"wallMs": 48407,
+			"exitCode": 0,
+			"timedOut": false,
+			"patch": {
+				"bytes": 1126,
+				"files": [
+					"astropy/utils/misc.py"
+				],
+				"dropped": []
+			},
+			"keyScrubbedFiles": 0,
+			"turns": 5,
+			"toolCalls": 4,
+			"toolsByName": {
+				"rlm": 4
+			},
+			"tokens": {
+				"input": 6669,
+				"cacheRead": 12672,
+				"output": 899,
+				"reasoning": 17,
+				"total": 20240
+			},
+			"notionalCostUsd": 0.0236,
+			"reportedCostUsd": 0.0236,
+			"ledger": {
+				"requests": 5,
+				"ok": 5,
+				"rateLimited": 0,
+				"failed": 0,
+				"requestModels": [
+					"gpt-6.1-sol"
+				],
+				"responseModels": [
+					"gpt-6.1-sol"
+				],
+				"efforts": [
+					"medium"
+				],
+				"paths": [
+					"/v1/chat/completions"
+				],
+				"tokens": {
+					"input": 6669,
+					"cacheRead": 12672,
+					"output": 899,
+					"reasoning": 17,
+					"total": 20240
+				},
+				"missingUsage": 0
+			},
+			"networkCommands": [],
+			"finalText": "Updated `astropy/utils/misc.py` so `InheritDocstrings` recognizes properties as well as functions and inherits missing property docstrings. The metaclass documentation now reflects this support.\n\nExisting behavior is preserved: explicit docstrings remain unchanged, private members are excluded, and inheritance follows the MRO.\n\nValidation:\n- Existing tests: **8 passed, 1 skipped**\n- Additional checks passed for property inheritance, explicit docstrings, multiple inheritance, and getter/setter/deleter behavior.\n- `git diff --check` passed.\n\nChanges are uncommitted.",
+			"ultron": {
+				"cells": 4,
+				"frameCalls": 0,
+				"spawnCalls": 0,
+				"childSessions": 0,
+				"childTurns": 0,
+				"errorCells": 0,
+				"helpers": {
+					"bash": 4,
+					"edit": 2
+				},
+				"loki": {
+					"beforeWriteChecks": 2,
+					"blocked": 0,
+					"afterCellChecks": 1,
+					"afterCellFindings": 0,
+					"afterCellAdvisories": 0,
+					"setupNotes": [
+						"on"
+					]
+				}
+			},
+			"verdict": "resolved",
+			"tests": {
+				"failToPass": {
+					"passed": 1,
+					"total": 1
+				},
+				"passToPass": {
+					"passed": 6,
+					"total": 6
+				}
+			},
+			"evidence": "pilot10-lokifix/ultron/astropy__astropy-7166"
+		},
+		{
+			"instance_id": "django__django-16485",
+			"repo": "django/django",
+			"arm": "ultron",
+			"attempt": 1,
+			"status": "completed",
+			"startedAt": "2026-10-02T05:43:45.722Z",
+			"startCommit": "c7a6b3c4ef723cd4cd2dbf9b4213f04489fef729",
+			"baseCommit": "39f83765e12b0e5d260b7939fc3fe281d879b279",
+			"wallMs": 42082,
+			"exitCode": 0,
+			"timedOut": false,
+			"patch": {
+				"bytes": 626,
+				"files": [
+					"django/template/defaultfilters.py"
+				],
+				"dropped": []
+			},
+			"keyScrubbedFiles": 0,
+			"turns": 5,
+			"toolCalls": 4,
+			"toolsByName": {
+				"rlm": 4
+			},
+			"tokens": {
+				"input": 4831,
+				"cacheRead": 18560,
+				"output": 772,
+				"reasoning": 111,
+				"total": 24163
+			},
+			"notionalCostUsd": 0.0192,
+			"reportedCostUsd": 0.0192,
+			"ledger": {
+				"requests": 5,
+				"ok": 5,
+				"rateLimited": 0,
+				"failed": 0,
+				"requestModels": [
+					"gpt-6.1-sol"
+				],
+				"responseModels": [
+					"gpt-6.1-sol"
+				],
+				"efforts": [
+					"medium"
+				],
+				"paths": [
+					"/v1/chat/completions"
+				],
+				"tokens": {
+					"input": 4831,
+					"cacheRead": 18560,
+					"output": 772,
+					"reasoning": 111,
+					"total": 24163
+				},
+				"missingUsage": 0
+			},
+			"networkCommands": [],
+			"finalText": "Fixed `django/template/defaultfilters.py` by ensuring the calculated Decimal context precision is at least 1. Zero values with trailing decimal places can otherwise produce zero or negative precision.\n\nValidation:\n- All 10 existing `floatformat` tests passed.\n- 2,424 additional checks passed for string and Decimal zeros, including negative zeros and varying decimal places.\n- Grouping/localization suffix checks and `git diff --check` passed.\n\nChanges are uncommitted; no test files were modified.",
+			"ultron": {
+				"cells": 4,
+				"frameCalls": 0,
+				"spawnCalls": 0,
+				"childSessions": 0,
+				"childTurns": 0,
+				"errorCells": 0,
+				"helpers": {
+					"bash": 4,
+					"edit": 1
+				},
+				"loki": {
+					"beforeWriteChecks": 1,
+					"blocked": 0,
+					"afterCellChecks": 1,
+					"afterCellFindings": 0,
+					"afterCellAdvisories": 0,
+					"setupNotes": [
+						"on"
+					]
+				}
+			},
+			"verdict": "resolved",
+			"tests": {
+				"failToPass": {
+					"passed": 1,
+					"total": 1
+				},
+				"passToPass": {
+					"passed": 9,
+					"total": 9
+				}
+			},
+			"evidence": "pilot10-lokifix/ultron/django__django-16485"
+		},
+		{
+			"instance_id": "sympy__sympy-12419",
+			"repo": "sympy/sympy",
+			"arm": "ultron",
+			"attempt": 1,
+			"status": "completed",
+			"startedAt": "2026-10-02T05:44:25.940Z",
+			"startCommit": "bb306ea82d61548b390a164f919ef7d7c033bc58",
+			"baseCommit": "479939f8c65c8c2908bbedc959549a257a7c0b0b",
+			"wallMs": 144312,
+			"exitCode": 0,
+			"timedOut": false,
+			"patch": {
+				"bytes": 2686,
+				"files": [
+					"sympy/concrete/summations.py",
+					"sympy/matrices/expressions/matexpr.py"
+				],
+				"dropped": []
+			},
+			"keyScrubbedFiles": 0,
+			"turns": 13,
+			"toolCalls": 12,
+			"toolsByName": {
+				"rlm": 12
+			},
+			"tokens": {
+				"input": 22569,
+				"cacheRead": 95488,
+				"output": 2464,
+				"reasoning": 610,
+				"total": 120521
+			},
+			"notionalCostUsd": 0.0793,
+			"reportedCostUsd": 0.0793,
+			"ledger": {
+				"requests": 13,
+				"ok": 13,
+				"rateLimited": 0,
+				"failed": 0,
+				"requestModels": [
+					"gpt-6.1-sol"
+				],
+				"responseModels": [
+					"gpt-6.1-sol"
+				],
+				"efforts": [
+					"medium"
+				],
+				"paths": [
+					"/v1/chat/completions"
+				],
+				"tokens": {
+					"input": 22569,
+					"cacheRead": 95488,
+					"output": 2464,
+					"reasoning": 610,
+					"total": 120521
+				},
+				"missingUsage": 0
+			},
+			"networkCommands": [],
+			"finalText": "Implemented the fix in:\n- `sympy/matrices/expressions/matexpr.py`: identity entries now use `KroneckerDelta(i, j)`, preserving equality between symbolic indices.\n- `sympy/concrete/summations.py`: simplifies affine `Piecewise` inequalities that are constant across the summation interval, allowing the outer sum to evaluate.\n\nThe reported double sum now returns **`n`**.\n\nValidation: matrix-expression and delta tests passed. The broader run had one assertion expecting a now-evaluable conditional sum to remain unevaluated, plus eight exceptions from deprecated `collections` imports in this environment. Changes are uncommitted.",
+			"ultron": {
+				"cells": 12,
+				"frameCalls": 0,
+				"spawnCalls": 0,
+				"childSessions": 0,
+				"childTurns": 0,
+				"errorCells": 0,
+				"helpers": {
+					"bash": 11,
+					"edit": 4,
+					"background.jobs": 1,
+					"rlm.job": 1,
+					"job.result": 1
+				},
+				"loki": {
+					"beforeWriteChecks": 4,
+					"blocked": 0,
+					"afterCellChecks": 1,
+					"afterCellFindings": 0,
+					"afterCellAdvisories": 1,
+					"setupNotes": [
+						"on"
+					]
+				}
+			},
+			"verdict": "resolved",
+			"tests": {
+				"failToPass": {
+					"passed": 1,
+					"total": 1
+				},
+				"passToPass": {
+					"passed": 25,
+					"total": 25
+				}
+			},
+			"evidence": "pilot10-lokifix/ultron/sympy__sympy-12419"
+		},
+		{
+			"instance_id": "django__django-14771",
+			"repo": "django/django",
+			"arm": "ultron",
+			"attempt": 1,
+			"status": "completed",
+			"startedAt": "2026-10-02T05:44:28.934Z",
+			"startCommit": "8356fb78c4977c23757f67e171e0155bb6af57fe",
+			"baseCommit": "4884a87e022056eda10534c13d74e49b8cdda632",
+			"wallMs": 59824,
+			"exitCode": 0,
+			"timedOut": false,
+			"patch": {
+				"bytes": 667,
+				"files": [
+					"django/utils/autoreload.py"
+				],
+				"dropped": []
+			},
+			"keyScrubbedFiles": 0,
+			"turns": 6,
+			"toolCalls": 5,
+			"toolsByName": {
+				"rlm": 5
+			},
+			"tokens": {
+				"input": 4687,
+				"cacheRead": 22784,
+				"output": 1216,
+				"reasoning": 210,
+				"total": 28687
+			},
+			"notionalCostUsd": 0.0238,
+			"reportedCostUsd": 0.0238,
+			"ledger": {
+				"requests": 6,
+				"ok": 6,
+				"rateLimited": 0,
+				"failed": 0,
+				"requestModels": [
+					"gpt-6.1-sol"
+				],
+				"responseModels": [
+					"gpt-6.1-sol"
+				],
+				"efforts": [
+					"medium"
+				],
+				"paths": [
+					"/v1/chat/completions"
+				],
+				"tokens": {
+					"input": 4687,
+					"cacheRead": 22784,
+					"output": 1216,
+					"reasoning": 210,
+					"total": 28687
+				},
+				"missingUsage": 0
+			},
+			"networkCommands": [],
+			"finalText": "Updated `django/utils/autoreload.py` so reloaded Python processes inherit `sys._xoptions`.\n\n- Preserves flags such as `-X utf8` and values such as `-X tracemalloc=1`.\n- Retains existing warning options and launch behavior.\n- Handles interpreters without `sys._xoptions`.\n\nValidation: autoreload tests passed (80 run, 20 skipped), and a subprocess check confirmed inherited options and UTF-8 encoding. Changes remain uncommitted.",
+			"ultron": {
+				"cells": 5,
+				"frameCalls": 0,
+				"spawnCalls": 0,
+				"childSessions": 0,
+				"childTurns": 0,
+				"errorCells": 0,
+				"helpers": {
+					"bash": 5,
+					"edit": 1,
+					"background.result": 1
+				},
+				"loki": {
+					"beforeWriteChecks": 1,
+					"blocked": 0,
+					"afterCellChecks": 1,
+					"afterCellFindings": 0,
+					"afterCellAdvisories": 1,
+					"setupNotes": [
+						"on"
+					]
+				}
+			},
+			"verdict": "unresolved",
+			"tests": {
+				"failToPass": {
+					"passed": 0,
+					"total": 1
+				},
+				"passToPass": {
+					"passed": 60,
+					"total": 60
+				}
+			},
+			"evidence": "pilot10-lokifix/ultron/django__django-14771"
+		},
+		{
+			"instance_id": "django__django-13363",
+			"repo": "django/django",
+			"arm": "ultron",
+			"attempt": 1,
+			"status": "completed",
+			"startedAt": "2026-10-02T05:45:30.000Z",
+			"startCommit": "90b5667204ab677613490d43ca5d8da301d6ba6d",
+			"baseCommit": "76e0151ea0e0f56dca66cee846a78b89346d2c4c",
+			"wallMs": 52943,
+			"exitCode": 0,
+			"timedOut": false,
+			"patch": {
+				"bytes": 1061,
+				"files": [
+					"django/db/models/functions/datetime.py"
+				],
+				"dropped": []
+			},
+			"keyScrubbedFiles": 0,
+			"turns": 5,
+			"toolCalls": 4,
+			"toolsByName": {
+				"rlm": 4
+			},
+			"tokens": {
+				"input": 6688,
+				"cacheRead": 24704,
+				"output": 911,
+				"reasoning": 27,
+				"total": 32303
+			},
+			"notionalCostUsd": 0.025,
+			"reportedCostUsd": 0.025,
+			"ledger": {
+				"requests": 5,
+				"ok": 5,
+				"rateLimited": 0,
+				"failed": 0,
+				"requestModels": [
+					"gpt-6.1-sol"
+				],
+				"responseModels": [
+					"gpt-6.1-sol"
+				],
+				"efforts": [
+					"medium"
+				],
+				"paths": [
+					"/v1/chat/completions"
+				],
+				"tokens": {
+					"input": 6688,
+					"cacheRead": 24704,
+					"output": 911,
+					"reasoning": 27,
+					"total": 32303
+				},
+				"missingUsage": 0
+			},
+			"networkCommands": [],
+			"finalText": "Fixed `django/db/models/functions/datetime.py`: `TruncDate` and `TruncTime` now use `self.get_tzname()` instead of unconditionally using the current timezone.\n\nThis honors explicit `tzinfo`, retains the current-timezone fallback when omitted, and preserves behavior with `USE_TZ=False`.\n\nValidation:\n- Datetime extract/truncation suite: **79 tests passed, 2 skipped**.\n- SQLite reproduction verified explicit timezone conversion, default timezone behavior, override precedence, and `USE_TZ=False`.\n- `git diff --check` passed.\n\nChanges are uncommitted.",
+			"ultron": {
+				"cells": 4,
+				"frameCalls": 0,
+				"spawnCalls": 0,
+				"childSessions": 0,
+				"childTurns": 0,
+				"errorCells": 0,
+				"helpers": {
+					"bash": 4,
+					"read": 1,
+					"write": 1
+				},
+				"loki": {
+					"beforeWriteChecks": 1,
+					"blocked": 0,
+					"afterCellChecks": 1,
+					"afterCellFindings": 0,
+					"afterCellAdvisories": 0,
+					"setupNotes": [
+						"on"
+					]
+				}
+			},
+			"verdict": "resolved",
+			"tests": {
+				"failToPass": {
+					"passed": 1,
+					"total": 1
+				},
+				"passToPass": {
+					"passed": 76,
+					"total": 76
+				}
+			},
+			"evidence": "pilot10-lokifix/ultron/django__django-13363"
+		},
+		{
+			"instance_id": "sphinx-doc__sphinx-8638",
+			"repo": "sphinx-doc/sphinx",
+			"arm": "ultron",
+			"attempt": 1,
+			"status": "completed",
+			"startedAt": "2026-10-02T05:46:24.199Z",
+			"startCommit": "27a63c4bbe23e14896382548356d2f9c880812d5",
+			"baseCommit": "4b452338f914d4f6b54704222d70ae8a746e3db5",
+			"wallMs": 57656,
+			"exitCode": 0,
+			"timedOut": false,
+			"patch": {
+				"bytes": 687,
+				"files": [
+					"sphinx/domains/python.py"
+				],
+				"dropped": []
+			},
+			"keyScrubbedFiles": 0,
+			"turns": 8,
+			"toolCalls": 7,
+			"toolsByName": {
+				"rlm": 7
+			},
+			"tokens": {
+				"input": 13666,
+				"cacheRead": 53760,
+				"output": 1013,
+				"reasoning": 120,
+				"total": 68439
+			},
+			"notionalCostUsd": 0.0428,
+			"reportedCostUsd": 0.0428,
+			"ledger": {
+				"requests": 8,
+				"ok": 8,
+				"rateLimited": 0,
+				"failed": 0,
+				"requestModels": [
+					"gpt-6.1-sol"
+				],
+				"responseModels": [
+					"gpt-6.1-sol"
+				],
+				"efforts": [
+					"medium"
+				],
+				"paths": [
+					"/v1/chat/completions"
+				],
+				"tokens": {
+					"input": 13666,
+					"cacheRead": 53760,
+					"output": 1013,
+					"reasoning": 120,
+					"total": 68439
+				},
+				"missingUsage": 0
+			},
+			"networkCommands": [],
+			"finalText": "Fixed in `sphinx/domains/python.py` by removing the automatic `obj` cross-reference role from variable documentation fields.\n\n- `:var:`, `:ivar:`, and `:cvar:` names now render without links to unrelated same-named objects.\n- Variable type links and explicit references in descriptions remain intact.\n\nValidation: 125 tests passed. One autodoc test failed due to a duplicate `meta` node registration warning; it also fails when run alone. A direct field-rendering check confirmed the intended behavior, and `git diff --check` passed.\n\nChanges are uncommitted.",
+			"ultron": {
+				"cells": 7,
+				"frameCalls": 0,
+				"spawnCalls": 0,
+				"childSessions": 0,
+				"childTurns": 0,
+				"errorCells": 0,
+				"helpers": {
+					"bash": 6,
+					"edit": 1,
+					"rlm.job": 1,
+					"j.result": 1
+				},
+				"loki": {
+					"beforeWriteChecks": 1,
+					"blocked": 0,
+					"afterCellChecks": 1,
+					"afterCellFindings": 0,
+					"afterCellAdvisories": 0,
+					"setupNotes": [
+						"on"
+					]
+				}
+			},
+			"verdict": "resolved",
+			"tests": {
+				"failToPass": {
+					"passed": 1,
+					"total": 1
+				},
+				"passToPass": {
+					"passed": 34,
+					"total": 34
+				}
+			},
+			"evidence": "pilot10-lokifix/ultron/sphinx-doc__sphinx-8638"
+		},
+		{
+			"instance_id": "django__django-13516",
+			"repo": "django/django",
+			"arm": "ultron",
+			"attempt": 1,
+			"status": "completed",
+			"startedAt": "2026-10-02T05:46:51.388Z",
+			"startCommit": "946c1b82a133829fb3494b9bfe5ed23250082fac",
+			"baseCommit": "b7da588e883e12b8ac3bb8a486e654e30fc1c6c8",
+			"wallMs": 68293,
+			"exitCode": 0,
+			"timedOut": false,
+			"patch": {
+				"bytes": 507,
+				"files": [
+					"django/core/management/base.py"
+				],
+				"dropped": []
+			},
+			"keyScrubbedFiles": 0,
+			"turns": 8,
+			"toolCalls": 7,
+			"toolsByName": {
+				"rlm": 7
+			},
+			"tokens": {
+				"input": 13828,
+				"cacheRead": 28928,
+				"output": 984,
+				"reasoning": 54,
+				"total": 43740
+			},
+			"notionalCostUsd": 0.0404,
+			"reportedCostUsd": 0.0404,
+			"ledger": {
+				"requests": 8,
+				"ok": 8,
+				"rateLimited": 0,
+				"failed": 0,
+				"requestModels": [
+					"gpt-6.1-sol"
+				],
+				"responseModels": [
+					"gpt-6.1-sol"
+				],
+				"efforts": [
+					"medium"
+				],
+				"paths": [
+					"/v1/chat/completions"
+				],
+				"tokens": {
+					"input": 13828,
+					"cacheRead": 28928,
+					"output": 984,
+					"reasoning": 54,
+					"total": 43740
+				},
+				"missingUsage": 0
+			},
+			"networkCommands": [],
+			"finalText": "Fixed `django/core/management/base.py` by adding an explicit `OutputWrapper.flush()` method that forwards to the underlying stream.\n\nThe inherited `TextIOBase.flush()` was a no-op and prevented attribute delegation. The fix applies to both command stdout and stderr, and preserves compatibility with output objects without a `flush()` method.\n\nValidation:\n- All 241 `user_commands` and `admin_scripts` tests passed with a UTF-8 locale.\n- Additional checks passed for forwarding, buffered output, write-only streams, and propagation of flush errors.\n\nChanges are uncommitted.",
+			"ultron": {
+				"cells": 7,
+				"frameCalls": 0,
+				"spawnCalls": 0,
+				"childSessions": 0,
+				"childTurns": 0,
+				"errorCells": 1,
+				"helpers": {
+					"bash": 5,
+					"edit": 1,
+					"background.get": 1,
+					"rlm.job": 1
+				},
+				"loki": {
+					"beforeWriteChecks": 1,
+					"blocked": 0,
+					"afterCellChecks": 1,
+					"afterCellFindings": 0,
+					"afterCellAdvisories": 0,
+					"setupNotes": [
+						"on"
+					]
+				}
+			},
+			"verdict": "resolved",
+			"tests": {
+				"failToPass": {
+					"passed": 1,
+					"total": 1
+				},
+				"passToPass": {
+					"passed": 43,
+					"total": 43
+				}
+			},
+			"evidence": "pilot10-lokifix/ultron/django__django-13516"
+		},
+		{
+			"instance_id": "pydata__xarray-3095",
+			"repo": "pydata/xarray",
+			"arm": "ultron",
+			"attempt": 1,
+			"status": "completed",
+			"startedAt": "2026-10-02T05:47:22.956Z",
+			"startCommit": "779ee6547df2a2a616999a7fb17b39bc4359e267",
+			"baseCommit": "1757dffac2fa493d7b9a074b84cf8c830a706688",
+			"wallMs": 68555,
+			"exitCode": 0,
+			"timedOut": false,
+			"patch": {
+				"bytes": 949,
+				"files": [
+					"xarray/core/variable.py"
+				],
+				"dropped": []
+			},
+			"keyScrubbedFiles": 0,
+			"turns": 5,
+			"toolCalls": 4,
+			"toolsByName": {
+				"rlm": 4
+			},
+			"tokens": {
+				"input": 9155,
+				"cacheRead": 20224,
+				"output": 761,
+				"reasoning": 40,
+				"total": 30140
+			},
+			"notionalCostUsd": 0.0279,
+			"reportedCostUsd": 0.0279,
+			"ledger": {
+				"requests": 5,
+				"ok": 5,
+				"rateLimited": 0,
+				"failed": 0,
+				"requestModels": [
+					"gpt-6.1-sol"
+				],
+				"responseModels": [
+					"gpt-6.1-sol"
+				],
+				"efforts": [
+					"medium"
+				],
+				"paths": [
+					"/v1/chat/completions"
+				],
+				"tokens": {
+					"input": 9155,
+					"cacheRead": 20224,
+					"output": 761,
+					"reasoning": 40,
+					"total": 30140
+				},
+				"missingUsage": 0
+			},
+			"networkCommands": [],
+			"finalText": "Fixed in `xarray/core/variable.py`.\n\n`IndexVariable.copy(deep=True)` now preserves the `PandasIndexAdapter` dtype when copying the underlying pandas index, rather than re-inferring it as `object`. This fixes copies made through Dataset, DataArray, `copy.copy()`, and `copy.deepcopy()`.\n\nValidation:\n- Copy-related tests: **29 passed**, 1 xfailed, 4 xpassed.\n- Additional reproduction checks passed for Unicode, bytes, integer, float, and object dtypes.\n- `git diff --check` passed.\n\nChanges are uncommitted.",
+			"ultron": {
+				"cells": 4,
+				"frameCalls": 0,
+				"spawnCalls": 0,
+				"childSessions": 0,
+				"childTurns": 0,
+				"errorCells": 0,
+				"helpers": {
+					"bash": 4,
+					"edit": 2
+				},
+				"loki": {
+					"beforeWriteChecks": 2,
+					"blocked": 0,
+					"afterCellChecks": 2,
+					"afterCellFindings": 0,
+					"afterCellAdvisories": 0,
+					"setupNotes": [
+						"on"
+					]
+				}
+			},
+			"verdict": "resolved",
+			"tests": {
+				"failToPass": {
+					"passed": 1,
+					"total": 1
+				},
+				"passToPass": {
+					"passed": 253,
+					"total": 253
+				}
+			},
+			"evidence": "pilot10-lokifix/ultron/pydata__xarray-3095"
+		}
+	]
+}

@@ -157,7 +157,7 @@ describe.skipIf(!ready)("Loki in a real session", () => {
 		await client!.promptAndWait("write through bash", undefined, 120_000);
 		const later = (await client!.getLastAssistantText()) ?? "";
 		expect(later).toContain("later");
-		expect(later).toContain("[Loki] findings in files this cell changed");
+		expect(later).toContain("[Loki] 1 new finding from this cell's changes; fix these:");
 		expect(later).toContain("leaked.py:1: loki/secret");
 		// The notice is shown once.
 		expect(provider.requests.at(-1)!.raw.match(/Loki set up and committed/g)).toHaveLength(1);

@@ -247,7 +247,8 @@ export function armDescriptions(versions = {}) {
 			reasoningEffort: `${REASONING_EFFORT} (Ultron's default thinking level; not set by the harness)`,
 			configuration:
 				"fresh agent dir holding only models.json; no settings.json, skills, AGENTS.md or extensions; Hindsight off",
-			python: "kernel and Loki on a mounted standalone CPython 3.12 (ULTRON_PYTHON, ULTRON_LOKI_PYTHON)",
+			python:
+				"kernel and Loki on a mounted standalone CPython 3.12 (ULTRON_PYTHON, ULTRON_LOKI_PYTHON); Loki's import check asks the testbed interpreter, which Ultron finds as the active environment's `python`",
 			loki: "guard on (default mode) with the bundled engine; ULTRON_LOKI_AUTOINIT=off, so no .loki/ is created",
 			limits: "the tool's defaults (no turn or token limit); the harness's wall-clock limit",
 		},

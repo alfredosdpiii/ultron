@@ -6,7 +6,7 @@
  *   node evals/swebench/run.mjs sample [--n 10]             print the seeded sample
  *   node evals/swebench/run.mjs verify [--arms ultron,codex,pi]
  *   node evals/swebench/run.mjs run --run-id pilot10 [--n 10] [--arms ...] [--concurrency 2] [--limit-minutes 30]
- *                                   [--only id,id] [--skip-verify] [--skip-eval]
+ *                                   [--only id,id] [--skip-verify] [--skip-eval] [--ultron-package <dir>]
  *   node evals/swebench/run.mjs eval --run-id pilot10 [--arms ...] [--gold]
  *   node evals/swebench/run.mjs report --run-id pilot10 [--out acceptance/quality/<name>.json]
  *
@@ -85,7 +85,7 @@ const USER_MODELS = process.env.ULTRON_SWEBENCH_MODELS || join(homedir(), ".ultr
 const VERIFY_PROMPT =
 	"Run `python --version` in the shell, then reply with exactly the line it printed and nothing else. Do not change any file.";
 
-const VALUE_FLAGS = ["n", "seed", "arms", "run-id", "concurrency", "limit-minutes", "only", "out", "memory", "attempts"];
+const VALUE_FLAGS = ["n", "seed", "arms", "run-id", "concurrency", "limit-minutes", "only", "out", "memory", "attempts", "ultron-package"];
 const SWITCH_FLAGS = ["skip-verify", "skip-eval", "gold", "no-ledger"];
 
 function parseArgs(argv) {
@@ -230,9 +230,10 @@ function isElf(file) {
 /**
  * The host installs mounted read-only into task containers: the Node binary and the installed ultron-agent package,
  * the Codex CLI's install directory, Pi's binary directory, the standalone CPython the virtualenv is built on, and
- * a static ripgrep (the one Codex ships) for every arm.
+ * a static ripgrep (the one Codex ships) for every arm. `--ultron-package <dir>` mounts another installed
+ * ultron-agent package instead of the one on PATH (a build under test, installed from its release tarball).
  */
-async function resolveRuntimes() {
+async function resolveRuntimes({ ultronPackage: customUltron } = {}) {
 	const which = async (name) => {
 		const found = await run("which", [name]);
 		if (found.code !== 0) throw new Error(`${name} is not on PATH`);
@@ -240,8 +241,11 @@ async function resolveRuntimes() {
 	};
 	const version = async (command, args) => (await run(command, args)).stdout.trim().split("\n")[0];
 	const node = await which("node");
-	const ultronCli = await which("ultron");
-	const ultronPackage = packageRoot(ultronCli, "ultron-agent");
+	const ultronPackage = customUltron
+		? packageRoot(join(realpathSync(resolve(customUltron)), "package.json"), "ultron-agent")
+		: packageRoot(await which("ultron"), "ultron-agent");
+	const ultronCli = join(ultronPackage, "dist", "bundle", "cli.js");
+	if (!existsSync(ultronCli)) throw new Error(`no dist/bundle/cli.js in ${ultronPackage}`);
 	const codexBinary = await which("codex");
 	const codexRoot = dirname(dirname(codexBinary));
 	if (!existsSync(join(codexRoot, "codex-package.json")) || !isElf(codexBinary))
@@ -262,7 +266,7 @@ async function resolveRuntimes() {
 			tools: [[ripgrep, `${MOUNT}/tools/rg`]],
 		},
 		versions: {
-			ultron: await version("ultron", ["--version"]),
+			ultron: `${await version(node, [ultronCli, "--version"])}${customUltron ? " (--ultron-package: a local build, not the installed release)" : ""}`,
 			codex: await version("codex", ["--version"]),
 			pi: await version("pi", ["--version"]),
 			node: await version(node, ["--version"]),
@@ -352,6 +356,7 @@ function collectStats(arm, dir) {
 		blocked: loki.filter((entry) => entry.phase === "before_write" && entry.outcome === "blocked").length,
 		afterCellChecks: loki.filter((entry) => entry.phase === "after_cell").length,
 		afterCellFindings: loki.filter((entry) => entry.phase === "after_cell" && entry.outcome === "findings").length,
+		afterCellAdvisories: loki.filter((entry) => entry.phase === "after_cell" && entry.outcome === "advisory").length,
 		setupNotes: loki.filter((entry) => entry.phase === "setup").map((entry) => String(entry.detail ?? entry.outcome ?? "").slice(0, 200)),
 	};
 	return stats;
@@ -526,7 +531,7 @@ async function pool(jobs, concurrency, worker) {
 
 async function createContext(flags, runId) {
 	const proxy = readUserModels();
-	const runtimes = await resolveRuntimes();
+	const runtimes = await resolveRuntimes({ ultronPackage: flags["ultron-package"] });
 	const runDir = join(HOME, "runs", runId);
 	mkdirSync(runDir, { recursive: true });
 	const ctx = {

@@ -86,7 +86,8 @@ These variables are read by Pi itself:
 | `ULTRON_LOKI` | Loki guardrails: `off` disables them, `advise` reports without blocking, anything else is on (the default); overrides the `loki.mode` setting |
 | `ULTRON_LOKI_AUTOINIT`, `ULTRON_LOKI_AUTOCOMMIT` | `off` stops Ultron from creating `.loki/` in a repository, or from committing the `.loki/` it created |
 | `ULTRON_LOKI_TIMEOUT_MS` | How long a before-write Loki check may take (default 5000) before the write proceeds with a "not checked" note |
-| `ULTRON_LOKI_PYTHON` | Python 3.11+ interpreter for Loki (default `python3`) |
+| `ULTRON_LOKI_PYTHON` | Python 3.11+ interpreter that runs Loki (default `python3`) |
+| `ULTRON_LOKI_PROJECT_PYTHON` | The project's own interpreter, which Loki asks whether a newly imported module exists. Default: the `python` (else `python3`) on `PATH` when it belongs to a virtual or conda environment, else `.venv`/`venv` in the session directory or the repository root. Without one, new imports are reported as not checked |
 | `ULTRON_LOKI_LOG` | Append every Loki check (and setup) to this file as JSON lines |
 | `ULTRON_RLM_FRAME_MODEL` | Default model (`provider/model`, e.g. `claude-code/haiku`) of `rlm.infer`/`rlm.map` frames that give none and run no code |
 | `ULTRON_CLAUDE_CODE_BIN` | The `claude` executable used by the `claude-code` provider (default: `claude` on `PATH`) |

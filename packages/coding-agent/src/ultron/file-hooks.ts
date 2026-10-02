@@ -11,7 +11,8 @@
  * 2. After a cell (advisory). Files a cell changed by other means (`bash('sed -i ...')`, `Path.write_text`) are found
  *    by comparing workspace snapshots (workspace-snapshot.ts) taken between cells, minus the writes checked in (1)
  *    whose content is unchanged. Guards' `afterCellChanges` run in the background, so a cell returns as fast as
- *    before, and what they report reaches the model with the lane's next cell result.
+ *    before, and what they report reaches the model with the lane's next cell result. A guard says whether its
+ *    report holds findings to fix, only advisory lines, or nothing to act on (`AfterCellReport`).
  *
  * The module knows nothing about any particular guard; Loki (loki.ts) and Pi extensions (the `before_file_write`
  * and `after_cell_changes` events) register through the same interface.
@@ -57,6 +58,14 @@ export interface CellChanges {
 	readonly complete: boolean;
 }
 
+/** What an after-cell check has to say, and whether any of it is something to fix. */
+export interface AfterCellReport {
+	/** Text for the model, delivered with the lane's next cell result. */
+	readonly message?: string;
+	/** `findings`: something to fix. `advisory`: only for-your-information lines. `clean`: nothing, or only a note. */
+	readonly outcome: "clean" | "advisory" | "findings";
+}
+
 export interface FileWriteGuard {
 	/** Shown in notes and statistics ("Loki"). */
 	readonly name: string;
@@ -69,7 +78,8 @@ export interface FileWriteGuard {
 	/** False when `afterCellChanges` would do nothing now, so no workspace snapshots are taken for it. */
 	watchesCells?(): boolean;
 	beforeWrite?(write: ProposedWrite, context: FileHookContext): Promise<BeforeWriteVerdict | undefined>;
-	afterCellChanges?(changes: CellChanges, context: FileHookContext): Promise<string | undefined>;
+	/** A string is a report of findings; an `AfterCellReport` says which kind of report it is. */
+	afterCellChanges?(changes: CellChanges, context: FileHookContext): Promise<string | AfterCellReport | undefined>;
 }
 
 /** What the kernel gets back for one proposed write. */
@@ -87,7 +97,7 @@ export interface GuardStats {
 	checks: number;
 	blocked: number;
 	unchecked: number;
-	/** After-cell checks run, and how many reported something. */
+	/** After-cell checks run, and how many reported findings to fix (or could not check). */
 	afterChecks: number;
 	afterFindings: number;
 	/** Time spent in the guard: in all, and since the current root turn began. */
@@ -119,7 +129,7 @@ export interface FileHooksOptions {
 export interface GuardRecord {
 	readonly guard: string;
 	readonly phase: "before_write" | "after_cell";
-	readonly outcome: "allowed" | "blocked" | "unchecked" | "clean" | "findings";
+	readonly outcome: "allowed" | "blocked" | "unchecked" | "clean" | "advisory" | "findings";
 	readonly ms: number;
 	readonly paths: readonly string[];
 	readonly lane: string;
@@ -408,16 +418,22 @@ export class FileHooks {
 				this.#charge(guard, ms);
 				const stats = this.#stats.get(guard);
 				if (stats) stats.afterChecks += 1;
+				const unchecked = result.timedOut || result.error !== undefined;
+				const report: AfterCellReport | undefined =
+					typeof result.value === "string"
+						? { message: result.value, outcome: result.value ? "findings" : "clean" }
+						: result.value;
 				const text = result.timedOut
 					? `${guard.name} did not finish checking the files this cell changed.`
 					: result.error !== undefined
 						? `${guard.name} could not check the files this cell changed: ${errorText(result.error)}`
-						: result.value;
-				if (text && stats) stats.afterFindings += 1;
+						: report?.message;
+				const outcome: GuardRecord["outcome"] = unchecked ? "unchecked" : (report?.outcome ?? "clean");
+				if (stats && (outcome === "findings" || outcome === "unchecked")) stats.afterFindings += 1;
 				this.#onRecord?.({
 					guard: guard.name,
 					phase: "after_cell",
-					outcome: result.timedOut || result.error !== undefined ? "unchecked" : text ? "findings" : "clean",
+					outcome,
 					ms,
 					paths: [...files, ...checked].map((path) => this.#display(path, where.cwd)),
 					lane,

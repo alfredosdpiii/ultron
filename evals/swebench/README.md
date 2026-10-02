@@ -33,7 +33,19 @@ with a larger `--n` keeps the finished runs and adds the new tasks; a new `--run
 is not run again, so rerunning the same command after an interruption continues where it stopped. To rerun a pair,
 delete its directory under `runs/<run-id>/<arm>/`. Other flags: `--arms ultron,codex`, `--concurrency 2`,
 `--limit-minutes 30`, `--only <id,id>`, `--memory 16g`, `--attempts 3`, `--skip-verify`, `--skip-eval`,
-`--no-ledger`, `--out <file>`. Unknown flags exit 2 before anything starts.
+`--no-ledger`, `--out <file>`, `--ultron-package <dir>`. Unknown flags exit 2 before anything starts.
+
+`--ultron-package <dir>` runs the Ultron arm on another installed `ultron-agent` package than the one on `PATH`, for
+a build under test. Install the build the way a user would, into a private prefix, and name the package directory:
+
+```sh
+npm run build:offline && node scripts/pack-release.mjs --out /tmp/ultron-build
+npm install -g --ignore-scripts --prefix /tmp/ultron-build/prefix /tmp/ultron-build/ultron-*.tgz
+node evals/swebench/run.mjs run --run-id pilot10-mybuild --n 10 --arms ultron \
+  --ultron-package /tmp/ultron-build/prefix/lib/node_modules/ultron-agent
+```
+
+The run's manifest and result record that the version is a local build.
 
 `eval --run-id <id>` reruns only the official evaluation and the report; `eval --run-id <id> --gold` evaluates the
 gold patches of the run's tasks, which checks the images and the evaluation on this machine (expect all resolved);
@@ -67,7 +79,8 @@ host's Node binary and the installed `ultron-agent` package; the Codex CLI's ins
 directory; and, for every arm, a static ripgrep at the end of `PATH`. Ultron's REPL kernel and its Loki guardrails
 need a modern Python while the task environments are Python 3.5 to 3.9, so the standalone CPython 3.12 the
 virtualenv is built on is mounted too and named by `ULTRON_PYTHON` and `ULTRON_LOKI_PYTHON`; the repository's tests
-still run on the testbed interpreter, through `bash()`.
+still run on the testbed interpreter, through `bash()`, and Loki asks that interpreter (the active environment's
+`python`, which Ultron passes to it) whether a newly imported module exists.
 
 **Prompt.** One prompt for every arm (`buildPrompt`): the issue text (`problem_statement`), where the repository
 is, that the environment is active, and that hidden tests score the change. No hints, no gold or test patch, no
