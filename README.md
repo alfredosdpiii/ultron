@@ -504,6 +504,10 @@ mode rows apply the next time `ultron claude` starts. When an environment variab
 Opt-outs: `ULTRON_TOOLS=native` gives the model Pi's `read`, `edit`, `write` and `bash` tools again, and
 `ULTRON_EXTENSION_TOOLS=native` makes extension and MCP tools separate model tools again.
 
+MCP servers are built in: list them in `~/.ultron/agent/mcp.json` (or `ultron mcp add <name> -- <command>`), manage
+them with `/mcp` and `ultron mcp list|login|logout`, and call them from Python. They connect on first use, so they
+never slow startup. See [docs/mcp.md](packages/coding-agent/docs/mcp.md).
+
 ## Claude Code
 
 Ultron works with the [Claude Code](https://claude.com/claude-code) CLI in three ways:

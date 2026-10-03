@@ -63,6 +63,7 @@ import { printTimings, resetTimings, time } from "./core/timings.ts";
 import { hasTrustRequiringProjectResources, ProjectTrustStore } from "./core/trust-manager.ts";
 import { traceStartup } from "./experimental/startup-trace.ts";
 import { builtInExtensions } from "./extensions/index.ts";
+import { isMcpManagementCommand, loadMcpCommand } from "./extensions/mcp/cli.lazy.ts";
 import { runMigrations, showDeprecationWarnings } from "./migrations.ts";
 import { InteractiveMode, runPrintMode, runRpcMode } from "./modes/index.ts";
 import { initTheme, setThemeJsonValidator, stopThemeWatcher } from "./modes/interactive/theme/theme.ts";
@@ -605,6 +606,14 @@ export async function main(args: string[], options?: MainOptions) {
 	// `ultron usage`: the session report, read from session files (no server, no model).
 	if (await runUsageCommand(args)) {
 		process.exit(process.exitCode ?? 0);
+		return;
+	}
+
+	// `ultron mcp add|remove|list|login|logout`: the MCP servers Ultron connects to. Bare `ultron mcp` (below) is
+	// Ultron's own MCP server for Claude Code.
+	if (args[0] === "mcp" && isMcpManagementCommand(args[1])) {
+		const { runMcpCommand } = await loadMcpCommand();
+		process.exit(await runMcpCommand(args.slice(1), { cwd: process.cwd(), agentDir: getAgentDir() }));
 		return;
 	}
 

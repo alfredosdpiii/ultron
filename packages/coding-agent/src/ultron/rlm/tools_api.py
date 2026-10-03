@@ -1,6 +1,6 @@
 """Extension tools as pre-imported async skills (Prime Intellect's RLM harness exposes MCP tools the same way).
 
-Tools that Pi extensions register (the pi-mcp-adapter's ``mcp`` gateway among them) run in the Ultron host with
+Tools that Pi extensions register (the built-in ``mcp`` gateway among them) run in the Ultron host with
 their real tool context; the kernel calls them through ``tools.*`` host requests:
 
     await tools.list()                       # [{name, description}]
@@ -8,7 +8,8 @@ their real tool context; the kernel calls them through ``tools.*`` host requests
     r = await tools.call("probe", {"x": 1})  # ToolResult: the text, plus .details
     r = await tools.probe(x=1)               # the same, by attribute
 
-``mcp`` is a thin namespace over the adapter's gateway tool:
+``mcp`` is a thin namespace over Ultron's MCP gateway tool (src/extensions/mcp), which connects the servers of
+``mcp.json`` on first use:
 
     await mcp.servers()                                    # [{name, status, toolCount, ...}]
     await mcp.tools("exa-agent")                           # tool names of one server (all servers without one)
@@ -123,7 +124,7 @@ class ToolResult(str):
         return self
 
     def json(self) -> Any:
-        """Parse the text as JSON: the whole text, else its first JSON value (the MCP adapter appends a
+        """Parse the text as JSON: the whole text, else its first JSON value (an MCP gateway may append a
         ``structuredContent:`` copy after the text), else that structured copy. A fenced ```json block is unwrapped."""
         text = self.output.strip()
         fenced = re.match(r"^```(?:json)?\s*\n(.*)\n```$", text, re.S)
@@ -336,7 +337,7 @@ class _McpServer:
 
 
 class Mcp:
-    """MCP servers through the pi-mcp-adapter's ``mcp`` gateway tool (see the module docstring)."""
+    """MCP servers through Ultron's ``mcp`` gateway tool (see the module docstring)."""
 
     def __init__(self, tools: Tools, gateway: str = "mcp") -> None:
         self._tools = tools
@@ -408,6 +409,17 @@ class Mcp:
     async def instructions(self, server: str) -> str:
         """A server's usage instructions."""
         return str(await self._gateway(instructions=server))
+
+    async def resources(self, server: str | None = None) -> dict[str, Any]:
+        """{resources, resourceTemplates} of ``server`` (or of every enabled server), each tagged with its server."""
+        result = await self._gateway(resources=server if server is not None else True)
+        details = result.details if isinstance(result.details, dict) else {}
+        return {"resources": list(details.get("resources") or []),
+                "resourceTemplates": list(details.get("resourceTemplates") or [])}
+
+    async def read(self, server: str, uri: str) -> ToolResult:
+        """Read resource ``uri`` of ``server``: a ToolResult with its text (binary resources are saved to a file)."""
+        return await self._gateway(server=server, read=uri)
 
     async def call(self, tool: str, args: dict[str, Any] | str | None = None, /, *, server: str | None = None,
                    yield_after: Any = _DEFAULT, **kwargs: Any) -> Any:
