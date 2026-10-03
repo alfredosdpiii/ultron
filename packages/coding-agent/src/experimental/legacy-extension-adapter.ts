@@ -49,6 +49,14 @@ export interface LegacyExtensionAdapterOptions {
 	 * stay out of the model's tool list).
 	 */
 	readonly filterActiveTools?: (names: readonly string[]) => string[];
+	/**
+	 * The lane's active tools when the extensions start, so `pi.getActiveTools()` reports what the model really has.
+	 * An extension that extends the list ("the current tools plus mine") would otherwise write back a list without
+	 * the session's own tools.
+	 */
+	readonly activeTools?: readonly string[];
+	/** Tools no extension can deactivate: without the REPL the model has nothing to work with. */
+	readonly pinnedTools?: readonly string[];
 }
 
 /** Why the worker's Session started, as Pi's `session_start` reports it. */
@@ -72,6 +80,7 @@ export class LegacyExtensionAdapter {
 	readonly #sessionManager: SessionManager;
 	readonly #filterActiveTools: (names: readonly string[]) => string[];
 	#activeTools: string[] = [];
+	readonly #pinnedTools: readonly string[];
 	#shutdown: Omit<SessionShutdownEvent, "type"> = { reason: "quit" };
 	#bound = false;
 
@@ -84,6 +93,8 @@ export class LegacyExtensionAdapter {
 		this.#systemPrompt = options.systemPrompt;
 		this.#onShutdown = options.onShutdown;
 		this.#filterActiveTools = options.filterActiveTools ?? ((names) => [...names]);
+		this.#activeTools = [...(options.activeTools ?? [])];
+		this.#pinnedTools = [...(options.pinnedTools ?? [])];
 		this.#sessionManager = createSessionManagerFacade(options.session, options.cwd);
 		const extensions = options.resourceLoader.getExtensions();
 		const ui = options.ui;
@@ -261,7 +272,9 @@ export class LegacyExtensionAdapter {
 				getActiveTools: () => [...this.#activeTools],
 				getAllTools: () => this.toolInfos,
 				setActiveTools: (names) => {
-					this.#activeTools = this.#filterActiveTools(names);
+					const next = this.#filterActiveTools(names);
+					const pinned = this.#pinnedTools.filter((name) => !next.includes(name));
+					this.#activeTools = [...pinned, ...next];
 					void this.#lane.setActiveTools(this.#activeTools, BACKGROUND_CONTEXT);
 				},
 				refreshTools: () => {},
@@ -321,6 +334,11 @@ export class LegacyExtensionAdapter {
 			reason: "fork",
 			...(targetSessionFile === undefined ? {} : { targetSessionFile }),
 		};
+	}
+
+	/** The worker changed the lane's active tools itself; keep what `pi.getActiveTools()` reports in step. */
+	syncActiveTools(names: readonly string[]): void {
+		this.#activeTools = [...names];
 	}
 
 	async close(): Promise<void> {

@@ -1995,6 +1995,10 @@ export async function createUltronRuntime(
 			cwd: options.metadata.cwd,
 			model: resolved.model,
 			systemPrompt,
+			activeTools: effectiveActiveToolNames,
+			// An extension that sets the active tools (pi-mcp-adapter adds its own to "the current ones") must not
+			// take the REPL away: it is the model's only tool.
+			pinnedTools: effectiveActiveToolNames.filter((name) => name === "rlm"),
 			// Extension tools that live in the REPL stay out of the model's tool list whatever an extension activates.
 			filterActiveTools: (names) => {
 				const registered = new Set(legacyExtensions?.replTools.map((tool) => tool.name) ?? []);
@@ -2402,6 +2406,7 @@ export async function createUltronRuntime(
 		) {
 			await lane.setActiveTools(extensionActiveToolNames, TODO_CONTEXT);
 		}
+		legacyExtensions.syncActiveTools(extensionActiveToolNames);
 		return {
 			harness,
 			model: `${resolved.model.provider}/${resolved.model.id}`,

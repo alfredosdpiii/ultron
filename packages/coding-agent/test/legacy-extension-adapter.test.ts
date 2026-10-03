@@ -95,4 +95,50 @@ describe("LegacyExtensionAdapter", () => {
 			await rm(root, { recursive: true, force: true });
 		}
 	});
+
+	test("an extension that extends or clears the active tools never takes the REPL away", async () => {
+		const root = await mkdtemp(join(tmpdir(), "ultron-extension-active-tools-"));
+		const extension = join(root, "extension.ts");
+		await writeFile(
+			extension,
+			`export default function (pi) {
+				// pi-mcp-adapter's pattern: the current tools plus its own.
+				pi.registerCommand("grow", { description: "Add a tool", handler: async () => { pi.setActiveTools([...pi.getActiveTools(), "mcp_search"]); } });
+				pi.registerCommand("wipe", { description: "Clear tools", handler: async () => { pi.setActiveTools([]); } });
+			}`,
+		);
+		const loader = new DefaultResourceLoader({
+			cwd: root,
+			agentDir: root,
+			settingsManager: SettingsManager.create(root, root),
+			additionalExtensionPaths: [extension],
+		});
+		await loader.reload();
+		const set: string[][] = [];
+		const adapter = new LegacyExtensionAdapter({
+			session: {} as never,
+			lane: {
+				setActiveTools: async (names: string[]) => {
+					set.push(names);
+				},
+			} as never,
+			harness: { hooks: { on: () => () => {} }, events: { on: () => () => {} } } as never,
+			modelRuntime: {} as never,
+			resourceLoader: loader,
+			cwd: root,
+			model: {} as never,
+			systemPrompt: "test",
+			activeTools: ["rlm"],
+			pinnedTools: ["rlm"],
+		});
+		try {
+			adapter.bind();
+			await adapter.runCommand("grow", "");
+			await adapter.runCommand("wipe", "");
+			expect(set).toEqual([["rlm", "mcp_search"], ["rlm"]]);
+		} finally {
+			await adapter.close();
+			await rm(root, { recursive: true, force: true });
+		}
+	});
 });
