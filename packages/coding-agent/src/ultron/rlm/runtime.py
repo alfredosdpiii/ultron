@@ -970,7 +970,7 @@ class RuntimeState:
         self.namespace["read"] = read
         self.namespace["view_image"] = view_image
         self.namespace["hints"] = Hints(self.bridge)
-        # Extension tools (the pi-mcp-adapter's `mcp` gateway among them) as async skills.
+        # Extension tools (the built-in `mcp` gateway among them) as async skills.
         self.namespace["tools"] = Tools(self.bridge)
         self.namespace["mcp"] = Mcp(self.namespace["tools"])
         self.namespace["ToolCall"] = ToolCall

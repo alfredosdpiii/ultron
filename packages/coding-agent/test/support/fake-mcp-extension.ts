@@ -1,22 +1,20 @@
 /**
  * A fake Pi extension for extension-tool tests. It registers:
- * - `mcp`: shaped like pi-mcp-adapter's gateway tool (the same parameters: tool/args as an object or a JSON string,
- *   connect, describe, instructions, search, server, action...), with the adapter's mode precedence and `details`
- *   shapes, over two fake servers ("exa-agent" and "docs");
+ * - `mcp`: Ultron's real MCP gateway (src/extensions/mcp), connected to two fake MCP servers ("exa-agent" and
+ *   "docs") over the MCP package's in-memory transport (fake-mcp-server.ts): no process, no network. Loaded as an
+ *   extension file it replaces the worker's built-in MCP extension, which would read the profile's mcp.json;
  * - `probe`: echoes its arguments (and repeats text, for output bounding);
  * - `slow`: waits `ms` milliseconds, honoring the abort signal;
  * - `boom`: throws.
  * Every execution is recorded on `globalThis.__fakeExtensionCalls`.
  */
 
-type Result = { content: { type: "text"; text: string }[]; details?: Record<string, unknown> };
+import type { ExtensionAPI } from "../../src/core/extensions/types.ts";
+import type { McpServerEntry } from "../../src/extensions/mcp/config.ts";
+import { createMcpExtension } from "../../src/extensions/mcp/index.ts";
+import { connectFakeMcpServer, type FakeMcpTool } from "./fake-mcp-server.ts";
 
-interface FakeTool {
-	originalName: string;
-	description: string;
-	inputSchema: Record<string, unknown>;
-	run(args: Record<string, unknown>, signal: AbortSignal | undefined): Promise<unknown>;
-}
+type FakeTool = FakeMcpTool;
 
 export interface FakeCall {
 	tool: string;
@@ -45,18 +43,13 @@ function sleep(ms: number, signal: AbortSignal | undefined): Promise<void> {
 	});
 }
 
-const text = (value: string, details?: Record<string, unknown>): Result => ({
-	content: [{ type: "text", text: value }],
-	...(details === undefined ? {} : { details }),
-});
-
 let runs = 0;
 const queries = new Map<string, string>();
 
 const SERVERS: Record<string, FakeTool[]> = {
 	"exa-agent": [
 		{
-			originalName: "exa_agent_create_run",
+			name: "exa_agent_create_run",
 			description: "Create an Exa Agent run without waiting for completion.",
 			inputSchema: {
 				type: "object",
@@ -71,7 +64,7 @@ const SERVERS: Record<string, FakeTool[]> = {
 			},
 		},
 		{
-			originalName: "exa_agent_wait_run",
+			name: "exa_agent_wait_run",
 			description: "Wait for an existing Exa Agent run to complete.",
 			inputSchema: {
 				type: "object",
@@ -87,13 +80,13 @@ const SERVERS: Record<string, FakeTool[]> = {
 	],
 	docs: [
 		{
-			originalName: "search_docs",
+			name: "search_docs",
 			description: "Search the docs.",
 			inputSchema: { type: "object", properties: { q: { type: "string" } } },
 			run: async (args) => ({ hits: [`doc about ${args.q}`] }),
 		},
 		{
-			originalName: "fail",
+			name: "fail",
 			description: "Always fails.",
 			inputSchema: { type: "object", properties: {} },
 			run: async () => {
@@ -103,145 +96,43 @@ const SERVERS: Record<string, FakeTool[]> = {
 	],
 };
 
-const displayed = (server: string, tool: FakeTool) => `${server}_${tool.originalName}`;
+const ENTRIES: McpServerEntry[] = Object.keys(SERVERS).map((name) => ({
+	name,
+	config: { command: "fake-mcp-server", args: [name] },
+	source: "fake-mcp-extension",
+}));
 
-function find(name: string, server?: string): { server: string; tool: FakeTool } | undefined {
-	for (const [serverName, tools] of Object.entries(SERVERS)) {
-		if (server !== undefined && server !== serverName) continue;
-		for (const tool of tools)
-			if (displayed(serverName, tool) === name || tool.originalName === name) return { server: serverName, tool };
-	}
-	return undefined;
+/** What the tests hand over: the kernel tests only collect tools, the worker passes the whole extension API. */
+interface FakeExtensionApi {
+	registerTool(tool: Record<string, unknown>): void;
+	registerCommand?: (name: string, options: unknown) => void;
+	on?: (event: string, handler: unknown) => void;
 }
 
-type GatewayParams = {
-	tool?: string;
-	args?: string | Record<string, unknown>;
-	connect?: string;
-	describe?: string;
-	instructions?: string;
-	search?: string;
-	server?: string;
-	action?: string;
-};
-
-async function gateway(params: GatewayParams, signal: AbortSignal | undefined): Promise<Result> {
-	// The adapter's argument parsing: an object, or a JSON string encoding one.
-	let args: Record<string, unknown> | undefined;
-	if (typeof params.args === "string" && params.args !== "") {
-		const parsed = JSON.parse(params.args) as unknown;
-		if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed))
-			throw new Error("Invalid args: expected a JSON object");
-		args = parsed as Record<string, unknown>;
-	} else if (params.args !== undefined && typeof params.args === "object") args = params.args;
-	if (params.tool) {
-		const found = find(params.tool, params.server);
-		if (!found)
-			return text(`Tool "${params.tool}" not found. Use mcp({ search: "..." }) to search.`, {
-				mode: "call",
-				error: "tool_not_found",
-				requestedTool: params.tool,
-			});
-		try {
-			const value = await found.tool.run(args ?? {}, signal);
-			// Like the adapter: the text content, then a copy of the structured content.
-			return {
-				content: [
-					{ type: "text", text: JSON.stringify(value) },
-					{ type: "text", text: `structuredContent:\n${JSON.stringify(value, null, 2)}` },
-				],
-				details: { mode: "call", server: found.server, tool: found.tool.originalName },
-			};
-		} catch (error) {
-			if (signal?.aborted) throw error;
-			return text(`Error: ${(error as Error).message}`, {
-				mode: "call",
-				error: "tool_error",
-				server: found.server,
-				tool: found.tool.originalName,
-			});
-		}
-	}
-	if (params.connect) return text(`Connected to ${params.connect}.`, { mode: "connect", server: params.connect });
-	if (params.describe) {
-		const found = find(params.describe, params.server);
-		if (!found) return text(`Tool "${params.describe}" not found.`, { mode: "describe", error: "tool_not_found" });
-		const tool = {
-			name: displayed(found.server, found.tool),
-			originalName: found.tool.originalName,
-			description: found.tool.description,
-			inputSchema: found.tool.inputSchema,
-		};
-		return text(`${tool.name}\nServer: ${found.server}\n\n${tool.description}`, {
-			mode: "describe",
-			tool,
-			server: found.server,
-		});
-	}
-	if (params.search !== undefined) {
-		const matches = Object.entries(SERVERS).flatMap(([server, tools]) =>
-			tools
-				.filter((tool) => displayed(server, tool).includes(params.search ?? ""))
-				.map((tool) => ({ server, tool: displayed(server, tool), score: 1 })),
-		);
-		return text(`Found ${matches.length} tools`, { mode: "search", matches, count: matches.length });
-	}
-	if (params.server) {
-		const tools = (SERVERS[params.server] ?? []).map((tool) => displayed(params.server!, tool));
-		return text(`${params.server} (${tools.length} tools)`, {
-			mode: "list",
-			server: params.server,
-			tools,
-			count: tools.length,
-		});
-	}
-	const servers = Object.entries(SERVERS).map(([name, tools]) => ({
-		name,
-		status: "connected",
-		listenState: "active",
-		toolCount: tools.length,
-		failedAgo: null,
-	}));
-	return text(`MCP: ${servers.length}/${servers.length} servers`, { mode: "status", servers });
-}
-
-export default function fakeExtension(pi: { registerTool(tool: Record<string, unknown>): void }): void {
-	pi.registerTool({
-		name: "mcp",
-		label: "MCP",
-		description: `MCP gateway — server status, tool search/describe, and single MCP tool calls.\n\nServers: ${Object.keys(SERVERS).join(", ")}\n\nUsage:\n  mcp({ })  → status`,
-		parameters: {
-			type: "object",
-			properties: {
-				tool: { type: "string", description: "Tool name to call" },
-				args: {
-					anyOf: [{ type: "string" }, { type: "object", additionalProperties: true }],
-					description: "Tool arguments as a JSON object, or as a JSON string encoding one",
+export default function fakeExtension(pi: FakeExtensionApi): void {
+	// The real gateway, with every call recorded like the other fake tools'.
+	const recording = {
+		registerCommand: (name: string, options: unknown) => pi.registerCommand?.(name, options),
+		on: (event: string, handler: unknown) => pi.on?.(event, handler),
+		registerTool: ((tool) => {
+			const execute = tool.execute;
+			pi.registerTool({
+				...tool,
+				execute: (id: string, params: unknown, signal: AbortSignal | undefined, onUpdate: never, ctx: never) => {
+					const call: FakeCall = { tool: tool.name, params: structuredClone(params) as Record<string, unknown> };
+					calls().push(call);
+					signal?.addEventListener("abort", () => {
+						call.aborted = true;
+					});
+					return execute(id, params as never, signal, onUpdate, ctx);
 				},
-				connect: { type: "string" },
-				describe: { type: "string" },
-				instructions: { type: "string" },
-				search: { type: "string" },
-				searchMode: { type: "string", enum: ["lexical", "semantic"] },
-				regex: { type: "boolean" },
-				includeSchemas: { type: "boolean" },
-				limit: { type: "number" },
-				offset: { type: "number" },
-				server: { type: "string" },
-				action: { type: "string" },
-				url: { type: "string" },
-				target: { type: "string" },
-			},
-		},
-		async execute(_id: string, params: GatewayParams, signal: AbortSignal | undefined) {
-			const call: FakeCall = { tool: "mcp", params: structuredClone(params) as Record<string, unknown> };
-			calls().push(call);
-			signal?.addEventListener("abort", () => {
-				call.aborted = true;
 			});
-			return gateway(params, signal);
-		},
-	});
+		}) as ExtensionAPI["registerTool"],
+	};
+	void createMcpExtension({
+		servers: ENTRIES,
+		createTransport: (entry) => connectFakeMcpServer(entry.name, { tools: SERVERS[entry.name] ?? [] }),
+	})(recording as unknown as ExtensionAPI);
 	pi.registerTool({
 		name: "probe",
 		label: "probe",

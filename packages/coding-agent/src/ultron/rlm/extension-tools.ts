@@ -1,6 +1,6 @@
 /**
  * Extension tools inside the REPL (Prime Intellect's RLM harness exposes MCP tools as pre-imported IPython skills).
- * Tools registered by Pi extensions (the pi-mcp-adapter's `mcp` gateway among them) are not separate model tools by
+ * Tools registered by Pi extensions (the built-in `mcp` gateway of extensions/mcp among them) are not separate model tools by
  * default: the kernel calls them with `await tools.call(name, params)` / `await mcp.call(tool, **args)` through
  * `tools.*` host requests, and the worker executes the real extension tool with its tool context (the cell's abort
  * signal, the extension UI bridge).
@@ -656,7 +656,7 @@ export function toolCallSummary(call: ToolCallRecord, maxChars = 240): string {
 }
 
 /**
- * A short label for the graph. The pi-mcp-adapter's `mcp` gateway is labelled by its mode: the MCP tool called,
+ * A short label for the graph. The `mcp` gateway (extensions/mcp) is labelled by its mode: the MCP tool called,
  * described or searched, rather than just "mcp".
  */
 export function toolCallLabel(name: string, params: Record<string, unknown>): string {
@@ -670,6 +670,9 @@ export function toolCallLabel(name: string, params: Record<string, unknown>): st
 	if (text(params.describe)) return `mcp describe ${params.describe}`;
 	if (text(params.instructions)) return `mcp instructions ${params.instructions}`;
 	if (params.search !== undefined) return `mcp search ${JSON.stringify(params.search)}`;
+	if (text(params.read)) return `mcp read ${params.read}`;
+	if (params.resources)
+		return `mcp resources${(text(params.resources) ?? text(params.server)) ? ` ${text(params.resources) ?? params.server}` : ""}`;
 	if (text(params.server)) return `mcp list ${params.server}`;
 	return "mcp status";
 }

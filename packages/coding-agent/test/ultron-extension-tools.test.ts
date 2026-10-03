@@ -2,7 +2,7 @@
  * Extension tools inside the REPL (Prime Intellect's RLM harness: MCP tools as pre-imported IPython skills):
  * - `tools.list/describe/call` and `tools.<name>(...)` run a registered extension tool in the host, with the cell's
  *   abort signal; results are the text (bounded by the output budget) plus `.details`; failures raise ToolError;
- * - `mcp.*` maps onto the pi-mcp-adapter gateway's parameters (keyword arguments become the `args` object, a JSON
+ * - `mcp.*` maps onto the MCP gateway's parameters (the real gateway of src/extensions/mcp over in-memory fake servers) (keyword arguments become the `args` object, a JSON
  *   string is accepted, `mcp.<server>.<tool>` passes the server), and gateway errors raise McpError;
  * - a slow call detaches after ULTRON_TOOL_YIELD_AFTER and its end is reported for a `tool_done` event;
  * - extension tools are not model tools by default; ULTRON_EXTENSION_TOOLS=native, ULTRON_TOOLS=native, the setting
@@ -173,7 +173,7 @@ describe("extension tools from the kernel", () => {
 		);
 		expect(discovered.status).toBe("ok");
 		expect(discovered.result).toBe(
-			"(['exa-agent', 'docs'], ['exa-agent_exa_agent_create_run', 'exa-agent_exa_agent_wait_run'], 4, 'exa-agent', ['query'], ['exa-agent_exa_agent_wait_run'])",
+			"(['exa-agent', 'docs'], ['exa-agent_exa_agent_create_run', 'exa-agent_exa_agent_wait_run'], 4, 'exa-agent', ['query'], ['exa-agent_exa_agent_wait_run', 'exa-agent_exa_agent_create_run'])",
 		);
 
 		const ran = await k.execute(

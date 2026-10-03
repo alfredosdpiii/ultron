@@ -123,7 +123,7 @@ export interface ExtensionToolSummary {
 export const EXTENSION_TOOLS_LISTED = 12;
 
 /**
- * How to call extension tools (and MCP servers through the pi-mcp-adapter's `mcp` gateway) from Python. Bounded:
+ * How to call extension tools (and MCP servers through the built-in `mcp` gateway, extensions/mcp) from Python. Bounded:
  * a dozen tools, one line each, and the server names.
  */
 export function extensionToolsPrompt(

@@ -23,6 +23,7 @@ const WORKSPACE = {
 	"@ultron/ai": "packages/ai/src",
 	"@ultron/durable": "packages/durable/src",
 	"@ultron/agent-core": "packages/agent/src",
+	"@ultron/mcp": "packages/mcp/src",
 	"@ultron/telemetry": "packages/telemetry/src",
 	"@ultron/tui": "packages/tui/src",
 };

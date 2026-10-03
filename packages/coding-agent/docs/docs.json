@@ -48,6 +48,10 @@
               "path": "llama-cpp.md"
             },
             {
+              "title": "Connect MCP Servers",
+              "path": "mcp.md"
+            },
+            {
               "title": "Configure Your Terminal",
               "path": "terminal-setup.md"
             },

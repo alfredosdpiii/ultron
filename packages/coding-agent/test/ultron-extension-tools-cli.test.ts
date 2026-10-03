@@ -1,6 +1,6 @@
 /**
- * Extension tools in the real CLI (scripted provider, RPC mode), with a fake extension that registers an `mcp` tool
- * shaped like pi-mcp-adapter's gateway plus plain tools:
+ * Extension tools in the real CLI (scripted provider, RPC mode), with a fake extension that registers the `mcp` gateway
+ * (over in-memory fake MCP servers) plus plain tools:
  * - the model's tool list is [rlm] by default; the runtime guide lists the extension tools and MCP servers;
  * - the model calls the fake MCP tool from a cell with `asyncio.gather` over three calls, and the graph shows three
  *   tool nodes under that cell;

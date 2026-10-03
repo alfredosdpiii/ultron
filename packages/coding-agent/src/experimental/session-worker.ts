@@ -59,6 +59,8 @@ import {
 import { editToolSystemPromptContribution } from "../core/tools/edit.ts";
 import { readToolSystemPromptContribution } from "../core/tools/read.ts";
 import { writeToolSystemPromptContribution } from "../core/tools/write.ts";
+import { ADAPTER_NOTICE, preferNativeMcp } from "../extensions/mcp/coexistence.ts";
+import { createMcpExtension } from "../extensions/mcp/index.ts";
 import { initTheme } from "../modes/interactive/theme/theme.ts";
 import {
 	AsyncEventDispatcher,
@@ -1625,7 +1627,30 @@ export async function createUltronRuntime(
 	});
 	// Pi's shared extension event bus (`pi.events`); the worker also publishes context edits on it.
 	const extensionEvents = createEventBus();
+	// MCP is built in (extensions/mcp): its `mcp` gateway is an extension tool, so it lives in the REPL. It is user
+	// configuration like the extensions, so `--no-extensions` leaves it out too.
+	let mcpAdapterSkipped = false;
 	const resourceLoader = new DefaultResourceLoader({
+		...(options.noExtensions === true
+			? {}
+			: {
+					extensionFactories: [
+						{
+							name: "mcp",
+							hidden: true,
+							factory: createMcpExtension({
+								cwd: session.metadata.cwd,
+								projectTrusted: settingsManager.isProjectTrusted(),
+								startupNotice: () => (mcpAdapterSkipped ? ADAPTER_NOTICE : undefined),
+							}),
+						},
+					],
+					extensionsOverride: (base) => {
+						const preferred = preferNativeMcp(base);
+						mcpAdapterSkipped = preferred.adapterSkipped;
+						return preferred.result;
+					},
+				}),
 		eventBus: extensionEvents,
 		cwd: session.metadata.cwd,
 		agentDir: getAgentDir(),
@@ -1996,7 +2021,7 @@ export async function createUltronRuntime(
 			model: resolved.model,
 			systemPrompt,
 			activeTools: effectiveActiveToolNames,
-			// An extension that sets the active tools (pi-mcp-adapter adds its own to "the current ones") must not
+			// An extension that sets the active tools (MCP extensions add their own to "the current ones") must not
 			// take the REPL away: it is the model's only tool.
 			pinnedTools: effectiveActiveToolNames.filter((name) => name === "rlm"),
 			// Extension tools that live in the REPL stay out of the model's tool list whatever an extension activates.
@@ -2627,7 +2652,7 @@ function loadedExtensionTools(resourceLoader: ResourceLoader): ExtensionToolInfo
 	return [...byName.values()];
 }
 
-/** MCP server names from the pi-mcp-adapter's gateway description ("Servers: a, b"). */
+/** MCP server names from the `mcp` gateway's description (extensions/mcp) ("Servers: a, b"). */
 function mcpServerNames(tools: readonly ExtensionToolInfo[]): string[] {
 	const gateway = tools.find((tool) => tool.name === "mcp");
 	const line = gateway?.description.match(/^Servers: (.+)$/m)?.[1];
