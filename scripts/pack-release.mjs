@@ -31,6 +31,7 @@ export const INLINED = [
 	"@ultron/agent-core",
 	"@ultron/ai",
 	"@ultron/client",
+	"@ultron/mcp",
 	"@ultron/protocol",
 	"@ultron/server",
 	"@ultron/tui",
