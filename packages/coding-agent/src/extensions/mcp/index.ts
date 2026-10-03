@@ -1,7 +1,7 @@
 /**
  * Native MCP support, as a built-in extension of the Session worker.
  *
- * Servers come from `mcp.json` in the agent directory and, in trusted projects, `<project>/.ultron/mcp.json`
+ * Servers come from `mcp.json` in the agent directory and, in trusted projects, `<project>/.pi/mcp.json` (the project config directory)
  * (the `mcpServers` shape shared by other MCP clients; files written for pi-mcp-adapter keep working, see
  * core/mcp-servers.ts). The client, transports, OAuth, config and CLI are ported from Pi 1.0.0.
  *

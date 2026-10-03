@@ -35,8 +35,9 @@ these commands is a different program: Ultron's own stdio MCP server, which `ult
 
 ## Configuration
 
-Servers are read from `~/.ultron/agent/mcp.json` and, in a trusted project, from `.ultron/mcp.json` (a project
-that has one asks for trust like one with project extensions). Both use the `mcpServers` shape of other MCP clients:
+Servers are read from `~/.ultron/agent/mcp.json` and, in a trusted project, from `.pi/mcp.json` (the project
+config directory Ultron shares with Pi; a project that has one asks for trust like one with project extensions).
+`ultron mcp add -l` writes the project file. Both use the `mcpServers` shape of other MCP clients:
 
 ```json
 {
