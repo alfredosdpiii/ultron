@@ -1,6 +1,6 @@
 {
 	"name": "@ultron/session-backend-sqlite-node",
-	"version": "0.87.25",
+	"version": "0.87.26",
 	"description": "Node sqlite session backend for @ultron/agent-core sessions",
 	"type": "module",
 	"main": "./dist/index.js",
@@ -35,8 +35,8 @@
 		"node": ">=22.19.0"
 	},
 	"dependencies": {
-		"@ultron/ai": "^0.87.25",
-		"@ultron/agent-core": "^0.87.25"
+		"@ultron/ai": "^0.87.26",
+		"@ultron/agent-core": "^0.87.26"
 	},
 	"devDependencies": {
 		"@vitest/coverage-v8": "4.1.11",
