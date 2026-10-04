@@ -130,7 +130,8 @@ export interface EngineResult {
 		readonly costUsd: number;
 		readonly frames: number;
 		readonly tokens: number;
-		readonly budget: number;
+		/** The token cap, or null when there was none. */
+		readonly budget: number | null;
 	};
 	readonly model: string | null;
 	readonly verifyModel: string | null;

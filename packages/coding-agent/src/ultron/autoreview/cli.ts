@@ -70,11 +70,12 @@ Options:
   --model <provider/model>     review: the model of the finder frames (default: autoreview.model, then review.model,
                                then rlm.frameModel, then the default model)
   --verify-model <p/m>         review: the model of the verifier frames (default: the finder model)
-  --budget <tokens>            review: the token cap, e.g. 300000 or 300k
+  --budget <tokens>            review: a token cap, e.g. 300000 or 300k (default: autoreview.budget, none)
   --thinking <level>           review: thinking level of the finder frames (off, minimal, low, medium, high, ...;
                                default: autoreview.thinking, low)
   --verify-thinking <level>    review: thinking level of the verifier frames (default: autoreview.verifyThinking, low)
-  --deadline <seconds>         review: give up unfinished passes after this long and report the rest (default 150)
+  --deadline <seconds>         review: give up unfinished passes after this long and report the rest (default:
+                               autoreview.deadlineSeconds, none)
 
 Settings (global settings.json): autoreview.accounts, pollSeconds, concurrency, model, verifyModel, budget, dryRun,
 frameConcurrency, thinking, verifyThinking, deadlineSeconds, frameTimeoutSeconds, ack, ackLines, ackArt, signature.

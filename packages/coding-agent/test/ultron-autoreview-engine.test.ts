@@ -138,7 +138,7 @@ type Result = {
 	earlier: Array<{ id: string; status: string; line: number; evidence: string; file: string }>;
 	dropped: { rejected: number; duplicates: number };
 	timing: Record<string, number>;
-	usage: Record<string, number>;
+	usage: Record<string, number | null>;
 	notChecked: string[];
 	incomplete: string[];
 	diffLines: Record<string, number[][]>;
@@ -254,7 +254,7 @@ emit([a.map_line(item, 1), a.map_line(item, 2), a.map_line(item, 3), a.map_line(
 		}>(`
 rlm = FakeRlm(finder=bugs, verifier=confirm)
 result = asyncio.run(a.run(rlm, {"repoDir": ${JSON.stringify(repo.dir)}, "base": ${JSON.stringify(repo.base)}, "head": ${JSON.stringify(repo.head)},
-    "model": "p/find", "verifyModel": "p/verify", "budget": 200000, "deadlineSeconds": 0,
+    "model": "p/find", "verifyModel": "p/verify", "budget": 200000, "frameTimeoutSeconds": 75,
     "context": {"title": "Tweak total", "description": "Faster sum."}}))
 emit({"result": result, "calls": rlm.calls})`);
 		const { result, calls } = out;
@@ -400,6 +400,24 @@ emit([asyncio.run(a.run(rlm, {"workDir": ${JSON.stringify(scratch)}, "diffPath":
 		expect(out[0]!.notChecked).toContain("package-lock.json: generated, lockfile or vendored");
 		expect(out[1]).toMatchObject({ complete: false, incomplete: ["the diff is empty"] });
 		expect(out[2]).toEqual({ calls: 0 });
+	});
+
+	test("by default there is no token cap, no frame timeout and no deadline", () => {
+		const repo = fixtureRepo();
+		const out = py<{ result: Result; calls: Array<{ tokens: number | null; timeout_ms: number }> }>(`
+rlm = FakeRlm(finder=bugs, verifier=confirm)
+result = asyncio.run(a.run(rlm, {"repoDir": ${JSON.stringify(repo.dir)}, "base": ${JSON.stringify(repo.base)}, "head": ${JSON.stringify(repo.head)}}))
+many = a.Frames(FakeRlm(), cap=None, usage=a._Usage(), concurrency=8)
+asyncio.run(many.run("find", [("bugs", "task", "x" * 300000)] * 40, contract=None, model=None, thinking="low"))
+emit({"result": result, "calls": rlm.calls, "many": [t["status"] for t in many.timings]})`);
+		// No budget is passed to any frame, and the only timeout is the host's own maximum.
+		expect(out.calls).toHaveLength(5);
+		expect(out.calls.every((call) => call.tokens === null && call.timeout_ms === 3_600_000)).toBe(true);
+		expect(out.result.usage.budget).toBeNull();
+		expect(out.result.complete).toBe(true);
+		expect(out.result.findings).toHaveLength(1);
+		// Forty frames of 100k tokens each: none is refused.
+		expect((out as unknown as { many: string[] }).many).toEqual(Array(40).fill("ok"));
 	});
 
 	test("a small pull request is one slice: one finder frame per reviewer, findings attributed to the file they name", () => {

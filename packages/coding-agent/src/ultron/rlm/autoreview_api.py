@@ -18,10 +18,11 @@ posting) happens in the host. The pipeline is `/review`'s (review_api.py), with 
 4. Find, dedupe, verify: as in `/review`, with a finder contract that adds a line range and an exact
    replacement. Small files are packed into one slice, so a small pull request costs one finder frame per
    reviewer instead of one per reviewer and file. Every frame is a request of its own, scheduled here: at most
-   `concurrency` at once, each with a per-frame timeout and a token grant out of the review's one cap (what was
-   really spent plus the grants of the frames in flight never exceeds it), and a rate limit, timeout or other
-   transient provider error is retried twice with backoff. At the review's deadline unfinished finder passes are
-   given up, what was found is verified, and the result is marked incomplete. A finding other people already raised (same file, nearby line, similar claim) is not verified or
+   `concurrency` at once, and a rate limit or other transient provider error is retried twice with backoff. By
+   default there is no token cap, no per-frame timeout and no deadline: the review waits for every frame. Each
+   can be set: with a cap (`budget`), a frame gets a token grant out of it (what was really spent plus the grants
+   of the frames in flight never exceeds it); with a deadline, unfinished finder passes are given up when it
+   comes, what was found is verified, and the result is marked incomplete. A finding other people already raised (same file, nearby line, similar claim) is not verified or
    posted again; it is returned under `alsoRaised`.
 5. Result. Confirmed and uncertain findings, what was dropped, timing, usage, what was not checked, whether
    coverage was complete, and the new-file line ranges of the diff (the host validates inline comments on them).
@@ -42,7 +43,6 @@ from typing import Any, Callable
 
 from infer_api import Budget, FrameError, Incomplete
 from review_api import (
-    DEFAULT_BUDGET_TOKENS,
     CHUNK_CHARS,
     FIND_SHARE,
     FINDINGS_CONTRACT,
@@ -80,8 +80,12 @@ from review_prompts import ALIASES, RECHECK_TASK, REVIEWERS, VERIFIER_TASK, auto
 
 DEFAULT_CONCURRENCY = 8
 MAX_CONCURRENCY = 16
-DEFAULT_DEADLINE_S = 150
-DEFAULT_FRAME_TIMEOUT_S = 75
+#: No deadline, no per-frame timeout and no token cap unless the spec sets them.
+DEFAULT_DEADLINE_S = 0
+DEFAULT_FRAME_TIMEOUT_S = 0
+#: The host bounds every frame; this is its maximum, used when the pipeline sets no timeout of its own.
+HOST_MAX_TIMEOUT_MS = 60 * 60 * 1000
+UNLIMITED = 10 ** 12
 #: The finder phase ends at this share of the deadline; the rest is for verifying what was found.
 FIND_DEADLINE_SHARE = 0.75
 #: A frame is not started with less than this left before its phase's cutoff.
@@ -338,7 +342,7 @@ class Frames:
     """Runs the review's frames, one request each: bounded concurrency, a per-frame timeout, a token grant out
     of the review's cap, retries for transient failures, and a record of how each frame went."""
 
-    def __init__(self, rlm: Any, *, cap: int, usage: _Usage, concurrency: int = DEFAULT_CONCURRENCY,
+    def __init__(self, rlm: Any, *, cap: int | None, usage: _Usage, concurrency: int = DEFAULT_CONCURRENCY,
                  frame_timeout_s: float = DEFAULT_FRAME_TIMEOUT_S, retry_base_s: float = DEFAULT_RETRY_BASE_S,
                  clock: Callable[[], float] = time.monotonic, sleep: Callable[[float], Any] = asyncio.sleep,
                  rng: Callable[[], float] = random.random) -> None:
@@ -381,18 +385,23 @@ class Frames:
                     status = "deadline"
                     break
                 # Refused only when what was really spent plus what the frames in flight may still spend
-                # leaves no room for this one's input and a reply.
-                grant = min(estimate + FRAME_GRANT, self.cap - self.usage.tokens - self.held)
-                if grant < estimate + MIN_FRAME_OUTPUT:
-                    result = Incomplete({"reason": "budget_exhausted", "detail": "the review's token cap is spent"})
-                    status = "budget"
-                    break
-                timeout_s = self.frame_timeout_s if left is None else min(self.frame_timeout_s, left)
-                at_cutoff = left is not None and left <= self.frame_timeout_s
+                # leaves no room for this one's input and a reply. Without a cap nothing is refused or granted.
+                grant = 0
+                if self.cap is not None:
+                    grant = min(estimate + FRAME_GRANT, self.cap - self.usage.tokens - self.held)
+                    if grant < estimate + MIN_FRAME_OUTPUT:
+                        result = Incomplete({"reason": "budget_exhausted",
+                                             "detail": "the review's token cap is spent"})
+                        status = "budget"
+                        break
+                own = self.frame_timeout_s if self.frame_timeout_s > 0 else None
+                timeout_s = min(value for value in (own, left, HOST_MAX_TIMEOUT_MS / 1000) if value is not None)
+                at_cutoff = left is not None and (own is None or left <= own)
                 self.held += grant
                 try:
                     results = await self.rlm.map([task], [item], context=context, contract=contract,
-                                                 budget=Budget(tokens=grant), model=model, thinking=thinking,
+                                                 budget=None if self.cap is None else Budget(tokens=grant),
+                                                 model=model, thinking=thinking,
                                                  concurrency=1, timeout_ms=max(1_000, int(timeout_s * 1000)))
                     self.usage.add(results)
                     result = results[0] if len(results) else FrameError({"error": "the frame returned nothing"})
@@ -664,7 +673,11 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
     """Review what `spec` describes and return the result (see the module docstring)."""
     started = clock()
     budget = spec.get("budget")
-    budget = int(budget) if isinstance(budget, (int, float)) and budget >= MIN_BUDGET_TOKENS else DEFAULT_BUDGET_TOKENS
+    # No cap unless the spec sets one.
+    cap = int(budget) if isinstance(budget, (int, float)) and not isinstance(budget, bool) and budget > 0 else None
+    if cap is not None:
+        cap = max(cap, MIN_BUDGET_TOKENS)
+    budget = UNLIMITED if cap is None else cap
     model = spec.get("model") if isinstance(spec.get("model"), str) else None
     verify_model = spec.get("verifyModel") if isinstance(spec.get("verifyModel"), str) else model
     thinking = _thinking(spec.get("thinking"), DEFAULT_THINKING)
@@ -677,9 +690,9 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
     scope, git, incomplete = _scope(spec, runner)
     usage = _Usage()
     frames_runner = Frames(
-        rlm, cap=budget, usage=usage,
+        rlm, cap=cap, usage=usage,
         concurrency=int(_number(spec.get("concurrency"), DEFAULT_CONCURRENCY, 1, MAX_CONCURRENCY)),
-        frame_timeout_s=_number(spec.get("frameTimeoutSeconds"), DEFAULT_FRAME_TIMEOUT_S, 5, 3600),
+        frame_timeout_s=_number(spec.get("frameTimeoutSeconds"), DEFAULT_FRAME_TIMEOUT_S, 0, 3600),
         retry_base_s=_number(spec.get("retryBaseSeconds"), DEFAULT_RETRY_BASE_S, 0, 60),
         clock=clock, sleep=sleep, rng=rng)
     not_checked: list[str] = []
@@ -856,7 +869,7 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
         "timing": {"totalMs": int((clock() - started) * 1000), "scopeMs": scope_ms, "findMs": find_ms,
                    "verifyMs": verify_ms, "frames": frames_runner.timings},
         "usage": {"inputTokens": usage.input, "outputTokens": usage.output, "costUsd": round(usage.cost, 6),
-                  "frames": usage.frames, "tokens": usage.tokens, "budget": budget},
+                  "frames": usage.frames, "tokens": usage.tokens, "budget": cap},
         "model": model,
         "verifyModel": verify_model,
         "thinking": thinking,
