@@ -238,7 +238,7 @@ export interface AutoreviewSettings {
 	deepThinking?: FrameThinkingLevel;
 	/** `compiled` mode: `provider/model` of the planner frame; unset: the finder model. */
 	planModel?: string;
-	/** Thinking level of the planner frame (default "high"). */
+	/** Thinking level of the planner (default "medium" for the cell style, "high" for the frame style). */
 	planThinking?: FrameThinkingLevel;
 	/** `compiled` mode: `provider/model` of the small model the program's questions go to; unset: the finder model. */
 	askModel?: string;
@@ -249,7 +249,7 @@ export interface AutoreviewSettings {
 	 * `frame` has it return one JSON program in a single frame.
 	 */
 	planStyle?: "cell" | "frame";
-	/** `compiled` mode: cells the planner may run (default 6, maximum 12). */
+	/** `compiled` mode: cells the planner may run (default 8, maximum 12). */
 	planCells?: number;
 	/** Lookup rounds one investigator may take (default 4, maximum 8). */
 	deepRounds?: number;

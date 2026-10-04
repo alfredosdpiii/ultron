@@ -1195,7 +1195,10 @@ emit({"result": result, "kinds": rlm.kinds(), "cellPrompts": [c["text"] for c in
 		expect(out.cellTask).toContain("rv, the review API");
 		expect(out.cellTask).toContain('rv.done() -> {"ok": True} or {"ok": False, "uncovered": [...]}');
 		expect(out.cellTask).toContain("Check catalogue (shapes that found real defects before");
-		expect(out.cellPrompts[0]).toContain("Cells so far and their output (cell 1 of at most 4):\n(none yet)");
+		expect(out.cellPrompts[0]).toContain(
+			"Cells so far and their output (cell 1 of at most 4; 3 left after this one):\n(none yet)",
+		);
+		expect(out.cellTask).toContain("finding={...} on rv.ask and rv.assert_: the finding travels with the check");
 		// The second cell: open is not a name; the grep, read, ask, assert and finding came back as dicts; an invalid
 		// finding raised RvError with the host's reason; rv.done() was refused while T1 and T3 were open.
 		const second = out.cellPrompts[2];
@@ -1225,6 +1228,82 @@ emit({"result": result, "kinds": rlm.kinds(), "cellPrompts": [c["text"] for c in
 		// The dumped program is replayable: the steps in creation order, with the declarations.
 		const program = result.program as unknown as { steps?: unknown };
 		expect(program.steps).toBeUndefined(); // stats carry the steps under timing.program; the program itself is in --dump-program
+	});
+
+	test("findings travel with the check; the planner is told the cells left; when the cells run out, an ask answered yes without a finding is put to the small model as a candidate", (context) => {
+		const repo = fixture();
+		const out = py<{
+			result: Result;
+			kinds: string[];
+			cellPrompts: string[];
+			records: Record<string, Record<string, unknown>>;
+			sandbox: boolean;
+		}>(`${prelude(repo)}
+if not HAS_SANDBOX:
+    emit({"result": {}, "kinds": [], "cellPrompts": [], "records": {}, "sandbox": False})
+    raise SystemExit(0)
+CELLS = [
+    # An ask with its finding attached: emitted the moment the answer is yes. An assert with its finding attached
+    # whose gate is false: nothing emitted, the result says so. Every result carries cells_left.
+    "r = rv.read('tests/test_app.py', 1, 10)\\n"
+    "q = rv.ask('Does test_show check show() for truth only?', context=[r['id']], covers=['C1', 'T2'],\\n"
+    "           finding={'file': 'tests/test_app.py', 'line': 5, 'level': 'medium', 'category': 'tests',\\n"
+    "                    'claim': 'test_show checks show() for truth only; the upper-casing is not pinned.', 'why': 'w', 'fix': 'assert the value',\\n"
+    "                    'evidence': [r['id']], 'unpinned': {'behaviour': 'show() upper-cases (src/app.py:6)', 'change': 'return the kind unchanged'}})\\n"
+    "print('ask', q['answer'], 'finding', q['finding']['id'], q['finding']['gate'], 'left', q['cells_left'])\\n"
+    "g = rv.grep('show\\\\\\\\(', glob='src/**', count_only=True, covers=['S1'])\\n"
+    "a = rv.assert_(g['id'], 'count == 0', False, finding={'file': 'src/cli.py', 'line': 5, 'level': 'low', 'category': 'correctness',\\n"
+    "               'claim': 'show() has no caller.', 'why': 'w', 'evidence': [g['id']]})\\n"
+    "print('assert', a['value'], 'finding', a['finding']['gate'], 'left', a['cells_left'])\\n",
+    # A second ask answered yes with no finding, then the cells run out without rv.done().
+    "r2 = rv.read('src/app.py', 1, 6)\\n"
+    "q2 = rv.ask('Does the comment on show() match the code?', context=[r2['id']], covers=['T1', 'T3'])\\n"
+    "print('ask2', q2['answer'], 'left', q2['cells_left'])\\n",
+]
+def asker(text):
+    if "truth only" in text:
+        return {"answer": "yes", "quote": 'assert show("a")', "why": "it asserts truthiness"}
+    if "comment on show" in text or "match the code" in text:
+        return {"answer": "yes", "quote": "# Upper-cases the kind.", "why": "the comment says what the code does"}
+    return {"answer": "unclear", "quote": "", "why": ""}
+def verifier(text):
+    quote = "return kind.upper()" if "match the code" in text else 'assert show("a")'
+    return {"verdict": "confirmed", "evidence": "\`" + quote + "\`", "corrected_line": None, "severity": "medium", "scenario_holds": "unknown"}
+rlm = Rlm(cells=CELLS + ["print('still looking')", "print('and looking')"], asker=asker, verifier=verifier)
+result = asyncio.run(a.run(rlm, dict(SPEC, planStyle="cell", planCells=4)))
+emit({"result": result, "kinds": rlm.kinds(), "cellPrompts": [c["text"] for c in rlm.calls if c["kind"] == "cell"],
+      "records": {rec["id"]: rec for rec in result["timing"]["program"]}, "sandbox": True})`);
+		if (!out.sandbox) {
+			context.skip();
+			return;
+		}
+		const { result, records } = out;
+		// Cell 1: the ask's finding was emitted with the answer; the assert's finding saw a false gate.
+		expect(out.cellPrompts[1]).toContain("ask yes finding s3 finding emitted left 3");
+		expect(out.cellPrompts[1]).toContain("assert False finding gate false left 3");
+		expect(records.s3).toMatchObject({ op: "finding", status: "ok" });
+		expect(String(records.s3!.output)).toMatch(/^finding emitted: /);
+		expect(records.s6).toMatchObject({ op: "finding", status: "ok", output: "gate false" });
+		// The planner is told how many cells are left, and the last cell's prompt asks for the findings and rv.done().
+		expect(out.cellPrompts[0]).toContain("cell 1 of at most 4; 3 left after this one");
+		expect(out.cellPrompts[3]).toContain("cell 4 of at most 4; 0 left after this one, the last");
+		expect(out.cellPrompts[3]).toContain("This is your last cell: emit a finding for every decided check");
+		// The transcript sent back: the last two cells in full, earlier cells one summary line each.
+		expect(out.cellPrompts[3]).toContain("Cell 1: (summary) r = rv.read('tests/test_app.py', 1, 10) ...");
+		expect(out.cellPrompts[3].includes("Cell 1:\nr = rv.read")).toBe(false);
+		expect(out.cellPrompts[3]).toContain("Cell 3:\nprint('still looking')");
+		// The cells ran out: the ask answered yes without a finding was materialised through the resolve path.
+		expect(result.notChecked).toContain("The planner did not call rv.done() within 4 cells.");
+		expect(records.s8_f).toMatchObject({ op: "finding", status: "ok", resolved: "ask", answer: "yes" });
+		expect(String(records.s8_f!.output)).toMatch(/^finding emitted: /);
+		expect(out.kinds.filter((kind) => kind === "resolve")).toHaveLength(1);
+		const materialised = result.findings.find((finding) => finding.source === "compiled:s8_f")!;
+		expect(materialised).toMatchObject({ file: "src/app.py", line: 1, level: "medium", verification: "confirmed" });
+		expect(materialised.claim).toBe("Does the comment on show() match the code?");
+		expect(result.program.findings).toMatchObject({ asked: 2, resolved: 1, materialised: 1 });
+		expect(result.program.planner).toMatchObject({ style: "cell", cells: 4 });
+		expect((result.program.planner as { cellTokens: number[] }).cellTokens).toEqual([100, 100, 100, 100]);
+		expect(result.findings).toHaveLength(2);
 	});
 
 	test("isolation: a planner cell cannot reach the repository, the home directory, the network or git, even with full builtins", (context) => {

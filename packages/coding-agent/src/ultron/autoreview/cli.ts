@@ -100,13 +100,14 @@ Options:
   --deep-model <p/m>           review: the model of the deep pass's investigators (default: the finder model)
   --deep-thinking <level>      review: their thinking level (default: autoreview.deepThinking, high)
   --plan-model <p/m>           review --mode compiled: the planner's model (default: autoreview.planModel, the finder model)
-  --plan-thinking <level>      review --mode compiled: its thinking level (default: autoreview.planThinking, high)
+  --plan-thinking <level>      review --mode compiled: its thinking level (default: autoreview.planThinking; medium for
+                               cells, high for a frame)
   --ask-model <p/m>            review --mode compiled: the small model the program's questions go to (default:
                                autoreview.askModel, the finder model)
   --ask-thinking <level>       review --mode compiled: its thinking level (default: autoreview.askThinking, low)
   --plan-style <cell|frame>    review --mode compiled: the planner as sandboxed Python cells over the rv API (default)
                                or as one JSON-program frame
-  --plan-cells <n>             review --mode compiled: cells the planner may run (default: autoreview.planCells, 6)
+  --plan-cells <n>             review --mode compiled: cells the planner may run (default: autoreview.planCells, 8)
   --dump-program <path>        review --mode compiled: save the validated program as JSON for inspection
   --program <path>             review --mode compiled: execute this saved program instead of calling the planner
   --run-tests | --no-run-tests review --repo-dir: let the deep pass run the project's tests in a sandbox (default:

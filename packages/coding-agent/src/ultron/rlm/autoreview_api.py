@@ -1014,10 +1014,12 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
     deep_model = spec.get("deepModel") if isinstance(spec.get("deepModel"), str) else model
     deep_thinking = _thinking(spec.get("deepThinking"), DEFAULT_DEEP_THINKING)
     plan_model = spec.get("planModel") if isinstance(spec.get("planModel"), str) else model
-    plan_thinking = _thinking(spec.get("planThinking"), DEFAULT_PLAN_THINKING)
+    plan_style = spec.get("planStyle") if spec.get("planStyle") in compiled.PLAN_STYLES else compiled.DEFAULT_PLAN_STYLE
+    # Many short frames in the cell style: medium thinking by default; the one-frame planner keeps high.
+    plan_thinking = _thinking(spec.get("planThinking"),
+                              compiled.DEFAULT_CELL_THINKING if plan_style == "cell" else DEFAULT_PLAN_THINKING)
     ask_model = spec.get("askModel") if isinstance(spec.get("askModel"), str) else model
     ask_thinking = _thinking(spec.get("askThinking"), DEFAULT_ASK_THINKING)
-    plan_style = spec.get("planStyle") if spec.get("planStyle") in compiled.PLAN_STYLES else compiled.DEFAULT_PLAN_STYLE
     plan_cells = int(_number(spec.get("planCells"), compiled.DEFAULT_PLAN_CELLS, 1, compiled.MAX_PLAN_CELLS))
     # History lookups must never reach the network: a blob-less clone would otherwise fetch what it lacks.
     os.environ.setdefault("GIT_NO_LAZY_FETCH", "1")

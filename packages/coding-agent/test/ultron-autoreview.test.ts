@@ -1974,7 +1974,7 @@ describe("the command", () => {
 			askModel: "a/m",
 			askThinking: "low",
 			planStyle: "cell",
-			planCells: 6,
+			planCells: 8,
 		});
 		expect(resolveConfig({ planStyle: "frame", planCells: 99 })).toMatchObject({ planStyle: "frame", planCells: 12 });
 		expect(

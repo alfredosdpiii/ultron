@@ -83,8 +83,12 @@ RETRIEVAL_HITS = 12
 #: repository is `rv`.
 PLAN_STYLES = ("cell", "frame")
 DEFAULT_PLAN_STYLE = "cell"
-DEFAULT_PLAN_CELLS = 6
+DEFAULT_PLAN_CELLS = 8
 MAX_PLAN_CELLS = 12
+#: The planner's thinking level when it plans in cells (many short frames); the one-frame planner keeps "high".
+DEFAULT_CELL_THINKING = "medium"
+#: Cells sent back in full; earlier cells are one summary line each (the step records stay host-side).
+CELL_TRANSCRIPT_FULL = 2
 CELL_TIMEOUT_S = 120
 CELL_OUTPUT_CHARS = 8_000
 CELL_TRANSCRIPT_CHARS = 40_000
@@ -1528,6 +1532,9 @@ class CellSession:
         self.done = False
         self.counter = 0
         self.cells: list[str] = []
+        #: Cells the planner still has after the current one; told back in every result.
+        self.cells_left = 0
+        self.materialised = 0
 
     def _id(self, given: Any) -> str:
         if given is not None:
@@ -1569,7 +1576,14 @@ class CellSession:
                                       self.declared + [f"{item}:" for item in self.covered])
             if missing:
                 return {"ok": False, "uncovered": [f"{item['id']}: {item['text']}" for item in missing],
-                        "hint": "cover each with a check (covers=[id]) or rv.uncovered(id, why), then call rv.done() again"}
+                        "hint": "cover each with a check (covers=[id]) or rv.uncovered(id, why), then call rv.done() again",
+                        "cells_left": self.cells_left}
+            orphans = self.decided_without_finding()
+            if orphans:
+                return {"ok": False, "undecided_findings": orphans,
+                        "hint": "these asks answered yes but no finding rests on them: attach one with rv.finding(when=<id>, ...) "
+                                "or state why there is nothing to report with rv.uncovered-style text in a print, then call rv.done() again",
+                        "cells_left": self.cells_left}
             self.done = True
             return {"ok": True}
         if name == "cover":
@@ -1597,10 +1611,86 @@ class CellSession:
             await self.interpreter.run(validated.steps)
             return {"ok": True, "steps": [_public_value(dict(self.interpreter.results[s["id"]], id=s["id"]))
                                           for s in validated.steps if s["id"] in self.interpreter.results]}
+        attached = kwargs.pop("finding", None) if name in ("ask", "assert_", "assert") else None
+        if attached is not None and not isinstance(attached, dict):
+            raise RvError("finding= takes a dict with the finding's fields (file, line, level, category, claim, ...)")
         raw = self._raw(name, args, kwargs)
         step = self._step(raw)
         result = await self.interpreter.execute(step)
-        return _public_value(dict(result, id=step["id"]))
+        value = _public_value(dict(result, id=step["id"]))
+        if attached is not None:
+            # The finding travels with the check that establishes it: emitted by the host when the check decides in
+            # its favour, put to the small model when the check is unknown or contradicted, as rv.finding would.
+            spec = dict(attached)
+            negate = bool(spec.pop("not_", False) or spec.pop("negate", False))
+            spec.pop("when", None)
+            finding_raw = self._raw("finding", [], {"when": step["id"], "not_": negate, **spec})
+            finding_step = self._step(finding_raw)
+            finding_result = await self.interpreter.execute(finding_step)
+            value["finding"] = _public_value(dict(finding_result, id=finding_step["id"]))
+        value["cells_left"] = self.cells_left
+        return value
+
+    def decided_without_finding(self) -> list[str]:
+        """Asks answered yes that no finding step rests on (in its when or evidence)."""
+        used: set[str] = set()
+        for step in self.interpreter.steps_by_id.values():
+            if step["op"] == "finding":
+                used.add(step["when"]["step"])
+                used.update(step.get("evidence") or [])
+        out = []
+        for sid, result in self.interpreter.results.items():
+            if result.get("op") == "ask" and result.get("status") == "ok" and result.get("answer") == "yes" and sid not in used:
+                out.append(sid)
+        return out
+
+    def _place(self, ask_id: str) -> tuple[str, int] | None:
+        """A file and line for a finding materialised from an ask: the first read in its context, else the first
+        grep hit, else the line of its quote in one of those files."""
+        step = self.interpreter.steps_by_id.get(ask_id) or {}
+        for ref in step.get("context") or []:
+            source = self.interpreter.steps_by_id.get(ref) or {}
+            result = self.interpreter.results.get(ref) or {}
+            args = source.get("args") or {}
+            if source.get("op") == "read" and isinstance(args.get("path"), str):
+                try:
+                    return self.interpreter.repo.path(args["path"]), max(1, int(args.get("start") or 1))
+                except (deep.Rejected, TypeError, ValueError):
+                    continue
+            for item in result.get("items") or []:
+                if isinstance(item, dict) and isinstance(item.get("path"), str) and isinstance(item.get("line"), int):
+                    try:
+                        return self.interpreter.repo.path(item["path"]), item["line"]
+                    except deep.Rejected:
+                        continue
+        return None
+
+    async def materialise(self) -> list[str]:
+        """When the cells run out: every ask answered yes that carries no finding becomes a candidate through the
+        resolve path (the small model judges it with the ask's question, answer and quote and the planner's own
+        words as the claim); nothing decided is dropped silently. Returns notes."""
+        notes = []
+        for ask_id in self.decided_without_finding():
+            ask = self.interpreter.steps_by_id[ask_id]
+            result = self.interpreter.results[ask_id]
+            place = self._place(ask_id)
+            if place is None:
+                notes.append(f"ask {ask_id} was answered yes but no finding rests on it and it names no file to place one at")
+                continue
+            path, line = place
+            raw = {"id": f"{ask_id}_f", "op": "finding", "when": {"step": ask_id}, "file": path, "line": line,
+                   "level": "medium", "category": "correctness", "claim": _text(ask["question"], 300),
+                   "why": _text(f"The small model answered yes: {result.get('why') or ''}", 600),
+                   "scenario": "", "evidence": [ask_id, *(ask.get("context") or [])], "citations": []}
+            errors: list[str] = []
+            step = _normalize_step(raw, errors)
+            if step is None or errors:
+                notes.append(f"ask {ask_id} could not be materialised as a finding: " + "; ".join(errors[:2]))
+                continue
+            self.interpreter.steps_by_id[step["id"]] = step
+            await self.interpreter._resolve([(step, {}, "materialised from an ask answered yes that the planner left without a finding")])
+            self.materialised += 1
+        return notes
 
     def _raw(self, name: str, args: list[Any], kwargs: dict[str, Any]) -> dict[str, Any]:
         """One rv call as the JSON step it stands for."""
@@ -1652,6 +1742,23 @@ async def run_cells(frames: Any, *, views: list[str], task: str, plan_model: str
     notes: list[str] = []
     began = clock()
     status = "ok"
+    cell_tokens: list[int] = []
+
+    def plan_tokens() -> int:
+        return sum(int(item.get("tokens") or 0) for item in frames.timings if item.get("phase") == "plan")
+
+    def shown_transcript() -> str:
+        # The last cells in full; one line per earlier cell. The step records stay host-side.
+        parts = []
+        for index, entry in enumerate(transcript):
+            if index >= len(transcript) - CELL_TRANSCRIPT_FULL:
+                parts.append(entry)
+            else:
+                first = next((line for line in entry.split("\n")[1:] if line.strip()), "")
+                calls = entry.count("rv.")
+                parts.append(f"{entry.split(chr(10))[0]} (summary) {_clip(first.strip(), 100)} ... {calls} rv call(s)"
+                             + (" with an error" if "\nError: " in entry else ""))
+        return "\n\n".join(parts)[-CELL_TRANSCRIPT_CHARS:]
     try:
         await runner.start()
     except Exception as error:  # noqa: BLE001
@@ -1660,13 +1767,18 @@ async def run_cells(frames: Any, *, views: list[str], task: str, plan_model: str
     try:
         for number in range(1, cells + 1):
             last = number == cells
-            shown = "\n\n".join(transcript)[-CELL_TRANSCRIPT_CHARS:]
-            extra = [f"Cells so far and their output (cell {number} of at most {cells}" + (", the last" if last else "")
-                     + "):\n" + (shown or "(none yet)")]
+            session.cells_left = cells - number
+            shown = shown_transcript()
+            extra = [f"Cells so far and their output (cell {number} of at most {cells}; {cells - number} left after this one"
+                     + (", the last" if last else "") + "):\n" + (shown or "(none yet)")]
             if last:
-                extra.append("This is your last cell: finish what is open and call rv.done().")
+                extra.append("This is your last cell: emit a finding for every decided check that supports one (rv.finding, "
+                             "or finding= on the check) and call rv.done(). Asks answered yes without a finding are put to "
+                             "the small model as candidates by the host, but with your words they would be better.")
+            before = plan_tokens()
             replies = await frames.run("plan", [("planner", task, views + extra)], contract=CELL_CONTRACT, model=plan_model,
                                        thinking=plan_thinking, cutoff=cutoff)
+            cell_tokens.append(plan_tokens() - before)
             reply = replies[0]
             if isinstance(reply, (Incomplete, FrameError)) or not isinstance(reply, dict):
                 why = getattr(reply, "error", None) or getattr(reply, "status", None) or "no reply"
@@ -1690,10 +1802,11 @@ async def run_cells(frames: Any, *, views: list[str], task: str, plan_model: str
                 break
         if not session.done and status == "ok":
             notes.append(f"the planner did not call rv.done() within {cells} cells")
+        notes += await session.materialise()
     finally:
         await runner.close()
     return {"session": session, "status": status, "notes": notes, "ms": int((clock() - began) * 1000),
-            "transcript": transcript}
+            "transcript": transcript, "cell_tokens": cell_tokens}
 
 
 CELL_CONTRACT: dict[str, Any] = {
@@ -1927,6 +2040,7 @@ async def run_compiled(frames: Any, files: list[FileDiff], read_file: Callable[[
                 planner["ms"] = int((clock() - began) * 1000)
                 planner["tokens"] = sum(int(item.get("tokens") or 0) for item in frames.timings if item.get("phase") == "plan")
                 planner["cells"] = len(cell_session.cells)
+                planner["cellTokens"] = list(cell_run.get("cell_tokens") or [])
                 planner["status"] = cell_run["status"]
                 out["notes"] = list(cell_run.get("notes") or [])
                 if cell_run["status"] == "failed" and not cell_session.cells:
@@ -1951,7 +2065,9 @@ async def run_compiled(frames: Any, files: list[FileDiff], read_file: Callable[[
                     cid, _, why = item.partition(":")
                     text = by_id.get(cid.strip(), {}).get("text", cid.strip())
                     out["uncovered"].append(f"{cid.strip()} ({text})" + (f": {why.strip()}" if why.strip() else ""))
-                out["stats"] = {**interpreter.stats(), "planner": planner, "summary": "", "retrieval": out["retrieval"],
+                stats = interpreter.stats()
+                stats["findings"]["materialised"] = cell_session.materialised
+                out["stats"] = {**stats, "planner": planner, "summary": "", "retrieval": out["retrieval"],
                                 "coverage": {"items": len(coverage), "covered": len(coverage) - len(declared),
                                              "uncovered": [item.split(":", 1)[0].strip() for item in declared]}}
                 out["assurance"] = interpreter.assurance()

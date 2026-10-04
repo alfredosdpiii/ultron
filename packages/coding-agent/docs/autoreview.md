@@ -140,11 +140,11 @@ reviewed.
 | `autoreview.deepModel` | the finder model | `provider/model` of the deep pass's investigator frames. |
 | `autoreview.deepThinking` | `"high"` | Their thinking level. |
 | `autoreview.planModel` | the finder model | `compiled` mode: `provider/model` of the planner frame (one call per review; use a strong model). |
-| `autoreview.planThinking` | `"high"` | Its thinking level. |
+| `autoreview.planThinking` | `"medium"` for cells, `"high"` for a frame | Its thinking level. |
 | `autoreview.askModel` | the finder model | `compiled` mode: `provider/model` the program's narrow questions go to (a cheap small model). |
 | `autoreview.askThinking` | `"low"` | Its thinking level. |
 | `autoreview.planStyle` | `"cell"` | `compiled` mode: `cell` has the planner write Python cells that run in a sandbox over the `rv` API; `frame` has it return one JSON program in a single frame. Without a sandbox the planner runs as a frame. |
-| `autoreview.planCells` | `6` | `compiled` mode: cells the planner may run (maximum 12). |
+| `autoreview.planCells` | `8` | `compiled` mode: cells the planner may run (maximum 12). |
 | `autoreview.blockAt` | `"medium"` | A confirmed finding at this level or above makes the review request changes (`critical`, `high`, `medium`, `low`, `nit`). |
 | `autoreview.maxComments` | `5` | Inline comments per review at most; the rest are counted in the body. |
 | `autoreview.deepRounds` | `4` | Lookup rounds one investigator may take (maximum 8). |
@@ -258,8 +258,17 @@ flow; the expensive reasoning happens once, up front; execution is cheap, parall
    `rv.finding`, `rv.cover`, `rv.uncovered`, `rv.run_program` (a JSON program on the same session) and `rv.done()`.
    The host serves every call through the same interpreter as the JSON program: the same validation, limits,
    sandboxed test runs, three-valued semantics and accounting, so `program.steps`, `coverage`, `checks` and
-   `notEmitted` have the same shape; `rv.done()` is refused while a coverage item is neither checked nor declared,
-   and when the cells run out the open items are listed under "Not checked". `--dump-program` writes the steps the
+   `notEmitted` have the same shape. A finding travels with the check that establishes it: `finding={...}` on
+   `rv.ask` or `rv.assert_` is emitted by the host the moment the check decides in its favour (and routed to the
+   small model when it is unknown or contradicted), so a decided check is never left without its finding. Every
+   result tells the planner how many cells are left; the last cell's prompt says to emit the findings of every
+   decided check and call `rv.done()`, which is refused while a coverage item is open or an ask answered yes has
+   no finding resting on it. When the cells run out, open coverage items are listed under "Not checked", and every
+   ask answered yes without a finding is put to the small model as a candidate (the ask's question as the claim,
+   its answer and quote, the material it saw) through the resolve path rather than dropped;
+   `program.findings.materialised` counts them. The transcript sent back to the planner holds the last two cells
+   in full and one summary line per earlier cell; the step records stay host-side.
+   `program.planner.cellTokens` lists the planner's tokens per cell. `--dump-program` writes the steps the
    cells created, in order, as a replayable JSON program (with the cells). The planner cell has no tools of
    Ultron's: no bash, read, edit, write or MCP, no network. A test runs a cell with full builtins inside the real
    sandbox and checks that the repository and the home directory do not exist there, that the network is

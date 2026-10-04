@@ -663,6 +663,13 @@ passed as id=...; every call returns a dict, or raises RvError with the host's r
   unpinned=None, consequence="", covers=[], not_=False) -> {"id", "emitted", "gate", "detail"}   when names an assert
   or an ask (not_=True inverts it); the finding is emitted when it holds, put to the small model when it is unknown
   or contradicts the assert's expect, and must rest on an ask, a test run or a count_only grep
+- finding={...} on rv.ask and rv.assert_: the finding travels with the check that establishes it. The dict holds
+  the rv.finding fields except when (file, line, level, category, claim, why, fix, scenario, evidence, citations,
+  unpinned, consequence, covers; not_=True to emit when the check is false). The host emits it the moment the
+  check decides in its favour (the ask answers yes; the assert is true), and the result carries "finding":
+  {"id", "emitted", "gate"}. Prefer this to a separate rv.finding: a decided check must never be left without
+  its finding, and findings are emitted as you go, not at the end.
+Every result carries "cells_left": the cells you still have after the current one.
 - rv.cover(item_id) / rv.uncovered(item_id, why)   coverage bookkeeping (a step's covers=[...] also covers)
 - rv.run_program(program_dict)   run a JSON program (the program language) on the same session
 - rv.done() -> {"ok": True} or {"ok": False, "uncovered": [...]}   end planning; refused while coverage items are
@@ -677,8 +684,11 @@ here, and the host executes what you write. Each of your replies is one JSON obj
 false}; the host runs the cell in a sandbox where `rv` is the only way to reach the repository, and sends you what
 the cell printed (and any error) before your next cell. Look first (rv.grep, rv.read, the retrieved context), then
 write the checks against what you saw, run them, read the results, and add the follow-up checks the results call
-for. End by calling rv.done() in a cell and replying with "done": true. You have a small number of cells (the host
-says how many); make each one count: several lookups and checks per cell, not one.
+for. Attach each finding to the check that establishes it (finding= on rv.ask or rv.assert_), so it is emitted the
+moment the check decides; never leave a decided check without its finding, and emit as you go, not at the end.
+End by calling rv.done() in a cell and replying with "done": true; rv.done() is refused while an ask answered yes
+has no finding resting on it. You have a small number of cells (the host says how many are left in every result);
+make each one count: several lookups and checks per cell, not one.
 
 You get the diff (new-file line numbers in the gutter); a brief the host built from the repository; the retrieved
 context (references, tests and sibling families of the changed names, already looked up); the pull request

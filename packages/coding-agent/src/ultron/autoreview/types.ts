@@ -285,6 +285,8 @@ export interface ProgramStats {
 		readonly resolved: number;
 		readonly dropped: number;
 		readonly refuted: number;
+		/** Asks answered yes that the planner left without a finding, put to the small model as candidates. */
+		readonly materialised?: number;
 		/** Finding steps that emitted nothing: gate false, undecided, or the small model said no or unclear. */
 		readonly notEmitted?: {
 			readonly gateFalse: number;
@@ -305,9 +307,10 @@ export interface ProgramStats {
 		readonly tokens: number;
 		readonly repairs: number;
 		readonly status: string;
-		/** `cell`, `frame` or `replay`, and the cells the planner ran. */
+		/** `cell`, `frame` or `replay`, the cells the planner ran, and the planner's tokens per cell. */
 		readonly style?: string;
 		readonly cells?: number;
+		readonly cellTokens?: readonly number[];
 	};
 	readonly summary?: string;
 	/** Why the compiled mode gave way to the fast and deep passes, when it did. */
