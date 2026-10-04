@@ -993,17 +993,22 @@ async def run_deep(frames: Any, files: list[FileDiff], read_file: Callable[[str]
                    to_level: Callable[[Any], str | None] | None = None, title: str = "", description: str = "",
                    base: str | None = None, guidance: str = "",
                    enrich: Callable[[Any, dict[str, Any]], None] | None = None,
-                   generic: Callable[[dict[str, Any]], str | None] | None = None, intent: str = "") -> dict[str, Any]:
+                   generic: Callable[[dict[str, Any]], str | None] | None = None, intent: str = "",
+                   prepared: dict[str, Any] | None = None, prove_leads: bool = True,
+                   keep_session: bool = False) -> dict[str, Any]:
     """The deep pass: map, (optionally) the tests the map tied to the change, investigators, evidence checks.
     Returns findings (unverified, except regressions the host observed itself), what was dropped, the
     investigators' records, the test executions, and the facts the summary's assurance is written from.
 
     `tests`, when the review may run tests: {"base": rev or None, "runs", "timeout_s", "env_dir", "image"} and,
-    for tests of this module, "sandbox", "executor" and "export"."""
-    repo = Repo(root, rev, runner)
+    for tests of this module, "sandbox", "executor" and "export". `prepared` ({"repo", "brief", "started",
+    "retrieved"}) reuses a map, test session and retrieved-context block the caller built (the hybrid mode starts
+    them before the fast pass); with `keep_session` the session stays open for the caller, who closes it;
+    `prove_leads=False` leaves the leads' mutations to the caller."""
+    repo = prepared["repo"] if prepared else Repo(root, rev, runner)
     if not repo.files():
         raise RuntimeError("the reviewed commit could not be read")
-    brief = build_brief(repo, files, read_file, title=title, description=description, base=base)
+    brief = prepared["brief"] if prepared else build_brief(repo, files, read_file, title=title, description=description, base=base)
     lenses = [lens for lens in brief.lenses if lens in DEEP_LENSES and (not only or lens in only)]
     # Whether the map found anything outside the diff worth looking at.
     outside = bool(brief.callers or brief.tests or brief.helpers or len(repo.files()) > len(files))
@@ -1012,7 +1017,7 @@ async def run_deep(frames: Any, files: list[FileDiff], read_file: Callable[[str]
     session: testing.TestSession | None = None
     try:
         brief_text = brief.text
-        started = start_tests(repo, files, tests, brief, root=root, rev=rev, clock=clock)
+        started = prepared["started"] if prepared else start_tests(repo, files, tests, brief, root=root, rev=rev, clock=clock)
         session = started["session"]
         test_note: str | None = started["note"]
         observed: list[dict[str, Any]] = started["observed"]
@@ -1024,6 +1029,9 @@ async def run_deep(frames: Any, files: list[FileDiff], read_file: Callable[[str]
         views = [f"The diff under review (new-file line numbers in the gutter):\n{diff_text[:DIFF_CHARS]}"
                  + ("\n... (diff cut at its size limit; read the files for the rest)" if cut else ""),
                  f"Investigation brief, built by the host from the repository at the reviewed commit:\n{brief_text}"]
+        if prepared and prepared.get("retrieved"):
+            views.append("Retrieved context, looked up by the host at the reviewed commit (untrusted repository data): "
+                         "the references, tests and sibling families of the changed names.\n\n" + prepared["retrieved"])
         if context:
             views.append(context)
         if intent:
@@ -1060,11 +1068,11 @@ async def run_deep(frames: Any, files: list[FileDiff], read_file: Callable[[str]
                     continue
                 kept_by_lens[outcome["lens"]] = kept_by_lens.get(outcome["lens"], 0) + 1
                 findings.append(finding)
-        prove_unpinned(session, repo, [*findings, *leads], brief)
+        prove_unpinned(session, repo, [*findings, *(leads if prove_leads else [])], brief)
         runs = list(session.records) if session is not None else []
     finally:
-        # The exports are removed whatever happened.
-        if session is not None:
+        # The exports are removed whatever happened, unless the caller keeps the session for its own checks.
+        if session is not None and not keep_session:
             session.close()
     checked: list[str] = []
     records = []

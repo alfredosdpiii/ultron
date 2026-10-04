@@ -42,7 +42,7 @@ import autoreview_deep as deep
 import review_prompts as p
 from infer_api import MapResults, Incomplete, FrameError
 
-# The pipeline tests below are about the fast pass unless a spec says otherwise; the shipped default is "both".
+# The pipeline tests below are about the fast pass unless a spec says otherwise; the shipped default is "hybrid".
 SHIPPED_MODE = a.DEFAULT_MODE
 a.DEFAULT_MODE = "fast"
 LENS = {p.deep_task(name): name for name in p.DEEP_LENSES}
@@ -1589,7 +1589,7 @@ emit({
     "deepOnlyFails": summary(dict(SPEC, mode="deep"), investigator=broken),
     "fast": summary(dict(SPEC, mode="fast")),
 })`);
-		expect(out.default!.mode).toBe("both");
+		expect(out.default!.mode).toBe("hybrid");
 		// No checkout: the fast pass only (and, being diff-only, incomplete as before).
 		expect(out.diffOnly).toMatchObject({ mode: "fast", deeps: 0, assurance: [] });
 		expect(out.diffOnly!.notChecked).toContain("The deep pass was skipped: the repository was not available.");
@@ -1891,10 +1891,12 @@ describe("ultron autoreview review --repo-dir: the offline JSON contract, with a
 			"timing",
 			"usage",
 			"verdict",
+			"verification",
 			"verifyModel",
 			"verifyThinking",
 		]);
 		expect(json.program).toBeNull();
+		expect(json.verification).toBeNull();
 		expect(json.thinking).toBe("medium");
 		expect(json.verifyThinking).toBe("low");
 		const frames = (json.timing as unknown as { frames: Array<Record<string, unknown>> }).frames;
@@ -2025,10 +2027,12 @@ describe("ultron autoreview review --repo-dir: the offline JSON contract, with a
 		}
 	}, 120_000);
 
-	test("--mode both (the default): the fast pass, then investigators with read-only lookups; one JSON object", async () => {
+	test("--mode both: the fast pass, then investigators with read-only lookups; one JSON object", async () => {
 		requests.length = 0;
 		const result = await run([
 			"review",
+			"--mode",
+			"both",
 			"--repo-dir",
 			repo.dir,
 			"--base",

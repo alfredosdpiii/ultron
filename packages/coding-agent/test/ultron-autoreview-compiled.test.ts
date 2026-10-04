@@ -1400,6 +1400,246 @@ emit({"result": result, "kinds": rlm.kinds()})`);
 	});
 });
 
+describe("hybrid mode: discovery by the passes, verification by host-written checks", () => {
+	test("templates: the check shape follows the candidate's category and the map; each template is a small program gated on its decisive step", () => {
+		const repo = fixture();
+		const out = py<{
+			shapes: Record<string, [string, Record<string, unknown>]>;
+			programs: Record<string, Array<[string, string]>>;
+			how: Record<string, string>;
+		}>(`${prelude(repo)}
+import time
+retrieval = c.retrieve(_repo, _brief, _files, clock=time.monotonic)
+retrieval["keys"] = ["KINDS"]; retrieval["registries"] = {"KINDS": ["src/cli.py"]}
+_brief.extracted["env"] = ["APP_MODE"]
+CANDS = {
+    "tests_mut": {"file": "src/app.py", "line": 1, "category": "tests", "claim": "Nothing pins KINDS.", "why": "w", "level": "medium",
+                  "unpinned": {"behaviour": "KINDS lists c (src/app.py:1)", "change": "drop c from KINDS", "closest_test": {"path": "tests/test_app.py", "line": 5},
+                               "mutation": {"path": "src/app.py", "line": 1, "replacement": 'KINDS = ["a", "b"]'}}},
+    "tests_ask": {"file": "src/app.py", "line": 6, "category": "tests", "claim": "Nothing pins the upper-casing.", "why": "w", "level": "medium",
+                  "unpinned": {"behaviour": "show() upper-cases (src/app.py:6)", "change": "return the kind unchanged", "closest_test": {"path": "tests/test_app.py", "line": 5}}},
+    "registry": {"file": "src/app.py", "line": 1, "category": "correctness", "claim": "KINDS gained c but the cli registry was not updated.", "why": "w", "level": "medium"},
+    "env": {"file": "src/app.py", "line": 1, "category": "correctness", "claim": "APP_MODE is read here but set nowhere.", "why": "w", "level": "medium"},
+    "comment": {"file": "src/app.py", "line": 5, "category": "docs", "claim": "The comment says it upper-cases.", "why": "w", "level": "low"},
+    "error": {"file": "src/cli.py", "line": 5, "category": "correctness", "claim": "The except can never fire.", "why": "w", "level": "high"},
+    "input": {"file": "src/app.py", "line": 6, "category": "security", "claim": "The regex guard misses unicode.", "why": "w", "level": "medium"},
+    "other": {"file": "src/cli.py", "line": 5, "category": "correctness", "claim": "main() prints the raw value.", "why": "w", "level": "low",
+              "citations": [{"path": "src/app.py", "line": 4, "quote": "def show(kind):"}]},
+    "regression": {"file": "tests/test_app.py", "line": 4, "category": "correctness", "claim": "x", "host_confirmed": True, "test_run": 1},
+}
+shapes = {}; programs = {}; how = {}
+for name, cand in CANDS.items():
+    shape, details = c.candidate_shape(cand, _brief, retrieval)
+    shapes[name] = [shape, details]
+    if shape != "regression":
+        steps, text = c.template_steps("c1", cand, shape, details, repo=_repo, brief=_brief, tests_available=(name != "tests_ask"))
+        programs[name] = [[s["id"], s["op"]] for s in steps]; how[name] = text
+        assert c.validate({"steps": steps})[0] is not None, (name, c.validate({"steps": steps})[1])
+emit({"shapes": shapes, "programs": programs, "how": how})`);
+		expect(Object.fromEntries(Object.entries(out.shapes).map(([name, [shape]]) => [name, shape]))).toEqual({
+			tests_mut: "unpinned-behaviour",
+			tests_ask: "unpinned-behaviour",
+			registry: "registry-member",
+			env: "env-in-deploy",
+			comment: "comment-vs-code",
+			error: "error-path",
+			input: "input-defeats-guard",
+			other: "consistency",
+			regression: "regression",
+		});
+		expect(out.shapes.registry![1]).toEqual({ key: "KINDS", registries: ["src/cli.py"] });
+		// A mutation check gated by status == passed; without a runner, a read of the closest test and an ask.
+		expect(out.programs.tests_mut).toEqual([
+			["c1_m", "mutation_check"],
+			["c1_a", "assert"],
+			["c1_f", "finding"],
+		]);
+		expect(out.how.tests_mut).toBe("mutation_check of src/app.py:1 against tests/test_app.py");
+		expect(out.programs.tests_ask).toEqual([
+			["c1_t", "read"],
+			["c1_r", "read"],
+			["c1_q", "ask"],
+			["c1_f", "finding"],
+		]);
+		// A registry member: count_only grep per registry file; a deploy variable: greps over the deploy globs, all.
+		expect(out.programs.registry).toEqual([
+			["c1_g1", "grep"],
+			["c1_a1", "assert"],
+			["c1_f", "finding"],
+		]);
+		expect(out.how.registry).toBe("count_only grep of `KINDS` in src/cli.py");
+		expect(out.programs.env!.map(([, op]) => op)).toEqual([
+			"grep",
+			"assert",
+			"grep",
+			"assert",
+			"grep",
+			"assert",
+			"grep",
+			"assert",
+			"assert",
+			"finding",
+		]);
+		expect(out.how.env).toContain("count_only grep of `APP_MODE` in .github/**, **/*.yml");
+		// The rest: the cited lines read, one ask with the claim; a citation in another file is read too.
+		for (const name of ["comment", "error", "input"])
+			expect(out.programs[name]).toEqual([
+				["c1_r", "read"],
+				["c1_q", "ask"],
+				["c1_f", "finding"],
+			]);
+		expect(out.programs.other).toEqual([
+			["c1_r", "read"],
+			["c1_c1", "read"],
+			["c1_q", "ask"],
+			["c1_f", "finding"],
+		]);
+		expect(out.how.other).toBe("ask over c1_r, c1_c1 with the claim, reason and scenario");
+	});
+
+	test("end to end: candidates confirmed by a surviving mutant, refuted by a caught one, resolved by an ask when the runner is unavailable; the planner batch adds a step; the cap; the overlap; the JSON", () => {
+		const repo = fixture();
+		const out = py<{
+			result: Result & {
+				verification: Record<string, unknown>;
+				findings: Array<Finding & { verifiedBy?: string; howVerified?: string }>;
+			};
+			kinds: string[];
+			cplan: string;
+			extraRecord: Record<string, unknown> | null;
+			second: Result & { verification: Record<string, unknown> };
+			secondKinds: string[];
+		}>(`${prelude(repo)}
+LENS = {p.deep_task(n, f): n for n in p.DEEP_LENSES for f in (False, True)}
+def pin(line, claim, repl, change):
+    return {"file": "src/app.py", "line": line, "severity": "medium", "category": "tests", "claim": claim, "why": "w", "scenario": "", "suggested_fix": "f", "confidence": 0.8,
+            "unpinned": {"behaviour": f"src/app.py:{line} behaviour", "change": change, "closest_test": {"path": "tests/test_app.py", "line": 5},
+                         "mutation": {"path": "src/app.py", "line": line, "replacement": repl}}}
+DEEP = {"file": "src/cli.py", "line": 5, "severity": "medium", "category": "correctness", "claim": "main() prints the raw kind without validating it against KINDS.",
+        "why": "w", "scenario": "main('zzz') prints ZZZ.", "suggested_fix": "validate", "confidence": 0.7, "evidence": [{"path": "src/cli.py", "line": 5, "quote": "print(show(kind))"}]}
+class Hybrid(Rlm):
+    def __init__(self, extra=None, run_process=None):
+        Rlm.__init__(self); self.extra = extra or {}
+    async def map(self, tasks, items=None, **options):
+        out = MapResults()
+        for task, item in zip(tasks, items):
+            text = chr(10).join(item) if isinstance(item, list) else item
+            call = {"task": task, "text": text, "model": options.get("model"), "thinking": options.get("thinking")}
+            if task == p.ASK_TASK:
+                call["kind"] = "ask"
+                reply = ({"answer": "yes", "quote": "# Upper-cases the kind.", "why": "accurate"} if "comment" in text
+                         else {"answer": "yes", "quote": "print(show(kind))", "why": "no validation"} if "raw kind" in text
+                         else {"answer": "no", "quote": 'assert show("a")', "why": "x"})
+            elif task == p.RESOLVE_TASK:
+                call["kind"] = "resolve"; reply = {"answer": "yes", "quote": 'assert show("a")', "why": "the test only checks truth"}
+            elif task == p.CANDIDATE_PLANNER_TASK:
+                call["kind"] = "cplan"; reply = {"extra": self.extra}
+            elif task == p.AUTOREVIEW_VERIFIER_TASK:
+                call["kind"] = "verify"; reply = {"verdict": "confirmed", "evidence": "x", "corrected_line": None, "severity": "low", "scenario_holds": "unknown"}
+            elif task in LENS:
+                call["kind"] = "deep"
+                reply = {"findings": [DEEP] if LENS[task] == "claims" else [], "requests": [], "done": True}
+            else:
+                call["kind"] = "find"
+                if "Correctness" in task and "src/app.py" in text:
+                    reply = [{"file": "src/app.py", "line": 5, "severity": "low", "category": "docs", "claim": "The comment on show() says it upper-cases but the code lower-cases.", "why": "w", "scenario": "", "suggested_fix": "fix", "confidence": 0.5}]
+                elif "Tests and QA" in task and "src/app.py" in text:
+                    reply = [pin(1, "Nothing fails when the new kind c is dropped again.", 'KINDS = ["a", "b"]', "drop c from KINDS"),
+                             pin(6, "Nothing fails when show() stops upper-casing.", "    return kind", "return the kind unchanged")]
+                else:
+                    reply = []
+            self.calls.append(call); out.append(reply)
+        out.spent = {"calls": len(items), "tokens": 100 * len(items)}; out.usage = {}
+        return out
+# The planner batch adds a count_only grep and an assert to the deep candidate (c4 in the deep batch).
+EXTRA = {"c4": [{"id": "c4_x", "op": "grep", "args": {"pattern": "KINDS", "path_glob": "src/cli.py", "count_only": True}},
+                {"id": "c4_ax", "op": "assert", "step": "c4_x", "predicate": "count == 0", "expect": True, "holds": "cli.py never reads KINDS"}]}
+rlm = Hybrid(extra=EXTRA)
+result = asyncio.run(a.run(rlm, {"repoDir": ROOT, "base": BASE, "head": HEAD, "mode": "hybrid", "runTests": True, "testRuns": 6, "planModel": "p/plan", "askModel": "p/ask"}))
+records = {rec["id"]: rec for rec in result["timing"]["program"]}
+# Second run: the runner is unavailable, so the mutation checks cannot run: the tests candidates are resolved by an ask.
+def missing(argv, cwd, env, timeout):
+    return 1, "/usr/bin/python3: No module named pytest"
+deep.testing.run_process = missing
+rlm2 = Hybrid()
+second = asyncio.run(a.run(rlm2, {"repoDir": ROOT, "base": BASE, "head": HEAD, "mode": "hybrid", "runTests": True, "testRuns": 6, "verifyCandidates": 2}))
+emit({"result": result, "kinds": rlm.kinds(), "cplan": next(c["text"] for c in rlm.calls if c["kind"] == "cplan"),
+      "extraRecord": records.get("c4_ax"), "second": second, "secondKinds": rlm2.kinds()})`);
+		const { result } = out;
+		expect(result.mode).toBe("hybrid");
+		expect(result.complete).toBe(true);
+		const byClaim = Object.fromEntries(result.findings.map((finding) => [finding.claim, finding]));
+		// Confirmed by a surviving mutant: deterministic, the run as evidence, the discovering pass kept as source.
+		const proven = byClaim["Nothing fails when the new kind c is dropped again."]!;
+		expect(proven).toMatchObject({
+			source: "fast",
+			verifiedBy: "check:c1_f",
+			verification: "confirmed",
+			level: "medium",
+			strength: "test",
+		});
+		expect(String(proven.howVerified)).toContain(
+			"[c1_m] run 2 (mutation, at the head commit, sandboxed, no network)",
+		);
+		// Refuted by a caught mutant: gone, counted as rejected, not asked about.
+		expect(byClaim["Nothing fails when show() stops upper-casing."]).toBeUndefined();
+		// Confirmed by an ask over the cited lines.
+		const comment = byClaim["The comment on show() says it upper-cases but the code lower-cases."]!;
+		expect(comment).toMatchObject({
+			source: "fast",
+			verifiedBy: "check:c3_f",
+			verification: "confirmed",
+			level: "low",
+		});
+		expect(String(comment.howVerified)).toMatch(/^check c3_f: c3_q: Candidate finding at src\/app\.py:5/);
+		// The deep candidate, checked in the second batch with the planner's extra step recorded.
+		const deepOne = byClaim["main() prints the raw kind without validating it against KINDS."]!;
+		expect(deepOne).toMatchObject({ source: "deep:claims", verifiedBy: "check:c4_f", verification: "confirmed" });
+		expect(out.extraRecord).toMatchObject({ op: "assert", status: "ok", output: "holds" });
+		expect(out.cplan).toContain(
+			"Candidate c1 (shape unpinned-behaviour; template: mutation_check of src/app.py:1 against tests/test_app.py)",
+		);
+		expect(out.cplan).toContain("Template program:");
+		expect(result.verification).toMatchObject({
+			candidates: 4,
+			checked: 4,
+			confirmed: 3,
+			refuted: 1,
+			unknown: 0,
+			shapes: { "unpinned-behaviour": 2, "comment-vs-code": 1, "input-defeats-guard": 1 },
+			batches: [
+				{ batch: "fast", candidates: 3 },
+				{ batch: "deep", candidates: 1 },
+			],
+		});
+		expect(
+			(result.verification.planner as Array<{ status: string; extra: number }>).map((item) => [
+				item.status,
+				item.extra,
+			]),
+		).toEqual([
+			["ok", 0],
+			["ok", 2],
+		]);
+		expect(result.dropped).toMatchObject({ rejected: 1 });
+		// No verifier frame ran; the fast batch's planner and ask ran before the deep pass finished (overlap).
+		expect(out.kinds).not.toContain("verify");
+		expect(out.kinds.indexOf("cplan")).toBeLessThan(out.kinds.lastIndexOf("deep"));
+		expect(result.assurance.at(-1)).toBe(
+			"Discovery raised 4 candidate findings; the host checked 4 with 2 test runs and 2 small-model questions: 3 confirmed, 1 refuted, 0 undecided; 2 checks held.",
+		);
+		expect(result.program).toMatchObject({ tests: 2, asks: 2, checks: { held: 2, failed: 1, contradicted: 1 } });
+		// Runner unavailable: the mutation could not run, the gate is unknown, the small model decides with the nearest
+		// test attached; the cap leaves the third candidate undecided and never posted.
+		expect(out.secondKinds.filter((kind) => kind === "resolve")).toHaveLength(2);
+		expect(out.second.verification).toMatchObject({ candidates: 2, confirmed: 2, refuted: 0 });
+		const resolved = out.second.findings.filter((finding) => finding.verification === "confirmed");
+		expect(resolved.map((finding) => finding.verifiedBy)).toEqual(["check:c1_f", "check:c2_f"]);
+		expect(out.second.findings.filter((finding) => finding.verification === "uncertain")).toHaveLength(2);
+		expect(out.second.notChecked.join("\n")).toContain("Tests could not run: missing dependencies");
+	});
+});
+
 describe("ultron autoreview review --repo-dir --mode compiled: the offline entry with a stub provider", () => {
 	let work: string;
 	let provider: Server;

@@ -136,7 +136,8 @@ reviewed.
 | `autoreview.concurrency` | `3` | Pull requests reviewed at once (maximum 8). |
 | `autoreview.model` | unset: `review.model`, then `rlm.frameModel`, then the default model | `provider/model` of the finder frames. |
 | `autoreview.verifyModel` | the finder model | `provider/model` of the verifier frames. |
-| `autoreview.mode` | `"both"` | `fast`: review the diff only. `deep`: only the investigation beyond the diff. `both`: the fast pass, then the deep one with its findings as leads; one review is posted. `compiled` (experimental): one planner frame writes a review program the host executes; see below. |
+| `autoreview.mode` | `"hybrid"` | `hybrid`: the fast and deep passes discover candidates and host-written check programs verify them (see "The hybrid mode"). `fast`: review the diff only. `deep`: only the investigation beyond the diff. `both`: the fast pass, then the deep one with its findings as leads, each finding verified by a verifier frame. `compiled` (experimental): one planner writes the whole review program; see below. |
+| `autoreview.verifyCandidates` | `12` | `hybrid`: candidates verified per review at most (maximum 40); the rest are counted as undecided. |
 | `autoreview.deepModel` | the finder model | `provider/model` of the deep pass's investigator frames. |
 | `autoreview.deepThinking` | `"high"` | Their thinking level. |
 | `autoreview.planModel` | the finder model | `compiled` mode: `provider/model` of the planner frame (one call per review; use a strong model). |
@@ -144,7 +145,7 @@ reviewed.
 | `autoreview.askModel` | the finder model | `compiled` mode: `provider/model` the program's narrow questions go to (a cheap small model). |
 | `autoreview.askThinking` | `"low"` | Its thinking level. |
 | `autoreview.planStyle` | `"cell"` | `compiled` mode: `cell` has the planner write Python cells that run in a sandbox over the `rv` API; `frame` has it return one JSON program in a single frame. Without a sandbox the planner runs as a frame. |
-| `autoreview.planCells` | `8` | `compiled` mode: cells the planner may run (maximum 12). |
+| `autoreview.planCells` | `4` | `compiled` mode: cells the planner may run (maximum 12). |
 | `autoreview.blockAt` | `"medium"` | A confirmed finding at this level or above makes the review request changes (`critical`, `high`, `medium`, `low`, `nit`). |
 | `autoreview.maxComments` | `5` | Inline comments per review at most; the rest are counted in the body. |
 | `autoreview.deepRounds` | `4` | Lookup rounds one investigator may take (maximum 8). |
@@ -229,9 +230,52 @@ The lookups are read-only by construction: the frames have no tools, and the hos
 With `--json`, findings carry `source` (`fast` or `deep:<part>`), `evidence` and `howVerified`; the object has
 `assurance`, `mode`, and `timing.investigators` (rounds, lookups, time and tokens per investigator).
 
+## The hybrid mode: discovery by the passes, verification by checks (the default)
+
+The 30-pull-request comparison showed the two halves of this reviewer have different strengths: the fast and deep
+passes find (recall near half of a human reviewer's substantive comments, but a third of what they post is wrong),
+while the compiled checks are a precision engine (nine in ten posted findings right, but few found). `hybrid` puts
+them in sequence:
+
+1. **Map, retrieve, run the tests first.** The repository map, the retrieved-context block and the automatic test
+   run are built before any model is called; the finders and the investigators both get the retrieved block.
+2. **Discover.** The fast finders and the deep investigators run as in `both`; their findings are *candidates*,
+   not yet findings. No verifier frame reads them.
+3. **Verify by check.** Each candidate (deduplicated, at most `autoreview.verifyCandidates`, default 12) gets a
+   check program the host writes from a template chosen by the candidate's category and catalogue shape:
+   - `regression`: a test the host already ran at both commits; confirmed as is.
+   - `unpinned-behaviour` (a tests finding): a `mutation_check` of the named one-line change against the closest
+     test file when the runner is available (survived: confirmed with the run as evidence; caught: refuted
+     outright); else a read of the closest test and an ask whether every shown assertion would still pass.
+   - `registry-member` (the claim names a new key, field or constant whose siblings the retrieval found registered
+     elsewhere): a `count_only` grep of the key in each registry file; count 0 confirms.
+   - `env-in-deploy` (the claim names a new environment variable, flag or config key): `count_only` greps of the
+     name in workflows, YAML, Terraform and env files; absent everywhere confirms.
+   - `comment-vs-code`, `error-path`, `input-defeats-guard`, `consistency` (everything else): reads of the cited
+     lines (the finding's line and its citations) and one yes/no ask carrying the claim, reason and scenario,
+     answered with a quote the host checks.
+   One bounded planner frame per batch (the strong model, `autoreview.planModel`) sees the candidates with their
+   template programs and may add up to three steps per candidate where a template cannot decide (another registry,
+   a caller to compare, the decisive lines); it never writes a program from scratch, and if it fails the templates
+   run alone. A candidate is confirmed only when its check decides in its favour, under the three-valued rules of
+   the compiled mode: unknown goes to the small model with the raw results, a contradiction of the template's
+   expectation too (except a finished test run, which is ground truth), and the level follows the compiled rules
+   (critical or high only with a test run, or an ask whose quote is in the cited lines; else capped at medium).
+   Candidates beyond the cap, or whose check could not run, are counted as undecided and never posted.
+4. **Overlap.** The fast candidates are final when the finders return, so they are checked while the investigators
+   still run; the deep candidates are checked when the deep pass returns, inheriting the verdict of a fast twin
+   they supersede. The test session opened for the automatic run serves every mutation check and is closed after
+   the last batch.
+5. **Post.** Dedupe, ranking, the posting plan and the body are the existing ones; the assurance paragraph adds what
+   the checks did ("Discovery raised N candidates; the host checked K ...: confirmed, refuted, undecided"). With
+   `--json`, every finding keeps `source` (the discovering pass) and gains `verifiedBy: "check:<step id>"`;
+   `verification` carries the candidate counts (checked, confirmed, refuted, unknown, capped), the shapes used, the
+   planner batches and what could not be checked; `program` carries the check programs' stats.
+
 ## The compiled mode: one plan, deterministic execution (experimental)
 
-`autoreview.mode: "compiled"` (or `--mode compiled`) turns the review around. The fast and deep passes put a model
+`autoreview.mode: "compiled"` (or `--mode compiled`) turns the review around; it stays experimental, the hybrid
+mode above is what ships by default. The fast and deep passes put a model
 in the loop of every lookup. Here one strong model reads the whole change once and writes a review *program*; the
 host executes it, calling a cheap small model only at the decision points the program marks. Code controls the
 flow; the expensive reasoning happens once, up front; execution is cheap, parallel and auditable.

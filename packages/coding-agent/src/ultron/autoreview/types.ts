@@ -70,8 +70,10 @@ export interface EngineSpec {
 	/** Thinking level of the finder and of the verifier frames. */
 	readonly thinking?: string;
 	readonly verifyThinking?: string;
-	/** `fast`, `deep`, `both` or `compiled`; the deep pass and the compiled mode need `repoDir` or `workDir`. */
-	readonly mode?: "fast" | "deep" | "both" | "compiled";
+	/** `fast`, `deep`, `both`, `compiled` or `hybrid`; all but `fast` need `repoDir` or `workDir`. */
+	readonly mode?: "fast" | "deep" | "both" | "compiled" | "hybrid";
+	/** `hybrid` mode: candidates verified per review at most. */
+	readonly verifyCandidates?: number;
 	readonly deepModel?: string;
 	readonly deepThinking?: string;
 	readonly deepRounds?: number;
@@ -164,6 +166,8 @@ export interface EngineFinding {
 	readonly replacement?: string;
 	/** Which pass raised it: `fast`, `deep:<lens>`, or `compiled:<step id>`. */
 	readonly source?: string;
+	/** `hybrid` mode: the host check that confirmed it (`check:<step id>`). */
+	readonly verifiedBy?: string;
 	/** A deep finding's citations, each quote checked by the host at its line of the reviewed commit. */
 	readonly citations?: ReadonlyArray<{ readonly path: string; readonly line: number; readonly quote: string }>;
 	/** One line on how the finding was verified. */
@@ -361,8 +365,28 @@ export interface EngineResult {
 	readonly verifyModel: string | null;
 	readonly thinking?: string | null;
 	readonly verifyThinking?: string | null;
-	/** The mode that ran (`fast` when the deep pass could not; `both` when the compiled mode fell back). */
-	readonly mode?: "fast" | "deep" | "both" | "compiled";
+	/** The mode that ran (`fast` when the deep pass could not; `both` when the compiled or hybrid mode fell back). */
+	readonly mode?: "fast" | "deep" | "both" | "compiled" | "hybrid";
+	/** `hybrid` mode: how discovery's candidates were decided by the host's checks. */
+	readonly verification?: {
+		readonly candidates: number;
+		readonly checked: number;
+		readonly confirmed: number;
+		readonly refuted: number;
+		readonly unknown: number;
+		readonly dropped: number;
+		/** Confirmed by an ask whose quote was not in the cited lines: critical/high capped at medium. */
+		readonly capped: number;
+		readonly shapes: Readonly<Record<string, number>>;
+		readonly planner: ReadonlyArray<{
+			readonly status: string;
+			readonly extra: number;
+			readonly ms: number;
+			readonly tokens: number;
+		}>;
+		readonly batches: ReadonlyArray<{ readonly batch: string; readonly candidates: number; readonly ms: number }>;
+		readonly skipped: readonly string[];
+	} | null;
 	readonly deepModel?: string | null;
 	readonly deepThinking?: string | null;
 	readonly planModel?: string | null;

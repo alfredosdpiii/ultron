@@ -18,10 +18,15 @@ export const MIN_BUDGET_TOKENS = 10_000;
 export const DEFAULT_FRAME_CONCURRENCY = 8;
 export const MAX_FRAME_CONCURRENCY = 16;
 export const DEFAULT_THINKING: FrameThinkingLevel = "low";
-/** `compiled` is experimental: a planner frame writes a review program the host executes. */
-export type ReviewMode = "fast" | "deep" | "both" | "compiled";
-export const REVIEW_MODES: readonly ReviewMode[] = ["fast", "deep", "both", "compiled"];
-export const DEFAULT_MODE: ReviewMode = "both";
+/**
+ * `hybrid` (default): the fast and deep passes discover candidates, host-written check programs verify them.
+ * `compiled` is experimental: a planner writes the whole review program.
+ */
+export type ReviewMode = "fast" | "deep" | "both" | "compiled" | "hybrid";
+export const REVIEW_MODES: readonly ReviewMode[] = ["fast", "deep", "both", "compiled", "hybrid"];
+export const DEFAULT_MODE: ReviewMode = "hybrid";
+export const DEFAULT_VERIFY_CANDIDATES = 12;
+export const MAX_VERIFY_CANDIDATES = 40;
 export const DEFAULT_DEEP_THINKING: FrameThinkingLevel = "high";
 export const DEFAULT_PLAN_THINKING: FrameThinkingLevel = "high";
 export const DEFAULT_ASK_THINKING: FrameThinkingLevel = "low";
@@ -29,7 +34,7 @@ export const DEFAULT_ASK_THINKING: FrameThinkingLevel = "low";
 export type PlanStyle = "cell" | "frame";
 export const PLAN_STYLES: readonly PlanStyle[] = ["cell", "frame"];
 export const DEFAULT_PLAN_STYLE: PlanStyle = "cell";
-export const DEFAULT_PLAN_CELLS = 8;
+export const DEFAULT_PLAN_CELLS = 4;
 export const MAX_PLAN_CELLS = 12;
 export type BlockLevel = "critical" | "high" | "medium" | "low" | "nit";
 export const BLOCK_LEVELS: readonly BlockLevel[] = ["critical", "high", "medium", "low", "nit"];
@@ -101,6 +106,8 @@ export interface AutoreviewConfig {
 	readonly askThinking: FrameThinkingLevel;
 	readonly planStyle: PlanStyle;
 	readonly planCells: number;
+	/** `hybrid` mode: candidates verified per review at most. */
+	readonly verifyCandidates: number;
 	readonly blockAt: BlockLevel;
 	readonly maxComments: number;
 	/** Run the reviewed project's tests in the deep pass, where the repository is eligible and a sandbox exists. */
@@ -183,6 +190,7 @@ export function engineSettings(config: AutoreviewConfig): {
 	askThinking: FrameThinkingLevel;
 	planStyle: PlanStyle;
 	planCells: number;
+	verifyCandidates: number;
 	testRuns: number;
 	testTimeoutSeconds: number;
 	testImage?: string;
@@ -206,6 +214,7 @@ export function engineSettings(config: AutoreviewConfig): {
 		askThinking: config.askThinking,
 		planStyle: config.planStyle,
 		planCells: config.planCells,
+		verifyCandidates: config.verifyCandidates,
 		testRuns: config.testRuns,
 		testTimeoutSeconds: config.testTimeoutSeconds,
 		...(config.testImage === undefined ? {} : { testImage: config.testImage }),
@@ -248,6 +257,10 @@ export function resolveConfig(settings: AutoreviewSettings, fallbacks: ModelFall
 		askThinking: settings.askThinking ?? DEFAULT_ASK_THINKING,
 		planStyle: settings.planStyle ?? DEFAULT_PLAN_STYLE,
 		planCells: Math.min(MAX_PLAN_CELLS, Math.max(1, settings.planCells ?? DEFAULT_PLAN_CELLS)),
+		verifyCandidates: Math.min(
+			MAX_VERIFY_CANDIDATES,
+			Math.max(1, settings.verifyCandidates ?? DEFAULT_VERIFY_CANDIDATES),
+		),
 		blockAt: settings.blockAt ?? DEFAULT_BLOCK_AT,
 		maxComments: Math.min(MAX_MAX_COMMENTS, settings.maxComments ?? DEFAULT_MAX_COMMENTS),
 		runTests: settings.runTests ?? true,

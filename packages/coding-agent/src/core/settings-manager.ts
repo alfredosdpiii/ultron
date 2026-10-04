@@ -229,9 +229,12 @@ export interface AutoreviewSettings {
 	 * `fast`: review the diff. `deep`: investigate beyond it (callers, helpers, tests, claims) by read-only lookups.
 	 * `both` (default): the fast pass, then the deep one with its findings as leads; one review is posted.
 	 * `compiled` (experimental): one strong model writes a review program once; the host executes it and asks a
-	 * small model only the narrow questions the program poses.
+	 * small model only the narrow questions the program poses. `hybrid` (default): the fast and deep passes discover
+	 * candidates, host-written check programs verify them.
 	 */
-	mode?: "fast" | "deep" | "both" | "compiled";
+	mode?: "fast" | "deep" | "both" | "compiled" | "hybrid";
+	/** `hybrid` mode: candidates verified per review at most (default 12, maximum 40). */
+	verifyCandidates?: number;
 	/** `provider/model` of the deep pass's investigator frames; unset: the finder model. */
 	deepModel?: string;
 	/** Thinking level of the investigator frames (default "high"). */
@@ -249,7 +252,7 @@ export interface AutoreviewSettings {
 	 * `frame` has it return one JSON program in a single frame.
 	 */
 	planStyle?: "cell" | "frame";
-	/** `compiled` mode: cells the planner may run (default 8, maximum 12). */
+	/** `compiled` mode: cells the planner may run (default 4, maximum 12). */
 	planCells?: number;
 	/** Lookup rounds one investigator may take (default 4, maximum 8). */
 	deepRounds?: number;
@@ -1418,9 +1421,12 @@ export class SettingsManager {
 			configured.mode === "fast" ||
 			configured.mode === "deep" ||
 			configured.mode === "both" ||
-			configured.mode === "compiled"
+			configured.mode === "compiled" ||
+			configured.mode === "hybrid"
 		)
 			out.mode = configured.mode;
+		const verifyCandidates = count(configured.verifyCandidates);
+		if (verifyCandidates !== undefined) out.verifyCandidates = verifyCandidates;
 		const deepModel = modelRef(configured.deepModel);
 		if (deepModel !== undefined) out.deepModel = deepModel;
 		const deepThinking = FRAME_THINKING_LEVELS.find((level) => level === configured.deepThinking);

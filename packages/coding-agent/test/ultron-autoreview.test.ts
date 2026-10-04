@@ -719,7 +719,7 @@ describe("the body after a deep pass", () => {
 					],
 				}),
 			),
-			settings: { deepModel: "p/deep", deepRounds: 2 },
+			settings: { mode: "both", deepModel: "p/deep", deepRounds: 2 },
 		});
 		const pull = hub.addPull({ ...REF, requestedReviewers: [BOT] });
 		await reviewPull(deps, candidate());
@@ -1939,7 +1939,7 @@ describe("the command", () => {
 			parseAutoreviewArgs(["review", "--mode", "deep", "--deep-model", "p/d", "--deep-thinking", "high"]),
 		).toMatchObject({ mode: "deep", deepModel: "p/d", deepThinking: "high" });
 		expect(() => parseAutoreviewArgs(["review", "--mode", "thorough"])).toThrow(
-			"--mode takes fast, deep, both or compiled",
+			"--mode takes fast, deep, both, compiled or hybrid",
 		);
 		expect(
 			parseAutoreviewArgs([
@@ -1974,7 +1974,7 @@ describe("the command", () => {
 			askModel: "a/m",
 			askThinking: "low",
 			planStyle: "cell",
-			planCells: 8,
+			planCells: 4,
 		});
 		expect(resolveConfig({ planStyle: "frame", planCells: 99 })).toMatchObject({ planStyle: "frame", planCells: 12 });
 		expect(
@@ -1982,6 +1982,45 @@ describe("the command", () => {
 		).toMatchObject({ planStyle: "frame", planCells: 3 });
 		expect(() => parseAutoreviewArgs(["review", "--plan-style", "loop"])).toThrow("--plan-style takes cell or frame");
 		expect(() => parseAutoreviewArgs(["review", "--plan-cells", "0"])).toThrow("--plan-cells takes a whole number");
+		expect(parseAutoreviewArgs(["review", "--mode", "hybrid", "--verify-candidates", "20"])).toMatchObject({
+			mode: "hybrid",
+			verifyCandidates: 20,
+		});
+		expect(() => parseAutoreviewArgs(["review", "--verify-candidates", "x"])).toThrow(
+			"--verify-candidates takes a whole number",
+		);
+		expect(resolveConfig({ verifyCandidates: 99 })).toMatchObject({ verifyCandidates: 40 });
+		expect(
+			SettingsManager.inMemory({ autoreview: { mode: "hybrid", verifyCandidates: 5 } }).getAutoreviewSettings(),
+		).toEqual({
+			mode: "hybrid",
+			verifyCandidates: 5,
+		});
+		// The hybrid mode's JSON: the check that verified a finding, and the verification counts.
+		const hybridJson = offlineJson(
+			engineResult({
+				mode: "hybrid",
+				findings: [{ ...MAJOR, source: "deep:claims", verifiedBy: "check:c2_f" }],
+				verification: {
+					candidates: 3,
+					checked: 3,
+					confirmed: 1,
+					refuted: 1,
+					unknown: 1,
+					dropped: 0,
+					capped: 0,
+					shapes: { "unpinned-behaviour": 2, consistency: 1 },
+					planner: [{ status: "ok", extra: 1, ms: 10, tokens: 100 }],
+					batches: [{ batch: "fast", candidates: 3, ms: 20 }],
+					skipped: [],
+				},
+			}),
+			undefined,
+		) as { findings: Array<Record<string, unknown>>; verification: Record<string, unknown>; mode: string };
+		expect(hybridJson.mode).toBe("hybrid");
+		expect(hybridJson.findings[0]).toMatchObject({ source: "deep:claims", verifiedBy: "check:c2_f" });
+		expect(hybridJson.verification).toMatchObject({ candidates: 3, confirmed: 1, refuted: 1, unknown: 1 });
+		expect((offlineJson(engineResult(), undefined) as { verification: unknown }).verification).toBeNull();
 		expect(
 			SettingsManager.inMemory({ autoreview: { planStyle: "frame", planCells: 4 } }).getAutoreviewSettings(),
 		).toEqual({ planStyle: "frame", planCells: 4 });
@@ -2083,7 +2122,8 @@ describe("the command", () => {
 		expect(resolveConfig({ deadlineSeconds: 0 }).deadlineSeconds).toBe(0);
 		// The deep pass: on by default, on the finder model unless it has its own.
 		expect(resolveConfig({ model: "a/m" })).toMatchObject({
-			mode: "both",
+			mode: "hybrid",
+			verifyCandidates: 12,
 			deepModel: "a/m",
 			deepThinking: "high",
 			deepRounds: 4,

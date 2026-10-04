@@ -45,8 +45,8 @@ from infer_api import FrameError, Incomplete
 from review_api import FileDiff, _clip, _text, normalize_category, source_window
 import autoreview_deep as deep
 import autoreview_tests as testing
-from review_prompts import (ASK_TASK, CHECK_CATALOGUE, COMPILED_REPAIR, RESOLVE_TASK, RV_API, TRIGGERED_SHAPES,
-                            cell_planner_task, compiled_planner_task)
+from review_prompts import (ASK_TASK, CANDIDATE_PLANNER_TASK, CHECK_CATALOGUE, COMPILED_REPAIR, RESOLVE_TASK, RV_API,
+                            TRIGGERED_SHAPES, cell_planner_task, compiled_planner_task)
 
 LOOKUPS = ("read", "grep", "list", "definition", "references", "history", "blame_range", "pickaxe")
 TEST_OPS = ("run_tests", "mutation_check")
@@ -83,8 +83,17 @@ RETRIEVAL_HITS = 12
 #: repository is `rv`.
 PLAN_STYLES = ("cell", "frame")
 DEFAULT_PLAN_STYLE = "cell"
-DEFAULT_PLAN_CELLS = 8
+DEFAULT_PLAN_CELLS = 4
 MAX_PLAN_CELLS = 12
+#: The hybrid mode: candidates from discovery verified by host-written check programs.
+DEFAULT_VERIFY_CANDIDATES = 12
+MAX_VERIFY_CANDIDATES = 40
+MAX_EXTRA_STEPS = 3
+CANDIDATE_READ_RADIUS = 12
+CITATION_READ_RADIUS = 6
+CLOSEST_TEST_RADIUS = 25
+#: Where a variable, flag or config key must be set when the feature runs: manifests, compose files, CI, infra.
+DEPLOY_GLOBS = (".github/**", "**/*.yml", "**/*.yaml", "**/*.tf", "**/*.env*", "**/Dockerfile*", "**/*.toml")
 #: The planner's thinking level when it plans in cells (many short frames); the one-frame planner keeps "high".
 DEFAULT_CELL_THINKING = "medium"
 #: Cells sent back in full; earlier cells are one summary line each (the step records stay host-side).
@@ -741,6 +750,14 @@ class Interpreter:
             return True
         return any(self.contradicted(ref, seen) for ref in (step.get("all") or []) + (step.get("any") or []))
 
+    def test_decided(self, sid: str) -> bool:
+        """Whether an assert reads a test step whose run finished (passed or failed): its value is observed."""
+        step = self.steps_by_id.get(sid) or {}
+        if step.get("op") != "assert" or not isinstance(step.get("step"), str):
+            return False
+        target = self.results.get(step["step"]) or {}
+        return target.get("op") in TEST_OPS and target.get("outcome") in ("passed", "failed")
+
     # -- running --
 
     def _summary(self, op: str, result: dict[str, Any]) -> str:
@@ -1048,7 +1065,9 @@ class Interpreter:
         held = self._condition(when)
         gate = self.steps_by_id.get(when["step"])
         if gate is not None and gate["op"] == "assert":
-            if self.contradicted(when["step"]):
+            # A test run is ground truth: a mutant the tests caught, or a run that passed, refutes or confirms
+            # outright; only checks that read something else are put to the small model when they surprise.
+            if self.contradicted(when["step"]) and not self.test_decided(when["step"]):
                 return step, scope, "against the planner's expectation"
             if held is None:
                 return step, scope, "unknown"
@@ -1816,6 +1835,296 @@ CELL_CONTRACT: dict[str, Any] = {
 }
 
 
+# --- Hybrid mode: candidates from discovery, verified by host-written check programs ----------------------------
+
+_COMMENTISH = re.compile(r"\b(comment|docstring|readme|description|documentation|help text|says|claims)\b", re.I)
+_ERRORISH = re.compile(r"\b(except|catch|raise|throw|rollback|swallow|sentinel|exception|error path|cleanup|finally)\b", re.I)
+_INPUTISH = re.compile(r"\b(regex|regular expression|pattern|guard|input|validat|parse|boundary|escape|unicode|limit)\w*", re.I)
+_WORDS = re.compile(r"[A-Za-z_][A-Za-z0-9_.-]{2,}")
+
+
+def candidate_shape(candidate: dict[str, Any], brief: Any, retrieval: dict[str, Any]) -> tuple[str, dict[str, Any]]:
+    """The check shape a candidate finding gets, and what the template needs: (shape, details)."""
+    if candidate.get("host_confirmed"):
+        return "regression", {}
+    text = f"{candidate.get('claim', '')} {candidate.get('why', '')}"
+    names = set(_WORDS.findall(text))
+    if candidate.get("category") == "tests":
+        return "unpinned-behaviour", {}
+    extracted = getattr(brief, "extracted", {}) or {}
+    for key in (retrieval.get("keys") or []):
+        if key in names and retrieval.get("registries", {}).get(key):
+            return "registry-member", {"key": key, "registries": retrieval["registries"][key][:3]}
+    for name in list(extracted.get("env") or []) + list(extracted.get("flags") or []) + list(extracted.get("config") or []):
+        if name in names:
+            return "env-in-deploy", {"name": name}
+    if candidate.get("category") == "docs" or _COMMENTISH.search(text):
+        return "comment-vs-code", {}
+    if _ERRORISH.search(text):
+        return "error-path", {}
+    if _INPUTISH.search(text):
+        return "input-defeats-guard", {}
+    return "consistency", {}
+
+
+def _finding_fields(candidate: dict[str, Any]) -> dict[str, Any]:
+    """A candidate as the fields of a `finding` step: the discovering pass's wording, level and rules."""
+    unpinned = candidate.get("unpinned") or None
+    return {"file": candidate["file"], "line": int(candidate["line"]),
+            "level": candidate.get("finder_level") or candidate.get("level") or "low",
+            "category": candidate.get("category") or "correctness", "claim": candidate.get("claim") or "",
+            "why": candidate.get("why") or "", "fix": candidate.get("suggested_fix") or "",
+            "scenario": candidate.get("scenario") or "", "citations": list(candidate.get("citations") or []),
+            "unpinned": unpinned, "consequence": candidate.get("consequence") or ""}
+
+
+def template_steps(cid: str, candidate: dict[str, Any], shape: str, details: dict[str, Any], *, repo: deep.Repo,
+                   brief: Any, tests_available: bool) -> tuple[list[dict[str, Any]], str]:
+    """The check program of one candidate, from its shape: (steps, what the template does). The finding step
+    carries the candidate's own wording and is gated on the decisive check."""
+    fields = _finding_fields(candidate)
+    path, line = fields["file"], fields["line"]
+    lines = repo.lines(path) or []
+    steps: list[dict[str, Any]] = []
+
+    def read(sid: str, target: str, at: int, radius: int) -> dict[str, Any] | None:
+        total = len(repo.lines(target) or [])
+        if not total:
+            return None
+        start, end = max(1, at - radius), min(total, at + radius)
+        steps.append({"id": sid, "op": "read", "args": {"path": target, "start": start, "end": end}})
+        return steps[-1]
+
+    def finding(gate: str, evidence: list[str], negate: bool = False) -> None:
+        steps.append({"id": f"{cid}_f", "op": "finding", "when": {"step": gate, "not": negate}, "evidence": evidence, **fields})
+
+    if shape == "unpinned-behaviour":
+        unpinned = candidate.get("unpinned") or {}
+        mutation = unpinned.get("mutation") if isinstance(unpinned, dict) else None
+        closest = unpinned.get("closest_test") if isinstance(unpinned, dict) else None
+        test_paths = [closest["path"]] if isinstance(closest, dict) and closest.get("path") in repo.files() else list(getattr(brief, "tests", [])[:2])
+        if mutation and tests_available and test_paths:
+            steps.append({"id": f"{cid}_m", "op": "mutation_check", "args": {"path": mutation["path"], "line": mutation["line"],
+                                                                             "replacement": mutation["replacement"], "tests": test_paths}})
+            steps.append({"id": f"{cid}_a", "op": "assert", "step": f"{cid}_m", "predicate": "status == passed", "expect": True,
+                          "holds": f"nothing pins {mutation['path']}:{mutation['line']}: the mutant survived"})
+            finding(f"{cid}_a", [f"{cid}_m"])
+            return steps, f"mutation_check of {mutation['path']}:{mutation['line']} against {', '.join(test_paths)}"
+        test_path = test_paths[0] if test_paths else None
+        context: list[str] = []
+        if test_path:
+            at = int(closest.get("line") or 1) if isinstance(closest, dict) else 1
+            if read(f"{cid}_t", test_path, at, CLOSEST_TEST_RADIUS):
+                context.append(f"{cid}_t")
+        if read(f"{cid}_r", path, line, CANDIDATE_READ_RADIUS):
+            context.append(f"{cid}_r")
+        if not context:
+            return [], "no source to read"
+        behaviour = unpinned.get("behaviour") if isinstance(unpinned, dict) else ""
+        change = unpinned.get("change") if isinstance(unpinned, dict) else ""
+        question = (f"Behaviour: {behaviour or fields['claim']}. Change to it: {change or 'undo the new behaviour'}. "
+                    "Looking at the test lines shown, would every assertion still pass after that change (that is, does no "
+                    "shown test pin this behaviour)? Answer yes if the behaviour is unpinned, no if a shown assertion would fail, "
+                    "unclear if the lines cannot tell.")
+        steps.append({"id": f"{cid}_q", "op": "ask", "question": question, "context": context})
+        finding(f"{cid}_q", [f"{cid}_q", *context])
+        return steps, f"ask over {test_path or path} whether the change would be caught"
+    if shape == "registry-member":
+        key = details["key"]
+        asserts = []
+        for number, registry in enumerate(details["registries"][:3], 1):
+            steps.append({"id": f"{cid}_g{number}", "op": "grep", "args": {"pattern": re.escape(key), "path_glob": registry, "count_only": True}})
+            steps.append({"id": f"{cid}_a{number}", "op": "assert", "step": f"{cid}_g{number}", "predicate": "count == 0", "expect": True,
+                          "holds": f"`{key}` is registered in {registry}"})
+            asserts.append(f"{cid}_a{number}")
+        gate = asserts[0]
+        if len(asserts) > 1:
+            steps.append({"id": f"{cid}_all", "op": "assert", "any": asserts, "expect": True})
+            gate = f"{cid}_all"
+        finding(gate, [f"{cid}_g{n}" for n in range(1, len(asserts) + 1)])
+        return steps, f"count_only grep of `{key}` in {', '.join(details['registries'][:3])}"
+    if shape == "env-in-deploy":
+        name = details["name"]
+        asserts = []
+        for number, glob in enumerate(DEPLOY_GLOBS[:4], 1):
+            steps.append({"id": f"{cid}_g{number}", "op": "grep", "args": {"pattern": re.escape(name), "path_glob": glob, "count_only": True}})
+            steps.append({"id": f"{cid}_a{number}", "op": "assert", "step": f"{cid}_g{number}", "predicate": "count == 0", "expect": True})
+            asserts.append(f"{cid}_a{number}")
+        steps.append({"id": f"{cid}_all", "op": "assert", "all": asserts, "expect": True,
+                      "holds": f"`{name}` is set in no manifest, compose file, workflow or infrastructure file"})
+        finding(f"{cid}_all", [f"{cid}_g{n}" for n in range(1, len(asserts) + 1)])
+        return steps, f"count_only grep of `{name}` in {', '.join(DEPLOY_GLOBS[:4])}"
+    # comment-vs-code, error-path, input-defeats-guard, consistency: the exact lines and one yes/no question.
+    context = []
+    if read(f"{cid}_r", path, line, CANDIDATE_READ_RADIUS):
+        context.append(f"{cid}_r")
+    for number, citation in enumerate((candidate.get("citations") or [])[:3], 1):
+        if citation.get("path") == path and abs(int(citation.get("line") or 0) - line) <= CANDIDATE_READ_RADIUS:
+            continue
+        if read(f"{cid}_c{number}", citation["path"], int(citation["line"]), CITATION_READ_RADIUS):
+            context.append(f"{cid}_c{number}")
+    if not context:
+        return [], "no source to read"
+    question = (f"Candidate finding at {path}:{line}: {fields['claim']} Reason given: {fields['why'] or '(none)'}"
+                + (f" Scenario: {fields['scenario']}" if fields["scenario"] else "")
+                + " Do the lines shown have this problem as described? Answer yes only if the shown lines show it; no if "
+                  "the code shown prevents it or the claim misreads the code; unclear if the lines cannot show it.")
+    steps.append({"id": f"{cid}_q", "op": "ask", "question": _clip(question, MAX_QUESTION_CHARS), "context": context})
+    finding(f"{cid}_q", [f"{cid}_q", *context])
+    return steps, f"ask over {', '.join(context)} with the claim, reason and scenario"
+
+
+def _quote_in(repo: deep.Repo, path: str, line: int, quote: str, radius: int = CANDIDATE_READ_RADIUS) -> bool:
+    lines = repo.lines(path) or []
+    flat = _flat(quote)
+    if len(flat) < 4:
+        return False
+    for number in range(max(1, line - radius), min(len(lines), line + radius) + 1):
+        if flat in _flat(lines[number - 1]) or (len(_flat(lines[number - 1])) >= 8 and _flat(lines[number - 1]) in flat):
+            return True
+    return False
+
+
+async def verify_candidates(candidates: list[dict[str, Any]], *, batch: str, repo: deep.Repo, brief: Any,
+                            retrieval: dict[str, Any], frames: Any, session: Any, diff_lines: dict[str, set[int]],
+                            diff_text: str, plan_model: str | None, plan_thinking: str | None, ask_model: str | None,
+                            ask_thinking: str | None, cutoff: float | None, clock: Callable[[], float],
+                            cap: Callable[..., str], to_level: Callable[[Any], str | None] | None,
+                            enrich: Callable[[Any, dict[str, Any]], None] | None, generic: Callable[[dict[str, Any]], str | None] | None,
+                            unavailable: set[tuple[str, str]] | None, limit: int, use_planner: bool = True,
+                            start_index: int = 0) -> dict[str, Any]:
+    """Decide a batch of candidate findings with host-written check programs: a template per candidate shape,
+    plus one bounded planner frame that may add up to 3 steps per candidate. Each candidate ends confirmed
+    (its finding step emitted: by a deterministic check, or by an ask), refuted (gate false, or the small model
+    said no), or unknown (unclear). Sets `verification` on every candidate and returns the batch's stats."""
+    began = clock()
+    tests_available = session is not None and session.limit > len(session.records)
+    plans: list[tuple[str, dict[str, Any], str, str]] = []
+    skipped: list[str] = []
+    for index, candidate in enumerate(candidates[:limit], start_index + 1):
+        cid = f"c{index}"
+        candidate["verification"] = {"state": "pending", "candidate": cid, "batch": batch}
+        if candidate.get("host_confirmed"):
+            candidate["verification"] = {"state": "confirmed", "candidate": cid, "batch": batch, "shape": "regression",
+                                         "template": "the host ran the test at both commits", "by": f"test:{candidate.get('test_run')}"}
+            continue
+        shape, details = candidate_shape(candidate, brief, retrieval)
+        steps, how = template_steps(cid, candidate, shape, details, repo=repo, brief=brief, tests_available=tests_available)
+        candidate["verification"].update(shape=shape, template=how)
+        if not steps:
+            candidate["verification"].update(state="unknown", detail=how)
+            skipped.append(f"{cid}: {how}")
+            continue
+        plans.append((cid, candidate, shape, how))
+        candidate["_steps"] = steps
+    for candidate in candidates[limit:]:
+        candidate["verification"] = {"state": "unknown", "batch": batch, "detail": "beyond the candidate cap"}
+    planner: dict[str, Any] = {"status": "skipped", "extra": 0, "ms": 0, "tokens": 0}
+    if plans and use_planner:
+        views = [f"The diff under review (new-file line numbers in the gutter):\n{diff_text[:deep.DIFF_CHARS]}"]
+        if retrieval.get("text"):
+            views.append("Retrieved context (untrusted repository data):\n" + retrieval["text"])
+        shown = []
+        for cid, candidate, shape, how in plans:
+            public = {key: candidate.get(key) for key in ("file", "line", "level", "category", "claim", "why", "scenario")}
+            shown.append(f"Candidate {cid} (shape {shape}; template: {how}):\n{json.dumps(public, indent=1)}\nTemplate program:\n"
+                         + json.dumps(candidate["_steps"], indent=1))
+        views.append("Candidates and their template programs:\n\n" + "\n\n".join(shown))
+        before = sum(int(item.get("tokens") or 0) for item in frames.timings if item.get("phase") == "plan")
+        planner_began = clock()
+        replies = await frames.run("plan", [("candidate-planner", CANDIDATE_PLANNER_TASK, views)],
+                                   contract={"type": "object", "properties": {"extra": {"type": "object"}}, "required": ["extra"]},
+                                   model=plan_model, thinking=plan_thinking, cutoff=cutoff)
+        planner["ms"] = int((clock() - planner_began) * 1000)
+        planner["tokens"] = sum(int(item.get("tokens") or 0) for item in frames.timings if item.get("phase") == "plan") - before
+        reply = replies[0]
+        if isinstance(reply, (Incomplete, FrameError)) or not isinstance(reply, dict):
+            planner["status"] = "failed"
+            planner["error"] = _text(getattr(reply, "error", None) or getattr(reply, "status", None) or "no reply", 160)
+        else:
+            planner["status"] = "ok"
+            extra = reply.get("extra") if isinstance(reply.get("extra"), dict) else {}
+            for cid, candidate, _shape, _how in plans:
+                added = extra.get(cid)
+                if not isinstance(added, list) or not added:
+                    continue
+                trial = candidate["_steps"] + [item for item in added[:MAX_EXTRA_STEPS] if isinstance(item, dict)
+                                               and isinstance(item.get("id"), str) and item["id"].startswith(f"{cid}_")]
+                if len(trial) > len(candidate["_steps"]) and validate({"steps": trial})[0] is not None:
+                    planner["extra"] += len(trial) - len(candidate["_steps"])
+                    candidate["verification"]["extra"] = len(trial) - len(candidate["_steps"])
+                    candidate["_steps"] = trial
+                elif isinstance(added, list) and added:
+                    candidate["verification"]["extra_rejected"] = True
+    all_steps = [step for _cid, candidate, _s, _h in plans for step in candidate["_steps"]]
+    program, errors = validate({"steps": all_steps}) if all_steps else (Program([], ""), [])
+    if program is None:
+        # A template that does not validate is a host bug; drop the offending candidates' steps rather than everything.
+        kept: list[dict[str, Any]] = []
+        for cid, candidate, _s, _h in plans:
+            if validate({"steps": candidate["_steps"]})[0] is not None:
+                kept += candidate["_steps"]
+            else:
+                candidate["verification"].update(state="unknown", detail="the check program did not validate: " + "; ".join(errors[:2]))
+        program, errors = validate({"steps": kept}) if kept else (Program([], ""), [])
+    interpreter = Interpreter(program or Program([], ""), repo, frames=frames, session=session, diff_lines=diff_lines,
+                              ask_model=ask_model, ask_thinking=ask_thinking, cutoff=cutoff, clock=clock, cap=cap,
+                              to_level=to_level, enrich=enrich, generic=generic, unavailable=unavailable, max_steps=MAX_STEPS)
+    if program is not None and program.steps:
+        await interpreter.run()
+    composed = {finding["program_step"]: finding for finding in interpreter.findings}
+    results = interpreter.results
+    capped = 0
+    for cid, candidate, shape, _how in plans:
+        candidate.pop("_steps", None)
+        state = candidate["verification"]
+        if state["state"] != "pending":
+            continue
+        record = results.get(f"{cid}_f")
+        emitted = composed.get(f"{cid}_f")
+        gate = (record or {}).get("gate") or ""
+        if emitted is not None:
+            # Confirmed: the candidate keeps its identity and takes the check's evidence and level.
+            asked = not emitted.get("host_confirmed")
+            level = emitted["level"]
+            if asked and level in ("critical", "high"):
+                quote = ""
+                for ref in emitted.get("ask_evidence", "").split("\n"):
+                    if "quoting `" in ref:
+                        quote = ref.split("quoting `", 1)[1].rsplit("`", 1)[0]
+                if not _quote_in(repo, candidate["file"], int(candidate["line"]), quote):
+                    level = "medium"
+                    capped += 1
+            candidate.update({"level": level, "severity": LEVEL_TO_OLD[level], "evidence": emitted.get("evidence", ""),
+                              "beyond_diff": emitted.get("beyond_diff") or candidate.get("beyond_diff"),
+                              "verified_by": f"check:{emitted['program_step']}"})
+            for key in ("host_confirmed", "how_verified", "test_run", "test_evidence", "ask_evidence", "proof"):
+                if emitted.get(key) is not None:
+                    candidate[key] = emitted[key]
+            if asked:
+                candidate["how_verified"] = f"check {emitted['program_step']}: " + _clip(candidate.get("ask_evidence") or "a small model answered yes over the cited lines", 300)
+                candidate.pop("host_confirmed", None)
+            state.update(state="confirmed", by=f"check:{emitted['program_step']}", asked=asked, gate=gate or "finding emitted")
+        elif record is None:
+            state.update(state="unknown", detail="the check program did not reach the finding step")
+        elif record.get("status") == "ok" and record.get("emitted") is False and (gate.startswith("gate false") or gate.endswith("ask: no") or "refuted" in gate):
+            state.update(state="refuted", gate=gate, detail=record.get("detail", ""))
+        elif gate.startswith("gate true; dropped"):
+            state.update(state="dropped", gate=gate, detail=record.get("detail", ""))
+        else:
+            state.update(state="unknown", gate=gate or record.get("detail", ""), detail=record.get("detail", ""))
+    counts = {"confirmed": 0, "refuted": 0, "unknown": 0, "dropped": 0}
+    shapes: dict[str, int] = {}
+    for candidate in candidates:
+        state = candidate.get("verification", {})
+        counts[state.get("state", "unknown")] = counts.get(state.get("state", "unknown"), 0) + 1
+        if state.get("shape"):
+            shapes[state["shape"]] = shapes.get(state["shape"], 0) + 1
+    return {"batch": batch, "candidates": len(candidates), "checked": len(plans), **counts, "capped": capped, "shapes": shapes,
+            "skipped": skipped, "planner": planner, "records": interpreter.records, "stats": interpreter.stats(),
+            "assurance": interpreter.assurance(), "ms": int((clock() - began) * 1000)}
+
+
 # --- Orchestration ---------------------------------------------------------------------------------------------
 
 
@@ -1860,6 +2169,9 @@ def retrieve(repo: deep.Repo, brief: Any, files: list[FileDiff], *, clock: Calla
     required = getattr(brief, "required", {}) or {}
     sections: list[tuple[int, str]] = []
     items = 0
+    #: Per new key: the files where two or more siblings are registered and the key is absent, and its own uses.
+    registries: dict[str, list[str]] = {}
+    present_in: dict[str, list[str]] = {}
 
     def outside(hits: list[tuple[str, int, str]]) -> list[tuple[str, int, str]]:
         return [hit for hit in hits if hit[1] not in changed_lines.get(hit[0], ())]
@@ -1886,6 +2198,7 @@ def retrieve(repo: deep.Repo, brief: Any, files: list[FileDiff], *, clock: Calla
         items += 1
     keys = list(dict.fromkeys(list(required.get("claims") or []) + list(extracted.get("fields") or [])
                               + list(extracted.get("constants") or [])))[:8]
+    registries_missing_map = registries
     # The siblings of a new field are the other fields declared in the same changed files (the declaration
     # list it joins), plus the other new keys.
     declared: list[str] = []
@@ -1908,6 +2221,10 @@ def retrieve(repo: deep.Repo, brief: Any, files: list[FileDiff], *, clock: Calla
             by_file.setdefault(p, set()).update(other for other in siblings if re.search(r"(?<![A-Za-z0-9_])" + re.escape(other) + r"(?![A-Za-z0-9_])", text))
         present = {p for p, _n, _t in repo.grep(key, fixed=True, word=True, limit=60)}
         registries = [p for p, names in sorted(by_file.items(), key=lambda pair: -len(pair[1])) if len(names) >= 2]
+        registries_missing = [p for p in registries if p not in present]
+        if registries_missing:
+            registries_missing_map[key] = registries_missing
+        present_in[key] = sorted(present)
         lines = [f"New key `{key}`: used outside the changed lines at "
                  + ("; ".join(f"{p}:{n}" for p, n, _t in own[:RETRIEVAL_HITS]) or "nowhere") + "."]
         for p in registries[:5]:
@@ -1932,7 +2249,8 @@ def retrieve(repo: deep.Repo, brief: Any, files: list[FileDiff], *, clock: Calla
             text += "\n... (retrieved context cut at its size limit)"
             break
         text += ("\n\n" if text else "") + section
-    return {"text": text, "items": items, "chars": len(text), "ms": int((clock() - began) * 1000)}
+    return {"text": text, "items": items, "chars": len(text), "ms": int((clock() - began) * 1000),
+            "registries": registries, "present": present_in, "keys": keys}
 
 
 def planner_views(diff_text: str, brief_text: str, *, context: str, intent: str, guidance: str, tests_block: str,

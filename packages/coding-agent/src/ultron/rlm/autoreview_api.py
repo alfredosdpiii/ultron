@@ -107,9 +107,10 @@ MAX_RETRY_WAIT_S = 30.0
 DEADLINE_ERROR = "not finished before the review deadline"
 THINKING_LEVELS = ("off", "minimal", "low", "medium", "high", "xhigh", "max")
 DEFAULT_THINKING = "low"
-#: `compiled`: one planner frame writes a review program the host executes (autoreview_compiled.py).
-MODES = ("fast", "deep", "both", "compiled")
-DEFAULT_MODE = "both"
+#: `compiled`: one planner frame writes a review program the host executes (autoreview_compiled.py). `hybrid`: the
+#: fast and deep passes discover candidates, host-written check programs verify them (the default).
+MODES = ("fast", "deep", "both", "compiled", "hybrid")
+DEFAULT_MODE = "hybrid"
 DEFAULT_DEEP_THINKING = "high"
 DEFAULT_PLAN_THINKING = "high"
 DEFAULT_ASK_THINKING = "low"
@@ -940,6 +941,8 @@ def _public(finding: dict[str, Any], verification: str) -> dict[str, Any]:
         "reviewers": list(finding.get("reviewers") or []),
     }
     out["source"] = finding.get("source") or "fast"
+    if finding.get("verified_by"):
+        out["verifiedBy"] = finding["verified_by"]
     citations = finding.get("citations") or []
     if citations:
         out["citations"] = citations
@@ -1021,6 +1024,8 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
     ask_model = spec.get("askModel") if isinstance(spec.get("askModel"), str) else model
     ask_thinking = _thinking(spec.get("askThinking"), DEFAULT_ASK_THINKING)
     plan_cells = int(_number(spec.get("planCells"), compiled.DEFAULT_PLAN_CELLS, 1, compiled.MAX_PLAN_CELLS))
+    verify_candidates_cap = int(_number(spec.get("verifyCandidates"), compiled.DEFAULT_VERIFY_CANDIDATES, 1,
+                                        compiled.MAX_VERIFY_CANDIDATES))
     # History lookups must never reach the network: a blob-less clone would otherwise fetch what it lacks.
     os.environ.setdefault("GIT_NO_LAZY_FETCH", "1")
     deep_rounds = int(_number(spec.get("deepRounds"), deep.DEFAULT_ROUNDS, 1, deep.MAX_ROUNDS))
@@ -1144,10 +1149,32 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
                 compiled_out = None
                 mode = "both"
     program_ms = int((clock() - program_started) * 1000) if mode == "compiled" or program_stats else 0
-    if mode in ("deep", "both") and deep_rev is None:
+    if mode in ("deep", "both", "hybrid") and deep_rev is None:
         not_checked.append("The deep pass was skipped: the repository was not available.")
-    run_fast = mode in ("fast", "both") or (mode == "deep" and deep_rev is None)
-    run_deep_pass = mode in ("deep", "both") and deep_rev is not None
+    # The hybrid mode: the map, the retrieved context and the automatic test run come first (the finders and the
+    # investigators then both see them); discovery's findings are candidates that host-written checks decide.
+    hybrid = mode == "hybrid" and deep_rev is not None and bool(chunks)
+    prepared: dict[str, Any] | None = None
+    hybrid_fallback: str | None = None
+    if hybrid:
+        try:
+            repo_at = deep.Repo(scope.root, deep_rev, runner)
+            if not repo_at.files():
+                raise RuntimeError("the reviewed commit could not be read")
+            brief_at = deep.build_brief(repo_at, scope.files, scope.read_file, title=_bounded(context.get("title"), TITLE_CHARS),
+                                        description=_bounded(context.get("description"), DESCRIPTION_CHARS),
+                                        base=(str(spec.get("base")) if spec.get("repoDir") else spec.get("baseSha")) or None)
+            started_at = deep.start_tests(repo_at, scope.files, test_options, brief_at, root=scope.root, rev=deep_rev, clock=clock)
+            retrieved_at = compiled.retrieve(repo_at, brief_at, scope.files, clock=clock)
+            prepared = {"repo": repo_at, "brief": brief_at, "started": started_at, "retrieved": retrieved_at["text"],
+                        "retrieval": retrieved_at}
+        except Exception as error:  # the fast and deep passes stand in
+            hybrid_fallback = f"{type(error).__name__}: {error}"
+            not_checked.append(f"The hybrid mode's map failed ({_text(hybrid_fallback, 160)}); the fast and deep passes ran instead.")
+            hybrid = False
+            mode = "both"
+    run_fast = mode in ("fast", "both", "hybrid") or (mode == "deep" and deep_rev is None)
+    run_deep_pass = mode in ("deep", "both", "hybrid") and deep_rev is not None
     if chunks and run_fast:
         # The shared context is part of every finder request: plan with it counted in.
         overhead = len(finder_context) // 3
@@ -1162,10 +1189,14 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
                               + ", ".join(paths[:10]) + (" ..." if len(paths) > 10 else ""))
         frames = plan["frames"]
         if frames:
+            finder_views = finder_context
+            if prepared and prepared.get("retrieved"):
+                finder_views = "\n\n".join(part for part in (finder_context, "Retrieved context, looked up by the host at the "
+                                                           "reviewed commit (untrusted repository data):\n" + prepared["retrieved"]) if part)
             results = await frames_runner.run(
                 "find", [(reviewer.key, autoreview_finder_task(reviewer), chunk.text) for reviewer, chunk in frames],
                 contract=AUTOREVIEW_FINDINGS_CONTRACT, model=model, thinking=thinking,
-                context=finder_context or None,
+                context=finder_views or None,
                 cutoff=find_cutoff)
             failures: dict[str, list[str]] = {}
             unattributed = 0
@@ -1248,9 +1279,32 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
             not_checked.append(note[0].upper() + note[1:] + ".")
         if compiled_out["diff_cut"]:
             not_checked.append("The planner saw the first part of a large diff only.")
+    verification: dict[str, Any] | None = None
+    verify_batches: list[dict[str, Any]] = []
+    open_earlier = [item for item in earlier if item["status"] in ("still_present", "unknown")]
+
+    def skip_candidate(finding: dict[str, Any]) -> bool:
+        """Raised by somebody else, or still open from an earlier review of ours: not verified or posted again."""
+        return bool(raised_by_others(finding, others)) or any(
+            item["file"] == finding["file"] and abs(item["line"] - finding["line"]) <= EARLIER_WINDOW
+            and similar_claims(item["claim"], finding["claim"]) for item in open_earlier)
+
+    def verify_batch(batch: str, items: list[dict[str, Any]], start: int) -> Any:
+        assert prepared is not None
+        return compiled.verify_candidates(
+            items, batch=batch, repo=prepared["repo"], brief=prepared["brief"], retrieval=prepared["retrieval"],
+            frames=frames_runner, session=prepared["started"]["session"],
+            diff_lines={item.path: {line.new for hunk in item.hunks for line in hunk.lines if line.new is not None}
+                        for item in scope.files},
+            diff_text=SLICE_SEPARATOR.join(chunk.text for chunk in chunks), plan_model=plan_model, plan_thinking=plan_thinking,
+            ask_model=ask_model, ask_thinking=ask_thinking, cutoff=verify_cutoff, clock=clock, cap=capped_level,
+            to_level=to_level, enrich=parse_rules, generic=generic_reason,
+            unavailable=compiled.runner_availability(prepared["started"]["session"])[1], limit=verify_candidates_cap,
+            start_index=start)
+
     if chunks and run_deep_pass:
         try:
-            deep_out = await deep.run_deep(
+            deep_call = deep.run_deep(
                 frames_runner, scope.files, scope.read_file, root=scope.root, rev=deep_rev,
                 diff_text=SLICE_SEPARATOR.join(chunk.text for chunk in chunks), leads=merged, context=shared,
                 rounds=deep_rounds, model=deep_model, thinking=deep_thinking, cutoff=find_cutoff, clock=clock,
@@ -1258,10 +1312,21 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
                 title=_bounded(context.get("title"), TITLE_CHARS),
                 description=_bounded(context.get("description"), DESCRIPTION_CHARS),
                 base=(str(spec.get("base")) if spec.get("repoDir") else spec.get("baseSha")) or None,
-                guidance=guidance, enrich=parse_rules, generic=generic_reason, intent=stated)
+                guidance=guidance, enrich=parse_rules, generic=generic_reason, intent=stated,
+                prepared=prepared, prove_leads=not hybrid, keep_session=hybrid)
+            if hybrid:
+                # Discovery continues while the fast candidates, already final, are being checked.
+                fast_candidates = [item for item in merged if not skip_candidate(item)][:verify_candidates_cap]
+                deep_out, fast_batch = await asyncio.gather(deep_call, verify_batch("fast", fast_candidates, 0))
+                verify_batches.append(fast_batch)
+            else:
+                deep_out = await deep_call
         except Exception as error:  # the fast review stands when the deep pass cannot run
             not_checked.append(f"The deep pass failed ({_text(f'{type(error).__name__}: {error}', 160)}); "
                                "this is the fast review only.")
+            if prepared is not None and prepared["started"]["session"] is not None:
+                prepared["started"]["session"].close()
+            hybrid = False
         if deep_out is not None:
             investigators = deep_out["investigators"]
             dropped_generic += deep_out["generic"]
@@ -1273,10 +1338,39 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
             if test_report["note"]:
                 not_checked.append(test_report["note"][0].upper() + test_report["note"][1:] + ".")
             assurance = deep.assurance(deep_out)
+            before_merge = list(merged)
             merged, superseded = deep.merge(merged, deep_out["findings"])
             duplicates += superseded
             for number, finding in enumerate(merged, 1):
                 finding["id"] = number
+            if hybrid:
+                # A deep finding that superseded an already checked fast twin inherits its verdict; the rest of the
+                # deep candidates are checked now, with the session still open.
+                for finding in merged:
+                    if finding.get("verification") or finding not in deep_out["findings"]:
+                        continue
+                    twin = next((item for item in before_merge if item.get("verification") and item["file"] == finding["file"]
+                                 and abs(item["line"] - finding["line"]) <= deep.DEDUPE_WINDOW
+                                 and (similar_claims(item["claim"], finding["claim"]) or item["category"] == finding["category"])), None)
+                    if twin is not None and twin["verification"]["state"] in ("confirmed", "refuted"):
+                        for key in ("verification", "level", "severity", "evidence", "verified_by", "host_confirmed", "how_verified",
+                                    "test_run", "test_evidence", "ask_evidence", "proof", "beyond_diff"):
+                            if twin.get(key) is not None:
+                                finding[key] = twin[key]
+                        finding["verification"] = dict(finding["verification"], inherited_from=twin.get("source"))
+                deep_candidates = [item for item in merged if not item.get("verification") and not skip_candidate(item)]
+                checked_so_far = sum(batch["candidates"] for batch in verify_batches)
+                try:
+                    verify_batches.append(await verify_batch("deep", deep_candidates[:max(0, verify_candidates_cap - checked_so_far)],
+                                                             checked_so_far))
+                finally:
+                    if prepared is not None and prepared["started"]["session"] is not None:
+                        prepared["started"]["session"].close()
+                for item in deep_candidates[max(0, verify_candidates_cap - checked_so_far):]:
+                    item["verification"] = {"state": "unknown", "detail": "beyond the candidate cap"}
+                test_report = deep_out["tests"]
+                test_report["runs"] = [{key: value for key, value in record.items() if key != "output"} | {"output": record["output"][-600:]}
+                                       for record in prepared["started"]["session"].records] if prepared["started"]["session"] is not None else []
             failed = [record for record in investigators if record["status"] == "failed"]
             if failed:
                 # With a fast pass the review stands as the fast one; alone, the deep pass is then incomplete.
@@ -1302,6 +1396,9 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
     also_raised: list[dict[str, Any]] = []
     candidates: list[dict[str, Any]] = []
     open_earlier = [item for item in earlier if item["status"] in ("still_present", "unknown")]
+    hybrid_confirmed: list[dict[str, Any]] = []
+    hybrid_uncertain: list[dict[str, Any]] = []
+    hybrid_refuted = 0
     for finding in merged:
         logins = raised_by_others(finding, others)
         if logins:
@@ -1311,6 +1408,17 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
         if any(item["file"] == finding["file"] and abs(item["line"] - finding["line"]) <= EARLIER_WINDOW
                and similar_claims(item["claim"], finding["claim"]) for item in open_earlier):
             duplicates += 1
+            continue
+        if hybrid and finding.get("verification"):
+            state = finding["verification"]["state"]
+            if state == "confirmed":
+                hybrid_confirmed.append(finding)
+            elif state in ("refuted", "dropped"):
+                hybrid_refuted += 1
+            else:
+                finding["verification_note"] = "the host's check could not decide it: " + _text(
+                    finding["verification"].get("detail") or finding["verification"].get("gate") or "undecided", 160)
+                hybrid_uncertain.append(finding)
             continue
         candidates.append(finding)
 
@@ -1411,6 +1519,47 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
                     else "the verifier frame ran out or failed") + ")")
     confirmed += observed
     uncertain += unverified
+    if hybrid:
+        confirmed += hybrid_confirmed
+        for finding in hybrid_uncertain:
+            finding["verification"] = finding.pop("verification_note")
+        uncertain += hybrid_uncertain
+        rejected += [{}] * hybrid_refuted
+        totals = {"candidates": sum(b["candidates"] for b in verify_batches), "checked": sum(b["checked"] for b in verify_batches),
+                  "confirmed": sum(b["confirmed"] for b in verify_batches), "refuted": sum(b["refuted"] for b in verify_batches),
+                  "unknown": sum(b["unknown"] for b in verify_batches), "dropped": sum(b.get("dropped", 0) for b in verify_batches),
+                  "capped": sum(b["capped"] for b in verify_batches)}
+        shapes: dict[str, int] = {}
+        for batch in verify_batches:
+            for shape, count in batch["shapes"].items():
+                shapes[shape] = shapes.get(shape, 0) + count
+        verification = {**totals, "shapes": shapes, "planner": [batch["planner"] for batch in verify_batches],
+                        "batches": [{"batch": b["batch"], "candidates": b["candidates"], "ms": b["ms"]} for b in verify_batches],
+                        "skipped": [item for batch in verify_batches for item in batch["skipped"]]}
+        program_records = [record for batch in verify_batches for record in batch["records"]]
+        program_stats = {"planned": sum(b["stats"]["planned"] for b in verify_batches), "expanded": 0,
+                         "executed": sum(b["stats"]["executed"] for b in verify_batches), "failed": sum(b["stats"]["failed"] for b in verify_batches),
+                         "skipped": sum(b["stats"]["skipped"] for b in verify_batches), "asks": sum(b["stats"]["asks"] for b in verify_batches),
+                         "autoAsks": sum(b["stats"]["autoAsks"] for b in verify_batches), "tests": sum(b["stats"]["tests"] for b in verify_batches),
+                         "checks": {key: sum(b["stats"]["checks"][key] for b in verify_batches) for key in ("held", "failed", "unknown", "contradicted")},
+                         "findings": {key: sum(b["stats"]["findings"][key] for b in verify_batches) for key in ("deterministic", "asked", "resolved", "dropped", "refuted")},
+                         "truncated": [], "limits": {"planned": compiled.MAX_PROGRAM_STEPS, "expanded": compiled.MAX_STEPS},
+                         "planner": {"ms": sum(b["planner"]["ms"] for b in verify_batches), "tokens": sum(b["planner"]["tokens"] for b in verify_batches),
+                                     "repairs": 0, "status": ", ".join(b["planner"]["status"] for b in verify_batches) or "skipped",
+                                     "style": "hybrid"},
+                         "summary": "", "retrieval": {key: prepared["retrieval"][key] for key in ("items", "chars", "ms")} if prepared else None}
+        checks_held = program_stats["checks"]["held"]
+        assurance = [*assurance, (
+            f"Discovery raised {totals['candidates']} candidate finding{'' if totals['candidates'] == 1 else 's'}; the host "
+            f"checked {totals['checked']} with {program_stats['tests']} test run{'' if program_stats['tests'] == 1 else 's'} and "
+            f"{program_stats['asks']} small-model question{'' if program_stats['asks'] == 1 else 's'}: {totals['confirmed']} confirmed, "
+            f"{totals['refuted']} refuted, {totals['unknown']} undecided; {checks_held} check{'' if checks_held == 1 else 's'} held.")]
+        for batch in verify_batches:
+            if batch["planner"].get("status") == "failed":
+                not_checked.append(f"The candidate planner failed for the {batch['batch']} batch ({batch['planner'].get('error', '')}); "
+                                   "the template checks ran alone.")
+        for item in verification["skipped"][:4]:
+            not_checked.append(f"A candidate could not be checked: {item}.")
     if unverified:
         incomplete.append(f"{len(unverified)} finding(s) were not verified within the token budget")
     verify_ms = int((clock() - verify_started) * 1000) + recheck_ms
@@ -1441,7 +1590,9 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
         "verifyModel": verify_model,
         "thinking": thinking,
         "verifyThinking": verify_thinking,
-        "mode": "compiled" if compiled_out is not None else mode if deep_out is not None or mode == "fast" else "fast",
+        "mode": "compiled" if compiled_out is not None else "hybrid" if hybrid and deep_out is not None
+        else ("both" if mode == "hybrid" else mode) if deep_out is not None or mode == "fast" else "fast",
+        "verification": verification,
         "deepModel": deep_model if deep_out is not None else None,
         "deepThinking": deep_thinking if deep_out is not None else None,
         "planModel": plan_model if compiled_out is not None else None,

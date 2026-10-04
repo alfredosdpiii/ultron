@@ -93,10 +93,12 @@ Options:
   --thinking <level>           review: thinking level of the finder frames (off, minimal, low, medium, high, ...;
                                default: autoreview.thinking, low)
   --verify-thinking <level>    review: thinking level of the verifier frames (default: autoreview.verifyThinking, low)
-  --mode <fast|deep|both|compiled>
+  --mode <fast|deep|both|compiled|hybrid>
                                review: fast reviews the diff; deep investigates beyond it by read-only lookups in the
-                               repository (nothing is executed); both (default) does one after the other; compiled
-                               (experimental) has one planner frame write a review program the host executes
+                               repository (nothing is executed); both does one after the other; hybrid (default) runs
+                               both as discovery and verifies each candidate with a host-written check program;
+                               compiled (experimental) has one planner write the whole program
+  --verify-candidates <n>      review --mode hybrid: candidates verified at most (default: autoreview.verifyCandidates, 12)
   --deep-model <p/m>           review: the model of the deep pass's investigators (default: the finder model)
   --deep-thinking <level>      review: their thinking level (default: autoreview.deepThinking, high)
   --plan-model <p/m>           review --mode compiled: the planner's model (default: autoreview.planModel, the finder model)
@@ -107,7 +109,7 @@ Options:
   --ask-thinking <level>       review --mode compiled: its thinking level (default: autoreview.askThinking, low)
   --plan-style <cell|frame>    review --mode compiled: the planner as sandboxed Python cells over the rv API (default)
                                or as one JSON-program frame
-  --plan-cells <n>             review --mode compiled: cells the planner may run (default: autoreview.planCells, 8)
+  --plan-cells <n>             review --mode compiled: cells the planner may run (default: autoreview.planCells, 4)
   --dump-program <path>        review --mode compiled: save the validated program as JSON for inspection
   --program <path>             review --mode compiled: execute this saved program instead of calling the planner
   --run-tests | --no-run-tests review --repo-dir: let the deep pass run the project's tests in a sandbox (default:
@@ -124,7 +126,7 @@ Options:
                                autoreview.deadlineSeconds, none)
 
 Settings (global settings.json): autoreview.accounts, pollSeconds, concurrency, model, verifyModel, budget, dryRun,
-frameConcurrency, mode, deepModel, deepThinking, deepRounds, planModel, planThinking, askModel, askThinking, planStyle, planCells, prepareEnvs, mise, blockAt, maxComments, runTests, testOwners, testRuns, testTimeoutSeconds, testEnv, testImage, checkoutRoots, guides, thinking, verifyThinking, deadlineSeconds, frameTimeoutSeconds, ack, ackLines, ackArt, signature.
+frameConcurrency, mode, deepModel, deepThinking, deepRounds, planModel, planThinking, askModel, askThinking, planStyle, planCells, verifyCandidates, prepareEnvs, mise, blockAt, maxComments, runTests, testOwners, testRuns, testTimeoutSeconds, testEnv, testImage, checkoutRoots, guides, thinking, verifyThinking, deadlineSeconds, frameTimeoutSeconds, ack, ackLines, ackArt, signature.
 See docs/autoreview.md.`;
 
 interface Parsed {
@@ -147,6 +149,7 @@ interface Parsed {
 	askThinking?: FrameThinkingLevel;
 	planStyle?: PlanStyle;
 	planCells?: number;
+	verifyCandidates?: number;
 	programPath?: string;
 	dumpProgramPath?: string;
 	deadlineSeconds?: number;
@@ -229,6 +232,10 @@ export function parseAutoreviewArgs(args: readonly string[]): Parsed {
 			const count = Number(value());
 			if (!Number.isInteger(count) || count < 1) throw new UsageError("--plan-cells takes a whole number of cells");
 			parsed.planCells = count;
+		} else if (arg === "--verify-candidates") {
+			const count = Number(value());
+			if (!Number.isInteger(count) || count < 1) throw new UsageError("--verify-candidates takes a whole number");
+			parsed.verifyCandidates = count;
 		} else if (arg === "--program") parsed.programPath = value();
 		else if (arg === "--dump-program") parsed.dumpProgramPath = value();
 		else if (arg === "--run-tests") parsed.runTests = true;
@@ -255,7 +262,7 @@ export function parseAutoreviewArgs(args: readonly string[]): Parsed {
 		} else if (arg === "--mode") {
 			const name = value();
 			const mode = REVIEW_MODES.find((item) => item === name);
-			if (mode === undefined) throw new UsageError(`--mode takes fast, deep, both or compiled, not ${name}`);
+			if (mode === undefined) throw new UsageError(`--mode takes fast, deep, both, compiled or hybrid, not ${name}`);
 			parsed.mode = mode;
 		} else if (arg === "--deadline") {
 			const seconds = Number(value());
@@ -319,6 +326,7 @@ export function offlineJson(
 			confidence: finding.confidence,
 			...(finding.alsoAt === undefined ? {} : { alsoAt: finding.alsoAt }),
 			source: finding.source ?? "fast",
+			...(finding.verifiedBy === undefined ? {} : { verifiedBy: finding.verifiedBy }),
 			evidence: finding.evidence ?? "",
 			howVerified: finding.howVerified ?? "",
 		})),
@@ -358,6 +366,7 @@ export function offlineJson(
 		askModel: result.askModel ?? null,
 		askThinking: result.askThinking ?? null,
 		planStyle: result.planStyle ?? null,
+		verification: result.verification ?? null,
 		program:
 			result.program === undefined || result.program === null
 				? null
@@ -425,6 +434,7 @@ export async function runAutoreviewCommand(
 			...(parsed.askThinking === undefined ? {} : { askThinking: parsed.askThinking }),
 			...(parsed.planStyle === undefined ? {} : { planStyle: parsed.planStyle }),
 			...(parsed.planCells === undefined ? {} : { planCells: parsed.planCells }),
+			...(parsed.verifyCandidates === undefined ? {} : { verifyCandidates: parsed.verifyCandidates }),
 			...(parsed.deadlineSeconds === undefined ? {} : { deadlineSeconds: parsed.deadlineSeconds }),
 		},
 		{
