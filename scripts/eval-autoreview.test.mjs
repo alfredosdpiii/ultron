@@ -701,7 +701,9 @@ test("run.mjs: Ultron's own reviewer runs with the contract's flags, and only wh
 	assert.equal(run.status, 0, run.stderr);
 	const result = JSON.parse(readFileSync(join(out, readdirSync(out).find((file) => file.endsWith(".json"))), "utf8"));
 	assert.equal(result.reviewer.version, "ultron 9.9.9");
-	assert.deepEqual([result.summary["p/m"].buggy.recall, result.summary["p/m"].clean.falseAlarmRate, result.summary["p/m"].verdictAccuracy], [0, 0, 0.5]);
+	// With --verify-model the arm is named after both models.
+	const summary = result.summary["p/m+verify:p/v"];
+	assert.deepEqual([summary.buggy.recall, summary.clean.falseAlarmRate, summary.verdictAccuracy], [0, 0, 0.5]);
 	const calls = readFileSync(seen, "utf8").trim().split("\n").slice(1).map((line) => JSON.parse(line));
 	assert.equal(calls.length, 2);
 	for (const call of calls) {

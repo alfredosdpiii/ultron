@@ -327,7 +327,13 @@ const PLACEHOLDER = /\{(repo|base|head|model|verifyModel|budget)\}/g;
  * Ultron's needs no placeholders at all.
  */
 export function reviewerArgv({ template, ultron = ["ultron"] }, values) {
-	if (!template) return [...ultron, "autoreview", "review", ...contractArgs(values)];
+	if (!template) {
+		// An arm written `provider/model@level` runs the finder and verifier frames at that thinking level;
+		// `@find/verify` sets them separately.
+		const [find, verify = find] = String(values.thinking ?? "").split("/");
+		const thinking = find ? ["--thinking", find, "--verify-thinking", verify] : [];
+		return [...ultron, "autoreview", "review", ...contractArgs(values), ...thinking];
+	}
 	const argv = splitCommand(template);
 	if (!argv.length) throw new Error("empty --reviewer-cmd");
 	if (!template.includes("{repo}")) return [...argv, ...contractArgs(values)];

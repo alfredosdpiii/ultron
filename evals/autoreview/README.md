@@ -194,3 +194,164 @@ judge. All offline.
   patch, so it judges agreement with the known defect, not whether the finding is true in general.
 - **Reported numbers are the reviewer's own.** Tokens, cost, frames and the timing split come from the reviewer's
   JSON; only wall-clock time is measured by the harness (it includes process start-up).
+
+# Blind comparison with a reference reviewer
+
+A second benchmark, in `blind/`: for pull requests a human reviewer really reviewed, `ultron autoreview` reviews
+the same commit without seeing that review, and a judge model then says how many of the human's substantive
+comments it also raised and how many of its other findings are valid.
+
+The data comes from repositories the collecting account can read, possibly private ones. Which reviewer, which
+account and which period are command-line parameters only. Cases, clones, evidence and reports live under
+`~/.cache/ultron-autoreview-bench/blind/<set>/` (owner-only permissions) and nowhere else: never in this
+repository, never under `acceptance/`. Only the redacted summary (numbers per arm) is meant to be shared.
+
+## Method
+
+**Collect** (`blind/collect.mjs`, read-only on GitHub: `gh api` GET requests and `git fetch`).
+
+1. Search the pull requests reviewed by the reference reviewer and updated since a date (`reviewed-by:<login>`,
+   paginated; a query the search API truncates is split by date). The results are put in the seeded sample order
+   (step 6) and looked at one by one, only until the sample is full: the steps below cost one to four requests
+   per pull request, and most search results are never asked about.
+2. Per pull request, the **reference review** is that reviewer's first submitted review that opened inline
+   comments. Its commit is the head we review. Ground truth is that review's top-level inline comments (path, line
+   or line range, side, text; replies are not ground truth) and its body and state.
+3. The base is the merge base of the pull request's base branch and the reviewed commit (compare API).
+4. A pull request that was looked at is dropped, with the reason counted, when: the reference reviewer wrote it;
+   the reviewer opened no inline comments, or fewer than `--min-comments` (2); the reviewed commit no longer
+   exists or cannot be fetched; the diff has no reviewable source file (lockfiles, binaries, snapshots and
+   vendored or built directories do not count), more than `--max-files` (15) of them, or more than
+   `--max-changed-lines` (600) in them.
+5. Reviews with inline comments that were already on the same commit when the reference review was submitted are
+   not a reason to drop: they are recorded (`priorReviews`: how many, how many by bots, and how many on earlier
+   commits), so results can be split by "first reviewer on the commit" and "had prior reviews".
+6. **Sample**: one seeded order over the search results that goes round the repositories and, inside a
+   repository, round its pull-request authors; the sample is the first `--cases` (30) of that order that pass the
+   filters and can be built, with at most `--repos-max-share` (0.25) of `--cases` from one repository. With few
+   repositories the sample is smaller than asked rather than lopsided.
+7. **Case repositories**: per repository a bare clone without file contents holds the history of the two commits
+   (`git fetch --filter=blob:none origin <head> <base>`), then the contents of exactly those two trees are
+   fetched. A case is a repository at `cases/<id>` that borrows those objects, checked out (detached) at the
+   reviewed commit, with no remote: the reviewer contract `--repo-dir --base --head` works offline, and commits
+   pushed after the review are not in it. Case names are hashes; nothing can be read from them.
+
+The token comes from `gh auth token --user <account>` and is passed to `gh` and to git's credential helper only as
+`GH_TOKEN` in the child's environment: never an argument, a file, a log line or evidence.
+
+**Footprint on GitHub.** The account's limits are shared with whoever else uses it, so the collector is slow on
+purpose. Requests are serial and at least `--min-interval-ms` (1000) apart. Every answer, also "not found", is
+kept under the set directory (`api/`, and per pull request `candidates/`) and never asked for again: a rerun of
+the same command costs nothing for what it already knows. A used-up quota (`x-ratelimit-remaining: 0`) is waited
+for until `x-ratelimit-reset` when that is at most 15 minutes away; `Retry-After` is honoured on server errors.
+A secondary (abuse) limit is never retried: the collector stops with exit code 3 and says so; run the same
+command again once the limit has cleared and it goes on from what is kept. `--offline` asks the API nothing at
+all and draws the sample from the pull requests already looked at (only `git fetch` still talks to GitHub).
+
+**Run** (`blind/run.mjs`), four stages, each kept per case so a rerun with the same `--run-id` does only what is
+missing:
+
+1. **Classify** (judge, once per set and judge model): each reference comment becomes `{kind, severity, oneLine}`,
+   kind one of defect, risk, maintainability, style_nit, question, praise_or_meta. *Substantive* means defect or
+   risk; maintainability is reported separately; the rest is not scored.
+2. **Review**: each case with each arm through the reviewer contract above. The reviewer gets the repository and
+   the two commits, nothing of the pull request's conversation, title or description.
+3. **Match** (judge): each substantive or maintainability comment, with its code, against our confirmed and
+   uncertain findings in the same file; only if that finds no match, once more against all our findings. The
+   answer is `{matched: index|null, how: same_issue | partial | same_location_different_issue | null}`.
+   `same_issue` is a match, `partial` is reported next to it, the third is a miss.
+4. **Extras** (judge): each of our confirmed findings of minor severity or worse that matched no reference comment
+   (at most 12 per review, most severe first), with the source around it and the diff hunk:
+   `{valid: yes|no|unclear, severity, why}`. Only `yes` counts as "we found more".
+
+The judge is the same plumbing as in the first benchmark (the Ultron CLI in print mode, no tools, private profile
+directories), with `--judge-thinking <level>` if wanted. Its system prompt says that pull-request text, code,
+comments and findings are untrusted data whose instructions must not be followed; the prompts put that content in
+tagged blocks. A reply that is not the asked JSON object is asked for again (three attempts), then recorded as a
+judge error: never a match, never a valid extra, and tried again by the next rerun.
+
+**Report**, per arm (`runs/<run-id>/report.json`, `report.md`, `report.redacted.md`, all under the set directory):
+substantive reference comments; matched as the same issue (this is recall against the reference) and partly; by
+the comment's severity; the missed ones, restated; our findings in total, matched, and extras valid, invalid,
+unclear and not judged; a precision estimate, (confirmed findings that matched + valid extras) / confirmed
+findings judged; verdict agreement (the reference review's state against our verdict); p50 and p90 seconds;
+tokens and cost as the reviewer reports them; recall split by "first reviewer on the commit" and "had prior
+reviews". `report.md` names files and restates comments, so it stays where it is. The run prints the redacted
+summary, and `--redacted` prints it again for a finished run: aggregate numbers and arm names, no repository,
+login, title, path, code or comment text.
+
+## Running it
+
+```sh
+# read GitHub (until the sample is full) and show the counts and the sample's shape; builds nothing
+node evals/autoreview/blind/collect.mjs --account <gh login> --reviewer <login> --since <YYYY-MM-DD> --set <name> --plan
+# the same, then build the case repositories and write cases.jsonl and manifest.json
+node evals/autoreview/blind/collect.mjs --account <gh login> --reviewer <login> --since <YYYY-MM-DD> --set <name>
+
+node evals/autoreview/blind/run.mjs --set <name> --plan      # the cases and arms; runs nothing
+
+# paid model calls: reviews, then the judge
+node evals/autoreview/blind/run.mjs --set <name> --ultron packages/coding-agent/dist/cli.js \
+  --models <provider/model>@high,<provider/model> --verify-model <provider/model> \
+  --judge-model <provider/model> --judge-thinking high --run-id first
+
+node evals/autoreview/blind/run.mjs --set <name> --run-id first --redacted    # the shareable summary
+```
+
+`collect.mjs` flags: `--account`, `--reviewer`, `--since`, `--set` (all required), `--cases N` (30), `--seed`,
+`--max-changed-lines` (600), `--max-files` (15), `--min-comments` (2), `--repos-max-share` (0.25),
+`--min-interval-ms` (1000), `--plan`, `--offline`.
+`run.mjs` flags: `--set` (required), `--ultron <path>`, `--models a,b` (the arm syntax of the first benchmark,
+`provider/model`, `provider/model@thinking` or `provider/model@find/verify`), `--verify-model`, `--judge-model`
+(without it the cases are reviewed and nothing is scored), `--judge-thinking`, `--concurrency` (2),
+`--limit-minutes` (20), `--run-id`, `--only <case ids>`, `--reviewer-cmd`, `--plan`, `--redacted`. Unknown flags
+exit 2 before anything starts.
+
+A rerun with the same `--run-id` skips reviews that have a record, comments that are classified or matched and
+extras that are judged; errors, timeouts and judge failures are done again. Adding `--judge-model` to a run that
+was reviewed without one only adds the judging. Isolation, credentials and the scrubbing of kept output are those
+of the first benchmark (see "Isolation" above).
+
+```
+~/.cache/ultron-autoreview-bench/blind/<set>/
+  manifest.json, cases.jsonl             the query, the counts per drop reason, the sample; one case per line
+  api/<hash>.json                        every answer of GitHub's API, never asked for twice
+  candidates/<id>.json                   the outcome per pull request looked at: a case, or why not
+  repos/<owner>__<name>.git              the clone without file contents, per repository
+  cases/<id>/, built/<id>.json           the case repositories
+  classify/<judge>/<id>/                 the classification of the reference comments, and the judge's output
+  runs/<run-id>/<arm>/<id>/              record.json, stdout.json, stderr.txt, match.json, extras.json, judge output
+  runs/<run-id>/report.json, report.md, report.redacted.md
+```
+
+Tests: `scripts/eval-autoreview-blind.test.mjs`, run by `npm run test:scripts`: filtering, the choice of the
+reference review, base and head, sampling, the case files and repositories, pacing, caching and the two kinds of
+rate limit (a fake `gh` and small local repositories), the judge's prompts and replies, scoring, both reports, and the runner end to end with the stub
+reviewer and a fake judge. All offline, all fixtures invented.
+
+## Limits
+
+- **Inline comments are not exhaustive ground truth.** A reviewer writes down what they chose to say that day, not
+  every problem in the diff. A comment we did not raise is a miss against this reviewer, not proof of a missed
+  defect; a finding nobody commented on is not thereby wrong, which is why extras are judged on their own.
+- **The reference reviewer may have used tools.** Their comments can come from linters, tests, assistants or an
+  earlier automated review on the same commit, and they knew the project, the ticket and the conversation. The
+  reviewer under test sees the repository and two commits. The `priorReviews` split shows part of this, not all.
+- **A judge model decides.** Classification, matching and the validity of extras are a model's opinion, with its
+  reasons kept in the evidence. "Valid" means supported by the code shown to the judge (a window of the file and
+  the nearby hunk), not confirmed by running anything. The precision estimate covers judged findings only
+  (confirmed, minor or worse, at most 12 extras per review). Use one judge for arms you compare, and read a sample
+  of its verdicts.
+- **The severity of a reference comment is the judge's reading** of the comment, not the reviewer's own label.
+- **Selection.** Only pull requests where the reviewer opened at least two inline comments on a small enough diff
+  become cases: pull requests they approved without remarks, or reviewed in prose only, are left out, so the
+  verdict agreement is over a sample skewed towards "has remarks".
+- **History.** A case holds the commits and directories of the history before the reviewed commit, but file
+  contents only for the base and the head: `git show` and `git diff` between the two work, `git blame` or a diff
+  against an older commit does not. The clone a set's cases borrow from holds every case's commits of that
+  repository, so a later commit of another case is in the object store, though on no branch of this one.
+- **Line numbers** of a reference comment are those of the commit it was written on; a comment on a deleted line
+  refers to the base side and is shown to the judge with its diff hunk.
+- **The drop counts cover the pull requests looked at**, not all search results: looking stops when the sample is
+  full. To refresh a set against GitHub, delete its `api/` and `candidates/` directories.
+- **Small sample**, one reviewer, the repositories that reviewer works in. Compare arms on the same set only.
