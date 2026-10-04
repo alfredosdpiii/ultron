@@ -90,22 +90,28 @@ left alone until a new commit or a new mention.
 
 2. **One review**, posted in a single request for the reviewed commit:
 
-   - **Approve** when coverage was complete and there is no confirmed blocker or major finding.
-   - **Request changes** when there is one (or one from an earlier review is still present).
-   - **Comment** when coverage was incomplete (frames failed, a token cap or deadline you set ran out, the repository could not be
-     cloned), when the account opened the pull request itself, or when the pull request is closed or merged. It
-     never approves on partial coverage.
+   - **Request changes** when a confirmed finding is at `medium` or above (`autoreview.blockAt`), or one from an
+     earlier review is still present at that level.
+   - **Approve** when coverage was complete and there is none.
+   - **Comment** when coverage was incomplete (frames failed, a token cap or deadline you set ran out, the
+     repository could not be cloned), when the account opened the pull request itself, or when the pull request is
+     closed or merged. It never approves on partial coverage.
 
-   Confirmed findings are inline comments on the diff: every blocker, up to five major and five minor. Nits are
-   never posted inline; the summary counts them.
-   A finding whose line is not in the diff moves to the nearest diff line within three lines of a hunk, or else
-   into the summary. A GitHub suggestion block is used only when the fix is an exact replacement for the commented
-   lines and those lines are all in the diff. Findings the verifier could not decide are listed in the summary
-   only (at most five) and never count toward the verdict. A finding somebody else already raised (same file,
-   nearby line, similar claim) is not posted again; the summary lists it as "also raised by @name".
+   **Few, heavy comments.** Confirmed findings are ranked by level and by the strength of their evidence (a test
+   the host ran, then source quoted from outside the diff, then the diff alone), and at most
+   `autoreview.maxComments` (5) are posted inline. A finding below `high` whose evidence is only the diff gets a
+   slot only when one is left; nits are never inline. The same problem in several places is one comment that lists
+   the other places. What is not posted is counted in one closing line.
 
-   The summary has the verdict, counts by severity, findings not posted inline, what was not checked, one line of
-   timing and cost, and ends with `Automated review by Ultron` (`autoreview.signature`).
+   An inline comment reads `[level] what is wrong, with the evidence. The fix.`, in plain sentences, about 600
+   characters at most. It sits on a diff line: its own, or the nearest within three lines of a hunk. A GitHub
+   suggestion block is used only when the fix is an exact replacement for the commented lines and those lines are
+   all in the diff. Findings the verifier could not decide are never posted and never count toward the verdict. A
+   finding somebody else already raised (same file, nearby line, similar claim) is not repeated.
+
+   The body has no headings or tables: a paragraph on what was checked and holds; a paragraph with the verdict and
+   what must be resolved before merge, each item with its file and line; a line on the non-blocking notes; what was
+   not checked; one line of timing and cost; and `Automated review by Ultron` (`autoreview.signature`).
 
 After posting, the review is read back and any inline comment GitHub dropped is posted again on its own. If the head
 commit moved while the review ran, the review is discarded and the pull request is queued again.
@@ -131,7 +137,9 @@ reviewed.
 | `autoreview.verifyModel` | the finder model | `provider/model` of the verifier frames. |
 | `autoreview.mode` | `"both"` | `fast`: review the diff only. `deep`: only the investigation beyond the diff. `both`: the fast pass, then the deep one with its findings as leads; one review is posted. |
 | `autoreview.deepModel` | the finder model | `provider/model` of the deep pass's investigator frames. |
-| `autoreview.deepThinking` | `"medium"` | Their thinking level. |
+| `autoreview.deepThinking` | `"high"` | Their thinking level. |
+| `autoreview.blockAt` | `"medium"` | A confirmed finding at this level or above makes the review request changes (`critical`, `high`, `medium`, `low`, `nit`). |
+| `autoreview.maxComments` | `5` | Inline comments per review at most; the rest are counted in the body. |
 | `autoreview.deepRounds` | `4` | Lookup rounds one investigator may take (maximum 8). |
 | `autoreview.budget` | none | Optional token cap of one review. Unset, no pass is refused for tokens. |
 | `autoreview.thinking` | `"low"` | Thinking level of the finder frames (`off`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`). |
@@ -164,31 +172,45 @@ wraps returns a sentinel instead of raising; new members that an existing parame
 does not include; a comment that claims a validation the code never performs; a migration written for one database
 branch only. The deep pass looks for these.
 
-1. **Map.** Without a model, the host extracts from the diff the names it defines, changes and calls, its constants,
-   environment variables, flags and table names, and the claims its comments and documents make. It then looks them
-   up in the repository at the reviewed commit: who uses each name, what the called helpers do, which tests mention
-   them and how those test files are parametrized, sibling files, and the documents and configs that name them.
-   The result is a bounded brief with file:line anchors.
-2. **Investigators.** One frame per lens (behaviour by tracing, tests, consistency of claims and sibling code,
-   risk; lenses that do not apply are skipped) gets the diff, the brief and the fast pass's findings as leads. It
-   answers with findings and with requests: `read` (lines of a file), `grep`, `list` (a directory), `definition`
-   and `references` (of a name). The host checks each request (a tracked file of the reviewed commit, no path
-   outside the repository, bounded lines, hits and bytes per round), answers it, and asks the frame again, for at
-   most `autoreview.deepRounds` rounds.
+1. **Map.** Without a model, the host collects the claims the change makes (its title and description, its commit
+   messages, the comments, docstrings and documents it changes) and extracts from the diff the names it defines,
+   changes and calls, its constants, environment variables, flags and table names. It looks them up in the
+   repository at the reviewed commit: who uses each name, what the called helpers do, which tests mention them and
+   how those test files are parametrized, sibling files, and the documents and configs that name them. The result
+   is a bounded brief with file:line anchors, led by the claims and where each has to hold.
+2. **Investigators.** The method is claim-driven. One frame per part gets the diff, the brief and the fast pass's
+   findings as leads; parts that do not apply to the change are skipped:
+   - `claims`: for each claim, find where it must be true (the path that failed, every other reader and writer)
+     and check it there; what holds feeds the review's first paragraph.
+   - `siblings`: other producers and consumers, parallel implementations, families (keywords, enum members,
+     regexes), and conventions the same file or module already follows that the change breaks or does not extend.
+   - `deployment`: environment variables, flags, manifests, CI workflows, infrastructure and dependency pins the
+     change relies on: set and enforced where the feature runs?
+   - `tests`: would a test fail if the new behaviour were removed? (settled with a mutation check when tests can
+     run); presence-versus-value assertions; what sibling tests set up.
+   - `inputs`: a concrete input or state that defeats a new guard, regular expression, limit or parser, with the
+     path it takes.
+
+   Each answers with findings and with requests: `read` (lines of a file), `grep`, `list` (a directory),
+   `definition` and `references` (of a name), and three history lookups: `history` (the commits that touched a
+   file), `blame_range` (those that last changed a line range) and `pickaxe` (those that added or removed a
+   string). The host checks each request (a tracked file of the reviewed commit, no path outside the repository,
+   bounded lines, hits and bytes per round), answers it, and asks the frame again, for at most
+   `autoreview.deepRounds` rounds. An investigator that stops in its first round having looked at fewer than three
+   things is sent back once.
 3. **Evidence.** Every deep finding cites file and line with the quoted source line. The host checks that each quote
    is at its cited line; a finding with a wrong quote, or with none, is dropped. A finding whose evidence is all
    inside the diff counts like a fast one.
 4. **Verification** is the same as for the fast pass (the verifier also sees the cited source), with the same
-   severity rules. A deep finding replaces the fast finding it extends.
+   level rules. A deep finding replaces the fast finding it extends.
 
-The review then opens with two to four sentences on what was traced, and lists each confirmed finding with one line
-on how it was verified. Findings on lines outside the diff cannot be inline comments; they are in the body with
-their file and line.
+The review then opens with what was traced and found to hold. Findings on lines outside the diff cannot be inline
+comments; they are named in the body with their file and line.
 
 The lookups are read-only by construction: the frames have no tools, and the host runs only `git grep`, `git show`,
 `git ls-tree` and `git log` on the checkout. (Running the project's tests is a separate, sandboxed step: see below.) If there is no checkout, or the deep pass fails, the fast review is posted as before.
 
-With `--json`, findings carry `source` (`fast` or `deep:<lens>`), `evidence` and `howVerified`; the object has
+With `--json`, findings carry `source` (`fast` or `deep:<part>`), `evidence` and `howVerified`; the object has
 `assurance`, `mode`, and `timing.investigators` (rounds, lookups, time and tokens per investigator).
 
 ## Running the project's tests
@@ -197,8 +219,9 @@ The deep pass may run the reviewed project's tests. Models still have no shell: 
 does, in a closed form, inside a sandbox.
 
 - **Automatic run.** After the map, the host detects the test runner (pytest; vitest, jest or the `test` script of
-  `package.json`; `go test`; `cargo test`; a Makefile `test` target) and runs the test files the map tied to the
-  change, plus test files the change touches, at the reviewed commit. The results go into the investigators' brief.
+  `package.json`; `go test`; `cargo test`; a Makefile `test` target) per test file, by the file's type and its
+  nearest manifest (a TypeScript test belongs to the closest `package.json` that names a runner, so each package of
+  a monorepo runs its own tests in its own directory), and runs the test files the map tied to the change, plus test files the change touches, at the reviewed commit. The results go into the investigators' brief.
   When a test fails, the same selection is run at the base commit: a test that fails now and passed before is a
   major finding by itself; one that already failed is not this change's.
 - **On request.** An investigator may ask for `run_tests` (existing test files, an optional test-name selector)
@@ -237,22 +260,35 @@ an environment.
 | `autoreview.testEnv` | none | `{"owner/repo": "/path/to/env"}`: pre-built environments, bound read-only. |
 | `autoreview.testImage` | none | A local Docker image, used only when neither bubblewrap nor `unshare` works. |
 
-## Severity
+## Levels
 
-The verdict blocks a merge on blocker and major findings only, so severity is checked twice. The finder must state
-a concrete failing scenario (input or state, what happens, what should happen) for anything it rates blocker or
-major. The verifier then reads the source, rates the severity itself and says whether that scenario really fails.
-The posted severity is the verifier's, and:
+Every finding has one of five levels:
 
-- a blocker or major whose scenario does not hold, or cannot be shown from the source, is posted as minor;
-- a finding without a concrete scenario is never above minor; neither are missing tests, nor maintainability and
+| Level | Meaning |
+|---|---|
+| `critical` | Data loss or exposure, a security hole, an outage or a wrong result on a main path, with the scenario shown. |
+| `high` | A wrong result, an exception or a regression for an input or state the author plainly means to support, with the scenario stated: input or state, what happens, what should. |
+| `medium` | A real gap, with evidence: a behaviour or a claim that does not hold in some supported case; a convention of the same module broken; a new behaviour with no test that would fail if it were removed; configuration not set where the feature needs it. |
+| `low` | Hardening and robustness. |
+| `nit` | Style and wording. |
+
+The review asks for changes when a confirmed finding is at or above `autoreview.blockAt` (default `medium`), so the
+level is checked twice. The finder states a concrete failing scenario for anything it rates critical or high. The
+verifier then reads the source, gives its own level and says whether that scenario really fails. The posted level is
+the verifier's, and:
+
+- critical and high stand only when the scenario holds in the source; otherwise the finding is low;
+- a finding without a concrete scenario is never above medium; neither are missing tests, nor maintainability and
   architecture findings unless their scenario is a real failure;
-- a behaviour change that is the evident point of the pull request is not a defect: at most a minor "confirm this
-  is intended", unless it breaks a caller shown in the source;
-- the verifier may also raise a finding: a wrong result on an input the author means to support is major even if
-  the finder said minor.
+- a behaviour change that is the evident point of the pull request is not a defect: at most a low "confirm this is
+  intended", unless it breaks a caller shown in the source;
+- the verifier may also raise a finding: a wrong result on an input the author means to support is high even if the
+  finder said low.
 
-With `--json`, every finding has `severity` (final), `finderSeverity` and `scenario`.
+With `--json`, every finding has `level` and `finderLevel` on this scale, plus `scenario`. `severity` and
+`finderSeverity` remain, on the older four-name scale: critical is `blocker`, high is `major`, medium and low are
+`minor`, nit is `nit`. (Medium has no older name; note that a medium finding asks for changes while its `severity`
+reads `minor`.) The older names are still accepted wherever a level is read.
 
 ## Speed: slices, retries and optional limits
 

@@ -17,6 +17,7 @@ export interface PostedFinding {
 	readonly id: string;
 	readonly file: string;
 	line: number;
+	/** The finding's level (older state files hold the old four-name severity). */
 	readonly severity: string;
 	readonly claim: string;
 	readonly claimHash: string;

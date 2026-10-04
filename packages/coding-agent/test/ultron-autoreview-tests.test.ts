@@ -184,6 +184,95 @@ emit([t.parse_outcome("pytest", code, output)[0] for code, output in [
 	});
 });
 
+describe("the runner of a test file: by its type and its nearest manifest", () => {
+	test("a TypeScript test is never pytest's: each package of a monorepo runs its own tests in its own directory", () => {
+		const out = py<{
+			runners: Array<[string, [string, string] | null]>;
+			plan: Array<[string, string, string[]]>;
+			commands: Array<{ cwd: string; command: string; chdir: string; ids: string[] }>;
+			mixed: string;
+			unknown: string;
+		}>(`
+files = {
+    "pyproject.toml": "[tool.pytest.ini_options]",
+    "api/tests/test_users.py": "",
+    "api/conftest.py": "",
+    "web/package.json": json.dumps({"devDependencies": {"vitest": "1"}}),
+    "web/src/Resources.test.tsx": "",
+    "web/src/Resources.tsx": "",
+    "packages/ui/package.json": json.dumps({"scripts": {"test": "jest"}}),
+    "packages/ui/src/Button.test.jsx": "",
+    "packages/ui/src/deep/package.json": json.dumps({"name": "no runner here"}),
+    "packages/ui/src/deep/x.spec.ts": "",
+    "tools/loose.test.ts": "",
+    "svc/go.mod": "module svc",
+    "svc/pkg/a_test.go": "",
+    "crate/Cargo.toml": "",
+    "crate/src/lib.rs": "",
+    "notes/readme.txt": "",
+}
+tracked = set(files)
+read = lambda path: files.get(path)
+names = ["api/tests/test_users.py", "web/src/Resources.test.tsx", "packages/ui/src/Button.test.jsx",
+         "packages/ui/src/deep/x.spec.ts", "tools/loose.test.ts", "svc/pkg/a_test.go", "crate/src/lib.rs"]
+runners = [[name, (lambda found: [found[0].name, found[1]] if found else None)(t.runner_for(name, tracked, read))] for name in names]
+calls = []
+def executor(argv, cwd, env, timeout):
+    calls.append(argv)
+    return 0, "PASSED tests/test_users.py::test_ok"
+export = lambda root, rev: tempfile.mkdtemp(prefix="ultron-autoreview-run-")
+s = t.TestSession("/nowhere", "HEAD", None, sorted(tracked), read, t.Sandbox("bwrap"), executor=executor, export=export, runs=10)
+plan = [[runner.name, directory, paths] for runner, directory, paths in s.plan(names)]
+compared = s.compare(["web/src/Resources.test.tsx", "api/tests/test_users.py", "packages/ui/src/Button.test.jsx"])
+commands = [{"cwd": record["cwd"], "command": record["command"], "chdir": argv[argv.index("--chdir") + 1].split("/", 3)[-1],
+             "ids": [item["id"] for item in record["tests"]]} for record, argv in zip(s.records, calls)]
+def refused(paths):
+    try:
+        s.run(paths)
+        return "RAN"
+    except t.TestsRejected as error:
+        return str(error)
+out = {"runners": runners, "plan": plan, "commands": commands,
+       "mixed": refused(["web/src/Resources.test.tsx", "api/tests/test_users.py"]), "unknown": refused(["tools/loose.test.ts"])}
+s.close()
+emit(out)`);
+		expect(Object.fromEntries(out.runners)).toEqual({
+			"api/tests/test_users.py": ["pytest", "api"],
+			// The file that was once handed to pytest.
+			"web/src/Resources.test.tsx": ["vitest", "web"],
+			"packages/ui/src/Button.test.jsx": ["jest", "packages/ui"],
+			// A package.json that names no runner defers to the one above it.
+			"packages/ui/src/deep/x.spec.ts": ["jest", "packages/ui"],
+			// No package.json above it declares a runner: nothing is run, least of all pytest.
+			"tools/loose.test.ts": null,
+			"svc/pkg/a_test.go": ["go", "svc"],
+			"crate/src/lib.rs": ["cargo", "crate"],
+		});
+		expect(out.plan).toEqual([
+			["pytest", "api", ["tests/test_users.py"]],
+			["vitest", "web", ["src/Resources.test.tsx"]],
+			["jest", "packages/ui", ["src/Button.test.jsx", "src/deep/x.spec.ts"]],
+			["go", "svc", ["pkg/a_test.go"]],
+			["cargo", "crate", ["src/lib.rs"]],
+		]);
+		// One execution per runner and directory, each run inside its package, paths relative to it.
+		expect(out.commands.map((item) => [item.cwd, item.command])).toEqual([
+			["web", "npx --no-install vitest run src/Resources.test.tsx"],
+			["api", "python3 -m pytest -q -rA --no-header -p no:cacheprovider --tb=short tests/test_users.py"],
+			["packages/ui", "npx --no-install jest src/Button.test.jsx"],
+		]);
+		expect(out.commands.map((item) => item.chdir.replace(/^.*?(web|api|packages\/ui)$/, "$1"))).toEqual([
+			"web",
+			"api",
+			"packages/ui",
+		]);
+		// Test ids come back as repository paths.
+		expect(out.commands[1]!.ids).toEqual(["api/tests/test_users.py::test_ok"]);
+		expect(out.mixed).toContain("these paths belong to different test runners (vitest in web; pytest in api)");
+		expect(out.unknown).toBe("no test runner is known for tools/loose.test.ts");
+	});
+});
+
 describe("the sandbox", () => {
 	test("the environment is built from scratch: no credential of the caller can be in it", () => {
 		const out = py<{ env: Record<string, string>; launch: Record<string, string> }>(
@@ -450,7 +539,8 @@ passing = t.TestSession(ROOT, HEAD, BASE, tracked, read, sandbox, executor=lambd
 clean = passing.compare(["tests/test_app.py"])
 emit({"regressions": [item["id"] for item in compared["regressions"]], "revs": [record["rev"] for record in s.records],
       "old": [item["id"] for item in before["regressions"]], "oldRuns": len(old.records),
-      "clean": {"runs": len(passing.records), "base": clean["base"], "regressions": clean["regressions"]}})
+      "clean": {"runs": len(passing.records), "base": None, "regressions": clean["regressions"]},
+      "pair": [[item["head"]["n"], item["base"]["n"]] for item in compared["regressions"]]})
 for item in (s, old, passing):
     item.close()`);
 		expect(out.regressions).toEqual(["tests/test_app.py::test_kinds"]);
@@ -458,6 +548,8 @@ for item in (s, old, passing):
 		expect(out.old).toEqual([]);
 		expect(out.oldRuns).toBe(2);
 		expect(out.clean).toEqual({ runs: 1, base: null, regressions: [] });
+		// Each regression knows the two runs that showed it.
+		expect((out as unknown as { pair: number[][] }).pair).toEqual([[1, 2]]);
 	});
 
 	test("a mutation is applied for the run and reverted afterwards, also when the run fails to start", () => {
@@ -540,7 +632,9 @@ if sandbox and out["make"]:
     tracked = r.Git(ROOT).out("ls-tree", "-r", "--name-only", ${JSON.stringify(head)}).split()
     read = lambda path: open(os.path.join(ROOT, path)).read()
     s = t.TestSession(ROOT, ${JSON.stringify(head)}, ${JSON.stringify(base)}, tracked, read, sandbox, timeout_s=60)
-    out["compared"] = s.compare(["value.txt"])
+    compared = s.compare(["value.txt"])
+    out["compared"] = {"head": compared["runs"][0], "base": compared["regressions"][0]["base"] if compared["regressions"] else None,
+                       "regressions": [item["id"] for item in compared["regressions"]]}
     exported = list(s._dirs.values())
     s.close()
     out["leftInRepo"] = os.path.exists(os.path.join(ROOT, "ran-here.txt"))

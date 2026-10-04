@@ -9,10 +9,12 @@ members are missing from, a comment that claims what the code does not do. This 
    head commit: who uses each symbol, what the called helpers do, which tests mention them and how those test
    files are parametrized, sibling files, and the docs and configs that name them. Rendered as a bounded
    "investigation brief" with file:line anchors.
-2. Investigators. One tool-less frame per lens (behaviour, tests, consistency, risk) gets the diff, the brief
-   and the fast pass's findings as leads, and replies with findings and *requests*: read, grep, list, definition,
-   references. The host validates each request, answers it from the head commit, appends the results as untrusted
-   data and asks again, for a bounded number of rounds.
+2. Investigators. One tool-less frame per part of a claim-driven method (claims, siblings, deployment, tests,
+   inputs) gets the diff, the brief and the fast pass's findings as leads, and replies with findings and
+   *requests*: read, grep, list, definition, references, and three history lookups (history of a file, of a line
+   range, of a string). The host validates each request, answers it from the head commit, appends the results as
+   untrusted data and asks again, for a bounded number of rounds. An investigator that stops in its first round
+   having looked at almost nothing is sent back once.
 3. Evidence. Every finding cites file:line with the quoted source line. The host checks each quote at its line;
    a finding with a wrong quote, or with none, is dropped.
 
@@ -34,7 +36,6 @@ from review_api import (
     _COMMON,
     _DEF,
     _TEST,
-    SEVERITIES,
     FileDiff,
     Runner,
     _clip,
@@ -46,7 +47,7 @@ from review_api import (
     skip_reason,
 )
 import autoreview_tests as testing
-from review_prompts import DEEP_LENSES, deep_task
+from review_prompts import DEEP_LENSES, DEEP_NUDGE, deep_task
 
 GIT_TIMEOUT_S = 30
 #: The only git subcommands the deep pass runs. All of them only read the object database.
@@ -70,6 +71,12 @@ MAX_CITATIONS = 6
 CITATION_SLACK = 2
 CITED_WINDOW = 6
 DEDUPE_WINDOW = 3
+LEVEL_ORDER = ("critical", "high", "medium", "low", "nit")
+LEVEL_TO_OLD = {"critical": "blocker", "high": "major", "medium": "minor", "low": "minor", "nit": "nit"}
+#: An investigator that is done in round 1 with fewer served lookups than this is sent back once.
+MIN_LOOKUPS = 3
+MAX_HISTORY = 20
+MAX_BLAME_LINES = 60
 
 _CITATION = {
     "type": "object",
@@ -88,7 +95,7 @@ DEEP_CONTRACT: dict[str, Any] = {
                 "properties": {
                     "file": {"type": "string"},
                     "line": {"type": "integer"},
-                    "severity": {"enum": list(SEVERITIES)},
+                    "severity": {"enum": ["critical", "high", "medium", "low", "nit", "blocker", "major", "minor"]},
                     "category": {"type": "string"},
                     "claim": {"type": "string"},
                     "why": {"type": "string"},
@@ -190,8 +197,31 @@ class Repo:
         return hits
 
     def history(self, path: str, count: int = 3) -> list[str]:
-        code, stdout, _ = self._git("log", "-n", str(count), "--format=%h %s", self.rev, "--", path)
+        """The last commits that touched a file: short hash, date, subject."""
+        code, stdout, _ = self._git("log", "-n", str(count), "--format=%h %ad %s", "--date=short", self.rev, "--", path)
         return stdout.splitlines() if code == 0 else []
+
+    def line_history(self, path: str, start: int, end: int, count: int = 5) -> list[str]:
+        """The commits that last changed lines start..end of a file."""
+        code, stdout, _ = self._git("log", f"-L{start},{end}:{path}", "-s", "-n", str(count), "--format=%h %ad %s",
+                                    "--date=short", self.rev)
+        return [line for line in stdout.splitlines() if line.strip()] if code == 0 else []
+
+    def pickaxe(self, text: str, count: int = 5) -> list[str]:
+        """The commits that added or removed a string."""
+        code, stdout, _ = self._git("log", f"-S{text}", "-n", str(count), "--format=%h %ad %s", "--date=short", self.rev)
+        return stdout.splitlines() if code == 0 else []
+
+    def messages(self, base: str | None, count: int = 8) -> list[str]:
+        """Subjects and first body lines of the commits under review."""
+        if not base:
+            return []
+        code, stdout, _ = self._git("log", "-n", str(count), "--format=%s%n%b%x00", f"{base}..{self.rev}")
+        out = []
+        for entry in stdout.split("\0") if code == 0 else []:
+            lines = [line.strip() for line in entry.strip().splitlines() if line.strip()]
+            out += lines[:3]
+        return out
 
 
 _SYMBOL = re.compile(r"^[A-Za-z_][A-Za-z0-9_.$-]{0,79}$")
@@ -216,7 +246,8 @@ def serve_request(repo: Repo, request: Any, tests: "testing.TestSession | None" 
     """Answer one investigator request from the head commit: (title, body). Raises Rejected for anything outside
     the closed set: five read-only lookups and, when the review may run tests, two sandboxed test executions."""
     if not isinstance(request, dict) or len(request) != 1:
-        raise Rejected("a request is an object with exactly one of read, grep, list, definition, references")
+        raise Rejected("a request is an object with exactly one of read, grep, list, definition, references, "
+                       "history, blame_range, pickaxe")
     kind, args = next(iter(request.items()))
     if not isinstance(args, dict):
         raise Rejected(f"{kind} takes an object")
@@ -288,6 +319,27 @@ def serve_request(repo: Repo, request: Any, tests: "testing.TestSession | None" 
                 parts.append(f"{path}:\n{_numbered(lines, line, min(len(lines), line + 24))}")
         more = _hits(hits[3:]) if len(hits) > 3 else ""
         return f"definition {symbol} -> {len(hits)} matches", "\n\n".join(parts + ([more] if more else [])) or "0 matches"
+    if kind == "history":
+        path = repo.path(args.get("path"))
+        count = min(MAX_HISTORY, max(1, _int(args.get("n"), 10)))
+        lines = repo.history(path, count)
+        return f"history {path} -> {len(lines)} commits", "\n".join(lines) or "no commits found"
+    if kind == "blame_range":
+        path = repo.path(args.get("path"))
+        total = len(repo.lines(path) or [])
+        start = max(1, _int(args.get("start"), 1))
+        end = min(total, _int(args.get("end"), start), start + MAX_BLAME_LINES - 1)
+        if start > total or end < start:
+            raise Rejected(f"{path} has {total} lines")
+        lines = repo.line_history(path, start, end)
+        return f"blame_range {path}:{start}-{end} -> {len(lines)} commits", "\n".join(lines) or (
+            "no history available for these lines")
+    if kind == "pickaxe":
+        text = args.get("string")
+        if not isinstance(text, str) or not 3 <= len(text) <= 120 or "\n" in text or "\0" in text:
+            raise Rejected("pickaxe takes a one-line string of 3 to 120 characters")
+        lines = repo.pickaxe(text, min(MAX_HISTORY, max(1, _int(args.get("n"), 5))))
+        return f"pickaxe {text!r} -> {len(lines)} commits", "\n".join(lines) or "no commit added or removed it"
     if kind in ("run_tests", "mutation_check"):
         if tests is None:
             raise Rejected("tests are not run in this review")
@@ -299,7 +351,15 @@ def serve_request(repo: Repo, request: Any, tests: "testing.TestSession | None" 
         except testing.TestsRejected as error:
             raise Rejected(str(error)) from None
         return f"test run {record['n']}", testing.summarize(record)
-    raise Rejected(f"unknown request {kind!r}: use read, grep, list, definition or references")
+    raise Rejected(f"unknown request {kind!r}: use read, grep, list, definition, references, history, blame_range "
+                   "or pickaxe")
+
+
+def _int(value: Any, default: int) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
 
 
 def serve(repo: Repo, requests: Any, limit: int = ROUND_CHARS,
@@ -338,6 +398,13 @@ _COMMENT = re.compile(r"^\s*(?:#+|//+|/?\*+|--|<!--|\"\"\"|''')\s?(.{15,})$")
 _DESCRIPTION = re.compile(r"""\b(?:description|help|doc|summary)\s*[:=]\s*["'](.{15,})["']""")
 _DOCLIKE = re.compile(r"\.(md|mdx|rst|txt|adoc|ya?ml|toml|cfg|ini|json|sh|tf|env)$|(^|/)(\.github|ci|scripts|docs?)/|(^|/)Dockerfile", re.I)
 _STRUCTURE = r"parametrize|fixture|it\.each|test\.each|describe\(|@pytest\.mark"
+_CONFIG_PATH = re.compile(r"\.(ya?ml|toml|cfg|ini|tf|env|properties)$|(^|/)(\.github|ci|deploy|k8s|helm|charts|infra|terraform)/"
+                          r"|(^|/)(Dockerfile|docker-compose[^/]*|Makefile|package\.json|requirements[^/]*\.txt|pyproject\.toml"
+                          r"|go\.mod|Cargo\.toml|Gemfile|pom\.xml|build\.gradle[^/]*)$", re.I)
+_INPUT_HINT = re.compile(r"\bre\.|regex|RegExp|\.match\(|\.test\(|\.search\(|parse|split\(|strip\(|startswith|endswith"
+                         r"|validate|sanitiz|escape|limit|max_|min_|len\(|\.length|truncate|slice\(|\bint\(|float\("
+                         r"|isinstance|typeof|\bif .*(<|>|<=|>=|==|!=)", re.I)
+_WORD = re.compile(r"`([^`]{2,60})`|\b([A-Za-z_][A-Za-z0-9_]{3,})\b")
 _RISK = re.compile(r"auth|token|password|passwd|secret|credential|permission|role|session|cookie|sql|query\(|execute\("
                    r"|eval\(|exec\(|subprocess|os\.system|shell|pickle|yaml\.load|request\.|route|endpoint|router\."
                    r"|@app\.|email|phone|ssn|pii|encrypt|decrypt|hash|cors|csrf|upload|redirect", re.I)
@@ -351,6 +418,8 @@ class Brief:
     callers: int = 0
     tests: list[str] = field(default_factory=list)
     claims: int = 0
+    #: The claims as listed in the brief: (source, text).
+    claim_list: list[tuple[str, str]] = field(default_factory=list)
     helpers: list[str] = field(default_factory=list)
     extracted: dict[str, list[Any]] = field(default_factory=dict)
 
@@ -412,8 +481,10 @@ def extract(files: list[FileDiff], read_file: Callable[[str], list[str] | None])
 
 
 def build_brief(repo: Repo, files: list[FileDiff], read_file: Callable[[str], list[str] | None],
-                limit: int = BRIEF_CHARS) -> Brief:
-    """The investigation brief: where the diff's names live in the rest of the repository."""
+                limit: int = BRIEF_CHARS, *, title: str = "", description: str = "",
+                base: str | None = None) -> Brief:
+    """The investigation brief: what the change claims, where each claim must hold, and where the diff's names
+    live in the rest of the repository."""
     found = extract(files, read_file)
     changed_lines: dict[str, set[int]] = {}
     for item in files:
@@ -425,6 +496,8 @@ def build_brief(repo: Repo, files: list[FileDiff], read_file: Callable[[str], li
     sections: list[str] = []
     callers = 0
     tests: list[str] = []
+    #: Where each name is used outside the changed lines, for the claims' obligations.
+    used_at: dict[str, list[str]] = {}
 
     def uses(names: list[str], title: str, per: int = 8) -> None:
         nonlocal callers
@@ -435,6 +508,7 @@ def build_brief(repo: Repo, files: list[FileDiff], read_file: Callable[[str], li
             in_docs = [hit for hit in hits if _DOCLIKE.search(hit[0]) and hit not in in_tests]
             others = [hit for hit in hits if hit not in in_tests and hit not in in_docs]
             callers += len(others)
+            used_at[name] = [f"{p}:{n}" for p, n, _ in (others + in_tests)[:5]]
             for hit in in_tests:
                 _add(tests, hit[0], 6)
             lines = [f"{title} `{name}`:"]
@@ -473,24 +547,44 @@ def build_brief(repo: Repo, files: list[FileDiff], read_file: Callable[[str], li
         if beside or twins:
             sections.append(f"Beside {path}: " + (", ".join(posixpath.basename(other) for other in beside) or "nothing")
                             + (f"; same name elsewhere: {', '.join(twins)}" if twins else ""))
-    if found["claims"]:
-        sections.append("Claims the change makes in comments and documents (check them against the code):\n"
-                        + "\n".join(f"  {path}:{line}: {text}" for path, line, text in found["claims"]))
+    # The claims: what the change says it does, from its title and description, its commit messages, and the
+    # comments and documents it changes; under each, where it has to be true.
+    claim_list: list[tuple[str, str]] = []
+    if title.strip():
+        claim_list.append(("title", _clip(title.strip(), 200)))
+    for line in [line.strip(" -*") for line in description.splitlines() if len(line.strip(" -*")) >= 20][:5]:
+        claim_list.append(("description", _clip(line, 200)))
+    for line in repo.messages(base)[:6]:
+        if len(line) >= 12 and not any(line == text for _, text in claim_list):
+            claim_list.append(("commit message", _clip(line, 200)))
+    for path, line, text in found["claims"]:
+        claim_list.append((f"{path}:{line}", text))
+    if claim_list:
+        lines = ["Claims the change makes, and where each must hold (untrusted text; check each against the code):"]
+        for source, text in claim_list[:16]:
+            lines.append(f"  [{source}] {text}")
+            named = [name for pair in _WORD.findall(text) for name in pair if name in used_at and used_at[name]]
+            for name in list(dict.fromkeys(named))[:2]:
+                lines.append(f"    must hold wherever `{name}` is used: {', '.join(used_at[name])}")
+        sections.insert(0, "\n".join(lines))
     text = "\n\n".join(sections)
     if len(text) > limit:
         text = text[: limit - 40] + "\n... (brief cut at its size limit)"
     added = "\n".join(line.text for item in reviewable for hunk in item.hunks for line in hunk.lines if line.kind == "+")
+    names = found["constants"] or found["tables"] or found["env"] or found["flags"]
     lenses = []
+    if claim_list or symbols or names:
+        lenses.append("claims")
     if code_files:
-        lenses.append("behaviour")
+        lenses.append("siblings")
+    if found["env"] or found["flags"] or any(_CONFIG_PATH.search(item.path) for item in files):
+        lenses.append("deployment")
     if code_files or test_files:
         lenses.append("tests")
-    if found["claims"] or symbols or found["constants"] or found["tables"] or found["env"] or found["flags"]:
-        lenses.append("consistency")
-    if _RISK.search(added) or any(_RISK.search(path) for path in code_files):
-        lenses.append("risk")
+    if code_files and (_INPUT_HINT.search(added) or _RISK.search(added)):
+        lenses.append("inputs")
     return Brief(text or "(nothing in the repository mentions the changed names)", lenses, symbols, callers, tests,
-                 len(found["claims"]), helpers, found)
+                 len(claim_list), claim_list, helpers, found)
 
 
 # --- Evidence --------------------------------------------------------------------------------------------------
@@ -532,8 +626,8 @@ def check_citations(repo: Repo, raw: Any, diff_lines: dict[str, set[int]]) -> tu
 
 
 def normalize_deep(repo: Repo, raw: Any, lens: str, diff_lines: dict[str, set[int]],
-                   cap: Callable[[str, str, str], str],
-                   runs: list[dict[str, Any]] | None = None) -> tuple[dict[str, Any] | None, str | None]:
+                   cap: Callable[[str, str, str], str], runs: list[dict[str, Any]] | None = None,
+                   to_level: Callable[[Any], str | None] | None = None) -> tuple[dict[str, Any] | None, str | None]:
     """One investigator finding, validated: (finding, None) or (None, why it was dropped)."""
     if not isinstance(raw, dict):
         return None, "not an object"
@@ -557,17 +651,17 @@ def normalize_deep(repo: Repo, raw: Any, lens: str, diff_lines: dict[str, set[in
         return None, problem
     if run is not None:
         beyond = True
-    severity = str(raw.get("severity", "")).strip().lower()
-    severity = severity if severity in SEVERITIES else "minor"
-    category = normalize_category(_text(raw.get("category"), 40), {"tests": "tests", "risk": "security"}.get(lens))
+    name = str(raw.get("severity", "")).strip().lower()
+    stated = (to_level(name) if to_level else name if name in LEVEL_ORDER else None) or "low"
+    category = normalize_category(_text(raw.get("category"), 40), {"tests": "tests"}.get(lens, "correctness"))
     scenario = _text(raw.get("scenario"), 500)
     try:
         confidence = min(1.0, max(0.0, float(raw.get("confidence", 0.6))))
     except (TypeError, ValueError):
         confidence = 0.6
     return {
-        "file": path, "line": line, "severity": cap(severity, category, scenario), "finder_severity": severity,
-        "category": category, "claim": claim, "why": _text(raw.get("why"), 600), "scenario": scenario,
+        "file": path, "line": line, "level": (level := cap(stated, category, scenario)),
+        "severity": LEVEL_TO_OLD[level], "finder_level": stated, "category": category, "claim": claim, "why": _text(raw.get("why"), 600), "scenario": scenario,
         "suggested_fix": _text(raw.get("suggested_fix"), 500), "confidence": confidence,
         "reviewers": [f"deep:{lens}"], "source": f"deep:{lens}", "citations": citations, "beyond_diff": beyond,
         **({"test_run": run["n"], "test_evidence": testing.summarize(run).split("\n  output")[0]} if run else {}),
@@ -594,10 +688,10 @@ def merge(fast: list[dict[str, Any]], deep: list[dict[str, Any]]) -> tuple[list[
         return (a["file"] == b["file"] and abs(a["line"] - b["line"]) <= DEDUPE_WINDOW
                 and (a["category"] == b["category"] or similar_claims(a["claim"], b["claim"])))
 
-    order = {severity: index for index, severity in enumerate(SEVERITIES)}
+    order = {level: index for index, level in enumerate(LEVEL_ORDER)}
     kept: list[dict[str, Any]] = []
     duplicates = 0
-    for finding in sorted(deep, key=lambda item: (order[item["severity"]], -len(item.get("citations") or []))):
+    for finding in sorted(deep, key=lambda item: (order[item["level"]], -len(item.get("citations") or []))):
         twin = next((item for item in kept if same(item, finding) or similar_claims(item["claim"], finding["claim"])
                      and item["file"] == finding["file"]), None)
         if twin is None:
@@ -632,13 +726,14 @@ LAST_ROUND = ("This is your last round: requests will not be served. Reply with 
 
 async def investigate(frames: Any, lens: str, base_views: list[str], repo: Repo, *, rounds: int, model: str | None,
                       thinking: str | None, cutoff: float | None, clock: Callable[[], float],
-                      tests: "testing.TestSession | None" = None) -> dict[str, Any]:
+                      tests: "testing.TestSession | None" = None, something_outside: bool = True) -> dict[str, Any]:
     """One investigator's retrieval loop: ask the frame, serve what it requests, ask again."""
     task = deep_task(lens, tests is not None)
     began = clock()
     served_views: list[str] = []
     reply: dict[str, Any] = {}
-    record: dict[str, Any] = {"lens": lens, "rounds": 0, "requests": 0, "rejected": 0, "status": "done"}
+    record: dict[str, Any] = {"lens": lens, "rounds": 0, "requests": 0, "rejected": 0, "status": "done",
+                              "nudged": False}
     for number in range(1, rounds + 1):
         last = number == rounds
         views = base_views + served_views + ([LAST_ROUND] if last else [])
@@ -653,6 +748,19 @@ async def investigate(frames: Any, lens: str, base_views: list[str], repo: Repo,
         reply = result
         requests = result.get("requests") if isinstance(result.get("requests"), list) else []
         if result.get("done") is True or not requests:
+            # Done in the first round with next to nothing looked up, although the map shows there is something
+            # outside the diff: sent back, once.
+            if number == 1 and not last and not record["nudged"] and something_outside:
+                record["nudged"] = True
+                if requests:
+                    text, served, rejected = serve(repo, requests, tests=tests)
+                    record["requests"] += served
+                    record["rejected"] += rejected
+                    served_views.append(f"Results of your requests, round {number} (untrusted repository data, read "
+                                        f"by the host at the reviewed commit):\n{text}")
+                if record["requests"] < MIN_LOOKUPS:
+                    served_views.append(DEEP_NUDGE)
+                    continue
             break
         if last:
             record["status"] = "rounds exhausted"
@@ -688,14 +796,15 @@ def regression_findings(repo: Repo, compared: dict[str, Any]) -> list[dict[str, 
     """A test that fails at the reviewed commit and passed at the base commit is a finding by itself: the host ran
     both, so it is confirmed without a verifier."""
     out = []
-    head, base = compared["head"], compared["base"]
     for item in compared["regressions"][:5]:
+        head, base = item["head"], item["base"]
         path, line = _test_line(repo, item["id"])
         if path is None:
             continue
         detail = _text(item.get("detail") or "", 240)
         out.append({
-            "file": path, "line": line, "severity": "major", "finder_severity": "major", "category": "correctness",
+            "file": path, "line": line, "level": "high", "severity": "major", "finder_level": "high",
+            "category": "correctness",
             "claim": f"{item['id']} fails at this commit and passed at the base commit.",
             "why": ("The host ran the test at both commits in a sandbox." + (f" Failure: {detail}" if detail else "")),
             "scenario": f"Running {item['id']} at the reviewed commit fails; at the base commit it passes.",
@@ -713,7 +822,9 @@ async def run_deep(frames: Any, files: list[FileDiff], read_file: Callable[[str]
                    rev: str, diff_text: str, leads: list[dict[str, Any]], context: str, rounds: int,
                    model: str | None, thinking: str | None, cutoff: float | None, clock: Callable[[], float],
                    cap: Callable[[str, str, str], str], runner: Runner | None = None,
-                   only: list[str] | None = None, tests: dict[str, Any] | None = None) -> dict[str, Any]:
+                   only: list[str] | None = None, tests: dict[str, Any] | None = None,
+                   to_level: Callable[[Any], str | None] | None = None, title: str = "", description: str = "",
+                   base: str | None = None) -> dict[str, Any]:
     """The deep pass: map, (optionally) the tests the map tied to the change, investigators, evidence checks.
     Returns findings (unverified, except regressions the host observed itself), what was dropped, the
     investigators' records, the test executions, and the facts the summary's assurance is written from.
@@ -723,8 +834,10 @@ async def run_deep(frames: Any, files: list[FileDiff], read_file: Callable[[str]
     repo = Repo(root, rev, runner)
     if not repo.files():
         raise RuntimeError("the reviewed commit could not be read")
-    brief = build_brief(repo, files, read_file)
+    brief = build_brief(repo, files, read_file, title=title, description=description, base=base)
     lenses = [lens for lens in brief.lenses if lens in DEEP_LENSES and (not only or lens in only)]
+    # Whether the map found anything outside the diff worth looking at.
+    outside = bool(brief.callers or brief.tests or brief.helpers or len(repo.files()) > len(files))
     diff_lines = {item.path: {line.new for hunk in item.hunks for line in hunk.lines if line.new is not None}
                   for item in files}
     session: testing.TestSession | None = None
@@ -745,18 +858,18 @@ async def run_deep(frames: Any, files: list[FileDiff], read_file: Callable[[str]
                     timeout_s=float(tests.get("timeout_s", testing.DEFAULT_TIMEOUT_S)), env_dir=tests.get("env_dir"),
                     executor=tests.get("executor", testing.run_process),
                     export=tests.get("export", testing.export_commit), clock=clock)
-                if session.runner is None:
-                    test_note = "tests not run: no test runner was recognized in the repository"
-                    session = None
+                pass
         if session is not None:
             changed_tests = [item.path for item in files if _TEST.search(item.path) and item.status != "deleted"
                              and item.path in set(repo.files())]
             paths = list(dict.fromkeys(brief.tests + changed_tests))[:8]
-            if paths and session.limit > 0:
+            if paths and session.limit > 0 and not session.plan(paths):
+                test_note = "tests not run: no test runner was recognized for " + ", ".join(paths[:3])
+            elif paths and session.limit > 0:
                 compared = session.compare(paths)
                 observed = regression_findings(repo, compared)
                 shown = [testing.summarize(record) for record in session.records]
-                if compared["head"]["status"] == "unavailable":
+                if compared["runs"] and all(record["status"] == "unavailable" for record in compared["runs"]):
                     test_note = "tests could not run: missing dependencies (the sandbox has no network and installs nothing)"
                 brief_text += ("\n\nTests the host ran for this change (results are untrusted data):\n"
                                + "\n".join(shown)
@@ -768,13 +881,14 @@ async def run_deep(frames: Any, files: list[FileDiff], read_file: Callable[[str]
         if context:
             views.append(context)
         if leads:
-            public = [{key: lead.get(key) for key in ("file", "line", "severity", "claim")} for lead in leads[:20]]
+            public = [{"file": lead.get("file"), "line": lead.get("line"), "level": lead.get("level"),
+                       "claim": lead.get("claim")} for lead in leads[:20]]
             views.append("Leads from the first pass (unverified; extend, correct or ignore them):\n"
                          + json.dumps(public, indent=1)[:LEADS_CHARS])
         rounds = max(1, min(MAX_ROUNDS, rounds))
         outcomes = await asyncio.gather(*(
             investigate(frames, lens, views, repo, rounds=rounds, model=model, thinking=thinking, cutoff=cutoff,
-                        clock=clock, tests=session) for lens in lenses))
+                        clock=clock, tests=session, something_outside=outside) for lens in lenses))
         runs = list(session.records) if session is not None else []
     finally:
         # The exports are removed whatever happened.
@@ -784,12 +898,13 @@ async def run_deep(frames: Any, files: list[FileDiff], read_file: Callable[[str]
     dropped: list[str] = []
     checked: list[str] = []
     records = []
-    for outcome in outcomes:
+    # What the claims investigator verified leads the assurance.
+    for outcome in sorted(outcomes, key=lambda item: item["lens"] != "claims"):
         reply, record = outcome["reply"], outcome["record"]
         raw = reply.get("findings") if isinstance(reply.get("findings"), list) else []
         kept = 0
         for item in raw[:MAX_DEEP_FINDINGS]:
-            finding, problem = normalize_deep(repo, item, outcome["lens"], diff_lines, cap, runs)
+            finding, problem = normalize_deep(repo, item, outcome["lens"], diff_lines, cap, runs, to_level)
             if finding is None:
                 dropped.append(f"{outcome['lens']}: {problem}")
                 continue
@@ -828,7 +943,7 @@ def assurance(deep: dict[str, Any]) -> list[str]:
              f"other use{'' if brief.callers == 1 else 's'}"
              + (f" and {len(brief.tests)} test file{'' if len(brief.tests) == 1 else 's'}" if brief.tests else
                 " (no test file mentions them)")
-             + (f", and {brief.claims} claim{'' if brief.claims == 1 else 's'} in comments and documents "
+             + (f", and {brief.claims} claim{'' if brief.claims == 1 else 's'} of the change "
                 f"{'was' if brief.claims == 1 else 'were'} checked against the code" if brief.claims else "")
              + f": {len(ran)} investigator{'' if len(ran) == 1 else 's'} ({', '.join(ran)}), {lookups} repository "
              f"lookup{'' if lookups == 1 else 's'}, {executed}.")

@@ -1,7 +1,31 @@
 /** The review engine's contract: what the host asks `autoreview_api.run` to review, and what comes back. */
 
+/** The levels of a finding, most serious first. */
+export type Level = "critical" | "high" | "medium" | "low" | "nit";
+export const LEVELS: readonly Level[] = ["critical", "high", "medium", "low", "nit"];
+
+/** The older four-name scale, still written as `severity` for consumers that know only that one. */
 export type Severity = "blocker" | "major" | "minor" | "nit";
 export const SEVERITIES: readonly Severity[] = ["blocker", "major", "minor", "nit"];
+
+const OLD_TO_LEVEL: Readonly<Record<string, Level>> = { blocker: "critical", major: "high", minor: "low" };
+
+/** A finding's level: its `level`, or its old-scale `severity` (blocker, major, minor) mapped to one. */
+export function levelOf(finding: { readonly level?: string; readonly severity?: string }): Level {
+	for (const name of [finding.level, finding.severity]) {
+		const level = LEVELS.find((item) => item === name) ?? (name === undefined ? undefined : OLD_TO_LEVEL[name]);
+		if (level !== undefined) return level;
+	}
+	return "low";
+}
+
+/**
+ * A level on the old scale. Medium has no equal there: it is written as "minor", the nearest in meaning (a real
+ * gap, not a demonstrated wrong result), although a medium finding asks for changes by default.
+ */
+export function severityOf(level: Level): Severity {
+	return ({ critical: "blocker", high: "major", medium: "minor", low: "minor", nit: "nit" } as const)[level];
+}
 
 export interface ContextComment {
 	readonly author: string;
@@ -80,10 +104,17 @@ export interface EngineFinding {
 	readonly file: string;
 	readonly line: number;
 	readonly endLine?: number;
-	/** The final severity: the verifier's rating under the rubric (for an uncertain finding, the finder's, capped). */
+	/** The final level: the verifier's rating under the rubric (for an uncertain finding, the finder's, capped). */
+	readonly level?: Level;
+	/** The level on the old four-name scale. */
 	readonly severity: Severity;
 	/** What the finder rated it. */
+	readonly finderLevel?: Level;
 	readonly finderSeverity?: Severity;
+	/** How strong the evidence is: a test the host ran, source quoted from outside the diff, or the diff alone. */
+	readonly strength?: "test" | "outside" | "diff";
+	/** Other places with the same root cause, folded into this finding. */
+	readonly alsoAt?: ReadonlyArray<{ readonly file: string; readonly line: number }>;
 	/** The concrete failure the finder stated: input or state, what happens, what should. Empty when none. */
 	readonly scenario?: string;
 	readonly category: string;

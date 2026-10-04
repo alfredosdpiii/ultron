@@ -15,9 +15,11 @@ posting) happens in the host. The pipeline is `/review`'s (review_api.py), with 
    review comments are given to every finder frame as one block of untrusted data.
 3. Re-check. On a re-review, each finding this account posted earlier is checked against the new source:
    fixed, still present, or no longer applicable.
-4. Severity is calibrated, because the verdict blocks a merge on blocker and major: one rubric for finder and
-   verifier, a required failing scenario per finding, and a verifier that rates severity itself and says whether
-   the scenario really fails. A blocker or major stays one only when it does (`final_severity`).
+4. Levels are calibrated, because the verdict asks for changes from a level up (`blockAt`, medium by default):
+   five levels (critical, high, medium, low, nit), one rubric for finder and verifier, a failing scenario per
+   finding, and a verifier that rates the level itself and says whether the scenario really fails. Critical and
+   high stay so only when it does (`final_level`). `severity` in the result is the level on the old
+   four-name scale, kept for consumers that know only that one.
 5. Find, dedupe, verify: as in `/review`, with a finder contract that adds a line range and an exact
    replacement. Small files are packed into one slice, so a small pull request costs one finder frame per
    reviewer instead of one per reviewer and file. Every frame is a request of its own, scheduled here: at most
@@ -51,7 +53,6 @@ from review_api import (
     FINDINGS_CONTRACT,
     MAX_FINDINGS_PER_FRAME,
     MIN_BUDGET_TOKENS,
-    SEVERITIES,
     VERDICT_CONTRACT,
     Chunk,
     FileDiff,
@@ -63,7 +64,6 @@ from review_api import (
     _estimate_tokens,
     _failure,
     _local_reader,
-    _rank,
     _rev_reader,
     _spent,
     _text,
@@ -107,7 +107,7 @@ THINKING_LEVELS = ("off", "minimal", "low", "medium", "high", "xhigh", "max")
 DEFAULT_THINKING = "low"
 MODES = ("fast", "deep", "both")
 DEFAULT_MODE = "both"
-DEFAULT_DEEP_THINKING = "medium"
+DEFAULT_DEEP_THINKING = "high"
 TITLE_CHARS = 300
 DESCRIPTION_CHARS = 2_000
 INTENT_CHARS = 600
@@ -125,6 +125,32 @@ MAX_REPLACEMENT_CHARS = 2_000
 MAX_REPLACEMENT_SPAN = 30
 MAX_EARLIER = 40
 
+#: The levels of an automated review, most serious first.
+LEVELS = ("critical", "high", "medium", "low", "nit")
+#: The four names `/review` uses (and earlier versions of this pipeline), accepted wherever a level is read.
+OLD_TO_LEVEL = {"blocker": "critical", "major": "high", "minor": "low"}
+#: A level on the old scale. Medium has no equal there: it is "minor", the nearest in meaning (real, but not a
+#: demonstrated wrong result), although a medium finding asks for changes by default.
+LEVEL_TO_OLD = {"critical": "blocker", "high": "major", "medium": "minor", "low": "minor", "nit": "nit"}
+
+
+def to_level(value: Any, default: str | None = "low") -> str | None:
+    """A level from what a model (or an older state file) wrote: a level name or one of the old four names."""
+    name = str(value).strip().lower() if value is not None else ""
+    return name if name in LEVELS else OLD_TO_LEVEL.get(name, default)
+
+
+def set_level(finding: dict[str, Any], level: str) -> None:
+    """Set a finding's level and, in step, its severity on the old scale (what review_api's helpers rank by)."""
+    finding["level"] = level
+    finding["severity"] = LEVEL_TO_OLD[level]
+
+
+def level_rank(finding: dict[str, Any]) -> tuple[int, float]:
+    return (LEVELS.index(finding.get("level") or to_level(finding.get("severity")) or "low"),
+            -float(finding.get("confidence") or 0))
+
+
 AUTOREVIEW_FINDINGS_CONTRACT: dict[str, Any] = {
     "type": "array",
     "maxItems": MAX_FINDINGS_PER_FRAME,
@@ -132,6 +158,7 @@ AUTOREVIEW_FINDINGS_CONTRACT: dict[str, Any] = {
         "type": "object",
         "properties": {
             **FINDINGS_CONTRACT["items"]["properties"],
+            "severity": {"enum": [*LEVELS, *OLD_TO_LEVEL]},
             "scenario": {"type": "string"},
             "end_line": {"type": ["integer", "null"]},
             "replacement": {"type": ["string", "null"]},
@@ -144,16 +171,18 @@ AUTOREVIEW_VERDICT_CONTRACT: dict[str, Any] = {
     "type": "object",
     "properties": {
         **VERDICT_CONTRACT["properties"],
-        "severity": {"enum": list(SEVERITIES)},
+        "severity": {"enum": [*LEVELS, *OLD_TO_LEVEL]},
         "scenario_holds": {"enum": [True, False, "unknown"]},
     },
     "required": [*VERDICT_CONTRACT["required"], "severity", "scenario_holds"],
 }
 
-BLOCKING = ("blocker", "major")
-#: Categories that never block by themselves: missing tests always, maintainability unless it is a real failure.
-NEVER_BLOCKING = ("tests",)
-BLOCKING_ONLY_IF_FAILS = ("maintainability",)
+#: Levels that need a concrete failing scenario, shown to hold.
+SERIOUS = ("critical", "high")
+#: Categories that are never above medium by themselves: missing tests always, maintainability unless it is a
+#: real failure.
+NEVER_SERIOUS = ("tests",)
+SERIOUS_ONLY_IF_FAILS = ("maintainability",)
 
 RECHECK_CONTRACT: dict[str, Any] = {
     "type": "object",
@@ -310,35 +339,36 @@ def _holds(value: Any) -> bool | None:
     return True if text in ("true", "yes") else False if text in ("false", "no") else None
 
 
-def capped_severity(severity: str, category: str, scenario: str, holds: bool | None = None) -> str:
-    """`severity` under the rubric's hard rules: blocker and major need a concrete scenario; missing tests never
-    block; maintainability blocks only when its scenario was shown to fail."""
-    if severity not in BLOCKING:
-        return severity
-    if not scenario.strip() or category in NEVER_BLOCKING:
-        return "minor"
-    if category in BLOCKING_ONLY_IF_FAILS and holds is not True:
-        return "minor"
-    return severity
+def capped_level(level: str, category: str, scenario: str, holds: bool | None = None) -> str:
+    """`level` under the rubric's hard rules: critical and high need a concrete scenario; missing tests are never
+    above medium; maintainability is above medium only when its scenario was shown to fail."""
+    if level not in SERIOUS:
+        return level
+    if not scenario.strip() or category in NEVER_SERIOUS:
+        return "medium"
+    if category in SERIOUS_ONLY_IF_FAILS and holds is not True:
+        return "medium"
+    return level
 
 
-def final_severity(finding: dict[str, Any], verdict: Any) -> str:
-    """The severity a confirmed finding is posted with: the verifier's own rating (it may raise or lower the
-    finder's), and never blocking unless the verifier found that the stated scenario really fails."""
-    rated = verdict.get("severity") if isinstance(verdict, dict) else None
-    severity = rated if rated in SEVERITIES else finding["severity"]
+def final_level(finding: dict[str, Any], verdict: Any) -> str:
+    """The level a confirmed finding is posted with: the verifier's own rating (it may raise or lower the
+    finder's). Critical and high stand only when the verifier found that the stated scenario really fails;
+    otherwise the claimed failure is not shown and the finding is hardening: low."""
+    rated = to_level(verdict.get("severity"), None) if isinstance(verdict, dict) else None
+    level = rated or finding["level"]
     holds = _holds(verdict.get("scenario_holds")) if isinstance(verdict, dict) else None
-    if severity in BLOCKING and holds is not True:
-        return "minor"
-    return capped_severity(severity, finding["category"], finding.get("scenario") or "", holds)
+    if level in SERIOUS and holds is not True:
+        return "low"
+    return capped_level(level, finding["category"], finding.get("scenario") or "", holds)
 
 
 def _extras(raw: dict[str, Any], finding: dict[str, Any]) -> None:
-    """The autoreview-only fields of one finder reply item: the scenario, a line range and an exact replacement.
-    The finder's own severity is kept as `finder_severity`; `severity` is capped by the rubric's hard rules."""
+    """The autoreview-only fields of one finder reply item: the level, the scenario, a line range and an exact
+    replacement. The finder's own level is kept as `finder_level`; `level` is capped by the rubric's hard rules."""
     finding["scenario"] = _text(raw.get("scenario"), 500)
-    finding["finder_severity"] = finding["severity"]
-    finding["severity"] = capped_severity(finding["severity"], finding["category"], finding["scenario"])
+    finding["finder_level"] = to_level(raw.get("severity"))
+    set_level(finding, capped_level(finding["finder_level"], finding["category"], finding["scenario"]))
     end = raw.get("end_line")
     line = finding["line"]
     try:
@@ -634,7 +664,7 @@ async def recheck_earlier(rlm: Any, earlier: list[dict[str, Any]], since: list[F
         except (TypeError, ValueError):
             old_line = 1
         entry = {"id": raw.get("id"), "file": raw["file"], "line": old_line, "claim": _text(raw.get("claim"), 300),
-                 "severity": raw.get("severity"), "status": "unknown", "evidence": ""}
+                 "severity": to_level(raw.get("severity")), "status": "unknown", "evidence": ""}
         out.append(entry)
         change = by_path.get(raw["file"])
         path = change.path if change is not None and change.status != "deleted" else raw["file"]
@@ -693,12 +723,36 @@ async def recheck_earlier(rlm: Any, earlier: list[dict[str, Any]], since: list[F
 # --- Orchestration ---------------------------------------------------------------------------------------------
 
 
+def group_root_causes(confirmed: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], int]:
+    """One finding per root cause: confirmed findings that say the same thing in different places (the same
+    category and a similar claim) become the most serious of them, with the other places listed in `also_at`."""
+    kept: list[dict[str, Any]] = []
+    merged = 0
+    # The most serious wording leads and, at one level, the one with the stronger evidence.
+    strength = lambda item: 0 if item.get("test_run") or item.get("host_confirmed") else 1 if item.get("beyond_diff") else 2  # noqa: E731
+    for finding in sorted(confirmed, key=lambda item: (level_rank(item)[0], strength(item), level_rank(item)[1])):
+        twin = next((item for item in kept if item["category"] == finding["category"]
+                     and similar_claims(item["claim"], finding["claim"])), None)
+        if twin is None:
+            kept.append(finding)
+            continue
+        merged += 1
+        place = {"file": finding["file"], "line": finding["line"]}
+        if place not in twin.setdefault("also_at", []) and len(twin["also_at"]) < 8:
+            twin["also_at"].append(place)
+        for name in finding.get("reviewers") or []:
+            if name not in twin["reviewers"]:
+                twin["reviewers"].append(name)
+    return kept, merged
+
+
 def _public(finding: dict[str, Any], verification: str) -> dict[str, Any]:
     out: dict[str, Any] = {
         "id": finding.get("id"),
         "file": finding["file"],
         "line": finding["line"],
-        "severity": finding["severity"],
+        "level": finding.get("level") or to_level(finding["severity"]),
+        "severity": LEVEL_TO_OLD[finding.get("level") or to_level(finding["severity"])],
         "category": finding["category"],
         "claim": finding["claim"],
         "why": finding["why"],
@@ -719,7 +773,14 @@ def _public(finding: dict[str, Any], verification: str) -> dict[str, Any]:
                               + f"a verifier confirmed it against the source of {finding['file']}")
     else:
         out["howVerified"] = "not confirmed: " + _text(finding.get("verification") or "the verifier could not decide", 160)
-    out["finderSeverity"] = finding.get("finder_severity") or finding["severity"]
+    finder_level = finding.get("finder_level") or out["level"]
+    out["finderLevel"] = finder_level
+    out["finderSeverity"] = LEVEL_TO_OLD[finder_level]
+    # How strong the evidence is: a test the host ran, source quoted from outside the diff, or the diff alone.
+    out["strength"] = ("test" if finding.get("test_run") or finding.get("host_confirmed")
+                       else "outside" if citations and finding.get("beyond_diff") else "diff")
+    if finding.get("also_at"):
+        out["alsoAt"] = finding["also_at"]
     out["scenario"] = finding.get("scenario") or ""
     if isinstance(finding.get("end_line"), int) and finding["end_line"] > finding["line"]:
         out["endLine"] = finding["end_line"]
@@ -763,6 +824,8 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
     mode = spec.get("mode") if spec.get("mode") in MODES else DEFAULT_MODE
     deep_model = spec.get("deepModel") if isinstance(spec.get("deepModel"), str) else model
     deep_thinking = _thinking(spec.get("deepThinking"), DEFAULT_DEEP_THINKING)
+    # History lookups must never reach the network: a blob-less clone would otherwise fetch what it lacks.
+    os.environ.setdefault("GIT_NO_LAZY_FETCH", "1")
     deep_rounds = int(_number(spec.get("deepRounds"), deep.DEFAULT_ROUNDS, 1, deep.MAX_ROUNDS))
     # 0 turns the deadline off.
     deadline_s = _number(spec.get("deadlineSeconds"), DEFAULT_DEADLINE_S, 0, 24 * 3600)
@@ -866,6 +929,7 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
     duplicates = len(raised) - len(merged)
     for finding in merged:
         finding["source"] = "fast"
+        finding.setdefault("level", to_level(finding["severity"]))
     find_ms = int((clock() - find_started) * 1000)
 
     # The deep pass: investigators follow the change into the repository, with the fast findings as leads.
@@ -891,7 +955,10 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
                 frames_runner, scope.files, scope.read_file, root=scope.root, rev=deep_rev,
                 diff_text=SLICE_SEPARATOR.join(chunk.text for chunk in chunks), leads=merged, context=shared,
                 rounds=deep_rounds, model=deep_model, thinking=deep_thinking, cutoff=find_cutoff, clock=clock,
-                cap=capped_severity, runner=runner, tests=test_options)
+                cap=capped_level, runner=runner, tests=test_options, to_level=to_level,
+                title=_bounded(context.get("title"), TITLE_CHARS),
+                description=_bounded(context.get("description"), DESCRIPTION_CHARS),
+                base=(str(spec.get("base")) if spec.get("repoDir") else spec.get("baseSha")) or None)
         except Exception as error:  # the fast review stands when the deep pass cannot run
             not_checked.append(f"The deep pass failed ({_text(f'{type(error).__name__}: {error}', 160)}); "
                                "this is the fast review only.")
@@ -929,7 +996,7 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
     for finding in merged:
         logins = raised_by_others(finding, others)
         if logins:
-            also_raised.append({"file": finding["file"], "line": finding["line"], "severity": finding["severity"],
+            also_raised.append({"file": finding["file"], "line": finding["line"], "severity": finding["level"],
                                 "claim": finding["claim"], "by": logins})
             continue
         if any(item["file"] == finding["file"] and abs(item["line"] - finding["line"]) <= EARLIER_WINDOW
@@ -964,7 +1031,7 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
         public = {key: finding[key] for key in ("file", "line", "category", "claim", "why", "scenario",
                                                 "suggested_fix")}
         # The verifier sees the severity the finder chose, not the capped one, and rates it itself.
-        public["severity"] = finding.get("finder_severity") or finding["severity"]
+        public["severity"] = finding.get("finder_level") or finding["level"]
         views = [f"Finding:\n{json.dumps(public, indent=1)}",
                  f"Source of {finding['file']} around line {finding['line']} (> marks the cited line):\n{window}",
                  f"Diff hunk ({finding['file']}, new-file line numbers):\n{hunk_text}"]
@@ -1000,7 +1067,7 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
         confirmed, uncertain, rejected = apply_verdicts(to_verify, list(verdicts), sources, counts)
         for finding in confirmed:
             # The verifier judged how serious it is, not only whether it is true.
-            finding["severity"] = final_severity(finding, by_id.get(finding["id"]))
+            set_level(finding, final_level(finding, by_id.get(finding["id"])))
         for finding in confirmed + uncertain:
             # The verifier moved the line: the range and the replacement were written for the old one.
             if finding["line"] != before.get(finding["id"]):
@@ -1019,8 +1086,10 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
         incomplete.append(f"{len(unverified)} finding(s) were not verified within the token budget")
     verify_ms = int((clock() - verify_started) * 1000) + recheck_ms
 
-    confirmed.sort(key=_rank)
-    uncertain.sort(key=_rank)
+    confirmed, merged_causes = group_root_causes(confirmed)
+    duplicates += merged_causes
+    confirmed.sort(key=level_rank)
+    uncertain.sort(key=level_rank)
     findings = [_public(item, "confirmed") for item in confirmed] + [_public(item, "uncertain") for item in uncertain]
     not_checked += incomplete
     return {

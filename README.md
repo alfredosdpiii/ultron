@@ -249,8 +249,8 @@ finder frame and one verifier frame, 2,319 tokens in all, on glm-5.3-flash.*
 
 `ultron autoreview run` reviews a pull request as soon as one of your logged-in `gh` accounts is requested as
 reviewer or @mentioned on it, and posts the review under that account: an acknowledgement comment when it starts,
-then one review with inline comments on the diff and a verdict (approve, request changes, or a plain comment when
-coverage was incomplete). It runs the same finder-then-verifier pipeline directly, with no root model turn, and
+then one review with a few inline comments on the diff, each tagged with its level (critical, high, medium, low,
+nit), and a verdict (request changes from medium up, approve, or a plain comment when coverage was incomplete). It runs the same finder-then-verifier pipeline directly, with no root model turn, and
 then a deep pass that follows the change beyond the diff (callers, helpers, tests, claims in comments) through
 read-only repository lookups, every finding backed by quoted source the host has checked. When
 it is asked again after a push (or had requested changes), it reviews only what is new, re-checks its earlier
