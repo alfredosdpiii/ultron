@@ -188,8 +188,8 @@ describe("autoreview_api: the pipeline", () => {
 		expect(prompts.verifier).toContain("scenario_holds: true when the source as written really fails");
 		expect(prompts.verifier).toContain("severity: your own level, whatever the reviewer chose.");
 		// Frames are paid per token: the instructions stay small.
-		expect(prompts.finder.length).toBeLessThan(4_900);
-		expect(prompts.verifier.length).toBeLessThan(3_000);
+		expect(prompts.finder.length).toBeLessThan(6_000);
+		expect(prompts.verifier.length).toBeLessThan(3_600);
 	});
 
 	test("contracts: a finding needs a scenario; a verdict needs the verifier's severity and whether the scenario holds", () => {
@@ -249,7 +249,8 @@ cases = {
     "verifier lowers":  (dict(severity="high"),                         dict(severity="low", scenario_holds=True)),
     "verifier raises":  (dict(severity="low"),                          dict(severity="high", scenario_holds=True)),
     "a real gap":       (dict(severity="medium", scenario=""),          dict(severity="medium", scenario_holds="unknown")),
-    "missing tests":    (dict(severity="high", category="tests"),       dict(severity="high", scenario_holds=True)),
+    "missing tests":    (dict(severity="high", category="tests", unpinned=dict(behaviour="total() adds every price (calc.py:4)", change="skip the last item again")),
+                         dict(severity="high", scenario_holds=True)),
     "design opinion":   (dict(severity="high", category="design"),      dict(severity="medium", scenario_holds="unknown")),
     "design failure":   (dict(severity="high", category="design"),      dict(severity="high", scenario_holds=True)),
     "holds":            (dict(severity="major"),                        dict(severity="blocker", scenario_holds=True)),
@@ -319,9 +320,9 @@ emit({"result": result, "seen": seen, "unit": unit})`);
 		const view = out.seen.find((text) => text.includes("case does not hold "))!;
 		expect(view).toContain('"scenario": "total([{');
 		expect(view).toContain('"severity": "critical"');
-		expect(view).toContain("What the pull request says it does (untrusted data;");
+		expect(view).toContain("The author's stated intent (untrusted data;");
 		expect(view).toContain("Title: Make total() faster\nSkips work.");
-		expect(view.length).toBeLessThan(3_500);
+		expect(view.length).toBeLessThan(4_500);
 	});
 
 	test("one comment per root cause: the same problem in several places is one finding that lists the others", () => {
@@ -475,7 +476,7 @@ emit({"result": result, "calls": rlm.calls})`);
 				howVerified: "a verifier confirmed it against the source of calc.py",
 			},
 		]);
-		expect(result.dropped).toEqual({ rejected: 0, duplicates: 0 });
+		expect(result.dropped).toEqual({ rejected: 0, duplicates: 0, generic: 0, refutedByTest: 0 });
 		expect(result.diffLines).toEqual({ "calc.py": [[1, 7]] });
 		expect(result.usage).toEqual({
 			inputTokens: 400,
@@ -1158,7 +1159,9 @@ SENTINEL = {"file": "src/app.py", "line": 10, "severity": "major", "category": "
             "suggested_fix": "Make load() raise, or check for the sentinel.", "confidence": 0.9,
             "evidence": [{"path": "src/helper.py", "line": 5, "quote": 'return "ERROR: unreadable"'},
                          {"path": "src/app.py", "line": 10, "quote": "except OSError:"}]}
-PARAM = {"file": "tests/test_app.py", "line": 5, "severity": "major", "category": "tests",
+PARAM = {"unpinned": {"behaviour": "KINDS lists the kinds (src/app.py:3)", "change": "drop the new member c",
+                      "closest_test": {"path": "tests/test_app.py", "line": 5}},
+         "file": "tests/test_app.py", "line": 5, "severity": "major", "category": "tests",
          "claim": "The parametrize list still has only a and b; the new kind c is never exercised.",
          "why": "KINDS gained c.", "scenario": "", "suggested_fix": "Add c.", "confidence": 0.8,
          "evidence": [{"path": "tests/test_app.py", "line": 4, "quote": '@pytest.mark.parametrize("kind", ["a", "b"])'}]}
@@ -1414,6 +1417,117 @@ emit({"text": text, "names": names, "small": small, "none": a.load_guides([], "a
 		expect(out.result.guideNames).toContain("house-rules.md");
 	});
 
+	test("generic findings are dropped by rule: a tests finding must name the unpinned change, a maintainability one a present problem", () => {
+		const repo = fixtureRepo();
+		const out = py<{ reasons: Array<string | null>; result: Result; verified: string[] }>(`
+def f(category, level="medium", **extra):
+    item = {"category": category, "level": level, "claim": "x"}
+    a.parse_rules(extra, item)
+    return a.generic_reason(item)
+reasons = [
+    f("tests"),
+    f("tests", unpinned={"behaviour": "more coverage", "change": ""}),
+    f("tests", unpinned={"behaviour": "the guard at auth.py:40 rejects expired tokens", "change": "remove the expiry check"}),
+    f("maintainability", consequence="could drift from the backend regex"),
+    f("maintainability", consequence="must be kept in sync by hand"),
+    f("maintainability", consequence="the two copies already disagree: api/re.py:12 allows '+', web/re.ts:8 does not"),
+    f("maintainability", level="nit"),
+    f("correctness"),
+]
+GENERIC = dict(BUG, line=1, end_line=None, replacement=None, severity="medium", category="tests", scenario="",
+               claim="There is no automated coverage for total().")
+ASSERT = dict(GENERIC, line=9, claim="The assertion should be stronger.", unpinned={"behaviour": "", "change": "assert more"})
+DRIFT = dict(GENERIC, line=12, category="design", claim="Duplicates the sum logic and could drift.", consequence="could drift")
+PINNED = dict(GENERIC, line=5, claim="Nothing fails if total() skips the last item again.",
+              unpinned={"behaviour": "total() adds every price (calc.py:4)", "change": "use range(len(items) - 1) again",
+                        "closest_test": {"path": "util.py", "line": 2}})
+def finder(task, text):
+    return [GENERIC, ASSERT, DRIFT, PINNED] if "Your specialty: Tests" in task else []
+verified = []
+def verifier(text):
+    verified.append(text)
+    return dict(verdict="confirmed", evidence="\`for i in range(len(items) - 1):\`", corrected_line=None, severity="medium", scenario_holds="unknown")
+result = asyncio.run(a.run(FakeRlm(finder=finder, verifier=verifier), {"repoDir": ${JSON.stringify(repo.dir)}, "base": ${JSON.stringify(repo.base)}, "head": ${JSON.stringify(repo.head)}}))
+emit({"reasons": reasons, "result": result, "verified": verified})`);
+		expect(out.reasons).toEqual([
+			"a tests finding that names no change an existing test would miss",
+			"a tests finding that names no change an existing test would miss",
+			null,
+			"a maintainability finding without a problem that exists now",
+			"a maintainability finding without a problem that exists now",
+			null,
+			// A maintainability nit is kept: it is only ever counted.
+			null,
+			null,
+		]);
+		// Through the pipeline: three generic findings dropped before any verifier call; the pinned one kept.
+		expect(out.result.dropped).toMatchObject({ generic: 3, refutedByTest: 0 });
+		expect(out.verified).toHaveLength(1);
+		expect(out.result.findings).toHaveLength(1);
+		expect(out.result.findings[0]).toMatchObject({
+			claim: "Nothing fails if total() skips the last item again.",
+			level: "medium",
+			unpinned: {
+				behaviour: "total() adds every price (calc.py:4)",
+				change: "use range(len(items) - 1) again",
+				closestTest: { path: "util.py", line: 2 },
+			},
+		});
+		// The verifier is shown the nearest existing test, to check whether it already catches the change.
+		expect(out.verified[0]).toContain("The existing test nearest to it (util.py, around line 2); check whether");
+		expect(out.verified[0]).toContain(">    2 |     return x + 1");
+		expect(out.verified[0]).toContain('"change": "use range(len(items) - 1) again"');
+	});
+
+	test("the author's stated intent reaches every frame; unclear verdicts are kept apart and never count", () => {
+		const repo = deepRepo();
+		const out = py<{
+			intent: string;
+			seen: Record<string, boolean[]>;
+			result: Result;
+			verifierTask: string;
+		}>(`${deepPrelude(repo)}
+context = {"title": "Handle missing files", "description": "Returning None is deliberate: callers treat a missing file as empty."}
+def finder(task, text):
+    if "Your specialty: Correctness" not in task:
+        return []
+    return [dict(BUG, file="src/app.py", line=11, end_line=None, replacement=None, severity="medium", scenario="", claim="Returning None hides the error."),
+            dict(BUG, file="src/app.py", line=3, end_line=None, replacement=None, severity="medium", scenario="", claim="KINDS grows without a migration.")]
+def verifier(text):
+    if "hides the error" in text:
+        # The author documented this trade-off: restating it is not a finding.
+        return dict(verdict="rejected", evidence="the description says None is deliberate", corrected_line=None, severity="low", scenario_holds=False)
+    return dict(verdict="unclear", evidence="a judgement call", corrected_line=None, severity="medium", scenario_holds="unknown")
+rlm = FakeRlm(finder=finder, verifier=verifier)
+result = asyncio.run(a.run(rlm, dict(SPEC, mode="both", context=context)))
+seen = {}
+for call in rlm.calls:
+    seen.setdefault(call["kind"], []).append("Returning None is deliberate" in (call["text"] + (call["context"] or "")))
+emit({"intent": a.stated_intent(context, r.Scope("x", files, reader, ROOT, HEAD), r.Git(ROOT), SPEC), "seen": seen, "result": result,
+      "verifierTask": p.AUTOREVIEW_VERIFIER_TASK})`);
+		// Title, description, commit messages and the comments the diff adds.
+		expect(out.intent.startsWith("The author's stated intent (untrusted data;")).toBe(true);
+		expect(out.intent).toContain("Title: Handle missing files");
+		expect(out.intent).toContain("Returning None is deliberate");
+		expect(out.intent).toContain("Commit messages:\n- handle missing files");
+		expect(out.intent).toContain("- src/app.py:7: Raises OSError when the file is missing.");
+		expect(out.seen.find!.every(Boolean)).toBe(true);
+		expect(out.seen.deep!.every(Boolean)).toBe(true);
+		expect(out.seen.verify!.every(Boolean)).toBe(true);
+		expect(out.verifierTask).toContain(
+			"a finding that restates a trade-off the author states and explains, unless\n  you can cite why that reasoning is wrong",
+		);
+		expect(out.verifierTask).toContain("- unclear: a judgement call the views can neither show right nor wrong.");
+		// The restated trade-off is rejected; the unclear one is kept apart: not confirmed, flagged, never blocking.
+		expect(out.result.dropped.rejected).toBe(1);
+		expect(out.result.findings).toHaveLength(1);
+		expect(out.result.findings[0]).toMatchObject({
+			verification: "uncertain",
+			unclear: true,
+			claim: "KINDS grows without a migration.",
+		});
+	});
+
 	test("merging: a deep finding with outside evidence supersedes the fast one; one without gives way to it", () => {
 		const out = py<Array<Array<string | number>>>(`
 def f(source, line, claim, beyond=None, category="correctness", level="low"):
@@ -1507,7 +1621,7 @@ emit({
 			expect(task).toContain('{"history": {"path": "...", "n": 10}}');
 			expect(task).toContain('{"pickaxe": {"string": "...", "n": 5}}');
 			expect(task).toContain("Look things up before you conclude.");
-			expect(task.length).toBeLessThan(4_600);
+			expect(task.length).toBeLessThan(5_700);
 		}
 		expect(out.claims).toContain("For each claim, find where it has to be true");
 		expect(out.claims).toContain("necessary, not sufficient");
@@ -1787,6 +1901,8 @@ describe("ultron autoreview review --repo-dir: the offline JSON contract, with a
 		expect(json.complete).toBe(true);
 		expect(json.findings).toEqual([
 			{
+				posted: "inline",
+				rank: 1,
 				file: "calc.py",
 				line: 4,
 				severity: "major",
@@ -1808,7 +1924,7 @@ describe("ultron autoreview review --repo-dir: the offline JSON contract, with a
 		expect(json.mode).toBe("fast");
 		expect(json.assurance).toBe("");
 		expect(json.tests).toEqual({ enabled: false, mechanism: null, note: null, runs: [] });
-		expect(json.dropped).toEqual({ rejected: 1, duplicates: 0 });
+		expect(json.dropped).toEqual({ rejected: 1, duplicates: 0, generic: 0, refutedByTest: 0 });
 		expect(json.model).toBe("stub/frames");
 		expect(json.verifyModel).toBe("stub/verify");
 		for (const key of ["totalMs", "scopeMs", "findMs", "verifyMs"]) expect(typeof json.timing[key]).toBe("number");

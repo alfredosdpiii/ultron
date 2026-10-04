@@ -941,10 +941,11 @@ def investigator(lens, text, round):
         return {"findings": [], "done": False, "requests": [
             {"mutation_check": {"path": "src/app.py", "line": 5, "replacement": "    return kind.upper()  # same", "tests": ["tests/test_app.py"]}},
             {"run_tests": {"paths": ["../../etc"]}}]}
-    return {"findings": [{"file": "src/app.py", "line": 5, "severity": "minor", "category": "tests",
+    PIN = {"behaviour": "show() upper-cases the kind (src/app.py:5)", "change": "return the kind unchanged"}
+    return {"findings": [{"unpinned": PIN, "file": "src/app.py", "line": 5, "severity": "minor", "category": "tests",
                           "claim": "show() is only checked for truthiness.", "why": "A run shows it.", "scenario": "",
                           "evidence": [], "test_run": 3},
-                         {"file": "src/app.py", "line": 4, "severity": "minor", "category": "tests",
+                         {"unpinned": PIN, "file": "src/app.py", "line": 4, "severity": "minor", "category": "tests",
                           "claim": "Cites a run that never happened.", "why": "x", "scenario": "", "evidence": [], "test_run": 42}],
             "requests": [], "done": True}
 rlm = Rlm(investigator)
@@ -1002,6 +1003,86 @@ emit({"result": result, "brief": tests_calls[0]["text"], "task": tests_calls[0][
 		expect(out.executions).toBe(3);
 		// Every export is gone.
 		expect(out.leftovers).toEqual([false, false]);
+	});
+
+	test("a tests finding is settled by running its mutation: proven when the suite still passes, refuted when a test fails", () => {
+		const repo = fixture();
+		const out = py<{
+			result: {
+				findings: Array<Record<string, unknown>>;
+				dropped: Record<string, number>;
+				tests: { runs: Array<Record<string, unknown>> };
+			};
+			verifierSaw: string[];
+			noRun: { findings: Array<Record<string, unknown>>; dropped: Record<string, number> };
+			exportClean: boolean;
+		}>(`${pipeline(repo)}
+deep.testing.detect_sandbox = lambda **options: sandbox
+deep.testing.export_commit = export
+# The scripted suite at head: test_show passes while show() upper-cases; test_kinds is made to pass too.
+def suite(argv, cwd, env, timeout):
+    source = open(os.path.join(cwd, "src/app.py")).read()
+    executed.append(source)
+    show = "PASSED tests/test_app.py::test_show" if "upper()" in source else "FAILED tests/test_app.py::test_show - AssertionError"
+    return (1 if "FAILED" in show else 0), "PASSED tests/test_app.py::test_kinds" + chr(10) + show + chr(10)
+deep.testing.run_process = suite
+def tests_finding(line, claim, replacement):
+    return {"file": "src/app.py", "line": line, "severity": "medium", "category": "tests", "claim": claim, "why": "w",
+            "scenario": "", "evidence": [{"path": "src/app.py", "line": line, "quote": open(os.path.join(ROOT, "src/app.py")).read().splitlines()[line - 1]}],
+            "unpinned": {"behaviour": f"src/app.py:{line}", "change": f"replace the line with {replacement}",
+                         "closest_test": {"path": "tests/test_app.py", "line": 8},
+                         "mutation": {"path": "src/app.py", "line": line, "replacement": replacement}}}
+SURVIVES = tests_finding(1, "Nothing fails when the new kind c is dropped again.", 'KINDS = ["a", "b"]')
+CAUGHT = tests_finding(5, "Nothing fails when show() stops upper-casing.", "    return kind")
+UNRUNNABLE = dict(tests_finding(4, "The signature of show() is not pinned.", "def show(kind, extra=None):"))
+UNRUNNABLE["unpinned"] = dict(UNRUNNABLE["unpinned"], mutation=None)
+def investigator(lens, text, round):
+    return {"findings": [SURVIVES, CAUGHT, UNRUNNABLE], "requests": [], "done": True} if lens == "tests" else quiet(lens, text, round)
+class Verifying(Rlm):
+    async def map(self, tasks, items=None, **options):
+        out = await Rlm.map(self, tasks, items, **options)
+        if tasks[0] == p.AUTOREVIEW_VERIFIER_TASK:
+            # The verifier confirms each at medium, quoting the cited line.
+            text = chr(10).join(items[0])
+            quote = "def show(kind):" if "signature" in text else 'KINDS = ["a", "b", "c"]'
+            out[0] = {"verdict": "confirmed", "evidence": "\`" + quote + "\`", "corrected_line": None, "severity": "medium", "scenario_holds": "unknown"}
+        return out
+rlm = Verifying(investigator)
+result = asyncio.run(a.run(rlm, dict(SPEC, runTests=True, testRuns=6)))
+leftover = [path for path in exports if os.path.exists(path)]
+# Without test execution the same findings stand on reasoning alone: none is proven, none is refuted.
+plain = asyncio.run(a.run(Verifying(investigator), dict(SPEC, runTests=False)))
+emit({"result": result, "verifierSaw": [c["text"] for c in rlm.calls if c["lens"] == "verify"],
+      "noRun": {"findings": plain["findings"], "dropped": plain["dropped"]}, "exportClean": not leftover})`);
+		const byClaim = Object.fromEntries(out.result.findings.map((finding) => [String(finding.claim), finding]));
+		// The mutant that drops "c" survives the suite: proven by a run, which is its evidence.
+		const proven = byClaim["Nothing fails when the new kind c is dropped again."]!;
+		expect(proven).toMatchObject({ level: "medium", strength: "test", verification: "confirmed" });
+		expect((proven.unpinned as { proof: string }).proof).toBe("proven");
+		expect(String(proven.howVerified)).toMatch(/^test run \d by the host in a sandbox; /);
+		// The mutant that breaks show() is caught by test_show: the finding is refuted and gone.
+		expect(byClaim["Nothing fails when show() stops upper-casing."]).toBeUndefined();
+		expect(out.result.dropped.refutedByTest).toBe(1);
+		// No one-line mutation: it stands on the verifier's reading, with no run behind it.
+		expect(byClaim["The signature of show() is not pinned."]).toMatchObject({ level: "medium", strength: "diff" });
+		expect(out.result.tests.runs.map((run) => [run.kind, run.status])).toEqual([
+			["automatic", "passed"],
+			["mutation", "passed"],
+			["mutation", "failed"],
+		]);
+		// The verifier sees the run that proves the finding.
+		const seen = out.verifierSaw.find((text) => text.includes("dropped again"))!;
+		expect(seen).toContain("A test execution the investigator cites, as the host ran it in a sandbox:");
+		expect(seen).toContain("the tests still pass (nothing pins this line)");
+		expect(out.exportClean).toBe(true);
+		// Tests cannot run: all three are kept as reasoned findings; nothing is claimed proven or refuted.
+		expect(out.noRun.findings).toHaveLength(3);
+		expect(out.noRun.dropped.refutedByTest).toBe(0);
+		expect(
+			out.noRun.findings.every(
+				(finding) => finding.strength !== "test" && !(finding.unpinned as { proof?: string }).proof,
+			),
+		).toBe(true);
 	});
 
 	test("no sandbox: tests are never run, and the review says so; missing dependencies are a stated limit, not a failure", () => {

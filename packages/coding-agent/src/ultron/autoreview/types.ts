@@ -121,6 +121,18 @@ export interface EngineFinding {
 	readonly finderSeverity?: Severity;
 	/** How strong the evidence is: a test the host ran, source quoted from outside the diff, or the diff alone. */
 	readonly strength?: "test" | "outside" | "diff";
+	/** A tests finding: the behaviour, the change no test would notice, the nearest test, and how a run settled it. */
+	readonly unpinned?: {
+		readonly behaviour: string;
+		readonly change: string;
+		readonly closestTest?: { readonly path: string; readonly line: number } | null;
+		readonly mutation?: { readonly path: string; readonly line: number; readonly replacement: string };
+		readonly proof?: "proven";
+	};
+	/** A maintainability finding: the problem that exists now. */
+	readonly consequence?: string;
+	/** The verifier called it a judgement call: never posted, never blocking. */
+	readonly unclear?: boolean;
 	/** Other places with the same root cause, folded into this finding. */
 	readonly alsoAt?: ReadonlyArray<{ readonly file: string; readonly line: number }>;
 	/** The concrete failure the finder stated: input or state, what happens, what should. Empty when none. */
@@ -217,7 +229,14 @@ export interface EngineResult {
 	readonly findings: readonly EngineFinding[];
 	readonly alsoRaised: readonly AlsoRaised[];
 	readonly earlier: readonly EarlierStatus[];
-	readonly dropped: { readonly rejected: number; readonly duplicates: number };
+	readonly dropped: {
+		readonly rejected: number;
+		readonly duplicates: number;
+		/** Generic findings dropped by rule: tests findings naming no unpinned change, maintainability without a present problem. */
+		readonly generic?: number;
+		/** Tests findings whose named change an existing test did catch when the host ran it. */
+		readonly refutedByTest?: number;
+	};
 	readonly timing: {
 		readonly totalMs: number;
 		readonly scopeMs: number;

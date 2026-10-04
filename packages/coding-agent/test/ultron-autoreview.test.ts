@@ -20,7 +20,7 @@ import { SettingsManager } from "../src/core/settings-manager.ts";
 import { logoText } from "../src/experimental/ultron-logo.ts";
 import { listAccounts, parseAuthStatus, TokenStore } from "../src/ultron/autoreview/accounts.ts";
 import { CheckoutManager } from "../src/ultron/autoreview/checkout.ts";
-import { parseAutoreviewArgs, runAutoreviewCommand } from "../src/ultron/autoreview/cli.ts";
+import { offlineJson, parseAutoreviewArgs, runAutoreviewCommand } from "../src/ultron/autoreview/cli.ts";
 import {
 	autoreviewPaths,
 	DEFAULT_ACK_LINES,
@@ -815,6 +815,73 @@ describe("running the reviewed project's tests", () => {
 		const none = await run({ mechanism: null, ok: false, message: "tests are not run: no sandbox is available" });
 		expect(none.code).toBe(1);
 		expect(none.text).toBe("Sandbox: none. tests are not run: no sandbox is available\n");
+	});
+});
+
+describe("the offline JSON says what the poster would do with each finding", () => {
+	test("posted and rank follow the same ranking and cap as the plan; unclear findings are only counted", () => {
+		const at = (line: number, level: EngineFinding["level"], extra: Partial<EngineFinding> = {}): EngineFinding => ({
+			...MAJOR,
+			line,
+			level,
+			replacement: undefined,
+			claim: `finding at ${line}`,
+			...extra,
+		});
+		const result = engineResult({
+			findings: [
+				at(1, "low"),
+				at(2, "high"),
+				at(60, "medium", { strength: "outside" }),
+				at(3, "medium"),
+				at(4, "nit"),
+				at(5, "medium", { verification: "uncertain", unclear: true }),
+				at(6, "low", {
+					strength: "test",
+					unpinned: { behaviour: "b", change: "c", closestTest: null, proof: "proven" },
+				}),
+			],
+			dropped: { rejected: 2, duplicates: 1, generic: 4, refutedByTest: 1 },
+		});
+		const json = offlineJson(result, 10, "medium", 2) as {
+			verdict: string;
+			findings: Array<{ line: number; posted: string; rank: number | null; unclear?: boolean; unpinned?: unknown }>;
+			dropped: Record<string, number>;
+		};
+		const plan = planReview(result, {
+			selfAuthored: false,
+			state: "open",
+			headSha: HEAD,
+			signature: false,
+			blockAt: "medium",
+			maxComments: 2,
+		});
+		expect(json.findings.map((finding) => [finding.line, finding.posted, finding.rank])).toEqual([
+			[1, "counted", 5],
+			[2, "inline", 1],
+			// Proven beyond the diff but on a line outside it: named in the body.
+			[60, "body", 2],
+			// Blocking but past the cap of two inline comments: named in the body.
+			[3, "body", 4],
+			[4, "counted", 6],
+			// Unclear: never posted, no rank, and it does not block.
+			[5, "counted", null],
+			[6, "inline", 3],
+		]);
+		// The same answer as the plan.
+		expect(
+			json.findings
+				.filter((finding) => finding.posted === "inline")
+				.map((finding) => finding.line)
+				.sort(),
+		).toEqual(plan.comments.map((comment) => comment.line).sort());
+		expect(json.findings[5]!.unclear).toBe(true);
+		expect(json.findings[6]!.unpinned).toMatchObject({ proof: "proven" });
+		expect(json.verdict).toBe("request_changes");
+		expect(json.dropped).toEqual({ rejected: 2, duplicates: 1, generic: 4, refutedByTest: 1 });
+		expect(plan.body).toContain("1 unconfirmed");
+		// With the threshold at critical nothing blocks, and the unclear finding still does not count.
+		expect((offlineJson(result, 10, "critical", 3) as { verdict: string }).verdict).toBe("approve");
 	});
 });
 
@@ -1872,6 +1939,26 @@ describe("the command", () => {
 			parseAutoreviewArgs(["review", "--mode", "deep", "--deep-model", "p/d", "--deep-thinking", "high"]),
 		).toMatchObject({ mode: "deep", deepModel: "p/d", deepThinking: "high" });
 		expect(() => parseAutoreviewArgs(["review", "--mode", "thorough"])).toThrow("--mode takes fast, deep or both");
+		expect(
+			parseAutoreviewArgs([
+				"review",
+				"--guides",
+				"/g/a.md, /g/dir",
+				"--checkout-roots",
+				"/code,/work",
+				"--block-at",
+				"high",
+				"--max-comments",
+				"3",
+			]),
+		).toMatchObject({
+			guides: ["/g/a.md", "/g/dir"],
+			checkoutRoots: ["/code", "/work"],
+			blockAt: "high",
+			maxComments: 3,
+		});
+		expect(() => parseAutoreviewArgs(["review", "--block-at", "severe"])).toThrow("--block-at takes one of critical");
+		expect(() => parseAutoreviewArgs(["review", "--max-comments", "many"])).toThrow("whole number");
 		expect(parseAutoreviewArgs([]).help).toBe(true);
 	});
 

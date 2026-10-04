@@ -29,13 +29,13 @@ import { createLogger, Daemon } from "./daemon.ts";
 import { RuntimeReviewEngine } from "./engine.ts";
 import { parsePullTarget, pullKey } from "./github.ts";
 import { expandPath, findCheckout } from "./local.ts";
-import { decideVerdict, planReview } from "./plan.ts";
+import { decideVerdict, planReview, rankFindings } from "./plan.ts";
 import { type Outcome, reviewPull } from "./reviewer.ts";
 import { type Runner, runProcess } from "./runner.ts";
 import { installService, serviceFile, uninstallService } from "./service.ts";
 import { acquireDaemonLock, DaemonRunningError, StateStore } from "./state.ts";
 import type { EngineResult, Level, ReviewEngine } from "./types.ts";
-import { levelOf, severityOf } from "./types.ts";
+import { LEVELS, levelOf, severityOf } from "./types.ts";
 
 export interface AutoreviewIo {
 	stdout(text: string): void;
@@ -94,6 +94,11 @@ Options:
   --run-tests | --no-run-tests review --repo-dir: let the deep pass run the project's tests in a sandbox (default:
                                autoreview.runTests, on); never without a sandbox
   --test-env <dir>             review --repo-dir: a pre-built environment (virtualenv, node_modules) to bind read-only
+  --checkout-roots <dir,...>   review: directories of local checkouts whose environments may serve the tests
+                               (with --repo owner/name, whose remote the checkout must have)
+  --guides <path,...>          review: private review guides (markdown files or directories)
+  --block-at <level>           review: request changes from this level up (critical, high, medium, low, nit)
+  --max-comments <n>           review: inline comments at most
   --deadline <seconds>         review: give up unfinished passes after this long and report the rest (default:
                                autoreview.deadlineSeconds, none)
 
@@ -119,6 +124,10 @@ interface Parsed {
 	runTests?: boolean;
 	testEnv?: string;
 	repo?: string;
+	guides?: string[];
+	checkoutRoots?: string[];
+	blockAt?: Level;
+	maxComments?: number;
 	repoDir?: string;
 	base?: string;
 	head?: string;
@@ -153,6 +162,11 @@ export function parseAutoreviewArgs(args: readonly string[]): Parsed {
 			if (!MODEL_REF.test(ref)) throw new UsageError(`${arg} takes provider/model, not ${ref}`);
 			return ref;
 		};
+		const list = (): string[] =>
+			value()
+				.split(",")
+				.map((item) => item.trim())
+				.filter(Boolean);
 		const thinking = (): FrameThinkingLevel => {
 			const name = value();
 			const level = FRAME_THINKING_LEVELS.find((item) => item === name);
@@ -175,7 +189,18 @@ export function parseAutoreviewArgs(args: readonly string[]): Parsed {
 		else if (arg === "--no-run-tests") parsed.runTests = false;
 		else if (arg === "--test-env") parsed.testEnv = value();
 		else if (arg === "--repo") parsed.repo = value();
-		else if (arg === "--mode") {
+		else if (arg === "--guides") parsed.guides = list();
+		else if (arg === "--checkout-roots") parsed.checkoutRoots = list();
+		else if (arg === "--block-at") {
+			const name = value();
+			const level = LEVELS.find((item) => item === name);
+			if (level === undefined) throw new UsageError(`--block-at takes one of ${LEVELS.join(", ")}, not ${name}`);
+			parsed.blockAt = level;
+		} else if (arg === "--max-comments") {
+			const count = Number(value());
+			if (!Number.isInteger(count) || count < 0) throw new UsageError("--max-comments takes a whole number");
+			parsed.maxComments = count;
+		} else if (arg === "--mode") {
 			const name = value();
 			const mode = REVIEW_MODES.find((item) => item === name);
 			if (mode === undefined) throw new UsageError(`--mode takes fast, deep or both, not ${name}`);
@@ -200,16 +225,30 @@ export function offlineJson(
 	result: EngineResult,
 	startupMs: number | undefined,
 	blockAt?: Level,
+	maxComments?: number,
 ): Record<string, unknown> {
-	const { verdict } = decideVerdict(result, {
+	const options = {
 		selfAuthored: false,
-		state: "open",
+		state: "open" as const,
 		...(blockAt === undefined ? {} : { blockAt }),
-	});
+		...(maxComments === undefined ? {} : { maxComments }),
+	};
+	const { verdict } = decideVerdict(result, options);
+	// What the poster would do with each finding: the same ranking and cap, computed here too.
+	const plan = planReview(result, { ...options, headSha: "0".repeat(40), signature: false });
+	const inline = new Set(plan.comments.map((comment) => comment.finding));
+	const inBody = new Set(plan.inSummary);
+	const ranks = new Map(rankFindings(result).map((index, position) => [index, position + 1]));
 	return {
 		verdict,
 		complete: result.complete,
-		findings: result.findings.map((finding) => ({
+		findings: result.findings.map((finding, index) => ({
+			// Where the finding would go: an inline comment, named in the body, or only counted.
+			posted: inline.has(index) ? "inline" : inBody.has(index) ? "body" : "counted",
+			rank: ranks.get(index) ?? null,
+			...(finding.unpinned === undefined ? {} : { unpinned: finding.unpinned }),
+			...(finding.consequence === undefined ? {} : { consequence: finding.consequence }),
+			...(finding.unclear === true ? { unclear: true } : {}),
 			file: finding.file,
 			line: finding.line,
 			...(finding.endLine === undefined ? {} : { endLine: finding.endLine }),
@@ -230,7 +269,12 @@ export function offlineJson(
 			evidence: finding.evidence ?? "",
 			howVerified: finding.howVerified ?? "",
 		})),
-		dropped: { rejected: result.dropped.rejected, duplicates: result.dropped.duplicates },
+		dropped: {
+			rejected: result.dropped.rejected,
+			duplicates: result.dropped.duplicates,
+			generic: result.dropped.generic ?? 0,
+			refutedByTest: result.dropped.refutedByTest ?? 0,
+		},
 		timing: {
 			totalMs: result.timing.totalMs,
 			scopeMs: result.timing.scopeMs,
@@ -306,6 +350,10 @@ export async function runAutoreviewCommand(
 			...(parsed.thinking === undefined ? {} : { thinking: parsed.thinking }),
 			...(parsed.verifyThinking === undefined ? {} : { verifyThinking: parsed.verifyThinking }),
 			...(parsed.mode === undefined ? {} : { mode: parsed.mode }),
+			...(parsed.guides === undefined ? {} : { guides: parsed.guides }),
+			...(parsed.checkoutRoots === undefined ? {} : { checkoutRoots: parsed.checkoutRoots }),
+			...(parsed.blockAt === undefined ? {} : { blockAt: parsed.blockAt }),
+			...(parsed.maxComments === undefined ? {} : { maxComments: parsed.maxComments }),
 			...(parsed.deepModel === undefined ? {} : { deepModel: parsed.deepModel }),
 			...(parsed.deepThinking === undefined ? {} : { deepThinking: parsed.deepThinking }),
 			...(parsed.deadlineSeconds === undefined ? {} : { deadlineSeconds: parsed.deadlineSeconds }),
@@ -485,6 +533,11 @@ export async function runAutoreviewCommand(
 			if (offline) {
 				if (parsed.target !== undefined) throw new UsageError("give a pull request or --repo-dir, not both");
 				if (!parsed.base || !parsed.head) throw new UsageError("--repo-dir needs --base and --head");
+				const named = parsed.repo === undefined ? undefined : parsePullTarget(`${parsed.repo}#1`);
+				const lent =
+					named !== undefined && config.checkoutRoots.length > 0
+						? await findCheckout(runner, config.checkoutRoots, named)
+						: undefined;
 				await engine.start?.();
 				const result = await engine.review({
 					repoDir: resolve(cwd, parsed.repoDir!),
@@ -494,13 +547,17 @@ export async function runAutoreviewCommand(
 					// A local repository is the user's own: its tests may run (sandboxed) unless turned off.
 					runTests: config.mode !== "fast" && (parsed.runTests ?? config.runTests),
 					...(parsed.testEnv === undefined
-						? // The repository given is itself a local checkout: its own prepared environments serve the tests.
-							{ testCheckout: resolve(cwd, parsed.repoDir!) }
+						? // A checkout of the named repository under --checkout-roots, else the repository given: it is
+							// itself a local checkout, and its own prepared environments serve the tests.
+							{ testCheckout: lent ?? resolve(cwd, parsed.repoDir!) }
 						: { testEnv: resolve(cwd, parsed.testEnv) }),
 					...(config.guides.length === 0 ? {} : { guides: config.guides.map((path) => expandPath(path)) }),
 					...(parsed.repo === undefined ? {} : { repo: parsed.repo }),
 				});
-				if (parsed.json) io.stdout(`${JSON.stringify(offlineJson(result, engine.startMs, config.blockAt))}\n`);
+				if (parsed.json)
+					io.stdout(
+						`${JSON.stringify(offlineJson(result, engine.startMs, config.blockAt, config.maxComments))}\n`,
+					);
 				else
 					io.stdout(
 						`${planReview(result, { selfAuthored: false, state: "open", headSha: parsed.head, signature: config.signature, blockAt: config.blockAt, maxComments: config.maxComments }).body}\n`,
