@@ -250,8 +250,9 @@ finder frame and one verifier frame, 2,319 tokens in all, on glm-5.3-flash.*
 `ultron autoreview run` reviews a pull request as soon as one of your logged-in `gh` accounts is requested as
 reviewer or @mentioned on it, and posts the review under that account: an acknowledgement comment when it starts,
 then one review with inline comments on the diff and a verdict (approve, request changes, or a plain comment when
-coverage was incomplete). It runs the same finder-then-verifier pipeline directly, with no root model turn; a push
-is re-reviewed incrementally, earlier findings are re-checked, and threads whose finding is fixed are resolved.
+coverage was incomplete). It runs the same finder-then-verifier pipeline directly, with no root model turn. When
+it is asked again after a push (or had requested changes), it reviews only what is new, re-checks its earlier
+findings, and resolves the threads whose finding is fixed.
 `--dry-run` writes the would-be review instead of posting, and `ultron autoreview install` writes a user service.
 Pull request content is sent to the configured model provider. Details:
 [`packages/coding-agent/docs/autoreview.md`](packages/coding-agent/docs/autoreview.md).

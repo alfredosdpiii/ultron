@@ -91,6 +91,19 @@ export function halveLogo(art: string): string[] {
 	return out;
 }
 
+/**
+ * The half-size logo as plain text, for use outside the terminal (a comment, a document): the background is
+ * blank, lines carry no trailing spaces, and empty rows above and below and the common left margin are removed.
+ */
+export function logoText(): string {
+	const rows = halveLogo(ULTRON_LOGO).map((row) => row.replaceAll(LOGO_BACKGROUND, " ").trimEnd());
+	while (rows.length > 0 && rows[0] === "") rows.shift();
+	while (rows.length > 0 && rows.at(-1) === "") rows.pop();
+	const inked = rows.filter((row) => row !== "");
+	const indent = inked.length === 0 ? 0 : Math.min(...inked.map((row) => row.length - row.trimStart().length));
+	return rows.map((row) => row.slice(indent)).join("\n");
+}
+
 const FULL = ULTRON_LOGO.split("\n");
 const HALF = halveLogo(ULTRON_LOGO);
 /** Terminal rows the rest of the UI needs below the splash (header, editor, footer). */

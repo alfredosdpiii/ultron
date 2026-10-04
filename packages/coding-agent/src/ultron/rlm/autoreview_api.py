@@ -16,7 +16,12 @@ posting) happens in the host. The pipeline is `/review`'s (review_api.py), with 
 3. Re-check. On a re-review, each finding this account posted earlier is checked against the new source:
    fixed, still present, or no longer applicable.
 4. Find, dedupe, verify: as in `/review`, with a finder contract that adds a line range and an exact
-   replacement. A finding other people already raised (same file, nearby line, similar claim) is not verified or
+   replacement. Small files are packed into one slice, so a small pull request costs one finder frame per
+   reviewer instead of one per reviewer and file. Every frame is a request of its own, scheduled here: at most
+   `concurrency` at once, each with a per-frame timeout and a token grant out of the review's one cap (what was
+   really spent plus the grants of the frames in flight never exceeds it), and a rate limit, timeout or other
+   transient provider error is retried twice with backoff. At the review's deadline unfinished finder passes are
+   given up, what was found is verified, and the result is marked incomplete. A finding other people already raised (same file, nearby line, similar claim) is not verified or
    posted again; it is returned under `alsoRaised`.
 5. Result. Confirmed and uncertain findings, what was dropped, timing, usage, what was not checked, whether
    coverage was complete, and the new-file line ranges of the diff (the host validates inline comments on them).
@@ -25,8 +30,11 @@ Frames have no tools. Everything a frame sees is data, never instructions.
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import os
+import random
+import re
 import tempfile
 import time
 from pathlib import Path
@@ -35,12 +43,13 @@ from typing import Any, Callable
 from infer_api import Budget, FrameError, Incomplete
 from review_api import (
     DEFAULT_BUDGET_TOKENS,
+    CHUNK_CHARS,
     FIND_SHARE,
     FINDINGS_CONTRACT,
-    FRAME_TIMEOUT_MS,
     MAX_FINDINGS_PER_FRAME,
     MIN_BUDGET_TOKENS,
     VERDICT_CONTRACT,
+    Chunk,
     FileDiff,
     Git,
     ReviewError,
@@ -69,7 +78,24 @@ from review_api import (
 )
 from review_prompts import ALIASES, RECHECK_TASK, REVIEWERS, VERIFIER_TASK, autoreview_finder_task
 
-MAP_CONCURRENCY = 16
+DEFAULT_CONCURRENCY = 8
+MAX_CONCURRENCY = 16
+DEFAULT_DEADLINE_S = 150
+DEFAULT_FRAME_TIMEOUT_S = 75
+#: The finder phase ends at this share of the deadline; the rest is for verifying what was found.
+FIND_DEADLINE_SHARE = 0.75
+#: A frame is not started with less than this left before its phase's cutoff.
+MIN_START_S = 3.0
+#: Tokens a frame may spend beyond its input estimate (the host caps one reply at a quarter of the grant).
+FRAME_GRANT = 32_000
+#: A frame is refused when the cap leaves it less than this for its reply.
+MIN_FRAME_OUTPUT = 2_000
+MAX_RETRIES = 2
+DEFAULT_RETRY_BASE_S = 2.0
+MAX_RETRY_WAIT_S = 30.0
+DEADLINE_ERROR = "not finished before the review deadline"
+THINKING_LEVELS = ("off", "minimal", "low", "medium", "high", "xhigh", "max")
+DEFAULT_THINKING = "low"
 TITLE_CHARS = 300
 DESCRIPTION_CHARS = 2_000
 CI_CHARS = 800
@@ -283,6 +309,205 @@ class _Usage:
         self.cost += float(usage.get("cost") or 0)
 
 
+# --- Frames ----------------------------------------------------------------------------------------------------
+
+_TRANSIENT = re.compile(
+    r"\b(408|409|425|429|500|502|503|504|529)\b|rate.?lim|too many requests|overload|temporar|unavailable"
+    r"|timed? ?out|timeout|econnreset|etimedout|epipe|socket hang up|fetch failed|network|connection (reset|closed)",
+    re.I,
+)
+_RETRY_AFTER = re.compile(r"retry[-_ ]?after\D{0,12}(\d+(?:\.\d+)?)|try again in (\d+(?:\.\d+)?) ?s", re.I)
+
+
+def is_transient(result: Any) -> bool:
+    """A frame failure worth another try: a rate limit, a timeout, an overloaded or unreachable provider."""
+    return isinstance(result, FrameError) and result.error != DEADLINE_ERROR and bool(_TRANSIENT.search(result.error))
+
+
+def retry_after(error: str) -> float | None:
+    """Seconds the provider asked to wait, when its error says so."""
+    match = _RETRY_AFTER.search(error)
+    return float(match.group(1) or match.group(2)) if match else None
+
+
+def _item_chars(item: Any) -> int:
+    return len(item) if isinstance(item, str) else sum(len(part) for part in item)
+
+
+class Frames:
+    """Runs the review's frames, one request each: bounded concurrency, a per-frame timeout, a token grant out
+    of the review's cap, retries for transient failures, and a record of how each frame went."""
+
+    def __init__(self, rlm: Any, *, cap: int, usage: _Usage, concurrency: int = DEFAULT_CONCURRENCY,
+                 frame_timeout_s: float = DEFAULT_FRAME_TIMEOUT_S, retry_base_s: float = DEFAULT_RETRY_BASE_S,
+                 clock: Callable[[], float] = time.monotonic, sleep: Callable[[float], Any] = asyncio.sleep,
+                 rng: Callable[[], float] = random.random) -> None:
+        self.rlm = rlm
+        self.cap = cap
+        self.usage = usage
+        self.concurrency = max(1, min(MAX_CONCURRENCY, concurrency))
+        self.frame_timeout_s = frame_timeout_s
+        self.retry_base_s = retry_base_s
+        self.clock = clock
+        self.sleep = sleep
+        self.rng = rng
+        #: Tokens granted to frames in flight.
+        self.held = 0
+        self.timings: list[dict[str, Any]] = []
+        self._slots: asyncio.Semaphore | None = None
+
+    async def run(self, phase: str, jobs: list[tuple[str, str, Any]], *, contract: Any, model: str | None,
+                  thinking: str | None, context: str | None = None, cutoff: float | None = None) -> list[Any]:
+        """Run `jobs` ((label, task, item) each) and return their results in order: a value, an `Incomplete`
+        (the cap is spent) or a `FrameError` (failed after retries, or unfinished at `cutoff`)."""
+        if self._slots is None:
+            self._slots = asyncio.Semaphore(self.concurrency)
+        return list(await asyncio.gather(*(
+            self._one(phase, label, task, item, contract=contract, model=model, thinking=thinking, context=context,
+                      cutoff=cutoff) for label, task, item in jobs)))
+
+    async def _one(self, phase: str, label: str, task: str, item: Any, *, contract: Any, model: str | None,
+                   thinking: str | None, context: str | None, cutoff: float | None) -> Any:
+        estimate = (len(task) + _item_chars(item) + len(context or "")) // 3
+        assert self._slots is not None
+        async with self._slots:
+            began = self.clock()
+            retries = 0
+            status = "ok"
+            while True:
+                left = None if cutoff is None else cutoff - self.clock()
+                if left is not None and left < MIN_START_S:
+                    result: Any = FrameError({"error": DEADLINE_ERROR})
+                    status = "deadline"
+                    break
+                # Refused only when what was really spent plus what the frames in flight may still spend
+                # leaves no room for this one's input and a reply.
+                grant = min(estimate + FRAME_GRANT, self.cap - self.usage.tokens - self.held)
+                if grant < estimate + MIN_FRAME_OUTPUT:
+                    result = Incomplete({"reason": "budget_exhausted", "detail": "the review's token cap is spent"})
+                    status = "budget"
+                    break
+                timeout_s = self.frame_timeout_s if left is None else min(self.frame_timeout_s, left)
+                at_cutoff = left is not None and left <= self.frame_timeout_s
+                self.held += grant
+                try:
+                    results = await self.rlm.map([task], [item], context=context, contract=contract,
+                                                 budget=Budget(tokens=grant), model=model, thinking=thinking,
+                                                 concurrency=1, timeout_ms=max(1_000, int(timeout_s * 1000)))
+                    self.usage.add(results)
+                    result = results[0] if len(results) else FrameError({"error": "the frame returned nothing"})
+                except Exception as error:  # a host or bridge failure is a failed frame, not a failed review
+                    result = FrameError({"error": f"{type(error).__name__}: {error}"})
+                finally:
+                    self.held -= grant
+                if isinstance(result, Incomplete):
+                    status = "incomplete"
+                    break
+                if not isinstance(result, FrameError):
+                    status = "ok"
+                    break
+                if result.error == "cancelled":
+                    # The host cancels a frame that outlives its timeout.
+                    if at_cutoff:
+                        result = FrameError({"error": DEADLINE_ERROR})
+                        status = "deadline"
+                        break
+                    result = FrameError({"error": f"timed out after {timeout_s:.0f} s"})
+                    status = "timeout"
+                else:
+                    status = "failed"
+                if not is_transient(result) or retries >= MAX_RETRIES:
+                    break
+                hint = retry_after(result.error)
+                delay = min(MAX_RETRY_WAIT_S, hint if hint is not None
+                            else self.retry_base_s * (2 ** retries) * (0.5 + self.rng()))
+                if cutoff is not None and self.clock() + delay + MIN_START_S >= cutoff:
+                    break
+                retries += 1
+                await self.sleep(delay)
+            self.timings.append({"phase": phase, "reviewer": label, "ms": int((self.clock() - began) * 1000),
+                                 "status": status, "retries": retries})
+            return result
+
+
+def describe_failure(result: Any) -> str | None:
+    """Why a frame produced nothing, for the list of what was not checked; None for a value."""
+    if isinstance(result, Incomplete):
+        return f"ran out ({result.status})"
+    if isinstance(result, FrameError):
+        if result.error == DEADLINE_ERROR:
+            return "were not finished at the review deadline"
+        return f"failed ({_text(result.error, 120)})"
+    return None
+
+
+# --- Slices ----------------------------------------------------------------------------------------------------
+
+_KIND_ORDER = {"code": 0, "test": 1, "doc": 2}
+_OTHER_FILES = "Other files changed in this review: "
+SLICE_SEPARATOR = "\n\n" + "=" * 40 + "\n\n"
+
+
+def pack_chunks(chunks: list[Chunk], changed: list[str], max_chars: int = CHUNK_CHARS
+                ) -> tuple[list[Chunk], dict[int, list[Chunk]]]:
+    """Pack file chunks into slices of up to `max_chars`: files of one kind (code, tests, docs) in path order,
+    a file's chunk never split further. Returns the slices (as chunks, for planning) and each slice's members."""
+    listing = ", ".join(changed[:30]) + (f" (+{len(changed) - 30} more)" if len(changed) > 30 else "")
+    header = f"Files changed in this pull request: {listing}" if len(changed) > 1 else ""
+    groups: list[list[Chunk]] = []
+    size = 0
+    for chunk in sorted(chunks, key=lambda item: (_KIND_ORDER[item.kind], item.path, item.part)):
+        body = len(chunk.text)
+        if groups and groups[-1][0].kind == chunk.kind and size + body <= max_chars:
+            groups[-1].append(chunk)
+            size += body
+        else:
+            groups.append([chunk])
+            size = body
+    slices: list[Chunk] = []
+    members: dict[int, list[Chunk]] = {}
+    for number, group in enumerate(groups, 1):
+        texts = ["\n".join(line for line in chunk.text.split("\n") if not line.startswith(_OTHER_FILES))
+                 for chunk in group]
+        text = (header + "\n\n" if header else "") + SLICE_SEPARATOR.join(texts)
+        paths = list(dict.fromkeys(chunk.path for chunk in group))
+        label = ", ".join(paths[:3]) + (f" and {len(paths) - 3} more" if len(paths) > 3 else "")
+        slices.append(Chunk(number, label, group[0].kind, "modified", [hunk for chunk in group for hunk in chunk.hunks],
+                            text))
+        members[number] = group
+    return slices, members
+
+
+def member_for(group: list[Chunk], raw: Any) -> Chunk | None:
+    """The file chunk of a slice that a finder's finding is about, by the path it names; None when the path is
+    none of the slice's files (and the slice has several)."""
+    paths = list(dict.fromkeys(chunk.path for chunk in group))
+    named = str(raw.get("file") or "").strip().strip("`\"'") if isinstance(raw, dict) else ""
+    for prefix in ("./", "a/", "b/"):
+        if named.startswith(prefix) and named not in paths:
+            named = named[len(prefix):]
+    path: str | None = named if named in paths else None
+    if path is None and named:
+        close = [item for item in paths if item.endswith("/" + named) or named.endswith("/" + item)]
+        path = close[0] if len(close) == 1 else None
+    if path is None:
+        if len(paths) != 1:
+            return None
+        path = paths[0]
+    parts = [chunk for chunk in group if chunk.path == path]
+    try:
+        line = int(raw.get("line"))
+    except (AttributeError, TypeError, ValueError):
+        return parts[0]
+
+    def distance(chunk: Chunk) -> int:
+        return min((0 if hunk.new_first <= line <= hunk.new_last
+                    else min(abs(hunk.new_first - line), abs(hunk.new_last - line)) for hunk in chunk.hunks),
+                   default=0)
+
+    return min(parts, key=distance)
+
+
 # --- Scope -----------------------------------------------------------------------------------------------------
 
 
@@ -317,7 +542,8 @@ def _scope(spec: dict[str, Any], runner: Runner | None) -> tuple[Scope, Git | No
 
 
 async def recheck_earlier(rlm: Any, earlier: list[dict[str, Any]], since: list[FileDiff] | None, scope: Scope,
-                          *, budget_tokens: int, model: str | None, usage: _Usage) -> list[dict[str, Any]]:
+                          *, frames: Frames, budget_tokens: int, model: str | None, thinking: str | None,
+                          cutoff: float | None) -> list[dict[str, Any]]:
     """What became of each finding posted by an earlier review. `since` is the diff from the earlier reviewed
     commit to this one (None when it is unknown, as after a force-push: lines are then looked up unchanged)."""
     by_path: dict[str, FileDiff] = {}
@@ -373,9 +599,8 @@ async def recheck_earlier(rlm: Any, earlier: list[dict[str, Any]], since: list[F
         sources.append(window + "\n" + changes)
         pending.append(entry)
     if pending:
-        results = await rlm.map(RECHECK_TASK, items, contract=RECHECK_CONTRACT, budget=Budget(tokens=budget_tokens),
-                                model=model, concurrency=MAP_CONCURRENCY, timeout_ms=FRAME_TIMEOUT_MS)
-        usage.add(results)
+        results = await frames.run("recheck", [("recheck", RECHECK_TASK, views) for views in items],
+                                   contract=RECHECK_CONTRACT, model=model, thinking=thinking, cutoff=cutoff)
         for entry, result, source_text in zip(pending, results, sources):
             if isinstance(result, (Incomplete, FrameError)) or not isinstance(result, dict):
                 entry["evidence"] = f"not re-checked ({_failure(result) or 'no reply'})"
@@ -423,16 +648,40 @@ def _public(finding: dict[str, Any], verification: str) -> dict[str, Any]:
     return out
 
 
-async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None) -> dict[str, Any]:
+def _number(value: Any, default: float, low: float, high: float) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return default
+    return min(high, max(low, float(value)))
+
+
+def _thinking(value: Any, default: str | None) -> str | None:
+    return value if isinstance(value, str) and value in THINKING_LEVELS else default
+
+
+async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
+              clock: Callable[[], float] = time.monotonic, sleep: Callable[[float], Any] = asyncio.sleep,
+              rng: Callable[[], float] = random.random) -> dict[str, Any]:
     """Review what `spec` describes and return the result (see the module docstring)."""
-    started = time.monotonic()
+    started = clock()
     budget = spec.get("budget")
     budget = int(budget) if isinstance(budget, (int, float)) and budget >= MIN_BUDGET_TOKENS else DEFAULT_BUDGET_TOKENS
     model = spec.get("model") if isinstance(spec.get("model"), str) else None
     verify_model = spec.get("verifyModel") if isinstance(spec.get("verifyModel"), str) else model
+    thinking = _thinking(spec.get("thinking"), DEFAULT_THINKING)
+    verify_thinking = _thinking(spec.get("verifyThinking"), DEFAULT_THINKING)
+    # 0 turns the deadline off.
+    deadline_s = _number(spec.get("deadlineSeconds"), DEFAULT_DEADLINE_S, 0, 24 * 3600)
+    find_cutoff = started + deadline_s * FIND_DEADLINE_SHARE if deadline_s > 0 else None
+    verify_cutoff = started + deadline_s if deadline_s > 0 else None
     reviewers = [REVIEWERS[key] for key in _reviewer_keys(spec.get("only"))]
     scope, git, incomplete = _scope(spec, runner)
     usage = _Usage()
+    frames_runner = Frames(
+        rlm, cap=budget, usage=usage,
+        concurrency=int(_number(spec.get("concurrency"), DEFAULT_CONCURRENCY, 1, MAX_CONCURRENCY)),
+        frame_timeout_s=_number(spec.get("frameTimeoutSeconds"), DEFAULT_FRAME_TIMEOUT_S, 5, 3600),
+        retry_base_s=_number(spec.get("retryBaseSeconds"), DEFAULT_RETRY_BASE_S, 0, 60),
+        clock=clock, sleep=sleep, rng=rng)
     not_checked: list[str] = []
     context = spec.get("context") if isinstance(spec.get("context"), dict) else {}
     others = [item for item in context.get("comments") or [] if isinstance(item, dict)]
@@ -440,15 +689,16 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None) -
 
     post_text = _read_text(spec.get("postDiffPath"))
     post_files = parse_diff(post_text) if post_text else scope.files
-    chunks, skipped = build_chunks(scope.files, scope.read_file)
+    file_chunks, skipped = build_chunks(scope.files, scope.read_file)
+    chunks, members = pack_chunks(file_chunks, [item.path for item in scope.files])
     not_checked += [f"{path}: {reason}" for path, reason in skipped]
     if not chunks:
         # Nothing was read (an empty diff, or only binary, generated and deleted files): that is not an approval.
         incomplete.append("the diff has no reviewable changes" if scope.files else "the diff is empty")
-    scope_ms = int((time.monotonic() - started) * 1000)
+    scope_ms = int((clock() - started) * 1000)
 
     # Earlier findings first: they are few, and the summary's status table and thread resolution need them.
-    verify_started = time.monotonic()
+    verify_started = clock()
     earlier_spec = [item for item in spec.get("earlier") or [] if isinstance(item, dict)]
     earlier: list[dict[str, Any]] = []
     if earlier_spec:
@@ -460,14 +710,15 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None) -
                                        "--src-prefix=a/", "--dst-prefix=b/", str(spec["earlierBase"]), str(spec["head"]),
                                        "--")
             since = parse_diff(stdout) if code == 0 else None
-        earlier = await recheck_earlier(rlm, earlier_spec, since, scope, budget_tokens=int(budget * RECHECK_SHARE),
-                                        model=verify_model, usage=usage)
+        earlier = await recheck_earlier(rlm, earlier_spec, since, scope, frames=frames_runner,
+                                        budget_tokens=int(budget * RECHECK_SHARE), model=verify_model,
+                                        thinking=verify_thinking, cutoff=find_cutoff)
         unknown = sum(1 for item in earlier if item["status"] == "unknown")
         if unknown:
             incomplete.append(f"{unknown} earlier finding(s) could not be re-checked")
-    recheck_ms = int((time.monotonic() - verify_started) * 1000)
+    recheck_ms = int((clock() - verify_started) * 1000)
 
-    find_started = time.monotonic()
+    find_started = clock()
     remaining = max(0, budget - usage.tokens)
     find_budget = int(remaining * FIND_SHARE)
     raised: list[dict[str, Any]] = []
@@ -478,39 +729,46 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None) -
         for key, count in plan["not_applicable"].items():
             reviewer = REVIEWERS[key]
             why = "no LLM-related code" if reviewer.llm_only else "documentation only"
-            not_checked.append(f"{reviewer.title} reviewer skipped {count} chunk(s) with {why}.")
+            not_checked.append(f"{reviewer.title} reviewer skipped {count} slice(s) with {why}.")
         if plan["dropped"]:
             paths = sorted({chunk.path for _, chunk in plan["dropped"]})
             incomplete.append(f"{len(plan['dropped'])} reviewer passes did not fit the token budget: "
                               + ", ".join(paths[:10]) + (" ..." if len(paths) > 10 else ""))
         frames = plan["frames"]
         if frames:
-            results = await rlm.map([autoreview_finder_task(reviewer) for reviewer, _ in frames],
-                                    [chunk.text for _, chunk in frames], context=shared or None,
-                                    contract=AUTOREVIEW_FINDINGS_CONTRACT, budget=Budget(tokens=find_budget),
-                                    model=model, concurrency=MAP_CONCURRENCY, timeout_ms=FRAME_TIMEOUT_MS)
-            usage.add(results)
+            results = await frames_runner.run(
+                "find", [(reviewer.key, autoreview_finder_task(reviewer), chunk.text) for reviewer, chunk in frames],
+                contract=AUTOREVIEW_FINDINGS_CONTRACT, model=model, thinking=thinking, context=shared or None,
+                cutoff=find_cutoff)
             failures: dict[str, list[str]] = {}
+            unattributed = 0
             for (reviewer, chunk), result in zip(frames, results):
-                failure = _failure(result)
+                failure = describe_failure(result)
                 if failure:
                     failures.setdefault(failure, []).append(f"{reviewer.key} on {chunk.path}")
                     continue
-                source = scope.read_file(chunk.path)
                 for item in result[:MAX_FINDINGS_PER_FRAME] if isinstance(result, list) else []:
-                    for finding in normalize_findings([item], reviewer, chunk, len(source) if source else None):
+                    # A slice can hold several files: the finding belongs to the file it names.
+                    member = member_for(members[chunk.id], item)
+                    if member is None:
+                        unattributed += 1
+                        continue
+                    source = scope.read_file(member.path)
+                    for finding in normalize_findings([item], reviewer, member, len(source) if source else None):
                         _extras(item, finding)
                         raised.append(finding)
             for failure, where in failures.items():
                 incomplete.append(f"{len(where)} reviewer passes {failure}: " + ", ".join(where[:8])
                                   + (" ..." if len(where) > 8 else ""))
+            if unattributed:
+                not_checked.append(f"{unattributed} finding(s) named no file of their slice and were dropped.")
     merged = dedupe(raised)
     duplicates = len(raised) - len(merged)
-    find_ms = int((time.monotonic() - find_started) * 1000)
+    find_ms = int((clock() - find_started) * 1000)
 
     # Findings somebody else already raised, or that an earlier review of ours posted and are still open, are
     # not verified or posted again.
-    verify_started = time.monotonic()
+    verify_started = clock()
     also_raised: list[dict[str, Any]] = []
     candidates: list[dict[str, Any]] = []
     open_earlier = [item for item in earlier if item["status"] in ("still_present", "unknown")]
@@ -559,9 +817,9 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None) -
     uncertain: list[dict[str, Any]] = []
     rejected: list[dict[str, Any]] = []
     if to_verify:
-        verdicts = await rlm.map(VERIFIER_TASK, items, contract=VERDICT_CONTRACT, budget=Budget(tokens=verify_budget),
-                                 model=verify_model, concurrency=MAP_CONCURRENCY, timeout_ms=FRAME_TIMEOUT_MS)
-        usage.add(verdicts)
+        verdicts = await frames_runner.run("verify", [("verifier", VERIFIER_TASK, views) for views in items],
+                                           contract=VERDICT_CONTRACT, model=verify_model, thinking=verify_thinking,
+                                           cutoff=verify_cutoff)
         before = {finding["id"]: finding["line"] for finding in to_verify}
         confirmed, uncertain, rejected = apply_verdicts(to_verify, list(verdicts), sources, counts)
         for finding in confirmed + uncertain:
@@ -571,11 +829,15 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None) -
                 finding.pop("replacement", None)
         failed = sum(1 for verdict in verdicts if isinstance(verdict, (Incomplete, FrameError)))
         if failed:
-            incomplete.append(f"{failed} finding(s) could not be verified (the verifier frame ran out or failed)")
+            late = sum(1 for verdict in verdicts if isinstance(verdict, FrameError) and verdict.error == DEADLINE_ERROR)
+            incomplete.append(
+                f"{failed} finding(s) could not be verified (" + (
+                    "the review deadline was reached" if late == failed
+                    else "the verifier frame ran out or failed") + ")")
     uncertain += unverified
     if unverified:
         incomplete.append(f"{len(unverified)} finding(s) were not verified within the token budget")
-    verify_ms = int((time.monotonic() - verify_started) * 1000) + recheck_ms
+    verify_ms = int((clock() - verify_started) * 1000) + recheck_ms
 
     confirmed.sort(key=_rank)
     uncertain.sort(key=_rank)
@@ -591,12 +853,14 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None) -
         "alsoRaised": also_raised,
         "earlier": earlier,
         "dropped": {"rejected": len(rejected), "duplicates": duplicates},
-        "timing": {"totalMs": int((time.monotonic() - started) * 1000), "scopeMs": scope_ms, "findMs": find_ms,
-                   "verifyMs": verify_ms},
+        "timing": {"totalMs": int((clock() - started) * 1000), "scopeMs": scope_ms, "findMs": find_ms,
+                   "verifyMs": verify_ms, "frames": frames_runner.timings},
         "usage": {"inputTokens": usage.input, "outputTokens": usage.output, "costUsd": round(usage.cost, 6),
                   "frames": usage.frames, "tokens": usage.tokens, "budget": budget},
         "model": model,
         "verifyModel": verify_model,
+        "thinking": thinking,
+        "verifyThinking": verify_thinking,
         "notChecked": not_checked,
         "incomplete": incomplete,
         "diffLines": diff_line_ranges(post_files),

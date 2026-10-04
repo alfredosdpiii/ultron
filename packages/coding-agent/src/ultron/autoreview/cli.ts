@@ -11,11 +11,11 @@
  */
 import { resolve } from "node:path";
 import { APP_NAME, getAgentDir } from "../../config.ts";
-import { SettingsManager } from "../../core/settings-manager.ts";
+import { FRAME_THINKING_LEVELS, type FrameThinkingLevel, SettingsManager } from "../../core/settings-manager.ts";
 import { selfCommand } from "../claude/self.ts";
 import { type Account, accountKey, listAccounts, TokenStore } from "./accounts.ts";
 import { CheckoutManager } from "./checkout.ts";
-import { type AutoreviewConfig, autoreviewPaths, MIN_BUDGET_TOKENS, resolveConfig } from "./config.ts";
+import { type AutoreviewConfig, autoreviewPaths, engineSettings, MIN_BUDGET_TOKENS, resolveConfig } from "./config.ts";
 import { createLogger, Daemon } from "./daemon.ts";
 import { RuntimeReviewEngine } from "./engine.ts";
 import { parsePullTarget, pullKey } from "./github.ts";
@@ -71,9 +71,14 @@ Options:
                                then rlm.frameModel, then the default model)
   --verify-model <p/m>         review: the model of the verifier frames (default: the finder model)
   --budget <tokens>            review: the token cap, e.g. 300000 or 300k
+  --thinking <level>           review: thinking level of the finder frames (off, minimal, low, medium, high, ...;
+                               default: autoreview.thinking, low)
+  --verify-thinking <level>    review: thinking level of the verifier frames (default: autoreview.verifyThinking, low)
+  --deadline <seconds>         review: give up unfinished passes after this long and report the rest (default 150)
 
 Settings (global settings.json): autoreview.accounts, pollSeconds, concurrency, model, verifyModel, budget, dryRun,
-ack, ackLines, ackArt, signature. See docs/autoreview.md.`;
+frameConcurrency, thinking, verifyThinking, deadlineSeconds, frameTimeoutSeconds, ack, ackLines, ackArt, signature.
+See docs/autoreview.md.`;
 
 interface Parsed {
 	command: string;
@@ -84,6 +89,9 @@ interface Parsed {
 	model?: string;
 	verifyModel?: string;
 	budget?: number;
+	thinking?: FrameThinkingLevel;
+	verifyThinking?: FrameThinkingLevel;
+	deadlineSeconds?: number;
 	repoDir?: string;
 	base?: string;
 	head?: string;
@@ -118,6 +126,13 @@ export function parseAutoreviewArgs(args: readonly string[]): Parsed {
 			if (!MODEL_REF.test(ref)) throw new UsageError(`${arg} takes provider/model, not ${ref}`);
 			return ref;
 		};
+		const thinking = (): FrameThinkingLevel => {
+			const name = value();
+			const level = FRAME_THINKING_LEVELS.find((item) => item === name);
+			if (level === undefined)
+				throw new UsageError(`${arg} takes one of ${FRAME_THINKING_LEVELS.join(", ")}, not ${name}`);
+			return level;
+		};
 		if (arg === "--help" || arg === "-h") parsed.help = true;
 		else if (arg === "--dry-run") parsed.dryRun = true;
 		else if (arg === "--json") parsed.json = true;
@@ -125,7 +140,14 @@ export function parseAutoreviewArgs(args: readonly string[]): Parsed {
 		else if (arg === "--model") parsed.model = model();
 		else if (arg === "--verify-model") parsed.verifyModel = model();
 		else if (arg === "--budget") parsed.budget = parseTokens(value());
-		else if (arg === "--repo-dir") parsed.repoDir = value();
+		else if (arg === "--thinking") parsed.thinking = thinking();
+		else if (arg === "--verify-thinking") parsed.verifyThinking = thinking();
+		else if (arg === "--deadline") {
+			const seconds = Number(value());
+			if (!Number.isInteger(seconds) || seconds < 0)
+				throw new UsageError("--deadline takes whole seconds (0 for no deadline)");
+			parsed.deadlineSeconds = seconds;
+		} else if (arg === "--repo-dir") parsed.repoDir = value();
 		else if (arg === "--base") parsed.base = value();
 		else if (arg === "--head") parsed.head = value();
 		else if (arg.startsWith("-")) throw new UsageError(`unknown option for ${APP_NAME} autoreview: ${arg}`);
@@ -160,6 +182,7 @@ export function offlineJson(result: EngineResult, startupMs: number | undefined)
 			findMs: result.timing.findMs,
 			verifyMs: result.timing.verifyMs,
 			...(startupMs === undefined ? {} : { startupMs }),
+			frames: [...(result.timing.frames ?? [])],
 		},
 		usage: {
 			inputTokens: result.usage.inputTokens,
@@ -169,6 +192,8 @@ export function offlineJson(result: EngineResult, startupMs: number | undefined)
 		},
 		model: result.model,
 		verifyModel: result.verifyModel,
+		thinking: result.thinking ?? null,
+		verifyThinking: result.verifyThinking ?? null,
 		notChecked: [...result.notChecked],
 	};
 }
@@ -217,6 +242,9 @@ export async function runAutoreviewCommand(
 			...(parsed.model === undefined ? {} : { model: parsed.model }),
 			...(parsed.verifyModel === undefined ? {} : { verifyModel: parsed.verifyModel }),
 			...(parsed.budget === undefined ? {} : { budget: parsed.budget }),
+			...(parsed.thinking === undefined ? {} : { thinking: parsed.thinking }),
+			...(parsed.verifyThinking === undefined ? {} : { verifyThinking: parsed.verifyThinking }),
+			...(parsed.deadlineSeconds === undefined ? {} : { deadlineSeconds: parsed.deadlineSeconds }),
 		},
 		{
 			...(reviewModel === undefined ? {} : { reviewModel }),
@@ -286,7 +314,7 @@ export async function runAutoreviewCommand(
 				if (state.recent.length === 0) lines.push("  none");
 				for (const record of state.recent.slice(-15).reverse())
 					lines.push(
-						`  ${record.at}  ${record.pull} ${record.sha.slice(0, 7)} as ${record.account.split("/").pop()}: ${record.outcome}${record.verdict ? ` ${record.verdict}` : ""}, ${record.findings ?? 0} findings, pipeline ${Math.round((record.totalMs ?? 0) / 1000)} s, pickup to post ${Math.round((record.pickupToPostMs ?? 0) / 1000)} s${record.costUsd ? `, $${record.costUsd.toFixed(2)}` : ""}`,
+						`  ${record.at}  ${record.pull} ${record.sha.slice(0, 7)} as ${record.account.split("/").pop()}: ${record.outcome}${record.verdict ? ` ${record.verdict}` : ""}, ${record.findings ?? 0} findings, pipeline ${Math.round((record.totalMs ?? 0) / 1000)} s, ${record.tagToAckMs === undefined ? "" : `tag to ack ${(record.tagToAckMs / 1000).toFixed(1)} s, `}${record.ackToPostMs === undefined ? "" : `ack to review ${Math.round(record.ackToPostMs / 1000)} s, `}pickup to post ${Math.round((record.pickupToPostMs ?? 0) / 1000)} s${record.costUsd ? `, $${record.costUsd.toFixed(2)}` : ""}`,
 					);
 				io.stdout(`${lines.join("\n")}\n`);
 				return 0;
@@ -315,9 +343,7 @@ export async function runAutoreviewCommand(
 					repoDir: resolve(cwd, parsed.repoDir!),
 					base: parsed.base,
 					head: parsed.head,
-					...(config.model === undefined ? {} : { model: config.model }),
-					...(config.verifyModel === undefined ? {} : { verifyModel: config.verifyModel }),
-					budget: config.budget,
+					...engineSettings(config),
 				});
 				if (parsed.json) io.stdout(`${JSON.stringify(offlineJson(result, engine.startMs))}\n`);
 				else

@@ -41,6 +41,16 @@ export interface EngineSpec {
 	readonly model?: string;
 	readonly verifyModel?: string;
 	readonly budget?: number;
+	/** Model requests in flight at once. */
+	readonly concurrency?: number;
+	/** Thinking level of the finder and of the verifier frames. */
+	readonly thinking?: string;
+	readonly verifyThinking?: string;
+	/** Seconds the review may take (0: no deadline), and seconds one frame may take. */
+	readonly deadlineSeconds?: number;
+	readonly frameTimeoutSeconds?: number;
+	/** First retry delay for a transient frame failure (tests shorten it). */
+	readonly retryBaseSeconds?: number;
 	readonly only?: readonly string[];
 	readonly context?: ReviewContext;
 	/** Findings an earlier review posted, to re-check. */
@@ -87,6 +97,15 @@ export interface AlsoRaised {
 	readonly by: readonly string[];
 }
 
+export interface FrameTiming {
+	readonly phase: "find" | "verify" | "recheck";
+	/** The reviewer key of a finder frame; "verifier" or "recheck" otherwise. */
+	readonly reviewer: string;
+	readonly ms: number;
+	readonly status: "ok" | "incomplete" | "failed" | "timeout" | "deadline" | "budget";
+	readonly retries: number;
+}
+
 export interface EngineResult {
 	readonly complete: boolean;
 	readonly label: string;
@@ -102,6 +121,8 @@ export interface EngineResult {
 		readonly scopeMs: number;
 		readonly findMs: number;
 		readonly verifyMs: number;
+		/** How each frame went, in the order they finished. */
+		readonly frames?: readonly FrameTiming[];
 	};
 	readonly usage: {
 		readonly inputTokens: number;
@@ -113,6 +134,8 @@ export interface EngineResult {
 	};
 	readonly model: string | null;
 	readonly verifyModel: string | null;
+	readonly thinking?: string | null;
+	readonly verifyThinking?: string | null;
 	readonly notChecked: readonly string[];
 	/** Why coverage is incomplete; empty when `complete`. */
 	readonly incomplete: readonly string[];

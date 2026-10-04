@@ -3,15 +3,32 @@
  * line validation, suggestion blocks, summary), posting and read-back, re-reviews, state and the CLI, all against
  * a fake GitHub behind the injected runner and a scripted engine. No network and no model calls.
  */
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import {
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readdirSync,
+	readFileSync,
+	rmSync,
+	utimesSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, test } from "vitest";
+import { SettingsManager } from "../src/core/settings-manager.ts";
+import { logoText } from "../src/experimental/ultron-logo.ts";
 import { listAccounts, parseAuthStatus, TokenStore } from "../src/ultron/autoreview/accounts.ts";
 import { CheckoutManager } from "../src/ultron/autoreview/checkout.ts";
 import { parseAutoreviewArgs, runAutoreviewCommand } from "../src/ultron/autoreview/cli.ts";
-import { autoreviewPaths, DEFAULT_ACK_LINES, resolveConfig, SIGNATURE } from "../src/ultron/autoreview/config.ts";
-import { createLogger, Daemon } from "../src/ultron/autoreview/daemon.ts";
+import {
+	autoreviewPaths,
+	DEFAULT_ACK_LINES,
+	resolveAckArt,
+	resolveConfig,
+	SIGNATURE,
+} from "../src/ultron/autoreview/config.ts";
+import { blockedPulls, createLogger, Daemon, pruneOld } from "../src/ultron/autoreview/daemon.ts";
 import { GitHub, parseApiOutput, parsePullTarget, RateLimitError } from "../src/ultron/autoreview/github.ts";
 import { decideVerdict, placeLine, planComment, planReview } from "../src/ultron/autoreview/plan.ts";
 import {
@@ -19,6 +36,7 @@ import {
 	type Candidate,
 	decide,
 	latestMention,
+	MAX_ACK_CHARS,
 	mentions,
 	type Outcome,
 	pickAckLine,
@@ -56,7 +74,7 @@ function setup(options: { settings?: Parameters<typeof resolveConfig>[0]; engine
 		engine,
 		store: new StateStore(paths.state),
 		checkouts: new CheckoutManager(hub.runner, paths.cache),
-		config: resolveConfig(options.settings ?? {}),
+		config: resolveConfig({ ackArt: "none", ...options.settings }),
 		paths,
 		log: (line) => logs.push(line),
 		now: () => hub.now(),
@@ -268,9 +286,35 @@ describe("mentions and the decision to review", () => {
 			await decide({ pull: base, ...reviewed, requested: true, requestedAt: async () => "2026-10-02T12:00:00Z" }),
 		).toMatchObject({ review: false });
 		// The head moved.
+		// The head moved: reviewed again only while something asks for it, or while this account blocks the merge.
+		const moved = { pull: base, lastSha: OLD, lastAt: reviewed.lastAt, requestedAt: never };
+		expect(await decide({ ...moved, requested: false })).toMatchObject({
+			review: false,
+			reason: "ccccccc was reviewed and nothing asks for a review of the new commits",
+		});
+		expect(await decide({ ...moved, requested: true })).toMatchObject({ review: true });
+		expect(await decide({ ...moved, requested: false, mentionAt: "2026-10-03T12:00:00Z" })).toMatchObject({
+			review: true,
+		});
+		expect(await decide({ ...moved, requested: false, mentionAt: "2026-10-02T12:00:00Z" })).toMatchObject({
+			review: false,
+		});
+		expect(await decide({ ...moved, requested: false, lastRequestedChanges: true })).toMatchObject({
+			review: true,
+			reason: "new commits since ccccccc, after this account requested changes",
+		});
+		// A draft: not on a review request, only when mentioned.
+		const draft = { ...base, draft: true };
+		expect(await decide({ pull: draft, requested: true, requestedAt: never })).toMatchObject({
+			review: false,
+			reason: "the pull request is a draft",
+		});
 		expect(
-			await decide({ pull: base, lastSha: OLD, lastAt: reviewed.lastAt, requested: false, requestedAt: never }),
+			await decide({ pull: draft, requested: false, mentionAt: "2026-10-02T00:00:00Z", requestedAt: never }),
 		).toMatchObject({ review: true });
+		expect(await decide({ ...moved, pull: draft, requested: false, lastRequestedChanges: true })).toMatchObject({
+			review: false,
+		});
 		// Closed or merged: only a fresh mention.
 		const closed = { ...base, state: "closed" as const, merged: true };
 		expect(await decide({ pull: closed, requested: true, requestedAt: never })).toMatchObject({
@@ -389,7 +433,7 @@ describe("the posting plan", () => {
 		);
 	});
 
-	test("caps: every blocker, five major, five minor, three nits inline; uncertain findings only in the summary", () => {
+	test("caps: every blocker, five major and five minor inline, nits only counted; uncertain findings only in the summary", () => {
 		const many = (severity: EngineFinding["severity"], count: number) =>
 			Array.from({ length: count }, (_, index) =>
 				finding({ severity, line: 1 + (index % 6), claim: `${severity} ${index}` }),
@@ -407,14 +451,14 @@ describe("the posting plan", () => {
 		const plan = planReview(result, { selfAuthored: false, state: "open", headSha: HEAD, signature: true });
 		const inline = (severity: string) =>
 			plan.comments.filter((comment) => result.findings[comment.finding]!.severity === severity).length;
-		expect([inline("blocker"), inline("major"), inline("minor"), inline("nit")]).toEqual([7, 5, 5, 3]);
-		expect(plan.overCap).toHaveLength(5);
-		expect(plan.body).toContain("Not shown, to keep this readable: 1 major, 2 minor, 2 nit findings.");
+		expect([inline("blocker"), inline("major"), inline("minor"), inline("nit")]).toEqual([7, 5, 5, 0]);
+		expect(plan.overCap).toHaveLength(8);
+		expect(plan.body).toContain("Not shown, to keep this readable: 1 major, 2 minor, 5 nit findings.");
 		expect(plan.body).toContain("**Uncertain, not confirmed**");
 		expect(plan.body).toContain("- `calc.py:4` (major) maybe a race");
 		expect(plan.comments.some((comment) => comment.body.includes("maybe a race"))).toBe(false);
 		expect(plan.body).toContain(
-			"Confirmed findings: 7 blocker, 6 major, 7 minor, 5 nit (20 inline); 1 uncertain; 4 rejected by verification.",
+			"Confirmed findings: 7 blocker, 6 major, 7 minor, 5 nit (17 inline); 1 uncertain; 4 rejected by verification.",
 		);
 	});
 
@@ -562,7 +606,14 @@ describe("reviewing a pull request", () => {
 			ci: "1 passed, 1 failed (test)",
 			comments: [{ author: "bob", path: "calc.py", line: 5, body: "price may be missing" }],
 		});
-		expect(spec.budget).toBe(300_000);
+		expect(spec).toMatchObject({
+			budget: 300_000,
+			concurrency: 8,
+			thinking: "low",
+			verifyThinking: "low",
+			deadlineSeconds: 150,
+			frameTimeoutSeconds: 75,
+		});
 		// The worktree is removed afterwards.
 		expect(existsSync(spec.workDir!)).toBe(false);
 		// State: the reviewed commit and the posted finding with its comment and thread ids.
@@ -621,7 +672,7 @@ describe("reviewing a pull request", () => {
 		const { hub, deps, candidate, engine } = setup();
 		const pull = hub.addPull({ ...REF, requestedReviewers: [BOT] });
 		expect(posted(await reviewPull(deps, candidate())).verdict).toBe("approve");
-		expect(pull.reviews.at(-1)).toMatchObject({ state: "APPROVE", commit_id: HEAD });
+		expect(pull.reviews.at(-1)).toMatchObject({ state: "APPROVED", commit_id: HEAD });
 		// Polled again: nothing new.
 		expect(await reviewPull(deps, candidate())).toMatchObject({
 			kind: "skipped",
@@ -822,6 +873,109 @@ describe("reviewing a pull request", () => {
 		expect(deps.store.read().pulls[pullStateKey(candidate().account, REF)]!.attempts).toEqual({});
 	});
 
+	test("after a review, a push is reviewed again only on a request, a mention, or this account's own block", async () => {
+		const { hub, deps, candidate, engine } = setup({
+			engine: new FakeEngine(engineResult(), engineResult({ findings: [MAJOR] }), engineResult()),
+		});
+		const pull = hub.addPull({ ...REF, headSha: OLD, requestedReviewers: [BOT] });
+		expect(posted(await reviewPull(deps, candidate())).verdict).toBe("approve");
+		// Approved, no request outstanding: the next push is not this account's business.
+		pull.headSha = NEW;
+		hub.now = () => Date.parse("2026-10-04T11:00:00Z");
+		expect(await reviewPull(deps, candidate())).toMatchObject({
+			kind: "skipped",
+			reason: "ccccccc was reviewed and nothing asks for a review of the new commits",
+		});
+		// Requested again: reviewed, and this time it asks for changes.
+		pull.requestedReviewers = [BOT];
+		expect(posted(await reviewPull(deps, candidate())).verdict).toBe("request_changes");
+		expect(pull.reviews.at(-1)!.state).toBe("CHANGES_REQUESTED");
+		// It now blocks the merge, so the next push is reviewed without anybody asking.
+		pull.headSha = "e".repeat(40);
+		pull.ancestors = [NEW];
+		hub.now = () => Date.parse("2026-10-04T12:00:00Z");
+		expect(posted(await reviewPull(deps, candidate(["requested_changes"]))).sha).toBe("e".repeat(40));
+		expect(engine.specs).toHaveLength(3);
+	});
+
+	test("a requested team counts only when the account is a member; unreadable membership is skipped and logged", async () => {
+		const { hub, deps, candidate, logs } = setup();
+		const pull = hub.addPull({ ...REF, requestedTeams: ["core"] });
+		// The membership cannot be read.
+		expect(await reviewPull(deps, candidate())).toMatchObject({ kind: "skipped" });
+		expect(logs.join("\n")).toContain("membership of the requested team o/core cannot be read; not counted");
+		// Readable, and the account is not in it.
+		hub.teams["o/core"] = ["alice"];
+		expect(await reviewPull(deps, candidate())).toMatchObject({ kind: "skipped" });
+		expect(pull.reviews).toHaveLength(0);
+		hub.teams["o/core"] = ["alice", BOT];
+		expect((await reviewPull(deps, candidate())).kind).toBe("posted");
+		expect(hub.api(/GET orgs\/o\/teams\/core\/memberships\/ultron-bot/)).toHaveLength(3);
+	});
+
+	test("a draft is skipped on a review request and reviewed when the account is mentioned", async () => {
+		const { hub, deps, candidate } = setup();
+		const pull = hub.addPull({ ...REF, draft: true, requestedReviewers: [BOT] });
+		expect(await reviewPull(deps, candidate())).toEqual({ kind: "skipped", reason: "the pull request is a draft" });
+		expect(pull.issueComments).toHaveLength(0);
+		pull.issueComments.push({
+			id: 8,
+			user: "alice",
+			body: `@${BOT} early look please`,
+			created_at: "2026-10-04T09:00:00Z",
+		});
+		expect((await reviewPull(deps, candidate(["mention"]))).kind).toBe("posted");
+	});
+
+	test("by default the acknowledgement carries Ultron's logo in a code block, far below the comment size limit", async () => {
+		const { hub, deps, candidate } = setup({ settings: { ackArt: undefined } });
+		const pull = hub.addPull({ ...REF, requestedReviewers: [BOT] });
+		await reviewPull(deps, candidate());
+		const body = pull.issueComments[0]!.body;
+		const logo = logoText();
+		expect(body).toBe(
+			`> *${DEFAULT_ACK_LINES[0]}*\n> — Ultron\n\nReviewing \`aaaaaaa\`.\n\n\`\`\`text\n${logo}\n\`\`\``,
+		);
+		expect(body.length).toBeLessThan(MAX_ACK_CHARS / 10);
+		// The logo as text: no background character, no trailing spaces, no margin, no blank rows around it.
+		const rows = logo.split("\n");
+		expect(rows.length).toBeGreaterThan(10);
+		expect(logo).not.toContain("$");
+		expect(logo).not.toContain("`");
+		expect(rows.every((row) => row === row.trimEnd())).toBe(true);
+		expect(rows[0]!.trim()).not.toBe("");
+		expect(rows.at(-1)!.trim()).not.toBe("");
+		expect(rows.some((row) => row !== "" && !row.startsWith(" "))).toBe(true);
+		expect(Math.max(...rows.map((row) => row.length))).toBeLessThanOrEqual(50);
+		// The setting: "logo" is the logo, "none" and false are no art, anything else is used as it is.
+		expect(resolveAckArt(undefined)).toBe(logo);
+		expect(resolveAckArt("logo")).toBe(logo);
+		expect(resolveAckArt("none")).toBe("");
+		expect(resolveAckArt(false)).toBe("");
+		expect(resolveAckArt(" /\\_/\\ ")).toBe(" /\\_/\\ ");
+		const saved = (ackArt: unknown) =>
+			SettingsManager.inMemory({ autoreview: { ackArt } } as never).getAutoreviewSettings().ackArt;
+		expect([saved(false), saved("none"), saved("logo"), saved(""), saved(7)]).toEqual([
+			false,
+			"none",
+			"logo",
+			undefined,
+			undefined,
+		]);
+	});
+
+	test("a closed pull request gets no acknowledgement", async () => {
+		const { hub, deps, candidate } = setup();
+		const pull = hub.addPull({
+			...REF,
+			state: "closed",
+			merged: true,
+			issueComments: [{ id: 4, user: "alice", body: `@${BOT} was this fine?`, created_at: "2026-10-04T09:30:00Z" }],
+		});
+		expect(posted(await reviewPull(deps, candidate(["mention"]))).plan.event).toBe("COMMENT");
+		expect(pull.issueComments.filter((comment) => comment.user === BOT)).toHaveLength(0);
+	});
+
 	test("the acknowledgement can be turned off, and never repeats the line used last on the pull request", async () => {
 		const off = setup({ settings: { ack: false } });
 		const pull = off.hub.addPull({ ...REF, requestedReviewers: [BOT] });
@@ -925,7 +1079,7 @@ describe("re-review", () => {
 		pull.ancestors = [OLD];
 		pull.diffs[`${OLD}..${NEW}`] = incremental;
 		hub.now = () => Date.parse("2026-10-04T11:00:00Z");
-		const outcome = posted(await reviewPull(deps, candidate(["search_reviewed"])));
+		const outcome = posted(await reviewPull(deps, candidate(["requested_changes"])));
 		const spec = engine.specs[1]!;
 		expect(spec.diff).toBe(incremental);
 		expect(spec.earlierDiff).toBe(incremental);
@@ -957,7 +1111,7 @@ describe("re-review", () => {
 		pull.headSha = "e".repeat(40);
 		pull.ancestors = [OLD, NEW];
 		hub.now = () => Date.parse("2026-10-04T12:00:00Z");
-		await reviewPull(deps, candidate(["search_reviewed"]));
+		await reviewPull(deps, candidate(["requested_changes"]));
 		expect(engine.specs[2]!.earlier!.map((item) => item.id)).toEqual(["ccccccc-2"]);
 	});
 
@@ -968,7 +1122,7 @@ describe("re-review", () => {
 		pull.headSha = NEW;
 		pull.ancestors = [];
 		hub.now = () => Date.parse("2026-10-04T11:00:00Z");
-		const outcome = posted(await reviewPull(deps, candidate(["search_reviewed"])));
+		const outcome = posted(await reviewPull(deps, candidate(["requested_changes"])));
 		const spec = engine.specs[1]!;
 		expect(spec.diff).toBe(DIFF);
 		// Earlier findings are still re-checked, without a diff to map their lines.
@@ -1043,12 +1197,11 @@ describe("discovery and the daemon", () => {
 		expect(queries()).toEqual([
 			"is:open is:pr review-requested:ultron-bot archived:false",
 			"is:pr mentions:ultron-bot updated:>=2026-10-02 archived:false",
-			"is:open is:pr reviewed-by:ultron-bot updated:>=2026-10-02 archived:false",
 		]);
 		for (let cycle = 0; cycle < 4; cycle += 1) await instance.once();
-		expect(queries()).toHaveLength(3);
+		expect(queries()).toHaveLength(2);
 		await instance.once();
-		expect(queries()).toHaveLength(6);
+		expect(queries()).toHaveLength(4);
 		// Found again by the search, but already reviewed: skipped, no second review.
 		expect(outcomes.filter((item) => item.kind === "posted")).toHaveLength(2);
 	});
@@ -1100,6 +1253,94 @@ describe("discovery and the daemon", () => {
 		hub.now = () => Date.parse("2026-10-04T10:06:00Z");
 		await instance.once();
 		expect(outcomes).toEqual([{ pull: 1, kind: "posted" }]);
+	});
+
+	test("every due pull request is acknowledged at once, before reviews that wait for a slot; both delays are recorded", async () => {
+		const engine = new FakeEngine();
+		const context = setup({ engine, settings: { concurrency: 1 } });
+		const { hub } = context;
+		const pulls = [1, 2, 3].map((number) =>
+			hub.addPull({ ...REF, number, headSha: String(number).repeat(40), requestedReviewers: [BOT] }),
+		);
+		hub.notifications = pulls.map((pull) => ({
+			reason: "review_requested",
+			owner: "o",
+			repo: "r",
+			number: pull.number,
+			updatedAt: "2026-10-04T09:59:56Z",
+		}));
+		const acked: number[] = [];
+		engine.onReview = async () => {
+			// Whenever a review runs, every pull request already has its acknowledgement.
+			acked.push(pulls.filter((pull) => pull.issueComments.length === 1).length);
+			hub.now = () => Date.parse("2026-10-04T10:00:50Z");
+		};
+		const { instance, outcomes } = daemon(context);
+		await instance.once();
+		expect(acked).toEqual([3, 3, 3]);
+		expect(engine.maxActive).toBe(1);
+		expect(outcomes.filter((item) => item.kind === "posted")).toHaveLength(3);
+		// One acknowledgement each: the review did not post another.
+		expect(pulls.map((pull) => pull.issueComments.length)).toEqual([1, 1, 1]);
+		// The order on GitHub: three acknowledgements, then the first review.
+		const posts = hub.api(/^POST repos/).map((call) => call.path.replace("repos/o/r/", ""));
+		expect(posts.slice(0, 4).sort()).toEqual([
+			"issues/1/comments",
+			"issues/2/comments",
+			"issues/3/comments",
+			"pulls/1/reviews",
+		]);
+		expect(posts[3]).toBe("pulls/1/reviews");
+		const recent = context.deps.store.read().recent;
+		expect(recent[0]).toMatchObject({ pull: "github.com/o/r#1", tagToAckMs: 4_000, ackToPostMs: 50_000 });
+		expect(context.logs.join("\n")).toContain(
+			"acknowledged 1111111 (review requested), 4.0 s after the notification",
+		);
+		expect(context.logs.join("\n")).toMatch(/posted APPROVE for 1111111: .* 50\.0 s after the acknowledgement/);
+		const status: string[] = [];
+		await runAutoreviewCommand(["status"], {
+			agentDir: join(context.dir, "agent"),
+			cwd: context.dir,
+			runner: hub.runner,
+			io: { stdout: (text) => void status.push(text), stderr: () => {} },
+		});
+		expect(status.join("")).toContain("tag to ack 4.0 s, ack to review 50 s, pickup to post");
+	});
+
+	test("pull requests this account blocks are looked at on search cycles; old dry-run files and logs are pruned", async () => {
+		const context = setup({ engine: new FakeEngine(engineResult({ findings: [MAJOR] }), engineResult()) });
+		const { hub } = context;
+		const pull = hub.addPull({ ...REF, headSha: OLD, requestedReviewers: [BOT] });
+		hub.notifications = [{ reason: "review_requested", owner: "o", repo: "r", number: 1 }];
+		const { instance, outcomes } = daemon(context);
+		await instance.once();
+		expect(blockedPulls(context.deps.store.read(), context.account)).toEqual([REF]);
+		// A push, and no notification for it: found on the next search cycle because this account requested changes.
+		hub.notifications = [];
+		pull.headSha = NEW;
+		pull.ancestors = [OLD];
+		hub.now = () => Date.parse("2026-10-04T11:00:00Z");
+		for (let cycle = 0; cycle < 4; cycle += 1) await instance.once();
+		expect(outcomes).toHaveLength(1);
+		await instance.once();
+		expect(outcomes.map((item) => item.kind)).toEqual(["posted", "posted"]);
+		expect(pull.reviews.map((review) => review.state)).toEqual(["CHANGES_REQUESTED", "APPROVED"]);
+		// Approved now: no longer watched.
+		expect(blockedPulls(context.deps.store.read(), context.account)).toEqual([]);
+
+		mkdirSync(context.paths.dryRun, { recursive: true });
+		mkdirSync(context.paths.logs, { recursive: true });
+		const old = join(context.paths.dryRun, "old.md");
+		const oldLog = join(context.paths.logs, "autoreview-2026-09-01.log");
+		const fresh = join(context.paths.logs, "autoreview-2026-10-03.log");
+		for (const file of [old, oldLog, fresh]) writeFileSync(file, "x");
+		const longAgo = new Date(hub.now() - 15 * 24 * 60 * 60 * 1000);
+		utimesSync(old, longAgo, longAgo);
+		utimesSync(oldLog, longAgo, longAgo);
+		const recent = new Date(hub.now() - 13 * 24 * 60 * 60 * 1000);
+		utimesSync(fresh, recent, recent);
+		expect(pruneOld([context.paths.dryRun, context.paths.logs, join(context.dir, "missing")], hub.now())).toBe(2);
+		expect([existsSync(old), existsSync(oldLog), existsSync(fresh)]).toEqual([false, false, true]);
 	});
 
 	test("each account reviews with its own token", async () => {
@@ -1200,6 +1441,11 @@ describe("the command", () => {
 		expect(() => parseAutoreviewArgs(["run", "--nope"])).toThrow("unknown option");
 		expect(() => parseAutoreviewArgs(["review", "--model", "nomodel"])).toThrow("provider/model");
 		expect(() => parseAutoreviewArgs(["review", "--budget", "5"])).toThrow("at least");
+		expect(
+			parseAutoreviewArgs(["review", "--thinking", "off", "--verify-thinking", "high", "--deadline", "90"]),
+		).toMatchObject({ thinking: "off", verifyThinking: "high", deadlineSeconds: 90 });
+		expect(() => parseAutoreviewArgs(["review", "--thinking", "loud"])).toThrow("--thinking takes one of off,");
+		expect(() => parseAutoreviewArgs(["review", "--deadline", "soon"])).toThrow("whole seconds");
 		expect(parseAutoreviewArgs([]).help).toBe(true);
 	});
 
@@ -1229,10 +1475,29 @@ describe("the command", () => {
 			pollSeconds: 45,
 			concurrency: 3,
 			budget: 300_000,
+			frameConcurrency: 8,
+			thinking: "low",
+			verifyThinking: "low",
+			deadlineSeconds: 150,
+			frameTimeoutSeconds: 75,
 			dryRun: false,
 			ack: true,
 			signature: true,
 		});
+		expect(
+			resolveConfig({ frameConcurrency: 64, deadlineSeconds: 5, frameTimeoutSeconds: 1, thinking: "high" }),
+		).toMatchObject({ frameConcurrency: 16, deadlineSeconds: 30, frameTimeoutSeconds: 10, thinking: "high" });
+		expect(resolveConfig({ deadlineSeconds: 0 }).deadlineSeconds).toBe(0);
+		expect(
+			SettingsManager.inMemory({
+				autoreview: {
+					thinking: "medium",
+					verifyThinking: "loud" as never,
+					frameConcurrency: 4,
+					deadlineSeconds: 0,
+				},
+			}).getAutoreviewSettings(),
+		).toEqual({ thinking: "medium", frameConcurrency: 4, deadlineSeconds: 0 });
 		expect(resolveConfig({ pollSeconds: 5, concurrency: 99 })).toMatchObject({ pollSeconds: 20, concurrency: 8 });
 		const fallbacks = { reviewModel: "r/m", rlm: { frameModel: "f/m" }, defaultProvider: "d", defaultModel: "m" };
 		expect(resolveConfig({ model: "a/m", verifyModel: "v/m" }, fallbacks)).toMatchObject({
