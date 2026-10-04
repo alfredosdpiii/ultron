@@ -30,7 +30,7 @@ Posting is on by default. `--dry-run` (or the setting `autoreview.dryRun`) write
 | `ultron autoreview run` | The loop: poll every account, review what is due, until stopped. One per agent directory. |
 | `ultron autoreview once` | One poll cycle, review what it finds, then exit. `--json` prints the outcomes. |
 | `ultron autoreview review <owner/repo#N \| URL>` | Review one pull request now, whether or not it was requested. `--account <login>` picks the account (default: the host's active one); `--dry-run`, `--json`. |
-| `ultron autoreview review --repo-dir <dir> --base <sha> --head <sha>` | Review the diff between two commits of a local repository, with no GitHub access. `--json` prints one JSON object on stdout (logs go to stderr); `--mode`, `--model`, `--verify-model`, `--deep-model`, `--budget`, `--thinking`, `--verify-thinking`, `--deep-thinking`, `--deadline`, `--block-at`, `--max-comments`, `--guides` and `--checkout-roots` (with `--repo owner/name`) override the settings. |
+| `ultron autoreview review --repo-dir <dir> --base <sha> --head <sha>` | Review the diff between two commits of a local repository, with no GitHub access. `--json` prints one JSON object on stdout (logs go to stderr); `--mode`, `--model`, `--verify-model`, `--deep-model`, `--budget`, `--thinking`, `--verify-thinking`, `--deep-thinking`, `--plan-model`, `--plan-thinking`, `--ask-model`, `--ask-thinking`, `--deadline`, `--block-at`, `--max-comments`, `--guides` and `--checkout-roots` (with `--repo owner/name`) override the settings; `--dump-program` and `--program` save and replay a compiled review program (see below). |
 | `ultron autoreview doctor` | The sandbox that test execution would use, with a self-check of its isolation. |
 | `ultron autoreview status` | Accounts, last poll, queue, and recent reviews with their timings and cost. `--json` for the raw state. |
 | `ultron autoreview install` / `uninstall` | Write or remove a user service that runs `ultron autoreview run` (see below). |
@@ -135,9 +135,13 @@ reviewed.
 | `autoreview.concurrency` | `3` | Pull requests reviewed at once (maximum 8). |
 | `autoreview.model` | unset: `review.model`, then `rlm.frameModel`, then the default model | `provider/model` of the finder frames. |
 | `autoreview.verifyModel` | the finder model | `provider/model` of the verifier frames. |
-| `autoreview.mode` | `"both"` | `fast`: review the diff only. `deep`: only the investigation beyond the diff. `both`: the fast pass, then the deep one with its findings as leads; one review is posted. |
+| `autoreview.mode` | `"both"` | `fast`: review the diff only. `deep`: only the investigation beyond the diff. `both`: the fast pass, then the deep one with its findings as leads; one review is posted. `compiled` (experimental): one planner frame writes a review program the host executes; see below. |
 | `autoreview.deepModel` | the finder model | `provider/model` of the deep pass's investigator frames. |
 | `autoreview.deepThinking` | `"high"` | Their thinking level. |
+| `autoreview.planModel` | the finder model | `compiled` mode: `provider/model` of the planner frame (one call per review; use a strong model). |
+| `autoreview.planThinking` | `"high"` | Its thinking level. |
+| `autoreview.askModel` | the finder model | `compiled` mode: `provider/model` the program's narrow questions go to (a cheap small model). |
+| `autoreview.askThinking` | `"low"` | Its thinking level. |
 | `autoreview.blockAt` | `"medium"` | A confirmed finding at this level or above makes the review request changes (`critical`, `high`, `medium`, `low`, `nit`). |
 | `autoreview.maxComments` | `5` | Inline comments per review at most; the rest are counted in the body. |
 | `autoreview.deepRounds` | `4` | Lookup rounds one investigator may take (maximum 8). |
@@ -221,6 +225,59 @@ The lookups are read-only by construction: the frames have no tools, and the hos
 
 With `--json`, findings carry `source` (`fast` or `deep:<part>`), `evidence` and `howVerified`; the object has
 `assurance`, `mode`, and `timing.investigators` (rounds, lookups, time and tokens per investigator).
+
+## The compiled mode: one plan, deterministic execution (experimental)
+
+`autoreview.mode: "compiled"` (or `--mode compiled`) turns the review around. The fast and deep passes put a model
+in the loop of every lookup. Here one strong model reads the whole change once and writes a review *program*; the
+host executes it, calling a cheap small model only at the decision points the program marks. Code controls the
+flow; the expensive reasoning happens once, up front; execution is cheap, parallel and auditable.
+
+1. **Map**, as in the deep pass, without a model: the diff, the changed symbols and their uses, tests and
+   siblings, the claims and the author's stated intent, the test runner, and the automatic test run.
+2. **Plan**: one frame on `autoreview.planModel` (thinking `autoreview.planThinking`, `high`) gets the diff
+   (bounded as in the deep pass), the brief, the pull request context, the intent, the review guides, the severity
+   rubric and the finding rules, a description of the program language, the automatic run's results and whether
+   tests may run. It is told to decide what must be true for the change to be correct and safe, then to write the
+   checks that establish it, preferring deterministic checks (counts, test runs, mutation checks, citations) over
+   questions, asking the small model only narrow questions with the exact material attached, and defining every
+   finding's evidence and level up front. It returns one JSON program.
+3. **The program** is a list of steps with ids, `needs` and optional `when` conditions. Ops: the deep pass's
+   lookups (`read`, `grep`, `list`, `definition`, `references`, `history`, `blame_range`, `pickaxe`, with the same
+   validation), its sandboxed `run_tests` and `mutation_check` (same limits and eligibility), `for_each` (a
+   sub-program template over the items of a grep, references, list or history result, with placeholders such as
+   `{{item.path}}`; at most 20 items, no nesting), `ask` (one yes/no/unclear question to `autoreview.askModel`
+   over the results of named steps; the answer must quote the material and the host checks the quote, else the
+   answer is unclear and decides nothing), `assert` (`count == 0`, `count >= n`, `status == passed|failed|
+   could_not_run`, `answer == yes`, `contains <text>`, or `all`/`any` over other asserts and asks; each may carry
+   the sentence that holds when it is true) and `finding` (emitted when its `when` condition holds: file, line,
+   level, category, claim, why, fix, scenario, `unpinned` or `consequence` where the category requires them, and
+   `evidence`: the steps whose results prove it, plus citations the host checks at their line). Limits: 80 steps
+   as written, 120 after expansion, 40 asks, the test executions as configured.
+4. **Validation and fallback.** The program is checked against the language (ids, references, cycles, ops,
+   predicates, bounds) before anything runs. A bad program gets one repair round with the validator's errors; a
+   program still bad, a planner that fails, or an invalid saved program make the review fall back to the `both`
+   mode, and the summary says so. Independent steps run concurrently (asks under `frameConcurrency`); every step's
+   input, output, duration and tokens are recorded (`--json`: `program.steps`).
+5. **Findings.** A finding whose condition and evidence are deterministic (a test run, a mutation, a count,
+   citations the host checked) is confirmed by that evidence and does not go to the verifier: the evidence is
+   machine-produced and reproducible, and the judgement that it means a defect was made once, by the strong model,
+   with the whole change in view. Critical and high stand only when a run showed the failure; a finding that rests
+   on a count alone is at most medium. A tests finding settled by a mutation is `proven` when the mutant survived
+   and dropped (`refutedByTest`) when a test caught it. A finding whose condition or evidence rests on an `ask`
+   goes through the existing verifier frame, which also sees the question, the answer and its quote. The final
+   level rule, dedupe, ranking, posting plan and summary are the existing ones; the assurance paragraph is built
+   from the asserts that held.
+
+Safety is as elsewhere: no model has a shell; the host runs only the fixed read-only git subcommands; tests run
+only in the sandbox under the existing eligibility; the planner can request nothing else, and everything it and the
+small model read is untrusted data.
+
+With `--json`, `program` carries the stats (steps planned, expanded, executed, failed and skipped; asks; test
+runs; deterministic versus asked findings; the planner's time, tokens and repair rounds; the steps) and every
+finding has `source: "compiled:<step id>"` and `evidence`. `--dump-program <path>` saves the validated program;
+`--program <path>` executes a saved program without a planner call, to benchmark the interpreter and the small
+model apart from the planner.
 
 ## Running the project's tests
 

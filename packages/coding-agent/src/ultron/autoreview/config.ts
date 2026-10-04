@@ -18,10 +18,13 @@ export const MIN_BUDGET_TOKENS = 10_000;
 export const DEFAULT_FRAME_CONCURRENCY = 8;
 export const MAX_FRAME_CONCURRENCY = 16;
 export const DEFAULT_THINKING: FrameThinkingLevel = "low";
-export type ReviewMode = "fast" | "deep" | "both";
-export const REVIEW_MODES: readonly ReviewMode[] = ["fast", "deep", "both"];
+/** `compiled` is experimental: a planner frame writes a review program the host executes. */
+export type ReviewMode = "fast" | "deep" | "both" | "compiled";
+export const REVIEW_MODES: readonly ReviewMode[] = ["fast", "deep", "both", "compiled"];
 export const DEFAULT_MODE: ReviewMode = "both";
 export const DEFAULT_DEEP_THINKING: FrameThinkingLevel = "high";
+export const DEFAULT_PLAN_THINKING: FrameThinkingLevel = "high";
+export const DEFAULT_ASK_THINKING: FrameThinkingLevel = "low";
 export type BlockLevel = "critical" | "high" | "medium" | "low" | "nit";
 export const BLOCK_LEVELS: readonly BlockLevel[] = ["critical", "high", "medium", "low", "nit"];
 /** A confirmed finding at this level or above asks for changes. */
@@ -84,6 +87,12 @@ export interface AutoreviewConfig {
 	readonly deepModel?: string;
 	readonly deepThinking: FrameThinkingLevel;
 	readonly deepRounds: number;
+	/** `compiled` mode: the planner frame's model (undefined: the finder model) and thinking level. */
+	readonly planModel?: string;
+	readonly planThinking: FrameThinkingLevel;
+	/** `compiled` mode: the small model the program's questions go to (undefined: the finder model). */
+	readonly askModel?: string;
+	readonly askThinking: FrameThinkingLevel;
 	readonly blockAt: BlockLevel;
 	readonly maxComments: number;
 	/** Run the reviewed project's tests in the deep pass, where the repository is eligible and a sandbox exists. */
@@ -156,6 +165,10 @@ export function engineSettings(config: AutoreviewConfig): {
 	deepModel?: string;
 	deepThinking: FrameThinkingLevel;
 	deepRounds: number;
+	planModel?: string;
+	planThinking: FrameThinkingLevel;
+	askModel?: string;
+	askThinking: FrameThinkingLevel;
 	testRuns: number;
 	testTimeoutSeconds: number;
 	testImage?: string;
@@ -173,6 +186,10 @@ export function engineSettings(config: AutoreviewConfig): {
 		...(config.deepModel === undefined ? {} : { deepModel: config.deepModel }),
 		deepThinking: config.deepThinking,
 		deepRounds: config.deepRounds,
+		...(config.planModel === undefined ? {} : { planModel: config.planModel }),
+		planThinking: config.planThinking,
+		...(config.askModel === undefined ? {} : { askModel: config.askModel }),
+		askThinking: config.askThinking,
 		testRuns: config.testRuns,
 		testTimeoutSeconds: config.testTimeoutSeconds,
 		...(config.testImage === undefined ? {} : { testImage: config.testImage }),
@@ -209,6 +226,10 @@ export function resolveConfig(settings: AutoreviewSettings, fallbacks: ModelFall
 		...((settings.deepModel ?? model) === undefined ? {} : { deepModel: settings.deepModel ?? model }),
 		deepThinking: settings.deepThinking ?? DEFAULT_DEEP_THINKING,
 		deepRounds: Math.min(MAX_DEEP_ROUNDS, Math.max(1, settings.deepRounds ?? DEFAULT_DEEP_ROUNDS)),
+		...((settings.planModel ?? model) === undefined ? {} : { planModel: settings.planModel ?? model }),
+		planThinking: settings.planThinking ?? DEFAULT_PLAN_THINKING,
+		...((settings.askModel ?? model) === undefined ? {} : { askModel: settings.askModel ?? model }),
+		askThinking: settings.askThinking ?? DEFAULT_ASK_THINKING,
 		blockAt: settings.blockAt ?? DEFAULT_BLOCK_AT,
 		maxComments: Math.min(MAX_MAX_COMMENTS, settings.maxComments ?? DEFAULT_MAX_COMMENTS),
 		runTests: settings.runTests ?? true,

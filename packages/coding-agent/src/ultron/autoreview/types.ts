@@ -70,11 +70,20 @@ export interface EngineSpec {
 	/** Thinking level of the finder and of the verifier frames. */
 	readonly thinking?: string;
 	readonly verifyThinking?: string;
-	/** `fast`, `deep` or `both`; the deep pass needs `repoDir` or `workDir`. */
-	readonly mode?: "fast" | "deep" | "both";
+	/** `fast`, `deep`, `both` or `compiled`; the deep pass and the compiled mode need `repoDir` or `workDir`. */
+	readonly mode?: "fast" | "deep" | "both" | "compiled";
 	readonly deepModel?: string;
 	readonly deepThinking?: string;
 	readonly deepRounds?: number;
+	/** `compiled` mode: the planner frame's model and thinking, and the small model the program's questions go to. */
+	readonly planModel?: string;
+	readonly planThinking?: string;
+	readonly askModel?: string;
+	readonly askThinking?: string;
+	/** `compiled` mode: execute this saved program instead of calling the planner (benchmarking the interpreter). */
+	readonly programPath?: string;
+	/** `compiled` mode: write the validated program here for inspection. */
+	readonly dumpProgramPath?: string;
 	/** The deep pass may run the project's tests, sandboxed (the host has checked eligibility). */
 	readonly runTests?: boolean;
 	readonly testRuns?: number;
@@ -143,7 +152,7 @@ export interface EngineFinding {
 	readonly suggestedFix?: string;
 	/** The exact new text of lines `line..endLine`, when the fix is a drop-in replacement. */
 	readonly replacement?: string;
-	/** Which pass raised it: `fast`, or `deep:<lens>`. */
+	/** Which pass raised it: `fast`, `deep:<lens>`, or `compiled:<step id>`. */
 	readonly source?: string;
 	/** A deep finding's citations, each quote checked by the host at its line of the reviewed commit. */
 	readonly citations?: ReadonlyArray<{ readonly path: string; readonly line: number; readonly quote: string }>;
@@ -174,8 +183,8 @@ export interface AlsoRaised {
 }
 
 export interface FrameTiming {
-	readonly phase: "find" | "verify" | "recheck" | "deep";
-	/** The reviewer key of a finder frame; "verifier" or "recheck" otherwise. */
+	readonly phase: "find" | "verify" | "recheck" | "deep" | "plan" | "ask";
+	/** The reviewer key of a finder frame; "verifier", "recheck", "planner" or an ask step's id otherwise. */
 	readonly reviewer: string;
 	readonly ms: number;
 	readonly status: "ok" | "incomplete" | "failed" | "timeout" | "deadline" | "budget";
@@ -220,6 +229,46 @@ export interface InvestigatorTiming {
 	readonly error?: string;
 }
 
+/** One step of a review program as the host ran it. */
+export interface ProgramStep {
+	readonly id: string;
+	readonly op: string;
+	readonly status: "ok" | "failed" | "skipped";
+	readonly ms: number;
+	readonly tokens: number;
+	readonly input: string;
+	readonly output: string;
+	readonly detail?: string;
+}
+
+/** The `compiled` mode's account of its program. */
+export interface ProgramStats {
+	/** Steps as the planner wrote them, steps `for_each` added, and how they ended. */
+	readonly planned?: number;
+	readonly expanded?: number;
+	readonly executed?: number;
+	readonly failed?: number;
+	readonly skipped?: number;
+	readonly asks?: number;
+	readonly tests?: number;
+	readonly findings?: {
+		readonly deterministic: number;
+		readonly asked: number;
+		readonly dropped: number;
+		readonly refuted: number;
+	};
+	readonly truncated?: readonly string[];
+	readonly planner: {
+		readonly ms: number;
+		readonly tokens: number;
+		readonly repairs: number;
+		readonly status: string;
+	};
+	readonly summary?: string;
+	/** Why the compiled mode gave way to the fast and deep passes, when it did. */
+	readonly fallback?: string;
+}
+
 export interface EngineResult {
 	readonly complete: boolean;
 	readonly label: string;
@@ -243,10 +292,13 @@ export interface EngineResult {
 		readonly findMs: number;
 		readonly verifyMs: number;
 		readonly deepMs?: number;
+		readonly programMs?: number;
 		/** How each frame went, in the order they finished. */
 		readonly frames?: readonly FrameTiming[];
 		/** The deep pass's investigators: lookup rounds, requests served, time and tokens. */
 		readonly investigators?: readonly InvestigatorTiming[];
+		/** The compiled mode's steps, in the order they finished. */
+		readonly program?: readonly ProgramStep[];
 	};
 	readonly usage: {
 		readonly inputTokens: number;
@@ -261,10 +313,16 @@ export interface EngineResult {
 	readonly verifyModel: string | null;
 	readonly thinking?: string | null;
 	readonly verifyThinking?: string | null;
-	/** The mode that ran (`fast` when the deep pass could not). */
-	readonly mode?: "fast" | "deep" | "both";
+	/** The mode that ran (`fast` when the deep pass could not; `both` when the compiled mode fell back). */
+	readonly mode?: "fast" | "deep" | "both" | "compiled";
 	readonly deepModel?: string | null;
 	readonly deepThinking?: string | null;
+	readonly planModel?: string | null;
+	readonly planThinking?: string | null;
+	readonly askModel?: string | null;
+	readonly askThinking?: string | null;
+	/** The compiled mode's program stats; null when it did not run. */
+	readonly program?: ProgramStats | null;
 	/** What the deep pass traced and found to hold: the sentences the summary opens with. */
 	readonly assurance?: readonly string[];
 	/** The test executions of the deep pass. */

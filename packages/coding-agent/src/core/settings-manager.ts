@@ -228,12 +228,22 @@ export interface AutoreviewSettings {
 	/**
 	 * `fast`: review the diff. `deep`: investigate beyond it (callers, helpers, tests, claims) by read-only lookups.
 	 * `both` (default): the fast pass, then the deep one with its findings as leads; one review is posted.
+	 * `compiled` (experimental): one strong model writes a review program once; the host executes it and asks a
+	 * small model only the narrow questions the program poses.
 	 */
-	mode?: "fast" | "deep" | "both";
+	mode?: "fast" | "deep" | "both" | "compiled";
 	/** `provider/model` of the deep pass's investigator frames; unset: the finder model. */
 	deepModel?: string;
 	/** Thinking level of the investigator frames (default "high"). */
 	deepThinking?: FrameThinkingLevel;
+	/** `compiled` mode: `provider/model` of the planner frame; unset: the finder model. */
+	planModel?: string;
+	/** Thinking level of the planner frame (default "high"). */
+	planThinking?: FrameThinkingLevel;
+	/** `compiled` mode: `provider/model` of the small model the program's questions go to; unset: the finder model. */
+	askModel?: string;
+	/** Thinking level of those frames (default "low"). */
+	askThinking?: FrameThinkingLevel;
 	/** Lookup rounds one investigator may take (default 4, maximum 8). */
 	deepRounds?: number;
 	/** A confirmed finding at this level or above makes the review request changes (default "medium"). */
@@ -1390,12 +1400,25 @@ export class SettingsManager {
 		if (deadlineSeconds !== undefined) out.deadlineSeconds = deadlineSeconds;
 		const frameTimeoutSeconds = count(configured.frameTimeoutSeconds);
 		if (frameTimeoutSeconds !== undefined) out.frameTimeoutSeconds = frameTimeoutSeconds;
-		if (configured.mode === "fast" || configured.mode === "deep" || configured.mode === "both")
+		if (
+			configured.mode === "fast" ||
+			configured.mode === "deep" ||
+			configured.mode === "both" ||
+			configured.mode === "compiled"
+		)
 			out.mode = configured.mode;
 		const deepModel = modelRef(configured.deepModel);
 		if (deepModel !== undefined) out.deepModel = deepModel;
 		const deepThinking = FRAME_THINKING_LEVELS.find((level) => level === configured.deepThinking);
 		if (deepThinking !== undefined) out.deepThinking = deepThinking;
+		const planModel = modelRef(configured.planModel);
+		if (planModel !== undefined) out.planModel = planModel;
+		const planThinking = FRAME_THINKING_LEVELS.find((level) => level === configured.planThinking);
+		if (planThinking !== undefined) out.planThinking = planThinking;
+		const askModel = modelRef(configured.askModel);
+		if (askModel !== undefined) out.askModel = askModel;
+		const askThinking = FRAME_THINKING_LEVELS.find((level) => level === configured.askThinking);
+		if (askThinking !== undefined) out.askThinking = askThinking;
 		const deepRounds = count(configured.deepRounds);
 		if (deepRounds !== undefined) out.deepRounds = deepRounds;
 		const blockAt = (["critical", "high", "medium", "low", "nit"] as const).find(

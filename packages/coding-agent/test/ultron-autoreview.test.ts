@@ -1938,7 +1938,47 @@ describe("the command", () => {
 		expect(
 			parseAutoreviewArgs(["review", "--mode", "deep", "--deep-model", "p/d", "--deep-thinking", "high"]),
 		).toMatchObject({ mode: "deep", deepModel: "p/d", deepThinking: "high" });
-		expect(() => parseAutoreviewArgs(["review", "--mode", "thorough"])).toThrow("--mode takes fast, deep or both");
+		expect(() => parseAutoreviewArgs(["review", "--mode", "thorough"])).toThrow(
+			"--mode takes fast, deep, both or compiled",
+		);
+		expect(
+			parseAutoreviewArgs([
+				"review",
+				"--mode",
+				"compiled",
+				"--plan-model",
+				"p/plan",
+				"--plan-thinking",
+				"xhigh",
+				"--ask-model",
+				"p/ask",
+				"--ask-thinking",
+				"off",
+				"--program",
+				"saved.json",
+				"--dump-program",
+				"out.json",
+			]),
+		).toMatchObject({
+			mode: "compiled",
+			planModel: "p/plan",
+			planThinking: "xhigh",
+			askModel: "p/ask",
+			askThinking: "off",
+			programPath: "saved.json",
+			dumpProgramPath: "out.json",
+		});
+		expect(resolveConfig({ model: "a/m", planThinking: "max" })).toMatchObject({
+			planModel: "a/m",
+			planThinking: "max",
+			askModel: "a/m",
+			askThinking: "low",
+		});
+		expect(
+			SettingsManager.inMemory({
+				autoreview: { mode: "compiled", planModel: "p/plan", askModel: "p/ask", askThinking: "minimal" },
+			}).getAutoreviewSettings(),
+		).toEqual({ mode: "compiled", planModel: "p/plan", askModel: "p/ask", askThinking: "minimal" });
 		expect(
 			parseAutoreviewArgs([
 				"review",

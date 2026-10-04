@@ -87,10 +87,19 @@ Options:
   --thinking <level>           review: thinking level of the finder frames (off, minimal, low, medium, high, ...;
                                default: autoreview.thinking, low)
   --verify-thinking <level>    review: thinking level of the verifier frames (default: autoreview.verifyThinking, low)
-  --mode <fast|deep|both>      review: fast reviews the diff; deep investigates beyond it by read-only lookups in the
-                               repository (nothing is executed); both (default) does one after the other
+  --mode <fast|deep|both|compiled>
+                               review: fast reviews the diff; deep investigates beyond it by read-only lookups in the
+                               repository (nothing is executed); both (default) does one after the other; compiled
+                               (experimental) has one planner frame write a review program the host executes
   --deep-model <p/m>           review: the model of the deep pass's investigators (default: the finder model)
-  --deep-thinking <level>      review: their thinking level (default: autoreview.deepThinking, medium)
+  --deep-thinking <level>      review: their thinking level (default: autoreview.deepThinking, high)
+  --plan-model <p/m>           review --mode compiled: the planner's model (default: autoreview.planModel, the finder model)
+  --plan-thinking <level>      review --mode compiled: its thinking level (default: autoreview.planThinking, high)
+  --ask-model <p/m>            review --mode compiled: the small model the program's questions go to (default:
+                               autoreview.askModel, the finder model)
+  --ask-thinking <level>       review --mode compiled: its thinking level (default: autoreview.askThinking, low)
+  --dump-program <path>        review --mode compiled: save the validated program as JSON for inspection
+  --program <path>             review --mode compiled: execute this saved program instead of calling the planner
   --run-tests | --no-run-tests review --repo-dir: let the deep pass run the project's tests in a sandbox (default:
                                autoreview.runTests, on); never without a sandbox
   --test-env <dir>             review --repo-dir: a pre-built environment (virtualenv, node_modules) to bind read-only
@@ -103,7 +112,7 @@ Options:
                                autoreview.deadlineSeconds, none)
 
 Settings (global settings.json): autoreview.accounts, pollSeconds, concurrency, model, verifyModel, budget, dryRun,
-frameConcurrency, mode, deepModel, deepThinking, deepRounds, blockAt, maxComments, runTests, testOwners, testRuns, testTimeoutSeconds, testEnv, testImage, checkoutRoots, guides, thinking, verifyThinking, deadlineSeconds, frameTimeoutSeconds, ack, ackLines, ackArt, signature.
+frameConcurrency, mode, deepModel, deepThinking, deepRounds, planModel, planThinking, askModel, askThinking, blockAt, maxComments, runTests, testOwners, testRuns, testTimeoutSeconds, testEnv, testImage, checkoutRoots, guides, thinking, verifyThinking, deadlineSeconds, frameTimeoutSeconds, ack, ackLines, ackArt, signature.
 See docs/autoreview.md.`;
 
 interface Parsed {
@@ -120,6 +129,12 @@ interface Parsed {
 	mode?: ReviewMode;
 	deepModel?: string;
 	deepThinking?: FrameThinkingLevel;
+	planModel?: string;
+	planThinking?: FrameThinkingLevel;
+	askModel?: string;
+	askThinking?: FrameThinkingLevel;
+	programPath?: string;
+	dumpProgramPath?: string;
 	deadlineSeconds?: number;
 	runTests?: boolean;
 	testEnv?: string;
@@ -185,6 +200,12 @@ export function parseAutoreviewArgs(args: readonly string[]): Parsed {
 		else if (arg === "--verify-thinking") parsed.verifyThinking = thinking();
 		else if (arg === "--deep-thinking") parsed.deepThinking = thinking();
 		else if (arg === "--deep-model") parsed.deepModel = model();
+		else if (arg === "--plan-model") parsed.planModel = model();
+		else if (arg === "--plan-thinking") parsed.planThinking = thinking();
+		else if (arg === "--ask-model") parsed.askModel = model();
+		else if (arg === "--ask-thinking") parsed.askThinking = thinking();
+		else if (arg === "--program") parsed.programPath = value();
+		else if (arg === "--dump-program") parsed.dumpProgramPath = value();
 		else if (arg === "--run-tests") parsed.runTests = true;
 		else if (arg === "--no-run-tests") parsed.runTests = false;
 		else if (arg === "--test-env") parsed.testEnv = value();
@@ -203,7 +224,7 @@ export function parseAutoreviewArgs(args: readonly string[]): Parsed {
 		} else if (arg === "--mode") {
 			const name = value();
 			const mode = REVIEW_MODES.find((item) => item === name);
-			if (mode === undefined) throw new UsageError(`--mode takes fast, deep or both, not ${name}`);
+			if (mode === undefined) throw new UsageError(`--mode takes fast, deep, both or compiled, not ${name}`);
 			parsed.mode = mode;
 		} else if (arg === "--deadline") {
 			const seconds = Number(value());
@@ -299,6 +320,15 @@ export function offlineJson(
 		deepThinking: result.deepThinking ?? null,
 		thinking: result.thinking ?? null,
 		verifyThinking: result.verifyThinking ?? null,
+		// The compiled mode: the planner's and the small model's settings, and the program's stats and steps.
+		planModel: result.planModel ?? null,
+		planThinking: result.planThinking ?? null,
+		askModel: result.askModel ?? null,
+		askThinking: result.askThinking ?? null,
+		program:
+			result.program === undefined || result.program === null
+				? null
+				: { ...result.program, steps: [...(result.timing.program ?? [])] },
 		notChecked: [...result.notChecked],
 	};
 }
@@ -356,6 +386,10 @@ export async function runAutoreviewCommand(
 			...(parsed.maxComments === undefined ? {} : { maxComments: parsed.maxComments }),
 			...(parsed.deepModel === undefined ? {} : { deepModel: parsed.deepModel }),
 			...(parsed.deepThinking === undefined ? {} : { deepThinking: parsed.deepThinking }),
+			...(parsed.planModel === undefined ? {} : { planModel: parsed.planModel }),
+			...(parsed.planThinking === undefined ? {} : { planThinking: parsed.planThinking }),
+			...(parsed.askModel === undefined ? {} : { askModel: parsed.askModel }),
+			...(parsed.askThinking === undefined ? {} : { askThinking: parsed.askThinking }),
 			...(parsed.deadlineSeconds === undefined ? {} : { deadlineSeconds: parsed.deadlineSeconds }),
 		},
 		{
@@ -533,6 +567,11 @@ export async function runAutoreviewCommand(
 			if (offline) {
 				if (parsed.target !== undefined) throw new UsageError("give a pull request or --repo-dir, not both");
 				if (!parsed.base || !parsed.head) throw new UsageError("--repo-dir needs --base and --head");
+				if (
+					(parsed.programPath !== undefined || parsed.dumpProgramPath !== undefined) &&
+					config.mode !== "compiled"
+				)
+					throw new UsageError("--program and --dump-program need --mode compiled");
 				const named = parsed.repo === undefined ? undefined : parsePullTarget(`${parsed.repo}#1`);
 				const lent =
 					named !== undefined && config.checkoutRoots.length > 0
@@ -553,6 +592,10 @@ export async function runAutoreviewCommand(
 						: { testEnv: resolve(cwd, parsed.testEnv) }),
 					...(config.guides.length === 0 ? {} : { guides: config.guides.map((path) => expandPath(path)) }),
 					...(parsed.repo === undefined ? {} : { repo: parsed.repo }),
+					...(parsed.programPath === undefined ? {} : { programPath: resolve(cwd, parsed.programPath) }),
+					...(parsed.dumpProgramPath === undefined
+						? {}
+						: { dumpProgramPath: resolve(cwd, parsed.dumpProgramPath) }),
 				});
 				if (parsed.json)
 					io.stdout(

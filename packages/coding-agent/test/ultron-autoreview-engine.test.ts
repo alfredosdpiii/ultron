@@ -493,6 +493,8 @@ emit({"result": result, "calls": rlm.calls})`);
 			"findMs",
 			"frames",
 			"investigators",
+			"program",
+			"programMs",
 			"scopeMs",
 			"totalMs",
 			"verifyMs",
@@ -1869,6 +1871,8 @@ describe("ultron autoreview review --repo-dir: the offline JSON contract, with a
 			usage: Record<string, number>;
 		};
 		expect(Object.keys(json).sort()).toEqual([
+			"askModel",
+			"askThinking",
 			"assurance",
 			"complete",
 			"deepModel",
@@ -1878,6 +1882,9 @@ describe("ultron autoreview review --repo-dir: the offline JSON contract, with a
 			"mode",
 			"model",
 			"notChecked",
+			"planModel",
+			"planThinking",
+			"program",
 			"tests",
 			"thinking",
 			"timing",
@@ -1886,6 +1893,7 @@ describe("ultron autoreview review --repo-dir: the offline JSON contract, with a
 			"verifyModel",
 			"verifyThinking",
 		]);
+		expect(json.program).toBeNull();
 		expect(json.thinking).toBe("medium");
 		expect(json.verifyThinking).toBe("low");
 		const frames = (json.timing as unknown as { frames: Array<Record<string, unknown>> }).frames;
