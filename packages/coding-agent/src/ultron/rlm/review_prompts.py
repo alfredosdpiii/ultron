@@ -293,12 +293,18 @@ DEEP_LENSES: dict[str, str] = {
     "claims": """Your part: the claims. Start from what the change says it does (the brief lists its claims and where
 each must hold). For each claim, find where it has to be true (the path that failed, every other reader and
 writer of the thing it changes) and check it there: a fix that reaches the helper but not the path that failed is
-necessary, not sufficient. Report what does not hold as findings, and in checked what you verified to hold.""",
+necessary, not sufficient. Report what does not hold as findings, and in checked what you verified to hold.
+For every new config field, flag, environment variable or request input (the brief lists them), trace the value:
+where it enters (UI, request, manifest), validation, persistence, environment and deploy configuration, and where
+it is read at runtime. At each step check the type conversion, what happens when it is missing, and whether every
+layer accepts the same set of values. Request the references of each such name before you finish.""",
     "siblings": """Your part: siblings. Find the other producers and consumers of what the change touches, parallel
 implementations (another service, dialect, platform), and families the changed item belongs to (keywords, enum
 members, regexes, routes). Look for: a sibling with the same defect that was not fixed; two implementations that
 now disagree; a convention the same file or module already follows (it hashes this id, validates with a schema,
-sets this variable) that the change breaks or does not extend. Cite the line that establishes the convention.""",
+sets this variable) that the change breaks or does not extend. Cite the line that establishes the convention.
+Before you finish, request the references of every function or method whose signature changed and of every
+exported name the change adds or alters (the brief lists them): each caller must still fit.""",
     "deployment": """Your part: deployment reality. For every environment variable, flag, config key, manifest, workflow,
 infrastructure setting and dependency pin the change relies on: is it actually set where the feature runs
 (staging and production manifests, CI workflows, compose files, the sibling test's setup)? Does the CI job really
@@ -314,6 +320,15 @@ lines it passes through and the result. A finding here needs that input in its s
 }
 
 #: Sent once to an investigator that stops in its first round having looked at almost nothing.
+#: Sent once to an investigator that finishes without the lookups its part requires; the names follow.
+DEEP_TRACE_NUDGE = """You have not looked up every name your part must trace. Request the references of each of these
+(and follow them) before you finish: """
+
+#: Heads the user's own review guidance when there is any. It is trusted, and private.
+GUIDANCE_HEADER = """Reviewer guidance from the person this review is for. Apply it: it says what matters in this
+codebase and how to judge it. It is private: never quote it, name it, or refer to it or to its existence in
+anything you write; state every finding in your own words, from the code."""
+
 DEEP_NUDGE = """You stopped after looking at very little outside the diff. Before you conclude, name the other readers,
 writers, tests and configuration of what this change touches that you have not looked at yet, and request them.
 If the brief shows there really are none, say so in checked and set done."""

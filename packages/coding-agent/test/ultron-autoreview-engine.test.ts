@@ -1285,6 +1285,135 @@ emit({"result": result, "deepCalls": [c for c in rlm.calls if c["kind"] == "deep
 		expect(out.deepCommands).toContain("git grep");
 	});
 
+	test("mandatory traces: an investigator that has not looked up the names its part must trace is sent back once", () => {
+		const dir = tempDir("ultron-autoreview-trace-");
+		git(dir, "init", "-q", "-b", "main");
+		mkdirSync(join(dir, "deploy"));
+		writeFileSync(join(dir, "app.py"), "import os\n\n\ndef page(request, size):\n    return size\n");
+		writeFileSync(
+			join(dir, "views.py"),
+			"from app import page\n\n\ndef index(request):\n    return page(request, 10)\n",
+		);
+		writeFileSync(join(dir, "deploy/prod.yaml"), "env:\n  WORKERS: 4\n");
+		git(dir, "add", ".");
+		git(dir, "commit", "-qm", "base");
+		writeFileSync(
+			join(dir, "app.py"),
+			'import os\n\n\ndef page(request, size, offset):\n    limit = int(os.environ["PAGE_LIMIT"])\n    sort = request.args.get("sort_key")\n    return size + offset\n',
+		);
+		writeFileSync(join(dir, "deploy/prod.yaml"), "env:\n  WORKERS: 4\n  page_mode: fast\n");
+		git(dir, "commit", "-qam", "paging");
+		const out = py<{
+			required: Record<string, string[]>;
+			brief: string;
+			records: Record<string, { rounds: number; untraced: string[]; nudged: boolean; requests: number }>;
+			texts: Record<string, string[]>;
+			notChecked: string[];
+		}>(`
+ROOT = ${JSON.stringify(dir)}
+git = r.Git(ROOT)
+files = r.parse_diff(git.out("diff", "-U3", "HEAD~1", "HEAD", "--"))
+repo = deep.Repo(ROOT, "HEAD")
+brief = deep.build_brief(repo, files, r._rev_reader(git, "HEAD"))
+def investigator(lens, text, round):
+    if lens == "siblings":
+        # Looks things up, but never the changed signature: sent back for it, then asks.
+        if "You have not looked up every name" in text:
+            return {"findings": [], "requests": [{"references": {"symbol": "page"}}], "done": False} if round == 2 else {"findings": [], "requests": [], "done": True}
+        return {"findings": [], "requests": [{"read": {"path": "views.py"}}, {"list": {"dir": "."}}, {"read": {"path": "app.py"}}], "done": True}
+    if lens == "claims":
+        # Traces the environment variable and the request input, never the config key, even when told.
+        if round == 1:
+            return {"findings": [], "requests": [{"grep": {"pattern": "PAGE_LIMIT"}}, {"references": {"symbol": "sort_key"}}, {"read": {"path": "app.py"}}], "done": False}
+        return {"findings": [], "requests": [], "done": True}
+    return {"findings": [], "requests": [{"read": {"path": "app.py"}}, {"read": {"path": "views.py"}}, {"list": {"dir": "deploy"}}], "done": True}
+rlm = FakeRlm(investigator=investigator)
+result = asyncio.run(a.run(rlm, {"repoDir": ROOT, "base": "HEAD~1", "head": "HEAD", "mode": "deep"}))
+texts = {}
+for call in rlm.calls:
+    if call["kind"] == "deep":
+        texts.setdefault(call["lens"], []).append(call["text"])
+emit({"required": brief.required, "brief": brief.text, "records": {item["lens"]: item for item in result["timing"]["investigators"]},
+      "texts": texts, "notChecked": result["notChecked"]})`);
+		// The map lists what must be traced: the changed signature for siblings; the new env var, config key and
+		// request input for claims.
+		expect(out.required).toEqual({ siblings: ["page"], claims: ["PAGE_LIMIT", "page_mode", "sort_key"] });
+		expect(out.brief).toContain(
+			"New configuration and inputs, each to be traced from where it enters to where it is read: `PAGE_LIMIT`, `page_mode`, `sort_key`",
+		);
+		expect(out.brief).toContain("Changed signatures and exported names, each caller to be checked: `page`");
+		// siblings finished without the references of \`page\`: sent back once, with the name; then it asked.
+		expect(out.texts.siblings).toHaveLength(3);
+		expect(out.texts.siblings![1]).toContain(
+			"You have not looked up every name your part must trace. Request the references of each of these\n(and follow them) before you finish: page.",
+		);
+		// It had done its three lookups, so this is not the "looked at very little" nudge.
+		expect(out.texts.siblings![1]).not.toContain("You stopped after looking at very little");
+		expect(out.texts.siblings![2]).toContain("## references page -> ");
+		expect(out.records.siblings).toMatchObject({ rounds: 3, untraced: [], nudged: false });
+		// claims was told once about the config key and still did not trace it: recorded, and said in the review.
+		expect(out.texts.claims).toHaveLength(3);
+		expect(out.texts.claims![2]).toContain("before you finish: page_mode.");
+		expect(out.records.claims).toMatchObject({ rounds: 3, untraced: ["page_mode"] });
+		expect(out.notChecked).toContain("Not traced by the deep pass: page_mode (claims).");
+		// The other investigators have nothing mandatory.
+		expect(out.records.tests).toMatchObject({ rounds: 1, untraced: [] });
+	});
+
+	test("private review guides: the most specific first, bounded, given to every frame, their names reported", () => {
+		const repo = deepRepo();
+		const guides = tempDir("ultron-autoreview-guides-");
+		mkdirSync(join(guides, "more"));
+		writeFileSync(join(guides, "general.md"), "GENERAL: prefer small pull requests.\n");
+		writeFileSync(join(guides, "python.md"), "PYTHON: never swallow OSError.\n");
+		writeFileSync(join(guides, "rust.md"), "RUST: no unwrap.\n");
+		writeFileSync(join(guides, "more/app.md"), "APP: show() must return None for a missing file.\n");
+		writeFileSync(join(guides, "notes.json"), "{}");
+		const single = join(tempDir("ultron-autoreview-guide-"), "house-rules.md");
+		writeFileSync(single, `HOUSE: ${"x".repeat(20_000)}`);
+		const out = py<{
+			text: string;
+			names: string[];
+			small: string;
+			none: [string, string[]];
+			seen: Record<string, boolean[]>;
+			result: { guides: number; guideNames: string[] };
+		}>(`${deepPrelude(repo)}
+GUIDES = [${JSON.stringify(guides)}, ${JSON.stringify(single)}, "/no/such/guide.md"]
+text, names = a.load_guides(GUIDES, "acme/app", files)
+small, _ = a.load_guides(GUIDES, "acme/app", files, limit=260)
+rlm = FakeRlm(finder=lambda task, text: [dict(BUG, file="src/app.py", line=9, end_line=9, replacement=None)],
+              verifier=lambda text: {"verdict": "rejected", "evidence": "no", "severity": "low", "scenario_holds": False})
+result = asyncio.run(a.run(rlm, dict(SPEC, mode="both", guides=GUIDES, repo="acme/app")))
+seen = {}
+for call in rlm.calls:
+    seen.setdefault(call["kind"], []).append("APP: show() must return None" in (call["text"] + (call["context"] or "")))
+emit({"text": text, "names": names, "small": small, "none": a.load_guides([], "acme/app", files), "seen": seen,
+      "result": {"guides": result["guides"], "guideNames": result["guideNames"]}})`);
+		// The repository's own guide, then the language's, then the general ones; other languages' guides come last.
+		const order = ["APP:", "PYTHON:", "GENERAL:", "RUST:", "HOUSE:"].map((mark) => out.text.indexOf(mark));
+		expect(order.every((position) => position >= 0)).toBe(true);
+		expect(order).toEqual([...order].sort((a, b) => a - b));
+		expect(out.text.startsWith("Reviewer guidance from the person this review is for.")).toBe(true);
+		expect(out.text).toContain("never quote it, name it, or refer to it or to its existence");
+		// Bounded: 12,000 characters of guide text, the last guide cut.
+		expect(out.text.length).toBeLessThan(12_000 + 400);
+		expect(out.text.endsWith("…")).toBe(true);
+		expect(out.small).toContain("APP:");
+		expect(out.small).not.toContain("HOUSE:");
+		// File names and paths, for the check on what is posted; no file is named inside the text itself.
+		expect(out.names.slice(0, 5)).toEqual(["app.md", "python.md", "general.md", "rust.md", "house-rules.md"]);
+		expect(out.names).toContain(join(guides, "more/app.md"));
+		expect(out.text).not.toMatch(/app\.md|python\.md|house-rules/);
+		expect(out.none).toEqual(["", []]);
+		// Finders, investigators and the verifier all get it.
+		expect(out.seen.find!.every(Boolean)).toBe(true);
+		expect(out.seen.deep!.every(Boolean)).toBe(true);
+		expect(out.seen.verify!.every(Boolean)).toBe(true);
+		expect(out.result.guides).toBe(5);
+		expect(out.result.guideNames).toContain("house-rules.md");
+	});
+
 	test("merging: a deep finding with outside evidence supersedes the fast one; one without gives way to it", () => {
 		const out = py<Array<Array<string | number>>>(`
 def f(source, line, claim, beyond=None, category="correctness", level="low"):
@@ -1378,7 +1507,7 @@ emit({
 			expect(task).toContain('{"history": {"path": "...", "n": 10}}');
 			expect(task).toContain('{"pickaxe": {"string": "...", "n": 5}}');
 			expect(task).toContain("Look things up before you conclude.");
-			expect(task.length).toBeLessThan(4_300);
+			expect(task.length).toBeLessThan(4_600);
 		}
 		expect(out.claims).toContain("For each claim, find where it has to be true");
 		expect(out.claims).toContain("necessary, not sufficient");
@@ -1386,6 +1515,12 @@ emit({
 		expect(out.deployment).toContain("is it actually set where the feature runs");
 		expect(out.tests).toContain("would any test fail if it were removed");
 		expect(out.inputs).toContain("name the exact input");
+		// The two traces that are not optional.
+		expect(out.claims).toContain(
+			"trace the value:\nwhere it enters (UI, request, manifest), validation, persistence",
+		);
+		expect(out.claims).toContain("whether every\nlayer accepts the same set of values");
+		expect(out.siblings).toContain("request the references of every function or method whose signature changed");
 	});
 });
 

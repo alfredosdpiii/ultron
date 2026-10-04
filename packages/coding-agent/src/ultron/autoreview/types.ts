@@ -82,6 +82,14 @@ export interface EngineSpec {
 	/** A pre-built environment directory to bind read-only into the sandbox. */
 	readonly testEnv?: string;
 	readonly testImage?: string;
+	/**
+	 * A local checkout of the same repository (the host has checked its remote): its prepared environment
+	 * directories are bound read-only into the test sandbox. `testEnv` takes its place when given.
+	 */
+	readonly testCheckout?: string;
+	/** The user's private review guides (files or directories), and `owner/repo` to pick the specific ones. */
+	readonly guides?: readonly string[];
+	readonly repo?: string;
 	/** With `workDir`: the commit the pull request branched from (tests failing at head are re-run there). */
 	readonly baseSha?: string;
 	/** Seconds the review may take (0: no deadline), and seconds one frame may take. */
@@ -242,6 +250,9 @@ export interface EngineResult {
 	readonly assurance?: readonly string[];
 	/** The test executions of the deep pass. */
 	readonly tests?: TestReport;
+	/** How many review guides were used, and their file names and paths (which must not appear in what is posted). */
+	readonly guides?: number;
+	readonly guideNames?: readonly string[];
 	readonly notChecked: readonly string[];
 	/** Why coverage is incomplete; empty when `complete`. */
 	readonly incomplete: readonly string[];

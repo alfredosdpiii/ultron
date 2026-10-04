@@ -28,6 +28,7 @@ import {
 import { createLogger, Daemon } from "./daemon.ts";
 import { RuntimeReviewEngine } from "./engine.ts";
 import { parsePullTarget, pullKey } from "./github.ts";
+import { expandPath, findCheckout } from "./local.ts";
 import { decideVerdict, planReview } from "./plan.ts";
 import { type Outcome, reviewPull } from "./reviewer.ts";
 import { type Runner, runProcess } from "./runner.ts";
@@ -71,7 +72,8 @@ Commands:
   review --repo-dir <dir> --base <sha> --head <sha>
                                Review a local diff with no GitHub access; with --json, one JSON object on stdout
   status                       Accounts, last poll, queue and recent reviews
-  doctor                       The sandbox test execution would use, and a self-check of its isolation
+  doctor [--repo owner/name]   The sandbox test execution would use, and a self-check of its isolation; with --repo,
+                               the local checkout whose environments would be bound into it
   install | uninstall          Write or remove the user service that runs "${APP_NAME} autoreview run"
 
 Options:
@@ -96,7 +98,7 @@ Options:
                                autoreview.deadlineSeconds, none)
 
 Settings (global settings.json): autoreview.accounts, pollSeconds, concurrency, model, verifyModel, budget, dryRun,
-frameConcurrency, mode, deepModel, deepThinking, deepRounds, blockAt, maxComments, runTests, testOwners, testRuns, testTimeoutSeconds, testEnv, testImage, thinking, verifyThinking, deadlineSeconds, frameTimeoutSeconds, ack, ackLines, ackArt, signature.
+frameConcurrency, mode, deepModel, deepThinking, deepRounds, blockAt, maxComments, runTests, testOwners, testRuns, testTimeoutSeconds, testEnv, testImage, checkoutRoots, guides, thinking, verifyThinking, deadlineSeconds, frameTimeoutSeconds, ack, ackLines, ackArt, signature.
 See docs/autoreview.md.`;
 
 interface Parsed {
@@ -116,6 +118,7 @@ interface Parsed {
 	deadlineSeconds?: number;
 	runTests?: boolean;
 	testEnv?: string;
+	repo?: string;
 	repoDir?: string;
 	base?: string;
 	head?: string;
@@ -171,6 +174,7 @@ export function parseAutoreviewArgs(args: readonly string[]): Parsed {
 		else if (arg === "--run-tests") parsed.runTests = true;
 		else if (arg === "--no-run-tests") parsed.runTests = false;
 		else if (arg === "--test-env") parsed.testEnv = value();
+		else if (arg === "--repo") parsed.repo = value();
 		else if (arg === "--mode") {
 			const name = value();
 			const mode = REVIEW_MODES.find((item) => item === name);
@@ -401,8 +405,42 @@ export async function runAutoreviewCommand(
 						`the sandbox check did not run: ${(result.stderr || result.stdout).trim().slice(0, 300)}`,
 					);
 				}
-				if (parsed.json) io.stdout(`${JSON.stringify({ ...report, runTests: config.runTests })}\n`);
-				else if (report.mechanism === null) io.stdout(`Sandbox: none. ${report.message ?? ""}\n`);
+				// `--repo owner/name`: the local checkout that would lend its environments, and what would be bound.
+				let lent: { repo: string; checkout: string | null; environments: unknown[] } | undefined;
+				if (parsed.repo !== undefined) {
+					const ref = parsePullTarget(`${parsed.repo}#1`);
+					if (!ref) throw new UsageError(`--repo takes owner/name, not ${parsed.repo}`);
+					const checkout = await findCheckout(runner, config.checkoutRoots, ref);
+					let environments: unknown[] = [];
+					if (checkout !== undefined) {
+						const listed = await runner([python, script, "environments", checkout], { timeoutMs: 60_000 });
+						try {
+							environments = JSON.parse(listed.stdout.trim().split("\n").at(-1) ?? "[]") as unknown[];
+						} catch {
+							environments = [];
+						}
+					}
+					lent = { repo: parsed.repo, checkout: checkout ?? null, environments };
+				}
+				const lentLines =
+					lent === undefined
+						? []
+						: lent.checkout === null
+							? [`Local checkout of ${lent.repo}: none under autoreview.checkoutRoots with a matching remote`]
+							: [
+									`Local checkout of ${lent.repo}: ${lent.checkout}`,
+									...(lent.environments.length === 0
+										? ["  no prepared environment (.venv, venv, node_modules) found: nothing would be bound"]
+										: (lent.environments as Array<{ path: string; kind: string; interpreter?: string }>).map(
+												(item) =>
+													`  bound read-only: ${item.path} (${item.kind}${item.interpreter && item.interpreter !== "system" ? `, with its interpreter ${item.interpreter}` : ""})`,
+											)),
+									"  never bound: the checkout's source, .git, .env files",
+								];
+				if (parsed.json)
+					io.stdout(`${JSON.stringify({ ...report, runTests: config.runTests, ...(lent ? { lent } : {}) })}\n`);
+				else if (report.mechanism === null)
+					io.stdout(`${[`Sandbox: none. ${report.message ?? ""}`, ...lentLines].join("\n")}\n`);
 				else {
 					const check = report.selfCheck ?? {};
 					const owners = config.testOwners.length ? ` and owners ${config.testOwners.join(", ")}` : "";
@@ -422,6 +460,7 @@ export async function runAutoreviewCommand(
 							`  exported commit: ${String(check.workdir)}; system directories: ${String(check.system)}`,
 							`  Docker socket: ${String(check.dockerSocket)}`,
 							`Tests in reviews: ${testsLine}`,
+							...lentLines,
 						].join("\n")}\n`,
 					);
 				}
@@ -454,7 +493,12 @@ export async function runAutoreviewCommand(
 					...engineSettings(config),
 					// A local repository is the user's own: its tests may run (sandboxed) unless turned off.
 					runTests: config.mode !== "fast" && (parsed.runTests ?? config.runTests),
-					...(parsed.testEnv === undefined ? {} : { testEnv: resolve(cwd, parsed.testEnv) }),
+					...(parsed.testEnv === undefined
+						? // The repository given is itself a local checkout: its own prepared environments serve the tests.
+							{ testCheckout: resolve(cwd, parsed.repoDir!) }
+						: { testEnv: resolve(cwd, parsed.testEnv) }),
+					...(config.guides.length === 0 ? {} : { guides: config.guides.map((path) => expandPath(path)) }),
+					...(parsed.repo === undefined ? {} : { repo: parsed.repo }),
 				});
 				if (parsed.json) io.stdout(`${JSON.stringify(offlineJson(result, engine.startMs, config.blockAt))}\n`);
 				else

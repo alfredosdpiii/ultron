@@ -19,6 +19,7 @@ import {
 	RateLimitError,
 	type Review,
 } from "./github.ts";
+import { expandPath, findCheckout, withoutGuideMentions } from "./local.ts";
 import { planReview, type ReviewPlan, withoutInline } from "./plan.ts";
 import type { Runner } from "./runner.ts";
 import { claimHash, type PostedFinding, type PullState, type StateStore } from "./state.ts";
@@ -445,10 +446,18 @@ export async function runReview(deps: ReviewerDeps, prepared: Prepared): Promise
 			deps.config.runTests &&
 			testsEligible(deps.config, ref.owner, await github.canPush(ref));
 		const testEnv = deps.config.testEnv[`${ref.owner}/${ref.repo}`.toLowerCase()];
+		// Without an explicit environment, an existing local checkout of this repository may lend its own.
+		const testCheckout =
+			runTests && testEnv === undefined && deps.config.checkoutRoots.length > 0
+				? await findCheckout(deps.runner, deps.config.checkoutRoots, ref)
+				: undefined;
 		const spec: EngineSpec = {
 			...(checkout ? { workDir: checkout.workDir, baseSha: checkout.mergeBase } : {}),
 			runTests,
 			...(runTests && testEnv !== undefined ? { testEnv } : {}),
+			...(testCheckout === undefined ? {} : { testCheckout }),
+			...(deps.config.guides.length === 0 ? {} : { guides: deps.config.guides.map((path) => expandPath(path)) }),
+			repo: `${ref.owner}/${ref.repo}`,
 			diffPath,
 			postDiffPath,
 			label: `${ref.owner}/${ref.repo}#${ref.number}`,
@@ -492,6 +501,12 @@ export async function runReview(deps: ReviewerDeps, prepared: Prepared): Promise
 			blockAt: deps.config.blockAt,
 			maxComments: deps.config.maxComments,
 		});
+		// Nothing that names a private review guide is posted.
+		const checked = withoutGuideMentions(plan, result.guideNames ?? []);
+		if (checked.withheld.length > 0) {
+			plan = checked.plan;
+			deps.log(`${name}: withheld ${checked.withheld.join("; ")}: it named a private review guide`);
+		}
 		const reviewedAt = new Date(now()).toISOString();
 		const shortSha = head.slice(0, 7);
 		const posted: PostedFinding[] = [];

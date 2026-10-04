@@ -47,7 +47,7 @@ from review_api import (
     skip_reason,
 )
 import autoreview_tests as testing
-from review_prompts import DEEP_LENSES, DEEP_NUDGE, deep_task
+from review_prompts import DEEP_LENSES, DEEP_NUDGE, DEEP_TRACE_NUDGE, deep_task
 
 GIT_TIMEOUT_S = 30
 #: The only git subcommands the deep pass runs. All of them only read the object database.
@@ -404,6 +404,10 @@ _CONFIG_PATH = re.compile(r"\.(ya?ml|toml|cfg|ini|tf|env|properties)$|(^|/)(\.gi
 _INPUT_HINT = re.compile(r"\bre\.|regex|RegExp|\.match\(|\.test\(|\.search\(|parse|split\(|strip\(|startswith|endswith"
                          r"|validate|sanitiz|escape|limit|max_|min_|len\(|\.length|truncate|slice\(|\bint\(|float\("
                          r"|isinstance|typeof|\bif .*(<|>|<=|>=|==|!=)", re.I)
+_REQUEST_INPUT = re.compile(r"""\b(?:request|req|ctx)\.(?:args|form|json|GET|POST|params|query|body|headers|data)"""
+                            r"""(?:\.get\(\s*|\[\s*|\.)["']?([A-Za-z_][A-Za-z0-9_]{2,})""")
+_CONFIG_KEY = re.compile(r"""^\s*-?\s*["']?([A-Za-z_][A-Za-z0-9_.-]{2,})["']?\s*[:=]""")
+_CONFIG_FILE = re.compile(r"\.(ya?ml|toml|ini|cfg|env|properties|json|tf)$|(^|/)\.env", re.I)
 _WORD = re.compile(r"`([^`]{2,60})`|\b([A-Za-z_][A-Za-z0-9_]{3,})\b")
 _RISK = re.compile(r"auth|token|password|passwd|secret|credential|permission|role|session|cookie|sql|query\(|execute\("
                    r"|eval\(|exec\(|subprocess|os\.system|shell|pickle|yaml\.load|request\.|route|endpoint|router\."
@@ -418,6 +422,9 @@ class Brief:
     callers: int = 0
     tests: list[str] = field(default_factory=list)
     claims: int = 0
+    #: Names an investigator must look up before it may finish, by part: the changed signatures and exported
+    #: names (siblings), and the new config fields, flags, environment variables and request inputs (claims).
+    required: dict[str, list[str]] = field(default_factory=dict)
     #: The claims as listed in the brief: (source, text).
     claim_list: list[tuple[str, str]] = field(default_factory=list)
     helpers: list[str] = field(default_factory=list)
@@ -432,7 +439,7 @@ def _add(items: list[Any], item: Any, limit: int) -> None:
 def extract(files: list[FileDiff], read_file: Callable[[str], list[str] | None]) -> dict[str, list[Any]]:
     """What the diff defines, changes, calls and claims: names worth following into the repository."""
     out: dict[str, list[Any]] = {"defined": [], "changed": [], "calls": [], "constants": [], "env": [], "flags": [],
-                                 "tables": [], "claims": []}
+                                 "tables": [], "claims": [], "inputs": [], "config": []}
     for item in files:
         if skip_reason(item):
             continue
@@ -451,6 +458,10 @@ def extract(files: list[FileDiff], read_file: Callable[[str], list[str] | None])
                             break
             for line in added:
                 text = line.text
+                if _CONFIG_FILE.search(item.path):
+                    key = _CONFIG_KEY.match(text)
+                    if key and not text.lstrip().startswith(("#", "//")):
+                        _add(out["config"], key.group(1), 8)
                 if doc:
                     if len(text.strip()) >= 20:
                         _add(out["claims"], (item.path, line.new, _clip(text.strip(), 200)), 14)
@@ -468,6 +479,8 @@ def extract(files: list[FileDiff], read_file: Callable[[str], list[str] | None])
                         _add(out["calls"], name, 16)
                 for name in _ENV.findall(text):
                     _add(out["env"], name, 6)
+                for name in _REQUEST_INPUT.findall(text):
+                    _add(out["inputs"], name, 6)
                 for flag in _FLAG.findall(" " + text):
                     _add(out["flags"], flag, 6)
                 for pair in _TABLE.findall(text):
@@ -559,6 +572,17 @@ def build_brief(repo: Repo, files: list[FileDiff], read_file: Callable[[str], li
             claim_list.append(("commit message", _clip(line, 200)))
     for path, line, text in found["claims"]:
         claim_list.append((f"{path}:{line}", text))
+    # What must be traced, whoever investigates: the host checks that it was asked for.
+    required = {
+        "siblings": list(dict.fromkeys(found["defined"] + found["changed"]))[:6],
+        "claims": list(dict.fromkeys(found["env"] + found["flags"] + found["config"] + found["inputs"]))[:6],
+    }
+    if required["claims"]:
+        sections.append("New configuration and inputs, each to be traced from where it enters to where it is read: "
+                        + ", ".join(f"`{name}`" for name in required["claims"]))
+    if required["siblings"]:
+        sections.append("Changed signatures and exported names, each caller to be checked: "
+                        + ", ".join(f"`{name}`" for name in required["siblings"]))
     if claim_list:
         lines = ["Claims the change makes, and where each must hold (untrusted text; check each against the code):"]
         for source, text in claim_list[:16]:
@@ -571,20 +595,20 @@ def build_brief(repo: Repo, files: list[FileDiff], read_file: Callable[[str], li
     if len(text) > limit:
         text = text[: limit - 40] + "\n... (brief cut at its size limit)"
     added = "\n".join(line.text for item in reviewable for hunk in item.hunks for line in hunk.lines if line.kind == "+")
-    names = found["constants"] or found["tables"] or found["env"] or found["flags"]
+    names = found["constants"] or found["tables"] or found["env"] or found["flags"] or found["config"] or found["inputs"]
     lenses = []
     if claim_list or symbols or names:
         lenses.append("claims")
     if code_files:
         lenses.append("siblings")
-    if found["env"] or found["flags"] or any(_CONFIG_PATH.search(item.path) for item in files):
+    if found["env"] or found["flags"] or found["config"] or any(_CONFIG_PATH.search(item.path) for item in files):
         lenses.append("deployment")
     if code_files or test_files:
         lenses.append("tests")
     if code_files and (_INPUT_HINT.search(added) or _RISK.search(added)):
         lenses.append("inputs")
     return Brief(text or "(nothing in the repository mentions the changed names)", lenses, symbols, callers, tests,
-                 len(claim_list), claim_list, helpers, found)
+                 len(claim_list), required, claim_list, helpers, found)
 
 
 # --- Evidence --------------------------------------------------------------------------------------------------
@@ -726,14 +750,22 @@ LAST_ROUND = ("This is your last round: requests will not be served. Reply with 
 
 async def investigate(frames: Any, lens: str, base_views: list[str], repo: Repo, *, rounds: int, model: str | None,
                       thinking: str | None, cutoff: float | None, clock: Callable[[], float],
-                      tests: "testing.TestSession | None" = None, something_outside: bool = True) -> dict[str, Any]:
+                      tests: "testing.TestSession | None" = None, something_outside: bool = True,
+                      required: list[str] | None = None) -> dict[str, Any]:
     """One investigator's retrieval loop: ask the frame, serve what it requests, ask again."""
     task = deep_task(lens, tests is not None)
     began = clock()
     served_views: list[str] = []
     reply: dict[str, Any] = {}
     record: dict[str, Any] = {"lens": lens, "rounds": 0, "requests": 0, "rejected": 0, "status": "done",
-                              "nudged": False}
+                              "nudged": False, "untraced": []}
+    required = list(required or [])
+    asked: list[str] = []
+    sent_back_for_trace = False
+
+    def untraced() -> list[str]:
+        # A name counts as looked up when a references, definition, grep or pickaxe request named it.
+        return [name for name in required if not any(name.lstrip("-") in text for text in asked)]
     for number in range(1, rounds + 1):
         last = number == rounds
         views = base_views + served_views + ([LAST_ROUND] if last else [])
@@ -747,20 +779,32 @@ async def investigate(frames: Any, lens: str, base_views: list[str], repo: Repo,
             break
         reply = result
         requests = result.get("requests") if isinstance(result.get("requests"), list) else []
+        for request in requests[:MAX_REQUESTS]:
+            if isinstance(request, dict):
+                for args in request.values():
+                    if isinstance(args, dict):
+                        asked += [str(args[key]) for key in ("symbol", "pattern", "string") if isinstance(args.get(key), str)]
         if result.get("done") is True or not requests:
-            # Done in the first round with next to nothing looked up, although the map shows there is something
-            # outside the diff: sent back, once.
-            if number == 1 and not last and not record["nudged"] and something_outside:
+            # Finishing is refused, once for each reason, when the investigator has not done its part: next to
+            # nothing looked up in the first round although the map shows there is something outside the diff,
+            # or names its part must trace that it never asked for.
+            reasons = []
+            if number == 1 and not record["nudged"] and something_outside and record["requests"] + len(requests) < MIN_LOOKUPS:
                 record["nudged"] = True
+                reasons.append(DEEP_NUDGE)
+            missing = untraced()
+            if missing and not sent_back_for_trace:
+                sent_back_for_trace = True
+                reasons.append(DEEP_TRACE_NUDGE + ", ".join(missing) + ".")
+            if reasons and not last:
                 if requests:
                     text, served, rejected = serve(repo, requests, tests=tests)
                     record["requests"] += served
                     record["rejected"] += rejected
                     served_views.append(f"Results of your requests, round {number} (untrusted repository data, read "
                                         f"by the host at the reviewed commit):\n{text}")
-                if record["requests"] < MIN_LOOKUPS:
-                    served_views.append(DEEP_NUDGE)
-                    continue
+                served_views.append("\n\n".join(reasons))
+                continue
             break
         if last:
             record["status"] = "rounds exhausted"
@@ -772,6 +816,7 @@ async def investigate(frames: Any, lens: str, base_views: list[str], repo: Repo,
         record["rejected"] += rejected
         served_views.append(f"Results of your requests, round {number} (untrusted repository data, read by the host "
                             f"at the reviewed commit):\n{text}")
+    record["untraced"] = untraced() if record["status"] != "failed" else []
     record["ms"] = int((clock() - began) * 1000)
     record["tokens"] = sum(int(item.get("tokens") or 0) for item in frames.timings
                            if item.get("phase") == "deep" and item.get("reviewer") == lens)
@@ -824,7 +869,7 @@ async def run_deep(frames: Any, files: list[FileDiff], read_file: Callable[[str]
                    cap: Callable[[str, str, str], str], runner: Runner | None = None,
                    only: list[str] | None = None, tests: dict[str, Any] | None = None,
                    to_level: Callable[[Any], str | None] | None = None, title: str = "", description: str = "",
-                   base: str | None = None) -> dict[str, Any]:
+                   base: str | None = None, guidance: str = "") -> dict[str, Any]:
     """The deep pass: map, (optionally) the tests the map tied to the change, investigators, evidence checks.
     Returns findings (unverified, except regressions the host observed itself), what was dropped, the
     investigators' records, the test executions, and the facts the summary's assurance is written from.
@@ -856,6 +901,7 @@ async def run_deep(frames: Any, files: list[FileDiff], read_file: Callable[[str]
                     root, rev, tests.get("base"), repo.files(), lambda path: "\n".join(repo.lines(path) or []),
                     sandbox, runs=int(tests.get("runs", testing.DEFAULT_RUNS)),
                     timeout_s=float(tests.get("timeout_s", testing.DEFAULT_TIMEOUT_S)), env_dir=tests.get("env_dir"),
+                    checkout=tests.get("checkout"),
                     executor=tests.get("executor", testing.run_process),
                     export=tests.get("export", testing.export_commit), clock=clock)
                 pass
@@ -880,6 +926,8 @@ async def run_deep(frames: Any, files: list[FileDiff], read_file: Callable[[str]
                  f"Investigation brief, built by the host from the repository at the reviewed commit:\n{brief_text}"]
         if context:
             views.append(context)
+        if guidance:
+            views.append(guidance)
         if leads:
             public = [{"file": lead.get("file"), "line": lead.get("line"), "level": lead.get("level"),
                        "claim": lead.get("claim")} for lead in leads[:20]]
@@ -888,7 +936,8 @@ async def run_deep(frames: Any, files: list[FileDiff], read_file: Callable[[str]
         rounds = max(1, min(MAX_ROUNDS, rounds))
         outcomes = await asyncio.gather(*(
             investigate(frames, lens, views, repo, rounds=rounds, model=model, thinking=thinking, cutoff=cutoff,
-                        clock=clock, tests=session, something_outside=outside) for lens in lenses))
+                        clock=clock, tests=session, something_outside=outside,
+                        required=brief.required.get(lens)) for lens in lenses))
         runs = list(session.records) if session is not None else []
     finally:
         # The exports are removed whatever happened.

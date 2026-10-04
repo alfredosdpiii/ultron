@@ -97,6 +97,8 @@ export class FakeHub {
 		number: number;
 		updatedAt?: string;
 	}> = [];
+	/** `git config --get-regexp` output (remote URLs) of local checkouts, by directory. */
+	remotes: Record<string, string> = {};
 	/** Whether the reviewing account may push to the repositories. */
 	canPush = false;
 	/** Team members by `org/slug`; a team that is not listed cannot be read (403). */
@@ -433,6 +435,7 @@ export class FakeHub {
 		let index = 1;
 		while (argv[index] === "-c" || argv[index] === "-C") index += 2;
 		const [command, ...args] = argv.slice(index);
+		if (command === "config") return ok(this.remotes[argv[2] ?? ""] ?? "");
 		const pullOf = (number: string | undefined) =>
 			[...this.pulls.values()].find((item) => String(item.number) === number);
 		if (command === "clone") {

@@ -5,7 +5,7 @@
  * "tests" are run by a scripted executor, except in the self-check, which really enters the sandbox.
  */
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -317,7 +317,9 @@ describe("the sandbox", () => {
 			"ALL",
 			"--clearenv",
 		]);
-		expect(argv.join(" ")).toContain("--bind /tmp/export-1 /tmp/export-1 --chdir /tmp/export-1 -- python3 -m pytest");
+		expect(argv.join(" ")).toContain(
+			"--bind /tmp/export-1 /tmp/export-1 --ro-bind /opt/venv /opt/venv --chdir /tmp/export-1 -- python3 -m pytest",
+		);
 		// Exactly one writable bind; everything else is read-only, a tmpfs or a symlink.
 		expect(argv.filter((part) => part === "--bind")).toHaveLength(1);
 		expect(argv.join(" ")).toContain("--ro-bind /opt/venv /opt/venv");
@@ -430,6 +432,229 @@ emit({"mechanism": best.mechanism if best else None, "checks": checks,
 		// The canary file is removed from the real home afterwards.
 		expect(out.leftovers).toEqual([]);
 	}, 120_000);
+});
+
+describe("dependencies from an existing local checkout", () => {
+	/** A checkout with a virtualenv, node_modules at the root and in a package, a secret and a decoy. */
+	function checkout(): string {
+		const dir = tempDir("ultron-autoreview-checkout-");
+		for (const sub of [
+			".venv/bin",
+			".venv/lib",
+			"node_modules/.bin",
+			"web/node_modules/.bin",
+			"web/src",
+			".git",
+			"outside-env/bin",
+		])
+			mkdirSync(join(dir, sub), { recursive: true });
+		symlinkSync("/usr/bin/python3", join(dir, ".venv/bin/python"));
+		writeFileSync(join(dir, ".venv/lib/marker.txt"), "site-packages\n");
+		writeFileSync(join(dir, "web/node_modules/.bin/vitest"), "#!/bin/sh\n");
+		writeFileSync(join(dir, ".env"), "SECRET=hunter2\n");
+		writeFileSync(join(dir, "source.py"), "print('checkout source')\n");
+		writeFileSync(join(dir, ".git/config"), "[remote]\n");
+		return dir;
+	}
+
+	test("only prepared environment directories are found: the nearest virtualenv and each node_modules up to the root", () => {
+		const dir = checkout();
+		const elsewhere = tempDir("ultron-autoreview-elsewhere-");
+		mkdirSync(join(elsewhere, "bin"), { recursive: true });
+		symlinkSync("/usr/bin/python3", join(elsewhere, "bin/python"));
+		// A "venv" that is a symlink out of the checkout is not an environment of the checkout.
+		mkdirSync(join(dir, "svc"));
+		symlinkSync(elsewhere, join(dir, "svc/venv"));
+		const out = py<{
+			root: Record<string, unknown>;
+			web: Record<string, unknown>;
+			svc: Record<string, unknown>;
+			listed: Array<Record<string, string>>;
+			none: Record<string, unknown>;
+		}>(`
+ROOT = os.path.realpath(${JSON.stringify(dir)})
+def found(directory):
+    out = t.discover_environment(ROOT, directory)
+    return {"binds": [[os.path.relpath(source, ROOT), target] for source, target in out["binds"]], "python": out["python"], "interpreters": out["interpreters"]}
+emit({"root": found(""), "web": found("web/src"), "svc": found("svc"), "listed": t.list_environments(ROOT),
+      "none": t.discover_environment("/no/such/checkout", "")})`);
+		expect(out.root).toEqual({
+			binds: [
+				[".venv", ".venv"],
+				["node_modules", "node_modules"],
+			],
+			python: ".venv/bin/python",
+			interpreters: [],
+		});
+		// From a package: its own node_modules first, then the root's; the root virtualenv serves it too.
+		expect(out.web).toEqual({
+			binds: [
+				["web/node_modules", "web/node_modules"],
+				[".venv", ".venv"],
+				["node_modules", "node_modules"],
+			],
+			python: ".venv/bin/python",
+			interpreters: [],
+		});
+		// The symlinked "venv" is skipped; the root one is used instead.
+		expect(out.svc.python).toBe(".venv/bin/python");
+		expect(out.listed).toEqual([
+			{ path: ".venv", kind: "virtualenv", interpreter: "system" },
+			{ path: "node_modules", kind: "node_modules" },
+			{ path: "web/node_modules", kind: "node_modules" },
+		]);
+		expect(out.none).toEqual({ binds: [], python: null, interpreters: [] });
+		// Nothing else of the checkout is ever a bind source.
+		expect(JSON.stringify(out)).not.toMatch(/source\.py|\.git|\.env"|outside-env/);
+	});
+
+	test("an interpreter outside the system directories is resolved through its symlinks to its own install directory", () => {
+		const home = tempDir("ultron-autoreview-home-");
+		const install = join(home, ".local/share/uv/python/cpython-3.12");
+		mkdirSync(join(install, "bin"), { recursive: true });
+		mkdirSync(join(install, "lib"));
+		writeFileSync(join(install, "bin/python3.12"), "");
+		symlinkSync("python3.12", join(install, "bin/python3"));
+		const dir = tempDir("ultron-autoreview-checkout-");
+		mkdirSync(join(dir, ".venv/bin"), { recursive: true });
+		symlinkSync(join(install, "bin/python3"), join(dir, ".venv/bin/python"));
+		// A binary directly under the home's bin: binding its "install directory" would bind the home.
+		mkdirSync(join(home, "bin"));
+		mkdirSync(join(home, "lib"));
+		writeFileSync(join(home, "bin/python3"), "");
+		const out = py<{
+			managed: string | null;
+			system: string | null;
+			home: string | null;
+			missing: string | null;
+			env: { interpreters: string[] };
+			argv: string[];
+		}>(`
+HOME = os.path.realpath(${JSON.stringify(home)})
+ROOT = os.path.realpath(${JSON.stringify(dir)})
+env = t.discover_environment(ROOT, "", HOME)
+binds = [(source, os.path.join("/tmp/export-1", target)) for source, target in env["binds"]] + env["interpreters"]
+emit({"managed": t.interpreter_home(os.path.join(ROOT, ".venv/bin/python"), HOME), "system": t.interpreter_home("/usr/bin/python3", HOME),
+      "home": t.interpreter_home(os.path.join(HOME, "bin/python3"), HOME), "missing": t.interpreter_home("/no/such/python", HOME),
+      "env": env, "argv": t.Sandbox("bwrap").wrap(["x"], "/tmp/export-1", t.sandbox_env(), binds)})`);
+		const real = py<string>(`emit(os.path.realpath(${JSON.stringify(install)}))`);
+		expect(out.managed).toBe(real);
+		expect(out.system).toBeNull();
+		// Never the home directory itself.
+		expect(out.home).toBeNull();
+		expect(out.missing).toBeNull();
+		expect(out.env.interpreters).toEqual([real]);
+		// The environment lands inside the export, read-only, after the export's own writable bind; the
+		// interpreter's directory is bound at its own path, read-only; nothing above it is.
+		const argv = out.argv.join(" ");
+		expect(argv).toMatch(
+			/--bind \/tmp\/export-1 \/tmp\/export-1 --ro-bind \S+\/\.venv \/tmp\/export-1\/\.venv --ro-bind /,
+		);
+		expect(argv).toContain(`--ro-bind ${real} ${real} --chdir`);
+		expect(out.argv.filter((part) => part === "--bind")).toHaveLength(1);
+	});
+
+	test("a run uses the checkout's interpreter and runner at the same place in the export; an explicit environment overrides it", () => {
+		const repo = fixture();
+		const dir = checkout();
+		const out = py<{
+			pytest: { argv: string[]; command: string; environment: string[] };
+			vitest: string[];
+			override: string[];
+			unshare: string[];
+		}>(`${session(repo, `, checkout=${JSON.stringify(dir)}`)}
+CHECKOUT = os.path.realpath(${JSON.stringify(dir)})
+record = s.run(["tests/test_app.py"])
+workdir = executed[0]["cwd"]
+strip = lambda argv: [part.replace(workdir, "<export>").replace(CHECKOUT, "<checkout>") for part in argv]
+pytest = {"argv": strip(executed[0]["argv"]), "command": record["command"].replace(workdir, "<export>"), "environment": record["environment"]}
+s.close()
+files = {"web/package.json": json.dumps({"devDependencies": {"vitest": "1"}}), "web/src/a.test.ts": ""}
+calls = []
+js = t.TestSession("/nowhere", "HEAD", None, sorted(files), files.get, sandbox, checkout=CHECKOUT,
+                   executor=lambda argv, cwd, env, timeout: (calls.append((argv, cwd)) or (0, "")), export=lambda root, rev: tempfile.mkdtemp(prefix="ultron-autoreview-run-"))
+js.run(["web/src/a.test.ts"])
+vitest = [part.replace(calls[0][1], "<export>").replace(CHECKOUT, "<checkout>") for part in calls[0][0]]
+js.close()
+over = t.TestSession(ROOT, HEAD, BASE, tracked, read, sandbox, checkout=CHECKOUT, env_dir=CHECKOUT, executor=executor, export=export)
+over.run(["tests/test_app.py"])
+override = strip(executed[-1]["argv"])
+over.close()
+plain = t.TestSession(ROOT, HEAD, BASE, tracked, read, t.Sandbox("unshare"), checkout=CHECKOUT, executor=executor, export=export)
+plain.run(["tests/test_app.py"])
+unshare = executed[-1]["argv"]
+plain.close()
+emit({"pytest": pytest, "vitest": vitest, "override": override, "unshare": unshare})`);
+		// pytest runs with the virtualenv's python, which sits in the export where the checkout has it.
+		expect(out.pytest.command).toBe(
+			"<export>/.venv/bin/python -m pytest -q -rA --no-header -p no:cacheprovider --tb=short tests/test_app.py",
+		);
+		expect(out.pytest.environment).toEqual([".venv", "node_modules"]);
+		const argv = out.pytest.argv.join(" ");
+		expect(argv).toContain(
+			"--bind <export> <export> --ro-bind <checkout>/.venv <export>/.venv --ro-bind <checkout>/node_modules <export>/node_modules --chdir <export> -- <export>/.venv/bin/python -m pytest",
+		);
+		// The checkout itself, its source, its .git and its .env are never bound.
+		const sources = out.pytest.argv.filter((_, index) => out.pytest.argv[index - 1] === "--ro-bind");
+		expect(sources.filter((path) => path.startsWith("<checkout>"))).toEqual([
+			"<checkout>/.venv",
+			"<checkout>/node_modules",
+		]);
+		expect(argv).not.toMatch(/<checkout>( |$)|\.git|\.env|source\.py/);
+		// vitest from the package's own node_modules, run in the package.
+		expect(out.vitest.join(" ")).toContain(
+			"--ro-bind <checkout>/web/node_modules <export>/web/node_modules --ro-bind <checkout>/.venv <export>/.venv --ro-bind <checkout>/node_modules <export>/node_modules --chdir <export>/web -- <export>/web/node_modules/.bin/vitest run src/a.test.ts",
+		);
+		// autoreview.testEnv wins: the checkout's environments are then not looked for.
+		expect(out.override.join(" ")).toContain("--ro-bind <checkout> <checkout> --chdir ");
+		expect(out.override.join(" ")).toContain(" -- python3 -m pytest");
+		expect(out.override.join(" ")).not.toContain(".venv");
+		// unshare cannot place binds: it runs without the environment rather than exposing anything.
+		expect(out.unshare.join(" ")).not.toContain(".venv");
+	});
+
+	test("in the real sandbox: the environment is readable and read-only, and nothing else of the checkout is visible", (context) => {
+		const repo = fixture();
+		const dir = checkout();
+		const out = py<{ mechanism: string | null; output?: string }>(`
+ROOT, HEAD = ${JSON.stringify(repo.dir)}, ${JSON.stringify(repo.head)}
+CHECKOUT = os.path.realpath(${JSON.stringify(dir)})
+sandbox = t.detect_sandbox(only="bwrap")
+out = {"mechanism": sandbox.mechanism if sandbox else None}
+if sandbox:
+    export = t.export_commit(ROOT, HEAD)
+    env = t.discover_environment(CHECKOUT, "")
+    binds = [(source, os.path.join(export, target)) for source, target in env["binds"]]
+    script = "; ".join([
+        "cat .venv/lib/marker.txt",
+        "(touch .venv/lib/new.txt 2>/dev/null && echo env=writable || echo env=read-only)",
+        "(touch here.txt && echo export=writable)",
+        "([ -e " + CHECKOUT + " ] && echo checkout=visible || echo checkout=absent)",
+        "(cat " + CHECKOUT + "/.env 2>/dev/null || echo dotenv=unreadable)",
+        "(cat " + CHECKOUT + "/source.py 2>/dev/null || echo source=unreadable)",
+        "(ls " + CHECKOUT + "/.git 2>/dev/null || echo git=unreadable)",
+    ])
+    code, output = t.run_process(sandbox.wrap(["sh", "-c", script], export, t.sandbox_env(), binds), export, t._launch_env(), 60)
+    out["output"] = output
+    out["leftInCheckout"] = os.path.exists(os.path.join(CHECKOUT, ".venv/lib/new.txt"))
+    __import__("shutil").rmtree(export, ignore_errors=True)
+emit(out)`);
+		if (out.mechanism === null) {
+			context.skip("bubblewrap is not available on this machine");
+			return;
+		}
+		const lines = out.output!.trim().split("\n");
+		expect(lines).toContain("site-packages");
+		expect(lines).toContain("env=read-only");
+		expect(lines).toContain("export=writable");
+		// The checkout's directory does not exist inside the sandbox at all.
+		expect(lines).toContain("checkout=absent");
+		expect(lines).toContain("dotenv=unreadable");
+		expect(lines).toContain("source=unreadable");
+		expect(lines).toContain("git=unreadable");
+		expect(out.output).not.toContain("hunter2");
+		expect((out as unknown as { leftInCheckout: boolean }).leftInCheckout).toBe(false);
+	}, 60_000);
 });
 
 describe("a review's test session", () => {

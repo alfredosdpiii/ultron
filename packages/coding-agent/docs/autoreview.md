@@ -141,6 +141,7 @@ reviewed.
 | `autoreview.blockAt` | `"medium"` | A confirmed finding at this level or above makes the review request changes (`critical`, `high`, `medium`, `low`, `nit`). |
 | `autoreview.maxComments` | `5` | Inline comments per review at most; the rest are counted in the body. |
 | `autoreview.deepRounds` | `4` | Lookup rounds one investigator may take (maximum 8). |
+| `autoreview.guides` | none | Private review guides: markdown files or directories. Never quoted or named in what is posted. |
 | `autoreview.budget` | none | Optional token cap of one review. Unset, no pass is refused for tokens. |
 | `autoreview.thinking` | `"low"` | Thinking level of the finder frames (`off`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`). |
 | `autoreview.verifyThinking` | `"low"` | Thinking level of the verifier frames. |
@@ -198,6 +199,14 @@ branch only. The deep pass looks for these.
    bounded lines, hits and bytes per round), answers it, and asks the frame again, for at most
    `autoreview.deepRounds` rounds. An investigator that stops in its first round having looked at fewer than three
    things is sent back once.
+
+   Two traces are mandatory, and the host keeps count. `siblings` must request the references of every function or
+   method whose signature changed and of every exported name the change adds or alters. `claims` must trace every
+   new config field, flag, environment variable and request input from where it enters (UI, request, manifest)
+   through validation, persistence and deploy configuration to where it is read, checking type conversion,
+   behaviour when it is missing, and whether every layer accepts the same values. The map lists these names; an
+   investigator that finishes without having looked one up is sent back once, and a name still not traced is
+   listed under "Not checked".
 3. **Evidence.** Every deep finding cites file and line with the quoted source line. The host checks that each quote
    is at its cited line; a finding with a wrong quote, or with none, is dropped. A finding whose evidence is all
    inside the diff counts like a fast one.
@@ -242,9 +251,21 @@ available". `ultron autoreview doctor` shows the mechanism and runs a self-check
 canary file in your home unreadable, a token-like variable absent).
 
 **No network means no installing.** If the project's dependencies are not on the machine, the tests cannot run;
-the review then says "tests could not run: missing dependencies" and reports no failure. To give a repository its
-dependencies, point `autoreview.testEnv` at a pre-built environment (a virtualenv, a `node_modules` directory); it
-is bound read-only. Nothing is ever installed automatically.
+the review then says "tests could not run: missing dependencies" and reports no failure. Nothing is ever installed
+automatically. Dependencies can come from two places:
+
+- **A local checkout you already have.** List the directories that hold your checkouts in
+  `autoreview.checkoutRoots`. For a repository `owner/name`, `<root>/<name>` is used when one of its git remotes is
+  that repository. Only its prepared environment directories are taken: `.venv` or `venv` (with a python) and
+  `node_modules`, at the root and next to the manifest of the package under test. They are bound read-only at the
+  same place in the exported commit, and the tests run with them (`.venv/bin/python -m pytest`,
+  `node_modules/.bin/vitest`). The checkout's source, its `.git` and its `.env` files are never bound, and nothing
+  is written to it. When the virtualenv's python points at an interpreter outside the system directories (one
+  managed by uv, pyenv or mise under your home), that interpreter's own install directory is bound read-only too,
+  and nothing above it. `ultron autoreview doctor --repo owner/name` shows the checkout found and exactly what
+  would be bound. (This needs bubblewrap or Docker; the `unshare` fallback cannot place binds and runs without.)
+- **An explicit environment.** `autoreview.testEnv` maps a repository to a pre-built environment directory, bound
+  read-only; it takes precedence over a local checkout.
 
 **Eligibility.** Tests run only for repositories the reviewing account can push to, or whose owner is listed in
 `autoreview.testOwners`; elsewhere the deep pass stays read-only. `autoreview.runTests: false` turns it off
@@ -258,7 +279,19 @@ an environment.
 | `autoreview.testRuns` | `6` | Test executions per review. |
 | `autoreview.testTimeoutSeconds` | `300` | Wall-clock limit of one execution. |
 | `autoreview.testEnv` | none | `{"owner/repo": "/path/to/env"}`: pre-built environments, bound read-only. |
+| `autoreview.checkoutRoots` | none | Directories holding local checkouts (`<root>/<name>`) whose prepared environments may be bound read-only. |
 | `autoreview.testImage` | none | A local Docker image, used only when neither bubblewrap nor `unshare` works. |
+
+## Private review guides
+
+`autoreview.guides` lists markdown files, or directories of them, with your own guidance for reviews: what matters
+in a codebase, conventions, things to look for. Up to about 12,000 characters are given to the finders, the
+investigators and the verifier, the most specific first: a guide named after the repository, then guides named
+after a language or framework of the change (`python.md`, `react.md`), then the general ones.
+
+The guides are private. The frames are told never to quote them, name them or refer to them, and before anything
+is posted the review text is checked: an inline comment that contains a guide's file name or path is not posted,
+and a sentence of the body that does is removed (the log says what was withheld).
 
 ## Levels
 

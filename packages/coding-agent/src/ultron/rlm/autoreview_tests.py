@@ -13,7 +13,10 @@ Every execution happens
 - under a wall-clock limit, with capped output, at most `runs` times per review.
 
 There is no network in the sandbox and nothing is installed: when the project's dependencies are missing the
-outcome is "unavailable" (tests could not run), not a failure.
+outcome is "unavailable" (tests could not run), not a failure. Dependencies can come from an existing local
+checkout of the repository: its prepared environment directories (`.venv` or `venv`, `node_modules`) are bound
+read-only at the same place in the export, and nothing else of that checkout is: not its source, not `.git`, not
+`.env` files (see `discover_environment`).
 
 `python3 autoreview_tests.py doctor` prints the mechanism and the result of a self-check as JSON.
 """
@@ -95,11 +98,12 @@ class Sandbox:
     image: str | None = None
     home: str = field(default_factory=lambda: os.path.expanduser("~"))
 
-    def wrap(self, command: list[str], workdir: str, env: dict[str, str], ro_binds: list[str] | None = None,
-             cwd: str = "") -> list[str]:
+    def wrap(self, command: list[str], workdir: str, env: dict[str, str],
+             ro_binds: "list[str | tuple[str, str]] | None" = None, cwd: str = "") -> list[str]:
         """The full command line that runs `command` inside the sandbox, in `workdir` (the only writable
-        directory) or its subdirectory `cwd`."""
-        binds = [path for path in (ro_binds or []) if path]
+        directory) or its subdirectory `cwd`. `ro_binds` are directories made visible read-only: a path (at the
+        same place inside) or a (source, destination) pair. `unshare` cannot place binds and ignores them."""
+        binds = [(item, item) if isinstance(item, str) else item for item in (ro_binds or []) if item]
         inside = os.path.join(workdir, cwd) if cwd else workdir
         if cwd and self.mechanism != "bwrap":
             command = ["sh", "-c", 'cd "$1" && shift && exec "$@"', "cd", inside, *command]
@@ -115,9 +119,11 @@ class Sandbox:
             for name in _ETC:
                 argv += ["--ro-bind-try", f"/etc/{name}", f"/etc/{name}"]
             argv += ["--proc", "/proc", "--dev", "/dev", "--tmpfs", "/tmp", "--dir", SANDBOX_HOME]
-            for path in binds:
-                argv += ["--ro-bind", path, path]
-            return [*argv, "--bind", workdir, workdir, "--chdir", inside, "--", *command]
+            argv += ["--bind", workdir, workdir]
+            # After the export, so that an environment can sit inside it.
+            for source, target in binds:
+                argv += ["--ro-bind", source, target]
+            return [*argv, "--chdir", inside, "--", *command]
         if self.mechanism == "unshare":
             hidden = list(dict.fromkeys([*_HIDDEN, self.home]))
             return ["unshare", "--user", "--map-root-user", "--mount", "--net", "--pid", "--fork", "--ipc", "--uts",
@@ -127,8 +133,8 @@ class Sandbox:
             argv = ["docker", "run", "--rm", "--network", "none", "--cap-drop", "ALL", "--security-opt",
                     "no-new-privileges", "--pids-limit", "1024", "--user", f"{os.getuid()}:{os.getgid()}",
                     "--tmpfs", "/tmp", "-v", f"{workdir}:{workdir}:rw", "-w", workdir]
-            for path in binds:
-                argv += ["-v", f"{path}:{path}:ro"]
+            for source, target in binds:
+                argv += ["-v", f"{source}:{target}:ro"]
             for name, value in env.items():
                 argv += ["-e", f"{name}={value}"]
             return [*argv, str(self.image), *command]
@@ -262,6 +268,100 @@ def doctor(image: str | None = None) -> dict[str, Any]:
     check = self_check(sandbox)
     return {"mechanism": sandbox.mechanism, "isolation": sandbox.describe(), "selfCheck": check,
             "ok": bool(check.get("ok"))}
+
+
+# --- Environments from a local checkout -----------------------------------------------------------------------
+
+#: The only directories of a checkout that are ever bound: prepared environments.
+PYTHON_ENVS = (".venv", "venv")
+NODE_ENV = "node_modules"
+_SYSTEM_PREFIXES = ("/usr/", "/bin/", "/sbin/", "/lib/", "/lib64/", "/lib32/")
+
+
+def interpreter_home(binary: str, home: str | None = None) -> str | None:
+    """The install directory of an interpreter that lives outside the system directories (a uv-, pyenv- or
+    mise-managed Python under the home directory), found by resolving `binary`'s symlink chain; None when the
+    interpreter is a system one, or when no directory of its own can be told apart (never the home itself)."""
+    try:
+        real = os.path.realpath(binary)
+    except OSError:
+        return None
+    if not os.path.isfile(real) or real.startswith(_SYSTEM_PREFIXES):
+        return None
+    prefix = os.path.dirname(os.path.dirname(real))  # <prefix>/bin/python3.x
+    home = os.path.realpath(home or os.path.expanduser("~"))
+    if os.path.basename(os.path.dirname(real)) != "bin" or not os.path.isdir(os.path.join(prefix, "lib")):
+        return None
+    # The interpreter's own directory only: not the home, not a parent of it, not a top-level directory.
+    if prefix in ("/", home) or home.startswith(prefix + "/") or prefix.count("/") < 3:
+        return None
+    return prefix
+
+
+def _inside(path: str, root: str) -> bool:
+    real = os.path.realpath(path)
+    return real == root or real.startswith(root + "/")
+
+
+def discover_environment(checkout: str, directory: str = "", home: str | None = None) -> dict[str, Any]:
+    """The prepared environments of a local checkout that serve tests run in `directory` (a path inside the
+    repository): the nearest Python virtualenv and every `node_modules` from that directory up to the root.
+    Returns {"binds": [(source, path relative to the repository)], "python": relative path of the virtualenv's
+    python or None, "interpreters": [directories outside the checkout an environment's python needs]}.
+
+    Only directories named .venv, venv or node_modules that really are inside the checkout qualify (a symlink
+    leading elsewhere does not), so the checkout's source, its .git and its .env files are never bound."""
+    out: dict[str, Any] = {"binds": [], "python": None, "interpreters": []}
+    root = os.path.realpath(checkout)
+    if not os.path.isdir(root):
+        return out
+    current = directory.strip("/")
+    while True:
+        base = os.path.join(root, current) if current else root
+        if out["python"] is None:
+            for name in PYTHON_ENVS:
+                env = os.path.join(base, name)
+                python = os.path.join(env, "bin", "python")
+                if os.path.isdir(env) and _inside(env, root) and os.path.lexists(python):
+                    relative = os.path.join(current, name) if current else name
+                    out["binds"].append((os.path.realpath(env), relative))
+                    out["python"] = os.path.join(relative, "bin", "python")
+                    prefix = interpreter_home(python, home)
+                    if prefix and not _inside(prefix, root):
+                        out["interpreters"].append(prefix)
+                    break
+        modules = os.path.join(base, NODE_ENV)
+        if os.path.isdir(modules) and _inside(modules, root):
+            out["binds"].append((os.path.realpath(modules), os.path.join(current, NODE_ENV) if current else NODE_ENV))
+        if not current:
+            break
+        current = os.path.dirname(current)
+    return out
+
+
+def list_environments(checkout: str, depth: int = 3) -> list[dict[str, Any]]:
+    """Every prepared environment of a checkout down to `depth` directories, for `doctor --repo`."""
+    root = os.path.realpath(checkout)
+    out = []
+    for current, dirs, _files in os.walk(root):
+        relative = os.path.relpath(current, root)
+        level = 0 if relative == "." else relative.count("/") + 1
+        found = [name for name in dirs if name in (*PYTHON_ENVS, NODE_ENV)]
+        dirs[:] = [] if level >= depth else [name for name in dirs if name not in found and not name.startswith(".")]
+        for name in sorted(found):
+            path = os.path.join(current, name)
+            if not _inside(path, root):
+                continue
+            entry: dict[str, Any] = {"path": name if relative == "." else os.path.join(relative, name),
+                                     "kind": "node_modules" if name == NODE_ENV else "virtualenv"}
+            if name != NODE_ENV:
+                python = os.path.join(path, "bin", "python")
+                if not os.path.lexists(python):
+                    continue
+                prefix = interpreter_home(python)
+                entry["interpreter"] = prefix if prefix and not _inside(prefix, root) else "system"
+            out.append(entry)
+    return out
 
 
 # --- Test runners ----------------------------------------------------------------------------------------------
@@ -439,7 +539,7 @@ class TestSession:
 
     def __init__(self, root: str, head: str, base: str | None, tracked: list[str], read: Callable[[str], str | None],
                  sandbox: Sandbox, *, runs: int = DEFAULT_RUNS, timeout_s: float = DEFAULT_TIMEOUT_S,
-                 env_dir: str | None = None, executor: Executor = run_process,
+                 env_dir: str | None = None, checkout: str | None = None, executor: Executor = run_process,
                  export: Callable[[str, str], str] = export_commit, clock: Callable[[], float] = time.monotonic) -> None:
         self.root = root
         self.revs = {"head": head, "base": base}
@@ -448,6 +548,9 @@ class TestSession:
         self.limit = max(0, runs)
         self.timeout_s = timeout_s
         self.env_dir = env_dir if env_dir and os.path.isdir(env_dir) else None
+        #: A local checkout of the same repository whose prepared environments may be used (read-only). An
+        #: explicit environment directory takes its place.
+        self.checkout = checkout if checkout and os.path.isdir(checkout) and self.env_dir is None else None
         self._read = read
         #: The repository's own runner (for directories and file types without one of their own).
         self.runner = detect_runner(tracked, read)
@@ -524,7 +627,23 @@ class TestSession:
         env = sandbox_env(extra)
         if self.env_dir and extra is None:
             env["NODE_PATH"] = self.env_dir
-        argv = self.sandbox.wrap(command, workdir, env, [self.env_dir] if self.env_dir else [], directory)
+        binds: list[str | tuple[str, str]] = [self.env_dir] if self.env_dir else []
+        used: list[str] = []
+        if self.checkout and self.sandbox.mechanism != "unshare":
+            found = discover_environment(self.checkout, directory)
+            binds += [(source, os.path.join(workdir, relative)) for source, relative in found["binds"]]
+            binds += found["interpreters"]
+            used = [relative for _source, relative in found["binds"]]
+            if runner.name == "pytest" and found["python"]:
+                # The checkout's own interpreter and packages, at the same place in the export.
+                command[0] = os.path.join(workdir, found["python"])
+            elif runner.name in ("vitest", "jest"):
+                for _source, relative in found["binds"]:
+                    binary = os.path.join(self.checkout, relative, ".bin", runner.name)
+                    if relative.endswith(NODE_ENV) and os.path.lexists(binary):
+                        command[:3] = [os.path.join(workdir, relative, ".bin", runner.name)]
+                        break
+        argv = self.sandbox.wrap(command, workdir, env, binds, directory)
         began = self._clock()
         code, output = self._executor(argv, workdir, _launch_env(), self.timeout_s)
         status, tests = parse_outcome(runner.name, code, output)
@@ -535,7 +654,7 @@ class TestSession:
                   "cwd": directory or ".", "command": " ".join(command), "paths": paths, "status": status, "exit": code, "tests": tests[:60],
                   "passed": sum(1 for item in tests if item["status"] == "passed"),
                   "failed": sum(1 for item in tests if item["status"] in ("failed", "error")),
-                  "ms": int((self._clock() - began) * 1000),
+                  "ms": int((self._clock() - began) * 1000), "environment": used,
                   "output": output[-OUTPUT_TAIL_CHARS:].replace(workdir, ".")}
         self.records.append(record)
         return record
@@ -625,6 +744,8 @@ def summarize(record: dict[str, Any]) -> str:
 if __name__ == "__main__":
     if sys.argv[1:2] == ["doctor"]:
         print(json.dumps(doctor(sys.argv[2] if len(sys.argv) > 2 else None)))
+    elif sys.argv[1:2] == ["environments"] and len(sys.argv) == 3:
+        print(json.dumps(list_environments(sys.argv[2])))
     else:
         print("usage: autoreview_tests.py doctor [docker-image]", file=sys.stderr)
         sys.exit(2)
