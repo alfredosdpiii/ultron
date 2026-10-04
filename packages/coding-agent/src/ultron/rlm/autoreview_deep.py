@@ -60,6 +60,9 @@ ROUND_CHARS = 24_000
 MAX_READ_LINES = 200
 MAX_GREP_HITS = 50
 DEFAULT_GREP_HITS = 20
+#: Hits fetched for a scoped or count-only grep: its count is exact up to this many.
+MAX_COUNT_HITS = 1_000
+MAX_REFERENCES = 30
 MAX_LIST = 200
 MAX_PATTERN_CHARS = 200
 MAX_FILE_BYTES = 2_000_000
@@ -285,9 +288,19 @@ def serve_request(repo: Repo, request: Any, tests: "testing.TestSession | None" 
             limit = min(MAX_GREP_HITS, max(1, int(args.get("max") or DEFAULT_GREP_HITS)))
         except (TypeError, ValueError):
             limit = DEFAULT_GREP_HITS
-        hits = repo.grep(pattern, pathspec=pathspec, limit=limit)
-        return f"grep {pattern!r}" + (f" in {glob}" if glob else "") + f" -> {len(hits)} matches" + (
-            " (more not shown)" if len(hits) >= limit else ""), _hits(hits)
+        # A line window scopes the hits to one construct; count_only reports the true count (up to a high cap)
+        # instead of one cut at `max`. Either way `max` only bounds the hits shown.
+        start, end = max(0, _int(args.get("start"), 0)), max(0, _int(args.get("end"), 0))
+        scoped = start > 0 or end > 0
+        count_only = args.get("count_only") is True
+        fetch = MAX_COUNT_HITS if (scoped or count_only) else limit
+        raw_hits = repo.grep(pattern, pathspec=pathspec, limit=fetch)
+        hits = [hit for hit in raw_hits if (start or 1) <= hit[1] <= (end or 10 ** 9)] if scoped else raw_hits
+        capped = len(raw_hits) >= fetch
+        shown = hits[:limit]
+        where = (f" in {glob}" if glob else "") + (f" lines {start or 1}-{end or 'end'}" if scoped else "")
+        note = " (more not shown)" if capped else f" ({len(shown)} shown)" if len(shown) < len(hits) else ""
+        return f"grep {pattern!r}{where} -> {len(hits)} matches{note}", _hits(shown)
     if kind == "list":
         raw = args.get("dir")
         if not isinstance(raw, str) or raw.startswith(("/", "~", "-", ":")) or ".." in raw.split("/") or "\0" in raw:
@@ -311,8 +324,9 @@ def serve_request(repo: Repo, request: Any, tests: "testing.TestSession | None" 
         if not isinstance(symbol, str) or not _SYMBOL.match(symbol):
             raise Rejected("symbol must be one identifier")
         if kind == "references":
-            hits = repo.grep(symbol.rsplit(".", 1)[-1], fixed=True, word=True, limit=30)
-            return f"references {symbol} -> {len(hits)} matches", _hits(hits)
+            hits = repo.grep(symbol.rsplit(".", 1)[-1], fixed=True, word=True, limit=MAX_REFERENCES)
+            return (f"references {symbol} -> {len(hits)} matches"
+                    + (" (more not shown)" if len(hits) >= MAX_REFERENCES else ""), _hits(hits))
         hits = repo.grep(_definition_pattern(symbol), limit=6)
         parts = []
         for path, line, _ in hits[:3]:

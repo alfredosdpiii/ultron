@@ -239,6 +239,10 @@ export interface ProgramStep {
 	readonly input: string;
 	readonly output: string;
 	readonly detail?: string;
+	/** A finding whose check was unknown or contradicted the planner's expectation was put to the small model. */
+	readonly resolved?: "ask";
+	readonly ask?: string;
+	readonly answer?: string;
 }
 
 /** The `compiled` mode's account of its program. */
@@ -249,11 +253,22 @@ export interface ProgramStats {
 	readonly executed?: number;
 	readonly failed?: number;
 	readonly skipped?: number;
+	/** Asks in all, and those the host generated for findings whose check was unknown or contradicted. */
 	readonly asks?: number;
+	readonly autoAsks?: number;
 	readonly tests?: number;
+	/** The asserts: true, false, unknown, and those that came out against the planner's expectation. */
+	readonly checks?: {
+		readonly held: number;
+		readonly failed: number;
+		readonly unknown: number;
+		readonly contradicted: number;
+	};
 	readonly findings?: {
 		readonly deterministic: number;
 		readonly asked: number;
+		/** Findings the small model decided after their check was unknown or contradicted. */
+		readonly resolved: number;
 		readonly dropped: number;
 		readonly refuted: number;
 	};

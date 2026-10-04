@@ -7,20 +7,26 @@ it as a JSON program. The host then runs that program deterministically (code co
 small model only at the decision points the program marks (`ask`), with the exact material each question needs.
 
 1. Program. A list of steps with ids and `needs`. Ops: the deep pass's read-only lookups (`read`, `grep`, `list`,
-   `definition`, `references`, `history`, `blame_range`, `pickaxe`), its sandboxed test executions (`run_tests`,
-   `mutation_check`), `for_each` (a sub-program template over the items of a result), `ask` (one yes/no/unclear
-   question to the small model, with a quote the host checks), `assert` (a predicate over a result) and `finding`
-   (emitted when its condition holds, with its evidence named up front). `when` conditions on any step.
-2. Validation. The program is checked against the language (ids, references, cycles, ops, predicates, bounds)
-   before anything runs; a bad program gets one repair round with the planner; a program still bad means the
-   review falls back to the `both` mode and says so.
-3. Execution. Independent steps run concurrently (asks under the frame concurrency); every step's input, output,
-   duration and tokens are recorded. Lookups and tests go through the same validation and limits as the deep
-   pass (`autoreview_deep.serve_request`, `autoreview_tests.TestSession`).
-4. Findings. A finding whose condition roots in deterministic results (counts, test runs, verified citations) is
-   confirmed by that evidence and skips the verifier; critical and high stand only when a run showed the failure,
-   else such a finding is at most medium. A finding whose condition or evidence rests on an `ask` goes through the
-   existing verifier frame. The asserts that held become the review's assurance.
+   `definition`, `references`, `history`, `blame_range`, `pickaxe`; `grep` takes a line window and `count_only`),
+   its sandboxed test executions (`run_tests`, `mutation_check`), `for_each` (a sub-program template over the items
+   of a result), `ask` (one yes/no/unclear question to the small model, with a quote the host checks), `assert` (a
+   predicate over a result, with the planner's `expect`) and `finding` (emitted when its condition holds, with its
+   evidence named up front). `when` conditions on any step.
+2. Validation. The program is checked against the language (ids, references, cycles, ops, predicates, bounds, and
+   that every finding rests on an ask, a test or an exact-count presence check) before anything runs; a bad program
+   gets one repair round with the planner; a program still bad means the review falls back to the `both` mode.
+3. Execution. An assert is true, false or *unknown*: unknown when the step it reads could not run or was skipped,
+   when a count was cut at its cap (a capped count is a lower bound: predicates the bound settles are decided, the
+   rest are unknown), or when it looks for text in a truncated result. A finding whose condition is unknown, or
+   whose deterministic check contradicts the planner's expectation, is not dropped: the host puts the finding, the
+   check and the raw results to the small model (`RESOLVE_TASK`) and emits it as model-judged when the answer is
+   yes. Test steps for a runner the automatic run found unavailable are `could_not_run` at once. Independent steps
+   run concurrently (asks under the frame concurrency); every step's input, output, duration and tokens are
+   recorded. Lookups and tests go through the deep pass's validation and limits.
+4. Findings. A finding whose condition roots in deterministic results that came out as expected is confirmed by
+   that evidence and skips the verifier; critical and high stand only when a run showed the failure, else such a
+   finding is at most medium. A finding whose condition or evidence rests on an `ask` (planned or host-generated)
+   goes through the existing verifier frame. The asserts that held as expected become the review's assurance.
 
 Models have no tools, nothing of the reviewed repository runs outside the sandbox, and the planner can request
 nothing but the fixed read-only lookups and the sandboxed tests. Everything a frame sees is data.
@@ -32,10 +38,10 @@ import re
 from typing import Any, Callable
 
 from infer_api import FrameError, Incomplete
-from review_api import FileDiff, _clip, _text, normalize_category
+from review_api import FileDiff, _clip, _text, normalize_category, source_window
 import autoreview_deep as deep
 import autoreview_tests as testing
-from review_prompts import ASK_TASK, COMPILED_REPAIR, compiled_planner_task
+from review_prompts import ASK_TASK, COMPILED_REPAIR, RESOLVE_TASK, compiled_planner_task
 
 LOOKUPS = ("read", "grep", "list", "definition", "references", "history", "blame_range", "pickaxe")
 TEST_OPS = ("run_tests", "mutation_check")
@@ -55,10 +61,12 @@ DEFAULT_FOR_EACH_ITEMS = 8
 MAX_TEMPLATE_STEPS = 8
 MAX_QUESTION_CHARS = 1_500
 ASK_CONTEXT_CHARS = 12_000
-RESULT_CHARS = 6_000
+#: A result's text is kept up to this; a `contains` over a cut text that finds nothing is unknown.
+RESULT_CHARS = 24_000
 RECORD_CHARS = 1_200
 EVIDENCE_CHARS = 1_200
 MAX_HOLDS = 3
+CAPPED = "(more not shown)"
 _ID = re.compile(r"^[A-Za-z_][A-Za-z0-9_-]{0,39}$")
 _PLACEHOLDER = re.compile(r"\{\{\s*([A-Za-z_][A-Za-z0-9_\-]*(?:\[\d+\])?(?:\.[A-Za-z_][A-Za-z0-9_\-]*)*)\s*\}\}")
 _COUNT = re.compile(r"^count\s*(==|!=|>=|<=|>|<)\s*(\d+)$")
@@ -227,6 +235,9 @@ def _normalize_step(raw: Any, errors: list[str], *, inside: str | None = None) -
                 step[key] = _ids(raw.get(key))
                 if not step[key]:
                     errors.append(f"{label}: assert.{key} must list ids")
+        if not isinstance(raw.get("expect"), bool):
+            errors.append(f"{label}: assert needs expect: true or false, the value you believe it will have")
+        step["expect"] = raw.get("expect") if isinstance(raw.get("expect"), bool) else None
         step["holds"] = raw.get("holds") if isinstance(raw.get("holds"), str) else ""
     elif op == "finding":
         when, problem = _when(raw.get("when"))
@@ -264,6 +275,36 @@ def _references(step: dict[str, Any]) -> list[str]:
     for key in ("context", "all", "any", "evidence"):
         refs += step.get(key) or []
     return list(dict.fromkeys(refs))
+
+
+def _assert_leaves(sid: str, by_id: dict[str, dict[str, Any]], seen: set[str] | None = None) -> list[dict[str, Any]]:
+    """The non-assert steps an assert (or ask) ultimately reads, through all/any."""
+    seen = seen if seen is not None else set()
+    if sid in seen or sid not in by_id:
+        return []
+    seen.add(sid)
+    step = by_id[sid]
+    if step["op"] != "assert":
+        return [step]
+    out: list[dict[str, Any]] = []
+    for ref in ([step["step"]] if isinstance(step.get("step"), str) else []) + (step.get("all") or []) + (step.get("any") or []):
+        out += _assert_leaves(ref, by_id, seen)
+    return out
+
+
+def grounded(step: dict[str, Any], by_id: dict[str, dict[str, Any]]) -> bool:
+    """Whether a finding rests on something that can establish it: an ask (a semantic judgement), a test run, or
+    an exact-count presence check (a count_only grep). A capped grep or a read alone establishes nothing."""
+    when = step.get("when")
+    if when is None or when["step"] not in by_id:
+        return True  # reported elsewhere
+    leaves = _assert_leaves(when["step"], by_id)
+    if any(leaf["op"] == "ask" for leaf in leaves):
+        return True
+    if any(by_id.get(ref, {}).get("op") in TEST_OPS + ("ask",) for ref in step.get("evidence") or []):
+        return True
+    return bool(leaves) and all(leaf["op"] in TEST_OPS or (leaf["op"] == "grep" and (leaf.get("args") or {}).get("count_only") is True)
+                                for leaf in leaves)
 
 
 def validate(raw: Any) -> tuple[Program | None, list[str]]:
@@ -313,6 +354,10 @@ def validate(raw: Any) -> tuple[Program | None, list[str]]:
             for ref in step["evidence"]:
                 if ref in by_id and by_id[ref]["op"] not in LOOKUPS + TEST_OPS + ("ask",):
                     errors.append(f"step {step['id']!r}: evidence names lookups, tests or asks, not {by_id[ref]['op']!r} {ref!r}")
+            if not grounded(step, by_id):
+                errors.append(f"step {step['id']!r}: a finding must rest on an ask (for code semantics), a test run, or an "
+                              "exact-count presence check (a grep with \"count_only\": true); a capped grep count or a "
+                              "read alone does not establish it")
 
     for step in steps:
         check_refs(step, top)
@@ -386,6 +431,29 @@ def _render(value: Any) -> str:
     return "" if value is None else str(value)
 
 
+def _count_predicate(count: int, capped: bool, op: str, n: int) -> tuple[bool | None, str]:
+    """A count predicate over an exact count, or over a lower bound (a count cut at its cap): the predicates the
+    bound settles are decided, the rest are unknown."""
+    if not capped:
+        value = {"==": count == n, "!=": count != n, ">=": count >= n, "<=": count <= n, ">": count > n, "<": count < n}[op]
+        return value, f"count is {count}"
+    detail = f"count is at least {count} (cut at its cap)"
+    settled: bool | None = None
+    if op == "==":
+        settled = False if n < count else None
+    elif op == "!=":
+        settled = True if n < count else None
+    elif op == ">=":
+        settled = True if count >= n else None
+    elif op == ">":
+        settled = True if count > n else None
+    elif op == "<":
+        settled = False if count >= n else None
+    elif op == "<=":
+        settled = False if count > n else None
+    return settled, detail
+
+
 class Interpreter:
     """Runs one validated program against the repository at the reviewed commit."""
 
@@ -393,7 +461,8 @@ class Interpreter:
                  ask_model: str | None, ask_thinking: str | None, cutoff: float | None, clock: Callable[[], float],
                  cap: Callable[..., str], to_level: Callable[[Any], str | None] | None = None,
                  enrich: Callable[[Any, dict[str, Any]], None] | None = None,
-                 generic: Callable[[dict[str, Any]], str | None] | None = None) -> None:
+                 generic: Callable[[dict[str, Any]], str | None] | None = None,
+                 unavailable: set[tuple[str, str]] | None = None) -> None:
         self.program = program
         self.repo = repo
         self.frames = frames
@@ -407,6 +476,8 @@ class Interpreter:
         self.to_level = to_level
         self.enrich = enrich
         self.generic = generic
+        #: (runner, directory) pairs the automatic run found unavailable: their test steps are could_not_run at once.
+        self.unavailable: set[tuple[str, str]] = set(unavailable or ())
         #: Results by step id, in finishing order.
         self.results: dict[str, dict[str, Any]] = {}
         self.records: list[dict[str, Any]] = []
@@ -418,6 +489,8 @@ class Interpreter:
         self.steps_by_id: dict[str, dict[str, Any]] = {}
         self.expanded = 0
         self.asks = 0
+        self.auto_asks = 0
+        self.resolved = 0
         self.test_runs_before = len(session.records) if session is not None else 0
 
     # -- placeholders --
@@ -457,13 +530,14 @@ class Interpreter:
     # -- truth --
 
     def truth(self, sid: str) -> bool | None:
-        """Whether an assert or ask step holds; None when it did not run, or when an ask was answered unclear (an
-        undecided question decides nothing, negated or not)."""
+        """Whether an assert or ask step holds: True, False, or None when it is unknown (the assert could not be
+        decided, the ask was answered unclear, or the step did not run). An undecided question decides nothing,
+        negated or not."""
         result = self.results.get(sid)
         if result is None or result["status"] != "ok":
             return None
         if result["op"] == "assert":
-            return bool(result.get("value"))
+            return result.get("value")
         if result["op"] == "ask":
             return None if result.get("answer") == "unclear" else result.get("answer") == "yes"
         return None
@@ -490,6 +564,21 @@ class Interpreter:
             return any(self.roots_in_ask(ref, seen) for ref in refs)
         return False
 
+    def contradicted(self, sid: str, seen: set[str] | None = None) -> bool:
+        """Whether a deterministic assert, or one of the asserts it combines, came out against the planner's
+        expectation."""
+        seen = seen or set()
+        if sid in seen:
+            return False
+        seen.add(sid)
+        step = self.steps_by_id.get(sid)
+        result = self.results.get(sid)
+        if step is None or step["op"] != "assert" or result is None:
+            return False
+        if result.get("contradicted"):
+            return True
+        return any(self.contradicted(ref, seen) for ref in (step.get("all") or []) + (step.get("any") or []))
+
     # -- running --
 
     def _summary(self, op: str, result: dict[str, Any]) -> str:
@@ -498,29 +587,49 @@ class Interpreter:
         if op == "ask":
             return f"answer {result.get('answer')} (quote: {_clip(result.get('quote') or '', 160)})"
         if op == "assert":
-            return "holds" if result.get("value") else f"does not hold ({result.get('detail', '')})"
+            value = result.get("value")
+            text = "holds" if value else "unknown" if value is None else "does not hold"
+            return text + (f" ({result['detail']})" if result.get("detail") and not value else "") + (
+                "; contradicts the expectation" if result.get("contradicted") else "")
         title = result.get("title", op)
         if result.get("items"):
             shown = "; ".join(_render(item) for item in result["items"][:5])
             return f"{title}: {shown}" + (" ..." if len(result["items"]) > 5 else "")
         return title
 
-    def _record(self, step: dict[str, Any], result: dict[str, Any], began: float, inputs: Any) -> None:
+    def _record(self, step: dict[str, Any], result: dict[str, Any], began: float, inputs: Any, **extra: Any) -> None:
         tokens = 0
-        if step["op"] == "ask":
+        if step["op"] == "ask" or extra.get("resolved"):
+            label = extra.get("ask") or step["id"]
             tokens = sum(int(item.get("tokens") or 0) for item in self.frames.timings
-                         if item.get("phase") == "ask" and item.get("reviewer") == step["id"])
+                         if item.get("phase") == "ask" and item.get("reviewer") == label)
         result["summary"] = self._summary(step["op"], result)
         self.records.append({
             "id": step["id"], "op": step["op"], "status": result["status"], "ms": int((self.clock() - began) * 1000),
             "tokens": tokens, "input": _clip(json.dumps(inputs, default=str), RECORD_CHARS),
             "output": _clip(result.get("text") if result.get("text") else result["summary"], RECORD_CHARS),
             **({"detail": result["detail"]} if result.get("detail") else {}),
+            **{key: value for key, value in extra.items() if value is not None},
         })
         self.results[step["id"]] = result
 
     def _skip(self, step: dict[str, Any], why: str, began: float) -> None:
         self._record(step, {"op": step["op"], "status": "skipped", "detail": why, "text": ""}, began, None)
+
+    def _unavailable_runner(self, args: dict[str, Any]) -> str | None:
+        """Why a test step will not run before trying: its runner was unavailable in an earlier run."""
+        if self.session is None:
+            return None
+        paths = args.get("paths") if "paths" in args else args.get("tests")
+        try:
+            groups = self.session.plan(self.session.paths(paths))
+        except testing.TestsRejected:
+            return None
+        for runner, directory, _relative in groups:
+            if (runner.name, directory or ".") in self.unavailable:
+                return (f"the {runner.name} runner in {directory or '.'} was unavailable in an earlier run (missing "
+                        "dependencies); not tried again")
+        return None
 
     def _lookup(self, step: dict[str, Any], scope: dict[str, Any]) -> None:
         began = self.clock()
@@ -528,6 +637,10 @@ class Interpreter:
         try:
             if step["op"] in TEST_OPS and self.session is None:
                 raise deep.Rejected("tests are not run in this review")
+            if step["op"] in TEST_OPS:
+                why = self._unavailable_runner(args if isinstance(args, dict) else {})
+                if why:
+                    raise deep.Rejected(why)
             title, body = deep.serve_request(self.repo, {step["op"]: args}, self.session)
         except deep.Rejected as error:
             outcome = {"op": step["op"], "status": "failed", "detail": str(error), "text": ""}
@@ -536,7 +649,8 @@ class Interpreter:
             self._record(step, outcome, began, args)
             return
         result: dict[str, Any] = {"op": step["op"], "status": "ok", "title": title, "text": _clip(body, RESULT_CHARS),
-                                  "count": _count_of(step["op"], title, body), "items": _items_of(step["op"], body)}
+                                  "count": _count_of(step["op"], title, body), "items": _items_of(step["op"], body),
+                                  "capped": CAPPED in title, "truncated": len(body) > RESULT_CHARS or "... cut" in body}
         if step["op"] in TEST_OPS:
             number = int(title.split()[-1]) if title.split()[-1].isdigit() else None
             record = next((item for item in self.session.records if item["n"] == number), None)
@@ -545,67 +659,97 @@ class Interpreter:
             result["outcome"] = status if status in ("passed", "failed") else "could_not_run"
             if record and record.get("mutation"):
                 result["caught"] = bool(record.get("caught"))
+            if status == "unavailable" and record is not None:
+                self.unavailable.add((record["runner"], record.get("cwd") or "."))
         self._record(step, result, began, args)
 
     def _assert(self, step: dict[str, Any]) -> None:
         began = self.clock()
-        value: bool
+        value: bool | None
         detail = ""
         if isinstance(step.get("step"), str):
             target = self.results.get(step["step"])
             kind, op, operand = step["predicate_parsed"]
             if target is None or target["status"] != "ok":
-                value, detail = False, f"{step['step']} did not run"
+                value, detail = None, f"{step['step']} did not run"
+            elif target["op"] in TEST_OPS and target.get("outcome") == "could_not_run" and not (
+                    kind == "status" and operand == "could_not_run"):
+                value, detail = None, f"{step['step']} could not run"
             elif kind == "count":
                 count = target.get("count")
                 if count is None:
-                    value, detail = False, f"{step['step']} has no count"
+                    value, detail = None, f"{step['step']} has no count"
                 else:
-                    value = {"==": count == int(operand), "!=": count != int(operand), ">=": count >= int(operand),
-                             "<=": count <= int(operand), ">": count > int(operand), "<": count < int(operand)}[op]
-                    detail = f"count is {count}"
+                    value, detail = _count_predicate(count, bool(target.get("capped")), op, int(operand))
             elif kind in ("status", "answer"):
                 actual = target.get("outcome") if kind == "status" else target.get("answer")
                 value = (actual == operand) if op == "==" else (actual != operand)
                 # An unclear answer satisfies nothing but `answer == unclear`.
                 if kind == "answer" and actual == "unclear" and not (op == "==" and operand == "unclear"):
-                    value = False
+                    value = None
                 detail = f"{kind} is {actual}"
             else:
                 needle = self.fill(op)
                 present = _flat(needle) in _flat(target.get("text") or "")
-                value = present if not operand else not present
-                detail = f"{needle!r} {'is' if present else 'is not'} in the result"
+                if not present and target.get("truncated"):
+                    value, detail = None, f"{needle!r} is not in the result, which is truncated"
+                else:
+                    value = present if not operand else not present
+                    detail = f"{needle!r} {'is' if present else 'is not'} in the result"
         else:
             refs = step.get("all") or step.get("any") or []
             values = [self.truth(ref) for ref in refs]
             if step.get("all"):
-                value = all(item is True for item in values)
+                value = False if any(item is False for item in values) else True if all(item is True for item in values) else None
             else:
-                value = any(item is True for item in values)
+                value = True if any(item is True for item in values) else False if all(item is False for item in values) else None
             detail = ", ".join(f"{ref}={'?' if item is None else item}" for ref, item in zip(refs, values))
-        text = self.fill(step.get("holds") or "") if value else ""
-        self._record(step, {"op": "assert", "status": "ok", "value": value, "detail": detail, "holds": text, "text": ""},
+        expect = step.get("expect")
+        contradicted = (expect is not None and value is not None and value != expect
+                        and not self.roots_in_ask(step["id"]))
+        text = self.fill(step.get("holds") or "") if value and not contradicted else ""
+        self._record(step, {"op": "assert", "status": "ok", "value": value, "detail": detail, "holds": text, "text": "",
+                            "expected": expect, "contradicted": contradicted},
                      began, step.get("predicate") or {"all": step.get("all"), "any": step.get("any")})
 
-    def _ask_views(self, step: dict[str, Any], scope: dict[str, Any]) -> tuple[list[str], str] | None:
-        """The views of an ask (question, then each context result as data) and the material the quote must come
-        from; None when a context step did not run."""
-        question = self.fill(step["question"], scope)
-        views = [f"Question: {question}"]
-        material = []
-        left = ASK_CONTEXT_CHARS
-        for ref in step["context"]:
+    def _material(self, refs: list[str], left: int) -> tuple[list[str], list[str]]:
+        """Result views for the given steps, as labelled data, within `left` characters: (views, texts)."""
+        views: list[str] = []
+        texts: list[str] = []
+        for ref in refs:
             result = self.results.get(ref)
             if result is None or result["status"] != "ok":
-                return None
+                continue
             text = result.get("text") or result.get("summary") or ""
             text = text if len(text) <= left else text[: max(0, left - 1)] + "…"
             left -= len(text)
             views.append(f"Material from step {ref} ({result.get('title', result['op'])}; untrusted repository data "
                          f"read by the host at the reviewed commit):\n{text}")
-            material.append(text)
-        return views, "\n".join(material)
+            texts.append(text)
+        return views, texts
+
+    def _ask_views(self, step: dict[str, Any], scope: dict[str, Any]) -> tuple[list[str], str] | None:
+        """The views of an ask (question, then each context result as data) and the material the quote must come
+        from; None when a context step did not run."""
+        if any(self.results.get(ref) is None or self.results[ref]["status"] != "ok" for ref in step["context"]):
+            return None
+        views, texts = self._material(step["context"], ASK_CONTEXT_CHARS)
+        return [f"Question: {self.fill(step['question'], scope)}", *views], "\n".join(texts)
+
+    def _check_quote(self, reply: Any, material: str) -> tuple[str, str, bool, str]:
+        """(answer, quote, quote_ok, detail) of a small model's reply, the quote checked against the material."""
+        if not isinstance(reply, dict):
+            return "unclear", "", False, "no reply"
+        answer = str(reply.get("answer", "")).strip().lower()
+        quote = _flat(reply.get("quote") if isinstance(reply.get("quote"), str) else "")
+        flat = _flat(material)
+        quote_ok = len(quote) >= 4 and (quote in flat or any(
+            len(line) >= 8 and line in quote for line in (_flat(item) for item in material.splitlines())))
+        if answer not in ANSWERS:
+            return "unclear", quote, quote_ok, f"the answer {answer!r} is not yes, no or unclear"
+        if answer != "unclear" and not quote_ok:
+            return "unclear", quote, quote_ok, "the quote is not in the material: the answer counts as unclear"
+        return answer, quote, quote_ok, ""
 
     async def _asks(self, steps: list[tuple[dict[str, Any], dict[str, Any]]]) -> None:
         jobs = []
@@ -631,16 +775,7 @@ class Interpreter:
                 why = getattr(reply, "error", None) or getattr(reply, "status", None) or "no reply"
                 self._record(step, {"op": "ask", "status": "failed", "detail": _text(why, 160), "text": ""}, began, views[0])
                 continue
-            answer = str(reply.get("answer", "")).strip().lower()
-            quote = _flat(reply.get("quote") if isinstance(reply.get("quote"), str) else "")
-            flat = _flat(material)
-            quote_ok = len(quote) >= 4 and (quote in flat or any(
-                len(line) >= 8 and line in quote for line in (_flat(item) for item in material.splitlines())))
-            detail = ""
-            if answer not in ANSWERS:
-                answer, detail = "unclear", f"the answer {answer!r} is not yes, no or unclear"
-            elif answer != "unclear" and not quote_ok:
-                answer, detail = "unclear", "the quote is not in the material: the answer counts as unclear"
+            answer, quote, quote_ok, detail = self._check_quote(reply, material)
             self._record(step, {"op": "ask", "status": "ok", "answer": answer, "quote": quote, "quote_ok": quote_ok,
                                 "why": _text(reply.get("why"), 300), "detail": detail,
                                 "text": f"answer: {answer}\nquote: {quote}\nwhy: {_text(reply.get('why'), 300)}"},
@@ -683,41 +818,152 @@ class Interpreter:
         self.expanded += len(instances)
         return instances
 
-    def _finding(self, step: dict[str, Any], scope: dict[str, Any]) -> None:
+    # -- findings --
+
+    def _resolve_views(self, step: dict[str, Any], scope: dict[str, Any], why: str) -> tuple[list[str], str]:
+        """The question the host puts to the small model for a finding whose check is unknown or contradicted: the
+        finding, the check as planned and as it came out, and the raw material (the check's steps, the evidence
+        steps, the source the finding names, and for a tests finding the nearest test)."""
+        when = step["when"]
+        public = {"file": self.fill(step["file"], scope), "line": self.fill(step["line"], scope),
+                  "claim": self.fill(step["claim"], scope), "why": self.fill(step.get("why") or "", scope),
+                  "scenario": self.fill(step.get("scenario") or "", scope)}
+        gate = self.steps_by_id.get(when["step"]) or {}
+        checks = []
+        leaves: list[str] = []
+        for sid in [when["step"], *(gate.get("all") or []), *(gate.get("any") or [])]:
+            check = self.steps_by_id.get(sid)
+            result = self.results.get(sid) or {}
+            if check is None or check["op"] != "assert":
+                continue
+            what = check.get("predicate") or ("all of " + ", ".join(check.get("all") or []) if check.get("all")
+                                              else "any of " + ", ".join(check.get("any") or []))
+            came = "unknown" if result.get("value") is None else str(result.get("value")).lower()
+            checks.append(f"{sid}: {what} on step {check.get('step') or '-'}; expected {str(check.get('expect')).lower()}, "
+                          f"came out {came} ({result.get('detail', '')})"
+                          + (f"; the planner wrote: {check.get('holds')}" if check.get("holds") else ""))
+            if isinstance(check.get("step"), str):
+                leaves.append(check["step"])
+        negated = " The finding is planned for when the check does NOT hold." if when["not"] else ""
+        views = [f"Finding (as the planner wrote it; its check came out {why}):\n{json.dumps(public, indent=1)}",
+                 "The check:\n" + "\n".join(checks) + negated]
+        refs = list(dict.fromkeys(leaves + list(step.get("evidence") or [])))
+        material_views, texts = self._material(refs, ASK_CONTEXT_CHARS)
+        views += material_views
+        try:
+            path = self.repo.path(public["file"])
+            line = int(public["line"])
+            lines = self.repo.lines(path)
+            if lines and 1 <= line <= len(lines):
+                window = source_window(lines, line, 12)
+                views.append(f"Source of {path} around line {line} (> marks the line the finding names):\n{window}")
+                texts.append(window)
+        except (deep.Rejected, TypeError, ValueError):
+            pass
+        unpinned = step.get("unpinned") if isinstance(step.get("unpinned"), dict) else {}
+        closest = unpinned.get("closest_test") if isinstance(unpinned.get("closest_test"), dict) else None
+        if closest and isinstance(closest.get("path"), str):
+            try:
+                test_path = self.repo.path(closest["path"])
+                test_lines = self.repo.lines(test_path)
+                if test_lines:
+                    at = min(max(1, int(closest.get("line") or 1)), len(test_lines))
+                    window = source_window(test_lines, at, 25)
+                    views.append(f"The existing test nearest to it ({test_path}, around line {at}):\n{window}")
+                    texts.append(window)
+            except (deep.Rejected, TypeError, ValueError):
+                pass
+        return views, "\n".join(texts)
+
+    def _finding(self, step: dict[str, Any], scope: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any], str] | None:
+        """Run a finding step; returns (step, scope, why) when the host must put it to the small model instead."""
         began = self.clock()
-        held = self._condition(step["when"])
+        when = step["when"]
+        held = self._condition(when)
+        gate = self.steps_by_id.get(when["step"])
+        if gate is not None and gate["op"] == "assert":
+            if self.contradicted(when["step"]):
+                return step, scope, "against the planner's expectation"
+            if held is None:
+                return step, scope, "unknown"
         if held is None:
-            self._skip(step, f"its condition {step['when']['step']} did not run", began)
-            return
+            self._skip(step, f"its condition {when['step']} did not decide", began)
+            return None
         if not held:
             self._record(step, {"op": "finding", "status": "ok", "emitted": False, "text": "",
-                                "detail": f"{step['when']['step']} does not hold"}, began, None)
-            return
-        finding, problem = self._compose(step, scope)
+                                "detail": f"{when['step']} does not hold"}, began, None)
+            return None
+        self._emit(step, scope, began, None)
+        return None
+
+    def _emit(self, step: dict[str, Any], scope: dict[str, Any], began: float, resolution: dict[str, Any] | None,
+              **extra: Any) -> None:
+        finding, problem = self._compose(step, scope, resolution)
         if finding is None:
             self.dropped.append(f"{step['id']}: {problem}")
             self._record(step, {"op": "finding", "status": "ok", "emitted": False, "detail": f"dropped: {problem}", "text": ""},
-                         began, None)
+                         began, None, **extra)
             return
         reason = self.generic(finding) if self.generic is not None else None
         if reason:
             self.generic_dropped.append(reason)
             self._record(step, {"op": "finding", "status": "ok", "emitted": False, "detail": f"dropped: {reason}", "text": ""},
-                         began, None)
+                         began, None, **extra)
             return
         if finding.get("proof") == "refuted":
             self.refuted += 1
             self._record(step, {"op": "finding", "status": "ok", "emitted": False, "text": "",
-                                "detail": "refuted: the mutant it names was caught by a test"}, began, None)
+                                "detail": "refuted: the mutant it names was caught by a test"}, began, None, **extra)
             return
         self.findings.append(finding)
         self._record(step, {"op": "finding", "status": "ok", "emitted": True, "text": json.dumps(
             {key: finding[key] for key in ("file", "line", "level", "claim")}),
-            "detail": finding.get("how_verified") or "rests on a small-model answer: goes to the verifier"}, began, None)
+            "detail": finding.get("how_verified") or "rests on a small-model answer: goes to the verifier"}, began, None, **extra)
 
-    def _compose(self, step: dict[str, Any], scope: dict[str, Any]) -> tuple[dict[str, Any] | None, str | None]:
-        """The finding of a `finding` step whose condition holds, with its evidence composed from the results it
-        names: (finding, None) or (None, why it was dropped)."""
+    async def _resolve(self, deferred: list[tuple[dict[str, Any], dict[str, Any], str]]) -> None:
+        """Findings whose check is unknown or contradicted: ask the small model with the raw results, emit on yes."""
+        jobs = []
+        prepared = []
+        for step, scope, why in deferred:
+            began = self.clock()
+            if self.asks >= MAX_ASKS:
+                self._record(step, {"op": "finding", "status": "ok", "emitted": False, "text": "",
+                                    "detail": f"its check came out {why}; the limit of {MAX_ASKS} asks is reached"},
+                             began, None, resolved="ask")
+                continue
+            views, material = self._resolve_views(step, scope, why)
+            self.asks += 1
+            self.auto_asks += 1
+            jobs.append((f"{step['id']}.ask", RESOLVE_TASK, views))
+            prepared.append((step, scope, why, views, material, began))
+        if not jobs:
+            return
+        replies = await self.frames.run("ask", jobs, contract=ASK_CONTRACT, model=self.ask_model,
+                                        thinking=self.ask_thinking, cutoff=self.cutoff)
+        for (step, scope, why, views, material, began), reply in zip(prepared, replies):
+            label = f"{step['id']}.ask"
+            if isinstance(reply, (Incomplete, FrameError)) or not isinstance(reply, dict):
+                error = getattr(reply, "error", None) or getattr(reply, "status", None) or "no reply"
+                self._record(step, {"op": "finding", "status": "failed", "text": "",
+                                    "detail": f"its check came out {why}; the question to the small model failed ({_text(error, 160)})"},
+                             began, views[0], resolved="ask", ask=label)
+                continue
+            answer, quote, quote_ok, detail = self._check_quote(reply, material)
+            self.resolved += 1
+            resolution = {"id": label, "answer": answer, "quote": quote, "why": _text(reply.get("why"), 300),
+                          "question": f"does the finding hold although its check came out {why}?"}
+            if answer == "yes":
+                self._emit(step, scope, began, resolution, resolved="ask", ask=label, answer=answer)
+            else:
+                self._record(step, {"op": "finding", "status": "ok", "emitted": False, "text": "",
+                                    "detail": f"its check came out {why}; the small model answered {answer}"
+                                    + (f" ({detail})" if detail else "") + (f", quoting `{_clip(quote, 160)}`" if quote else "")},
+                             began, views[0], resolved="ask", ask=label, answer=answer)
+
+    def _compose(self, step: dict[str, Any], scope: dict[str, Any],
+                 resolution: dict[str, Any] | None = None) -> tuple[dict[str, Any] | None, str | None]:
+        """The finding of a `finding` step whose condition holds (or that the small model affirmed), with its
+        evidence composed from the results it names: (finding, None) or (None, why it was dropped)."""
         try:
             path = self.repo.path(self.fill(step["file"], scope))
             line = int(self.fill(step["line"], scope))
@@ -732,7 +978,7 @@ class Interpreter:
         parts: list[str] = []
         test_run: dict[str, Any] | None = None
         observed = False
-        asked = self.roots_in_ask(step["when"]["step"])
+        asked = resolution is not None or self.roots_in_ask(step["when"]["step"])
         ask_notes: list[str] = []
         usable = 0
         for ref in step["evidence"]:
@@ -755,6 +1001,13 @@ class Interpreter:
                                                                                   if result.get("quote") else ""))
             else:
                 parts.append(f"[{ref}] {result['summary']}")
+        if resolution is not None:
+            ask_notes.append(f"{resolution['id']}: {resolution['question']} -> {resolution['answer']}"
+                             + (f", quoting `{resolution['quote']}`" if resolution.get("quote") else "")
+                             + (f" ({resolution['why']})" if resolution.get("why") else ""))
+            parts.append(f"[{resolution['id']}] the check was undecided or contradicted; the small model answered yes"
+                         + (f" quoting `{_clip(resolution['quote'], 160)}`" if resolution.get("quote") else ""))
+            usable += 1
         if usable == 0 and not citations:
             return None, "no evidence: none of the steps it names produced a result"
         if line not in self.diff_lines.get(path, ()):
@@ -818,13 +1071,14 @@ class Interpreter:
                     self._skip(step, "its dependencies never finished", self.clock())
                 break
             asks: list[tuple[dict[str, Any], dict[str, Any]]] = []
+            deferred: list[tuple[dict[str, Any], dict[str, Any], str]] = []
             added: list[dict[str, Any]] = []
             for step in ready:
                 began = self.clock()
                 scope = step.get("scope") or {}
                 held = self._condition(step.get("when")) if step["op"] != "finding" else True
                 if held is None:
-                    self._skip(step, f"its condition {step['when']['step']} did not run", began)
+                    self._skip(step, f"its condition {step['when']['step']} did not decide", began)
                 elif held is False:
                     self._skip(step, f"its condition {step['when']['step']} does not hold", began)
                 elif step["op"] == "for_each":
@@ -847,11 +1101,15 @@ class Interpreter:
                 elif step["op"] == "assert":
                     self._assert(step)
                 elif step["op"] == "finding":
-                    self._finding(step, scope)
+                    undecided = self._finding(step, scope)
+                    if undecided is not None:
+                        deferred.append(undecided)
                 elif step["op"] == "ask":
                     asks.append((step, scope))
             if asks:
                 await self._asks(asks)
+            if deferred:
+                await self._resolve(deferred)
             finished = {step["id"] for step in ready if step["id"] in self.results}
             pending = [step for step in pending if step["id"] not in finished] + added
 
@@ -860,25 +1118,34 @@ class Interpreter:
         for record in self.records:
             by_status[record["status"]] = by_status.get(record["status"], 0) + 1
         deterministic = sum(1 for item in self.findings if item.get("host_confirmed"))
+        asserts = [self.results[record["id"]] for record in self.records if record["op"] == "assert" and record["status"] == "ok"]
         return {
             "planned": len(self.program.steps), "expanded": self.expanded, "executed": by_status.get("ok", 0),
             "failed": by_status.get("failed", 0), "skipped": by_status.get("skipped", 0), "asks": self.asks,
+            "autoAsks": self.auto_asks,
             "tests": (len(self.session.records) - self.test_runs_before) if self.session is not None else 0,
+            "checks": {"held": sum(1 for item in asserts if item.get("value") is True),
+                       "failed": sum(1 for item in asserts if item.get("value") is False),
+                       "unknown": sum(1 for item in asserts if item.get("value") is None),
+                       "contradicted": sum(1 for item in asserts if item.get("contradicted"))},
             "findings": {"deterministic": deterministic, "asked": len(self.findings) - deterministic,
-                         "dropped": len(self.dropped) + len(self.generic_dropped), "refuted": self.refuted},
+                         "resolved": self.resolved, "dropped": len(self.dropped) + len(self.generic_dropped),
+                         "refuted": self.refuted},
             "truncated": self.truncated,
         }
 
     def assurance(self) -> list[str]:
         """What the program checked and found to hold: the host's counts, then the `holds` sentences of the asserts
-        that were true (first in program order)."""
+        that were true as expected (first in program order)."""
         lookups = sum(1 for record in self.records if record["op"] in LOOKUPS and record["status"] == "ok")
-        asserts = [record for record in self.records if record["op"] == "assert" and record["status"] == "ok"]
-        held = [self.results[record["id"]] for record in asserts if self.results[record["id"]].get("value")]
+        asserts = [self.results[record["id"]] for record in self.records if record["op"] == "assert" and record["status"] == "ok"]
+        held = [result for result in asserts if result.get("value") is True and not result.get("contradicted")]
+        unknown = sum(1 for result in asserts if result.get("value") is None)
         runs = (len(self.session.records) - self.test_runs_before) if self.session is not None else 0
         first = (f"A review program of {len(self.records)} steps ran against the reviewed commit: {lookups} repository "
                  f"lookup{'' if lookups == 1 else 's'}, {runs} test run{'' if runs == 1 else 's'}, {self.asks} small-model "
-                 f"question{'' if self.asks == 1 else 's'}; {len(held)} of {len(asserts)} check{'' if len(asserts) == 1 else 's'} held.")
+                 f"question{'' if self.asks == 1 else 's'}; {len(held)} of {len(asserts)} check{'' if len(asserts) == 1 else 's'} held"
+                 + (f", {unknown} could not be decided" if unknown else "") + ".")
         sentences = []
         for result in held:
             text = _text(result.get("holds"), 220)
@@ -890,8 +1157,33 @@ class Interpreter:
 # --- Orchestration ---------------------------------------------------------------------------------------------
 
 
+def runner_availability(session: Any) -> tuple[list[str], set[tuple[str, str]]]:
+    """What the automatic run showed per runner and directory: lines for the planner, and the (runner, directory)
+    pairs found unavailable (test steps for them are could_not_run at once)."""
+    if session is None:
+        return [], set()
+    seen: dict[tuple[str, str], str] = {}
+    for record in session.records:
+        key = (record["runner"], record.get("cwd") or ".")
+        if key not in seen or record["status"] != "passed":
+            seen[key] = record["status"]
+    lines = []
+    unavailable: set[tuple[str, str]] = set()
+    for (runner, directory), status in seen.items():
+        where = f"{runner} in {directory}"
+        if status == "unavailable":
+            unavailable.add((runner, directory))
+            lines.append(f"{where}: unavailable (missing dependencies; run_tests and mutation_check on its files will "
+                         "not run: read the tests and ask instead)")
+        else:
+            lines.append(f"{where}: available (the automatic run {status})")
+    if not lines and session.runner is not None:
+        lines.append(f"{session.runner.name} (the repository's runner, {session.runner.because}): not tried yet")
+    return lines, unavailable
+
+
 def planner_views(diff_text: str, brief_text: str, *, context: str, intent: str, guidance: str, tests_block: str,
-                  runner: str | None, tests_allowed: bool, runs_left: int) -> tuple[list[str], bool]:
+                  runners: list[str], tests_allowed: bool, runs_left: int) -> tuple[list[str], bool]:
     """The planner's views: the diff, the brief, the context, the intent, the guides, the test situation."""
     cut = len(diff_text) > deep.DIFF_CHARS
     views = [f"The diff under review (new-file line numbers in the gutter):\n{diff_text[:deep.DIFF_CHARS]}"
@@ -901,7 +1193,8 @@ def planner_views(diff_text: str, brief_text: str, *, context: str, intent: str,
         if part:
             views.append(part)
     if tests_allowed:
-        views.append(f"Tests may run: yes; runner recognized: {runner or 'none'}; executions left: {runs_left}.")
+        views.append(f"Tests may run: yes; executions left: {runs_left}. Test runners:\n"
+                     + ("\n".join(f"- {line}" for line in runners) or "- none recognized"))
     else:
         views.append("Tests may run: no.")
     return views, cut
@@ -939,9 +1232,10 @@ async def run_compiled(frames: Any, files: list[FileDiff], read_file: Callable[[
         out["tests"]["note"] = started["note"]
         out["findings"] = list(started["observed"])
         tests_allowed = session is not None and session.limit > len(session.records)
+        runners, unavailable = runner_availability(session)
         views, cut = planner_views(
             diff_text, brief.text, context=context, intent=intent, guidance=guidance, tests_block=deep.tests_block(started),
-            runner=session.runner.name if session is not None and session.runner else None, tests_allowed=tests_allowed,
+            runners=runners, tests_allowed=tests_allowed,
             runs_left=max(0, session.limit - len(session.records)) if session is not None else 0)
         out["diff_cut"] = cut
         validated: Program | None = None
@@ -981,7 +1275,7 @@ async def run_compiled(frames: Any, files: list[FileDiff], read_file: Callable[[
                 json.dump(out["program"], handle, indent=1)
         interpreter = Interpreter(validated, repo, frames=frames, session=session, diff_lines=diff_lines, ask_model=ask_model,
                                   ask_thinking=ask_thinking, cutoff=cutoff, clock=clock, cap=cap, to_level=to_level,
-                                  enrich=enrich, generic=generic)
+                                  enrich=enrich, generic=generic, unavailable=unavailable)
         await interpreter.run()
         out["findings"] += interpreter.findings
         out["dropped"] = interpreter.dropped

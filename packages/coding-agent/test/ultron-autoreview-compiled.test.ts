@@ -55,6 +55,31 @@ function fixture(): { dir: string; base: string; head: string } {
 		'from app import KINDS, show\n\n\ndef test_show():\n    assert show("a")\n',
 	);
 	writeFileSync(join(dir, "README.md"), "# app\n");
+	mkdirSync(join(dir, ".github/workflows"), { recursive: true });
+	writeFileSync(
+		join(dir, ".github/workflows/ci.yml"),
+		[
+			"name: ci",
+			"on: [pull_request]",
+			"jobs:",
+			"  plan:",
+			"    runs-on: ubuntu-latest",
+			"    steps:",
+			"      - name: Plan",
+			"        id: plan",
+			"        run: terraform plan || exit 1",
+			"      - name: Post plan status",
+			"        if: github.event_name == 'pull_request'",
+			"        run: echo status",
+			"      - name: Upload",
+			"        if: always()",
+			"        run: echo upload",
+			"      - name: Cleanup",
+			"        if: always() && github.event_name == 'push'",
+			"        run: echo cleanup",
+			"",
+		].join("\n"),
+	);
 	git(dir, "add", ".");
 	git(dir, "commit", "-qm", "base");
 	const base = git(dir, "rev-parse", "HEAD");
@@ -114,6 +139,9 @@ class Rlm:
                 reply = self.planner(text, sum(1 for c in self.calls if c["kind"] == "plan"))
             elif task == p.ASK_TASK:
                 call["kind"] = "ask"
+                reply = self.asker(text)
+            elif task == p.RESOLVE_TASK:
+                call["kind"] = "resolve"
                 reply = self.asker(text)
             elif task == p.AUTOREVIEW_VERIFIER_TASK:
                 call["kind"] = "verify"
@@ -183,7 +211,7 @@ describe("autoreview_compiled: the planner and the program language", () => {
 			viewChars: number;
 		}>(`${prelude(repo)}
 rlm = Rlm(planner=lambda text, attempt: {"summary": "nothing to check", "steps": [
-    {"id": "g", "op": "grep", "args": {"pattern": "show"}}, {"id": "a", "op": "assert", "step": "g", "predicate": "count >= 1"}]})
+    {"id": "g", "op": "grep", "args": {"pattern": "show"}}, {"id": "a", "op": "assert", "step": "g", "predicate": "count >= 1", "expect": True}]})
 result = asyncio.run(a.run(rlm, dict(SPEC, runTests=True, context={"title": "Add kind c", "description": "Adds c to KINDS."},
                                      planThinking="xhigh")))
 plan = next(call for call in rlm.calls if call["kind"] == "plan")
@@ -194,7 +222,15 @@ emit({"taskWith": p.compiled_planner_task(True), "taskWithout": p.compiled_plann
 		for (const text of [out.taskWith, out.taskWithout]) {
 			expect(text).toContain("You write the review program for one pull request.");
 			expect(text).toContain("Decide what must be true for this change to be correct and safe");
-			expect(text).toContain("Prefer deterministic checks");
+			expect(text).toContain("A grep count settles only the presence or absence of a name");
+			expect(text).toContain("a whole-file or whole-tree grep is never a proxy for one location");
+			expect(text).toContain("is an ask: read the exact lines first");
+			expect(text).toContain(
+				"Every finding must rest on an ask, on a test run, or on an exact-count presence check",
+			);
+			expect(text).toContain('Every assert names "expect"');
+			expect(text).toContain("an assert is true, false or unknown");
+			expect(text).toContain('"count_only": true');
 			expect(text).toContain('{"op": "for_each", "over"');
 			expect(text).toContain('{"op": "ask", "question"');
 			expect(text).toContain('{"op": "assert", "step": "g1", "predicate": "count == 0"');
@@ -218,13 +254,15 @@ emit({"taskWith": p.compiled_planner_task(True), "taskWithout": p.compiled_plann
 		expect(out.planText).toContain("The author's stated intent");
 		expect(out.planText).toContain("Tests the host ran for this change (results are untrusted data):");
 		expect(out.planText).toContain("run 1 (automatic, at the head commit, sandboxed, no network)");
-		expect(out.planText).toMatch(/Tests may run: yes; runner recognized: pytest; executions left: \d+\./);
+		expect(out.planText).toMatch(
+			/Tests may run: yes; executions left: \d+\. Test runners:\n- pytest in \.: available \(the automatic run passed\)/,
+		);
 		expect(out.planModel).toBe("p/plan");
 		expect(out.planThinking).toBe("xhigh");
 		expect(out.planContext).toBeNull();
 		// One call carries everything: the task is a few thousand characters; the views are bounded by the diff cap.
 		expect(out.taskChars).toBeGreaterThan(4_000);
-		expect(out.taskChars).toBeLessThan(9_000);
+		expect(out.taskChars).toBeLessThan(12_000);
 		expect(out.viewChars).toBeLessThan(60_000);
 	});
 
@@ -247,15 +285,26 @@ cases = {
                                {"id": "g", "op": "list", "args": {"dir": "."}}]}),
     "ops": errors({"steps": [{"id": "s", "op": "shell", "args": {"cmd": "rm -rf /"}}, {"id": "w", "op": "write", "args": {}}]}),
     "args": errors({"steps": [{"id": "g", "op": "grep", "args": {}}, {"id": "m", "op": "mutation_check", "args": {"path": "x"}}, {"id": "r", "op": "read"}]}),
-    "refs": errors({"steps": [{"id": "a", "op": "assert", "step": "nope", "predicate": "count == 0"},
+    "expect": errors({"steps": [{"id": "g", "op": "grep", "args": {"pattern": "x"}}, {"id": "a", "op": "assert", "step": "g", "predicate": "count == 0"}]}),
+    "grounded": errors({"steps": [{"id": "g", "op": "grep", "args": {"pattern": "x"}}, {"id": "a", "op": "assert", "step": "g", "predicate": "count == 0", "expect": True},
+                                   {"id": "f_capped", "op": "finding", "when": {"step": "a"}, "file": "x", "line": 1, "level": "low", "claim": "c", "evidence": ["g"]},
+                                   {"id": "r", "op": "read", "args": {"path": "x"}}, {"id": "ar", "op": "assert", "step": "r", "predicate": "contains x", "expect": True},
+                                   {"id": "f_read", "op": "finding", "when": {"step": "ar"}, "file": "x", "line": 1, "level": "low", "claim": "c", "evidence": ["r"]},
+                                   {"id": "ge", "op": "grep", "args": {"pattern": "x", "count_only": True}}, {"id": "ae", "op": "assert", "step": "ge", "predicate": "count == 0", "expect": True},
+                                   {"id": "f_exact", "op": "finding", "when": {"step": "ae"}, "file": "x", "line": 1, "level": "low", "claim": "c", "evidence": ["ge"]},
+                                   {"id": "m", "op": "mutation_check", "args": {"path": "x", "line": 1, "replacement": "y", "tests": ["t"]}},
+                                   {"id": "f_test", "op": "finding", "when": {"step": "a"}, "file": "x", "line": 1, "level": "low", "claim": "c", "evidence": ["m"]},
+                                   {"id": "q", "op": "ask", "question": "?", "context": ["r"]},
+                                   {"id": "f_ask", "op": "finding", "when": {"step": "q"}, "file": "x", "line": 1, "level": "low", "claim": "c", "evidence": ["r"]}]}),
+    "refs": errors({"steps": [{"id": "a", "op": "assert", "step": "nope", "predicate": "count == 0", "expect": True},
                                {"id": "q", "op": "ask", "question": "?", "context": ["a"]},
                                {"id": "f", "op": "finding", "when": {"step": "q"}, "file": "x", "line": 1, "level": "low", "claim": "c", "evidence": ["zz"]}]}),
     "cycle": errors({"steps": [{"id": "g", "op": "grep", "args": {"pattern": "x"}, "needs": ["h"]}, {"id": "h", "op": "grep", "args": {"pattern": "y"}, "needs": ["g"]}]}),
     "predicates": errors({"steps": [{"id": "g", "op": "grep", "args": {"pattern": "x"}},
-                                     {"id": "a1", "op": "assert", "step": "g", "predicate": "count ~ 3"},
-                                     {"id": "a2", "op": "assert", "step": "g", "predicate": "status == maybe"},
-                                     {"id": "a3", "op": "assert", "step": "g", "predicate": "answer == perhaps"},
-                                     {"id": "a4", "op": "assert", "all": [], "step": "g", "predicate": "count == 0"}]}),
+                                     {"id": "a1", "op": "assert", "step": "g", "predicate": "count ~ 3", "expect": True},
+                                     {"id": "a2", "op": "assert", "step": "g", "predicate": "status == maybe", "expect": True},
+                                     {"id": "a3", "op": "assert", "step": "g", "predicate": "answer == perhaps", "expect": True},
+                                     {"id": "a4", "op": "assert", "all": [], "step": "g", "predicate": "count == 0", "expect": True}]}),
     "when": errors({"steps": [{"id": "g", "op": "grep", "args": {"pattern": "x"}},
                                {"id": "f", "op": "finding", "when": {"step": "g"}, "file": "x", "line": 1, "level": "sev", "claim": "c", "evidence": ["g"]},
                                {"id": "f2", "op": "finding", "file": "x", "line": "two", "level": "low", "claim": "c", "evidence": []}]}),
@@ -265,12 +314,12 @@ cases = {
                                   {"id": "fe2", "op": "for_each", "over": "r", "steps": []},
                                   {"id": "g", "op": "grep", "args": {"pattern": "x"}},
                                   {"id": "fe3", "op": "for_each", "over": "g", "steps": [{"id": "z", "op": "list", "args": {"dir": "."}}]},
-                                  {"id": "top", "op": "assert", "step": "z", "predicate": "count == 0"}]}),
+                                  {"id": "top", "op": "assert", "step": "z", "predicate": "count == 0", "expect": True}]}),
     "bounds": errors({"steps": [{"id": f"q{i}", "op": "ask", "question": "?", "context": ["r"]} for i in range(41)] + [{"id": "r", "op": "read", "args": {"path": "x"}}]}),
     "tooMany": errors({"steps": [{"id": f"r{i}", "op": "read", "args": {"path": "x"}} for i in range(81)]}),
 }
 GOOD = {"summary": "ok", "steps": [{"id": "g", "op": "grep", "args": {"pattern": "show"}},
-                                   {"id": "a", "op": "assert", "step": "g", "predicate": "count >= 1", "holds": "show is used"}]}
+                                   {"id": "a", "op": "assert", "step": "g", "predicate": "count >= 1", "expect": True, "holds": "show is used"}]}
 BAD = {"steps": [{"id": "g", "op": "grep", "args": {}}]}
 def summary(rlm, spec=SPEC, **more):
     result = asyncio.run(a.run(rlm, dict(spec, **more)))
@@ -318,6 +367,16 @@ emit({"errors": cases, "fallback": fallback, "repaired": repaired, "failed": fai
 		);
 		expect(errors.forEach!.join("\n")).toContain("step 'top': cannot name 'z', a sub-step of another for_each");
 		expect(errors.bounds).toEqual(["41 ask steps; at most 40"]);
+		expect(errors.expect).toEqual([
+			"step 'a': assert needs expect: true or false, the value you believe it will have",
+		]);
+		// A finding must rest on an ask, a test or an exact count: a capped grep or a read alone is refused.
+		const GROUNDING =
+			"a finding must rest on an ask (for code semantics), a test run, or an exact-count presence check";
+		expect(errors.grounded!.filter((item) => item.includes(GROUNDING)).map((item) => item.split(":")[0])).toEqual([
+			"step 'f_capped'",
+			"step 'f_read'",
+		]);
 		expect(errors.tooMany).toEqual(["the program has 81 steps; at most 80 as written"]);
 
 		// Twice invalid: one repair round with the errors, then the fast and deep passes run, and the review says so.
@@ -373,31 +432,31 @@ PROGRAM = {"summary": "exercise the language", "steps": [
     {"id": "r1", "op": "read", "args": {"path": "tests/test_app.py", "start": 1, "end": 10}},
     {"id": "fe", "op": "for_each", "over": "g", "max_items": 2, "steps": [
         {"id": "line", "op": "read", "args": {"path": "{{item.path}}", "start": "{{item.line}}", "end": "{{item.line}}"}},
-        {"id": "has", "op": "assert", "step": "line", "predicate": "contains show", "holds": "{{item.path}}:{{item.line}} calls show"},
+        {"id": "has", "op": "assert", "step": "line", "predicate": "contains show", "expect": True, "holds": "{{item.path}}:{{item.line}} calls show"},
         {"id": "q", "op": "ask", "question": "Is show called with exactly one argument at {{item.path}} line {{item.line}}?", "context": ["line"]},
         {"id": "fq", "op": "finding", "when": {"step": "q", "not": True}, "file": "{{item.path}}", "line": "{{item.line}}", "level": "high",
          "category": "correctness", "claim": "show() is called with the wrong arity at {{item.path}}:{{item.line}}.", "why": "arity",
          "scenario": "main('a') raises TypeError.", "evidence": ["q", "line"]}]},
-    {"id": "n0", "op": "assert", "step": "g", "predicate": "count == 0", "holds": "never"},
-    {"id": "n3", "op": "assert", "step": "g", "predicate": "count >= 3", "holds": "show is called {{g.count}} times"},
-    {"id": "lt", "op": "assert", "step": "g", "predicate": "count < 2"},
-    {"id": "ne", "op": "assert", "step": "g", "predicate": "count != 3"},
-    {"id": "entries", "op": "assert", "step": "ls", "predicate": "count == 2", "holds": "src holds {{ls.count}} files: {{ls}}"},
-    {"id": "has_cli", "op": "assert", "step": "ls", "predicate": "contains cli.py"},
-    {"id": "no_db", "op": "assert", "step": "ls", "predicate": "not contains db.py"},
-    {"id": "commits", "op": "assert", "step": "hist", "predicate": "count == 2"},
-    {"id": "onSecret", "op": "assert", "step": "secret", "predicate": "contains hunter2"},
+    {"id": "n0", "op": "assert", "step": "g", "predicate": "count == 0", "holds": "never", "expect": False},
+    {"id": "n3", "op": "assert", "step": "g", "predicate": "count >= 3", "holds": "show is called {{g.count}} times", "expect": True},
+    {"id": "lt", "op": "assert", "step": "g", "predicate": "count < 2", "expect": False},
+    {"id": "ne", "op": "assert", "step": "g", "predicate": "count != 3", "expect": True},
+    {"id": "entries", "op": "assert", "step": "ls", "predicate": "count == 2", "holds": "src holds {{ls.count}} files: {{ls}}", "expect": True},
+    {"id": "has_cli", "op": "assert", "step": "ls", "predicate": "contains cli.py", "expect": True},
+    {"id": "no_db", "op": "assert", "step": "ls", "predicate": "not contains db.py", "expect": True},
+    {"id": "commits", "op": "assert", "step": "hist", "predicate": "count == 2", "expect": True},
+    {"id": "onSecret", "op": "assert", "step": "secret", "predicate": "contains hunter2", "expect": True},
     {"id": "q1", "op": "ask", "question": "Does any test assert the value show() returns?", "context": ["r1"]},
     {"id": "q2", "op": "ask", "question": "Is there a test for KINDS?", "context": ["r1"]},
     {"id": "q3", "op": "ask", "question": "Unanswerable?", "context": ["secret"]},
-    {"id": "yes1", "op": "assert", "step": "q1", "predicate": "answer == no"},
-    {"id": "notyes2", "op": "assert", "step": "q2", "predicate": "answer != yes"},
-    {"id": "both", "op": "assert", "all": ["n3", "yes1"], "holds": "all held"},
-    {"id": "either", "op": "assert", "any": ["n0", "yes1"]},
-    {"id": "neither", "op": "assert", "any": ["n0", "lt", "q2"]},
+    {"id": "yes1", "op": "assert", "step": "q1", "predicate": "answer == no", "expect": True},
+    {"id": "notyes2", "op": "assert", "step": "q2", "predicate": "answer != yes", "expect": True},
+    {"id": "both", "op": "assert", "all": ["n3", "yes1"], "holds": "all held", "expect": True},
+    {"id": "either", "op": "assert", "any": ["n0", "yes1"], "expect": True},
+    {"id": "neither", "op": "assert", "any": ["n0", "lt", "q2"], "expect": False},
     {"id": "gated", "op": "read", "args": {"path": "README.md"}, "when": {"step": "n0"}},
     {"id": "open", "op": "read", "args": {"path": "README.md"}, "when": {"step": "n0", "not": True}, "needs": ["entries"]},
-    {"id": "onGated", "op": "assert", "step": "gated", "predicate": "count >= 1"},
+    {"id": "onGated", "op": "assert", "step": "gated", "predicate": "count >= 1", "expect": True},
     {"id": "f_no_test", "op": "finding", "when": {"step": "yes1"}, "file": "tests/test_app.py", "line": 5, "level": "medium", "category": "tests",
      "claim": "test_show checks show() for truth only; the upper-casing is not pinned.", "why": "w", "fix": "assert the value",
      "evidence": ["q1", "r1"], "unpinned": {"behaviour": "show() upper-cases (src/app.py:6)", "change": "return the kind unchanged"}},
@@ -433,7 +492,7 @@ emit({"result": result, "asks": [c for c in rlm.calls if c["kind"] == "ask"],
 		expect(String(records.escape!.detail)).toContain("leaves the repository");
 		expect(out.commands).toEqual(["git diff", "git grep", "git log", "git ls-tree", "git rev-parse", "git show"]);
 		expect(result.notChecked.join("\n")).toContain("2 program step(s) failed: secret, escape");
-		// Asserts: counts, contains, status of failed steps, all/any; a predicate over a failed step is false.
+		// Asserts: counts, contains, all/any; a predicate over a step that did not run is unknown, not false.
 		const held = (id: string) => (records[id]!.output as string) === "holds";
 		expect(held("n0")).toBe(false);
 		expect(held("n3")).toBe(true);
@@ -444,20 +503,21 @@ emit({"result": result, "asks": [c for c in rlm.calls if c["kind"] == "ask"],
 		expect(held("no_db")).toBe(true);
 		expect(held("commits")).toBe(true);
 		expect(held("onSecret")).toBe(false);
-		expect(records.onSecret!.detail).toBe("secret did not run");
+		expect(records.onSecret!.output).toBe("unknown (secret did not run)");
 		expect(held("yes1")).toBe(true);
 		// q2's quote is not in the material: the answer is unclear and satisfies nothing, not even `answer != yes`.
 		expect(records.q2).toMatchObject({ status: "ok" });
 		expect(String(records.q2!.output)).toContain("answer: unclear");
 		expect(records.q2!.detail).toBe("the quote is not in the material: the answer counts as unclear");
-		expect(held("notyes2")).toBe(false);
+		expect(records.notyes2!.output).toBe("unknown (answer is unclear)");
 		expect(held("both")).toBe(true);
 		expect(held("either")).toBe(true);
-		expect(held("neither")).toBe(false);
+		// any over two false asserts and an unclear ask is unknown, not false.
+		expect(records.neither!.output).toBe("unknown (n0=False, lt=False, q2=?)");
 		// when: a step gated on a false assert is skipped and its dependants know; the negation runs.
 		expect(records.gated).toMatchObject({ status: "skipped", detail: "its condition n0 does not hold" });
 		expect(records.open).toMatchObject({ status: "ok" });
-		expect(held("onGated")).toBe(false);
+		expect(records.onGated!.output).toBe("unknown (gated did not run)");
 		// q3's context step failed: the ask is skipped, and findings on it (negated or not) are skipped too.
 		expect(records.q3).toMatchObject({ status: "skipped", detail: "a context step did not run" });
 		expect(records.f_unclear).toMatchObject({ status: "skipped" });
@@ -489,7 +549,7 @@ emit({"result": result, "asks": [c for c in rlm.calls if c["kind"] == "ask"],
 		expect(records.n3!.input).toBe('"count >= 3"');
 		// The assurance: the host's counts, then the holds of the asserts that were true, placeholders filled.
 		expect(result.assurance[0]).toBe(
-			"A review program of 39 steps ran against the reviewed commit: 8 repository lookups, 0 test runs, 4 small-model questions; 11 of 17 checks held.",
+			"A review program of 39 steps ran against the reviewed commit: 8 repository lookups, 0 test runs, 4 small-model questions; 11 of 17 checks held, 4 could not be decided.",
 		);
 		expect(result.assurance.slice(1)).toEqual([
 			"show is called 4 times.",
@@ -500,7 +560,8 @@ emit({"result": result, "asks": [c for c in rlm.calls if c["kind"] == "ask"],
 		expect(
 			result.findings.map((finding) => [finding.source, finding.verification, finding.level, finding.strength]),
 		).toEqual([["compiled:f_no_test", "confirmed", "medium", "diff"]]);
-		expect(result.program.findings).toEqual({ deterministic: 0, asked: 1, dropped: 0, refuted: 0 });
+		expect(result.program.findings).toEqual({ deterministic: 0, asked: 1, resolved: 0, dropped: 0, refuted: 0 });
+		expect(result.program.checks).toEqual({ held: 11, failed: 2, unknown: 4, contradicted: 0 });
 		expect(String(result.findings[0]!.evidence)).toBe('`assert show("a")`');
 		expect(result.findings[0]!.howVerified).toBe("a verifier confirmed it against the source of tests/test_app.py");
 		expect(result.timing.frames.map((frame) => frame.phase).sort()).toEqual([
@@ -532,17 +593,17 @@ def export(root, rev):
 deep.testing.export_commit = export
 PROGRAM = {"summary": "pin the new kind and the upper-casing", "steps": [
     {"id": "m_kinds", "op": "mutation_check", "args": {"path": "src/app.py", "line": 1, "replacement": 'KINDS = ["a", "b"]', "tests": ["tests/test_app.py"]}},
-    {"id": "survives", "op": "assert", "step": "m_kinds", "predicate": "status == passed"},
+    {"id": "survives", "op": "assert", "step": "m_kinds", "predicate": "status == passed", "expect": True},
     finding("f_kinds", {"step": "survives"}, 1, "Nothing fails when the new kind c is dropped again.",
             evidence=["m_kinds"], unpinned={"behaviour": "KINDS lists c (src/app.py:1)", "change": "drop c from KINDS"}),
     {"id": "m_show", "op": "mutation_check", "args": {"path": "src/app.py", "line": 6, "replacement": "    return kind", "tests": ["tests/test_app.py"]}},
-    {"id": "ran", "op": "assert", "step": "m_show", "predicate": "status != could_not_run"},
+    {"id": "ran", "op": "assert", "step": "m_show", "predicate": "status != could_not_run", "expect": True},
     finding("f_show", {"step": "ran"}, 6, "Nothing fails when show() stops upper-casing.",
             evidence=["m_show"], unpinned={"behaviour": "show() upper-cases (src/app.py:6)", "change": "return the kind unchanged"}),
     {"id": "m_late", "op": "mutation_check", "args": {"path": "src/app.py", "line": 1, "replacement": 'KINDS = []', "tests": ["tests/test_app.py"]}},
-    {"id": "late_ran", "op": "assert", "step": "m_late", "predicate": "status == could_not_run", "holds": "the test budget was respected"},
-    {"id": "callers", "op": "grep", "args": {"pattern": "print\\\\(show", "path_glob": "src/**"}},
-    {"id": "one_caller", "op": "assert", "step": "callers", "predicate": "count >= 1"},
+    {"id": "late_ran", "op": "assert", "step": "m_late", "predicate": "status == could_not_run", "expect": True, "holds": "the test budget was respected"},
+    {"id": "callers", "op": "grep", "args": {"pattern": "print\\\\(show", "path_glob": "src/**", "count_only": True}},
+    {"id": "one_caller", "op": "assert", "step": "callers", "predicate": "count >= 1", "expect": True},
     {"id": "f_callers", "op": "finding", "when": {"step": "one_caller"}, "file": "src/cli.py", "line": 5, "level": "high", "category": "correctness",
      "claim": "main() passes a kind that is not validated against KINDS.", "why": "{{callers.count}} caller(s) of show().",
      "scenario": "main('zzz') prints ZZZ.", "fix": "Validate.", "evidence": ["callers"],
@@ -606,7 +667,7 @@ emit({"result": result, "kinds": rlm.kinds(), "verifierTexts": [c["text"] for c 
 			"2 program finding(s) were dropped because their evidence did not check out: f_bad_quote: src/cli.py:5 does not say 'show(kind, extra)'; f_untracked: no tracked file and line (secret.txt is not a tracked file at the reviewed commit)",
 		);
 		expect(result.dropped.generic).toBe(1);
-		expect(result.program.findings).toEqual({ deterministic: 2, asked: 0, dropped: 3, refuted: 1 });
+		expect(result.program.findings).toEqual({ deterministic: 2, asked: 0, resolved: 0, dropped: 3, refuted: 1 });
 		// The test budget (3): the automatic run, two mutations, and the third mutation could not run.
 		expect(result.tests.runs.map((run) => [run.kind, run.status])).toEqual([
 			["automatic", "passed"],
@@ -622,6 +683,189 @@ emit({"result": result, "kinds": rlm.kinds(), "verifierTexts": [c["text"] for c 
 		expect(result.complete).toBe(true);
 	});
 
+	test("three-valued checks: an unknown or contradicted check routes the finding to the small model with the raw results; scoped and exact-count greps; an unavailable runner is not tried again", () => {
+		const repo = fixture();
+		const out = py<{
+			result: Result;
+			kinds: string[];
+			resolves: Array<{ text: string; model: string }>;
+			verifierTexts: string[];
+			records: Record<string, Record<string, unknown>>;
+			planText: string;
+			executions: number;
+		}>(`${prelude(repo)}
+# The scripted "pytest" has no dependencies: every execution is unavailable.
+def missing(argv, cwd, env, timeout):
+    executed.append(argv)
+    return 1, "/usr/bin/python3: No module named pytest"
+deep.testing.run_process = missing
+WF = ".github/workflows/ci.yml"
+COND = "always\\\\(\\\\)|failure\\\\(\\\\)"
+PROGRAM = {"summary": "the post-status step after a failing plan", "steps": [
+    # PR1 as the planner wrote it: a whole-file grep as a proxy for one step. The count contradicts the expectation.
+    {"id": "g_file", "op": "grep", "args": {"pattern": COND, "path_glob": WF, "count_only": True}},
+    {"id": "a_file", "op": "assert", "step": "g_file", "predicate": "count == 0", "expect": True,
+     "holds": "ci.yml has no always() or failure() condition, so steps after the plan are skipped when it exits 1."},
+    {"id": "f_file", "op": "finding", "when": {"step": "a_file"}, "file": WF, "line": 11, "level": "medium", "category": "correctness",
+     "claim": "The post-status step is skipped when the plan step exits 1, so the failure comment is never posted.",
+     "why": "Line 11 has no always() or failure() condition; GitHub Actions adds an implicit success().",
+     "scenario": "terraform plan returns 1; the job fails; no status comment is posted.", "fix": "Add always() to the condition.",
+     "evidence": ["g_file"], "citations": [{"path": WF, "line": 11, "quote": "if: github.event_name == 'pull_request'"}]},
+    # The same check scoped to the step's own lines: exact, decided, deterministic.
+    {"id": "g_step", "op": "grep", "args": {"pattern": COND, "path_glob": WF, "start": 10, "end": 12, "count_only": True}},
+    {"id": "a_step", "op": "assert", "step": "g_step", "predicate": "count == 0", "expect": True,
+     "holds": "the post-status step (ci.yml:10-12) has no always() or failure() condition"},
+    {"id": "f_step", "op": "finding", "when": {"step": "a_step"}, "file": WF, "line": 12, "level": "high", "category": "correctness",
+     "claim": "The 'run: echo status' step never runs after a failing plan.", "why": "no always() on lines 10-12",
+     "scenario": "plan exits 1; the status step is skipped.", "fix": "always()", "evidence": ["g_step"]},
+    # A capped count is a lower bound: what the bound settles is decided, the rest is unknown.
+    {"id": "g_cap", "op": "grep", "args": {"pattern": "kind", "max": 1}},
+    {"id": "a_cap_zero", "op": "assert", "step": "g_cap", "predicate": "count == 0", "expect": True},
+    # Grounded through the ask it combines with; the capped count's contradiction still routes it to the small model.
+    {"id": "a_cap_both", "op": "assert", "all": ["a_cap_zero", "a_q"], "expect": True},
+    {"id": "f_cap", "op": "finding", "when": {"step": "a_cap_both"}, "file": "src/app.py", "line": 1, "level": "low", "category": "correctness",
+     "claim": "Nothing mentions kind anywhere.", "why": "w", "evidence": ["g_cap"], "citations": [{"path": "src/app.py", "line": 1, "quote": 'KINDS = ["a", "b", "c"]'}]},
+    {"id": "a_cap_some", "op": "assert", "step": "g_cap", "predicate": "count >= 1", "expect": True, "holds": "kind is mentioned at least {{g_cap.count}} time"},
+    {"id": "a_cap_five", "op": "assert", "step": "g_cap", "predicate": "count == 5", "expect": False},
+    # The runner was unavailable in the automatic run: the mutation is could_not_run at once, and the finding is
+    # put to the small model with the nearest test attached.
+    {"id": "m_show", "op": "mutation_check", "args": {"path": "src/app.py", "line": 6, "replacement": "    return kind", "tests": ["tests/test_app.py"]}},
+    {"id": "a_m", "op": "assert", "step": "m_show", "predicate": "status == passed", "expect": True},
+    finding("f_m", {"step": "a_m"}, 6, "Nothing fails when show() stops upper-casing.", evidence=["m_show"],
+            unpinned={"behaviour": "show() upper-cases (src/app.py:6)", "change": "return the kind unchanged",
+                      "closest_test": {"path": "tests/test_app.py", "line": 5}}),
+    # An ask-rooted assert is never "contradicted": the model's answer is the judgement.
+    {"id": "r_app", "op": "read", "args": {"path": "src/app.py", "start": 1, "end": 6}},
+    {"id": "q_c", "op": "ask", "question": "Does KINDS contain c?", "context": ["r_app"]},
+    {"id": "a_q", "op": "assert", "step": "q_c", "predicate": "answer == yes", "expect": False},
+]}
+def asker(text):
+    if "Does KINDS contain c" in text:
+        return {"answer": "yes", "quote": 'KINDS = ["a", "b", "c"]', "why": "it does"}
+    if "failure comment is never posted" in text:
+        # The resolve question: the material shows always() elsewhere, not on the step at line 11.
+        return {"answer": "yes", "quote": "if: github.event_name == 'pull_request'", "why": "the step at line 11 has no always()"}
+    if "Nothing mentions kind anywhere" in text:
+        return {"answer": "no", "quote": 'KINDS = ["a", "b", "c"]', "why": "kind is mentioned"}
+    if "stops upper-casing" in text:
+        return {"answer": "yes", "quote": 'assert show("a")', "why": "the test checks truth only"}
+    return {"answer": "unclear", "quote": "", "why": ""}
+def verifier(text):
+    quote = ("if: github.event_name == 'pull_request'" if "failure comment" in text
+             else "return kind.upper()" if "stops upper-casing" in text else 'assert show("a")')
+    return {"verdict": "confirmed", "evidence": "\`" + quote + "\` shows it.", "corrected_line": None, "severity": "medium", "scenario_holds": "unknown"}
+rlm = Rlm(planner=lambda text, attempt: PROGRAM, asker=asker, verifier=verifier)
+result = asyncio.run(a.run(rlm, dict(SPEC, runTests=True, testRuns=6)))
+emit({"result": result, "kinds": rlm.kinds(), "resolves": [c for c in rlm.calls if c["kind"] == "resolve"],
+      "verifierTexts": [c["text"] for c in rlm.calls if c["kind"] == "verify"],
+      "records": {rec["id"]: rec for rec in result["timing"]["program"]},
+      "planText": next(c["text"] for c in rlm.calls if c["kind"] == "plan"), "executions": len(executed)})`);
+		const { result, records } = out;
+		expect(result.mode).toBe("compiled");
+		// The planner was told the runner is unavailable, per runner and directory.
+		expect(out.planText).toContain(
+			"- pytest in .: unavailable (missing dependencies; run_tests and mutation_check on its files will not run: read the tests and ask instead)",
+		);
+		// The whole-file grep: an exact count of 2 where 0 was expected. Not concluded: the host asked, with the hits,
+		// the source around line 11 and the planner's own words attached, and the small model affirmed the finding.
+		expect(records.g_file).toMatchObject({ status: "ok" });
+		expect(String(records.g_file!.output)).toContain(".github/workflows/ci.yml:14: if: always()");
+		expect(records.a_file!.output).toBe("does not hold (count is 2); contradicts the expectation");
+		expect(records.f_file).toMatchObject({ status: "ok", resolved: "ask", ask: "f_file.ask", answer: "yes" });
+		const resolve = out.resolves.find((call) => call.text.includes("failure comment is never posted"))!;
+		expect(resolve.model).toBe("p/ask");
+		expect(resolve.text).toContain("its check came out against the planner's expectation");
+		expect(resolve.text).toContain(
+			"a_file: count == 0 on step g_file; expected true, came out false (count is 2); the planner wrote: ci.yml has no always()",
+		);
+		expect(resolve.text).toContain("Material from step g_file (grep");
+		expect(resolve.text).toContain("Source of .github/workflows/ci.yml around line 11");
+		expect(resolve.text).toContain(">   11 |         if: github.event_name == 'pull_request'");
+		const byClaim = Object.fromEntries(result.findings.map((finding) => [finding.claim, finding]));
+		const resolved =
+			byClaim[
+				"The post-status step is skipped when the plan step exits 1, so the failure comment is never posted."
+			]!;
+		expect(resolved).toMatchObject({
+			source: "compiled:f_file",
+			verification: "confirmed",
+			level: "medium",
+			strength: "outside",
+		});
+		// As for every model-judged finding, the posted evidence is the checked citation and the verifier's quote.
+		expect(String(resolved.evidence)).toBe(
+			".github/workflows/ci.yml:11 `if: github.event_name == 'pull_request'` | `if: github.event_name == 'pull_request'` shows it.",
+		);
+		// It went through the verifier, which saw the question and the answer.
+		const seen = out.verifierTexts.find((text) => text.includes("failure comment is never posted"))!;
+		expect(seen).toContain("What a small model answered when the review program asked it");
+		expect(seen).toContain(
+			"f_file.ask: does the finding hold although its check came out against the planner's expectation? -> yes",
+		);
+		// The scoped grep: exact and as expected, so the finding is deterministic and skips the verifier.
+		expect(String(records.g_step!.output)).toBe("0 matches");
+		expect(String(records.g_step!.input)).toContain('"start": 10, "end": 12');
+		expect(records.a_step!.output).toBe("holds");
+		expect(records.f_step).toMatchObject({ status: "ok" });
+		expect(records.f_step!.resolved).toBeUndefined();
+		const scoped = byClaim["The 'run: echo status' step never runs after a failing plan."]!;
+		expect(scoped).toMatchObject({ source: "compiled:f_step", level: "medium", finderLevel: "high" });
+		expect(String(scoped.howVerified)).toContain(
+			"[g_step] grep 'always\\\\(\\\\)|failure\\\\(\\\\)' in .github/workflows/ci.yml lines 10-12 -> 0 matches",
+		);
+		expect(out.verifierTexts.some((text) => text.includes("never runs after a failing plan"))).toBe(false);
+		// The capped grep: `count == 0` is false for a lower bound of 1 and contradicts the expectation, so the finding
+		// is put to the small model, which says no; `count >= 1` is settled by the bound; `count == 5` is unknown.
+		expect(records.a_cap_zero!.output).toBe(
+			"does not hold (count is at least 1 (cut at its cap)); contradicts the expectation",
+		);
+		expect(records.f_cap).toMatchObject({ status: "ok", resolved: "ask", answer: "no" });
+		expect(String(records.f_cap!.detail)).toContain("the small model answered no");
+		expect(byClaim["Nothing mentions kind anywhere."]).toBeUndefined();
+		expect(records.a_cap_some!.output).toBe("holds");
+		expect(records.a_cap_five!.output).toBe("unknown (count is at least 1 (cut at its cap))");
+		// The unavailable runner: the mutation is could_not_run without an attempt; the assert is unknown; the finding
+		// is resolved by the small model with the nearest test attached, and verified as a model-judged finding.
+		expect(out.executions).toBe(1);
+		expect(records.m_show).toMatchObject({ status: "ok" });
+		expect(String(records.m_show!.detail)).toBe(
+			"the pytest runner in . was unavailable in an earlier run (missing dependencies); not tried again",
+		);
+		expect(records.a_m!.output).toBe("unknown (m_show could not run)");
+		expect(records.f_m).toMatchObject({ status: "ok", resolved: "ask", ask: "f_m.ask", answer: "yes" });
+		const mutation = out.resolves.find((call) => call.text.includes("stops upper-casing"))!;
+		expect(mutation.text).toContain("its check came out unknown");
+		expect(mutation.text).toContain("The existing test nearest to it (tests/test_app.py, around line 5):");
+		expect(mutation.text).toContain('    5 |     assert show("a")');
+		expect(byClaim["Nothing fails when show() stops upper-casing."]).toMatchObject({
+			source: "compiled:f_m",
+			verification: "confirmed",
+			category: "tests",
+			strength: "diff",
+		});
+		// An ask-rooted assert that comes out against the expectation is not a contradiction: the answer is the judgement.
+		expect(records.a_q!.output).toBe("holds");
+		// Stats: the host's questions are counted apart from the planned ones; the assurance says what was undecided.
+		expect(result.program).toMatchObject({
+			asks: 4,
+			autoAsks: 3,
+			tests: 0,
+			checks: { held: 3, failed: 3, unknown: 2, contradicted: 2 },
+			findings: { deterministic: 1, asked: 2, resolved: 3, dropped: 0, refuted: 0 },
+		});
+		expect(result.assurance[0]).toBe(
+			"A review program of 18 steps ran against the reviewed commit: 4 repository lookups, 0 test runs, 4 small-model questions; 3 of 8 checks held, 2 could not be decided.",
+		);
+		expect(result.assurance.slice(1)).toEqual([
+			"the post-status step (ci.yml:10-12) has no always() or failure() condition.",
+			"kind is mentioned at least 1 time.",
+		]);
+		expect(out.kinds.filter((kind) => kind === "verify")).toHaveLength(2);
+		expect(result.notChecked).toContain(
+			"Tests could not run: missing dependencies (the sandbox has no network and installs nothing).",
+		);
+	});
+
 	test("a saved program is replayed without a planner call; the posting plan, dedupe and verdict are the existing ones", () => {
 		const repo = fixture();
 		const out = py<{
@@ -633,8 +877,8 @@ emit({"result": result, "kinds": rlm.kinds(), "verifierTexts": [c["text"] for c 
 			`${prelude(repo)}
 import tempfile
 PROGRAM = {"summary": "replayed", "steps": [
-    {"id": "g", "op": "grep", "args": {"pattern": "KINDS"}},
-    {"id": "a", "op": "assert", "step": "g", "predicate": "count >= 2", "holds": "KINDS is read in {{g.count}} places"},
+    {"id": "g", "op": "grep", "args": {"pattern": "KINDS", "count_only": True}},
+    {"id": "a", "op": "assert", "step": "g", "predicate": "count >= 2", "expect": True, "holds": "KINDS is read in {{g.count}} places"},
     {"id": "f1", "op": "finding", "when": {"step": "a"}, "file": "src/app.py", "line": 1, "level": "low", "category": "correctness",
      "claim": "KINDS gained c but no reader handles it.", "why": "w", "evidence": ["g"]},
     {"id": "f2", "op": "finding", "when": {"step": "a"}, "file": "src/app.py", "line": 1, "level": "medium", "category": "correctness",
@@ -665,7 +909,7 @@ emit({"result": result, "kinds": rlm.kinds(), "dumped": json.load(open(dumped)),
 		expect((out.dumped.steps as Array<Record<string, unknown>>)[0]).toEqual({
 			id: "g",
 			op: "grep",
-			args: { pattern: "KINDS" },
+			args: { pattern: "KINDS", count_only: true },
 		});
 		// Two findings on one line saying the same thing are one, the more serious wording leading.
 		expect(out.result.findings.map((finding) => [finding.source, finding.level])).toEqual([
@@ -694,6 +938,7 @@ describe("ultron autoreview review --repo-dir --mode compiled: the offline entry
 				op: "assert",
 				step: "callers",
 				predicate: "count >= 1",
+				expect: true,
 				holds: "show() keeps its one caller in src/cli.py",
 			},
 			{ id: "r", op: "read", args: { path: "src/app.py", start: 1, end: 6 } },
@@ -851,7 +1096,9 @@ describe("ultron autoreview review --repo-dir --mode compiled: the offline entry
 			skipped: 0,
 			asks: 1,
 			tests: 0,
-			findings: { deterministic: 0, asked: 0, dropped: 0, refuted: 0 },
+			autoAsks: 0,
+			findings: { deterministic: 0, asked: 0, resolved: 0, dropped: 0, refuted: 0 },
+			checks: { held: 1, failed: 0, unknown: 0, contradicted: 0 },
 			summary: "show() callers and the comment",
 			planner: { repairs: 0, status: "ok", tokens: 120 },
 		});
