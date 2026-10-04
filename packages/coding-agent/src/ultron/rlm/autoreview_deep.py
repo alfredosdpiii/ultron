@@ -936,7 +936,8 @@ def start_tests(repo: Repo, files: list[FileDiff], tests: dict[str, Any] | None,
 
     `tests`: {"base": rev or None, "runs", "timeout_s", "env_dir", "checkout", "image"} and, for tests of this
     module, "sandbox", "executor" and "export"."""
-    out: dict[str, Any] = {"session": None, "mechanism": None, "note": None, "observed": [], "shown": [], "sandbox": None}
+    out: dict[str, Any] = {"session": None, "mechanism": None, "note": None, "observed": [], "shown": [], "sandbox": None,
+                           "env": "none", "toolchain": []}
     if tests is None:
         return out
     sandbox = tests["sandbox"] if "sandbox" in tests else testing.detect_sandbox(image=tests.get("image"))
@@ -950,9 +951,12 @@ def start_tests(repo: Repo, files: list[FileDiff], tests: dict[str, Any] | None,
         sandbox, runs=int(tests.get("runs", testing.DEFAULT_RUNS)),
         timeout_s=float(tests.get("timeout_s", testing.DEFAULT_TIMEOUT_S)), env_dir=tests.get("env_dir"),
         checkout=tests.get("checkout"),
+        toolchain=tests.get("toolchain"), env_kind=tests.get("env_kind"),
         executor=tests.get("executor", testing.run_process),
         export=tests.get("export", testing.export_commit), clock=clock)
     out["session"] = session
+    out["env"] = session.env_kind
+    out["toolchain"] = list(session.toolchain)
     changed_tests = [item.path for item in files if _TEST.search(item.path) and item.status != "deleted"
                      and item.path in set(repo.files())]
     paths = list(dict.fromkeys(brief.tests + changed_tests))[:8]
@@ -1078,7 +1082,8 @@ async def run_deep(frames: Any, files: list[FileDiff], read_file: Callable[[str]
     return {"findings": findings, "dropped": dropped, "generic": generic_dropped, "investigators": records,
             "checked": checked, "repo": repo,
             "brief": brief, "lenses": lenses, "diff_cut": cut,
-            "tests": {"enabled": tests is not None, "mechanism": mechanism, "note": test_note, "runs": public_runs}}
+            "tests": {"enabled": tests is not None, "mechanism": mechanism, "note": test_note, "runs": public_runs,
+                      "env": started["env"], "toolchain": started["toolchain"]}}
 
 
 def assurance(deep: dict[str, Any]) -> list[str]:

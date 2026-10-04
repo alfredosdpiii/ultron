@@ -1881,7 +1881,8 @@ async def run_compiled(frames: Any, files: list[FileDiff], read_file: Callable[[
                                "style": "replay" if program is not None else plan_style, "cells": 0}
     out: dict[str, Any] = {"findings": [], "dropped": [], "generic": [], "records": [], "stats": None, "assurance": [],
                            "repo": repo, "brief": brief, "program": None, "fallback": None, "diff_cut": False,
-                           "planner": planner, "tests": {"enabled": tests is not None, "mechanism": None, "note": None, "runs": []},
+                           "planner": planner, "tests": {"enabled": tests is not None, "mechanism": None, "note": None, "runs": [],
+                                                         "env": "none", "toolchain": []},
                            "refuted": 0, "uncovered": [], "coverage": coverage, "limits": limits, "notes": [],
                            "retrieval": {key: retrieved[key] for key in ("items", "chars", "ms")}}
     try:
@@ -1889,6 +1890,8 @@ async def run_compiled(frames: Any, files: list[FileDiff], read_file: Callable[[
         session = started["session"]
         out["tests"]["mechanism"] = started["mechanism"]
         out["tests"]["note"] = started["note"]
+        out["tests"]["env"] = started["env"]
+        out["tests"]["toolchain"] = started["toolchain"]
         out["findings"] = list(started["observed"])
         tests_allowed = session is not None and session.limit > len(session.records)
         runners, unavailable = runner_availability(session)

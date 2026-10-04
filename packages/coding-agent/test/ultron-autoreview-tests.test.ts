@@ -601,9 +601,13 @@ emit({"pytest": pytest, "vitest": vitest, "override": override, "unshare": unsha
 			"<checkout>/node_modules",
 		]);
 		expect(argv).not.toMatch(/<checkout>( |$)|\.git|\.env|source\.py/);
-		// vitest from the package's own node_modules, run in the package.
+		// vitest from the package's own node_modules, run in the package. (A node that is not a system one, such as
+		// a mise install, is bound after the environments, so the binds and the command are checked apart.)
 		expect(out.vitest.join(" ")).toContain(
-			"--ro-bind <checkout>/web/node_modules <export>/web/node_modules --ro-bind <checkout>/.venv <export>/.venv --ro-bind <checkout>/node_modules <export>/node_modules --chdir <export>/web -- <export>/web/node_modules/.bin/vitest run src/a.test.ts",
+			"--ro-bind <checkout>/web/node_modules <export>/web/node_modules --ro-bind <checkout>/.venv <export>/.venv --ro-bind <checkout>/node_modules <export>/node_modules",
+		);
+		expect(out.vitest.join(" ")).toContain(
+			"--chdir <export>/web -- <export>/web/node_modules/.bin/vitest run src/a.test.ts",
 		);
 		// autoreview.testEnv wins: the checkout's environments are then not looked for.
 		expect(out.override.join(" ")).toContain("--ro-bind <checkout> <checkout> --chdir ");

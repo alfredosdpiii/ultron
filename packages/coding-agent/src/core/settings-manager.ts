@@ -283,6 +283,13 @@ export interface AutoreviewSettings {
 	guides?: string[];
 	/** A local Docker image for the sandbox when neither bubblewrap nor unshare is available. */
 	testImage?: string;
+	/**
+	 * Prepare a repository's test environment (uv virtualenv, npm ci, mise toolchains) before its first review and
+	 * when its lockfile changes, with the network, into the cache; never during a review (default true).
+	 */
+	prepareEnvs?: boolean;
+	/** Resolve and install toolchains with mise during prepare (default: when a mise binary exists); or its path. */
+	mise?: boolean | string;
 	/** Seconds a review may take: at the deadline unfinished passes are given up and the rest is posted (default 0: none, the review waits for every frame). */
 	deadlineSeconds?: number;
 	/** Seconds one frame may take before it is retried or given up (default: no timeout). */
@@ -1458,6 +1465,10 @@ export class SettingsManager {
 		if (guides !== undefined) out.guides = guides;
 		if (typeof configured.testImage === "string" && configured.testImage.trim() !== "")
 			out.testImage = configured.testImage.trim();
+		const prepareEnvs = flag(configured.prepareEnvs);
+		if (prepareEnvs !== undefined) out.prepareEnvs = prepareEnvs;
+		if (typeof configured.mise === "boolean") out.mise = configured.mise;
+		else if (typeof configured.mise === "string" && configured.mise.trim() !== "") out.mise = configured.mise.trim();
 		const dryRun = flag(configured.dryRun);
 		if (dryRun !== undefined) out.dryRun = dryRun;
 		const ack = flag(configured.ack);

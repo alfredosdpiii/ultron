@@ -1932,7 +1932,7 @@ describe("ultron autoreview review --repo-dir: the offline JSON contract, with a
 		]);
 		expect(json.mode).toBe("fast");
 		expect(json.assurance).toBe("");
-		expect(json.tests).toEqual({ enabled: false, mechanism: null, note: null, runs: [] });
+		expect(json.tests).toEqual({ enabled: false, mechanism: null, note: null, runs: [], env: "none", toolchain: [] });
 		expect(json.dropped).toEqual({ rejected: 1, duplicates: 0, generic: 0, refutedByTest: 0 });
 		expect(json.model).toBe("stub/frames");
 		expect(json.verifyModel).toBe("stub/verify");

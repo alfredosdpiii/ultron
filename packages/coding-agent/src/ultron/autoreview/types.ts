@@ -99,6 +99,13 @@ export interface EngineSpec {
 	 * directories are bound read-only into the test sandbox. `testEnv` takes its place when given.
 	 */
 	readonly testCheckout?: string;
+	/**
+	 * Exact toolchain install directories (a mise python or node, `<prefix>/bin/<tool>`) a prepared environment
+	 * needs: bound read-only into the sandbox with their `bin` first on its PATH.
+	 */
+	readonly testToolchain?: readonly string[];
+	/** Where the test environment came from, for the report: `prepared`, `checkout`, `testEnv` or `none`. */
+	readonly testEnvKind?: "prepared" | "checkout" | "testEnv" | "none";
 	/** The user's private review guides (files or directories), and `owner/repo` to pick the specific ones. */
 	readonly guides?: readonly string[];
 	readonly repo?: string;
@@ -217,6 +224,10 @@ export interface TestReport {
 	/** Why tests did not run, when they did not. */
 	readonly note: string | null;
 	readonly runs: readonly TestRun[];
+	/** Where the environment came from: `prepared`, `checkout`, `testEnv` or `none`. */
+	readonly env?: string;
+	/** The toolchain directories bound into the sandbox (`<tool>/<version>`). */
+	readonly toolchain?: readonly string[];
 }
 
 export interface InvestigatorTiming {

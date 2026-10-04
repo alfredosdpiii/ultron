@@ -1985,6 +1985,35 @@ describe("the command", () => {
 		expect(
 			SettingsManager.inMemory({ autoreview: { planStyle: "frame", planCells: 4 } }).getAutoreviewSettings(),
 		).toEqual({ planStyle: "frame", planCells: 4 });
+		// Prepared environments: on by default; mise on by default, or a path to the binary.
+		expect(resolveConfig({})).toMatchObject({ prepareEnvs: true, mise: true });
+		expect(resolveConfig({ prepareEnvs: false, mise: "/opt/mise/bin/mise" })).toMatchObject({
+			prepareEnvs: false,
+			mise: "/opt/mise/bin/mise",
+		});
+		expect(
+			SettingsManager.inMemory({ autoreview: { prepareEnvs: false, mise: false } }).getAutoreviewSettings(),
+		).toEqual({ prepareEnvs: false, mise: false });
+		expect(parseAutoreviewArgs(["prepare", "/repo", "--python", "3.12"])).toMatchObject({
+			command: "prepare",
+			target: "/repo",
+			python: "3.12",
+		});
+		expect(
+			parseAutoreviewArgs([
+				"review",
+				"--repo-dir",
+				"d",
+				"--base",
+				"a",
+				"--head",
+				"b",
+				"--prepare",
+				"--python",
+				"3.11",
+			]),
+		).toMatchObject({ prepare: true, python: "3.11" });
+		expect(() => parseAutoreviewArgs(["prepare", "/repo", "--python", "latest"])).toThrow("--python takes a version");
 		expect(
 			SettingsManager.inMemory({
 				autoreview: { mode: "compiled", planModel: "p/plan", askModel: "p/ask", askThinking: "minimal" },

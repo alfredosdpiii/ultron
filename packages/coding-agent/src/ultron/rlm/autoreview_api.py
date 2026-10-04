@@ -1095,8 +1095,13 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
             # environment directories are used, read-only.
             "checkout": spec.get("testCheckout") if isinstance(spec.get("testCheckout"), str) else None,
             "image": spec.get("testImage") if isinstance(spec.get("testImage"), str) else None,
+            # Exact toolchain install directories (a mise python or node) a prepared environment needs, bound
+            # read-only; and where the environment came from, for the report.
+            "toolchain": [item for item in (spec.get("testToolchain") or []) if isinstance(item, str)]
+            if isinstance(spec.get("testToolchain"), list) else [],
+            "env_kind": spec.get("testEnvKind") if isinstance(spec.get("testEnvKind"), str) else None,
         }
-    test_report: dict[str, Any] = {"enabled": False, "mechanism": None, "note": None, "runs": []}
+    test_report: dict[str, Any] = {"enabled": False, "mechanism": None, "note": None, "runs": [], "env": "none", "toolchain": []}
 
     # The compiled mode: one planner frame writes the review program, the host runs it. When no program can be
     # had (the planner fails, or its program is invalid after one repair), the fast and deep passes run instead.

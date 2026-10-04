@@ -112,6 +112,10 @@ export interface AutoreviewConfig {
 	/** Lower-cased `owner/repo` -> pre-built environment directory. */
 	readonly testEnv: Readonly<Record<string, string>>;
 	readonly testImage?: string;
+	/** Prepare test environments (uv, npm ci, mise toolchains) before a repository's first review and on lockfile changes. */
+	readonly prepareEnvs: boolean;
+	/** Use mise for toolchains during prepare: true/false, or the path of the mise binary. */
+	readonly mise: boolean | string;
 	/** Directories of local checkouts whose prepared environments may serve sandboxed test runs. */
 	readonly checkoutRoots: readonly string[];
 	/** Private review guides: markdown files or directories of them. */
@@ -251,6 +255,8 @@ export function resolveConfig(settings: AutoreviewSettings, fallbacks: ModelFall
 		testRuns: Math.min(MAX_TEST_RUNS, settings.testRuns ?? DEFAULT_TEST_RUNS),
 		testTimeoutSeconds: Math.max(5, settings.testTimeoutSeconds ?? DEFAULT_TEST_TIMEOUT_SECONDS),
 		testEnv: settings.testEnv ?? {},
+		prepareEnvs: settings.prepareEnvs ?? true,
+		mise: settings.mise ?? true,
 		checkoutRoots: settings.checkoutRoots ?? [],
 		guides: settings.guides ?? [],
 		...(settings.testImage === undefined ? {} : { testImage: settings.testImage }),

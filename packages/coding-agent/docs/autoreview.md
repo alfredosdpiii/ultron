@@ -31,7 +31,8 @@ Posting is on by default. `--dry-run` (or the setting `autoreview.dryRun`) write
 | `ultron autoreview once` | One poll cycle, review what it finds, then exit. `--json` prints the outcomes. |
 | `ultron autoreview review <owner/repo#N \| URL>` | Review one pull request now, whether or not it was requested. `--account <login>` picks the account (default: the host's active one); `--dry-run`, `--json`. |
 | `ultron autoreview review --repo-dir <dir> --base <sha> --head <sha>` | Review the diff between two commits of a local repository, with no GitHub access. `--json` prints one JSON object on stdout (logs go to stderr); `--mode`, `--model`, `--verify-model`, `--deep-model`, `--budget`, `--thinking`, `--verify-thinking`, `--deep-thinking`, `--plan-model`, `--plan-thinking`, `--ask-model`, `--ask-thinking`, `--deadline`, `--block-at`, `--max-comments`, `--guides` and `--checkout-roots` (with `--repo owner/name`) override the settings; `--dump-program` and `--program` save and replay a compiled review program (see below). |
-| `ultron autoreview doctor` | The sandbox that test execution would use, with a self-check of its isolation. |
+| `ultron autoreview doctor` | The sandbox that test execution would use, with a self-check of its isolation; `--repo owner/name` adds the local checkout and the prepared environment that would serve its tests. |
+| `ultron autoreview prepare <repo-dir> [--python 3.x]` | Build the repository's test environment now, with the network, into the cache the sandbox binds read-only (see below). |
 | `ultron autoreview status` | Accounts, last poll, queue, and recent reviews with their timings and cost. `--json` for the raw state. |
 | `ultron autoreview install` / `uninstall` | Write or remove a user service that runs `ultron autoreview run` (see below). |
 
@@ -394,6 +395,30 @@ automatically. Dependencies can come from two places:
 - **An explicit environment.** `autoreview.testEnv` maps a repository to a pre-built environment directory, bound
   read-only; it takes precedence over a local checkout.
 
+**Prepared environments (uv, npm, mise).** Dependencies can also be installed *before* a review, with the network,
+into a cache the sandbox binds read-only; nothing is ever installed during a review.
+
+- `ultron autoreview prepare <repo-dir> [--python 3.x]` builds the environment now; `review --repo-dir ... --prepare`
+  does it before the review; the daemon does it on a repository's first review and whenever its lockfile changes
+  (`autoreview.prepareEnvs`, default true). The result lives under `~/.cache/ultron-autoreview/envs/<hash>/`,
+  the hash covering the manifests, lockfiles, toolchain files and the explicit Python version.
+- Python projects: `uv venv` (with the resolved interpreter), then `uv sync --frozen --all-extras` for a `uv.lock`,
+  `uv pip install -e .[dev,test]` (falling back to fewer extras) for a `pyproject.toml` or `setup.py` (uv reads PEP
+  621 and poetry metadata), and `uv pip install -r` for every requirements file.
+- Node projects: `npm ci --ignore-scripts` (pnpm or yarn by lockfile) from a copy of the manifest and lockfile; a
+  project without a lockfile is not prepared.
+- Toolchains with mise (`autoreview.mise`, default on when a mise binary exists; or the binary's path): the versions
+  the repository asks for (`mise.toml`, `.tool-versions`, `.python-version`, `.nvmrc`, `.node-version`,
+  `engines.node`, `requires-python`) are resolved with `mise ls --json`; a missing version is installed with
+  `mise install <tool>@<version>` during prepare only. The environment is built with the mise interpreters, and the
+  sandbox binds read-only the exact install directory of each resolved tool (`~/.local/share/mise/installs/python/
+  <version>`, `.../node/<version>`), never the whole mise tree and never shims, with that tool's `bin` first on the
+  sandbox PATH. Interpreters found through a `.venv` keep the existing symlink-chain resolution; a `node` on PATH
+  that is not a system one is resolved the same way.
+- `ultron autoreview doctor --repo owner/name` lists the prepared environment and its toolchain (version and source:
+  mise, system or uv); with `--json`, `tests.env` is `prepared`, `checkout`, `testEnv` or `none` and
+  `tests.toolchain` lists the bound tool directories. A prepare failure is a stated limit, never a finding.
+
 **Eligibility.** Tests run only for repositories the reviewing account can push to, or whose owner is listed in
 `autoreview.testOwners`; elsewhere the deep pass stays read-only. `autoreview.runTests: false` turns it off
 entirely. The local entry (`review --repo-dir`) runs them unless `--no-run-tests` is given; `--test-env <dir>` binds
@@ -408,6 +433,8 @@ an environment.
 | `autoreview.testEnv` | none | `{"owner/repo": "/path/to/env"}`: pre-built environments, bound read-only. |
 | `autoreview.checkoutRoots` | none | Directories holding local checkouts (`<root>/<name>`) whose prepared environments may be bound read-only. |
 | `autoreview.testImage` | none | A local Docker image, used only when neither bubblewrap nor `unshare` works. |
+| `autoreview.prepareEnvs` | `true` | Prepare a repository's test environment (uv virtualenv, npm ci, mise toolchains) before its first review and when its lockfile changes; with the network, never during a review. |
+| `autoreview.mise` | on when mise exists | Resolve and install toolchains with mise during prepare (`true`, `false`, or the binary's path). |
 
 ## Precision rules
 

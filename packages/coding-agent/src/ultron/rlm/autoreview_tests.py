@@ -540,8 +540,16 @@ class TestSession:
     def __init__(self, root: str, head: str, base: str | None, tracked: list[str], read: Callable[[str], str | None],
                  sandbox: Sandbox, *, runs: int = DEFAULT_RUNS, timeout_s: float = DEFAULT_TIMEOUT_S,
                  env_dir: str | None = None, checkout: str | None = None, executor: Executor = run_process,
-                 export: Callable[[str, str], str] = export_commit, clock: Callable[[], float] = time.monotonic) -> None:
+                 export: Callable[[str, str], str] = export_commit, clock: Callable[[], float] = time.monotonic,
+                 toolchain: list[str] | None = None, env_kind: str | None = None) -> None:
         self.root = root
+        #: Exact install directories of the toolchain (a mise python or node, `<prefix>/bin/<tool>`), bound
+        #: read-only into the sandbox with their bin first on its PATH. Never a whole tool tree, never shims.
+        self.toolchain = [path for path in (toolchain or []) if isinstance(path, str) and os.path.isdir(path)
+                          and os.path.isdir(os.path.join(path, "bin"))]
+        #: Where the environment came from: prepared, checkout, testEnv or none.
+        self.env_kind = env_kind or ("testEnv" if env_dir and os.path.isdir(env_dir) else
+                                     "checkout" if checkout and os.path.isdir(checkout) else "none")
         self.revs = {"head": head, "base": base}
         self.tracked = set(tracked)
         self.sandbox = sandbox
@@ -623,17 +631,29 @@ class TestSession:
             raise TestsRejected(f"the limit of {self.limit} test executions per review is reached")
         workdir = self._dir(which)
         command = runner.command(relative, select)
-        extra = os.path.join(self.env_dir, "bin") if self.env_dir and os.path.isdir(os.path.join(self.env_dir, "bin")) else None
-        env = sandbox_env(extra)
-        if self.env_dir and extra is None:
+        extra_dirs = [os.path.join(path, "bin") for path in self.toolchain]
+        if self.env_dir and os.path.isdir(os.path.join(self.env_dir, "bin")):
+            extra_dirs.append(os.path.join(self.env_dir, "bin"))
+        env = sandbox_env(":".join(extra_dirs) if extra_dirs else None)
+        if self.env_dir and not os.path.isdir(os.path.join(self.env_dir, "bin")):
             env["NODE_PATH"] = self.env_dir
         binds: list[str | tuple[str, str]] = [self.env_dir] if self.env_dir else []
+        binds += list(self.toolchain)
         used: list[str] = []
         if self.checkout and self.sandbox.mechanism != "unshare":
             found = discover_environment(self.checkout, directory)
             binds += [(source, os.path.join(workdir, relative)) for source, relative in found["binds"]]
             binds += found["interpreters"]
             used = [relative for _source, relative in found["binds"]]
+            # A Node runner needs a `node`: the one on PATH when it is not a system one (a mise install, resolved
+            # through its symlink chain to its own directory), unless the toolchain already names one.
+            if runner.name in ("vitest", "jest", "npm", "pnpm", "yarn") and not any(
+                    os.path.exists(os.path.join(path, "bin", "node")) for path in self.toolchain):
+                node = shutil.which("node")
+                prefix = interpreter_home(node) if node else None
+                if prefix and prefix not in binds:
+                    binds.append(prefix)
+                    env["PATH"] = os.path.join(prefix, "bin") + ":" + env["PATH"]
             if runner.name == "pytest" and found["python"]:
                 # The checkout's own interpreter and packages, at the same place in the export.
                 command[0] = os.path.join(workdir, found["python"])
@@ -655,6 +675,7 @@ class TestSession:
                   "passed": sum(1 for item in tests if item["status"] == "passed"),
                   "failed": sum(1 for item in tests if item["status"] in ("failed", "error")),
                   "ms": int((self._clock() - began) * 1000), "environment": used,
+                  "toolchain": [os.path.basename(os.path.dirname(path)) + "/" + os.path.basename(path) for path in self.toolchain],
                   "output": output[-OUTPUT_TAIL_CHARS:].replace(workdir, ".")}
         self.records.append(record)
         return record

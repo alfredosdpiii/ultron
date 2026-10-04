@@ -21,6 +21,7 @@ import {
 } from "./github.ts";
 import { expandPath, findCheckout, withoutGuideMentions } from "./local.ts";
 import { planReview, type ReviewPlan, withoutInline } from "./plan.ts";
+import { prepareEnvironment } from "./prepare.ts";
 import type { Runner } from "./runner.ts";
 import { claimHash, type PostedFinding, type PullState, type StateStore } from "./state.ts";
 import type { ContextComment, EngineResult, EngineSpec, ReviewEngine } from "./types.ts";
@@ -446,16 +447,39 @@ export async function runReview(deps: ReviewerDeps, prepared: Prepared): Promise
 			deps.config.runTests &&
 			testsEligible(deps.config, ref.owner, await github.canPush(ref));
 		const testEnv = deps.config.testEnv[`${ref.owner}/${ref.repo}`.toLowerCase()];
-		// Without an explicit environment, an existing local checkout of this repository may lend its own.
-		const testCheckout =
-			runTests && testEnv === undefined && deps.config.checkoutRoots.length > 0
+		// Without an explicit environment: a prepared one (built with the network before the review, cached by the
+		// lockfile hash, rebuilt when it changes), else an existing local checkout of this repository lends its own.
+		const preparedEnv =
+			runTests && testEnv === undefined && deps.config.prepareEnvs && checkout !== undefined
+				? await prepareEnvironment(checkout.workDir, {
+						runner: deps.runner,
+						cacheDir: deps.paths.cache,
+						mise: deps.config.mise,
+						log: (line) => deps.log(`${pullKey(ref)}: ${line}`),
+					}).catch((error: Error) => {
+						deps.log(`${pullKey(ref)}: prepare failed: ${error.message}`);
+						return undefined;
+					})
+				: undefined;
+		if (preparedEnv !== undefined)
+			deps.log(
+				`${pullKey(ref)}: environment ${preparedEnv.hash}${preparedEnv.cached ? " (cached)" : ""}: ${preparedEnv.prepared.join("; ") || "nothing prepared"}${preparedEnv.failures.length ? `; failed: ${preparedEnv.failures.join("; ")}` : ""}`,
+			);
+		const usePreparedEnv =
+			preparedEnv !== undefined && preparedEnv.failures.length === 0 && preparedEnv.prepared.length > 0;
+		const testCheckout = usePreparedEnv
+			? preparedEnv.dir
+			: runTests && testEnv === undefined && deps.config.checkoutRoots.length > 0
 				? await findCheckout(deps.runner, deps.config.checkoutRoots, ref)
 				: undefined;
 		const spec: EngineSpec = {
 			...(checkout ? { workDir: checkout.workDir, baseSha: checkout.mergeBase } : {}),
 			runTests,
-			...(runTests && testEnv !== undefined ? { testEnv } : {}),
-			...(testCheckout === undefined ? {} : { testCheckout }),
+			...(runTests && testEnv !== undefined ? { testEnv, testEnvKind: "testEnv" as const } : {}),
+			...(testCheckout === undefined
+				? {}
+				: { testCheckout, testEnvKind: usePreparedEnv ? ("prepared" as const) : ("checkout" as const) }),
+			...(usePreparedEnv ? { testToolchain: preparedEnv.toolchain.map((entry) => entry.path) } : {}),
 			...(deps.config.guides.length === 0 ? {} : { guides: deps.config.guides.map((path) => expandPath(path)) }),
 			repo: `${ref.owner}/${ref.repo}`,
 			diffPath,

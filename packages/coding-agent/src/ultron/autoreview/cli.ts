@@ -32,6 +32,7 @@ import { RuntimeReviewEngine } from "./engine.ts";
 import { parsePullTarget, pullKey } from "./github.ts";
 import { expandPath, findCheckout } from "./local.ts";
 import { decideVerdict, planReview, rankFindings } from "./plan.ts";
+import { cachedEnvironment, describeToolchain, prepareEnvironment } from "./prepare.ts";
 import { type Outcome, reviewPull } from "./reviewer.ts";
 import { type Runner, runProcess } from "./runner.ts";
 import { installService, serviceFile, uninstallService } from "./service.ts";
@@ -76,6 +77,9 @@ Commands:
   status                       Accounts, last poll, queue and recent reviews
   doctor [--repo owner/name]   The sandbox test execution would use, and a self-check of its isolation; with --repo,
                                the local checkout whose environments would be bound into it
+  prepare <repo-dir> [--python 3.x]
+                               Build the repository's test environment now, with the network (uv virtualenv, npm ci,
+                               mise toolchains), into the cache the sandbox binds read-only during reviews
   install | uninstall          Write or remove the user service that runs "${APP_NAME} autoreview run"
 
 Options:
@@ -107,6 +111,8 @@ Options:
   --program <path>             review --mode compiled: execute this saved program instead of calling the planner
   --run-tests | --no-run-tests review --repo-dir: let the deep pass run the project's tests in a sandbox (default:
                                autoreview.runTests, on); never without a sandbox
+  --prepare                    review --repo-dir: prepare the environment first (as "prepare" does), then review
+  --python <3.x>               prepare, review --prepare: the Python version to build the virtualenv with
   --test-env <dir>             review --repo-dir: a pre-built environment (virtualenv, node_modules) to bind read-only
   --checkout-roots <dir,...>   review: directories of local checkouts whose environments may serve the tests
                                (with --repo owner/name, whose remote the checkout must have)
@@ -117,7 +123,7 @@ Options:
                                autoreview.deadlineSeconds, none)
 
 Settings (global settings.json): autoreview.accounts, pollSeconds, concurrency, model, verifyModel, budget, dryRun,
-frameConcurrency, mode, deepModel, deepThinking, deepRounds, planModel, planThinking, askModel, askThinking, planStyle, planCells, blockAt, maxComments, runTests, testOwners, testRuns, testTimeoutSeconds, testEnv, testImage, checkoutRoots, guides, thinking, verifyThinking, deadlineSeconds, frameTimeoutSeconds, ack, ackLines, ackArt, signature.
+frameConcurrency, mode, deepModel, deepThinking, deepRounds, planModel, planThinking, askModel, askThinking, planStyle, planCells, prepareEnvs, mise, blockAt, maxComments, runTests, testOwners, testRuns, testTimeoutSeconds, testEnv, testImage, checkoutRoots, guides, thinking, verifyThinking, deadlineSeconds, frameTimeoutSeconds, ack, ackLines, ackArt, signature.
 See docs/autoreview.md.`;
 
 interface Parsed {
@@ -145,6 +151,8 @@ interface Parsed {
 	deadlineSeconds?: number;
 	runTests?: boolean;
 	testEnv?: string;
+	prepare: boolean;
+	python?: string;
 	repo?: string;
 	guides?: string[];
 	checkoutRoots?: string[];
@@ -167,7 +175,7 @@ function parseTokens(value: string): number {
 const MODEL_REF = /^[^/\s]+\/[^/\s]+(?:\/[^/\s]+)*$/;
 
 export function parseAutoreviewArgs(args: readonly string[]): Parsed {
-	const parsed: Parsed = { command: args[0] ?? "", dryRun: false, json: false, help: false };
+	const parsed: Parsed = { command: args[0] ?? "", dryRun: false, json: false, help: false, prepare: false };
 	if (parsed.command === "" || parsed.command === "--help" || parsed.command === "-h" || parsed.command === "help") {
 		parsed.help = true;
 		return parsed;
@@ -225,7 +233,13 @@ export function parseAutoreviewArgs(args: readonly string[]): Parsed {
 		else if (arg === "--run-tests") parsed.runTests = true;
 		else if (arg === "--no-run-tests") parsed.runTests = false;
 		else if (arg === "--test-env") parsed.testEnv = value();
-		else if (arg === "--repo") parsed.repo = value();
+		else if (arg === "--prepare") parsed.prepare = true;
+		else if (arg === "--python") {
+			const version = value();
+			if (!/^\d+(\.\d+){0,2}$/.test(version))
+				throw new UsageError(`--python takes a version such as 3.12, not ${version}`);
+			parsed.python = version;
+		} else if (arg === "--repo") parsed.repo = value();
 		else if (arg === "--guides") parsed.guides = list();
 		else if (arg === "--checkout-roots") parsed.checkoutRoots = list();
 		else if (arg === "--block-at") {
@@ -251,7 +265,8 @@ export function parseAutoreviewArgs(args: readonly string[]): Parsed {
 		else if (arg === "--base") parsed.base = value();
 		else if (arg === "--head") parsed.head = value();
 		else if (arg.startsWith("-")) throw new UsageError(`unknown option for ${APP_NAME} autoreview: ${arg}`);
-		else if (parsed.target === undefined && parsed.command === "review") parsed.target = arg;
+		else if (parsed.target === undefined && (parsed.command === "review" || parsed.command === "prepare"))
+			parsed.target = arg;
 		else throw new UsageError(`unexpected argument: ${arg}`);
 	}
 	return parsed;
@@ -484,6 +499,30 @@ export async function runAutoreviewCommand(
 				io.stdout(`${lines.join("\n")}\n`);
 				return 0;
 			}
+			case "prepare": {
+				if (parsed.target === undefined) throw new UsageError("prepare needs the repository directory");
+				const prepared = await prepareEnvironment(resolve(cwd, parsed.target), {
+					runner,
+					cacheDir: paths.cache,
+					mise: config.mise,
+					env,
+					...(parsed.python === undefined ? {} : { python: parsed.python }),
+					log: (line) => io.stderr(`${line}\n`),
+					force: true,
+				});
+				if (parsed.json) io.stdout(`${JSON.stringify(prepared)}\n`);
+				else
+					io.stdout(
+						`${[
+							`Environment ${prepared.hash} at ${prepared.dir}${prepared.cached ? " (cached)" : ""}`,
+							...prepared.prepared.map((item) => `  prepared: ${item}`),
+							...describeToolchain(prepared.toolchain).map((line) => `  toolchain: ${line}`),
+							...prepared.failures.map((item) => `  failed: ${item}`),
+							`  ${Math.round(prepared.ms / 1000)} s`,
+						].join("\n")}\n`,
+					);
+				return prepared.failures.length === 0 ? 0 : 1;
+			}
 			case "doctor": {
 				const python =
 					env.ULTRON_PYTHON ??
@@ -523,6 +562,18 @@ export async function runAutoreviewCommand(
 					}
 					lent = { repo: parsed.repo, checkout: checkout ?? null, environments };
 				}
+				// The prepared environment of that checkout, when there is one: its toolchain and where it came from.
+				const prepared = lent?.checkout ? cachedEnvironment(lent.checkout, paths.cache) : undefined;
+				const preparedLines =
+					lent === undefined
+						? []
+						: prepared === undefined
+							? ["Prepared environment: none (run `ultron autoreview prepare <repo-dir>`)"]
+							: [
+									`Prepared environment: ${prepared.dir}`,
+									...prepared.prepared.map((item) => `  ${item}`),
+									...describeToolchain(prepared.toolchain).map((line) => `  toolchain: ${line}`),
+								];
 				const lentLines =
 					lent === undefined
 						? []
@@ -539,9 +590,11 @@ export async function runAutoreviewCommand(
 									"  never bound: the checkout's source, .git, .env files",
 								];
 				if (parsed.json)
-					io.stdout(`${JSON.stringify({ ...report, runTests: config.runTests, ...(lent ? { lent } : {}) })}\n`);
+					io.stdout(
+						`${JSON.stringify({ ...report, runTests: config.runTests, ...(lent ? { lent } : {}), ...(prepared ? { prepared } : {}) })}\n`,
+					);
 				else if (report.mechanism === null)
-					io.stdout(`${[`Sandbox: none. ${report.message ?? ""}`, ...lentLines].join("\n")}\n`);
+					io.stdout(`${[`Sandbox: none. ${report.message ?? ""}`, ...lentLines, ...preparedLines].join("\n")}\n`);
 				else {
 					const check = report.selfCheck ?? {};
 					const owners = config.testOwners.length ? ` and owners ${config.testOwners.join(", ")}` : "";
@@ -562,6 +615,7 @@ export async function runAutoreviewCommand(
 							`  Docker socket: ${String(check.dockerSocket)}`,
 							`Tests in reviews: ${testsLine}`,
 							...lentLines,
+							...preparedLines,
 						].join("\n")}\n`,
 					);
 				}
@@ -596,6 +650,25 @@ export async function runAutoreviewCommand(
 					named !== undefined && config.checkoutRoots.length > 0
 						? await findCheckout(runner, config.checkoutRoots, named)
 						: undefined;
+				// --prepare: build (or reuse) the environment first, with the network; the review then binds it read-only.
+				const prepared = parsed.prepare
+					? await prepareEnvironment(resolve(cwd, parsed.repoDir!), {
+							runner,
+							cacheDir: paths.cache,
+							mise: config.mise,
+							env,
+							...(parsed.python === undefined ? {} : { python: parsed.python }),
+							log: (line) => io.stderr(`${line}\n`),
+						})
+					: undefined;
+				if (prepared !== undefined)
+					for (const line of [
+						`prepared environment ${prepared.hash}${prepared.cached ? " (cached)" : ""}: ${prepared.prepared.join("; ") || "nothing"}`,
+						...prepared.failures.map((item) => `prepare: ${item}`),
+					])
+						io.stderr(`${line}\n`);
+				const usePrepared =
+					prepared !== undefined && prepared.failures.length === 0 && prepared.prepared.length > 0;
 				await engine.start?.();
 				const result = await engine.review({
 					repoDir: resolve(cwd, parsed.repoDir!),
@@ -604,11 +677,17 @@ export async function runAutoreviewCommand(
 					...engineSettings(config),
 					// A local repository is the user's own: its tests may run (sandboxed) unless turned off.
 					runTests: config.mode !== "fast" && (parsed.runTests ?? config.runTests),
-					...(parsed.testEnv === undefined
-						? // A checkout of the named repository under --checkout-roots, else the repository given: it is
-							// itself a local checkout, and its own prepared environments serve the tests.
-							{ testCheckout: lent ?? resolve(cwd, parsed.repoDir!) }
-						: { testEnv: resolve(cwd, parsed.testEnv) }),
+					...(parsed.testEnv !== undefined
+						? { testEnv: resolve(cwd, parsed.testEnv), testEnvKind: "testEnv" as const }
+						: usePrepared
+							? {
+									testCheckout: prepared.dir,
+									testToolchain: prepared.toolchain.map((entry) => entry.path),
+									testEnvKind: "prepared" as const,
+								}
+							: // A checkout of the named repository under --checkout-roots, else the repository given: it is
+								// itself a local checkout, and its own prepared environments serve the tests.
+								{ testCheckout: lent ?? resolve(cwd, parsed.repoDir!), testEnvKind: "checkout" as const }),
 					...(config.guides.length === 0 ? {} : { guides: config.guides.map((path) => expandPath(path)) }),
 					...(parsed.repo === undefined ? {} : { repo: parsed.repo }),
 					...(parsed.programPath === undefined ? {} : { programPath: resolve(cwd, parsed.programPath) }),
