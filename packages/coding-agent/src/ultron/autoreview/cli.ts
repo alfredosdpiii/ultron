@@ -33,7 +33,8 @@ import { type Outcome, reviewPull } from "./reviewer.ts";
 import { type Runner, runProcess } from "./runner.ts";
 import { installService, serviceFile, uninstallService } from "./service.ts";
 import { acquireDaemonLock, DaemonRunningError, StateStore } from "./state.ts";
-import type { EngineResult, ReviewEngine } from "./types.ts";
+import type { EngineResult, Level, ReviewEngine } from "./types.ts";
+import { levelOf, severityOf } from "./types.ts";
 
 export interface AutoreviewIo {
 	stdout(text: string): void;
@@ -95,7 +96,7 @@ Options:
                                autoreview.deadlineSeconds, none)
 
 Settings (global settings.json): autoreview.accounts, pollSeconds, concurrency, model, verifyModel, budget, dryRun,
-frameConcurrency, mode, deepModel, deepThinking, deepRounds, runTests, testOwners, testRuns, testTimeoutSeconds, testEnv, testImage, thinking, verifyThinking, deadlineSeconds, frameTimeoutSeconds, ack, ackLines, ackArt, signature.
+frameConcurrency, mode, deepModel, deepThinking, deepRounds, blockAt, maxComments, runTests, testOwners, testRuns, testTimeoutSeconds, testEnv, testImage, thinking, verifyThinking, deadlineSeconds, frameTimeoutSeconds, ack, ackLines, ackArt, signature.
 See docs/autoreview.md.`;
 
 interface Parsed {
@@ -191,8 +192,16 @@ export function parseAutoreviewArgs(args: readonly string[]): Parsed {
 }
 
 /** The JSON object `review --repo-dir ... --json` prints. */
-export function offlineJson(result: EngineResult, startupMs: number | undefined): Record<string, unknown> {
-	const { verdict } = decideVerdict(result, { selfAuthored: false, state: "open" });
+export function offlineJson(
+	result: EngineResult,
+	startupMs: number | undefined,
+	blockAt?: Level,
+): Record<string, unknown> {
+	const { verdict } = decideVerdict(result, {
+		selfAuthored: false,
+		state: "open",
+		...(blockAt === undefined ? {} : { blockAt }),
+	});
 	return {
 		verdict,
 		complete: result.complete,
@@ -200,8 +209,11 @@ export function offlineJson(result: EngineResult, startupMs: number | undefined)
 			file: finding.file,
 			line: finding.line,
 			...(finding.endLine === undefined ? {} : { endLine: finding.endLine }),
-			severity: finding.severity,
-			finderSeverity: finding.finderSeverity ?? finding.severity,
+			// `severity` stays on the old four-name scale; `level` is the five-level one the verdict uses.
+			severity: severityOf(levelOf(finding)),
+			level: levelOf(finding),
+			finderSeverity: finding.finderSeverity ?? severityOf(levelOf(finding)),
+			finderLevel: finding.finderLevel ?? levelOf(finding),
 			scenario: finding.scenario ?? "",
 			category: finding.category,
 			claim: finding.claim,
@@ -209,6 +221,7 @@ export function offlineJson(result: EngineResult, startupMs: number | undefined)
 			...(finding.suggestedFix === undefined ? {} : { suggestedFix: finding.suggestedFix }),
 			verification: finding.verification,
 			confidence: finding.confidence,
+			...(finding.alsoAt === undefined ? {} : { alsoAt: finding.alsoAt }),
 			source: finding.source ?? "fast",
 			evidence: finding.evidence ?? "",
 			howVerified: finding.howVerified ?? "",
@@ -443,10 +456,10 @@ export async function runAutoreviewCommand(
 					runTests: config.mode !== "fast" && (parsed.runTests ?? config.runTests),
 					...(parsed.testEnv === undefined ? {} : { testEnv: resolve(cwd, parsed.testEnv) }),
 				});
-				if (parsed.json) io.stdout(`${JSON.stringify(offlineJson(result, engine.startMs))}\n`);
+				if (parsed.json) io.stdout(`${JSON.stringify(offlineJson(result, engine.startMs, config.blockAt))}\n`);
 				else
 					io.stdout(
-						`${planReview(result, { selfAuthored: false, state: "open", headSha: parsed.head, signature: config.signature }).body}\n`,
+						`${planReview(result, { selfAuthored: false, state: "open", headSha: parsed.head, signature: config.signature, blockAt: config.blockAt, maxComments: config.maxComments }).body}\n`,
 					);
 				return 0;
 			}

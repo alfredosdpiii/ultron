@@ -32,7 +32,14 @@ import {
 } from "../src/ultron/autoreview/config.ts";
 import { blockedPulls, createLogger, Daemon, pruneOld } from "../src/ultron/autoreview/daemon.ts";
 import { GitHub, parseApiOutput, parsePullTarget, RateLimitError } from "../src/ultron/autoreview/github.ts";
-import { decideVerdict, placeLine, planComment, planReview } from "../src/ultron/autoreview/plan.ts";
+import {
+	commentText,
+	decideVerdict,
+	placeLine,
+	planComment,
+	planReview,
+	rankFindings,
+} from "../src/ultron/autoreview/plan.ts";
 import {
 	ackBody,
 	type Candidate,
@@ -49,6 +56,7 @@ import {
 import { serviceFile } from "../src/ultron/autoreview/service.ts";
 import { acquireDaemonLock, DaemonRunningError, StateStore } from "../src/ultron/autoreview/state.ts";
 import type { EngineFinding } from "../src/ultron/autoreview/types.ts";
+import { LEVELS, levelOf, severityOf } from "../src/ultron/autoreview/types.ts";
 import { DIFF, engineResult, FakeEngine, FakeHub, MAJOR } from "./ultron-autoreview-fixtures.ts";
 
 const dirs: string[] = [];
@@ -337,48 +345,75 @@ describe("mentions and the decision to review", () => {
 
 describe("the posting plan", () => {
 	const finding = (partial: Partial<EngineFinding> = {}): EngineFinding => ({ ...MAJOR, ...partial });
+	const open = { selfAuthored: false, state: "open" as const };
+	const options = { ...open, headSha: HEAD, signature: true };
 
-	test("verdict: approve only when complete and clean; request changes on a confirmed blocker or major", () => {
-		const open = { selfAuthored: false, state: "open" as const };
-		expect(decideVerdict(engineResult(), open).verdict).toBe("approve");
-		expect(
-			decideVerdict(engineResult({ findings: [finding({ severity: "minor" }), finding({ severity: "nit" })] }), open)
-				.verdict,
-		).toBe("approve");
-		expect(decideVerdict(engineResult({ findings: [finding()] }), open).verdict).toBe("request_changes");
-		expect(decideVerdict(engineResult({ findings: [finding({ severity: "blocker" })] }), open).verdict).toBe(
-			"request_changes",
+	test("levels: five of them, the old four names still read, and the old-scale severity of each", () => {
+		expect(LEVELS).toEqual(["critical", "high", "medium", "low", "nit"]);
+		expect(["blocker", "major", "minor", "nit"].map((severity) => levelOf({ severity }))).toEqual([
+			"critical",
+			"high",
+			"low",
+			"nit",
+		]);
+		expect(levelOf({ level: "medium", severity: "minor" })).toBe("medium");
+		expect(levelOf({ severity: "medium" })).toBe("medium");
+		expect(levelOf({})).toBe("low");
+		// Medium has no old name: it is written as minor.
+		expect(LEVELS.map(severityOf)).toEqual(["blocker", "major", "minor", "minor", "nit"]);
+	});
+
+	test("verdict: request changes from blockAt (medium) up; approve only when complete and below it", () => {
+		const verdict = (levels: Array<EngineFinding["level"]>, extra = {}) =>
+			decideVerdict(engineResult({ findings: levels.map((level) => finding({ level })) }), { ...open, ...extra })
+				.verdict;
+		expect(decideVerdict(engineResult(), open)).toEqual({
+			verdict: "approve",
+			reason: "no confirmed finding at medium or above",
+		});
+		expect(verdict(["low", "nit"])).toBe("approve");
+		expect(verdict(["medium"])).toBe("request_changes");
+		expect(verdict(["high"])).toBe("request_changes");
+		expect(verdict(["critical", "low"])).toBe("request_changes");
+		expect(decideVerdict(engineResult({ findings: [finding({ level: "medium" }), finding()] }), open).reason).toBe(
+			"2 confirmed findings at medium or above",
+		);
+		// The threshold is a setting.
+		expect(verdict(["medium"], { blockAt: "high" })).toBe("approve");
+		expect(verdict(["high"], { blockAt: "critical" })).toBe("approve");
+		expect(verdict(["low"], { blockAt: "low" })).toBe("request_changes");
+		// A result from an engine that only knows the old scale: major is high.
+		expect(decideVerdict(engineResult({ findings: [{ ...MAJOR }] }), open).verdict).toBe("request_changes");
+		expect(decideVerdict(engineResult({ findings: [{ ...MAJOR, severity: "minor" }] }), open).verdict).toBe(
+			"approve",
 		);
 		// An uncertain finding never counts.
 		expect(
-			decideVerdict(engineResult({ findings: [finding({ severity: "blocker", verification: "uncertain" })] }), open)
+			decideVerdict(engineResult({ findings: [finding({ level: "critical", verification: "uncertain" })] }), open)
 				.verdict,
 		).toBe("approve");
 		// Incomplete coverage is never an approval.
-		const partial = engineResult({
-			complete: false,
-			incomplete: ["3 reviewer passes did not fit the token budget: a.py"],
-		});
+		const partial = engineResult({ complete: false, incomplete: ["3 reviewer passes failed: a.py"] });
 		expect(decideVerdict(partial, open)).toMatchObject({ verdict: "comment" });
 		expect(decideVerdict({ ...partial, findings: [finding()] }, open).verdict).toBe("request_changes");
 		// The account's own pull request, and closed or merged ones, only get a comment.
 		expect(
 			decideVerdict(engineResult({ findings: [finding()] }), { selfAuthored: true, state: "open" }).verdict,
 		).toBe("comment");
-		expect(decideVerdict(engineResult(), { selfAuthored: true, state: "open" }).verdict).toBe("comment");
 		expect(decideVerdict(engineResult(), { selfAuthored: false, state: "merged" }).verdict).toBe("comment");
-		expect(
-			decideVerdict(engineResult({ findings: [finding()] }), { selfAuthored: false, state: "closed" }).verdict,
-		).toBe("comment");
-		// A major finding of an earlier review that is still there keeps the request for changes.
+		// A finding of an earlier review at the blocking level that is still there keeps the request for changes.
 		const earlier = { id: "ccccccc-1", file: "calc.py", line: 4, claim: "x", severity: "major", evidence: "" };
 		expect(decideVerdict(engineResult({ earlier: [{ ...earlier, status: "still_present" }] }), open).verdict).toBe(
 			"request_changes",
 		);
+		expect(
+			decideVerdict(engineResult({ earlier: [{ ...earlier, severity: "low", status: "still_present" }] }), open)
+				.verdict,
+		).toBe("approve");
 		expect(decideVerdict(engineResult({ earlier: [{ ...earlier, status: "fixed" }] }), open).verdict).toBe("approve");
 	});
 
-	test("an inline comment must sit on a diff line: kept, moved within three lines of a hunk, or sent to the summary", () => {
+	test("an inline comment must sit on a diff line: kept, moved within three lines of a hunk, or named in the body", () => {
 		const ranges = [
 			[10, 20],
 			[40, 45],
@@ -398,15 +433,71 @@ describe("the posting plan", () => {
 				findings: [
 					finding({ line: 4 }),
 					finding({ line: 9, claim: "moved" }),
-					finding({ line: 60, claim: "far away" }),
+					finding({ line: 60, claim: "far away", level: "low" }),
 				],
 				diffLines: { "calc.py": [[1, 6]] },
 			}),
-			{ selfAuthored: false, state: "open", headSha: HEAD, signature: true },
+			options,
 		);
 		expect(plan.comments.map((comment) => comment.line)).toEqual([4, 6]);
 		expect(plan.inSummary).toEqual([2]);
-		expect(plan.body).toContain("**Findings outside the diff**\n- `calc.py:60` (major) far away");
+		expect(plan.body).toContain("Outside the diff: `calc.py:60` [low] far away.");
+	});
+
+	test("an inline comment is [level], the problem with its evidence, and the fix, in plain sentences", () => {
+		const body = planComment(
+			finding({
+				level: "high",
+				claim: "total() skips the last item",
+				scenario: "total([{'price': 1}, {'price': 2}]) returns 1; it should return 3.",
+				replacement: undefined,
+			}),
+			0,
+			[[1, 6]],
+			"aaaaaaa-1",
+		)!.body;
+		expect(body).toBe(
+			"[high] total() skips the last item. total([{'price': 1}, {'price': 2}]) returns 1; it should return 3. Use range(len(items)).\n\n<!-- ultron-autoreview:aaaaaaa-1 -->",
+		);
+		// Without a scenario the reason is the evidence; other places with the same root cause are listed.
+		expect(commentText(finding({ level: "medium", scenario: "", replacement: undefined, severity: "minor" }))).toBe(
+			"[medium] total() skips the last item. range(len(items) - 1) stops one short. Use range(len(items)).",
+		);
+		const also = planComment(
+			finding({
+				alsoAt: [
+					{ file: "report.py", line: 8 },
+					{ file: "sum.py", line: 3 },
+				],
+			}),
+			0,
+			[[1, 6]],
+			"k",
+		)!.body;
+		expect(also).toContain("Same at `report.py:8`, `sum.py:3`.");
+		// The finding's own line is outside the diff, but the same root cause is on a diff line: the comment goes there.
+		const moved = planReview(
+			engineResult({
+				findings: [
+					finding({
+						file: "report.py",
+						line: 40,
+						level: "medium",
+						replacement: undefined,
+						alsoAt: [{ file: "calc.py", line: 5 }],
+					}),
+				],
+			}),
+			{ ...options },
+		);
+		expect(moved.comments).toHaveLength(1);
+		expect(moved.comments[0]).toMatchObject({ path: "calc.py", line: 5 });
+		expect(moved.comments[0]!.body).toContain("Same at `report.py:40`.");
+		// Long evidence is cut so the sentences stay near the target length; no headings, lists or labels.
+		const long = commentText(finding({ why: "word ".repeat(400), scenario: "", replacement: undefined }));
+		expect(long.length).toBeLessThanOrEqual(600);
+		expect(long.endsWith("Use range(len(items)).")).toBe(true);
+		expect(body).not.toMatch(/\*\*|^#|^- /m);
 	});
 
 	test("a suggestion block needs an exact replacement whose whole range is in one hunk; otherwise a plain block", () => {
@@ -416,6 +507,8 @@ describe("the posting plan", () => {
 		expect(exact.body).toContain("```suggestion\n    for i in range(len(items)):\n```");
 		expect(exact.body).toContain("<!-- ultron-autoreview:aaaaaaa-1 -->");
 		expect(exact.start_line).toBeUndefined();
+		// The suggestion is the fix: the prose fix is not repeated.
+		expect(exact.body).not.toContain("Use range(len(items)).");
 		// A range: start_line..line, both on the RIGHT side.
 		const range = planComment(finding({ line: 4, endLine: 5, replacement: "a\nb" }), 0, ranges, "k")!;
 		expect(range).toMatchObject({ start_line: 4, start_side: "RIGHT", line: 5, suggestion: true });
@@ -425,51 +518,80 @@ describe("the posting plan", () => {
 		expect(outside.start_line).toBeUndefined();
 		expect(outside.body).toContain("Suggested replacement for lines 5-8:\n\n```\na\nb\n```");
 		expect(outside.body).not.toContain("```suggestion");
-		// No replacement: the fix is a sentence.
-		const prose = planComment(finding({ replacement: undefined }), 0, ranges, "k")!;
-		expect(prose.suggestion).toBe(false);
-		expect(prose.body).toContain("Suggested fix: Use range(len(items)).");
 		// Code containing a fence gets a longer one.
 		expect(planComment(finding({ replacement: "```js\nx\n```" }), 0, ranges, "k")!.body).toContain(
 			"````suggestion\n```js\nx\n```\n````",
 		);
 	});
 
-	test("caps: every blocker, five major and five minor inline, nits only counted; uncertain findings only in the summary", () => {
-		const many = (severity: EngineFinding["severity"], count: number) =>
-			Array.from({ length: count }, (_, index) =>
-				finding({ severity, line: 1 + (index % 6), claim: `${severity} ${index}` }),
-			);
+	test("few, heavy comments: ranked by level and evidence, at most maxComments inline, the rest counted", () => {
+		const at = (line: number, level: EngineFinding["level"], strength: EngineFinding["strength"], claim: string) =>
+			finding({ line, level, strength, claim, replacement: undefined });
 		const result = engineResult({
 			findings: [
-				...many("blocker", 7),
-				...many("major", 6),
-				...many("minor", 7),
-				...many("nit", 5),
-				finding({ verification: "uncertain", claim: "maybe a race", note: "cannot tell" }),
+				at(1, "low", "diff", "low from the diff"),
+				at(2, "medium", "diff", "medium from the diff"),
+				at(3, "medium", "outside", "medium proven outside"),
+				at(4, "high", "diff", "high from the diff"),
+				at(5, "low", "test", "low shown by a test run"),
+				at(6, "critical", "outside", "critical proven outside"),
+				at(1, "nit", "diff", "a nit"),
+				at(2, "low", "diff", "another low"),
+				finding({ verification: "uncertain", claim: "maybe a race" }),
 			],
-			dropped: { rejected: 4, duplicates: 2 },
 		});
-		const plan = planReview(result, { selfAuthored: false, state: "open", headSha: HEAD, signature: true });
-		const inline = (severity: string) =>
-			plan.comments.filter((comment) => result.findings[comment.finding]!.severity === severity).length;
-		expect([inline("blocker"), inline("major"), inline("minor"), inline("nit")]).toEqual([7, 5, 5, 0]);
-		expect(plan.overCap).toHaveLength(8);
-		expect(plan.body).toContain("Not shown, to keep this readable: 1 major, 2 minor, 5 nit findings.");
-		expect(plan.body).toContain("**Uncertain, not confirmed**");
-		expect(plan.body).toContain("- `calc.py:4` (major) maybe a race");
+		// Serious or proven beyond the diff first (by level, then evidence); diff-only below high after them.
+		expect(rankFindings(result).map((index) => result.findings[index]!.claim)).toEqual([
+			"critical proven outside",
+			"high from the diff",
+			"medium proven outside",
+			"low shown by a test run",
+			"medium from the diff",
+			"low from the diff",
+			"another low",
+			"a nit",
+		]);
+		const plan = planReview(result, options);
+		expect(plan.comments).toHaveLength(5);
+		expect(plan.comments.map((comment) => result.findings[comment.finding]!.claim)).toEqual([
+			"critical proven outside",
+			"high from the diff",
+			"medium proven outside",
+			"low shown by a test run",
+			"medium from the diff",
+		]);
+		// The rest in one closing line; nits and unconfirmed findings are never inline.
+		expect(plan.overCap.map((index) => result.findings[index]!.claim)).toEqual([
+			"low from the diff",
+			"another low",
+			"a nit",
+		]);
+		expect(plan.body).toContain("Not posted: 3 lower-ranked findings (2 low, 1 nit) and 1 unconfirmed.");
 		expect(plan.comments.some((comment) => comment.body.includes("maybe a race"))).toBe(false);
-		expect(plan.body).toContain(
-			"Confirmed findings: 7 blocker, 6 major, 7 minor, 5 nit (17 inline); 1 uncertain; 4 rejected by verification.",
-		);
+		// With two slots, the blocking finding that gets none is still named in the body.
+		const tight = planReview(result, { ...options, maxComments: 2 });
+		expect(tight.comments).toHaveLength(2);
+		expect(tight.body).toContain("(3) `calc.py:3` medium proven outside.");
+		expect(tight.body).toContain("(4) `calc.py:2` medium from the diff.");
+		expect(planReview(result, { ...options, maxComments: 0 }).comments).toEqual([]);
 	});
 
-	test("the summary: verdict, counts, what others raised, earlier findings, gaps, timing and the signature", () => {
+	test("the body: what was checked, what to resolve before merge, the notes in a line; no headings or tables", () => {
 		const result = engineResult({
 			complete: false,
-			findings: [finding()],
+			findings: [
+				finding({ level: "high", strength: "outside" }),
+				finding({
+					level: "medium",
+					file: "report.py",
+					line: 40,
+					claim: "summary() shows the sentinel string as data",
+				}),
+				finding({ level: "low", line: 5, claim: "price may be negative", replacement: undefined }),
+				finding({ verification: "uncertain", level: "medium", claim: "maybe a race" }),
+			],
 			alsoRaised: [
-				{ file: "calc.py", line: 5, severity: "minor", claim: "price may be missing", by: ["bob", "carol"] },
+				{ file: "calc.py", line: 5, severity: "low", claim: "price may be missing", by: ["bob", "carol"] },
 			],
 			earlier: [
 				{
@@ -477,7 +599,7 @@ describe("the posting plan", () => {
 					file: "calc.py",
 					line: 4,
 					claim: "off by one",
-					severity: "major",
+					severity: "high",
 					status: "fixed",
 					evidence: "",
 				},
@@ -485,121 +607,94 @@ describe("the posting plan", () => {
 					id: "ccccccc-2",
 					file: "calc.py",
 					line: 9,
-					claim: "pipe | in claim",
-					severity: "minor",
+					claim: "old",
+					severity: "low",
 					status: "still_present",
 					evidence: "",
 				},
 			],
+			dropped: { rejected: 2, duplicates: 0 },
 			notChecked: [
 				"package-lock.json: generated, lockfile or vendored",
-				"2 reviewer passes ran out (budget_exhausted): bugs on big.py",
+				"2 reviewer passes failed (boom): bugs on big.py",
 			],
-			incomplete: ["2 reviewer passes ran out (budget_exhausted): bugs on big.py"],
+			incomplete: ["2 reviewer passes failed (boom): bugs on big.py"],
 		});
-		const plan = planReview(result, {
-			selfAuthored: false,
-			state: "open",
-			headSha: HEAD,
-			sinceSha: OLD,
-			signature: true,
-		});
-		const lines = plan.body.split("\n");
-		expect(lines[0]).toBe("**Verdict: Request changes.** 1 confirmed blocker or major finding.");
-		expect(plan.body).toContain("Reviewed `aaaaaaa`, the changes since `ccccccc`: 1 file, +1 -1.");
-		expect(plan.body).toContain("- `calc.py:5` price may be missing (also raised by @bob, @carol)");
-		expect(plan.body).toContain("| `calc.py:4` off by one | fixed |");
-		expect(plan.body).toContain("| `calc.py:9` pipe \\| in claim | still present |");
-		// The reason coverage is incomplete leads the gaps.
-		const gaps = lines.slice(lines.indexOf("**Not checked**"));
-		expect(gaps[2]).toBe("- 2 reviewer passes ran out (budget_exhausted): bugs on big.py");
-		expect(gaps[3]).toBe("- package-lock.json: generated, lockfile or vendored");
-		expect(plan.body).toContain("Reviewed in 42 s: 12 model calls, 94k tokens, $0.31.");
-		expect(lines.at(-1)).toBe(SIGNATURE);
-		expect(lines.length).toBeLessThanOrEqual(60);
-		expect(plan.body).not.toMatch(/\p{Extended_Pictographic}/u);
-		expect(
-			planReview(result, { selfAuthored: false, state: "open", headSha: HEAD, signature: false }).body,
-		).not.toContain(SIGNATURE);
-		// Even a huge review stays under 60 lines and keeps the signature.
-		const huge = engineResult({
-			findings: Array.from({ length: 80 }, (_, index) =>
-				finding({ line: 500 + index, verification: index % 2 ? "confirmed" : "uncertain" }),
-			),
-			alsoRaised: Array.from({ length: 20 }, () => ({
-				file: "a",
-				line: 1,
-				severity: "minor",
-				claim: "c",
-				by: ["x"],
-			})),
-			earlier: Array.from({ length: 30 }, (_, index) => ({
-				id: `e${index}`,
-				file: "a",
-				line: 1,
-				claim: "c",
-				severity: "minor",
-				status: "unknown" as const,
-				evidence: "",
-			})),
-			notChecked: Array.from({ length: 30 }, (_, index) => `gap ${index}`),
-		});
-		const long = planReview(huge, { selfAuthored: false, state: "open", headSha: HEAD, signature: true }).body.split(
-			"\n",
+		const plan = planReview(result, { ...options, sinceSha: OLD });
+		const paragraphs = plan.body.split("\n\n");
+		expect(paragraphs[0]).toBe(
+			"Read the changes from `ccccccc` to `aaaaaaa` (1 file, +1 -1) with the code around it; every finding below was checked against the source by a second pass, which rejected 2.",
 		);
-		expect(long.length).toBeLessThanOrEqual(60);
-		expect(long.at(-1)).toBe(SIGNATURE);
+		expect(paragraphs[1]).toBe(
+			"**Request changes.** To resolve before merge: (1) `calc.py:4` (inline) total() skips the last item. (2) `report.py:40` summary() shows the sentinel string as data. Earlier findings: 1 fixed (`calc.py:4`); 1 still present (`calc.py:9`).",
+		);
+		expect(paragraphs[2]).toBe(
+			"1 non-blocking note inline. Not posted: 1 unconfirmed. 1 finding was already raised by @bob, @carol and is not repeated.",
+		);
+		// The reason coverage is incomplete leads what was not checked.
+		expect(paragraphs[3]).toBe(
+			"Not checked: 2 reviewer passes failed (boom): bugs on big.py; package-lock.json: generated, lockfile or vendored.",
+		);
+		expect(paragraphs[4]).toBe("Reviewed in 42 s: 12 model calls, 94k tokens, $0.31.");
+		expect(paragraphs[5]).toBe(SIGNATURE);
+		expect(plan.body).not.toMatch(/^#|^\||^- |\*\*Verdict/m);
+		expect(plan.body).not.toMatch(/\p{Extended_Pictographic}/u);
+		expect(plan.body.split("\n").length).toBeLessThanOrEqual(60);
+		// The blocking finding outside the diff is named in the body, not inline.
+		expect(plan.comments.map((comment) => comment.path)).toEqual(["calc.py", "calc.py"]);
+		expect(plan.inSummary).toEqual([1]);
+
+		// Nothing to resolve: an approval says so in a sentence.
+		const clean = planReview(engineResult(), options).body.split("\n\n");
+		expect(clean).toEqual([
+			"Read the diff of `aaaaaaa` (1 file, +1 -1) with the code around it; every finding below was checked against the source by a second pass.",
+			"**Approve.** No confirmed finding at medium or above.",
+			"Reviewed in 42 s: 12 model calls, 94k tokens, $0.31.",
+			SIGNATURE,
+		]);
+		expect(planReview(engineResult(), { ...options, signature: false }).body).not.toContain(SIGNATURE);
+		// A comment-only review keeps its reason, and still names what is worth resolving.
+		const own = planReview(engineResult({ findings: [finding()] }), { ...options, selfAuthored: true }).body;
+		expect(own).toContain(
+			"**Comment.** Worth resolving: `calc.py:4` (inline) total() skips the last item. This account opened the pull request.",
+		);
 	});
 });
 
-describe("the summary after a deep pass", () => {
-	test("opens with what was traced, then the verdict, then every confirmed finding with how it was verified", () => {
+describe("the body after a deep pass", () => {
+	test("opens with what was traced and holds, then what to resolve; findings outside the diff are named there", () => {
 		const result = engineResult({
 			mode: "both",
 			assurance: [
-				"Beyond the diff, `total` was followed to 3 other uses and 1 test file: 2 investigators (behaviour, tests), 5 repository lookups, nothing executed.",
-				"average() guards count == 0 before dividing (calc.py).",
+				"Beyond the diff, `total` was followed to 3 other uses and 1 test file: 2 investigators (claims, tests), 5 repository lookups, 2 test runs in a bwrap sandbox (2 passed).",
+				"average() guards count == 0 before dividing (calc.py:10).",
 			],
 			findings: [
+				{ ...MAJOR, level: "low", severity: "minor", claim: "inline low", source: "fast", strength: "diff" },
 				{
 					...MAJOR,
-					severity: "minor",
-					claim: "inline minor",
-					source: "fast",
-					howVerified: "a verifier confirmed it against the source of calc.py",
-				},
-				{
-					...MAJOR,
+					level: "high",
 					file: "report.py",
 					line: 40,
-					claim: "summary() shows the sentinel string as data.",
+					claim: "summary() shows the sentinel string as data",
 					replacement: undefined,
-					source: "deep:behaviour",
-					howVerified:
-						"2 quoted lines checked at the reviewed commit (helper.py:5, report.py:40); a verifier confirmed it against the source of report.py",
+					source: "deep:claims",
+					strength: "outside",
 				},
 			],
 		});
 		const plan = planReview(result, { selfAuthored: false, state: "open", headSha: HEAD, signature: true });
-		const lines = plan.body.split("\n");
-		expect(lines[0]).toBe(
-			"Beyond the diff, `total` was followed to 3 other uses and 1 test file: 2 investigators (behaviour, tests), 5 repository lookups, nothing executed. average() guards count == 0 before dividing (calc.py).",
+		const paragraphs = plan.body.split("\n\n");
+		expect(paragraphs[0]).toBe(
+			"Beyond the diff, `total` was followed to 3 other uses and 1 test file: 2 investigators (claims, tests), 5 repository lookups, 2 test runs in a bwrap sandbox (2 passed). average() guards count == 0 before dividing (calc.py:10).",
 		);
-		expect(lines[2]).toBe("**Verdict: Request changes.** 1 confirmed blocker or major finding.");
-		// Most severe first; the finding outside the diff is only in the body, with its file and line.
-		const start = lines.indexOf("**Findings**");
-		expect(lines[start + 1]).toBe(
-			"- `report.py:40` (major) summary() shows the sentinel string as data. How verified: 2 quoted lines checked at the reviewed commit (helper.py:5, report.py:40); a verifier confirmed it against the source of report.py.",
+		expect(paragraphs[1]).toBe(
+			"**Request changes.** To resolve before merge: `report.py:40` summary() shows the sentinel string as data.",
 		);
-		expect(lines[start + 2]).toBe(
-			"- `calc.py:4` (minor, inline) inline minor How verified: a verifier confirmed it against the source of calc.py.",
-		);
-		expect(plan.body).not.toContain("**Findings outside the diff**");
+		expect(paragraphs[2]).toBe("1 non-blocking note inline.");
 		expect(plan.comments.map((comment) => comment.path)).toEqual(["calc.py"]);
 		expect(plan.inSummary).toEqual([1]);
-		expect(lines.length).toBeLessThanOrEqual(60);
-		expect(lines.at(-1)).toBe(SIGNATURE);
-		expect(plan.body).not.toMatch(/\p{Extended_Pictographic}/u);
+		expect(paragraphs.at(-1)).toBe(SIGNATURE);
 	});
 
 	test("one review is posted for both passes; the engine is asked for the configured mode", async () => {
@@ -608,11 +703,11 @@ describe("the summary after a deep pass", () => {
 				engineResult({
 					mode: "both",
 					assurance: [
-						"Beyond the diff, `total` was followed to 2 other uses: 1 investigator (behaviour), 1 repository lookup, nothing executed.",
+						"Beyond the diff, `total` was followed to 2 other uses: 1 investigator (claims), 1 repository lookup, nothing executed.",
 					],
 					findings: [
 						MAJOR,
-						{ ...MAJOR, file: "report.py", line: 40, claim: "outside the diff", source: "deep:behaviour" },
+						{ ...MAJOR, file: "report.py", line: 40, claim: "outside the diff", source: "deep:claims" },
 					],
 				}),
 			),
@@ -621,17 +716,12 @@ describe("the summary after a deep pass", () => {
 		const pull = hub.addPull({ ...REF, requestedReviewers: [BOT] });
 		await reviewPull(deps, candidate());
 		expect(engine.specs).toHaveLength(1);
-		expect(engine.specs[0]).toMatchObject({
-			mode: "both",
-			deepModel: "p/deep",
-			deepThinking: "medium",
-			deepRounds: 2,
-		});
+		expect(engine.specs[0]).toMatchObject({ mode: "both", deepModel: "p/deep", deepThinking: "high", deepRounds: 2 });
 		const reviews = hub.api(/^POST repos\/o\/r\/pulls\/1\/reviews$/);
 		expect(reviews).toHaveLength(1);
 		const body = reviews[0]!.body as { body: string; comments: Array<{ path: string }> };
 		expect(body.body.startsWith("Beyond the diff, `total` was followed to 2 other uses")).toBe(true);
-		expect(body.body).toContain("- `report.py:40` (major) outside the diff");
+		expect(body.body).toContain("(2) `report.py:40` outside the diff.");
 		// Only the finding on a diff line is an inline comment.
 		expect(body.comments.map((comment) => comment.path)).toEqual(["calc.py"]);
 		expect(pull.reviews).toHaveLength(1);
@@ -762,7 +852,9 @@ describe("reviewing a pull request", () => {
 		};
 		expect(review.commit_id).toBe(HEAD);
 		expect(review.event).toBe("REQUEST_CHANGES");
-		expect(review.body.split("\n")[0]).toBe("**Verdict: Request changes.** 1 confirmed blocker or major finding.");
+		expect(review.body.split("\n\n")[1]).toBe(
+			"**Request changes.** To resolve before merge: `calc.py:4` (inline) total() skips the last item.",
+		);
 		expect(review.comments).toHaveLength(1);
 		expect(review.comments[0]).toMatchObject({ path: "calc.py", line: 4, side: "RIGHT" });
 		expect(String(review.comments[0]!.body)).toContain("```suggestion");
@@ -907,7 +999,9 @@ describe("reviewing a pull request", () => {
 		});
 		const own = posted(await reviewPull(first.deps, first.candidate(["mention"])));
 		expect(own.plan.event).toBe("COMMENT");
-		expect(own.plan.body.split("\n")[0]).toBe("**Verdict: Comment.** This account opened the pull request.");
+		expect(own.plan.body.split("\n\n")[1]).toBe(
+			"**Comment.** Worth resolving: `calc.py:4` (inline) total() skips the last item. This account opened the pull request.",
+		);
 
 		const second = setup();
 		const pull = second.hub.addPull({ ...REF, state: "closed", merged: true, requestedReviewers: [BOT] });
@@ -976,7 +1070,7 @@ describe("reviewing a pull request", () => {
 		expect(reviews).toHaveLength(2);
 		expect((reviews[1]!.body as { comments: unknown[] }).comments).toEqual([]);
 		expect(outcome.plan.body).toContain(
-			"**Findings** (could not be attached to the diff)\n- `calc.py:4` (major) total() skips the last item.",
+			"These could not be attached to the diff: `calc.py:4` [high] total() skips the last item.",
 		);
 		expect(outcome.plan.body.split("\n").at(-1)).toBe(SIGNATURE);
 	});
@@ -1255,14 +1349,15 @@ describe("re-review", () => {
 		expect(spec.diff).toBe(incremental);
 		expect(spec.earlierDiff).toBe(incremental);
 		expect(spec.earlier).toEqual([
-			{ id: "ccccccc-1", file: "calc.py", line: 4, severity: "major", claim: MAJOR.claim },
-			{ id: "ccccccc-2", file: "calc.py", line: 5, severity: "major", claim: "price may be missing" },
+			{ id: "ccccccc-1", file: "calc.py", line: 4, severity: "high", claim: MAJOR.claim },
+			{ id: "ccccccc-2", file: "calc.py", line: 5, severity: "high", claim: "price may be missing" },
 		]);
 		// One major finding is still there: changes stay requested, and the summary has the status table.
 		expect(outcome.plan.event).toBe("REQUEST_CHANGES");
-		expect(outcome.plan.body).toContain("Reviewed `ddddddd`, the changes since `ccccccc`");
-		expect(outcome.plan.body).toContain("| `calc.py:4` total() skips the last item. | fixed |");
-		expect(outcome.plan.body).toContain("| `calc.py:7` price may be missing | still present |");
+		expect(outcome.plan.body).toContain("Read the changes from `ccccccc` to `ddddddd` (1 file, +1 -1)");
+		expect(outcome.plan.body).toContain(
+			"**Request changes.** 1 finding from an earlier review still present. Earlier findings: 1 fixed (`calc.py:4`); 1 still present (`calc.py:7`).",
+		);
 		// Only the fixed finding's own thread is resolved.
 		expect([...pull.resolved]).toEqual([`PRRT_${fixedComment!.id}`]);
 		const resolves = hub
@@ -1299,8 +1394,8 @@ describe("re-review", () => {
 		// Earlier findings are still re-checked, without a diff to map their lines.
 		expect(spec.earlier).toHaveLength(1);
 		expect(spec.earlierDiffPath).toBeUndefined();
-		expect(outcome.plan.body).toContain("Reviewed `ddddddd`: 1 file");
-		expect(outcome.plan.body).not.toContain("the changes since");
+		expect(outcome.plan.body).toContain("Read the diff of `ddddddd` (1 file, +1 -1)");
+		expect(outcome.plan.body).not.toContain("the changes from");
 	});
 });
 
@@ -1667,9 +1762,20 @@ describe("the command", () => {
 		expect(resolveConfig({ model: "a/m" })).toMatchObject({
 			mode: "both",
 			deepModel: "a/m",
-			deepThinking: "medium",
+			deepThinking: "high",
 			deepRounds: 4,
+			blockAt: "medium",
+			maxComments: 5,
 		});
+		expect(resolveConfig({ blockAt: "high", maxComments: 99 })).toMatchObject({ blockAt: "high", maxComments: 30 });
+		expect(
+			SettingsManager.inMemory({
+				autoreview: { blockAt: "high", maxComments: 3 },
+			}).getAutoreviewSettings(),
+		).toEqual({ blockAt: "high", maxComments: 3 });
+		expect(SettingsManager.inMemory({ autoreview: { blockAt: "severe" as never } }).getAutoreviewSettings()).toEqual(
+			{},
+		);
 		expect(resolveConfig({ mode: "fast", deepModel: "d/m", deepRounds: 99, deepThinking: "high" })).toMatchObject({
 			mode: "fast",
 			deepModel: "d/m",

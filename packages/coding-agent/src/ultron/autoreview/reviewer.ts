@@ -23,6 +23,7 @@ import { planReview, type ReviewPlan, withoutInline } from "./plan.ts";
 import type { Runner } from "./runner.ts";
 import { claimHash, type PostedFinding, type PullState, type StateStore } from "./state.ts";
 import type { ContextComment, EngineResult, EngineSpec, ReviewEngine } from "./types.ts";
+import { levelOf } from "./types.ts";
 
 export interface ReviewerDeps {
 	readonly runner: Runner;
@@ -488,6 +489,8 @@ export async function runReview(deps: ReviewerDeps, prepared: Prepared): Promise
 			headSha: head,
 			...(sinceSha === undefined ? {} : { sinceSha }),
 			signature: deps.config.signature,
+			blockAt: deps.config.blockAt,
+			maxComments: deps.config.maxComments,
 		});
 		const reviewedAt = new Date(now()).toISOString();
 		const shortSha = head.slice(0, 7);
@@ -498,7 +501,7 @@ export async function runReview(deps: ReviewerDeps, prepared: Prepared): Promise
 				id: `${shortSha}-${index + 1}`,
 				file: finding.file,
 				line: finding.line,
-				severity: finding.severity,
+				severity: levelOf(finding),
 				claim: finding.claim,
 				claimHash: claimHash(finding.claim),
 				sha: head,

@@ -232,10 +232,14 @@ export interface AutoreviewSettings {
 	mode?: "fast" | "deep" | "both";
 	/** `provider/model` of the deep pass's investigator frames; unset: the finder model. */
 	deepModel?: string;
-	/** Thinking level of the investigator frames (default "medium"). */
+	/** Thinking level of the investigator frames (default "high"). */
 	deepThinking?: FrameThinkingLevel;
 	/** Lookup rounds one investigator may take (default 4, maximum 8). */
 	deepRounds?: number;
+	/** A confirmed finding at this level or above makes the review request changes (default "medium"). */
+	blockAt?: "critical" | "high" | "medium" | "low" | "nit";
+	/** Inline comments posted per review at most (default 5); the rest are counted in the body. */
+	maxComments?: number;
 	/**
 	 * Let the deep pass run the reviewed project's tests, sandboxed (default true). They run only for repositories
 	 * the reviewing account can push to, or whose owner is in `testOwners`, and only when a sandbox is available.
@@ -1383,6 +1387,13 @@ export class SettingsManager {
 		if (deepThinking !== undefined) out.deepThinking = deepThinking;
 		const deepRounds = count(configured.deepRounds);
 		if (deepRounds !== undefined) out.deepRounds = deepRounds;
+		const blockAt = (["critical", "high", "medium", "low", "nit"] as const).find(
+			(level) => level === configured.blockAt,
+		);
+		if (blockAt !== undefined) out.blockAt = blockAt;
+		if (configured.maxComments === 0) out.maxComments = 0;
+		const maxComments = count(configured.maxComments);
+		if (maxComments !== undefined) out.maxComments = maxComments;
 		const runTests = flag(configured.runTests);
 		if (runTests !== undefined) out.runTests = runTests;
 		const testOwners = strings(configured.testOwners);

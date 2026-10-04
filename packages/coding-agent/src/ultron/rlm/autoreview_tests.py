@@ -95,9 +95,14 @@ class Sandbox:
     image: str | None = None
     home: str = field(default_factory=lambda: os.path.expanduser("~"))
 
-    def wrap(self, command: list[str], workdir: str, env: dict[str, str], ro_binds: list[str] | None = None) -> list[str]:
-        """The full command line that runs `command` in `workdir` inside the sandbox."""
+    def wrap(self, command: list[str], workdir: str, env: dict[str, str], ro_binds: list[str] | None = None,
+             cwd: str = "") -> list[str]:
+        """The full command line that runs `command` inside the sandbox, in `workdir` (the only writable
+        directory) or its subdirectory `cwd`."""
         binds = [path for path in (ro_binds or []) if path]
+        inside = os.path.join(workdir, cwd) if cwd else workdir
+        if cwd and self.mechanism != "bwrap":
+            command = ["sh", "-c", 'cd "$1" && shift && exec "$@"', "cd", inside, *command]
         if self.mechanism == "bwrap":
             argv = ["bwrap", "--unshare-all", "--die-with-parent", "--new-session", "--cap-drop", "ALL", "--clearenv"]
             for name, value in env.items():
@@ -112,7 +117,7 @@ class Sandbox:
             argv += ["--proc", "/proc", "--dev", "/dev", "--tmpfs", "/tmp", "--dir", SANDBOX_HOME]
             for path in binds:
                 argv += ["--ro-bind", path, path]
-            return [*argv, "--bind", workdir, workdir, "--chdir", workdir, "--", *command]
+            return [*argv, "--bind", workdir, workdir, "--chdir", inside, "--", *command]
         if self.mechanism == "unshare":
             hidden = list(dict.fromkeys([*_HIDDEN, self.home]))
             return ["unshare", "--user", "--map-root-user", "--mount", "--net", "--pid", "--fork", "--ipc", "--uts",
@@ -319,6 +324,67 @@ def detect_runner(tracked: list[str] | set[str], read: Callable[[str], str | Non
     return None
 
 
+_PY_CONFIG = ("pytest.ini", "pyproject.toml", "tox.ini", "setup.cfg", "conftest.py")
+_JS_FILE = re.compile(r"\.(?:[cm]?[jt]s|[jt]sx)$")
+
+
+def _nearest(tracked: set[str], path: str, names: tuple[str, ...]) -> str | None:
+    """The closest directory at or above `path`'s that holds one of `names` ("" is the root); None when none does."""
+    directory = os.path.dirname(path)
+    while True:
+        if any((f"{directory}/{name}" if directory else name) in tracked for name in names):
+            return directory
+        if not directory:
+            return None
+        directory = os.path.dirname(directory)
+
+
+def _package_runner(tracked: set[str], read: Callable[[str], str | None], directory: str) -> TestRunner | None:
+    """The test runner a package.json declares: vitest or jest, else its `test` script."""
+    manifest = f"{directory}/package.json" if directory else "package.json"
+    try:
+        package = json.loads(read(manifest) or "{}")
+    except ValueError:
+        package = {}
+    deps = {**(package.get("devDependencies") or {}), **(package.get("dependencies") or {})}
+    script = str((package.get("scripts") or {}).get("test") or "")
+    for name in ("vitest", "jest"):
+        if name in deps or name in script:
+            return TestRunner(name, f"{manifest} ({name})")
+    if script and "no test specified" not in script:
+        root = directory.split("/")[0] if directory else ""
+        manager = "pnpm" if "pnpm-lock.yaml" in tracked else "yarn" if "yarn.lock" in tracked else "npm"
+        return TestRunner(manager, f"{manifest} scripts.test" + (f" ({root})" if root else ""))
+    return None
+
+
+def runner_for(path: str, tracked: set[str], read: Callable[[str], str | None]) -> tuple[TestRunner, str] | None:
+    """The runner of one test file and the directory it runs in, by the file's type and its nearest manifest:
+    a Python file is pytest's, a JavaScript or TypeScript file belongs to the closest package.json's runner (so a
+    monorepo's packages each get their own), a Go file to its module, a Rust file to its crate."""
+    if path.endswith(".py"):
+        return TestRunner("pytest", "a Python test file"), _nearest(tracked, path, _PY_CONFIG) or ""
+    if _JS_FILE.search(path):
+        directory = os.path.dirname(path)
+        # The closest package.json that names a runner; a package without one defers to its parents.
+        while True:
+            manifest = f"{directory}/package.json" if directory else "package.json"
+            if manifest in tracked:
+                runner = _package_runner(tracked, read, directory)
+                if runner is not None:
+                    return runner, directory
+            if not directory:
+                return None
+            directory = os.path.dirname(directory)
+    if path.endswith(".go"):
+        directory = _nearest(tracked, path, ("go.mod",))
+        return None if directory is None else (TestRunner("go", "go.mod"), directory)
+    if path.endswith(".rs"):
+        directory = _nearest(tracked, path, ("Cargo.toml",))
+        return None if directory is None else (TestRunner("cargo", "Cargo.toml"), directory)
+    return None
+
+
 _MISSING = re.compile(r"ModuleNotFoundError|No module named|ImportError while (importing|loading)|Cannot find module"
                       r"|command not found|: not found|npm ERR! missing|ERR_MODULE_NOT_FOUND|could not determine executable"
                       r"|no required module provides|cannot find package|error: no matching package|failed to select a version"
@@ -382,6 +448,8 @@ class TestSession:
         self.limit = max(0, runs)
         self.timeout_s = timeout_s
         self.env_dir = env_dir if env_dir and os.path.isdir(env_dir) else None
+        self._read = read
+        #: The repository's own runner (for directories and file types without one of their own).
         self.runner = detect_runner(tracked, read)
         self._executor = executor
         self._export = export
@@ -419,27 +487,52 @@ class TestSession:
             out.append(path)
         return out
 
+    def plan(self, paths: list[str]) -> list[tuple[TestRunner, str, list[str]]]:
+        """`paths` grouped by the runner that owns each and the directory it runs in: (runner, directory, paths
+        relative to it). A file whose type has no runner here is left out; a directory, or a file of another
+        type, goes to the repository's own runner when it has one."""
+        groups: dict[tuple[str, str], tuple[TestRunner, str, list[str]]] = {}
+        for path in paths:
+            found = runner_for(path, self.tracked, self._read) if path in self.tracked else None
+            if found is None and (path not in self.tracked or not re.search(r"\.(py|[cm]?[jt]sx?|go|rs)$", path)):
+                found = (self.runner, "") if self.runner is not None else None
+            if found is None:
+                continue
+            runner, directory = found
+            relative = os.path.relpath(path, directory) if directory else path
+            groups.setdefault((runner.name, directory), (runner, directory, []))[2].append(relative)
+        return list(groups.values())
+
     def run(self, paths: list[str], select: str | None = None, *, which: str = "head", kind: str = "run") -> dict[str, Any]:
         """One sandboxed execution of the project's tests on `paths`; counts against the review's limit."""
-        if self.runner is None:
-            raise TestsRejected("no test runner was recognized in this repository")
+        groups = self.plan(paths)
+        if not groups:
+            raise TestsRejected("no test runner is known for " + ", ".join(paths[:3]))
+        if len(groups) > 1:
+            raise TestsRejected("these paths belong to different test runners ("
+                                + "; ".join(f"{runner.name} in {directory or '.'}" for runner, directory, _ in groups)
+                                + "): ask for them separately")
+        runner, directory, relative = groups[0]
         if select is not None and (not isinstance(select, str) or len(select) > MAX_SELECT_CHARS
                                    or not re.fullmatch(r"[\w .:\[\]()/,=-]+", select)):
             raise TestsRejected("select must be a short test name expression")
         if len(self.records) >= self.limit:
             raise TestsRejected(f"the limit of {self.limit} test executions per review is reached")
         workdir = self._dir(which)
-        command = self.runner.command(paths, select)
+        command = runner.command(relative, select)
         extra = os.path.join(self.env_dir, "bin") if self.env_dir and os.path.isdir(os.path.join(self.env_dir, "bin")) else None
         env = sandbox_env(extra)
         if self.env_dir and extra is None:
             env["NODE_PATH"] = self.env_dir
-        argv = self.sandbox.wrap(command, workdir, env, [self.env_dir] if self.env_dir else [])
+        argv = self.sandbox.wrap(command, workdir, env, [self.env_dir] if self.env_dir else [], directory)
         began = self._clock()
         code, output = self._executor(argv, workdir, _launch_env(), self.timeout_s)
-        status, tests = parse_outcome(self.runner.name, code, output)
-        record = {"n": len(self.records) + 1, "kind": kind, "rev": which, "command": " ".join(command),
-                  "paths": paths, "status": status, "exit": code, "tests": tests[:60],
+        status, tests = parse_outcome(runner.name, code, output)
+        if directory:
+            # Test ids are relative to where the runner ran; make them repository paths again.
+            tests = [{**item, "id": f"{directory}/{item['id']}"} for item in tests]
+        record = {"n": len(self.records) + 1, "kind": kind, "rev": which, "runner": runner.name,
+                  "cwd": directory or ".", "command": " ".join(command), "paths": paths, "status": status, "exit": code, "tests": tests[:60],
                   "passed": sum(1 for item in tests if item["status"] == "passed"),
                   "failed": sum(1 for item in tests if item["status"] in ("failed", "error")),
                   "ms": int((self._clock() - began) * 1000),
@@ -480,31 +573,37 @@ class TestSession:
         return record
 
     def compare(self, paths: list[str]) -> dict[str, Any]:
-        """Run `paths` at the head commit and, when anything fails, at the base commit too: a test that fails at
-        head and passed at base is a regression; one that failed before is not this change's."""
-        head = self.run(paths, kind="automatic")
-        out: dict[str, Any] = {"head": head, "base": None, "regressions": []}
-        failing = [item for item in head["tests"] if item["status"] in ("failed", "error")]
-        if head["status"] != "failed" or not self.revs["base"] or len(self.records) >= self.limit:
-            return out
-        existing = [path for path in paths]
-        try:
-            base = self.run(existing, which="base", kind="base")
-        except (TestsRejected, RuntimeError):
-            return out
-        out["base"] = base
-        passed_before = {item["id"] for item in base["tests"] if item["status"] == "passed"}
-        out["regressions"] = [item for item in failing if item["id"] in passed_before]
-        if base["status"] == "passed" and not head["tests"]:
-            # A runner without per-test results: the selection as a whole regressed.
-            out["regressions"] = [{"id": " ".join(paths), "status": "failed"}]
+        """Run `paths` at the head commit (one execution per runner and directory) and, where anything fails, at
+        the base commit too: a test that fails at head and passed at base is a regression; one that failed
+        before is not this change's. Returns {"runs": head records, "regressions": [...]}."""
+        out: dict[str, Any] = {"runs": [], "regressions": []}
+        for _runner, directory, relative in self.plan(paths):
+            if len(self.records) >= self.limit:
+                break
+            group = [os.path.join(directory, item) if directory else item for item in relative]
+            head = self.run(group, kind="automatic")
+            out["runs"].append(head)
+            if head["status"] != "failed" or not self.revs["base"] or len(self.records) >= self.limit:
+                continue
+            try:
+                base = self.run(group, which="base", kind="base")
+            except (TestsRejected, RuntimeError):
+                continue
+            failing = [item for item in head["tests"] if item["status"] in ("failed", "error")]
+            passed_before = {item["id"] for item in base["tests"] if item["status"] == "passed"}
+            regressed = [item for item in failing if item["id"] in passed_before]
+            if base["status"] == "passed" and not head["tests"]:
+                # A runner without per-test results: the selection as a whole regressed.
+                regressed = [{"id": " ".join(group), "status": "failed"}]
+            out["regressions"] += [{**item, "head": head, "base": base} for item in regressed]
         return out
 
 
 def summarize(record: dict[str, Any]) -> str:
     """One run for an investigator or the brief: what ran, the outcome, the failing tests, the trimmed output."""
+    where = "" if record.get("cwd", ".") == "." else f" in {record['cwd']}"
     lines = [f"run {record['n']} ({record['kind']}, at the {record['rev']} commit, sandboxed, no network): "
-             f"`{record['command']}` -> {record['status']}"
+             f"`{record['command']}`{where} -> {record['status']}"
              + (f" ({record['passed']} passed, {record['failed']} failed)" if record["tests"] else "")]
     if record.get("mutation"):
         change = record["mutation"]

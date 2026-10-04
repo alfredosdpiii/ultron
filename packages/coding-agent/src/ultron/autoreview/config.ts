@@ -21,7 +21,14 @@ export const DEFAULT_THINKING: FrameThinkingLevel = "low";
 export type ReviewMode = "fast" | "deep" | "both";
 export const REVIEW_MODES: readonly ReviewMode[] = ["fast", "deep", "both"];
 export const DEFAULT_MODE: ReviewMode = "both";
-export const DEFAULT_DEEP_THINKING: FrameThinkingLevel = "medium";
+export const DEFAULT_DEEP_THINKING: FrameThinkingLevel = "high";
+export type BlockLevel = "critical" | "high" | "medium" | "low" | "nit";
+export const BLOCK_LEVELS: readonly BlockLevel[] = ["critical", "high", "medium", "low", "nit"];
+/** A confirmed finding at this level or above asks for changes. */
+export const DEFAULT_BLOCK_AT: BlockLevel = "medium";
+/** Few, heavy comments: inline comments per review. */
+export const DEFAULT_MAX_COMMENTS = 5;
+export const MAX_MAX_COMMENTS = 30;
 export const DEFAULT_DEEP_ROUNDS = 4;
 export const DEFAULT_TEST_RUNS = 6;
 export const MAX_TEST_RUNS = 30;
@@ -77,6 +84,8 @@ export interface AutoreviewConfig {
 	readonly deepModel?: string;
 	readonly deepThinking: FrameThinkingLevel;
 	readonly deepRounds: number;
+	readonly blockAt: BlockLevel;
+	readonly maxComments: number;
 	/** Run the reviewed project's tests in the deep pass, where the repository is eligible and a sandbox exists. */
 	readonly runTests: boolean;
 	/** Lower-cased owners whose repositories' tests may run even without push access. */
@@ -196,6 +205,8 @@ export function resolveConfig(settings: AutoreviewSettings, fallbacks: ModelFall
 		...((settings.deepModel ?? model) === undefined ? {} : { deepModel: settings.deepModel ?? model }),
 		deepThinking: settings.deepThinking ?? DEFAULT_DEEP_THINKING,
 		deepRounds: Math.min(MAX_DEEP_ROUNDS, Math.max(1, settings.deepRounds ?? DEFAULT_DEEP_ROUNDS)),
+		blockAt: settings.blockAt ?? DEFAULT_BLOCK_AT,
+		maxComments: Math.min(MAX_MAX_COMMENTS, settings.maxComments ?? DEFAULT_MAX_COMMENTS),
 		runTests: settings.runTests ?? true,
 		testOwners: (settings.testOwners ?? []).map((owner) => owner.toLowerCase()),
 		testRuns: Math.min(MAX_TEST_RUNS, settings.testRuns ?? DEFAULT_TEST_RUNS),
