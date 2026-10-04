@@ -46,6 +46,20 @@ export interface EngineSpec {
 	/** Thinking level of the finder and of the verifier frames. */
 	readonly thinking?: string;
 	readonly verifyThinking?: string;
+	/** `fast`, `deep` or `both`; the deep pass needs `repoDir` or `workDir`. */
+	readonly mode?: "fast" | "deep" | "both";
+	readonly deepModel?: string;
+	readonly deepThinking?: string;
+	readonly deepRounds?: number;
+	/** The deep pass may run the project's tests, sandboxed (the host has checked eligibility). */
+	readonly runTests?: boolean;
+	readonly testRuns?: number;
+	readonly testTimeoutSeconds?: number;
+	/** A pre-built environment directory to bind read-only into the sandbox. */
+	readonly testEnv?: string;
+	readonly testImage?: string;
+	/** With `workDir`: the commit the pull request branched from (tests failing at head are re-run there). */
+	readonly baseSha?: string;
 	/** Seconds the review may take (0: no deadline), and seconds one frame may take. */
 	readonly deadlineSeconds?: number;
 	readonly frameTimeoutSeconds?: number;
@@ -78,6 +92,12 @@ export interface EngineFinding {
 	readonly suggestedFix?: string;
 	/** The exact new text of lines `line..endLine`, when the fix is a drop-in replacement. */
 	readonly replacement?: string;
+	/** Which pass raised it: `fast`, or `deep:<lens>`. */
+	readonly source?: string;
+	/** A deep finding's citations, each quote checked by the host at its line of the reviewed commit. */
+	readonly citations?: ReadonlyArray<{ readonly path: string; readonly line: number; readonly quote: string }>;
+	/** One line on how the finding was verified. */
+	readonly howVerified?: string;
 	readonly verification: "confirmed" | "uncertain";
 	readonly confidence: number;
 	readonly evidence?: string;
@@ -103,12 +123,50 @@ export interface AlsoRaised {
 }
 
 export interface FrameTiming {
-	readonly phase: "find" | "verify" | "recheck";
+	readonly phase: "find" | "verify" | "recheck" | "deep";
 	/** The reviewer key of a finder frame; "verifier" or "recheck" otherwise. */
 	readonly reviewer: string;
 	readonly ms: number;
 	readonly status: "ok" | "incomplete" | "failed" | "timeout" | "deadline" | "budget";
 	readonly retries: number;
+	readonly tokens?: number;
+}
+
+export interface TestRun {
+	readonly n: number;
+	/** `automatic`, `base` (the comparison run), `run` or `mutation`. */
+	readonly kind: string;
+	readonly rev: string;
+	readonly command: string;
+	readonly paths: readonly string[];
+	/** `passed`, `failed`, `unavailable` (it could not run: missing dependencies) or `timeout`. */
+	readonly status: string;
+	readonly passed: number;
+	readonly failed: number;
+	readonly ms: number;
+}
+
+export interface TestReport {
+	/** Whether the host allowed test execution for this review. */
+	readonly enabled: boolean;
+	/** `bwrap`, `unshare`, `docker`, or null when nothing ran. */
+	readonly mechanism: string | null;
+	/** Why tests did not run, when they did not. */
+	readonly note: string | null;
+	readonly runs: readonly TestRun[];
+}
+
+export interface InvestigatorTiming {
+	readonly lens: string;
+	readonly rounds: number;
+	/** Lookups served, and requests refused by validation. */
+	readonly requests: number;
+	readonly rejected: number;
+	readonly ms: number;
+	readonly tokens: number;
+	readonly findings: number;
+	readonly status: string;
+	readonly error?: string;
 }
 
 export interface EngineResult {
@@ -126,8 +184,11 @@ export interface EngineResult {
 		readonly scopeMs: number;
 		readonly findMs: number;
 		readonly verifyMs: number;
+		readonly deepMs?: number;
 		/** How each frame went, in the order they finished. */
 		readonly frames?: readonly FrameTiming[];
+		/** The deep pass's investigators: lookup rounds, requests served, time and tokens. */
+		readonly investigators?: readonly InvestigatorTiming[];
 	};
 	readonly usage: {
 		readonly inputTokens: number;
@@ -142,6 +203,14 @@ export interface EngineResult {
 	readonly verifyModel: string | null;
 	readonly thinking?: string | null;
 	readonly verifyThinking?: string | null;
+	/** The mode that ran (`fast` when the deep pass could not). */
+	readonly mode?: "fast" | "deep" | "both";
+	readonly deepModel?: string | null;
+	readonly deepThinking?: string | null;
+	/** What the deep pass traced and found to hold: the sentences the summary opens with. */
+	readonly assurance?: readonly string[];
+	/** The test executions of the deep pass. */
+	readonly tests?: TestReport;
 	readonly notChecked: readonly string[];
 	/** Why coverage is incomplete; empty when `complete`. */
 	readonly incomplete: readonly string[];

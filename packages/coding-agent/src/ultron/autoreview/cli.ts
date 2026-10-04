@@ -9,13 +9,22 @@
  *   ultron autoreview status                    accounts, last poll, queue, recent reviews
  *   ultron autoreview install | uninstall       write or remove the user service
  */
-import { resolve } from "node:path";
-import { APP_NAME, getAgentDir } from "../../config.ts";
+import { existsSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { APP_NAME, getAgentDir, getRlmRuntimePath } from "../../config.ts";
 import { FRAME_THINKING_LEVELS, type FrameThinkingLevel, SettingsManager } from "../../core/settings-manager.ts";
 import { selfCommand } from "../claude/self.ts";
 import { type Account, accountKey, listAccounts, TokenStore } from "./accounts.ts";
 import { CheckoutManager } from "./checkout.ts";
-import { type AutoreviewConfig, autoreviewPaths, engineSettings, MIN_BUDGET_TOKENS, resolveConfig } from "./config.ts";
+import {
+	type AutoreviewConfig,
+	autoreviewPaths,
+	engineSettings,
+	MIN_BUDGET_TOKENS,
+	REVIEW_MODES,
+	type ReviewMode,
+	resolveConfig,
+} from "./config.ts";
 import { createLogger, Daemon } from "./daemon.ts";
 import { RuntimeReviewEngine } from "./engine.ts";
 import { parsePullTarget, pullKey } from "./github.ts";
@@ -61,6 +70,7 @@ Commands:
   review --repo-dir <dir> --base <sha> --head <sha>
                                Review a local diff with no GitHub access; with --json, one JSON object on stdout
   status                       Accounts, last poll, queue and recent reviews
+  doctor                       The sandbox test execution would use, and a self-check of its isolation
   install | uninstall          Write or remove the user service that runs "${APP_NAME} autoreview run"
 
 Options:
@@ -74,11 +84,18 @@ Options:
   --thinking <level>           review: thinking level of the finder frames (off, minimal, low, medium, high, ...;
                                default: autoreview.thinking, low)
   --verify-thinking <level>    review: thinking level of the verifier frames (default: autoreview.verifyThinking, low)
+  --mode <fast|deep|both>      review: fast reviews the diff; deep investigates beyond it by read-only lookups in the
+                               repository (nothing is executed); both (default) does one after the other
+  --deep-model <p/m>           review: the model of the deep pass's investigators (default: the finder model)
+  --deep-thinking <level>      review: their thinking level (default: autoreview.deepThinking, medium)
+  --run-tests | --no-run-tests review --repo-dir: let the deep pass run the project's tests in a sandbox (default:
+                               autoreview.runTests, on); never without a sandbox
+  --test-env <dir>             review --repo-dir: a pre-built environment (virtualenv, node_modules) to bind read-only
   --deadline <seconds>         review: give up unfinished passes after this long and report the rest (default:
                                autoreview.deadlineSeconds, none)
 
 Settings (global settings.json): autoreview.accounts, pollSeconds, concurrency, model, verifyModel, budget, dryRun,
-frameConcurrency, thinking, verifyThinking, deadlineSeconds, frameTimeoutSeconds, ack, ackLines, ackArt, signature.
+frameConcurrency, mode, deepModel, deepThinking, deepRounds, runTests, testOwners, testRuns, testTimeoutSeconds, testEnv, testImage, thinking, verifyThinking, deadlineSeconds, frameTimeoutSeconds, ack, ackLines, ackArt, signature.
 See docs/autoreview.md.`;
 
 interface Parsed {
@@ -92,7 +109,12 @@ interface Parsed {
 	budget?: number;
 	thinking?: FrameThinkingLevel;
 	verifyThinking?: FrameThinkingLevel;
+	mode?: ReviewMode;
+	deepModel?: string;
+	deepThinking?: FrameThinkingLevel;
 	deadlineSeconds?: number;
+	runTests?: boolean;
+	testEnv?: string;
 	repoDir?: string;
 	base?: string;
 	head?: string;
@@ -143,7 +165,17 @@ export function parseAutoreviewArgs(args: readonly string[]): Parsed {
 		else if (arg === "--budget") parsed.budget = parseTokens(value());
 		else if (arg === "--thinking") parsed.thinking = thinking();
 		else if (arg === "--verify-thinking") parsed.verifyThinking = thinking();
-		else if (arg === "--deadline") {
+		else if (arg === "--deep-thinking") parsed.deepThinking = thinking();
+		else if (arg === "--deep-model") parsed.deepModel = model();
+		else if (arg === "--run-tests") parsed.runTests = true;
+		else if (arg === "--no-run-tests") parsed.runTests = false;
+		else if (arg === "--test-env") parsed.testEnv = value();
+		else if (arg === "--mode") {
+			const name = value();
+			const mode = REVIEW_MODES.find((item) => item === name);
+			if (mode === undefined) throw new UsageError(`--mode takes fast, deep or both, not ${name}`);
+			parsed.mode = mode;
+		} else if (arg === "--deadline") {
 			const seconds = Number(value());
 			if (!Number.isInteger(seconds) || seconds < 0)
 				throw new UsageError("--deadline takes whole seconds (0 for no deadline)");
@@ -177,6 +209,9 @@ export function offlineJson(result: EngineResult, startupMs: number | undefined)
 			...(finding.suggestedFix === undefined ? {} : { suggestedFix: finding.suggestedFix }),
 			verification: finding.verification,
 			confidence: finding.confidence,
+			source: finding.source ?? "fast",
+			evidence: finding.evidence ?? "",
+			howVerified: finding.howVerified ?? "",
 		})),
 		dropped: { rejected: result.dropped.rejected, duplicates: result.dropped.duplicates },
 		timing: {
@@ -186,6 +221,7 @@ export function offlineJson(result: EngineResult, startupMs: number | undefined)
 			verifyMs: result.timing.verifyMs,
 			...(startupMs === undefined ? {} : { startupMs }),
 			frames: [...(result.timing.frames ?? [])],
+			investigators: [...(result.timing.investigators ?? [])],
 		},
 		usage: {
 			inputTokens: result.usage.inputTokens,
@@ -195,6 +231,11 @@ export function offlineJson(result: EngineResult, startupMs: number | undefined)
 		},
 		model: result.model,
 		verifyModel: result.verifyModel,
+		mode: result.mode ?? "fast",
+		assurance: (result.assurance ?? []).join(" "),
+		tests: result.tests ?? { enabled: false, mechanism: null, note: null, runs: [] },
+		deepModel: result.deepModel ?? null,
+		deepThinking: result.deepThinking ?? null,
 		thinking: result.thinking ?? null,
 		verifyThinking: result.verifyThinking ?? null,
 		notChecked: [...result.notChecked],
@@ -247,6 +288,9 @@ export async function runAutoreviewCommand(
 			...(parsed.budget === undefined ? {} : { budget: parsed.budget }),
 			...(parsed.thinking === undefined ? {} : { thinking: parsed.thinking }),
 			...(parsed.verifyThinking === undefined ? {} : { verifyThinking: parsed.verifyThinking }),
+			...(parsed.mode === undefined ? {} : { mode: parsed.mode }),
+			...(parsed.deepModel === undefined ? {} : { deepModel: parsed.deepModel }),
+			...(parsed.deepThinking === undefined ? {} : { deepThinking: parsed.deepThinking }),
 			...(parsed.deadlineSeconds === undefined ? {} : { deadlineSeconds: parsed.deadlineSeconds }),
 		},
 		{
@@ -322,6 +366,54 @@ export async function runAutoreviewCommand(
 				io.stdout(`${lines.join("\n")}\n`);
 				return 0;
 			}
+			case "doctor": {
+				const python =
+					env.ULTRON_PYTHON ??
+					(process.platform === "linux" && existsSync("/usr/bin/python3") ? "/usr/bin/python3" : "python3");
+				const script = join(dirname(getRlmRuntimePath()), "autoreview_tests.py");
+				const result = await runner([python, script, "doctor", ...(config.testImage ? [config.testImage] : [])], {
+					timeoutMs: 180_000,
+				});
+				let report: {
+					mechanism: string | null;
+					isolation?: string;
+					ok: boolean;
+					message?: string;
+					selfCheck?: Record<string, unknown>;
+				};
+				try {
+					report = JSON.parse(result.stdout.trim().split("\n").at(-1) ?? "");
+				} catch {
+					throw new Error(
+						`the sandbox check did not run: ${(result.stderr || result.stdout).trim().slice(0, 300)}`,
+					);
+				}
+				if (parsed.json) io.stdout(`${JSON.stringify({ ...report, runTests: config.runTests })}\n`);
+				else if (report.mechanism === null) io.stdout(`Sandbox: none. ${report.message ?? ""}\n`);
+				else {
+					const check = report.selfCheck ?? {};
+					const owners = config.testOwners.length ? ` and owners ${config.testOwners.join(", ")}` : "";
+					const testsLine = !config.runTests
+						? "off (autoreview.runTests)"
+						: report.ok
+							? `run for repositories the account can push to${owners}`
+							: "not run (the self-check failed)";
+					io.stdout(
+						`${[
+							`Sandbox: ${report.isolation}`,
+							`Self-check: ${report.ok ? "passed" : "FAILED"}`,
+							`  network: ${String(check.network)}`,
+							`  canary file in the real home: ${String(check.canary)}`,
+							`  token-like variable of the caller: ${String(check.token)}`,
+							`  home inside the sandbox: ${String(check.home)}`,
+							`  exported commit: ${String(check.workdir)}; system directories: ${String(check.system)}`,
+							`  Docker socket: ${String(check.dockerSocket)}`,
+							`Tests in reviews: ${testsLine}`,
+						].join("\n")}\n`,
+					);
+				}
+				return report.ok ? 0 : 1;
+			}
 			case "run":
 			case "once":
 			case "review":
@@ -347,6 +439,9 @@ export async function runAutoreviewCommand(
 					base: parsed.base,
 					head: parsed.head,
 					...engineSettings(config),
+					// A local repository is the user's own: its tests may run (sandboxed) unless turned off.
+					runTests: config.mode !== "fast" && (parsed.runTests ?? config.runTests),
+					...(parsed.testEnv === undefined ? {} : { testEnv: resolve(cwd, parsed.testEnv) }),
 				});
 				if (parsed.json) io.stdout(`${JSON.stringify(offlineJson(result, engine.startMs))}\n`);
 				else

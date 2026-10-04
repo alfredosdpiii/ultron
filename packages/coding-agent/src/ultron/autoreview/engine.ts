@@ -143,7 +143,14 @@ export class RuntimeReviewEngine implements ReviewEngine {
 		const resultPath = join(scratch, "result.json");
 		writeFileSync(specPath, JSON.stringify(spec), { mode: 0o600 });
 		const kernel = new RlmKernel(
-			{ cwd: join(this.#options.dir, "work"), runtimePath: getRlmRuntimePath() },
+			{
+				cwd: join(this.#options.dir, "work"),
+				runtimePath: getRlmRuntimePath(),
+				// The kernel runs our own pipeline, and (sandboxed) the reviewed project's tests as its children:
+				// the per-process address-space and CPU limits meant for model-written cells would break test
+				// runners. The cap on the whole process tree stays.
+				limits: { maxMemoryMb: 0, maxCpuSeconds: 0 },
+			},
 			(type, payload, requestSignal) =>
 				runtime.hostRequest(
 					type,

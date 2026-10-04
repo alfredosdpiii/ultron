@@ -18,6 +18,16 @@ export const MIN_BUDGET_TOKENS = 10_000;
 export const DEFAULT_FRAME_CONCURRENCY = 8;
 export const MAX_FRAME_CONCURRENCY = 16;
 export const DEFAULT_THINKING: FrameThinkingLevel = "low";
+export type ReviewMode = "fast" | "deep" | "both";
+export const REVIEW_MODES: readonly ReviewMode[] = ["fast", "deep", "both"];
+export const DEFAULT_MODE: ReviewMode = "both";
+export const DEFAULT_DEEP_THINKING: FrameThinkingLevel = "medium";
+export const DEFAULT_DEEP_ROUNDS = 4;
+export const DEFAULT_TEST_RUNS = 6;
+export const MAX_TEST_RUNS = 30;
+/** A safety limit, on by default: one test execution may not run longer. */
+export const DEFAULT_TEST_TIMEOUT_SECONDS = 300;
+export const MAX_DEEP_ROUNDS = 8;
 /** 0: no deadline, the review waits for every frame. With one, what was found by then is verified and posted. */
 export const DEFAULT_DEADLINE_SECONDS = 0;
 export const MIN_DEADLINE_SECONDS = 30;
@@ -62,6 +72,20 @@ export interface AutoreviewConfig {
 	readonly frameConcurrency: number;
 	readonly thinking: FrameThinkingLevel;
 	readonly verifyThinking: FrameThinkingLevel;
+	readonly mode: ReviewMode;
+	/** `provider/model` of the investigator frames; undefined: the finder model. */
+	readonly deepModel?: string;
+	readonly deepThinking: FrameThinkingLevel;
+	readonly deepRounds: number;
+	/** Run the reviewed project's tests in the deep pass, where the repository is eligible and a sandbox exists. */
+	readonly runTests: boolean;
+	/** Lower-cased owners whose repositories' tests may run even without push access. */
+	readonly testOwners: readonly string[];
+	readonly testRuns: number;
+	readonly testTimeoutSeconds: number;
+	/** Lower-cased `owner/repo` -> pre-built environment directory. */
+	readonly testEnv: Readonly<Record<string, string>>;
+	readonly testImage?: string;
 	/** 0: no deadline. */
 	readonly deadlineSeconds: number;
 	readonly frameTimeoutSeconds: number;
@@ -115,6 +139,13 @@ export function engineSettings(config: AutoreviewConfig): {
 	concurrency: number;
 	thinking: FrameThinkingLevel;
 	verifyThinking: FrameThinkingLevel;
+	mode: ReviewMode;
+	deepModel?: string;
+	deepThinking: FrameThinkingLevel;
+	deepRounds: number;
+	testRuns: number;
+	testTimeoutSeconds: number;
+	testImage?: string;
 	deadlineSeconds: number;
 	frameTimeoutSeconds: number;
 } {
@@ -125,9 +156,24 @@ export function engineSettings(config: AutoreviewConfig): {
 		concurrency: config.frameConcurrency,
 		thinking: config.thinking,
 		verifyThinking: config.verifyThinking,
+		mode: config.mode,
+		...(config.deepModel === undefined ? {} : { deepModel: config.deepModel }),
+		deepThinking: config.deepThinking,
+		deepRounds: config.deepRounds,
+		testRuns: config.testRuns,
+		testTimeoutSeconds: config.testTimeoutSeconds,
+		...(config.testImage === undefined ? {} : { testImage: config.testImage }),
 		deadlineSeconds: config.deadlineSeconds,
 		frameTimeoutSeconds: config.frameTimeoutSeconds,
 	};
+}
+
+/**
+ * Whether a repository's tests may be run: the setting is on, and the reviewing account can push to the
+ * repository or its owner is listed in `autoreview.testOwners`. Running a stranger's code is never the default.
+ */
+export function testsEligible(config: AutoreviewConfig, owner: string, canPush: boolean): boolean {
+	return config.runTests && (canPush || config.testOwners.includes(owner.toLowerCase()));
 }
 
 export function resolveConfig(settings: AutoreviewSettings, fallbacks: ModelFallbacks = {}): AutoreviewConfig {
@@ -146,6 +192,16 @@ export function resolveConfig(settings: AutoreviewSettings, fallbacks: ModelFall
 		),
 		thinking: settings.thinking ?? DEFAULT_THINKING,
 		verifyThinking: settings.verifyThinking ?? DEFAULT_THINKING,
+		mode: settings.mode ?? DEFAULT_MODE,
+		...((settings.deepModel ?? model) === undefined ? {} : { deepModel: settings.deepModel ?? model }),
+		deepThinking: settings.deepThinking ?? DEFAULT_DEEP_THINKING,
+		deepRounds: Math.min(MAX_DEEP_ROUNDS, Math.max(1, settings.deepRounds ?? DEFAULT_DEEP_ROUNDS)),
+		runTests: settings.runTests ?? true,
+		testOwners: (settings.testOwners ?? []).map((owner) => owner.toLowerCase()),
+		testRuns: Math.min(MAX_TEST_RUNS, settings.testRuns ?? DEFAULT_TEST_RUNS),
+		testTimeoutSeconds: Math.max(5, settings.testTimeoutSeconds ?? DEFAULT_TEST_TIMEOUT_SECONDS),
+		testEnv: settings.testEnv ?? {},
+		...(settings.testImage === undefined ? {} : { testImage: settings.testImage }),
 		deadlineSeconds:
 			settings.deadlineSeconds === undefined || settings.deadlineSeconds === 0
 				? DEFAULT_DEADLINE_SECONDS

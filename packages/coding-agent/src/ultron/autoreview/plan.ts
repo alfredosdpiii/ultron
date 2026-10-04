@@ -7,6 +7,8 @@
  *   by the reviewing account, or one that is closed or merged, always gets COMMENT.
  * - Inline comments: confirmed findings only, capped by severity (nits are only counted). A line outside the diff moves to the nearest
  *   diff line of a hunk within three lines, else the finding goes to the summary.
+ * - After a deep pass (the result has `assurance`), the body opens with what was traced and found to hold, and
+ *   lists every confirmed finding by severity with one line on how it was verified.
  * - A ```suggestion block only when the finding carries an exact replacement for its line range, the range was
  *   not moved, and every line of it is in one hunk; otherwise a plain fenced block or a sentence.
  */
@@ -27,6 +29,7 @@ export const INLINE_CAPS: Readonly<Record<Severity, number>> = {
 export const RELOCATE_WITHIN = 3;
 const MAX_UNCERTAIN = 5;
 const MAX_SUMMARY_FINDINGS = 8;
+const MAX_LISTED_FINDINGS = 12;
 const MAX_ALSO_RAISED = 5;
 const MAX_EARLIER_ROWS = 10;
 const MAX_NOT_CHECKED = 6;
@@ -204,7 +207,10 @@ export function planReview(result: EngineResult, options: PlanOptions): ReviewPl
 
 	const confirmed = result.findings.filter((finding) => finding.verification === "confirmed");
 	const uncertain = result.findings.filter((finding) => finding.verification === "uncertain");
+	// After a deep pass the body opens with what was traced and holds, then the verdict.
+	const assurance = (result.assurance ?? []).slice(0, 4).map((sentence) => short(sentence, 320));
 	const lines: string[] = [
+		...(assurance.length ? [assurance.join(" "), ""] : []),
 		`**Verdict: ${VERDICT_TITLES[verdict]}.** ${reason[0]!.toUpperCase()}${reason.slice(1)}.`,
 		"",
 	];
@@ -227,7 +233,21 @@ export function planReview(result: EngineResult, options: PlanOptions): ReviewPl
 	lines.push(`${tally.join("; ")}.`);
 
 	const where = (finding: { file: string; line: number }) => `\`${finding.file}:${finding.line}\``;
-	if (inSummary.length) {
+	if (assurance.length && confirmed.length) {
+		// Every confirmed finding, most severe first, with how it was verified. Those not attached to the diff
+		// (their line is outside it) are only here.
+		const inline = new Set(comments.map((comment) => comment.finding));
+		const listed = result.findings
+			.map((finding, index) => ({ finding, index }))
+			.filter(({ finding }) => finding.verification === "confirmed")
+			.sort((a, b) => SEVERITIES.indexOf(a.finding.severity) - SEVERITIES.indexOf(b.finding.severity));
+		lines.push("", "**Findings**");
+		for (const { finding, index } of listed.slice(0, MAX_LISTED_FINDINGS))
+			lines.push(
+				`- ${where(finding)} (${finding.severity}${inline.has(index) ? ", inline" : ""}) ${short(finding.claim, 200)}${finding.howVerified ? ` How verified: ${short(finding.howVerified, 200)}.` : ""}`,
+			);
+		if (listed.length > MAX_LISTED_FINDINGS) lines.push(`- and ${listed.length - MAX_LISTED_FINDINGS} more`);
+	} else if (inSummary.length) {
 		lines.push("", "**Findings outside the diff**");
 		for (const index of inSummary.slice(0, MAX_SUMMARY_FINDINGS)) {
 			const finding = result.findings[index]!;

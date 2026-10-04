@@ -5,6 +5,10 @@ or @mentioned on it, and posts the review under that account. It is built for sp
 reviewed within two minutes of being picked up) and for few false alarms: every finding is checked against the real
 source by a second model call before it is posted.
 
+By default it reviews in two passes and posts one review: a fast pass over the changed lines, then a deep pass that
+follows the change into the rest of the repository (callers, called helpers, tests, sibling code, documents) through
+read-only lookups. Nothing from the reviewed repository is executed.
+
 It is the same finder-then-verifier pipeline as `/review` (`docs/review.md` in the Ultron repository), run
 directly: no root model turn, only the pipeline's own frames.
 
@@ -26,7 +30,8 @@ Posting is on by default. `--dry-run` (or the setting `autoreview.dryRun`) write
 | `ultron autoreview run` | The loop: poll every account, review what is due, until stopped. One per agent directory. |
 | `ultron autoreview once` | One poll cycle, review what it finds, then exit. `--json` prints the outcomes. |
 | `ultron autoreview review <owner/repo#N \| URL>` | Review one pull request now, whether or not it was requested. `--account <login>` picks the account (default: the host's active one); `--dry-run`, `--json`. |
-| `ultron autoreview review --repo-dir <dir> --base <sha> --head <sha>` | Review the diff between two commits of a local repository, with no GitHub access. `--json` prints one JSON object on stdout (logs go to stderr); `--model`, `--verify-model`, `--budget`, `--thinking`, `--verify-thinking` and `--deadline` override the settings. |
+| `ultron autoreview review --repo-dir <dir> --base <sha> --head <sha>` | Review the diff between two commits of a local repository, with no GitHub access. `--json` prints one JSON object on stdout (logs go to stderr); `--mode`, `--model`, `--verify-model`, `--deep-model`, `--budget`, `--thinking`, `--verify-thinking`, `--deep-thinking` and `--deadline` override the settings. |
+| `ultron autoreview doctor` | The sandbox that test execution would use, with a self-check of its isolation. |
 | `ultron autoreview status` | Accounts, last poll, queue, and recent reviews with their timings and cost. `--json` for the raw state. |
 | `ultron autoreview install` / `uninstall` | Write or remove a user service that runs `ultron autoreview run` (see below). |
 
@@ -124,6 +129,10 @@ reviewed.
 | `autoreview.concurrency` | `3` | Pull requests reviewed at once (maximum 8). |
 | `autoreview.model` | unset: `review.model`, then `rlm.frameModel`, then the default model | `provider/model` of the finder frames. |
 | `autoreview.verifyModel` | the finder model | `provider/model` of the verifier frames. |
+| `autoreview.mode` | `"both"` | `fast`: review the diff only. `deep`: only the investigation beyond the diff. `both`: the fast pass, then the deep one with its findings as leads; one review is posted. |
+| `autoreview.deepModel` | the finder model | `provider/model` of the deep pass's investigator frames. |
+| `autoreview.deepThinking` | `"medium"` | Their thinking level. |
+| `autoreview.deepRounds` | `4` | Lookup rounds one investigator may take (maximum 8). |
 | `autoreview.budget` | none | Optional token cap of one review. Unset, no pass is refused for tokens. |
 | `autoreview.thinking` | `"low"` | Thinking level of the finder frames (`off`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`). |
 | `autoreview.verifyThinking` | `"low"` | Thinking level of the verifier frames. |
@@ -147,6 +156,86 @@ reviewed.
 ```
 
 The two model ids are examples: use `provider/model` names your own providers offer (`ultron --list-models`).
+
+## The deep pass: beyond the diff, read-only
+
+Many defects are invisible from the changed lines alone: a new `except` that can never fire because the helper it
+wraps returns a sentinel instead of raising; new members that an existing parametrize list in another test file
+does not include; a comment that claims a validation the code never performs; a migration written for one database
+branch only. The deep pass looks for these.
+
+1. **Map.** Without a model, the host extracts from the diff the names it defines, changes and calls, its constants,
+   environment variables, flags and table names, and the claims its comments and documents make. It then looks them
+   up in the repository at the reviewed commit: who uses each name, what the called helpers do, which tests mention
+   them and how those test files are parametrized, sibling files, and the documents and configs that name them.
+   The result is a bounded brief with file:line anchors.
+2. **Investigators.** One frame per lens (behaviour by tracing, tests, consistency of claims and sibling code,
+   risk; lenses that do not apply are skipped) gets the diff, the brief and the fast pass's findings as leads. It
+   answers with findings and with requests: `read` (lines of a file), `grep`, `list` (a directory), `definition`
+   and `references` (of a name). The host checks each request (a tracked file of the reviewed commit, no path
+   outside the repository, bounded lines, hits and bytes per round), answers it, and asks the frame again, for at
+   most `autoreview.deepRounds` rounds.
+3. **Evidence.** Every deep finding cites file and line with the quoted source line. The host checks that each quote
+   is at its cited line; a finding with a wrong quote, or with none, is dropped. A finding whose evidence is all
+   inside the diff counts like a fast one.
+4. **Verification** is the same as for the fast pass (the verifier also sees the cited source), with the same
+   severity rules. A deep finding replaces the fast finding it extends.
+
+The review then opens with two to four sentences on what was traced, and lists each confirmed finding with one line
+on how it was verified. Findings on lines outside the diff cannot be inline comments; they are in the body with
+their file and line.
+
+The lookups are read-only by construction: the frames have no tools, and the host runs only `git grep`, `git show`,
+`git ls-tree` and `git log` on the checkout. (Running the project's tests is a separate, sandboxed step: see below.) If there is no checkout, or the deep pass fails, the fast review is posted as before.
+
+With `--json`, findings carry `source` (`fast` or `deep:<lens>`), `evidence` and `howVerified`; the object has
+`assurance`, `mode`, and `timing.investigators` (rounds, lookups, time and tokens per investigator).
+
+## Running the project's tests
+
+The deep pass may run the reviewed project's tests. Models still have no shell: running tests is something the host
+does, in a closed form, inside a sandbox.
+
+- **Automatic run.** After the map, the host detects the test runner (pytest; vitest, jest or the `test` script of
+  `package.json`; `go test`; `cargo test`; a Makefile `test` target) and runs the test files the map tied to the
+  change, plus test files the change touches, at the reviewed commit. The results go into the investigators' brief.
+  When a test fails, the same selection is run at the base commit: a test that fails now and passed before is a
+  major finding by itself; one that already failed is not this change's.
+- **On request.** An investigator may ask for `run_tests` (existing test files, an optional test-name selector)
+  and `mutation_check` (the host replaces one source line, runs the named tests, reports whether any failed, and
+  restores the line: a mutant nobody catches shows that nothing pins that line). A finding may cite a run as its
+  evidence.
+- **Limits.** At most `autoreview.testRuns` executions per review (default 6), each stopped after
+  `autoreview.testTimeoutSeconds` (default 300), output trimmed.
+
+**The sandbox is mandatory.** Every execution runs in a temporary export of the commit (never your checkout),
+with no network and no credentials: the environment is built from scratch (no token, key, cloud or SSH variable),
+HOME is an empty temporary directory, and your real home, the agent directory, gh's configuration, other
+repositories and the Docker socket are not visible. The mechanism is the strongest available: bubblewrap (an empty
+root, system directories read-only, the export as the only writable directory, every namespace unshared), else
+rootless `unshare` namespaces, else Docker with a local image you name in `autoreview.testImage` (`--network none`,
+all capabilities dropped). With none of them, tests are not run and the review says "tests not run: no sandbox
+available". `ultron autoreview doctor` shows the mechanism and runs a self-check inside it (network unreachable, a
+canary file in your home unreadable, a token-like variable absent).
+
+**No network means no installing.** If the project's dependencies are not on the machine, the tests cannot run;
+the review then says "tests could not run: missing dependencies" and reports no failure. To give a repository its
+dependencies, point `autoreview.testEnv` at a pre-built environment (a virtualenv, a `node_modules` directory); it
+is bound read-only. Nothing is ever installed automatically.
+
+**Eligibility.** Tests run only for repositories the reviewing account can push to, or whose owner is listed in
+`autoreview.testOwners`; elsewhere the deep pass stays read-only. `autoreview.runTests: false` turns it off
+entirely. The local entry (`review --repo-dir`) runs them unless `--no-run-tests` is given; `--test-env <dir>` binds
+an environment.
+
+| Setting | Default | Description |
+|---|---|---|
+| `autoreview.runTests` | `true` | Run tests in the deep pass where eligible and a sandbox exists. |
+| `autoreview.testOwners` | none | Owners whose repositories' tests may run without push access. |
+| `autoreview.testRuns` | `6` | Test executions per review. |
+| `autoreview.testTimeoutSeconds` | `300` | Wall-clock limit of one execution. |
+| `autoreview.testEnv` | none | `{"owner/repo": "/path/to/env"}`: pre-built environments, bound read-only. |
+| `autoreview.testImage` | none | A local Docker image, used only when neither bubblewrap nor `unshare` works. |
 
 ## Severity
 
@@ -225,6 +314,7 @@ systemctl --user enable --now ultron-autoreview.service
   are never written to disk, state, logs, git config or a command line, and are masked in log output.
 - Everything read from a pull request (description, comments, the mention itself, repository files) is treated as
   data. The review frames have no tools: they cannot run code, fetch anything or follow instructions in the
-  material they read. Nothing from the reviewed repository is executed, and its settings, extensions and context
-  files are not loaded.
+  material they read. The repository's settings, extensions and context files are not loaded.
+- Code of the reviewed repository is executed in one case only: its tests, by the host, inside the sandbox
+  described above, for repositories you can push to (or owners you listed). Without a sandbox nothing is executed.
 - GitHub's rate limits (`Retry-After`, the primary limit's reset time) pause the account that hit them.
