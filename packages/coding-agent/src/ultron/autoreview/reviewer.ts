@@ -8,7 +8,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type Account, accountKey, type TokenStore } from "./accounts.ts";
 import { type Checkout, type CheckoutManager, StaleHeadError } from "./checkout.ts";
-import { type AutoreviewConfig, type AutoreviewPaths, engineSettings, MAX_ATTEMPTS } from "./config.ts";
+import { type AutoreviewConfig, type AutoreviewPaths, engineSettings, MAX_ATTEMPTS, testsEligible } from "./config.ts";
 import {
 	type Comment,
 	GitHub,
@@ -437,8 +437,17 @@ export async function runReview(deps: ReviewerDeps, prepared: Prepared): Promise
 		writeFileSync(diffPath, reviewDiff);
 		writeFileSync(postDiffPath, fullDiff);
 		if (earlierDiff !== undefined) writeFileSync(earlierDiffPath, earlierDiff);
+		// Tests of the reviewed project run only where this account could push anyway, or the owner is trusted.
+		const runTests =
+			checkout !== undefined &&
+			deps.config.mode !== "fast" &&
+			deps.config.runTests &&
+			testsEligible(deps.config, ref.owner, await github.canPush(ref));
+		const testEnv = deps.config.testEnv[`${ref.owner}/${ref.repo}`.toLowerCase()];
 		const spec: EngineSpec = {
-			...(checkout ? { workDir: checkout.workDir } : {}),
+			...(checkout ? { workDir: checkout.workDir, baseSha: checkout.mergeBase } : {}),
+			runTests,
+			...(runTests && testEnv !== undefined ? { testEnv } : {}),
 			diffPath,
 			postDiffPath,
 			label: `${ref.owner}/${ref.repo}#${ref.number}`,

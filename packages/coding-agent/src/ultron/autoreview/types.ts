@@ -51,6 +51,15 @@ export interface EngineSpec {
 	readonly deepModel?: string;
 	readonly deepThinking?: string;
 	readonly deepRounds?: number;
+	/** The deep pass may run the project's tests, sandboxed (the host has checked eligibility). */
+	readonly runTests?: boolean;
+	readonly testRuns?: number;
+	readonly testTimeoutSeconds?: number;
+	/** A pre-built environment directory to bind read-only into the sandbox. */
+	readonly testEnv?: string;
+	readonly testImage?: string;
+	/** With `workDir`: the commit the pull request branched from (tests failing at head are re-run there). */
+	readonly baseSha?: string;
 	/** Seconds the review may take (0: no deadline), and seconds one frame may take. */
 	readonly deadlineSeconds?: number;
 	readonly frameTimeoutSeconds?: number;
@@ -123,6 +132,30 @@ export interface FrameTiming {
 	readonly tokens?: number;
 }
 
+export interface TestRun {
+	readonly n: number;
+	/** `automatic`, `base` (the comparison run), `run` or `mutation`. */
+	readonly kind: string;
+	readonly rev: string;
+	readonly command: string;
+	readonly paths: readonly string[];
+	/** `passed`, `failed`, `unavailable` (it could not run: missing dependencies) or `timeout`. */
+	readonly status: string;
+	readonly passed: number;
+	readonly failed: number;
+	readonly ms: number;
+}
+
+export interface TestReport {
+	/** Whether the host allowed test execution for this review. */
+	readonly enabled: boolean;
+	/** `bwrap`, `unshare`, `docker`, or null when nothing ran. */
+	readonly mechanism: string | null;
+	/** Why tests did not run, when they did not. */
+	readonly note: string | null;
+	readonly runs: readonly TestRun[];
+}
+
 export interface InvestigatorTiming {
 	readonly lens: string;
 	readonly rounds: number;
@@ -176,6 +209,8 @@ export interface EngineResult {
 	readonly deepThinking?: string | null;
 	/** What the deep pass traced and found to hold: the sentences the summary opens with. */
 	readonly assurance?: readonly string[];
+	/** The test executions of the deep pass. */
+	readonly tests?: TestReport;
 	readonly notChecked: readonly string[];
 	/** Why coverage is incomplete; empty when `complete`. */
 	readonly incomplete: readonly string[];

@@ -97,6 +97,8 @@ export class FakeHub {
 		number: number;
 		updatedAt?: string;
 	}> = [];
+	/** Whether the reviewing account may push to the repositories. */
+	canPush = false;
 	/** Team members by `org/slug`; a team that is not listed cannot be read (403). */
 	teams: Record<string, string[]> = {};
 	/** Search results by query substring (`review-requested:`, `mentions:`, `reviewed-by:`). */
@@ -326,6 +328,12 @@ export class FakeHub {
 				},
 			});
 		}
+		const repository = /^repos\/([^/]+)\/([^/]+)$/.exec(path);
+		if (repository)
+			return this.#respond(200, {
+				full_name: `${repository[1]}/${repository[2]}`,
+				permissions: { pull: true, push: this.canPush, admin: false },
+			});
 		const membership = /^orgs\/([^/]+)\/teams\/([^/]+)\/memberships\/([^/]+)$/.exec(path);
 		if (membership) {
 			const members = this.teams[`${membership[1]}/${membership[2]}`];

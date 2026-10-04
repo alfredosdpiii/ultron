@@ -28,6 +28,7 @@ import {
 	resolveAckArt,
 	resolveConfig,
 	SIGNATURE,
+	testsEligible,
 } from "../src/ultron/autoreview/config.ts";
 import { blockedPulls, createLogger, Daemon, pruneOld } from "../src/ultron/autoreview/daemon.ts";
 import { GitHub, parseApiOutput, parsePullTarget, RateLimitError } from "../src/ultron/autoreview/github.ts";
@@ -634,6 +635,88 @@ describe("the summary after a deep pass", () => {
 		// Only the finding on a diff line is an inline comment.
 		expect(body.comments.map((comment) => comment.path)).toEqual(["calc.py"]);
 		expect(pull.reviews).toHaveLength(1);
+	});
+});
+
+describe("running the reviewed project's tests", () => {
+	test("eligibility: only where the account can push, or the owner is listed, and only when the setting is on", async () => {
+		expect(testsEligible(resolveConfig({}), "o", true)).toBe(true);
+		expect(testsEligible(resolveConfig({}), "o", false)).toBe(false);
+		expect(testsEligible(resolveConfig({ testOwners: ["O", "acme"] }), "o", false)).toBe(true);
+		expect(testsEligible(resolveConfig({ runTests: false }), "o", true)).toBe(false);
+		expect(resolveConfig({})).toMatchObject({ runTests: true, testRuns: 6, testTimeoutSeconds: 300, testOwners: [] });
+		expect(
+			SettingsManager.inMemory({
+				autoreview: { runTests: false, testOwners: ["acme"], testRuns: 3, testEnv: { "O/R": "/opt/venv", bad: 3 } },
+			} as never).getAutoreviewSettings(),
+		).toEqual({ runTests: false, testOwners: ["acme"], testRuns: 3, testEnv: { "o/r": "/opt/venv" } });
+
+		const specFor = async (settings: Parameters<typeof resolveConfig>[0], canPush: boolean, cloneFails = false) => {
+			const context = setup({ settings });
+			context.hub.canPush = canPush;
+			context.hub.cloneFails = cloneFails;
+			context.hub.addPull({ ...REF, requestedReviewers: [BOT] });
+			await reviewPull(context.deps, context.candidate());
+			return context.engine.specs[0]!;
+		};
+		// A stranger's repository: the deep pass stays read-only.
+		expect((await specFor({}, false)).runTests).toBe(false);
+		// The account can push: tests may run, with the base commit to compare against and the configured limits.
+		const allowed = await specFor({ testEnv: { "o/r": "/opt/venv" }, testRuns: 3 }, true);
+		expect(allowed).toMatchObject({
+			runTests: true,
+			testEnv: "/opt/venv",
+			testRuns: 3,
+			testTimeoutSeconds: 300,
+			baseSha: "b".repeat(40),
+		});
+		expect((await specFor({ testOwners: ["o"] }, false)).runTests).toBe(true);
+		expect((await specFor({ runTests: false }, true)).runTests).toBe(false);
+		expect((await specFor({ mode: "fast" }, true)).runTests).toBe(false);
+		// No checkout, no tests.
+		expect((await specFor({}, true, true)).runTests).toBe(false);
+	});
+
+	test("doctor reports the sandbox and its self-check; without one, that tests are not run", async () => {
+		const context = setup();
+		const run = async (report: object) => {
+			const out: string[] = [];
+			const calls: string[][] = [];
+			const code = await runAutoreviewCommand(["doctor"], {
+				agentDir: join(context.dir, "agent"),
+				cwd: context.dir,
+				runner: async (argv) => {
+					calls.push([...argv]);
+					return { code: 0, stdout: `${JSON.stringify(report)}\n`, stderr: "" };
+				},
+				io: { stdout: (text) => void out.push(text), stderr: (text) => void out.push(text) },
+			});
+			return { code, text: out.join(""), calls };
+		};
+		const good = await run({
+			mechanism: "bwrap",
+			isolation: "bubblewrap: new user, mount, pid, ipc, uts, cgroup and network namespaces",
+			ok: true,
+			selfCheck: {
+				network: "unreachable",
+				canary: "unreadable",
+				token: "absent",
+				home: "/tmp/home",
+				workdir: "writable",
+				system: "read-only",
+				dockerSocket: "hidden",
+			},
+		});
+		expect(good.code).toBe(0);
+		expect(good.calls[0]!.slice(1).join(" ")).toMatch(/autoreview_tests\.py doctor$/);
+		expect(good.text).toContain("Sandbox: bubblewrap: new user, mount, pid, ipc, uts, cgroup and network namespaces");
+		expect(good.text).toContain("Self-check: passed");
+		expect(good.text).toContain("  network: unreachable");
+		expect(good.text).toContain("  canary file in the real home: unreadable");
+		expect(good.text).toContain("Tests in reviews: run for repositories the account can push to");
+		const none = await run({ mechanism: null, ok: false, message: "tests are not run: no sandbox is available" });
+		expect(none.code).toBe(1);
+		expect(none.text).toBe("Sandbox: none. tests are not run: no sandbox is available\n");
 	});
 });
 

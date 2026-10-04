@@ -236,6 +236,21 @@ export interface AutoreviewSettings {
 	deepThinking?: FrameThinkingLevel;
 	/** Lookup rounds one investigator may take (default 4, maximum 8). */
 	deepRounds?: number;
+	/**
+	 * Let the deep pass run the reviewed project's tests, sandboxed (default true). They run only for repositories
+	 * the reviewing account can push to, or whose owner is in `testOwners`, and only when a sandbox is available.
+	 */
+	runTests?: boolean;
+	/** Repository owners (users or organizations) whose repositories' tests may be run. */
+	testOwners?: string[];
+	/** Test executions per review (default 6). */
+	testRuns?: number;
+	/** Wall-clock limit of one test execution, in seconds (default 300). */
+	testTimeoutSeconds?: number;
+	/** `owner/repo` -> directory of a pre-built environment (a virtualenv, a node_modules) bound read-only into the sandbox. */
+	testEnv?: Record<string, string>;
+	/** A local Docker image for the sandbox when neither bubblewrap nor unshare is available. */
+	testImage?: string;
 	/** Seconds a review may take: at the deadline unfinished passes are given up and the rest is posted (default 0: none, the review waits for every frame). */
 	deadlineSeconds?: number;
 	/** Seconds one frame may take before it is retried or given up (default: no timeout). */
@@ -1368,6 +1383,22 @@ export class SettingsManager {
 		if (deepThinking !== undefined) out.deepThinking = deepThinking;
 		const deepRounds = count(configured.deepRounds);
 		if (deepRounds !== undefined) out.deepRounds = deepRounds;
+		const runTests = flag(configured.runTests);
+		if (runTests !== undefined) out.runTests = runTests;
+		const testOwners = strings(configured.testOwners);
+		if (testOwners !== undefined) out.testOwners = testOwners;
+		const testRuns = count(configured.testRuns);
+		if (testRuns !== undefined) out.testRuns = testRuns;
+		const testTimeoutSeconds = count(configured.testTimeoutSeconds);
+		if (testTimeoutSeconds !== undefined) out.testTimeoutSeconds = testTimeoutSeconds;
+		if (isMergeableObject(configured.testEnv)) {
+			const testEnv: Record<string, string> = {};
+			for (const [repo, dir] of Object.entries(configured.testEnv))
+				if (typeof dir === "string" && dir.trim() !== "") testEnv[repo.toLowerCase()] = dir.trim();
+			if (Object.keys(testEnv).length > 0) out.testEnv = testEnv;
+		}
+		if (typeof configured.testImage === "string" && configured.testImage.trim() !== "")
+			out.testImage = configured.testImage.trim();
 		const dryRun = flag(configured.dryRun);
 		if (dryRun !== undefined) out.dryRun = dryRun;
 		const ack = flag(configured.ack);

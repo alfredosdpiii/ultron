@@ -711,8 +711,10 @@ def _public(finding: dict[str, Any], verification: str) -> dict[str, Any]:
     if citations:
         out["citations"] = citations
     where = ", ".join(f"{item['path']}:{item['line']}" for item in citations[:4])
-    if verification == "confirmed":
-        out["howVerified"] = ((f"{len(citations)} quoted line{'' if len(citations) == 1 else 's'} checked at the "
+    if finding.get("how_verified"):
+        out["howVerified"] = finding["how_verified"]
+    elif verification == "confirmed":
+        out["howVerified"] = ((f"test run {finding['test_run']} by the host in a sandbox; " if finding.get("test_run") else "") +(f"{len(citations)} quoted line{'' if len(citations) == 1 else 's'} checked at the "
                                f"reviewed commit ({where}); " if citations else "")
                               + f"a verifier confirmed it against the source of {finding['file']}")
     else:
@@ -868,6 +870,18 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
 
     # The deep pass: investigators follow the change into the repository, with the fast findings as leads.
     deep_started = clock()
+    # The host decides whether tests may run (eligibility, the setting); the pipeline only obeys.
+    test_options: dict[str, Any] | None = None
+    if spec.get("runTests") is True:
+        test_base = spec.get("base") if spec.get("repoDir") else spec.get("baseSha")
+        test_options = {
+            "base": test_base if isinstance(test_base, str) else None,
+            "runs": int(_number(spec.get("testRuns"), 6, 0, 50)),
+            "timeout_s": _number(spec.get("testTimeoutSeconds"), 300, 5, 3600),
+            "env_dir": spec.get("testEnv") if isinstance(spec.get("testEnv"), str) else None,
+            "image": spec.get("testImage") if isinstance(spec.get("testImage"), str) else None,
+        }
+    test_report: dict[str, Any] = {"enabled": False, "mechanism": None, "note": None, "runs": []}
     deep_out: dict[str, Any] | None = None
     investigators: list[dict[str, Any]] = []
     assurance: list[str] = []
@@ -877,12 +891,15 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
                 frames_runner, scope.files, scope.read_file, root=scope.root, rev=deep_rev,
                 diff_text=SLICE_SEPARATOR.join(chunk.text for chunk in chunks), leads=merged, context=shared,
                 rounds=deep_rounds, model=deep_model, thinking=deep_thinking, cutoff=find_cutoff, clock=clock,
-                cap=capped_severity, runner=runner)
+                cap=capped_severity, runner=runner, tests=test_options)
         except Exception as error:  # the fast review stands when the deep pass cannot run
             not_checked.append(f"The deep pass failed ({_text(f'{type(error).__name__}: {error}', 160)}); "
                                "this is the fast review only.")
         if deep_out is not None:
             investigators = deep_out["investigators"]
+            test_report = deep_out["tests"]
+            if test_report["note"]:
+                not_checked.append(test_report["note"][0].upper() + test_report["note"][1:] + ".")
             assurance = deep.assurance(deep_out)
             merged, superseded = deep.merge(merged, deep_out["findings"])
             duplicates += superseded
@@ -934,7 +951,11 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
     to_verify: list[dict[str, Any]] = []
     unverified: list[dict[str, Any]] = []
     estimate = 0
+    observed = [finding for finding in candidates if finding.get("host_confirmed")]
     for finding in candidates:
+        if finding.get("host_confirmed"):
+            # The host ran the test itself: there is nothing for a verifier frame to add.
+            continue
         source = scope.read_file(finding["file"])
         window = source_window(source, finding["line"])
         hunk = hunk_for(by_path.get(finding["file"]), finding["line"])
@@ -950,6 +971,9 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
         if related:
             views.append(f"Other places that define or use the names involved:\n{related}")
         cited = deep.cited_windows(deep_out["repo"], finding) if deep_out is not None and finding.get("citations") else ""
+        if finding.get("test_evidence"):
+            views.append("A test execution the investigator cites, as the host ran it in a sandbox:\n"
+                         + finding["test_evidence"])
         if cited:
             views.append("Evidence the investigator cites, as the host reads it at the reviewed commit (the quoted "
                          f"lines were checked to be there):\n{cited}")
@@ -989,6 +1013,7 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
                 f"{failed} finding(s) could not be verified (" + (
                     "the review deadline was reached" if late == failed
                     else "the verifier frame ran out or failed") + ")")
+    confirmed += observed
     uncertain += unverified
     if unverified:
         incomplete.append(f"{len(unverified)} finding(s) were not verified within the token budget")
@@ -1021,6 +1046,7 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
         "deepModel": deep_model if deep_out is not None else None,
         "deepThinking": deep_thinking if deep_out is not None else None,
         "assurance": assurance,
+        "tests": test_report,
         "notChecked": not_checked,
         "incomplete": incomplete,
         "diffLines": diff_line_ranges(post_files),

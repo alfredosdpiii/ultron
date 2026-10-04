@@ -383,6 +383,18 @@ export class GitHub {
 		}
 	}
 
+	/** Whether this account may push to the repository (false when that cannot be read). */
+	async canPush(ref: PullRef): Promise<boolean> {
+		try {
+			const response = await this.request("GET", `repos/${ref.owner}/${ref.repo}`);
+			const permissions = (response.body as Json | undefined)?.permissions as Json | undefined;
+			return permissions?.push === true || permissions?.admin === true || permissions?.maintain === true;
+		} catch (error) {
+			if (error instanceof RateLimitError) throw error;
+			return false;
+		}
+	}
+
 	/** One line on the head commit's CI checks, or undefined when there are none or they cannot be read. */
 	async checkSummary(ref: PullRef, sha: string): Promise<string | undefined> {
 		let response: ApiResponse;
