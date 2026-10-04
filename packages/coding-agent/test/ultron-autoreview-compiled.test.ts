@@ -210,7 +210,7 @@ describe("autoreview_compiled: the planner and the program language", () => {
 			taskChars: number;
 			viewChars: number;
 		}>(`${prelude(repo)}
-rlm = Rlm(planner=lambda text, attempt: {"summary": "nothing to check", "steps": [
+rlm = Rlm(planner=lambda text, attempt: {"summary": "nothing to check", "uncovered": ["C1: the title", "C2: the comment restates the code"], "steps": [
     {"id": "g", "op": "grep", "args": {"pattern": "show"}}, {"id": "a", "op": "assert", "step": "g", "predicate": "count >= 1", "expect": True}]})
 result = asyncio.run(a.run(rlm, dict(SPEC, runTests=True, context={"title": "Add kind c", "description": "Adds c to KINDS."},
                                      planThinking="xhigh")))
@@ -257,6 +257,12 @@ emit({"taskWith": p.compiled_planner_task(True), "taskWithout": p.compiled_plann
 		expect(out.planText).toMatch(
 			/Tests may run: yes; executions left: \d+\. Test runners:\n- pytest in \.: available \(the automatic run passed\)/,
 		);
+		// The coverage the program must have, from the map, with ids; and the limits for this diff.
+		expect(out.planText).toContain(
+			'Coverage the program must have (name the id in a step\'s "covers", or list it in the program\'s "uncovered" as "<id>: why"):\n- S1: the references of `show` (changed signature or exported name): every caller still fits\n- C1: the claim [title] Add kind c\n- C2: the claim [src/app.py:5] Upper-cases the kind.',
+		);
+		expect(out.planText).toContain("Limits: 80 steps as written, 120 after for_each expansion, 40 asks.");
+		expect(out.taskWith).toContain("Cover the change. The host lists what the program must cover");
 		expect(out.planModel).toBe("p/plan");
 		expect(out.planThinking).toBe("xhigh");
 		expect(out.planContext).toBeNull();
@@ -318,7 +324,7 @@ cases = {
     "bounds": errors({"steps": [{"id": f"q{i}", "op": "ask", "question": "?", "context": ["r"]} for i in range(41)] + [{"id": "r", "op": "read", "args": {"path": "x"}}]}),
     "tooMany": errors({"steps": [{"id": f"r{i}", "op": "read", "args": {"path": "x"}} for i in range(81)]}),
 }
-GOOD = {"summary": "ok", "steps": [{"id": "g", "op": "grep", "args": {"pattern": "show"}},
+GOOD = {"summary": "ok", "uncovered": ["C1: comment only"], "steps": [{"id": "g", "op": "grep", "args": {"pattern": "show"}},
                                    {"id": "a", "op": "assert", "step": "g", "predicate": "count >= 1", "expect": True, "holds": "show is used"}]}
 BAD = {"steps": [{"id": "g", "op": "grep", "args": {}}]}
 def summary(rlm, spec=SPEC, **more):
@@ -384,12 +390,17 @@ emit({"errors": cases, "fallback": fallback, "repaired": repaired, "failed": fai
 		expect(out.fallback.kinds).toContain("find");
 		expect(out.fallback.kinds).toContain("deep");
 		expect(out.fallback.mode).toBe("both");
-		expect(out.fallback.notChecked[0]).toBe(
-			"The compiled mode fell back to the fast and deep passes: the program was invalid after one repair: step 'g': grep needs args.pattern.",
+		expect(out.fallback.notChecked[0]).toContain(
+			"The compiled mode fell back to the fast and deep passes: the program was invalid after one repair: step 'g': grep needs args.pattern; coverage: S1 (the references of `show`",
+		);
+		expect(out.fallback.notChecked[0]).toContain(
+			"coverage: C1 (the claim [src/app.py:5] Upper-cases the kind.) has no check",
 		);
 		expect(out.fallback.program).toMatchObject({
 			planner: { repairs: 1, status: "invalid", tokens: 200 },
-			fallback: "the program was invalid after one repair: step 'g': grep needs args.pattern",
+			fallback: expect.stringContaining(
+				"the program was invalid after one repair: step 'g': grep needs args.pattern",
+			),
 		});
 		expect(out.fallback.planModel).toBeNull();
 		// The repair round carries the validator's errors; a corrected program then runs.
@@ -446,7 +457,7 @@ PROGRAM = {"summary": "exercise the language", "steps": [
     {"id": "no_db", "op": "assert", "step": "ls", "predicate": "not contains db.py", "expect": True},
     {"id": "commits", "op": "assert", "step": "hist", "predicate": "count == 2", "expect": True},
     {"id": "onSecret", "op": "assert", "step": "secret", "predicate": "contains hunter2", "expect": True},
-    {"id": "q1", "op": "ask", "question": "Does any test assert the value show() returns?", "context": ["r1"]},
+    {"id": "q1", "op": "ask", "question": "Does any test assert the value show() returns?", "context": ["r1"], "covers": ["C1"]},
     {"id": "q2", "op": "ask", "question": "Is there a test for KINDS?", "context": ["r1"]},
     {"id": "q3", "op": "ask", "question": "Unanswerable?", "context": ["secret"]},
     {"id": "yes1", "op": "assert", "step": "q1", "predicate": "answer == no", "expect": True},
@@ -520,8 +531,12 @@ emit({"result": result, "asks": [c for c in rlm.calls if c["kind"] == "ask"],
 		expect(records.onGated!.output).toBe("unknown (gated did not run)");
 		// q3's context step failed: the ask is skipped, and findings on it (negated or not) are skipped too.
 		expect(records.q3).toMatchObject({ status: "skipped", detail: "a context step did not run" });
-		expect(records.f_unclear).toMatchObject({ status: "skipped" });
-		expect(records.f_unclear_not).toMatchObject({ status: "skipped" });
+		expect(records.f_unclear).toMatchObject({ status: "ok", output: "gate undecided" });
+		expect(records.f_unclear_not).toMatchObject({ status: "ok", output: "gate undecided" });
+		// fe[0]'s ask was unclear (its quote was not in the material), fe[1]'s was yes: one undecided gate, one false.
+		expect(records["fe[0].fq"]).toMatchObject({ status: "ok", output: "gate undecided" });
+		expect(records["fe[1].fq"]).toMatchObject({ status: "ok", output: "gate false" });
+		expect(String(records.f_no_test!.output)).toMatch(/^finding emitted: \{"file": "tests\/test_app\.py"/);
 		// for_each: 4 hits, max_items 2: two instances of the four sub-steps, placeholders substituted, the rest noted.
 		expect(result.program).toMatchObject({ planned: 31, expanded: 8, asks: 4, tests: 0 });
 		expect(result.program.truncated).toEqual(["fe: 2 items beyond max_items were not visited"]);
@@ -560,7 +575,16 @@ emit({"result": result, "asks": [c for c in rlm.calls if c["kind"] == "ask"],
 		expect(
 			result.findings.map((finding) => [finding.source, finding.verification, finding.level, finding.strength]),
 		).toEqual([["compiled:f_no_test", "confirmed", "medium", "diff"]]);
-		expect(result.program.findings).toEqual({ deterministic: 0, asked: 1, resolved: 0, dropped: 0, refuted: 0 });
+		expect(result.program.findings).toEqual({
+			deterministic: 0,
+			asked: 1,
+			resolved: 0,
+			dropped: 0,
+			refuted: 0,
+			notEmitted: { gateFalse: 1, undecided: 3, askedNo: 0, askedUnclear: 0 },
+		});
+		expect(result.program.coverage).toEqual({ items: 2, covered: 2, uncovered: [] });
+		expect(result.program.limits).toEqual({ planned: 80, expanded: 120 });
 		expect(result.program.checks).toEqual({ held: 11, failed: 2, unknown: 4, contradicted: 0 });
 		expect(String(result.findings[0]!.evidence)).toBe('`assert show("a")`');
 		expect(result.findings[0]!.howVerified).toBe("a verifier confirmed it against the source of tests/test_app.py");
@@ -591,7 +615,7 @@ def export(root, rev):
     exports.append(path)
     return path
 deep.testing.export_commit = export
-PROGRAM = {"summary": "pin the new kind and the upper-casing", "steps": [
+PROGRAM = {"summary": "pin the new kind and the upper-casing", "uncovered": ["C1: the comment restates the code"], "steps": [
     {"id": "m_kinds", "op": "mutation_check", "args": {"path": "src/app.py", "line": 1, "replacement": 'KINDS = ["a", "b"]', "tests": ["tests/test_app.py"]}},
     {"id": "survives", "op": "assert", "step": "m_kinds", "predicate": "status == passed", "expect": True},
     finding("f_kinds", {"step": "survives"}, 1, "Nothing fails when the new kind c is dropped again.",
@@ -667,7 +691,35 @@ emit({"result": result, "kinds": rlm.kinds(), "verifierTexts": [c["text"] for c 
 			"2 program finding(s) were dropped because their evidence did not check out: f_bad_quote: src/cli.py:5 does not say 'show(kind, extra)'; f_untracked: no tracked file and line (secret.txt is not a tracked file at the reviewed commit)",
 		);
 		expect(result.dropped.generic).toBe(1);
-		expect(result.program.findings).toEqual({ deterministic: 2, asked: 0, resolved: 0, dropped: 3, refuted: 1 });
+		expect(result.program.findings).toEqual({
+			deterministic: 2,
+			asked: 0,
+			resolved: 0,
+			dropped: 3,
+			refuted: 1,
+			notEmitted: { gateFalse: 0, undecided: 0, askedNo: 0, askedUnclear: 0 },
+		});
+		// Every finding step ends in exactly one place, and the step output says which.
+		expect(
+			result.timing.program
+				.filter((step) => step.op === "finding")
+				.map((step) => [step.id, String(step.output).replace(/^finding emitted: .*$/, "finding emitted")]),
+		).toEqual([
+			["f_kinds", "finding emitted"],
+			["f_show", "gate true; refuted by a test"],
+			["f_callers", "finding emitted"],
+			["f_bad_quote", "gate true; dropped: src/cli.py:5 does not say 'show(kind, extra)'"],
+			["f_generic", "gate true; dropped: a tests finding that names no change an existing test would miss"],
+			[
+				"f_untracked",
+				"gate true; dropped: no tracked file and line (secret.txt is not a tracked file at the reviewed commit)",
+			],
+		]);
+		// The planner declared the comment claim uncovered: the body says so.
+		expect(result.notChecked).toContain(
+			"The review program left uncovered: C1 (the claim [src/app.py:5] Upper-cases the kind.): the comment restates the code.",
+		);
+		expect(result.program.coverage).toEqual({ items: 2, covered: 1, uncovered: ["C1"] });
 		// The test budget (3): the automatic run, two mutations, and the third mutation could not run.
 		expect(result.tests.runs.map((run) => [run.kind, run.status])).toEqual([
 			["automatic", "passed"],
@@ -701,7 +753,7 @@ def missing(argv, cwd, env, timeout):
 deep.testing.run_process = missing
 WF = ".github/workflows/ci.yml"
 COND = "always\\\\(\\\\)|failure\\\\(\\\\)"
-PROGRAM = {"summary": "the post-status step after a failing plan", "steps": [
+PROGRAM = {"summary": "the post-status step after a failing plan", "uncovered": ["C1: not about the workflow"], "steps": [
     # PR1 as the planner wrote it: a whole-file grep as a proxy for one step. The count contradicts the expectation.
     {"id": "g_file", "op": "grep", "args": {"pattern": COND, "path_glob": WF, "count_only": True}},
     {"id": "a_file", "op": "assert", "step": "g_file", "predicate": "count == 0", "expect": True,
@@ -772,6 +824,7 @@ emit({"result": result, "kinds": rlm.kinds(), "resolves": [c for c in rlm.calls 
 		expect(String(records.g_file!.output)).toContain(".github/workflows/ci.yml:14: if: always()");
 		expect(records.a_file!.output).toBe("does not hold (count is 2); contradicts the expectation");
 		expect(records.f_file).toMatchObject({ status: "ok", resolved: "ask", ask: "f_file.ask", answer: "yes" });
+		expect(String(records.f_file!.output)).toMatch(/^finding emitted: /);
 		const resolve = out.resolves.find((call) => call.text.includes("failure comment is never posted"))!;
 		expect(resolve.model).toBe("p/ask");
 		expect(resolve.text).toContain("its check came out against the planner's expectation");
@@ -819,7 +872,12 @@ emit({"result": result, "kinds": rlm.kinds(), "resolves": [c for c in rlm.calls 
 		expect(records.a_cap_zero!.output).toBe(
 			"does not hold (count is at least 1 (cut at its cap)); contradicts the expectation",
 		);
-		expect(records.f_cap).toMatchObject({ status: "ok", resolved: "ask", answer: "no" });
+		expect(records.f_cap).toMatchObject({
+			status: "ok",
+			resolved: "ask",
+			answer: "no",
+			output: "gate unknown -> ask: no",
+		});
 		expect(String(records.f_cap!.detail)).toContain("the small model answered no");
 		expect(byClaim["Nothing mentions kind anywhere."]).toBeUndefined();
 		expect(records.a_cap_some!.output).toBe("holds");
@@ -851,7 +909,14 @@ emit({"result": result, "kinds": rlm.kinds(), "resolves": [c for c in rlm.calls 
 			autoAsks: 3,
 			tests: 0,
 			checks: { held: 3, failed: 3, unknown: 2, contradicted: 2 },
-			findings: { deterministic: 1, asked: 2, resolved: 3, dropped: 0, refuted: 0 },
+			findings: {
+				deterministic: 1,
+				asked: 2,
+				resolved: 3,
+				dropped: 0,
+				refuted: 0,
+				notEmitted: { gateFalse: 0, undecided: 0, askedNo: 1, askedUnclear: 0 },
+			},
 		});
 		expect(result.assurance[0]).toBe(
 			"A review program of 18 steps ran against the reviewed commit: 4 repository lookups, 0 test runs, 4 small-model questions; 3 of 8 checks held, 2 could not be decided.",
@@ -866,6 +931,77 @@ emit({"result": result, "kinds": rlm.kinds(), "resolves": [c for c in rlm.calls 
 		);
 	});
 
+	test("coverage: the map's items must each have a check or be declared uncovered; the repair round asks for the missing ones; the limits grow with the diff", () => {
+		const repo = fixture();
+		const out = py<{
+			errors: string[];
+			covered: string[];
+			unknownId: string[];
+			repairText: string;
+			result: Result;
+			kinds: string[];
+			fields: string[];
+			limits: number[][];
+		}>(`${prelude(repo)}
+COVERAGE = [{"id": "S1", "kind": "symbol", "name": "show", "text": "the references of \`show\`"},
+            {"id": "K1", "kind": "key", "name": "metrics_ingress_cidrs", "text": "the siblings and consumers of \`metrics_ingress_cidrs\`"},
+            {"id": "C1", "kind": "claim", "name": "", "text": "the claim [title] Add kind c"}]
+BARE = {"steps": [{"id": "r", "op": "read", "args": {"path": "src/app.py"}}]}
+errors = c.validate(BARE, COVERAGE)[1]
+# A symbol or key is covered by a step that names it; a claim needs an explicit covers.
+COVERED = {"steps": [{"id": "refs", "op": "references", "args": {"symbol": "show"}},
+                     {"id": "g", "op": "grep", "args": {"pattern": "metrics_ingress_cidrs", "count_only": True}},
+                     {"id": "q", "op": "ask", "question": "Does the title hold?", "context": ["g"], "covers": ["C1"]}]}
+covered = c.validate(COVERED, COVERAGE)[1]
+unknown_id = c.validate(dict(COVERED, uncovered=["Z9: nothing"]), COVERAGE)[1]
+# Live: the planner forgets the comment claim, the repair round names it, the second program declares it.
+FIRST = {"summary": "first", "steps": [{"id": "g", "op": "grep", "args": {"pattern": "show", "count_only": True}},
+                                      {"id": "a", "op": "assert", "step": "g", "predicate": "count >= 1", "expect": True}]}
+SECOND = dict(FIRST, uncovered=["C1: the comment restates the code, nothing to check"])
+rlm = Rlm(planner=lambda text, attempt: FIRST if attempt == 0 else SECOND)
+result = asyncio.run(a.run(rlm, SPEC))
+risky = r.parse_diff("""diff --git a/src/R.tsx b/src/R.tsx
+--- a/src/R.tsx
++++ b/src/R.tsx
+@@ -1,1 +1,4 @@
+ const FIELDS = [
++  { key: 'metrics_ingress_cidrs', label: 'Metrics ingress CIDRs' },
++  { key: 'milvus_backup_schedule' },
++  other: "ignored",
+""")
+emit({"errors": errors, "covered": covered, "unknownId": unknown_id, "repairText": rlm.calls[1]["text"], "result": result,
+      "kinds": rlm.kinds(), "fields": deep.extract(risky, lambda path: None)["fields"],
+      "limits": [list(c.limits_for(n)) for n in (3, 100, 101, 400)]})`);
+		expect(out.errors).toEqual([
+			'coverage: S1 (the references of `show`) has no check: add a step that checks it and name S1 in its "covers", or list it in the program\'s "uncovered" with why',
+			'coverage: K1 (the siblings and consumers of `metrics_ingress_cidrs`) has no check: add a step that checks it and name K1 in its "covers", or list it in the program\'s "uncovered" with why',
+			'coverage: C1 (the claim [title] Add kind c) has no check: add a step that checks it and name C1 in its "covers", or list it in the program\'s "uncovered" with why',
+		]);
+		expect(out.covered).toEqual([]);
+		expect(out.unknownId).toEqual(["uncovered names 'Z9', which is not a coverage item"]);
+		// The repair round carried the missing item; the declared one is reported under "Not checked".
+		expect(out.kinds).toEqual(["plan", "plan"]);
+		expect(out.repairText).toContain("- coverage: C1 (the claim [src/app.py:5] Upper-cases the kind.) has no check");
+		expect(out.result.mode).toBe("compiled");
+		expect(out.result.program).toMatchObject({
+			planner: { repairs: 1 },
+			coverage: { items: 2, covered: 1, uncovered: ["C1"] },
+			limits: { planned: 80, expanded: 120 },
+		});
+		expect(out.result.notChecked).toContain(
+			"The review program left uncovered: C1 (the claim [src/app.py:5] Upper-cases the kind.): the comment restates the code, nothing to check.",
+		);
+		// The map lists field keys declared in code (`key: '...'`): the family a new CSV-list field joins.
+		expect(out.fields).toEqual(["metrics_ingress_cidrs", "milvus_backup_schedule"]);
+		// Larger limits for a diff of more than 100 changed lines.
+		expect(out.limits).toEqual([
+			[80, 120],
+			[80, 120],
+			[120, 200],
+			[120, 200],
+		]);
+	});
+
 	test("a saved program is replayed without a planner call; the posting plan, dedupe and verdict are the existing ones", () => {
 		const repo = fixture();
 		const out = py<{
@@ -876,7 +1012,7 @@ emit({"result": result, "kinds": rlm.kinds(), "resolves": [c for c in rlm.calls 
 		}>(
 			`${prelude(repo)}
 import tempfile
-PROGRAM = {"summary": "replayed", "steps": [
+PROGRAM = {"summary": "replayed", "uncovered": ["S1: show is not changed in behaviour", "C1: comment only"], "steps": [
     {"id": "g", "op": "grep", "args": {"pattern": "KINDS", "count_only": True}},
     {"id": "a", "op": "assert", "step": "g", "predicate": "count >= 2", "expect": True, "holds": "KINDS is read in {{g.count}} places"},
     {"id": "f1", "op": "finding", "when": {"step": "a"}, "file": "src/app.py", "line": 1, "level": "low", "category": "correctness",
@@ -947,6 +1083,7 @@ describe("ultron autoreview review --repo-dir --mode compiled: the offline entry
 				op: "ask",
 				question: "Does the comment above show() describe what the code below it does?",
 				context: ["r"],
+				covers: ["C1"],
 			},
 			{
 				id: "f",

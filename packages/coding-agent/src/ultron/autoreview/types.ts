@@ -271,8 +271,19 @@ export interface ProgramStats {
 		readonly resolved: number;
 		readonly dropped: number;
 		readonly refuted: number;
+		/** Finding steps that emitted nothing: gate false, undecided, or the small model said no or unclear. */
+		readonly notEmitted?: {
+			readonly gateFalse: number;
+			readonly undecided: number;
+			readonly askedNo: number;
+			readonly askedUnclear: number;
+		};
 	};
 	readonly truncated?: readonly string[];
+	/** What the map said the program must cover, and the items the planner declared it could not. */
+	readonly coverage?: { readonly items: number; readonly covered: number; readonly uncovered: readonly string[] };
+	/** The step limits this review ran under (larger for a diff of more than 100 changed lines). */
+	readonly limits?: { readonly planned: number; readonly expanded: number };
 	readonly planner: {
 		readonly ms: number;
 		readonly tokens: number;

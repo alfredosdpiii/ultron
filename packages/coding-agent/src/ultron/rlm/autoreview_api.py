@@ -1230,6 +1230,9 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
                                + (" ..." if len(failed_steps) > 6 else ""))
         if program_stats["truncated"]:
             not_checked.append("The review program was cut at its limits: " + "; ".join(program_stats["truncated"][:3]))
+        if compiled_out["uncovered"]:
+            not_checked.append("The review program left uncovered: " + "; ".join(compiled_out["uncovered"][:6])
+                               + (" ..." if len(compiled_out["uncovered"]) > 6 else "") + ".")
         if compiled_out["diff_cut"]:
             not_checked.append("The planner saw the first part of a large diff only.")
     if chunks and run_deep_pass:

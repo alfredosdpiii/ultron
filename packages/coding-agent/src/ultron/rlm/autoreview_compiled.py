@@ -54,6 +54,10 @@ LEVEL_TO_OLD = {"critical": "blocker", "high": "major", "medium": "minor", "low"
 #: Steps as written, steps after `for_each` expansion, asks, findings, items per `for_each`, sub-steps per template.
 MAX_PROGRAM_STEPS = 80
 MAX_STEPS = 120
+#: A diff with more changed lines than this gets the larger step limits.
+LARGE_DIFF_LINES = 100
+LARGE_PROGRAM_STEPS = 120
+LARGE_STEPS = 200
 MAX_ASKS = 40
 MAX_FINDINGS = 12
 MAX_FOR_EACH_ITEMS = 20
@@ -81,9 +85,10 @@ PROGRAM_CONTRACT: dict[str, Any] = {
     "type": "object",
     "properties": {
         "summary": {"type": "string"},
+        "uncovered": {"type": "array", "items": {"type": "string"}},
         "steps": {
             "type": "array",
-            "maxItems": MAX_PROGRAM_STEPS,
+            "maxItems": LARGE_PROGRAM_STEPS,
             "items": {"type": "object", "properties": {"id": {"type": "string"}, "op": {"enum": list(OPS)}},
                       "required": ["id", "op"]},
         },
@@ -140,15 +145,27 @@ def _ids(raw: Any) -> list[str]:
     return [item for item in raw if isinstance(item, str)] if isinstance(raw, list) else []
 
 
-class Program:
-    """A validated program: top-level steps in order, each normalized, plus the template steps of its for_each."""
+def limits_for(changed_lines: int) -> tuple[int, int]:
+    """(steps as written, steps after expansion) a program may have for a diff of `changed_lines` lines."""
+    if changed_lines > LARGE_DIFF_LINES:
+        return LARGE_PROGRAM_STEPS, LARGE_STEPS
+    return MAX_PROGRAM_STEPS, MAX_STEPS
 
-    def __init__(self, steps: list[dict[str, Any]], summary: str) -> None:
+
+class Program:
+    """A validated program: top-level steps in order, each normalized, plus the template steps of its for_each;
+    the coverage items it declares it could not check, with the planner's reasons."""
+
+    def __init__(self, steps: list[dict[str, Any]], summary: str, uncovered: list[str] | None = None) -> None:
         self.steps = steps
         self.summary = summary
+        self.uncovered = list(uncovered or [])
 
     def as_json(self) -> dict[str, Any]:
-        return {"summary": self.summary, "steps": [_public_step(step) for step in self.steps]}
+        out: dict[str, Any] = {"summary": self.summary, "steps": [_public_step(step) for step in self.steps]}
+        if self.uncovered:
+            out["uncovered"] = self.uncovered
+        return out
 
 
 def _public_step(step: dict[str, Any]) -> dict[str, Any]:
@@ -172,7 +189,7 @@ def _normalize_step(raw: Any, errors: list[str], *, inside: str | None = None) -
     if op not in OPS:
         errors.append(f"{label}: unknown op {op!r}; use one of {', '.join(OPS)}")
         return None
-    step: dict[str, Any] = {"id": sid, "op": op, "needs": _ids(raw.get("needs"))}
+    step: dict[str, Any] = {"id": sid, "op": op, "needs": _ids(raw.get("needs")), "covers": _ids(raw.get("covers"))}
     when, problem = _when(raw.get("when"))
     if problem:
         errors.append(f"{label}: {problem}")
@@ -307,15 +324,65 @@ def grounded(step: dict[str, Any], by_id: dict[str, dict[str, Any]]) -> bool:
                                 for leaf in leaves)
 
 
-def validate(raw: Any) -> tuple[Program | None, list[str]]:
-    """The program `raw` (the planner's reply) checked against the language: (program, []) or (None, errors)."""
+def coverage_items(brief: Any) -> list[dict[str, str]]:
+    """What a program must cover, from the map: the references of each changed signature or exported name (S),
+    the siblings and consumers of each new config key, field, flag or environment variable (K), and each claim of
+    the change (C). Each item has an id the planner names in a step's `covers` or in the program's `uncovered`."""
+    items: list[dict[str, str]] = []
+    required = getattr(brief, "required", {}) or {}
+    extracted = getattr(brief, "extracted", {}) or {}
+    for number, name in enumerate(required.get("siblings") or [], 1):
+        items.append({"id": f"S{number}", "kind": "symbol", "name": name,
+                      "text": f"the references of `{name}` (changed signature or exported name): every caller still fits"})
+    keys = list(dict.fromkeys(list(required.get("claims") or []) + list(extracted.get("fields") or [])))[:8]
+    for number, name in enumerate(keys, 1):
+        items.append({"id": f"K{number}", "kind": "key", "name": name,
+                      "text": f"the siblings and consumers of the new key, field, flag or variable `{name}`: the family it "
+                              "joins (registry lists, sibling declarations) and every reader"})
+    for number, (source, text) in enumerate(list(getattr(brief, "claim_list", []) or [])[:8], 1):
+        items.append({"id": f"C{number}", "kind": "claim", "name": "", "text": f"the claim [{source}] {text}"})
+    return items
+
+
+def _step_texts(step: dict[str, Any]) -> str:
+    """The text of a step a coverage name may appear in: its args, question, predicate, holds, claim and why."""
+    parts = [json.dumps(step.get("args") or {}), step.get("question") or "", step.get("predicate") or "",
+             step.get("holds") or "", str(step.get("claim") or ""), str(step.get("why") or "")]
+    return "\n".join(part for part in parts if isinstance(part, str))
+
+
+def uncovered_items(coverage: list[dict[str, str]], steps: list[dict[str, Any]], declared: list[str]) -> list[dict[str, str]]:
+    """The coverage items no step covers and the planner did not declare uncovered. A step covers an item it names
+    in `covers`; a symbol or key is also covered by a step whose text names it."""
+    declared_ids = {item.split(":", 1)[0].strip() for item in declared}
+    named: set[str] = set()
+    texts: list[str] = []
+    for step in steps:
+        named.update(step.get("covers") or [])
+        texts.append(_step_texts(step))
+    text = "\n".join(texts)
+    out = []
+    for item in coverage:
+        if item["id"] in declared_ids or item["id"] in named:
+            continue
+        if item["kind"] in ("symbol", "key") and item["name"] and re.search(r"(?<![A-Za-z0-9_])" + re.escape(item["name"]) + r"(?![A-Za-z0-9_])", text):
+            continue
+        out.append(item)
+    return out
+
+
+def validate(raw: Any, coverage: list[dict[str, str]] | None = None,
+             max_planned: int = MAX_PROGRAM_STEPS) -> tuple[Program | None, list[str]]:
+    """The program `raw` (the planner's reply) checked against the language and, with `coverage`, against what the
+    map says it must cover: (program, []) or (None, errors)."""
     errors: list[str] = []
     if not isinstance(raw, dict) or not isinstance(raw.get("steps"), list):
         return None, ["the program must be an object with a steps array"]
     if not raw["steps"]:
         return None, ["the program has no steps"]
-    if len(raw["steps"]) > MAX_PROGRAM_STEPS:
-        return None, [f"the program has {len(raw['steps'])} steps; at most {MAX_PROGRAM_STEPS} as written"]
+    if len(raw["steps"]) > max_planned:
+        return None, [f"the program has {len(raw['steps'])} steps; at most {max_planned} as written"]
+    declared = [_text(item, 200) for item in raw.get("uncovered") or [] if isinstance(item, str)] if isinstance(raw.get("uncovered"), list) else []
     steps = [item for item in (_normalize_step(item, errors) for item in raw["steps"]) if item]
     by_id: dict[str, dict[str, Any]] = {}
     for step in steps:
@@ -391,9 +458,18 @@ def validate(raw: Any) -> tuple[Program | None, list[str]]:
     findings = sum(1 for step in by_id.values() if step["op"] == "finding")
     if findings > MAX_FINDINGS:
         errors.append(f"{findings} finding steps; at most {MAX_FINDINGS}")
+    if coverage:
+        all_steps = [step for step in steps] + [sub for step in steps for sub in step.get("steps") or []]
+        for item in uncovered_items(coverage, all_steps, declared):
+            errors.append(f"coverage: {item['id']} ({item['text']}) has no check: add a step that checks it and name "
+                          f"{item['id']} in its \"covers\", or list it in the program's \"uncovered\" with why")
+        known = {item["id"] for item in coverage}
+        for item in declared:
+            if item.split(":", 1)[0].strip() not in known:
+                errors.append(f"uncovered names {item.split(':', 1)[0].strip()!r}, which is not a coverage item")
     if errors:
         return None, list(dict.fromkeys(errors))[:40]
-    return Program(steps, _text(raw.get("summary"), 300)), []
+    return Program(steps, _text(raw.get("summary"), 300), declared), []
 
 
 # --- Interpretation --------------------------------------------------------------------------------------------
@@ -462,8 +538,10 @@ class Interpreter:
                  cap: Callable[..., str], to_level: Callable[[Any], str | None] | None = None,
                  enrich: Callable[[Any, dict[str, Any]], None] | None = None,
                  generic: Callable[[dict[str, Any]], str | None] | None = None,
-                 unavailable: set[tuple[str, str]] | None = None) -> None:
+                 unavailable: set[tuple[str, str]] | None = None, max_steps: int = MAX_STEPS) -> None:
         self.program = program
+        self.max_steps = max_steps
+        self.max_planned = LARGE_PROGRAM_STEPS if max_steps > MAX_STEPS else MAX_PROGRAM_STEPS
         self.repo = repo
         self.frames = frames
         self.session = session
@@ -491,6 +569,8 @@ class Interpreter:
         self.asks = 0
         self.auto_asks = 0
         self.resolved = 0
+        #: Finding steps that emitted nothing, by why.
+        self.not_emitted = {"gateFalse": 0, "undecided": 0, "askedNo": 0, "askedUnclear": 0}
         self.test_runs_before = len(session.records) if session is not None else 0
 
     # -- placeholders --
@@ -591,6 +671,10 @@ class Interpreter:
             text = "holds" if value else "unknown" if value is None else "does not hold"
             return text + (f" ({result['detail']})" if result.get("detail") and not value else "") + (
                 "; contradicts the expectation" if result.get("contradicted") else "")
+        if op == "finding":
+            if result.get("emitted"):
+                return "finding emitted"
+            return result.get("gate") or result.get("detail") or "no finding"
         title = result.get("title", op)
         if result.get("items"):
             shown = "; ".join(_render(item) for item in result["items"][:5])
@@ -789,8 +873,8 @@ class Interpreter:
         template_ids = {sub["id"] for sub in step["steps"]}
         total = len(self.steps_by_id)
         for index, item in enumerate(items[: step["max_items"]]):
-            if total + len(instances) + len(step["steps"]) > MAX_STEPS:
-                self.truncated.append(f"{step['id']}: items from {index} on were not expanded ({MAX_STEPS} steps at most)")
+            if total + len(instances) + len(step["steps"]) > self.max_steps:
+                self.truncated.append(f"{step['id']}: items from {index} on were not expanded ({self.max_steps} steps at most)")
                 break
             scope = {"item": item, "index": index}
             rename = {sid: f"{step['id']}[{index}].{sid}" for sid in template_ids}
@@ -887,11 +971,14 @@ class Interpreter:
             if held is None:
                 return step, scope, "unknown"
         if held is None:
-            self._skip(step, f"its condition {when['step']} did not decide", began)
+            self.not_emitted["undecided"] += 1
+            self._record(step, {"op": "finding", "status": "ok", "emitted": False, "text": "", "gate": "gate undecided",
+                                "detail": f"its condition {when['step']} did not decide (no finding)"}, began, None)
             return None
         if not held:
-            self._record(step, {"op": "finding", "status": "ok", "emitted": False, "text": "",
-                                "detail": f"{when['step']} does not hold"}, began, None)
+            self.not_emitted["gateFalse"] += 1
+            self._record(step, {"op": "finding", "status": "ok", "emitted": False, "text": "", "gate": "gate false",
+                                "detail": f"{when['step']} does not hold (no finding)"}, began, None)
             return None
         self._emit(step, scope, began, None)
         return None
@@ -899,24 +986,26 @@ class Interpreter:
     def _emit(self, step: dict[str, Any], scope: dict[str, Any], began: float, resolution: dict[str, Any] | None,
               **extra: Any) -> None:
         finding, problem = self._compose(step, scope, resolution)
+        gate = "gate unknown -> ask: yes" if resolution is not None else "gate true"
         if finding is None:
             self.dropped.append(f"{step['id']}: {problem}")
-            self._record(step, {"op": "finding", "status": "ok", "emitted": False, "detail": f"dropped: {problem}", "text": ""},
-                         began, None, **extra)
+            self._record(step, {"op": "finding", "status": "ok", "emitted": False, "gate": f"{gate}; dropped: {problem}",
+                                "detail": f"dropped: {problem}", "text": ""}, began, None, **extra)
             return
         reason = self.generic(finding) if self.generic is not None else None
         if reason:
             self.generic_dropped.append(reason)
-            self._record(step, {"op": "finding", "status": "ok", "emitted": False, "detail": f"dropped: {reason}", "text": ""},
-                         began, None, **extra)
+            self._record(step, {"op": "finding", "status": "ok", "emitted": False, "gate": f"{gate}; dropped: {reason}",
+                                "detail": f"dropped: {reason}", "text": ""}, began, None, **extra)
             return
         if finding.get("proof") == "refuted":
             self.refuted += 1
             self._record(step, {"op": "finding", "status": "ok", "emitted": False, "text": "",
+                                "gate": f"{gate}; refuted by a test",
                                 "detail": "refuted: the mutant it names was caught by a test"}, began, None, **extra)
             return
         self.findings.append(finding)
-        self._record(step, {"op": "finding", "status": "ok", "emitted": True, "text": json.dumps(
+        self._record(step, {"op": "finding", "status": "ok", "emitted": True, "text": "finding emitted: " + json.dumps(
             {key: finding[key] for key in ("file", "line", "level", "claim")}),
             "detail": finding.get("how_verified") or "rests on a small-model answer: goes to the verifier"}, began, None, **extra)
 
@@ -927,7 +1016,8 @@ class Interpreter:
         for step, scope, why in deferred:
             began = self.clock()
             if self.asks >= MAX_ASKS:
-                self._record(step, {"op": "finding", "status": "ok", "emitted": False, "text": "",
+                self.not_emitted["undecided"] += 1
+                self._record(step, {"op": "finding", "status": "ok", "emitted": False, "text": "", "gate": "gate unknown -> no ask left",
                                     "detail": f"its check came out {why}; the limit of {MAX_ASKS} asks is reached"},
                              began, None, resolved="ask")
                 continue
@@ -955,7 +1045,9 @@ class Interpreter:
             if answer == "yes":
                 self._emit(step, scope, began, resolution, resolved="ask", ask=label, answer=answer)
             else:
+                self.not_emitted["askedNo" if answer == "no" else "askedUnclear"] += 1
                 self._record(step, {"op": "finding", "status": "ok", "emitted": False, "text": "",
+                                    "gate": f"gate unknown -> ask: {answer}",
                                     "detail": f"its check came out {why}; the small model answered {answer}"
                                     + (f" ({detail})" if detail else "") + (f", quoting `{_clip(quote, 160)}`" if quote else "")},
                              began, views[0], resolved="ask", ask=label, answer=answer)
@@ -1130,8 +1222,9 @@ class Interpreter:
                        "contradicted": sum(1 for item in asserts if item.get("contradicted"))},
             "findings": {"deterministic": deterministic, "asked": len(self.findings) - deterministic,
                          "resolved": self.resolved, "dropped": len(self.dropped) + len(self.generic_dropped),
-                         "refuted": self.refuted},
+                         "refuted": self.refuted, "notEmitted": dict(self.not_emitted)},
             "truncated": self.truncated,
+            "limits": {"planned": self.max_planned, "expanded": self.max_steps},
         }
 
     def assurance(self) -> list[str]:
@@ -1183,8 +1276,10 @@ def runner_availability(session: Any) -> tuple[list[str], set[tuple[str, str]]]:
 
 
 def planner_views(diff_text: str, brief_text: str, *, context: str, intent: str, guidance: str, tests_block: str,
-                  runners: list[str], tests_allowed: bool, runs_left: int) -> tuple[list[str], bool]:
-    """The planner's views: the diff, the brief, the context, the intent, the guides, the test situation."""
+                  runners: list[str], tests_allowed: bool, runs_left: int, coverage: list[dict[str, str]] | None = None,
+                  limits: tuple[int, int] = (MAX_PROGRAM_STEPS, MAX_STEPS)) -> tuple[list[str], bool]:
+    """The planner's views: the diff, the brief, the context, the intent, the guides, the coverage the program
+    must have, the limits, the test situation."""
     cut = len(diff_text) > deep.DIFF_CHARS
     views = [f"The diff under review (new-file line numbers in the gutter):\n{diff_text[:deep.DIFF_CHARS]}"
              + ("\n... (diff cut at its size limit; read the files for the rest)" if cut else ""),
@@ -1192,6 +1287,10 @@ def planner_views(diff_text: str, brief_text: str, *, context: str, intent: str,
     for part in (context, intent, guidance, tests_block):
         if part:
             views.append(part)
+    if coverage:
+        views.append("Coverage the program must have (name the id in a step's \"covers\", or list it in the program's "
+                     "\"uncovered\" as \"<id>: why\"):\n" + "\n".join(f"- {item['id']}: {item['text']}" for item in coverage))
+    views.append(f"Limits: {limits[0]} steps as written, {limits[1]} after for_each expansion, {MAX_ASKS} asks.")
     if tests_allowed:
         views.append(f"Tests may run: yes; executions left: {runs_left}. Test runners:\n"
                      + ("\n".join(f"- {line}" for line in runners) or "- none recognized"))
@@ -1219,12 +1318,15 @@ async def run_compiled(frames: Any, files: list[FileDiff], read_file: Callable[[
     brief = deep.build_brief(repo, files, read_file, title=title, description=description, base=base)
     diff_lines = {item.path: {line.new for hunk in item.hunks for line in hunk.lines if line.new is not None}
                   for item in files}
+    changed_lines = sum(item.added + item.removed for item in files)
+    limits = limits_for(changed_lines)
+    coverage = coverage_items(brief)
     session = None
     planner: dict[str, Any] = {"ms": 0, "tokens": 0, "repairs": 0, "status": "replayed" if program is not None else "ok"}
     out: dict[str, Any] = {"findings": [], "dropped": [], "generic": [], "records": [], "stats": None, "assurance": [],
                            "repo": repo, "brief": brief, "program": None, "fallback": None, "diff_cut": False,
                            "planner": planner, "tests": {"enabled": tests is not None, "mechanism": None, "note": None, "runs": []},
-                           "refuted": 0}
+                           "refuted": 0, "uncovered": [], "coverage": coverage, "limits": limits}
     try:
         started = deep.start_tests(repo, files, tests, brief, root=root, rev=rev, clock=clock)
         session = started["session"]
@@ -1235,13 +1337,13 @@ async def run_compiled(frames: Any, files: list[FileDiff], read_file: Callable[[
         runners, unavailable = runner_availability(session)
         views, cut = planner_views(
             diff_text, brief.text, context=context, intent=intent, guidance=guidance, tests_block=deep.tests_block(started),
-            runners=runners, tests_allowed=tests_allowed,
+            runners=runners, tests_allowed=tests_allowed, coverage=coverage, limits=limits,
             runs_left=max(0, session.limit - len(session.records)) if session is not None else 0)
         out["diff_cut"] = cut
         validated: Program | None = None
         errors: list[str] = []
         if program is not None:
-            validated, errors = validate(program)
+            validated, errors = validate(program, coverage, limits[0])
             if validated is None:
                 out["fallback"] = "the given program is invalid: " + "; ".join(errors[:4])
         else:
@@ -1257,7 +1359,7 @@ async def run_compiled(frames: Any, files: list[FileDiff], read_file: Callable[[
                     out["fallback"] = f"the planner frame failed ({_text(why, 160)})"
                     planner["status"] = "failed"
                     break
-                validated, errors = validate(reply)
+                validated, errors = validate(reply, coverage, limits[0])
                 if validated is not None:
                     break
                 if attempt == 0:
@@ -1275,14 +1377,21 @@ async def run_compiled(frames: Any, files: list[FileDiff], read_file: Callable[[
                 json.dump(out["program"], handle, indent=1)
         interpreter = Interpreter(validated, repo, frames=frames, session=session, diff_lines=diff_lines, ask_model=ask_model,
                                   ask_thinking=ask_thinking, cutoff=cutoff, clock=clock, cap=cap, to_level=to_level,
-                                  enrich=enrich, generic=generic, unavailable=unavailable)
+                                  enrich=enrich, generic=generic, unavailable=unavailable, max_steps=limits[1])
         await interpreter.run()
+        by_id = {item["id"]: item for item in coverage}
+        for item in validated.uncovered:
+            cid, _, why = item.partition(":")
+            text = by_id.get(cid.strip(), {}).get("text", cid.strip())
+            out["uncovered"].append(f"{cid.strip()} ({text})" + (f": {why.strip()}" if why.strip() else ""))
         out["findings"] += interpreter.findings
         out["dropped"] = interpreter.dropped
         out["generic"] = interpreter.generic_dropped
         out["records"] = interpreter.records
         out["refuted"] = interpreter.refuted
-        out["stats"] = {**interpreter.stats(), "planner": planner, "summary": validated.summary}
+        out["stats"] = {**interpreter.stats(), "planner": planner, "summary": validated.summary,
+                        "coverage": {"items": len(coverage), "covered": len(coverage) - len(validated.uncovered),
+                                     "uncovered": [item.split(":", 1)[0].strip() for item in validated.uncovered]}}
         out["assurance"] = interpreter.assurance()
         runs = list(session.records) if session is not None else []
         out["tests"]["runs"] = [{key: value for key, value in record.items() if key != "output"} | {"output": record["output"][-600:]}

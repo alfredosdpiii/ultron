@@ -257,16 +257,25 @@ flow; the expensive reasoning happens once, up front; execution is cheap, parall
    other asserts and asks; each carries `expect`, the value the planner believes it will have, and may carry the
    sentence that holds when it is true) and `finding` (emitted when its `when` condition holds: file, line, level,
    category, claim, why, fix, scenario, `unpinned` or `consequence` where the category requires them, and
-   `evidence`: the steps whose results prove it, plus citations the host checks at their line). Limits: 80 steps
-   as written, 120 after expansion, 40 asks, the test executions as configured.
-4. **Validation and fallback.** The program is checked against the language before anything runs: ids,
-   references, cycles, ops, predicates, bounds, and that every finding rests on an ask, a test run or an
+   `evidence`: the steps whose results prove it, plus citations the host checks at their line). Every step may name
+   the coverage items it checks in `covers`; the program may list items it could not check in `uncovered`.
+   Limits: 80 steps as written and 120 after expansion (120 and 200 for a diff of more than 100 changed lines),
+   40 asks, the test executions as configured.
+4. **Coverage.** From the map, the host lists what the program must cover, each with an id: the references of
+   every changed signature or exported name (`S1`...), the siblings and consumers of every new config key, field,
+   flag or environment variable (`K1`...: the family it joins, such as the registry list its siblings are in), and
+   every claim of the change (`C1`...). A symbol or key counts as covered by a step that names it; a claim must be
+   named in a step's `covers`. Items neither covered nor declared in `uncovered` ("K2: why") are validation errors
+   the repair round asks for; declared items are listed in the body under "Not checked" ("The review program left
+   uncovered: ...").
+5. **Validation and fallback.** The program is checked against the language before anything runs: ids,
+   references, cycles, ops, predicates, bounds, coverage, and that every finding rests on an ask, a test run or an
    exact-count presence check (a finding grounded only in a capped grep or a read is refused). A bad program gets
    one repair round with the validator's errors; a program still bad, a planner that fails, or an invalid saved
    program make the review fall back to the `both` mode, and the summary says so. Independent steps run
    concurrently (asks under `frameConcurrency`); every step's input, output, duration and tokens are recorded
    (`--json`: `program.steps`).
-5. **Three-valued checks.** An assert is true, false or *unknown*: unknown when the step it reads could not run or
+6. **Three-valued checks.** An assert is true, false or *unknown*: unknown when the step it reads could not run or
    was skipped, when a count was cut at its cap (a capped count is a lower bound: `count >= 1` over a cut list is
    decided, `count == 20` is not), or when it looks for text in a truncated result. A test step for a runner the
    automatic run found unavailable is `could_not_run` at once, without a second 70-second attempt. A finding whose
@@ -276,8 +285,11 @@ flow; the expensive reasoning happens once, up front; execution is cheap, parall
    same happens when a deterministic check contradicts the planner's `expect` (it expected no `always()` in the
    file and the file has three): the host does not conclude on its own, it asks with the actual hits attached. The
    step record says so (`resolved: "ask"`, the answer), and `program.checks` counts the asserts that held, failed,
-   were unknown or contradicted the plan.
-6. **Findings.** A finding whose condition and evidence are deterministic and came out as expected (a test run, a
+   were unknown or contradicted the plan. Every finding step ends in exactly one place: emitted (then posted,
+   counted, rejected or merged by the existing pipeline), dropped with its reason (`dropped.*`), or not emitted
+   with its gate value (`program.findings.notEmitted`: gate false, undecided, the small model said no or unclear);
+   the step's output says which (`gate false`, `gate unknown -> ask: no`, `finding emitted`).
+7. **Findings.** A finding whose condition and evidence are deterministic and came out as expected (a test run, a
    mutation, an exact count, citations the host checked) is confirmed by that evidence and does not go to the
    verifier: the evidence is machine-produced and reproducible, and the judgement that it means a defect was made
    once, by the strong model, with the whole change in view. Critical and high stand only when a run showed the

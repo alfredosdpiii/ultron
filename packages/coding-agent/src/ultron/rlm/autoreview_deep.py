@@ -423,6 +423,9 @@ _INPUT_HINT = re.compile(r"\bre\.|regex|RegExp|\.match\(|\.test\(|\.search\(|par
 _REQUEST_INPUT = re.compile(r"""\b(?:request|req|ctx)\.(?:args|form|json|GET|POST|params|query|body|headers|data)"""
                             r"""(?:\.get\(\s*|\[\s*|\.)["']?([A-Za-z_][A-Za-z0-9_]{2,})""")
 _CONFIG_KEY = re.compile(r"""^\s*-?\s*["']?([A-Za-z_][A-Za-z0-9_.-]{2,})["']?\s*[:=]""")
+#: A field or key declared in code (`key: 'metrics_ingress_cidrs'`, `name: "x"`): a member of a family whose
+#: siblings and consumers must be checked.
+_FIELD = re.compile(r"""^\s*\{?\s*(?:key|name|field|flag|option)\s*[:=]\s*["']([A-Za-z_][A-Za-z0-9_.-]{2,})["']""")
 _CONFIG_FILE = re.compile(r"\.(ya?ml|toml|ini|cfg|env|properties|json|tf)$|(^|/)\.env", re.I)
 _WORD = re.compile(r"`([^`]{2,60})`|\b([A-Za-z_][A-Za-z0-9_]{3,})\b")
 _RISK = re.compile(r"auth|token|password|passwd|secret|credential|permission|role|session|cookie|sql|query\(|execute\("
@@ -455,7 +458,7 @@ def _add(items: list[Any], item: Any, limit: int) -> None:
 def extract(files: list[FileDiff], read_file: Callable[[str], list[str] | None]) -> dict[str, list[Any]]:
     """What the diff defines, changes, calls and claims: names worth following into the repository."""
     out: dict[str, list[Any]] = {"defined": [], "changed": [], "calls": [], "constants": [], "env": [], "flags": [],
-                                 "tables": [], "claims": [], "inputs": [], "config": []}
+                                 "tables": [], "claims": [], "inputs": [], "config": [], "fields": []}
     for item in files:
         if skip_reason(item):
             continue
@@ -490,6 +493,9 @@ def extract(files: list[FileDiff], read_file: Callable[[str], list[str] | None])
                 match = _CONSTANT.match(text)
                 if match:
                     _add(out["constants"], match.group(1), 10)
+                match = _FIELD.match(text)
+                if match:
+                    _add(out["fields"], match.group(1), 8)
                 for name in _CALL.findall(text):
                     if name not in _COMMON:
                         _add(out["calls"], name, 16)

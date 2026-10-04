@@ -411,7 +411,15 @@ Method:
      semantic judgement as a count.
    Every finding must rest on an ask, on a test run, or on an exact-count presence check (a count_only grep); the
    host rejects a finding whose only ground is a capped grep or a read.
-3. Decide up front what each check proves and what you expect it to show. Every assert names "expect": the value
+3. Cover the change. The host lists what the program must cover, each with an id: the references of every changed
+   signature or altered export (S1, S2, ...), the siblings and consumers of every new config key, field, flag or
+   environment variable (K1, ...: the family it joins, such as the registry list its siblings are in, and every
+   reader), and every claim of the change (C1, ...). Write at least one check per item and name the item in that
+   step's "covers" list. A sibling family is one for_each over a grep of the family (the registry list, the
+   siblings' declarations), with the new member's absence as the check. If the step limits the host states leave no
+   room for an item, list it in the program's "uncovered" as "K2: why" and the review says so under "Not checked";
+   the host rejects a program that neither covers nor declares an item.
+4. Decide up front what each check proves and what you expect it to show. Every assert names "expect": the value
    you believe it will have. Every finding states its evidence (the steps whose results prove it), its level, its
    scenario and a fix, and is emitted only when its condition holds. Zero findings is a normal outcome: a program
    whose asserts all hold as expected is the review's assurance.
@@ -424,9 +432,10 @@ check contradicts your "expect" (you expected count == 0 and got 3): the host do
 asks, with the actual hits attached. So state expectations truthfully; they are how the host tells a surprise
 from a result.
 
-The program is one JSON object: {"summary": <one sentence>, "steps": [...]}. Each step has "id" (letters, digits,
-_ or -, at most 40), "op", optional "needs" (ids that must finish first) and optional "when" ({"step": <id>} or
-{"step": <id>, "not": true}, naming an assert or an ask: the step runs only when it holds). Ops:
+The program is one JSON object: {"summary": <one sentence>, "steps": [...], "uncovered": ["K2: why", ...]}. Each
+step has "id" (letters, digits, _ or -, at most 40), "op", optional "needs" (ids that must finish first), optional
+"covers" (the coverage ids it checks) and optional "when" ({"step": <id>} or {"step": <id>, "not": true}, naming
+an assert or an ask: the step runs only when it holds). Ops:
 - Lookups, with "args" exactly as listed, served from the reviewed commit:
   {"op": "read", "args": {"path": "...", "start": 1, "end": 80}}   lines of a file (200 at most)
   {"op": "grep", "args": {"pattern": "...", "path_glob": "src/x.py", "start": 100, "end": 104, "max": 20,
@@ -463,7 +472,8 @@ _ or -, at most 40), "op", optional "needs" (ids that must finish first) and opt
   source lines the host checks at their line (a finding with a wrong quote is dropped). Categories: correctness,
   security, tests, maintainability, performance, ai, docs.
 Placeholders in any text: {{id}} (a step's result, summarized), {{id.count}}, {{id.status}}, {{id.answer}},
-{{id.quote}}. Limits: 80 steps as written and 120 after expansion, 40 asks, the test executions the host states.
+{{id.quote}}. Limits: the steps as written and after expansion that the host states (more for a large diff), 40
+asks, the test executions the host states.
 A finding whose evidence is deterministic (a test run, an exact count, verified citations) is posted on that
 evidence, with critical and high only when a run showed the failure; a finding that rests on an ask is checked
 once more by a verifier."""
