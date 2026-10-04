@@ -70,6 +70,7 @@ import { initTheme, setThemeJsonValidator, stopThemeWatcher } from "./modes/inte
 import { validateThemeJson } from "./modes/interactive/theme/theme-json.ts";
 import { runNativeUltronCommand } from "./native-command.ts";
 import { handleConfigCommand, handlePackageCommand } from "./package-manager-cli.ts";
+import { loadAutoreviewCommand } from "./ultron/autoreview/cli.lazy.ts";
 import { runMigrationCommand } from "./ultron/migration-cli.ts";
 import { exportNativeSessionFile, isNativeSessionFile } from "./ultron/native-export.ts";
 import { runUsageCommand } from "./ultron/usage-cli.ts";
@@ -606,6 +607,13 @@ export async function main(args: string[], options?: MainOptions) {
 	// `ultron usage`: the session report, read from session files (no server, no model).
 	if (await runUsageCommand(args)) {
 		process.exit(process.exitCode ?? 0);
+		return;
+	}
+
+	// `ultron autoreview`: the automated pull-request reviewer (loaded only for this command).
+	if (args[0] === "autoreview") {
+		const { runAutoreviewMain } = await loadAutoreviewCommand();
+		process.exit(await runAutoreviewMain(args.slice(1)));
 		return;
 	}
 

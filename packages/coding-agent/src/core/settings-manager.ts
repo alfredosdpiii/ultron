@@ -170,6 +170,7 @@ export interface Settings {
 	rlm?: RlmModelSettings; // Ultron: models of RLM frames and sub-agents (/settings → Models); global only
 	worktrees?: WorktreeSettings; // Ultron: how `rlm.spawn(..., worktree=True)` prepares a sub-agent's worktree
 	review?: ReviewSettings; // Ultron: /review (/settings → Models); global only
+	autoreview?: AutoreviewSettings; // Ultron: `ultron autoreview`, the automated pull-request reviewer; global only
 }
 
 /** A `provider/model` reference, as `--model`, `model=` and ULTRON_*_MODEL take it. */
@@ -199,6 +200,35 @@ export interface RlmModelSettings {
 export interface ReviewSettings {
 	/** `provider/model` of /review frames; `--model` and ULTRON_REVIEW_MODEL override it; unset, `rlm.frameModel`. */
 	model?: string;
+}
+
+/**
+ * `ultron autoreview`: automated pull-request reviews under the logged-in `gh` accounts. Global only: a repository
+ * under review must not be able to change how it is reviewed. Defaults are in ultron/autoreview/config.ts.
+ */
+export interface AutoreviewSettings {
+	/** Logins to review as; unset, every account `gh auth status` lists. */
+	accounts?: string[];
+	/** Seconds between discovery polls (default 45, minimum 20). */
+	pollSeconds?: number;
+	/** Pull requests reviewed at once (default 3). */
+	concurrency?: number;
+	/** `provider/model` of the finder frames; unset: `review.model`, then `rlm.frameModel`, then the default model. */
+	model?: string;
+	/** `provider/model` of the verifier frames; unset: the finder model. */
+	verifyModel?: string;
+	/** Token cap of one review (default 300000). */
+	budget?: number;
+	/** Write the would-be review to `<agentDir>/autoreview/dry-run/` instead of posting it (default false). */
+	dryRun?: boolean;
+	/** Post a short comment when a review starts (default true). */
+	ack?: boolean;
+	/** The lines one is picked from for that comment. */
+	ackLines?: string[];
+	/** Text appended to that comment inside a fenced code block (an ASCII-art banner; default none). */
+	ackArt?: string;
+	/** End the review summary with "Automated review by Ultron" (default true). */
+	signature?: boolean;
 }
 
 /**
@@ -1268,6 +1298,43 @@ export class SettingsManager {
 		this.globalSettings.review = { ...current, model };
 		this.markModified("review", "model");
 		this.save();
+	}
+
+	/** Ultron: `ultron autoreview` settings as saved, invalid values dropped. Global only. */
+	getAutoreviewSettings(): AutoreviewSettings {
+		const configured = this.globalSettings.autoreview;
+		if (!isMergeableObject(configured)) return {};
+		const strings = (value: unknown): string[] | undefined => {
+			if (!Array.isArray(value)) return undefined;
+			const items = value.filter((item): item is string => typeof item === "string" && item.trim() !== "");
+			return items.length === 0 ? undefined : items.map((item) => item.trim());
+		};
+		const count = (value: unknown): number | undefined =>
+			typeof value === "number" && Number.isFinite(value) && value > 0 ? Math.floor(value) : undefined;
+		const flag = (value: unknown): boolean | undefined => (typeof value === "boolean" ? value : undefined);
+		const out: AutoreviewSettings = {};
+		const accounts = strings(configured.accounts);
+		if (accounts !== undefined) out.accounts = accounts;
+		const pollSeconds = count(configured.pollSeconds);
+		if (pollSeconds !== undefined) out.pollSeconds = pollSeconds;
+		const concurrency = count(configured.concurrency);
+		if (concurrency !== undefined) out.concurrency = concurrency;
+		const model = modelRef(configured.model);
+		if (model !== undefined) out.model = model;
+		const verifyModel = modelRef(configured.verifyModel);
+		if (verifyModel !== undefined) out.verifyModel = verifyModel;
+		const budget = count(configured.budget);
+		if (budget !== undefined) out.budget = budget;
+		const dryRun = flag(configured.dryRun);
+		if (dryRun !== undefined) out.dryRun = dryRun;
+		const ack = flag(configured.ack);
+		if (ack !== undefined) out.ack = ack;
+		const ackLines = strings(configured.ackLines);
+		if (ackLines !== undefined) out.ackLines = ackLines;
+		if (typeof configured.ackArt === "string" && configured.ackArt.trim() !== "") out.ackArt = configured.ackArt;
+		const signature = flag(configured.signature);
+		if (signature !== undefined) out.signature = signature;
+		return out;
 	}
 
 	/** Ultron: the built-in Loki guardrail settings. Global only, so a repository cannot turn its own checks off. */
