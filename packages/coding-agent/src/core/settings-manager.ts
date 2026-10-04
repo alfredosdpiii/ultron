@@ -253,6 +253,17 @@ export interface AutoreviewSettings {
 	testTimeoutSeconds?: number;
 	/** `owner/repo` -> directory of a pre-built environment (a virtualenv, a node_modules) bound read-only into the sandbox. */
 	testEnv?: Record<string, string>;
+	/**
+	 * Directories that hold local checkouts (`<root>/<repo>`). When one is the reviewed repository (its git remote
+	 * is checked), its prepared environments (`.venv`, `venv`, `node_modules`) are bound read-only into the test
+	 * sandbox. Nothing else of the checkout is ever used.
+	 */
+	checkoutRoots?: string[];
+	/**
+	 * Private review guides: markdown files, or directories of them. Their content (bounded) guides the review's
+	 * frames; it is never quoted, named or referred to in anything posted.
+	 */
+	guides?: string[];
 	/** A local Docker image for the sandbox when neither bubblewrap nor unshare is available. */
 	testImage?: string;
 	/** Seconds a review may take: at the deadline unfinished passes are given up and the rest is posted (default 0: none, the review waits for every frame). */
@@ -1408,6 +1419,10 @@ export class SettingsManager {
 				if (typeof dir === "string" && dir.trim() !== "") testEnv[repo.toLowerCase()] = dir.trim();
 			if (Object.keys(testEnv).length > 0) out.testEnv = testEnv;
 		}
+		const checkoutRoots = strings(configured.checkoutRoots);
+		if (checkoutRoots !== undefined) out.checkoutRoots = checkoutRoots;
+		const guides = strings(configured.guides);
+		if (guides !== undefined) out.guides = guides;
 		if (typeof configured.testImage === "string" && configured.testImage.trim() !== "")
 			out.testImage = configured.testImage.trim();
 		const dryRun = flag(configured.dryRun);

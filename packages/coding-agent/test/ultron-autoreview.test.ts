@@ -20,7 +20,7 @@ import { SettingsManager } from "../src/core/settings-manager.ts";
 import { logoText } from "../src/experimental/ultron-logo.ts";
 import { listAccounts, parseAuthStatus, TokenStore } from "../src/ultron/autoreview/accounts.ts";
 import { CheckoutManager } from "../src/ultron/autoreview/checkout.ts";
-import { parseAutoreviewArgs, runAutoreviewCommand } from "../src/ultron/autoreview/cli.ts";
+import { offlineJson, parseAutoreviewArgs, runAutoreviewCommand } from "../src/ultron/autoreview/cli.ts";
 import {
 	autoreviewPaths,
 	DEFAULT_ACK_LINES,
@@ -32,6 +32,13 @@ import {
 } from "../src/ultron/autoreview/config.ts";
 import { blockedPulls, createLogger, Daemon, pruneOld } from "../src/ultron/autoreview/daemon.ts";
 import { GitHub, parseApiOutput, parsePullTarget, RateLimitError } from "../src/ultron/autoreview/github.ts";
+import {
+	expandPath,
+	findCheckout,
+	guideMentions,
+	remoteMatches,
+	withoutGuideMentions,
+} from "../src/ultron/autoreview/local.ts";
 import {
 	commentText,
 	decideVerdict,
@@ -53,6 +60,7 @@ import {
 	type ReviewerDeps,
 	reviewPull,
 } from "../src/ultron/autoreview/reviewer.ts";
+import type { Runner } from "../src/ultron/autoreview/runner.ts";
 import { serviceFile } from "../src/ultron/autoreview/service.ts";
 import { acquireDaemonLock, DaemonRunningError, StateStore } from "../src/ultron/autoreview/state.ts";
 import type { EngineFinding } from "../src/ultron/autoreview/types.ts";
@@ -810,6 +818,225 @@ describe("running the reviewed project's tests", () => {
 	});
 });
 
+describe("the offline JSON says what the poster would do with each finding", () => {
+	test("posted and rank follow the same ranking and cap as the plan; unclear findings are only counted", () => {
+		const at = (line: number, level: EngineFinding["level"], extra: Partial<EngineFinding> = {}): EngineFinding => ({
+			...MAJOR,
+			line,
+			level,
+			replacement: undefined,
+			claim: `finding at ${line}`,
+			...extra,
+		});
+		const result = engineResult({
+			findings: [
+				at(1, "low"),
+				at(2, "high"),
+				at(60, "medium", { strength: "outside" }),
+				at(3, "medium"),
+				at(4, "nit"),
+				at(5, "medium", { verification: "uncertain", unclear: true }),
+				at(6, "low", {
+					strength: "test",
+					unpinned: { behaviour: "b", change: "c", closestTest: null, proof: "proven" },
+				}),
+			],
+			dropped: { rejected: 2, duplicates: 1, generic: 4, refutedByTest: 1 },
+		});
+		const json = offlineJson(result, 10, "medium", 2) as {
+			verdict: string;
+			findings: Array<{ line: number; posted: string; rank: number | null; unclear?: boolean; unpinned?: unknown }>;
+			dropped: Record<string, number>;
+		};
+		const plan = planReview(result, {
+			selfAuthored: false,
+			state: "open",
+			headSha: HEAD,
+			signature: false,
+			blockAt: "medium",
+			maxComments: 2,
+		});
+		expect(json.findings.map((finding) => [finding.line, finding.posted, finding.rank])).toEqual([
+			[1, "counted", 5],
+			[2, "inline", 1],
+			// Proven beyond the diff but on a line outside it: named in the body.
+			[60, "body", 2],
+			// Blocking but past the cap of two inline comments: named in the body.
+			[3, "body", 4],
+			[4, "counted", 6],
+			// Unclear: never posted, no rank, and it does not block.
+			[5, "counted", null],
+			[6, "inline", 3],
+		]);
+		// The same answer as the plan.
+		expect(
+			json.findings
+				.filter((finding) => finding.posted === "inline")
+				.map((finding) => finding.line)
+				.sort(),
+		).toEqual(plan.comments.map((comment) => comment.line).sort());
+		expect(json.findings[5]!.unclear).toBe(true);
+		expect(json.findings[6]!.unpinned).toMatchObject({ proof: "proven" });
+		expect(json.verdict).toBe("request_changes");
+		expect(json.dropped).toEqual({ rejected: 2, duplicates: 1, generic: 4, refutedByTest: 1 });
+		expect(plan.body).toContain("1 unconfirmed");
+		// With the threshold at critical nothing blocks, and the unclear finding still does not count.
+		expect((offlineJson(result, 10, "critical", 3) as { verdict: string }).verdict).toBe("approve");
+	});
+});
+
+describe("what the review takes from this machine", () => {
+	test("a local checkout counts only when its git remote is the reviewed repository", async () => {
+		expect(remoteMatches("https://github.com/o/r.git", REF)).toBe(true);
+		expect(remoteMatches("https://token@github.com/O/R", REF)).toBe(true);
+		expect(remoteMatches("git@github.com:o/r.git", REF)).toBe(true);
+		expect(remoteMatches("ssh://git@github.com:22/o/r", REF)).toBe(true);
+		expect(remoteMatches("https://github.com/o/r-fork.git", REF)).toBe(false);
+		expect(remoteMatches("https://github.com/someone/r.git", REF)).toBe(false);
+		expect(remoteMatches("https://gitlab.com/o/r.git", REF)).toBe(false);
+		expect(remoteMatches("not a url", REF)).toBe(false);
+
+		const roots = mkdtempSync(join(tmpdir(), "ultron-autoreview-roots-"));
+		dirs.push(roots);
+		for (const name of ["a/r/.git", "b/r/.git", "b/other"]) mkdirSync(join(roots, name), { recursive: true });
+		const calls: string[][] = [];
+		const remotes: Record<string, string> = {
+			[join(roots, "a/r")]: "remote.origin.url https://github.com/someone-else/r.git\n",
+			[join(roots, "b/r")]:
+				"remote.origin.url git@github.com:fork/r.git\nremote.upstream.url https://github.com/o/r.git\n",
+		};
+		const runner: Runner = async (argv) => {
+			calls.push([...argv]);
+			return { code: 0, stdout: remotes[argv[2]!] ?? "", stderr: "" };
+		};
+		// The first root holds a different repository of the same name: skipped. The second has it as a remote.
+		expect(await findCheckout(runner, [join(roots, "a"), join(roots, "missing"), join(roots, "b")], REF)).toBe(
+			join(roots, "b/r"),
+		);
+		expect(calls.every((argv) => argv.slice(3).join(" ") === "config --get-regexp ^remote\\..*\\.url$")).toBe(true);
+		expect(await findCheckout(runner, [join(roots, "a")], REF)).toBeUndefined();
+		expect(await findCheckout(runner, [join(roots, "b")], { ...REF, repo: "../x" })).toBeUndefined();
+		expect(await findCheckout(runner, [], REF)).toBeUndefined();
+		expect(expandPath("~/code", "/home/u")).toBe("/home/u/code");
+	});
+
+	test("the engine is told about a matching checkout and the guides; an explicit testEnv wins", async () => {
+		const roots = mkdtempSync(join(tmpdir(), "ultron-autoreview-roots-"));
+		dirs.push(roots);
+		mkdirSync(join(roots, "r/.git"), { recursive: true });
+		const specFor = async (settings: Parameters<typeof resolveConfig>[0], remote: string) => {
+			const context = setup({ settings });
+			context.hub.canPush = true;
+			context.hub.remotes[join(roots, "r")] = `remote.origin.url ${remote}\n`;
+			context.hub.addPull({ ...REF, requestedReviewers: [BOT] });
+			await reviewPull(context.deps, context.candidate());
+			return context.engine.specs[0]!;
+		};
+		const lent = await specFor({ checkoutRoots: [roots], guides: ["/guides"] }, "https://github.com/o/r.git");
+		expect(lent).toMatchObject({ runTests: true, testCheckout: join(roots, "r"), guides: ["/guides"], repo: "o/r" });
+		expect(lent.testEnv).toBeUndefined();
+		// Another repository of that name: not used.
+		expect((await specFor({ checkoutRoots: [roots] }, "https://github.com/x/r.git")).testCheckout).toBeUndefined();
+		const explicit = await specFor(
+			{ checkoutRoots: [roots], testEnv: { "o/r": "/opt/venv" } },
+			"https://github.com/o/r.git",
+		);
+		expect(explicit).toMatchObject({ testEnv: "/opt/venv" });
+		expect(explicit.testCheckout).toBeUndefined();
+		// Tests not allowed: the checkout is not even looked for.
+		expect(
+			(await specFor({ checkoutRoots: [roots], runTests: false }, "https://github.com/o/r.git")).testCheckout,
+		).toBeUndefined();
+		expect(resolveConfig({})).toMatchObject({ checkoutRoots: [], guides: [] });
+		expect(
+			SettingsManager.inMemory({
+				autoreview: { checkoutRoots: ["~/code"], guides: ["~/guides"] },
+			}).getAutoreviewSettings(),
+		).toEqual({ checkoutRoots: ["~/code"], guides: ["~/guides"] });
+	});
+
+	test("nothing that names a private review guide is posted", async () => {
+		const names = ["house-rules.md", "app.md", "/home/u/guides/house-rules.md", "/home/u/guides/more/app.md"];
+		expect(guideMentions("As house-rules.md says, hash the id.", names)).toEqual(["house-rules.md"]);
+		expect(guideMentions("see /home/u/guides/more/app.md", names)).toEqual(["app.md", "/home/u/guides/more/app.md"]);
+		// A longer file name that merely contains one is not a mention; ordinary words are not either.
+		expect(guideMentions("webapp.md and app.mdx are fine; so is the app module.", names)).toEqual([]);
+		const result = engineResult({
+			guideNames: names,
+			findings: [
+				{ ...MAJOR, claim: "The id is logged unhashed, which house-rules.md forbids", replacement: undefined },
+				{ ...MAJOR, line: 5, claim: "The total is wrong", replacement: undefined },
+			],
+			assurance: ["The retry path was checked. It follows the rule in app.md. The tests pin it."],
+		});
+		const plan = planReview(result, { selfAuthored: false, state: "open", headSha: HEAD, signature: true });
+		expect(plan.comments).toHaveLength(2);
+		const checked = withoutGuideMentions(plan, names);
+		// The comment that names the guide is not posted; the sentence of the body that does is removed.
+		expect(checked.plan.comments.map((comment) => comment.line)).toEqual([5]);
+		expect(checked.plan.body).toContain("The retry path was checked. The tests pin it.");
+		expect(guideMentions(checked.plan.body, names)).toEqual([]);
+		expect(checked.plan.comments.every((comment) => guideMentions(comment.body, names).length === 0)).toBe(true);
+		expect(checked.withheld).toEqual(["an inline comment on calc.py:4 (house-rules.md)", "part of the review body"]);
+		expect(withoutGuideMentions(plan, []).plan).toBe(plan);
+
+		// Through the reviewer: what reaches GitHub has no guide name in it, and the log says what was withheld.
+		const context = setup({ engine: new FakeEngine(result) });
+		context.hub.addPull({ ...REF, requestedReviewers: [BOT] });
+		await reviewPull(context.deps, context.candidate());
+		const sent = JSON.stringify(
+			context.hub.api(/^POST repos\/o\/r\/pulls\/1\/(reviews|comments)$/).map((call) => call.body),
+		);
+		expect(sent).not.toMatch(/house-rules|app\.md/);
+		expect(sent).toContain("The total is wrong");
+		expect(context.logs.join("\n")).toContain("withheld an inline comment on calc.py:4 (house-rules.md)");
+	});
+
+	test("doctor --repo shows the local checkout and exactly what would be bound", async () => {
+		const context = setup({ settings: {} });
+		const roots = mkdtempSync(join(tmpdir(), "ultron-autoreview-roots-"));
+		dirs.push(roots);
+		mkdirSync(join(roots, "r/.git"), { recursive: true });
+		mkdirSync(join(context.dir, "agent"), { recursive: true });
+		writeFileSync(
+			join(context.dir, "agent", "settings.json"),
+			JSON.stringify({ autoreview: { checkoutRoots: [roots] } }),
+		);
+		const out: string[] = [];
+		const code = await runAutoreviewCommand(["doctor", "--repo", "o/r"], {
+			agentDir: join(context.dir, "agent"),
+			cwd: context.dir,
+			runner: async (argv) => {
+				if (argv[0] === "git")
+					return { code: 0, stdout: "remote.origin.url https://github.com/o/r.git\n", stderr: "" };
+				if (argv[2] === "environments")
+					return {
+						code: 0,
+						stdout: JSON.stringify([
+							{ path: ".venv", kind: "virtualenv", interpreter: "/home/u/.local/share/uv/python/cpython-3.12" },
+							{ path: "web/node_modules", kind: "node_modules" },
+						]),
+						stderr: "",
+					};
+				return {
+					code: 0,
+					stdout: JSON.stringify({ mechanism: "bwrap", isolation: "bubblewrap", ok: true, selfCheck: {} }),
+					stderr: "",
+				};
+			},
+			io: { stdout: (text) => void out.push(text), stderr: (text) => void out.push(text) },
+		});
+		expect(code).toBe(0);
+		const text = out.join("");
+		expect(text).toContain(`Local checkout of o/r: ${join(roots, "r")}`);
+		expect(text).toContain(
+			"  bound read-only: .venv (virtualenv, with its interpreter /home/u/.local/share/uv/python/cpython-3.12)",
+		);
+		expect(text).toContain("  bound read-only: web/node_modules (node_modules)");
+		expect(text).toContain("  never bound: the checkout's source, .git, .env files");
+	});
+});
+
 describe("reviewing a pull request", () => {
 	test("a requested review: one acknowledgement, then one atomic review with the commit, event, body and comments", async () => {
 		const { hub, deps, candidate, engine, token, paths, logs } = setup({
@@ -1550,19 +1777,15 @@ describe("discovery and the daemon", () => {
 		expect(pulls.map((pull) => pull.issueComments.length)).toEqual([1, 1, 1]);
 		// The order on GitHub: three acknowledgements, then the first review.
 		const posts = hub.api(/^POST repos/).map((call) => call.path.replace("repos/o/r/", ""));
-		expect(posts.slice(0, 4).sort()).toEqual([
-			"issues/1/comments",
-			"issues/2/comments",
-			"issues/3/comments",
-			"pulls/1/reviews",
-		]);
-		expect(posts[3]).toBe("pulls/1/reviews");
+		// (Which pull request is reviewed first depends on which decision finishes first.)
+		expect(posts.slice(0, 3).sort()).toEqual(["issues/1/comments", "issues/2/comments", "issues/3/comments"]);
+		expect(posts[3]).toMatch(/^pulls\/[123]\/reviews$/);
 		const recent = context.deps.store.read().recent;
-		expect(recent[0]).toMatchObject({ pull: "github.com/o/r#1", tagToAckMs: 4_000, ackToPostMs: 50_000 });
+		expect(recent[0]).toMatchObject({ tagToAckMs: 4_000, ackToPostMs: 50_000 });
 		expect(context.logs.join("\n")).toContain(
 			"acknowledged 1111111 (review requested), 4.0 s after the notification",
 		);
-		expect(context.logs.join("\n")).toMatch(/posted APPROVE for 1111111: .* 50\.0 s after the acknowledgement/);
+		expect(context.logs.join("\n")).toMatch(/posted APPROVE for [123]{7}: .* 50\.0 s after the acknowledgement/);
 		const status: string[] = [];
 		await runAutoreviewCommand(["status"], {
 			agentDir: join(context.dir, "agent"),
@@ -1716,6 +1939,26 @@ describe("the command", () => {
 			parseAutoreviewArgs(["review", "--mode", "deep", "--deep-model", "p/d", "--deep-thinking", "high"]),
 		).toMatchObject({ mode: "deep", deepModel: "p/d", deepThinking: "high" });
 		expect(() => parseAutoreviewArgs(["review", "--mode", "thorough"])).toThrow("--mode takes fast, deep or both");
+		expect(
+			parseAutoreviewArgs([
+				"review",
+				"--guides",
+				"/g/a.md, /g/dir",
+				"--checkout-roots",
+				"/code,/work",
+				"--block-at",
+				"high",
+				"--max-comments",
+				"3",
+			]),
+		).toMatchObject({
+			guides: ["/g/a.md", "/g/dir"],
+			checkoutRoots: ["/code", "/work"],
+			blockAt: "high",
+			maxComments: 3,
+		});
+		expect(() => parseAutoreviewArgs(["review", "--block-at", "severe"])).toThrow("--block-at takes one of critical");
+		expect(() => parseAutoreviewArgs(["review", "--max-comments", "many"])).toThrow("whole number");
 		expect(parseAutoreviewArgs([]).help).toBe(true);
 	});
 

@@ -30,7 +30,7 @@ Posting is on by default. `--dry-run` (or the setting `autoreview.dryRun`) write
 | `ultron autoreview run` | The loop: poll every account, review what is due, until stopped. One per agent directory. |
 | `ultron autoreview once` | One poll cycle, review what it finds, then exit. `--json` prints the outcomes. |
 | `ultron autoreview review <owner/repo#N \| URL>` | Review one pull request now, whether or not it was requested. `--account <login>` picks the account (default: the host's active one); `--dry-run`, `--json`. |
-| `ultron autoreview review --repo-dir <dir> --base <sha> --head <sha>` | Review the diff between two commits of a local repository, with no GitHub access. `--json` prints one JSON object on stdout (logs go to stderr); `--mode`, `--model`, `--verify-model`, `--deep-model`, `--budget`, `--thinking`, `--verify-thinking`, `--deep-thinking` and `--deadline` override the settings. |
+| `ultron autoreview review --repo-dir <dir> --base <sha> --head <sha>` | Review the diff between two commits of a local repository, with no GitHub access. `--json` prints one JSON object on stdout (logs go to stderr); `--mode`, `--model`, `--verify-model`, `--deep-model`, `--budget`, `--thinking`, `--verify-thinking`, `--deep-thinking`, `--deadline`, `--block-at`, `--max-comments`, `--guides` and `--checkout-roots` (with `--repo owner/name`) override the settings. |
 | `ultron autoreview doctor` | The sandbox that test execution would use, with a self-check of its isolation. |
 | `ultron autoreview status` | Accounts, last poll, queue, and recent reviews with their timings and cost. `--json` for the raw state. |
 | `ultron autoreview install` / `uninstall` | Write or remove a user service that runs `ultron autoreview run` (see below). |
@@ -141,6 +141,7 @@ reviewed.
 | `autoreview.blockAt` | `"medium"` | A confirmed finding at this level or above makes the review request changes (`critical`, `high`, `medium`, `low`, `nit`). |
 | `autoreview.maxComments` | `5` | Inline comments per review at most; the rest are counted in the body. |
 | `autoreview.deepRounds` | `4` | Lookup rounds one investigator may take (maximum 8). |
+| `autoreview.guides` | none | Private review guides: markdown files or directories. Never quoted or named in what is posted. |
 | `autoreview.budget` | none | Optional token cap of one review. Unset, no pass is refused for tokens. |
 | `autoreview.thinking` | `"low"` | Thinking level of the finder frames (`off`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`). |
 | `autoreview.verifyThinking` | `"low"` | Thinking level of the verifier frames. |
@@ -198,6 +199,14 @@ branch only. The deep pass looks for these.
    bounded lines, hits and bytes per round), answers it, and asks the frame again, for at most
    `autoreview.deepRounds` rounds. An investigator that stops in its first round having looked at fewer than three
    things is sent back once.
+
+   Two traces are mandatory, and the host keeps count. `siblings` must request the references of every function or
+   method whose signature changed and of every exported name the change adds or alters. `claims` must trace every
+   new config field, flag, environment variable and request input from where it enters (UI, request, manifest)
+   through validation, persistence and deploy configuration to where it is read, checking type conversion,
+   behaviour when it is missing, and whether every layer accepts the same values. The map lists these names; an
+   investigator that finishes without having looked one up is sent back once, and a name still not traced is
+   listed under "Not checked".
 3. **Evidence.** Every deep finding cites file and line with the quoted source line. The host checks that each quote
    is at its cited line; a finding with a wrong quote, or with none, is dropped. A finding whose evidence is all
    inside the diff counts like a fast one.
@@ -242,9 +251,21 @@ available". `ultron autoreview doctor` shows the mechanism and runs a self-check
 canary file in your home unreadable, a token-like variable absent).
 
 **No network means no installing.** If the project's dependencies are not on the machine, the tests cannot run;
-the review then says "tests could not run: missing dependencies" and reports no failure. To give a repository its
-dependencies, point `autoreview.testEnv` at a pre-built environment (a virtualenv, a `node_modules` directory); it
-is bound read-only. Nothing is ever installed automatically.
+the review then says "tests could not run: missing dependencies" and reports no failure. Nothing is ever installed
+automatically. Dependencies can come from two places:
+
+- **A local checkout you already have.** List the directories that hold your checkouts in
+  `autoreview.checkoutRoots`. For a repository `owner/name`, `<root>/<name>` is used when one of its git remotes is
+  that repository. Only its prepared environment directories are taken: `.venv` or `venv` (with a python) and
+  `node_modules`, at the root and next to the manifest of the package under test. They are bound read-only at the
+  same place in the exported commit, and the tests run with them (`.venv/bin/python -m pytest`,
+  `node_modules/.bin/vitest`). The checkout's source, its `.git` and its `.env` files are never bound, and nothing
+  is written to it. When the virtualenv's python points at an interpreter outside the system directories (one
+  managed by uv, pyenv or mise under your home), that interpreter's own install directory is bound read-only too,
+  and nothing above it. `ultron autoreview doctor --repo owner/name` shows the checkout found and exactly what
+  would be bound. (This needs bubblewrap or Docker; the `unshare` fallback cannot place binds and runs without.)
+- **An explicit environment.** `autoreview.testEnv` maps a repository to a pre-built environment directory, bound
+  read-only; it takes precedence over a local checkout.
 
 **Eligibility.** Tests run only for repositories the reviewing account can push to, or whose owner is listed in
 `autoreview.testOwners`; elsewhere the deep pass stays read-only. `autoreview.runTests: false` turns it off
@@ -258,7 +279,44 @@ an environment.
 | `autoreview.testRuns` | `6` | Test executions per review. |
 | `autoreview.testTimeoutSeconds` | `300` | Wall-clock limit of one execution. |
 | `autoreview.testEnv` | none | `{"owner/repo": "/path/to/env"}`: pre-built environments, bound read-only. |
+| `autoreview.checkoutRoots` | none | Directories holding local checkouts (`<root>/<name>`) whose prepared environments may be bound read-only. |
 | `autoreview.testImage` | none | A local Docker image, used only when neither bubblewrap nor `unshare` works. |
+
+## Precision rules
+
+Three kinds of finding are held to a stricter shape, because they are where automated reviews are most often wrong.
+
+- **Tests findings must name what is unpinned.** A finding about tests is kept only when it states the behaviour
+  (with its file and line), the one specific change to that code that no test would notice (remove the guard, flip
+  the default, drop the member), and the existing test that comes nearest. "Add coverage", "assert more" or an
+  untested edge case without such a named change is dropped. When the change is a one-line replacement and tests
+  can run, the host runs it itself: if the suite still passes, the finding is proven and the run is its evidence;
+  if a test fails, an existing test does catch it and the finding is dropped; if the tests cannot run, the finding
+  stands on the verifier's reading of the nearest test, which it is shown.
+- **Maintainability findings need a problem that exists now**, with its place: two copies that already disagree, a
+  caller that breaks, a contract a named consumer relies on. "Could drift", "kept in sync by hand", consistency of
+  pins or names, and coupling without a failing consumer are dropped (a nit is only counted).
+- **Stated intent is respected.** The author's own account (title and description, commit messages, comments the
+  diff adds) is given to every frame. A finding that restates a trade-off the author states and explains is
+  rejected unless it shows, with a citation, that the reasoning is wrong.
+
+The verifier can also answer *unclear*: a judgement call the source shows neither right nor wrong. Such a finding
+is never posted and never counts toward the verdict; the body counts it among the unconfirmed.
+
+With `--json`, `dropped` has `generic` and `refutedByTest` beside `rejected` and `duplicates`; a tests finding
+carries `unpinned`; and every finding has `posted` (`inline`, `body` or `counted`: what the poster would do with
+it under `--block-at` and `--max-comments`) and `rank`.
+
+## Private review guides
+
+`autoreview.guides` lists markdown files, or directories of them, with your own guidance for reviews: what matters
+in a codebase, conventions, things to look for. Up to about 12,000 characters are given to the finders, the
+investigators and the verifier, the most specific first: a guide named after the repository, then guides named
+after a language or framework of the change (`python.md`, `react.md`), then the general ones.
+
+The guides are private. The frames are told never to quote them, name them or refer to them, and before anything
+is posted the review text is checked: an inline comment that contains a guide's file name or path is not posted,
+and a sentence of the body that does is removed (the log says what was withheld).
 
 ## Levels
 

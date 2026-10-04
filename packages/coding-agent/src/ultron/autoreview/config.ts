@@ -95,6 +95,10 @@ export interface AutoreviewConfig {
 	/** Lower-cased `owner/repo` -> pre-built environment directory. */
 	readonly testEnv: Readonly<Record<string, string>>;
 	readonly testImage?: string;
+	/** Directories of local checkouts whose prepared environments may serve sandboxed test runs. */
+	readonly checkoutRoots: readonly string[];
+	/** Private review guides: markdown files or directories of them. */
+	readonly guides: readonly string[];
 	/** 0: no deadline. */
 	readonly deadlineSeconds: number;
 	readonly frameTimeoutSeconds: number;
@@ -212,6 +216,8 @@ export function resolveConfig(settings: AutoreviewSettings, fallbacks: ModelFall
 		testRuns: Math.min(MAX_TEST_RUNS, settings.testRuns ?? DEFAULT_TEST_RUNS),
 		testTimeoutSeconds: Math.max(5, settings.testTimeoutSeconds ?? DEFAULT_TEST_TIMEOUT_SECONDS),
 		testEnv: settings.testEnv ?? {},
+		checkoutRoots: settings.checkoutRoots ?? [],
+		guides: settings.guides ?? [],
 		...(settings.testImage === undefined ? {} : { testImage: settings.testImage }),
 		deadlineSeconds:
 			settings.deadlineSeconds === undefined || settings.deadlineSeconds === 0

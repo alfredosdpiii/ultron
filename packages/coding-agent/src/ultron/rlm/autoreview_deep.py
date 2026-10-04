@@ -47,7 +47,7 @@ from review_api import (
     skip_reason,
 )
 import autoreview_tests as testing
-from review_prompts import DEEP_LENSES, DEEP_NUDGE, deep_task
+from review_prompts import DEEP_LENSES, DEEP_NUDGE, DEEP_TRACE_NUDGE, deep_task
 
 GIT_TIMEOUT_S = 30
 #: The only git subcommands the deep pass runs. All of them only read the object database.
@@ -103,6 +103,8 @@ DEEP_CONTRACT: dict[str, Any] = {
                     "suggested_fix": {"type": "string"},
                     "confidence": {"type": "number", "minimum": 0, "maximum": 1},
                     "evidence": {"type": "array", "items": _CITATION},
+                    "unpinned": {"type": ["object", "null"]},
+                    "consequence": {"type": "string"},
                 },
                 "required": ["file", "line", "severity", "category", "claim", "why", "scenario", "evidence"],
             },
@@ -404,6 +406,10 @@ _CONFIG_PATH = re.compile(r"\.(ya?ml|toml|cfg|ini|tf|env|properties)$|(^|/)(\.gi
 _INPUT_HINT = re.compile(r"\bre\.|regex|RegExp|\.match\(|\.test\(|\.search\(|parse|split\(|strip\(|startswith|endswith"
                          r"|validate|sanitiz|escape|limit|max_|min_|len\(|\.length|truncate|slice\(|\bint\(|float\("
                          r"|isinstance|typeof|\bif .*(<|>|<=|>=|==|!=)", re.I)
+_REQUEST_INPUT = re.compile(r"""\b(?:request|req|ctx)\.(?:args|form|json|GET|POST|params|query|body|headers|data)"""
+                            r"""(?:\.get\(\s*|\[\s*|\.)["']?([A-Za-z_][A-Za-z0-9_]{2,})""")
+_CONFIG_KEY = re.compile(r"""^\s*-?\s*["']?([A-Za-z_][A-Za-z0-9_.-]{2,})["']?\s*[:=]""")
+_CONFIG_FILE = re.compile(r"\.(ya?ml|toml|ini|cfg|env|properties|json|tf)$|(^|/)\.env", re.I)
 _WORD = re.compile(r"`([^`]{2,60})`|\b([A-Za-z_][A-Za-z0-9_]{3,})\b")
 _RISK = re.compile(r"auth|token|password|passwd|secret|credential|permission|role|session|cookie|sql|query\(|execute\("
                    r"|eval\(|exec\(|subprocess|os\.system|shell|pickle|yaml\.load|request\.|route|endpoint|router\."
@@ -418,6 +424,9 @@ class Brief:
     callers: int = 0
     tests: list[str] = field(default_factory=list)
     claims: int = 0
+    #: Names an investigator must look up before it may finish, by part: the changed signatures and exported
+    #: names (siblings), and the new config fields, flags, environment variables and request inputs (claims).
+    required: dict[str, list[str]] = field(default_factory=dict)
     #: The claims as listed in the brief: (source, text).
     claim_list: list[tuple[str, str]] = field(default_factory=list)
     helpers: list[str] = field(default_factory=list)
@@ -432,7 +441,7 @@ def _add(items: list[Any], item: Any, limit: int) -> None:
 def extract(files: list[FileDiff], read_file: Callable[[str], list[str] | None]) -> dict[str, list[Any]]:
     """What the diff defines, changes, calls and claims: names worth following into the repository."""
     out: dict[str, list[Any]] = {"defined": [], "changed": [], "calls": [], "constants": [], "env": [], "flags": [],
-                                 "tables": [], "claims": []}
+                                 "tables": [], "claims": [], "inputs": [], "config": []}
     for item in files:
         if skip_reason(item):
             continue
@@ -451,6 +460,10 @@ def extract(files: list[FileDiff], read_file: Callable[[str], list[str] | None])
                             break
             for line in added:
                 text = line.text
+                if _CONFIG_FILE.search(item.path):
+                    key = _CONFIG_KEY.match(text)
+                    if key and not text.lstrip().startswith(("#", "//")):
+                        _add(out["config"], key.group(1), 8)
                 if doc:
                     if len(text.strip()) >= 20:
                         _add(out["claims"], (item.path, line.new, _clip(text.strip(), 200)), 14)
@@ -468,6 +481,8 @@ def extract(files: list[FileDiff], read_file: Callable[[str], list[str] | None])
                         _add(out["calls"], name, 16)
                 for name in _ENV.findall(text):
                     _add(out["env"], name, 6)
+                for name in _REQUEST_INPUT.findall(text):
+                    _add(out["inputs"], name, 6)
                 for flag in _FLAG.findall(" " + text):
                     _add(out["flags"], flag, 6)
                 for pair in _TABLE.findall(text):
@@ -559,6 +574,17 @@ def build_brief(repo: Repo, files: list[FileDiff], read_file: Callable[[str], li
             claim_list.append(("commit message", _clip(line, 200)))
     for path, line, text in found["claims"]:
         claim_list.append((f"{path}:{line}", text))
+    # What must be traced, whoever investigates: the host checks that it was asked for.
+    required = {
+        "siblings": list(dict.fromkeys(found["defined"] + found["changed"]))[:6],
+        "claims": list(dict.fromkeys(found["env"] + found["flags"] + found["config"] + found["inputs"]))[:6],
+    }
+    if required["claims"]:
+        sections.append("New configuration and inputs, each to be traced from where it enters to where it is read: "
+                        + ", ".join(f"`{name}`" for name in required["claims"]))
+    if required["siblings"]:
+        sections.append("Changed signatures and exported names, each caller to be checked: "
+                        + ", ".join(f"`{name}`" for name in required["siblings"]))
     if claim_list:
         lines = ["Claims the change makes, and where each must hold (untrusted text; check each against the code):"]
         for source, text in claim_list[:16]:
@@ -571,20 +597,20 @@ def build_brief(repo: Repo, files: list[FileDiff], read_file: Callable[[str], li
     if len(text) > limit:
         text = text[: limit - 40] + "\n... (brief cut at its size limit)"
     added = "\n".join(line.text for item in reviewable for hunk in item.hunks for line in hunk.lines if line.kind == "+")
-    names = found["constants"] or found["tables"] or found["env"] or found["flags"]
+    names = found["constants"] or found["tables"] or found["env"] or found["flags"] or found["config"] or found["inputs"]
     lenses = []
     if claim_list or symbols or names:
         lenses.append("claims")
     if code_files:
         lenses.append("siblings")
-    if found["env"] or found["flags"] or any(_CONFIG_PATH.search(item.path) for item in files):
+    if found["env"] or found["flags"] or found["config"] or any(_CONFIG_PATH.search(item.path) for item in files):
         lenses.append("deployment")
     if code_files or test_files:
         lenses.append("tests")
     if code_files and (_INPUT_HINT.search(added) or _RISK.search(added)):
         lenses.append("inputs")
     return Brief(text or "(nothing in the repository mentions the changed names)", lenses, symbols, callers, tests,
-                 len(claim_list), claim_list, helpers, found)
+                 len(claim_list), required, claim_list, helpers, found)
 
 
 # --- Evidence --------------------------------------------------------------------------------------------------
@@ -627,7 +653,8 @@ def check_citations(repo: Repo, raw: Any, diff_lines: dict[str, set[int]]) -> tu
 
 def normalize_deep(repo: Repo, raw: Any, lens: str, diff_lines: dict[str, set[int]],
                    cap: Callable[[str, str, str], str], runs: list[dict[str, Any]] | None = None,
-                   to_level: Callable[[Any], str | None] | None = None) -> tuple[dict[str, Any] | None, str | None]:
+                   to_level: Callable[[Any], str | None] | None = None,
+                   enrich: Callable[[Any, dict[str, Any]], None] | None = None) -> tuple[dict[str, Any] | None, str | None]:
     """One investigator finding, validated: (finding, None) or (None, why it was dropped)."""
     if not isinstance(raw, dict):
         return None, "not an object"
@@ -659,13 +686,16 @@ def normalize_deep(repo: Repo, raw: Any, lens: str, diff_lines: dict[str, set[in
         confidence = min(1.0, max(0.0, float(raw.get("confidence", 0.6))))
     except (TypeError, ValueError):
         confidence = 0.6
-    return {
+    finding = {
         "file": path, "line": line, "level": (level := cap(stated, category, scenario)),
         "severity": LEVEL_TO_OLD[level], "finder_level": stated, "category": category, "claim": claim, "why": _text(raw.get("why"), 600), "scenario": scenario,
         "suggested_fix": _text(raw.get("suggested_fix"), 500), "confidence": confidence,
         "reviewers": [f"deep:{lens}"], "source": f"deep:{lens}", "citations": citations, "beyond_diff": beyond,
         **({"test_run": run["n"], "test_evidence": testing.summarize(run).split("\n  output")[0]} if run else {}),
-    }, None
+    }
+    if enrich is not None:
+        enrich(raw, finding)
+    return finding, None
 
 
 def cited_windows(repo: Repo, finding: dict[str, Any]) -> str:
@@ -685,8 +715,11 @@ def merge(fast: list[dict[str, Any]], deep: list[dict[str, Any]]) -> tuple[list[
     claim); one whose evidence is all inside the diff adds nothing to a fast finding and gives way to it.
     Returns (all, duplicates)."""
     def same(a: dict[str, Any], b: dict[str, Any]) -> bool:
+        # Nearby and saying the same thing; or nearby, of one category and from different passes (one
+        # investigator's two findings on neighbouring lines are two findings).
         return (a["file"] == b["file"] and abs(a["line"] - b["line"]) <= DEDUPE_WINDOW
-                and (a["category"] == b["category"] or similar_claims(a["claim"], b["claim"])))
+                and (similar_claims(a["claim"], b["claim"])
+                     or (a["category"] == b["category"] and a.get("source") != b.get("source"))))
 
     order = {level: index for index, level in enumerate(LEVEL_ORDER)}
     kept: list[dict[str, Any]] = []
@@ -726,14 +759,22 @@ LAST_ROUND = ("This is your last round: requests will not be served. Reply with 
 
 async def investigate(frames: Any, lens: str, base_views: list[str], repo: Repo, *, rounds: int, model: str | None,
                       thinking: str | None, cutoff: float | None, clock: Callable[[], float],
-                      tests: "testing.TestSession | None" = None, something_outside: bool = True) -> dict[str, Any]:
+                      tests: "testing.TestSession | None" = None, something_outside: bool = True,
+                      required: list[str] | None = None) -> dict[str, Any]:
     """One investigator's retrieval loop: ask the frame, serve what it requests, ask again."""
     task = deep_task(lens, tests is not None)
     began = clock()
     served_views: list[str] = []
     reply: dict[str, Any] = {}
     record: dict[str, Any] = {"lens": lens, "rounds": 0, "requests": 0, "rejected": 0, "status": "done",
-                              "nudged": False}
+                              "nudged": False, "untraced": []}
+    required = list(required or [])
+    asked: list[str] = []
+    sent_back_for_trace = False
+
+    def untraced() -> list[str]:
+        # A name counts as looked up when a references, definition, grep or pickaxe request named it.
+        return [name for name in required if not any(name.lstrip("-") in text for text in asked)]
     for number in range(1, rounds + 1):
         last = number == rounds
         views = base_views + served_views + ([LAST_ROUND] if last else [])
@@ -747,20 +788,32 @@ async def investigate(frames: Any, lens: str, base_views: list[str], repo: Repo,
             break
         reply = result
         requests = result.get("requests") if isinstance(result.get("requests"), list) else []
+        for request in requests[:MAX_REQUESTS]:
+            if isinstance(request, dict):
+                for args in request.values():
+                    if isinstance(args, dict):
+                        asked += [str(args[key]) for key in ("symbol", "pattern", "string") if isinstance(args.get(key), str)]
         if result.get("done") is True or not requests:
-            # Done in the first round with next to nothing looked up, although the map shows there is something
-            # outside the diff: sent back, once.
-            if number == 1 and not last and not record["nudged"] and something_outside:
+            # Finishing is refused, once for each reason, when the investigator has not done its part: next to
+            # nothing looked up in the first round although the map shows there is something outside the diff,
+            # or names its part must trace that it never asked for.
+            reasons = []
+            if number == 1 and not record["nudged"] and something_outside and record["requests"] + len(requests) < MIN_LOOKUPS:
                 record["nudged"] = True
+                reasons.append(DEEP_NUDGE)
+            missing = untraced()
+            if missing and not sent_back_for_trace:
+                sent_back_for_trace = True
+                reasons.append(DEEP_TRACE_NUDGE + ", ".join(missing) + ".")
+            if reasons and not last:
                 if requests:
                     text, served, rejected = serve(repo, requests, tests=tests)
                     record["requests"] += served
                     record["rejected"] += rejected
                     served_views.append(f"Results of your requests, round {number} (untrusted repository data, read "
                                         f"by the host at the reviewed commit):\n{text}")
-                if record["requests"] < MIN_LOOKUPS:
-                    served_views.append(DEEP_NUDGE)
-                    continue
+                served_views.append("\n\n".join(reasons))
+                continue
             break
         if last:
             record["status"] = "rounds exhausted"
@@ -772,6 +825,7 @@ async def investigate(frames: Any, lens: str, base_views: list[str], repo: Repo,
         record["rejected"] += rejected
         served_views.append(f"Results of your requests, round {number} (untrusted repository data, read by the host "
                             f"at the reviewed commit):\n{text}")
+    record["untraced"] = untraced() if record["status"] != "failed" else []
     record["ms"] = int((clock() - began) * 1000)
     record["tokens"] = sum(int(item.get("tokens") or 0) for item in frames.timings
                            if item.get("phase") == "deep" and item.get("reviewer") == lens)
@@ -790,6 +844,41 @@ def _test_line(repo: Repo, test_id: str) -> tuple[str | None, int]:
         if leaf and re.search(rf"\b{re.escape(leaf)}\b", line):
             return path, number
     return path, 1
+
+
+def prove_unpinned(session: "testing.TestSession | None", repo: Repo, findings: list[dict[str, Any]],
+                   brief: Brief) -> None:
+    """Settle tests findings by running them: for each that names its unpinned change as a one-line replacement
+    (most serious first, while test executions are left), the host applies the replacement, runs the nearest
+    tests, and marks the finding `proof`: "proven" when the suite still passes (nothing pins that line: the run is
+    its evidence), "refuted" when a test fails (an existing test does catch it), or leaves it to reasoning when
+    the tests could not run or were already failing."""
+    if session is None:
+        return
+    order = {level: index for index, level in enumerate(LEVEL_ORDER)}
+    candidates = [item for item in findings if item.get("category") == "tests" and (item.get("unpinned") or {}).get("mutation")
+                  and not item.get("proof")]
+    for finding in sorted(candidates, key=lambda item: order.get(item.get("level", "low"), 3)):
+        if len(session.records) >= session.limit:
+            break
+        unpinned = finding["unpinned"]
+        closest = (unpinned.get("closest_test") or {}).get("path")
+        paths = [closest] if closest in session.tracked and _TEST.search(closest or "") else brief.tests[:2]
+        if not paths:
+            continue
+        # A suite that already fails says nothing about the mutant.
+        already = any(record["kind"] == "automatic" and record["status"] != "passed" and set(paths) & set(record["paths"])
+                      for record in session.records)
+        try:
+            record = session.mutation(unpinned["mutation"]["path"], unpinned["mutation"]["line"],
+                                      unpinned["mutation"]["replacement"], paths)
+        except testing.TestsRejected:
+            continue
+        if record["status"] == "passed":
+            finding.update(proof="proven", test_run=record["n"], beyond_diff=True,
+                           test_evidence=testing.summarize(record).split("\n  output")[0])
+        elif record["status"] == "failed" and not already:
+            finding["proof"] = "refuted"
 
 
 def regression_findings(repo: Repo, compared: dict[str, Any]) -> list[dict[str, Any]]:
@@ -824,7 +913,9 @@ async def run_deep(frames: Any, files: list[FileDiff], read_file: Callable[[str]
                    cap: Callable[[str, str, str], str], runner: Runner | None = None,
                    only: list[str] | None = None, tests: dict[str, Any] | None = None,
                    to_level: Callable[[Any], str | None] | None = None, title: str = "", description: str = "",
-                   base: str | None = None) -> dict[str, Any]:
+                   base: str | None = None, guidance: str = "",
+                   enrich: Callable[[Any, dict[str, Any]], None] | None = None,
+                   generic: Callable[[dict[str, Any]], str | None] | None = None, intent: str = "") -> dict[str, Any]:
     """The deep pass: map, (optionally) the tests the map tied to the change, investigators, evidence checks.
     Returns findings (unverified, except regressions the host observed itself), what was dropped, the
     investigators' records, the test executions, and the facts the summary's assurance is written from.
@@ -856,6 +947,7 @@ async def run_deep(frames: Any, files: list[FileDiff], read_file: Callable[[str]
                     root, rev, tests.get("base"), repo.files(), lambda path: "\n".join(repo.lines(path) or []),
                     sandbox, runs=int(tests.get("runs", testing.DEFAULT_RUNS)),
                     timeout_s=float(tests.get("timeout_s", testing.DEFAULT_TIMEOUT_S)), env_dir=tests.get("env_dir"),
+                    checkout=tests.get("checkout"),
                     executor=tests.get("executor", testing.run_process),
                     export=tests.get("export", testing.export_commit), clock=clock)
                 pass
@@ -880,6 +972,10 @@ async def run_deep(frames: Any, files: list[FileDiff], read_file: Callable[[str]
                  f"Investigation brief, built by the host from the repository at the reviewed commit:\n{brief_text}"]
         if context:
             views.append(context)
+        if intent:
+            views.append(intent)
+        if guidance:
+            views.append(guidance)
         if leads:
             public = [{"file": lead.get("file"), "line": lead.get("line"), "level": lead.get("level"),
                        "claim": lead.get("claim")} for lead in leads[:20]]
@@ -888,37 +984,49 @@ async def run_deep(frames: Any, files: list[FileDiff], read_file: Callable[[str]
         rounds = max(1, min(MAX_ROUNDS, rounds))
         outcomes = await asyncio.gather(*(
             investigate(frames, lens, views, repo, rounds=rounds, model=model, thinking=thinking, cutoff=cutoff,
-                        clock=clock, tests=session, something_outside=outside) for lens in lenses))
+                        clock=clock, tests=session, something_outside=outside,
+                        required=brief.required.get(lens)) for lens in lenses))
+        # Findings are settled while the test session is still open: tests findings that can be proven are.
+        findings: list[dict[str, Any]] = list(observed)
+        dropped: list[str] = []
+        generic_dropped: list[str] = []
+        kept_by_lens: dict[str, int] = {}
+        for outcome in outcomes:
+            reply = outcome["reply"]
+            raw = reply.get("findings") if isinstance(reply.get("findings"), list) else []
+            for item in raw[:MAX_DEEP_FINDINGS]:
+                finding, problem = normalize_deep(repo, item, outcome["lens"], diff_lines, cap,
+                                                  list(session.records) if session is not None else [], to_level, enrich)
+                if finding is None:
+                    dropped.append(f"{outcome['lens']}: {problem}")
+                    continue
+                reason = generic(finding) if generic is not None else None
+                if reason:
+                    generic_dropped.append(reason)
+                    continue
+                kept_by_lens[outcome["lens"]] = kept_by_lens.get(outcome["lens"], 0) + 1
+                findings.append(finding)
+        prove_unpinned(session, repo, [*findings, *leads], brief)
         runs = list(session.records) if session is not None else []
     finally:
         # The exports are removed whatever happened.
         if session is not None:
             session.close()
-    findings: list[dict[str, Any]] = list(observed)
-    dropped: list[str] = []
     checked: list[str] = []
     records = []
     # What the claims investigator verified leads the assurance.
     for outcome in sorted(outcomes, key=lambda item: item["lens"] != "claims"):
         reply, record = outcome["reply"], outcome["record"]
-        raw = reply.get("findings") if isinstance(reply.get("findings"), list) else []
-        kept = 0
-        for item in raw[:MAX_DEEP_FINDINGS]:
-            finding, problem = normalize_deep(repo, item, outcome["lens"], diff_lines, cap, runs, to_level)
-            if finding is None:
-                dropped.append(f"{outcome['lens']}: {problem}")
-                continue
-            kept += 1
-            findings.append(finding)
         for sentence in reply.get("checked") if isinstance(reply.get("checked"), list) else []:
             text = _text(sentence, 220)
             if text and record["status"] != "failed" and len(checked) < 3:
                 checked.append(text if text.endswith((".", "!", "?")) else text + ".")
-        record["findings"] = kept
-        records.append(record)
+        record["findings"] = kept_by_lens.get(outcome["lens"], 0)
+    records = [outcome["record"] for outcome in outcomes]
     public_runs = [{key: value for key, value in record.items() if key != "output"} | {"output": record["output"][-600:]}
                    for record in runs]
-    return {"findings": findings, "dropped": dropped, "investigators": records, "checked": checked, "repo": repo,
+    return {"findings": findings, "dropped": dropped, "generic": generic_dropped, "investigators": records,
+            "checked": checked, "repo": repo,
             "brief": brief, "lenses": lenses, "diff_cut": cut,
             "tests": {"enabled": tests is not None, "mechanism": mechanism, "note": test_note, "runs": public_runs}}
 
