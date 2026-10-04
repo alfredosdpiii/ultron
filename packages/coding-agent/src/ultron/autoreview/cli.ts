@@ -257,6 +257,10 @@ export function offlineJson(
 			level: levelOf(finding),
 			finderSeverity: finding.finderSeverity ?? severityOf(levelOf(finding)),
 			finderLevel: finding.finderLevel ?? levelOf(finding),
+			...(finding.verifierLevel === undefined ? {} : { verifierLevel: finding.verifierLevel }),
+			...(finding.verifierScenarioHolds === undefined
+				? {}
+				: { verifierScenarioHolds: finding.verifierScenarioHolds }),
 			scenario: finding.scenario ?? "",
 			category: finding.category,
 			claim: finding.claim,
@@ -274,6 +278,7 @@ export function offlineJson(
 			duplicates: result.dropped.duplicates,
 			generic: result.dropped.generic ?? 0,
 			refutedByTest: result.dropped.refutedByTest ?? 0,
+			duplicateOf: result.dropped.duplicateOf ?? [],
 		},
 		timing: {
 			totalMs: result.timing.totalMs,

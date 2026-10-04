@@ -303,7 +303,19 @@ Three kinds of finding are held to a stricter shape, because they are where auto
 The verifier can also answer *unclear*: a judgement call the source shows neither right nor wrong. Such a finding
 is never posted and never counts toward the verdict; the body counts it among the unconfirmed.
 
-With `--json`, `dropped` has `generic` and `refutedByTest` beside `rejected` and `duplicates`; a tests finding
+Two findings are merged into one only when they are of one category and either sit in one file within five lines
+of each other (several reviewers reading the same slice, or the deep pass extending a fast finding) or make nearly
+identical claims; a deep finding with evidence from outside the diff is never folded into a fast one. Findings of
+different categories never merge. After verification, confirmed findings of one category that say the same thing
+in several places (nearly identical claims, or scenarios in the same words with like claims) become one comment that
+lists the other places.
+
+A review in which every model frame failed (a provider outage, expired credentials) is a failed review, not an
+empty one: the daemon tries again later, the local entry exits non-zero. A provider that cannot authenticate for a
+moment (the Claude Code CLI refreshing its session) is retried after a longer pause.
+
+With `--json`, `dropped` has `generic`, `refutedByTest` and `duplicateOf` (what was merged into what, and at which
+stage) beside `rejected` and `duplicates`; confirmed findings carry `verifierLevel` and `verifierScenarioHolds`; a tests finding
 carries `unpinned`; and every finding has `posted` (`inline`, `body` or `counted`: what the poster would do with
 it under `--block-at` and `--max-comments`) and `rank`.
 

@@ -243,7 +243,7 @@ describe("autoreview_api: the pipeline", () => {
 		const out = py<{ result: Result; seen: string[]; unit: Record<string, string[]> }>(`
 SCENARIO = "total([{'price': 1}, {'price': 2}]) returns 1; it should return 3."
 cases = {
-    "no scenario":      (dict(scenario="", severity="high"),            dict(severity="high", scenario_holds=True)),
+    "no scenario":      (dict(scenario="", severity="high", category="security"), dict(severity="high", scenario_holds=True)),
     "does not hold":    (dict(severity="critical"),                     dict(severity="high", scenario_holds=False)),
     "cannot tell":      (dict(severity="high"),                         dict(severity="high", scenario_holds="unknown")),
     "verifier lowers":  (dict(severity="high"),                         dict(severity="low", scenario_holds=True)),
@@ -258,7 +258,7 @@ cases = {
 }
 names = list(cases)
 # Through the pipeline: four cases, far enough apart (or in different categories) that nothing merges.
-piped = {"does not hold": 1, "verifier raises": 5, "missing tests": 9, "no scenario": 12}
+piped = {"does not hold": 1, "verifier raises": 7, "missing tests": 9, "no scenario": 12}
 def finder(task, text):
     if "Your specialty: Correctness" not in task:
         return []
@@ -461,6 +461,8 @@ emit({"result": result, "calls": rlm.calls})`);
 				severity: "major",
 				finderLevel: "high",
 				finderSeverity: "major",
+				verifierLevel: "high",
+				verifierScenarioHolds: true,
 				strength: "diff",
 				scenario: "total([{'price': 1}, {'price': 2}]) returns 1; it should return 3.",
 				category: "correctness",
@@ -476,7 +478,7 @@ emit({"result": result, "calls": rlm.calls})`);
 				howVerified: "a verifier confirmed it against the source of calc.py",
 			},
 		]);
-		expect(result.dropped).toEqual({ rejected: 0, duplicates: 0, generic: 0, refutedByTest: 0 });
+		expect(result.dropped).toEqual({ rejected: 0, duplicates: 0, generic: 0, refutedByTest: 0, duplicateOf: [] });
 		expect(result.diffLines).toEqual({ "calc.py": [[1, 7]] });
 		expect(result.usage).toEqual({
 			inputTokens: 400,
@@ -644,8 +646,8 @@ emit({"result": result, "calls": rlm.calls, "many": [t["status"] for t in many.t
 def finder(task, text):
     if "Your specialty: Correctness" not in task or "File: a.py" not in text:
         return []
-    return [dict(BUG, file="b.py", line=2, end_line=2, claim="b adds one."),
-            dict(BUG, file="./pkg/c.py", line=2, end_line=2, claim="c adds one."),
+    return [dict(BUG, file="b.py", line=2, end_line=2, claim="b adds one.", scenario="b.f(1) returns 2; it should return 1."),
+            dict(BUG, file="./pkg/c.py", line=2, end_line=2, claim="c adds one.", scenario="c.f(1) gives 2 where 1 was expected."),
             dict(BUG, file="c.py", line=2, end_line=2, claim="short name still means pkg/c.py."),
             dict(BUG, file="nowhere.py", line=2, end_line=2, claim="names no file of the slice.")]
 rlm = FakeRlm(finder=finder, verifier=lambda text: {"verdict": "confirmed", "evidence": "\`return x + 1\`", "corrected_line": None})
@@ -1541,15 +1543,110 @@ found = [f("deep:claims", 11, "total is wrong for callers", True, level="high"),
          f("deep:siblings", 12, "total is wrong for callers as well", True),
          f("deep:inputs", 41, "check missing", False, category="security"),
          f("deep:tests", 200, "untested helper", True, category="tests")]
-merged, duplicates = deep.merge(fast, found)
-emit([[item["source"], item["line"], ",".join(item["reviewers"])] for item in merged] + [[duplicates]])`);
+records = []
+merged, duplicates = deep.merge(fast, found, records)
+# Never across categories; never a deep finding with outside evidence folded into a fast one, however close;
+# never two findings of one investigator for being neighbours.
+other = deep.merge([f("fast", 10, "wrong total here", category="security")],
+                   [f("deep:claims", 11, "total is wrong for callers", True),
+                    f("deep:claims", 13, "callers get a float", True),
+                    f("deep:siblings", 9, "another thing entirely", True, category="tests")])
+emit([[item["source"], item["line"], ",".join(item["reviewers"])] for item in merged] + [[duplicates]]
+     + [[rec["stage"], rec["dropped"]["line"], rec["into"]["line"]] for rec in records]
+     + [[item["source"], item["line"]] for item in other[0]] + [[other[1]]])`);
 		expect(out).toEqual([
 			["fast", 40, "fast"],
 			["fast", 80, "fast"],
 			["deep:claims", 11, "deep:claims,deep:siblings,fast"],
 			["deep:tests", 200, "deep:tests"],
 			[3],
+			// What was merged into what, and at which stage.
+			["deep", 12, 11],
+			["deep-into-fast", 41, 40],
+			["fast-into-deep", 10, 11],
+			["fast", 10],
+			["deep:claims", 11],
+			["deep:claims", 13],
+			["deep:siblings", 9],
+			[0],
 		]);
+	});
+
+	test("the fast pass merges only within one category, by window or by near-identical claim, and records each merge", () => {
+		const out = py<{
+			kept: Array<[number, string, string]>;
+			records: Array<[string, number, number]>;
+			grouped: Array<[string, number, unknown]>;
+			groupRecords: number;
+		}>(`
+def f(line, category, claim, level="low", scenario="", reviewers=("bugs",)):
+    return {"file": "a.py", "line": line, "category": category, "claim": claim, "level": level, "severity": a.LEVEL_TO_OLD[level],
+            "confidence": 0.5, "reviewers": list(reviewers), "scenario": scenario, "why": "", "suggested_fix": ""}
+records = []
+kept = a.dedupe_fast([
+    f(10, "correctness", "the total is wrong"),
+    f(14, "correctness", "the average divides by zero", "high", reviewers=("security",)),   # 4 lines away: merged
+    f(16, "security", "the path is not sanitized"),                                         # another category: kept
+    f(40, "correctness", "the total is wrong for an empty list"),                           # far away, different claim: kept
+    f(90, "correctness", "the average divides by zero", reviewers=("arch",)),               # identical claim: merged
+    f(21, "correctness", "the result is cached forever"),                                   # 5 lines from 16 but another category
+], records)
+grouped_records = []
+grouped, merged = a.group_root_causes([
+    f(10, "correctness", "total() drops the last item", "medium", "total([1, 2]) returns 1; it should return 3."),
+    f(70, "correctness", "total() drops the last item of the list", "low", "total([1, 2]) returns 1; it should return 3."),
+    f(80, "correctness", "average() returns a wrong mean", "low", "average([2, 4], 2) returns 1.0; it should return 3.0."),
+    f(85, "security", "total() drops the last item", "low"),
+], grouped_records)
+emit({"kept": [[item["line"], item["category"], ",".join(item["reviewers"])] for item in kept],
+      "records": [[rec["stage"], rec["dropped"]["line"], rec["into"]["line"]] for rec in records],
+      "grouped": [[item["category"], item["line"], item.get("also_at")] for item in grouped], "groupRecords": len(grouped_records)})`);
+		expect(out.kept).toEqual([
+			[14, "correctness", "bugs,security,arch"],
+			[16, "security", "bugs"],
+			[21, "correctness", "bugs"],
+			[40, "correctness", "bugs"],
+		]);
+		expect(out.records).toEqual([
+			["fast", 10, 14],
+			["fast", 90, 14],
+		]);
+		// Root causes: identical claims group across files; a scenario in the same words with a like claim groups;
+		// a scenario that merely shares its phrasing ("returns X; it should return Y") does not; nor another category.
+		expect(out.grouped).toEqual([
+			["correctness", 10, [{ file: "a.py", line: 70 }]],
+			["correctness", 80, null],
+			["security", 85, null],
+		]);
+		expect(out.groupRecords).toBe(1);
+	});
+
+	test("a provider that cannot authenticate is retried after a longer pause; a review no frame survived fails", () => {
+		const out = py<{ timings: Array<{ status: string; retries: number }>; sleeps: number[] }>(`
+script = {
+    "flicker": [FrameError({"error": 'frame run did not complete: failed ({"code":"assistant_error","message":"claude-code provider: the Claude Code CLI is not logged in. Run \`claude auth login\`"})'}), "value"],
+    "expired": [FrameError({"error": "Claude Code CLI error: Failed to authenticate: OAuth session expired and could not be refreshed"})] * 3,
+}
+class Scripted:
+    async def map(self, tasks, items, **options):
+        out = MapResults()
+        out.append(script[tasks[0]].pop(0))
+        out.spent = {"calls": 1, "tokens": 10}
+        out.usage = {}
+        return out
+sleeps = []
+async def sleep(seconds):
+    sleeps.append(round(seconds, 1))
+frames = a.Frames(Scripted(), cap=None, usage=a._Usage(), concurrency=1, sleep=sleep, rng=lambda: 0.5)
+asyncio.run(frames.run("find", [(name, name, "item") for name in script], contract=None, model=None, thinking=None))
+emit({"timings": [{"status": t["status"], "retries": t["retries"], "error": t.get("error")} for t in frames.timings], "sleeps": sleeps})`);
+		expect(out.timings.map((item) => [item.status, item.retries])).toEqual([
+			["ok", 1],
+			["failed", 2],
+		]);
+		// 8 s, then 16 s (jitter at its midpoint): long enough for the CLI to finish refreshing its session.
+		expect(out.sleeps).toEqual([8, 8, 16]);
+		expect((out.timings[1] as { error?: string }).error).toContain("OAuth session expired");
 	});
 
 	test("fallback: without a checkout, or when the deep pass cannot run, the fast review stands; deep alone needs its investigators", () => {
@@ -1578,13 +1675,19 @@ def summary(spec, **fake):
             "assurance": result["assurance"], "investigators": result["timing"]["investigators"],
             "finds": len([c for c in rlm.calls if c["kind"] == "find"]), "deeps": len([c for c in rlm.calls if c["kind"] == "deep"])}
 broken = lambda lens, text, round: FrameError({"error": "400 bad request"})
+try:
+    summary(dict(SPEC, mode="deep"), investigator=broken)
+    failed_review = "ran"
+except r.ReviewError as error:
+    failed_review = str(error)
 emit({
+    "failedReview": failed_review,
     "default": {"mode": SHIPPED_MODE, "complete": True, "notChecked": [], "assurance": [], "finds": 0, "deeps": 0, "investigators": []},
     "diffOnly": summary({"diffPath": ${JSON.stringify(diffPath)}, "mode": "both"}),
     "notARepo": summary({"workDir": ${JSON.stringify(scratch)}, "diffPath": ${JSON.stringify(diffPath)}, "mode": "both"}),
     "investigatorsFail": summary(dict(SPEC, mode="both"), investigator=broken),
     "deepOnly": summary(dict(SPEC, mode="deep")),
-    "deepOnlyFails": summary(dict(SPEC, mode="deep"), investigator=broken),
+    "deepOnlyFails": None,
     "fast": summary(dict(SPEC, mode="fast")),
 })`);
 		expect(out.default!.mode).toBe("both");
@@ -1605,7 +1708,11 @@ emit({
 		// Deep alone: no finder frames; failing investigators then leave nothing, so it is incomplete.
 		// (Each of the three stops at once and is sent back once.)
 		expect(out.deepOnly).toMatchObject({ mode: "deep", finds: 0, deeps: 6, complete: true });
-		expect(out.deepOnlyFails).toMatchObject({ mode: "deep", finds: 0, complete: false });
+		// Deep alone with every investigator failing: no frame survived, so the review itself fails (the daemon
+		// tries again later) instead of reporting an empty review.
+		expect((out as unknown as { failedReview: string }).failedReview).toBe(
+			"the model provider failed every frame of this review: 400 bad request",
+		);
 		expect(out.fast).toMatchObject({ mode: "fast", deeps: 0, investigators: [] });
 	});
 
@@ -1909,6 +2016,8 @@ describe("ultron autoreview review --repo-dir: the offline JSON contract, with a
 				level: "high",
 				finderSeverity: "major",
 				finderLevel: "high",
+				verifierLevel: "high",
+				verifierScenarioHolds: true,
 				scenario: "total([{'price': 1}, {'price': 2}]) returns 1; it should return 3.",
 				category: "correctness",
 				claim: "total() skips the last item.",
@@ -1924,7 +2033,7 @@ describe("ultron autoreview review --repo-dir: the offline JSON contract, with a
 		expect(json.mode).toBe("fast");
 		expect(json.assurance).toBe("");
 		expect(json.tests).toEqual({ enabled: false, mechanism: null, note: null, runs: [] });
-		expect(json.dropped).toEqual({ rejected: 1, duplicates: 0, generic: 0, refutedByTest: 0 });
+		expect(json.dropped).toEqual({ rejected: 1, duplicates: 0, generic: 0, refutedByTest: 0, duplicateOf: [] });
 		expect(json.model).toBe("stub/frames");
 		expect(json.verifyModel).toBe("stub/verify");
 		for (const key of ["totalMs", "scopeMs", "findMs", "verifyMs"]) expect(typeof json.timing[key]).toBe("number");
