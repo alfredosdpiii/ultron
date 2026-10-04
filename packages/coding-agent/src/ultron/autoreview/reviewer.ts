@@ -45,6 +45,8 @@ export interface Candidate {
 	readonly reasons: readonly string[];
 	/** When discovery found it (epoch ms). */
 	readonly pickedAt: number;
+	/** When GitHub last updated the notification that led here (epoch ms); absent for a search result. */
+	readonly notifiedAt?: number;
 }
 
 export type Outcome =
@@ -105,8 +107,10 @@ export interface DecisionInput {
 	/** The commit of this account's last review, and when it was made. */
 	readonly lastSha?: string;
 	readonly lastAt?: string;
+	/** That last review requested changes: new commits are reviewed so the block is lifted or confirmed. */
+	readonly lastRequestedChanges?: boolean;
 	readonly mentionAt?: string;
-	/** A review by this account is currently requested (directly, or through a team it was notified for). */
+	/** A review by this account is requested now: directly, or through a requested team it belongs to. */
 	readonly requested: boolean;
 	/** When the review was last requested; asked only when the head was already reviewed. */
 	readonly requestedAt: () => Promise<string | undefined>;
@@ -114,7 +118,10 @@ export interface DecisionInput {
 
 export type Decision = { readonly review: boolean; readonly reason: string };
 
-/** Whether a review is due. */
+/**
+ * Whether a review is due. A review ends the account's part unless something asks again: a pending request, a
+ * re-request, a new mention, or (because this account is then blocking the merge) its own request for changes.
+ */
 export async function decide(input: DecisionInput): Promise<Decision> {
 	const { pull, lastSha, lastAt, mentionAt } = input;
 	const newMention = mentionAt !== undefined && (lastAt === undefined || mentionAt > lastAt);
@@ -122,13 +129,22 @@ export async function decide(input: DecisionInput): Promise<Decision> {
 		return newMention
 			? { review: true, reason: `mentioned on a ${pull.merged ? "merged" : "closed"} pull request` }
 			: { review: false, reason: `the pull request is ${pull.merged ? "merged" : "closed"}` };
+	if (pull.draft && !newMention) return { review: false, reason: "the pull request is a draft" };
 	if (lastSha === undefined) {
 		if (input.requested) return { review: true, reason: "review requested" };
 		if (newMention) return { review: true, reason: "mentioned" };
 		return { review: false, reason: "no review request or mention for this account" };
 	}
-	if (lastSha !== pull.headSha) return { review: true, reason: `new commits since ${lastSha.slice(0, 7)}` };
 	if (newMention) return { review: true, reason: "mentioned again" };
+	if (lastSha !== pull.headSha) {
+		const since = `new commits since ${lastSha.slice(0, 7)}`;
+		if (input.requested) return { review: true, reason: `${since}, review requested` };
+		if (input.lastRequestedChanges) return { review: true, reason: `${since}, after this account requested changes` };
+		return {
+			review: false,
+			reason: `${lastSha.slice(0, 7)} was reviewed and nothing asks for a review of the new commits`,
+		};
+	}
 	if (input.requested) {
 		const requestedAt = await input.requestedAt();
 		if (requestedAt !== undefined && lastAt !== undefined && requestedAt > lastAt)
@@ -192,17 +208,39 @@ function dryRunMarkdown(candidate: Candidate, sha: string, plan: ReviewPlan, ack
 	return `${lines.join("\n")}\n`;
 }
 
-/** Review one pull request as one account, if a review is due. */
-export async function reviewPull(
+/** A pull request whose review is due: what the decision read, and the acknowledgement. */
+export interface Prepared {
+	readonly candidate: Candidate;
+	readonly dryRun: boolean;
+	readonly pull: PullRequest;
+	readonly reason: string;
+	readonly lastSha?: string;
+	/** The acknowledgement comment (posted, or in a dry run only written to the dry-run file). */
+	readonly ack?: string;
+	/** When the acknowledgement for this head commit was posted (epoch ms). */
+	readonly ackAt?: number;
+	/** Milliseconds from the notification to the acknowledgement, when both are known and it was posted now. */
+	readonly tagToAckMs?: number;
+}
+
+function seconds(ms: number): string {
+	return `${(ms / 1000).toFixed(1)} s`;
+}
+
+/**
+ * Decide whether a pull request is due for a review by an account and, if so, acknowledge it at once (one
+ * comment per pull request and head commit; none on a closed or merged pull request). The review itself is
+ * `runReview`, which may start later, when a review slot is free.
+ */
+export async function preparePull(
 	deps: ReviewerDeps,
 	candidate: Candidate,
 	options: ReviewOptions = {},
-): Promise<Outcome> {
+): Promise<Prepared | Outcome> {
 	const { account, ref } = candidate;
 	const now = deps.now ?? Date.now;
 	const dryRun = options.dryRun ?? deps.config.dryRun;
-	const env = () => deps.tokens.env(account);
-	const github = new GitHub(deps.runner, account, env, { now });
+	const github = new GitHub(deps.runner, account, () => deps.tokens.env(account), { now });
 	const key = pullStateKey(account, ref);
 	const name = `${pullKey(ref)} as ${account.login}`;
 
@@ -216,38 +254,53 @@ export async function reviewPull(
 	const own = latestOwnReview(reviews, account.login);
 	let lastSha = own?.commitId;
 	let lastAt = own?.submittedAt;
+	let lastRequestedChanges = own?.state === "CHANGES_REQUESTED";
 	if (savedCounts && (lastAt === undefined || (saved.lastReviewedAt ?? "") > lastAt)) {
 		lastSha = saved.lastReviewedSha;
 		lastAt = saved.lastReviewedAt;
+		lastRequestedChanges = saved.lastVerdict === "request_changes";
 	}
 
-	const mentionReason = candidate.reasons.some((reason) => reason.includes("mention"));
-	let issueComments: Comment[] | undefined;
-	let reviewComments: Comment[] | undefined;
-	const loadComments = async () => {
-		issueComments ??= await github.issueComments(ref);
-		reviewComments ??= await github.reviewComments(ref);
-	};
-	let mentionAt: string | undefined;
-	if (mentionReason || pull.state !== "open" || (lastSha === undefined && !pull.requestedReviewers.length)) {
-		await loadComments();
-		mentionAt = latestMention(account.login, pull, [...issueComments!, ...reviewComments!], reviews);
-	}
 	const me = account.login.toLowerCase();
-	const requested =
-		pull.requestedReviewers.some((login) => login.toLowerCase() === me) ||
-		(pull.requestedTeams.length > 0 && candidate.reasons.includes("review_requested"));
-	const decision = options.force
-		? { review: true, reason: "asked for on the command line" }
-		: await decide({
-				pull,
-				...(lastSha === undefined ? {} : { lastSha }),
-				...(lastAt === undefined ? {} : { lastAt }),
-				...(mentionAt === undefined ? {} : { mentionAt }),
-				requested,
-				requestedAt: () => github.lastReviewRequestAt(ref),
+	let requested = pull.requestedReviewers.some((login) => login.toLowerCase() === me);
+	let decision: Decision;
+	if (options.force) decision = { review: true, reason: "asked for on the command line" };
+	else {
+		// A requested team counts only when this account is a member of it.
+		if (!requested && pull.state === "open" && !pull.draft) {
+			for (const team of pull.requestedTeams) {
+				const member = await github.inTeam(ref.owner, team);
+				if (member === undefined)
+					deps.log(`${name}: membership of the requested team ${ref.owner}/${team} cannot be read; not counted`);
+				if (member === true) {
+					requested = true;
+					break;
+				}
+			}
+		}
+		let mentionAt: string | undefined;
+		if (!(requested && lastSha === undefined && pull.state === "open" && !pull.draft)) {
+			const comments = [...(await github.issueComments(ref)), ...(await github.reviewComments(ref))];
+			mentionAt = latestMention(account.login, pull, comments, reviews);
+		}
+		decision = await decide({
+			pull,
+			...(lastSha === undefined ? {} : { lastSha }),
+			...(lastAt === undefined ? {} : { lastAt }),
+			lastRequestedChanges,
+			...(mentionAt === undefined ? {} : { mentionAt }),
+			requested,
+			requestedAt: () => github.lastReviewRequestAt(ref),
+		});
+	}
+	if (!decision.review) {
+		// Nothing more to watch for once the pull request is closed.
+		if (pull.state !== "open" && saved.lastVerdict !== undefined)
+			await deps.store.updatePull(key, (state) => {
+				state.closed = true;
 			});
-	if (!decision.review) return { kind: "skipped", reason: decision.reason };
+		return { kind: "skipped", reason: decision.reason };
+	}
 
 	if (!options.force && saved.gaveUpSha === head) return { kind: "skipped", reason: "gave up on this commit earlier" };
 	if (!options.force && (saved.attempts[head] ?? 0) >= MAX_ATTEMPTS) {
@@ -262,26 +315,69 @@ export async function reviewPull(
 		deps.log(`${name}: gave up on ${head.slice(0, 7)} after ${MAX_ATTEMPTS} attempts`);
 		return { kind: "gave-up", reason: `${MAX_ATTEMPTS} attempts failed` };
 	}
-	deps.log(`${name}: reviewing ${head.slice(0, 7)} (${decision.reason})`);
 
-	// Acknowledge once per head commit, before the work starts.
+	// Acknowledge once per head commit, as soon as the review is known to be due.
 	let ack: string | undefined;
-	if (deps.config.ack && deps.config.ackLines.length > 0 && saved.lastAckSha !== head) {
+	let ackAt = saved.lastAckSha === head && saved.lastAckAt !== undefined ? Date.parse(saved.lastAckAt) : undefined;
+	let tagToAckMs: number | undefined;
+	if (deps.config.ack && deps.config.ackLines.length > 0 && saved.lastAckSha !== head && pull.state === "open") {
 		const line = pickAckLine(deps.config.ackLines, saved.lastAckLine, deps.random ?? Math.random);
 		ack = ackBody(line, head, deps.config.ackArt);
 		if (!dryRun) {
 			try {
 				await github.postComment(ref, ack);
+				const posted = now();
+				ackAt = posted;
+				if (candidate.notifiedAt !== undefined) tagToAckMs = Math.max(0, posted - candidate.notifiedAt);
 				await deps.store.updatePull(key, (state) => {
 					state.lastAckSha = head;
 					state.lastAckLine = line;
+					state.lastAckAt = new Date(posted).toISOString();
 				});
+				deps.log(
+					`${name}: acknowledged ${head.slice(0, 7)} (${decision.reason})${tagToAckMs === undefined ? "" : `, ${seconds(tagToAckMs)} after the notification`}`,
+				);
 			} catch (error) {
 				if (error instanceof RateLimitError) throw error;
 				deps.log(`${name}: the acknowledgement was not posted: ${(error as Error).message}`);
 			}
 		}
 	}
+	return {
+		candidate,
+		dryRun,
+		pull,
+		reason: decision.reason,
+		...(lastSha === undefined ? {} : { lastSha }),
+		...(ack === undefined ? {} : { ack }),
+		...(ackAt === undefined || Number.isNaN(ackAt) ? {} : { ackAt }),
+		...(tagToAckMs === undefined ? {} : { tagToAckMs }),
+	};
+}
+
+/** Review one pull request as one account, if a review is due: the acknowledgement, then the review. */
+export async function reviewPull(
+	deps: ReviewerDeps,
+	candidate: Candidate,
+	options: ReviewOptions = {},
+): Promise<Outcome> {
+	const prepared = await preparePull(deps, candidate, options);
+	return "kind" in prepared ? prepared : runReview(deps, prepared);
+}
+
+/** Review a prepared pull request and post the review (or write it to the dry-run directory). */
+export async function runReview(deps: ReviewerDeps, prepared: Prepared): Promise<Outcome> {
+	const { candidate, dryRun, pull, lastSha, ack } = prepared;
+	const { account, ref } = candidate;
+	const now = deps.now ?? Date.now;
+	const env = () => deps.tokens.env(account);
+	const github = new GitHub(deps.runner, account, env, { now });
+	const key = pullStateKey(account, ref);
+	const name = `${pullKey(ref)} as ${account.login}`;
+	const head = pull.headSha;
+	const me = account.login.toLowerCase();
+	const saved: PullState = deps.store.read().pulls[key] ?? { attempts: {}, findings: [] };
+	deps.log(`${name}: reviewing ${head.slice(0, 7)} (${prepared.reason})`);
 	await deps.store.updatePull(key, (state) => {
 		state.attempts[head] = (state.attempts[head] ?? 0) + 1;
 	});
@@ -305,8 +401,8 @@ export async function reviewPull(
 			}
 			deps.log(`${name}: no checkout, reviewing the diff only: ${(error as Error).message}`);
 		}
-		await loadComments();
-		const others: ContextComment[] = reviewComments!
+		const reviewComments = await github.reviewComments(ref);
+		const others: ContextComment[] = reviewComments
 			.filter((comment) => comment.user.toLowerCase() !== me && comment.path !== undefined)
 			.map((comment) => ({
 				author: comment.user,
@@ -494,9 +590,12 @@ export async function reviewPull(
 			}
 		}
 
+		const ackToPostMs = prepared.ackAt === undefined ? undefined : Math.max(0, now() - prepared.ackAt);
 		await deps.store.updatePull(key, (pullState, all) => {
 			pullState.lastReviewedSha = head;
 			pullState.lastReviewedAt = reviewedAt;
+			pullState.lastVerdict = plan.verdict;
+			delete pullState.closed;
 			if (dryRun) pullState.lastReviewDryRun = true;
 			else delete pullState.lastReviewDryRun;
 			if (reviewId !== undefined) pullState.lastReviewId = reviewId;
@@ -519,12 +618,14 @@ export async function reviewPull(
 				findings: result.findings.length,
 				totalMs: result.timing.totalMs,
 				pickupToPostMs: now() - candidate.pickedAt,
+				...(prepared.tagToAckMs === undefined ? {} : { tagToAckMs: prepared.tagToAckMs }),
+				...(ackToPostMs === undefined ? {} : { ackToPostMs }),
 				costUsd: result.usage.costUsd,
 				...(dryRun ? { dryRun: true } : {}),
 			});
 		});
 		deps.log(
-			`${name}: ${dryRun ? "dry-run" : "posted"} ${plan.event} for ${shortSha}: ${result.findings.length} findings, ${plan.comments.length} inline, ${resolved.length} threads resolved, ${Math.round((now() - candidate.pickedAt) / 1000)} s from pickup`,
+			`${name}: ${dryRun ? "dry-run" : "posted"} ${plan.event} for ${shortSha}: ${result.findings.length} findings, ${plan.comments.length} inline, ${resolved.length} threads resolved, ${Math.round((now() - candidate.pickedAt) / 1000)} s from pickup${ackToPostMs === undefined ? "" : `, ${seconds(ackToPostMs)} after the acknowledgement`}`,
 		);
 		return {
 			kind: dryRun ? "dry-run" : "posted",

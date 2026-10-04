@@ -366,6 +366,23 @@ export class GitHub {
 		return latest;
 	}
 
+	/**
+	 * Whether this account is an active member of a team of the repository's organization; undefined when the
+	 * membership cannot be read (the token lacks `read:org`, or the team is not visible).
+	 */
+	async inTeam(org: string, slug: string): Promise<boolean | undefined> {
+		try {
+			const response = await this.request("GET", `orgs/${org}/teams/${slug}/memberships/${this.account.login}`, {
+				allow: [404],
+			});
+			if (response.status === 404) return false;
+			return (response.body as Json | undefined)?.state === "active";
+		} catch (error) {
+			if (error instanceof RateLimitError) throw error;
+			return undefined;
+		}
+	}
+
 	/** One line on the head commit's CI checks, or undefined when there are none or they cannot be read. */
 	async checkSummary(ref: PullRef, sha: string): Promise<string | undefined> {
 		let response: ApiResponse;

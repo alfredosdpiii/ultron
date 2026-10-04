@@ -286,7 +286,7 @@ export async function runAutoreviewCommand(
 				if (state.recent.length === 0) lines.push("  none");
 				for (const record of state.recent.slice(-15).reverse())
 					lines.push(
-						`  ${record.at}  ${record.pull} ${record.sha.slice(0, 7)} as ${record.account.split("/").pop()}: ${record.outcome}${record.verdict ? ` ${record.verdict}` : ""}, ${record.findings ?? 0} findings, pipeline ${Math.round((record.totalMs ?? 0) / 1000)} s, pickup to post ${Math.round((record.pickupToPostMs ?? 0) / 1000)} s${record.costUsd ? `, $${record.costUsd.toFixed(2)}` : ""}`,
+						`  ${record.at}  ${record.pull} ${record.sha.slice(0, 7)} as ${record.account.split("/").pop()}: ${record.outcome}${record.verdict ? ` ${record.verdict}` : ""}, ${record.findings ?? 0} findings, pipeline ${Math.round((record.totalMs ?? 0) / 1000)} s, ${record.tagToAckMs === undefined ? "" : `tag to ack ${(record.tagToAckMs / 1000).toFixed(1)} s, `}${record.ackToPostMs === undefined ? "" : `ack to review ${Math.round(record.ackToPostMs / 1000)} s, `}pickup to post ${Math.round((record.pickupToPostMs ?? 0) / 1000)} s${record.costUsd ? `, $${record.costUsd.toFixed(2)}` : ""}`,
 					);
 				io.stdout(`${lines.join("\n")}\n`);
 				return 0;

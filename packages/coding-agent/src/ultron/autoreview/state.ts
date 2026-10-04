@@ -35,7 +35,12 @@ export interface PullState {
 	lastReviewId?: number;
 	/** The last "review" was a dry run: nothing was posted. */
 	lastReviewDryRun?: boolean;
+	/** The verdict of the last review: after "request_changes", new commits are reviewed without a new request. */
+	lastVerdict?: "approve" | "request_changes" | "comment";
+	/** The pull request was seen closed or merged after the last review. */
+	closed?: boolean;
 	lastAckSha?: string;
+	lastAckAt?: string;
 	/** The acknowledgement line used last on this pull request (not repeated next time). */
 	lastAckLine?: string;
 	/** Failed attempts by head commit. */
@@ -65,6 +70,10 @@ export interface ReviewRecord {
 	readonly findings?: number;
 	readonly totalMs?: number;
 	readonly pickupToPostMs?: number;
+	/** From the notification's update time to the acknowledgement comment. */
+	readonly tagToAckMs?: number;
+	/** From the acknowledgement comment to the posted review. */
+	readonly ackToPostMs?: number;
 	readonly costUsd?: number;
 	readonly dryRun?: boolean;
 }

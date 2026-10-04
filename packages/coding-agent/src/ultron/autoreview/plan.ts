@@ -5,7 +5,7 @@
  * - Verdict: REQUEST_CHANGES when a confirmed blocker or major finding exists (or one from an earlier review is
  *   still present); APPROVE only when coverage was complete and there is none; otherwise COMMENT. A pull request
  *   by the reviewing account, or one that is closed or merged, always gets COMMENT.
- * - Inline comments: confirmed findings only, capped by severity. A line outside the diff moves to the nearest
+ * - Inline comments: confirmed findings only, capped by severity (nits are only counted). A line outside the diff moves to the nearest
  *   diff line of a hunk within three lines, else the finding goes to the summary.
  * - A ```suggestion block only when the finding carries an exact replacement for its line range, the range was
  *   not moved, and every line of it is in one hunk; otherwise a plain fenced block or a sentence.
@@ -17,12 +17,12 @@ import { SEVERITIES } from "./types.ts";
 
 export type Verdict = "approve" | "request_changes" | "comment";
 
-/** Inline comments posted per severity; the rest are counted in the summary. */
+/** Inline comments posted per severity; the rest (and every nit) are counted in the summary. */
 export const INLINE_CAPS: Readonly<Record<Severity, number>> = {
 	blocker: Number.POSITIVE_INFINITY,
 	major: 5,
 	minor: 5,
-	nit: 3,
+	nit: 0,
 };
 export const RELOCATE_WITHIN = 3;
 const MAX_UNCERTAIN = 5;

@@ -225,8 +225,11 @@ export interface AutoreviewSettings {
 	ack?: boolean;
 	/** The lines one is picked from for that comment. */
 	ackLines?: string[];
-	/** Text appended to that comment inside a fenced code block (an ASCII-art banner; default none). */
-	ackArt?: string;
+	/**
+	 * Art appended to that comment in a fenced code block: unset or `"logo"`, Ultron's logo; `"none"` or `false`,
+	 * no art; any other text, that text verbatim.
+	 */
+	ackArt?: string | false;
 	/** End the review summary with "Automated review by Ultron" (default true). */
 	signature?: boolean;
 }
@@ -1331,7 +1334,8 @@ export class SettingsManager {
 		if (ack !== undefined) out.ack = ack;
 		const ackLines = strings(configured.ackLines);
 		if (ackLines !== undefined) out.ackLines = ackLines;
-		if (typeof configured.ackArt === "string" && configured.ackArt.trim() !== "") out.ackArt = configured.ackArt;
+		if (configured.ackArt === false) out.ackArt = false;
+		else if (typeof configured.ackArt === "string" && configured.ackArt.trim() !== "") out.ackArt = configured.ackArt;
 		const signature = flag(configured.signature);
 		if (signature !== undefined) out.signature = signature;
 		return out;

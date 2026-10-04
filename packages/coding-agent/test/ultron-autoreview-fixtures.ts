@@ -43,6 +43,7 @@ export interface FakePull {
 	createdAt: string;
 	requestedReviewers: string[];
 	requestedTeams: string[];
+	draft: boolean;
 	reviews: FakeReview[];
 	issueComments: FakeComment[];
 	reviewComments: FakeComment[];
@@ -79,10 +80,25 @@ index 1111111..2222222 100644
      return result
 `;
 
+const REVIEW_STATES: Record<string, string> = {
+	APPROVE: "APPROVED",
+	REQUEST_CHANGES: "CHANGES_REQUESTED",
+	COMMENT: "COMMENTED",
+};
+
 export class FakeHub {
 	readonly accounts: Array<{ login: string; host: string; token: string; active?: boolean }> = [];
 	readonly pulls = new Map<string, FakePull>();
-	notifications: Array<{ reason: string; type?: string; owner: string; repo: string; number: number }> = [];
+	notifications: Array<{
+		reason: string;
+		type?: string;
+		owner: string;
+		repo: string;
+		number: number;
+		updatedAt?: string;
+	}> = [];
+	/** Team members by `org/slug`; a team that is not listed cannot be read (403). */
+	teams: Record<string, string[]> = {};
 	/** Search results by query substring (`review-requested:`, `mentions:`, `reviewed-by:`). */
 	search: Record<string, Array<{ owner: string; repo: string; number: number }>> = {};
 	readonly calls: RecordedCall[] = [];
@@ -124,6 +140,7 @@ export class FakeHub {
 			createdAt: "2026-10-04T08:00:00Z",
 			requestedReviewers: [],
 			requestedTeams: [],
+			draft: false,
 			reviews: [],
 			issueComments: [],
 			reviewComments: [],
@@ -223,7 +240,7 @@ export class FakeHub {
 			body: pull.body,
 			state: pull.state,
 			merged: pull.merged,
-			draft: false,
+			draft: pull.draft,
 			user: { login: pull.author },
 			head: { sha: pull.headSha },
 			base: { sha: pull.baseSha, ref: pull.baseRef },
@@ -267,7 +284,7 @@ export class FakeHub {
 				200,
 				this.notifications.map((item) => ({
 					reason: item.reason,
-					updated_at: stamp,
+					updated_at: item.updatedAt ?? stamp,
 					subject: {
 						type: item.type ?? "PullRequest",
 						url: `https://api.github.com/repos/${item.owner}/${item.repo}/pulls/${item.number}`,
@@ -308,6 +325,14 @@ export class FakeHub {
 					},
 				},
 			});
+		}
+		const membership = /^orgs\/([^/]+)\/teams\/([^/]+)\/memberships\/([^/]+)$/.exec(path);
+		if (membership) {
+			const members = this.teams[`${membership[1]}/${membership[2]}`];
+			if (!members) return this.#respond(403, { message: "Must have admin rights or read:org" });
+			return members.includes(membership[3]!)
+				? this.#respond(200, { state: "active", role: "member" })
+				: this.#respond(404, { message: "Not Found" });
 		}
 		const match = /^repos\/([^/]+)\/([^/]+)\/(pulls|issues|commits)\/([^/]+)(?:\/(.*))?$/.exec(path);
 		if (!match) return this.#respond(404, { message: "Not Found" });
@@ -351,7 +376,7 @@ export class FakeHub {
 			const review: FakeReview = {
 				id: this.nextId(),
 				user: account.login,
-				state: String(body.event),
+				state: REVIEW_STATES[String(body.event)] ?? String(body.event),
 				commit_id: String(body.commit_id),
 				submitted_at: stamp,
 				body: String(body.body),

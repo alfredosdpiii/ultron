@@ -5,6 +5,7 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
 import type { AutoreviewSettings, RlmModelSettings } from "../../core/settings-manager.ts";
+import { logoText } from "../../experimental/ultron-logo.ts";
 
 export const DEFAULT_POLL_SECONDS = 45;
 export const MIN_POLL_SECONDS = 20;
@@ -49,7 +50,7 @@ export interface AutoreviewConfig {
 	readonly dryRun: boolean;
 	readonly ack: boolean;
 	readonly ackLines: readonly string[];
-	/** Text appended to the acknowledgement in a fenced block (an ASCII-art banner); empty: none. */
+	/** Art appended to the acknowledgement in a fenced block (Ultron's logo by default); empty: none. */
 	readonly ackArt: string;
 	readonly signature: boolean;
 }
@@ -77,6 +78,17 @@ export function resolveModel(settings: AutoreviewSettings, fallbacks: ModelFallb
 	);
 }
 
+/** `autoreview.ackArt`: unset or "logo" is Ultron's half-size logo, "none" or false is no art, other text is itself. */
+export function resolveAckArt(setting: string | false | undefined): string {
+	if (setting === false) return "";
+	const name = setting?.trim().toLowerCase();
+	if (name === undefined || name === "" || name === "logo") return logoText();
+	return name === "none" ? "" : setting!;
+}
+
+/** Dry-run files and logs older than this are removed. */
+export const RETENTION_DAYS = 14;
+
 export function resolveConfig(settings: AutoreviewSettings, fallbacks: ModelFallbacks = {}): AutoreviewConfig {
 	const model = resolveModel(settings, fallbacks);
 	const verifyModel = settings.verifyModel ?? model;
@@ -90,7 +102,7 @@ export function resolveConfig(settings: AutoreviewSettings, fallbacks: ModelFall
 		dryRun: settings.dryRun ?? false,
 		ack: settings.ack ?? true,
 		ackLines: settings.ackLines ?? DEFAULT_ACK_LINES,
-		ackArt: settings.ackArt ?? "",
+		ackArt: resolveAckArt(settings.ackArt),
 		signature: settings.signature ?? true,
 	};
 }
