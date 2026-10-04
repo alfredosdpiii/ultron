@@ -226,6 +226,8 @@ type FrameState = {
 	lastEstimate?: number;
 	exhausted?: string;
 	outputs: string[];
+	/** Provider-reported usage of the frame's requests (summed into `rlm.map`'s reply). */
+	measured: { inputTokens: number; outputTokens: number; cost: number };
 	attempts: Array<{ attempt: number; at: number; output: string; error?: string }>;
 	requests: Array<{ at: number; tranche: number; held: number; charged: number; status: string }>;
 	outcome?: FrameOutcome;
@@ -807,6 +809,7 @@ export class InferenceRuntime {
 			settled: { requests: 0, tokens: 0 },
 			conversationChars: 0,
 			outputs: [],
+			measured: { inputTokens: 0, outputTokens: 0, cost: 0 },
 			attempts: [],
 			requests: [],
 			startedAt: this.now(),
@@ -887,6 +890,11 @@ export class InferenceRuntime {
 		return {
 			results: frames.map((frame) => this.observation(frame)),
 			budget: { ...options.node.snapshot(), remaining: options.node.remaining() },
+			usage: {
+				input_tokens: frames.reduce((sum, frame) => sum + frame.measured.inputTokens, 0),
+				output_tokens: frames.reduce((sum, frame) => sum + frame.measured.outputTokens, 0),
+				cost: frames.reduce((sum, frame) => sum + frame.measured.cost, 0),
+			},
 		};
 	}
 
@@ -1056,8 +1064,14 @@ export class InferenceRuntime {
 				throw error;
 			} finally {
 				this.settlePrompt(frame, entries);
+				const measured = measurement(entries);
+				if (measured !== undefined) {
+					frame.measured.inputTokens += measured.inputTokens ?? 0;
+					frame.measured.outputTokens += measured.outputTokens ?? 0;
+					frame.measured.cost += measured.cost ?? 0;
+				}
 				if (reservation) {
-					const usage = measurement(entries);
+					const usage = measured;
 					await this.usage?.settle(reservation, { status, ...(usage === undefined ? {} : { usage }) });
 				}
 			}
