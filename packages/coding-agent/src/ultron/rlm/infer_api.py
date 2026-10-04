@@ -346,6 +346,8 @@ class MapResults(list):
     spent: dict[str, Any]
     budget: dict[str, Any]
     remaining: dict[str, Any]
+    #: Provider-reported totals of the map's requests: input_tokens, output_tokens, cost (USD); empty when unknown.
+    usage: dict[str, Any]
 
     def summary(self) -> str:
         complete = sum(1 for item in self if not isinstance(item, (Incomplete, FrameError)))
@@ -521,6 +523,7 @@ class Inference:
         results.spent = dict(budget.get("spent") or {})
         results.budget = dict(budget.get("limits") or {})
         results.remaining = dict(budget.get("remaining") or {})
+        results.usage = dict(reply.get("usage") or {}) if isinstance(reply.get("usage"), dict) else {}
         print(results.summary())
         return results
 

@@ -42,6 +42,9 @@ environment variable overrides is shown locked with the variable's name.
 | `claudeCode.childModel` | Claude Code alias | `claude-opus-5-5` | Claude Code sub-agents (`children: "claude"`). `--child-model` and `ULTRON_CLAUDE_CHILD_MODEL` override it. |
 | `claudeCode.ultronChildModel` | `provider/model` | The default model | Ultron sub-agents under `ultron claude` (`children: "ultron"`); tool-capable models only. |
 
+`ultron autoreview` has its own `autoreview.*` settings (accounts, models, budget, dry run, acknowledgement); see
+[autoreview.md](autoreview.md#settings).
+
 The session's own model is `defaultProvider`/`defaultModel`: the Models section's "Session model" row switches the
 running session and saves it as the default, as `/model` does. The `claudeCode.*` rows apply when `ultron claude` next
 starts.
