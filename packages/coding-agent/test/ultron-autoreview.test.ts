@@ -24,6 +24,7 @@ import { parseAutoreviewArgs, runAutoreviewCommand } from "../src/ultron/autorev
 import {
 	autoreviewPaths,
 	DEFAULT_ACK_LINES,
+	engineSettings,
 	resolveAckArt,
 	resolveConfig,
 	SIGNATURE,
@@ -606,14 +607,15 @@ describe("reviewing a pull request", () => {
 			ci: "1 passed, 1 failed (test)",
 			comments: [{ author: "bob", path: "calc.py", line: 5, body: "price may be missing" }],
 		});
+		// No token cap, deadline or frame timeout unless configured.
 		expect(spec).toMatchObject({
-			budget: 300_000,
 			concurrency: 8,
 			thinking: "low",
 			verifyThinking: "low",
-			deadlineSeconds: 150,
-			frameTimeoutSeconds: 75,
+			deadlineSeconds: 0,
+			frameTimeoutSeconds: 0,
 		});
+		expect(spec.budget).toBeUndefined();
 		// The worktree is removed afterwards.
 		expect(existsSync(spec.workDir!)).toBe(false);
 		// State: the reviewed commit and the posted finding with its comment and thread ids.
@@ -1474,12 +1476,12 @@ describe("the command", () => {
 		expect(resolveConfig({})).toMatchObject({
 			pollSeconds: 45,
 			concurrency: 3,
-			budget: 300_000,
+			budget: 0,
 			frameConcurrency: 8,
 			thinking: "low",
 			verifyThinking: "low",
-			deadlineSeconds: 150,
-			frameTimeoutSeconds: 75,
+			deadlineSeconds: 0,
+			frameTimeoutSeconds: 0,
 			dryRun: false,
 			ack: true,
 			signature: true,
@@ -1488,6 +1490,12 @@ describe("the command", () => {
 			resolveConfig({ frameConcurrency: 64, deadlineSeconds: 5, frameTimeoutSeconds: 1, thinking: "high" }),
 		).toMatchObject({ frameConcurrency: 16, deadlineSeconds: 30, frameTimeoutSeconds: 10, thinking: "high" });
 		expect(resolveConfig({ deadlineSeconds: 0 }).deadlineSeconds).toBe(0);
+		// The limits are opt-in, and a configured cap reaches the engine.
+		const limited = resolveConfig({ budget: 200_000, deadlineSeconds: 150, frameTimeoutSeconds: 75 });
+		expect(limited).toMatchObject({ budget: 200_000, deadlineSeconds: 150, frameTimeoutSeconds: 75 });
+		expect(engineSettings(limited)).toMatchObject({ budget: 200_000, deadlineSeconds: 150 });
+		expect(resolveConfig({ budget: 500 }).budget).toBe(10_000);
+		expect("budget" in engineSettings(resolveConfig({}))).toBe(false);
 		expect(
 			SettingsManager.inMemory({
 				autoreview: {

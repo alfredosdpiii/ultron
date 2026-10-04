@@ -217,7 +217,7 @@ export interface AutoreviewSettings {
 	model?: string;
 	/** `provider/model` of the verifier frames; unset: the finder model. */
 	verifyModel?: string;
-	/** Token cap of one review (default 300000). */
+	/** Token cap of one review (default: none). */
 	budget?: number;
 	/** Model requests of one review in flight at once, for finder and verifier frames alike (default 8, max 16). */
 	frameConcurrency?: number;
@@ -225,9 +225,9 @@ export interface AutoreviewSettings {
 	thinking?: FrameThinkingLevel;
 	/** Thinking level of the verifier frames (default "low"). */
 	verifyThinking?: FrameThinkingLevel;
-	/** Seconds a review may take: at the deadline unfinished passes are given up and the rest is posted (default 150; 0: none). */
+	/** Seconds a review may take: at the deadline unfinished passes are given up and the rest is posted (default 0: none, the review waits for every frame). */
 	deadlineSeconds?: number;
-	/** Seconds one frame may take before it is retried or given up (default 75). */
+	/** Seconds one frame may take before it is retried or given up (default: no timeout). */
 	frameTimeoutSeconds?: number;
 	/** Write the would-be review to `<agentDir>/autoreview/dry-run/` instead of posting it (default false). */
 	dryRun?: boolean;

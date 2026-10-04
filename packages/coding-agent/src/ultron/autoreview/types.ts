@@ -66,7 +66,12 @@ export interface EngineFinding {
 	readonly file: string;
 	readonly line: number;
 	readonly endLine?: number;
+	/** The final severity: the verifier's rating under the rubric (for an uncertain finding, the finder's, capped). */
 	readonly severity: Severity;
+	/** What the finder rated it. */
+	readonly finderSeverity?: Severity;
+	/** The concrete failure the finder stated: input or state, what happens, what should. Empty when none. */
+	readonly scenario?: string;
 	readonly category: string;
 	readonly claim: string;
 	readonly why: string;
@@ -130,7 +135,8 @@ export interface EngineResult {
 		readonly costUsd: number;
 		readonly frames: number;
 		readonly tokens: number;
-		readonly budget: number;
+		/** The token cap, or null when there was none. */
+		readonly budget: number | null;
 	};
 	readonly model: string | null;
 	readonly verifyModel: string | null;

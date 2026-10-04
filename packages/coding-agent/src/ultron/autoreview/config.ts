@@ -11,16 +11,18 @@ export const DEFAULT_POLL_SECONDS = 45;
 export const MIN_POLL_SECONDS = 20;
 export const DEFAULT_CONCURRENCY = 3;
 export const MAX_CONCURRENCY = 8;
-export const DEFAULT_BUDGET_TOKENS = 300_000;
+/** 0: no token cap. */
+export const DEFAULT_BUDGET_TOKENS = 0;
 export const MIN_BUDGET_TOKENS = 10_000;
 /** Model requests of one review in flight at once; more trips subscription rate limits. */
 export const DEFAULT_FRAME_CONCURRENCY = 8;
 export const MAX_FRAME_CONCURRENCY = 16;
 export const DEFAULT_THINKING: FrameThinkingLevel = "low";
-/** A late review is worth less than a partial one: at the deadline, what was found is verified and posted. */
-export const DEFAULT_DEADLINE_SECONDS = 150;
+/** 0: no deadline, the review waits for every frame. With one, what was found by then is verified and posted. */
+export const DEFAULT_DEADLINE_SECONDS = 0;
 export const MIN_DEADLINE_SECONDS = 30;
-export const DEFAULT_FRAME_TIMEOUT_SECONDS = 75;
+/** 0: no per-frame timeout from the pipeline. */
+export const DEFAULT_FRAME_TIMEOUT_SECONDS = 0;
 export const MIN_FRAME_TIMEOUT_SECONDS = 10;
 /** A commit is tried this many times; then one "could not review" comment is posted. */
 export const MAX_ATTEMPTS = 3;
@@ -55,6 +57,7 @@ export interface AutoreviewConfig {
 	/** `provider/model` of the finder frames; undefined: the engine's default model. */
 	readonly model?: string;
 	readonly verifyModel?: string;
+	/** Token cap of one review; 0: none. */
 	readonly budget: number;
 	readonly frameConcurrency: number;
 	readonly thinking: FrameThinkingLevel;
@@ -108,7 +111,7 @@ export const RETENTION_DAYS = 14;
 export function engineSettings(config: AutoreviewConfig): {
 	model?: string;
 	verifyModel?: string;
-	budget: number;
+	budget?: number;
 	concurrency: number;
 	thinking: FrameThinkingLevel;
 	verifyThinking: FrameThinkingLevel;
@@ -118,7 +121,7 @@ export function engineSettings(config: AutoreviewConfig): {
 	return {
 		...(config.model === undefined ? {} : { model: config.model }),
 		...(config.verifyModel === undefined ? {} : { verifyModel: config.verifyModel }),
-		budget: config.budget,
+		...(config.budget > 0 ? { budget: config.budget } : {}),
 		concurrency: config.frameConcurrency,
 		thinking: config.thinking,
 		verifyThinking: config.verifyThinking,
@@ -136,7 +139,7 @@ export function resolveConfig(settings: AutoreviewSettings, fallbacks: ModelFall
 		concurrency: Math.min(MAX_CONCURRENCY, Math.max(1, settings.concurrency ?? DEFAULT_CONCURRENCY)),
 		...(model === undefined ? {} : { model }),
 		...(verifyModel === undefined ? {} : { verifyModel }),
-		budget: Math.max(MIN_BUDGET_TOKENS, settings.budget ?? DEFAULT_BUDGET_TOKENS),
+		budget: settings.budget === undefined ? DEFAULT_BUDGET_TOKENS : Math.max(MIN_BUDGET_TOKENS, settings.budget),
 		frameConcurrency: Math.min(
 			MAX_FRAME_CONCURRENCY,
 			Math.max(1, settings.frameConcurrency ?? DEFAULT_FRAME_CONCURRENCY),
@@ -144,13 +147,13 @@ export function resolveConfig(settings: AutoreviewSettings, fallbacks: ModelFall
 		thinking: settings.thinking ?? DEFAULT_THINKING,
 		verifyThinking: settings.verifyThinking ?? DEFAULT_THINKING,
 		deadlineSeconds:
-			settings.deadlineSeconds === 0
-				? 0
-				: Math.max(MIN_DEADLINE_SECONDS, settings.deadlineSeconds ?? DEFAULT_DEADLINE_SECONDS),
-		frameTimeoutSeconds: Math.max(
-			MIN_FRAME_TIMEOUT_SECONDS,
-			settings.frameTimeoutSeconds ?? DEFAULT_FRAME_TIMEOUT_SECONDS,
-		),
+			settings.deadlineSeconds === undefined || settings.deadlineSeconds === 0
+				? DEFAULT_DEADLINE_SECONDS
+				: Math.max(MIN_DEADLINE_SECONDS, settings.deadlineSeconds),
+		frameTimeoutSeconds:
+			settings.frameTimeoutSeconds === undefined
+				? DEFAULT_FRAME_TIMEOUT_SECONDS
+				: Math.max(MIN_FRAME_TIMEOUT_SECONDS, settings.frameTimeoutSeconds),
 		dryRun: settings.dryRun ?? false,
 		ack: settings.ack ?? true,
 		ackLines: settings.ackLines ?? DEFAULT_ACK_LINES,

@@ -87,7 +87,7 @@ left alone until a new commit or a new mention.
 
    - **Approve** when coverage was complete and there is no confirmed blocker or major finding.
    - **Request changes** when there is one (or one from an earlier review is still present).
-   - **Comment** when coverage was incomplete (the token budget ran out, frames failed, the repository could not be
+   - **Comment** when coverage was incomplete (frames failed, a token cap or deadline you set ran out, the repository could not be
      cloned), when the account opened the pull request itself, or when the pull request is closed or merged. It
      never approves on partial coverage.
 
@@ -124,12 +124,12 @@ reviewed.
 | `autoreview.concurrency` | `3` | Pull requests reviewed at once (maximum 8). |
 | `autoreview.model` | unset: `review.model`, then `rlm.frameModel`, then the default model | `provider/model` of the finder frames. |
 | `autoreview.verifyModel` | the finder model | `provider/model` of the verifier frames. |
-| `autoreview.budget` | `300000` | Token cap of one review. |
+| `autoreview.budget` | none | Optional token cap of one review. Unset, no pass is refused for tokens. |
 | `autoreview.thinking` | `"low"` | Thinking level of the finder frames (`off`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`). |
 | `autoreview.verifyThinking` | `"low"` | Thinking level of the verifier frames. |
 | `autoreview.frameConcurrency` | `8` | Model requests of one review in flight at once, finder and verifier frames alike (maximum 16). Lower it if your provider rate-limits. |
-| `autoreview.deadlineSeconds` | `150` | How long one review may take (minimum 30; `0` for no deadline). See below. |
-| `autoreview.frameTimeoutSeconds` | `75` | How long one frame may take before it is retried or given up. |
+| `autoreview.deadlineSeconds` | `0` (none) | Optional limit on how long one review may take (minimum 30). Unset, the review waits for every finder and verifier frame. See below. |
+| `autoreview.frameTimeoutSeconds` | `0` (none) | Optional limit on how long one frame may take before it is retried or given up (minimum 10). |
 | `autoreview.dryRun` | `false` | Write would-be reviews to `autoreview/dry-run/` instead of posting. |
 | `autoreview.ack` | `true` | Post the acknowledgement comment. |
 | `autoreview.ackLines` | 17 built-in lines | The lines one is picked from. |
@@ -141,27 +141,45 @@ reviewed.
   "autoreview": {
     "accounts": ["my-bot"],
     "model": "claude-code/haiku",
-    "verifyModel": "cliproxyapi/glm-5.3-flash",
-    "budget": 200000
+    "verifyModel": "cliproxyapi/glm-5.3-flash"
   }
 }
 ```
 
 The two model ids are examples: use `provider/model` names your own providers offer (`ultron --list-models`).
 
-## Speed: slices, retries and the deadline
+## Severity
+
+The verdict blocks a merge on blocker and major findings only, so severity is checked twice. The finder must state
+a concrete failing scenario (input or state, what happens, what should happen) for anything it rates blocker or
+major. The verifier then reads the source, rates the severity itself and says whether that scenario really fails.
+The posted severity is the verifier's, and:
+
+- a blocker or major whose scenario does not hold, or cannot be shown from the source, is posted as minor;
+- a finding without a concrete scenario is never above minor; neither are missing tests, nor maintainability and
+  architecture findings unless their scenario is a real failure;
+- a behaviour change that is the evident point of the pull request is not a defect: at most a minor "confirm this
+  is intended", unless it breaks a caller shown in the source;
+- the verifier may also raise a finding: a wrong result on an input the author means to support is major even if
+  the finder said minor.
+
+With `--json`, every finding has `severity` (final), `finderSeverity` and `scenario`.
+
+## Speed: slices, retries and optional limits
 
 - Small files are packed into one slice (up to about 14,000 characters, a file never split further), so a small
   pull request costs one finder frame per reviewer, not one per reviewer and file. Each finding still names its file
   and line.
-- Every frame is one model request with its own timeout. A rate limit (429), a timeout or another transient
-  provider error is retried twice, with jittered backoff or after the time the provider asks for, before the pass
-  is listed as not checked.
-- The token cap counts what was really spent plus a bounded grant for each request in flight. A pass is refused
-  only when that leaves no room for it.
-- A late review is worth less than a partial one. At three quarters of `autoreview.deadlineSeconds` unfinished
-  finder passes are given up; what was found is verified in the time left; the review is posted as incomplete
-  (so never an approval) with the unfinished passes listed under "Not checked".
+- Every frame is one model request. A rate limit (429), a server or network error is retried twice, with jittered
+  backoff or after the time the provider asks for, before the pass is listed as not checked.
+- By default there is no token cap, no per-frame timeout and no deadline: the review waits for every finder and
+  verifier frame and posts when all are done. Each limit is opt-in:
+  - `autoreview.budget` (or `--budget`): the cap counts what was really spent plus a bounded grant for each request
+    in flight; a pass is refused only when that leaves no room for it.
+  - `autoreview.frameTimeoutSeconds`: a frame that takes longer is retried, then given up.
+  - `autoreview.deadlineSeconds` (or `--deadline`): at three quarters of it unfinished finder passes are given up;
+    what was found is verified in the time left; the review is posted as incomplete (so never an approval) with
+    the unfinished passes listed under "Not checked".
 - With `--json`, `timing.frames` lists every frame: `{phase, reviewer, ms, status, retries}`.
 
 ## Run it as a service
