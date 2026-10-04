@@ -332,7 +332,9 @@ export function reviewerArgv({ template, ultron = ["ultron"] }, values) {
 		// `@find/verify` sets them separately.
 		const [find, verify = find] = String(values.thinking ?? "").split("/");
 		const thinking = find ? ["--thinking", find, "--verify-thinking", verify] : [];
-		return [...ultron, "autoreview", "review", ...contractArgs(values), ...thinking];
+		// AUTOREVIEW_BENCH_EXTRA_ARGS: extra reviewer flags for every arm of a run (e.g. "--mode both").
+		const extra = (process.env.AUTOREVIEW_BENCH_EXTRA_ARGS ?? "").split(/\s+/).filter(Boolean);
+		return [...ultron, "autoreview", "review", ...contractArgs(values), ...thinking, ...extra];
 	}
 	const argv = splitCommand(template);
 	if (!argv.length) throw new Error("empty --reviewer-cmd");
