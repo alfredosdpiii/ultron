@@ -169,6 +169,8 @@ export function offlineJson(result: EngineResult, startupMs: number | undefined)
 			line: finding.line,
 			...(finding.endLine === undefined ? {} : { endLine: finding.endLine }),
 			severity: finding.severity,
+			finderSeverity: finding.finderSeverity ?? finding.severity,
+			scenario: finding.scenario ?? "",
 			category: finding.category,
 			claim: finding.claim,
 			why: finding.why,

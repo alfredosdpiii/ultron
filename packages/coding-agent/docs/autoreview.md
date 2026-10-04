@@ -148,6 +148,23 @@ reviewed.
 
 The two model ids are examples: use `provider/model` names your own providers offer (`ultron --list-models`).
 
+## Severity
+
+The verdict blocks a merge on blocker and major findings only, so severity is checked twice. The finder must state
+a concrete failing scenario (input or state, what happens, what should happen) for anything it rates blocker or
+major. The verifier then reads the source, rates the severity itself and says whether that scenario really fails.
+The posted severity is the verifier's, and:
+
+- a blocker or major whose scenario does not hold, or cannot be shown from the source, is posted as minor;
+- a finding without a concrete scenario is never above minor; neither are missing tests, nor maintainability and
+  architecture findings unless their scenario is a real failure;
+- a behaviour change that is the evident point of the pull request is not a defect: at most a minor "confirm this
+  is intended", unless it breaks a caller shown in the source;
+- the verifier may also raise a finding: a wrong result on an input the author means to support is major even if
+  the finder said minor.
+
+With `--json`, every finding has `severity` (final), `finderSeverity` and `scenario`.
+
 ## Speed: slices, retries and optional limits
 
 - Small files are packed into one slice (up to about 14,000 characters, a file never split further), so a small
