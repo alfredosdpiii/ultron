@@ -393,6 +393,11 @@ export function parseReview(stdout) {
 			...(typeof finding?.suggestedFix === "string" ? { suggestedFix: finding.suggestedFix } : {}),
 			verification: finding?.verification === "confirmed" ? "confirmed" : "uncertain",
 			confidence: number(finding?.confidence),
+			// Optional fields of newer reviewers, kept for analysis (level, origin, and where the comment would go).
+			...(typeof finding?.level === "string" ? { level: finding.level } : {}),
+			...(typeof finding?.source === "string" ? { source: finding.source } : {}),
+			...(typeof finding?.posted === "string" ? { posted: finding.posted } : {}),
+			...(Number.isFinite(finding?.rank) ? { rank: finding.rank } : {}),
 		};
 	});
 	return {
