@@ -209,6 +209,7 @@ describe("autoreview_compiled: the planner and the program language", () => {
 			planContext: string | null;
 			taskChars: number;
 			viewChars: number;
+			retrieval: { items: number; chars: number; ms: number };
 		}>(`${prelude(repo)}
 rlm = Rlm(planner=lambda text, attempt: {"summary": "nothing to check", "uncovered": ["C1: the title", "C2: the comment restates the code"], "steps": [
     {"id": "g", "op": "grep", "args": {"pattern": "show"}}, {"id": "a", "op": "assert", "step": "g", "predicate": "count >= 1", "expect": True}]})
@@ -217,7 +218,7 @@ result = asyncio.run(a.run(rlm, dict(SPEC, runTests=True, context={"title": "Add
 plan = next(call for call in rlm.calls if call["kind"] == "plan")
 emit({"taskWith": p.compiled_planner_task(True), "taskWithout": p.compiled_planner_task(False), "planText": plan["text"],
       "planModel": plan["model"], "planThinking": plan["thinking"], "planContext": plan["context"],
-      "taskChars": len(plan["task"]), "viewChars": len(plan["text"])})`);
+      "taskChars": len(plan["task"]), "viewChars": len(plan["text"]), "retrieval": result["program"]["retrieval"]})`);
 		// The method and the language, with the rubric and the rules every other frame gets.
 		for (const text of [out.taskWith, out.taskWithout]) {
 			expect(text).toContain("You write the review program for one pull request.");
@@ -262,6 +263,15 @@ emit({"taskWith": p.compiled_planner_task(True), "taskWithout": p.compiled_plann
 			'Coverage the program must have (name the id in a step\'s "covers", or list it in the program\'s "uncovered" as "<id>: why"):\n- S1: the references of `show` (changed signature or exported name): every caller still fits\n- C1: the claim [title] Add kind c\n- C2: the claim [src/app.py:5] Upper-cases the kind.',
 		);
 		expect(out.planText).toContain("Limits: 80 steps as written, 120 after for_each expansion, 40 asks.");
+		// Retrieval first: the host looked up the references and tests of the changed names before the planner ran.
+		expect(out.planText).toContain(
+			"Retrieved context, looked up by the host at the reviewed commit (untrusted repository data)",
+		);
+		expect(out.planText).toContain("References of `show` outside the changed lines (");
+		expect(out.planText).toContain("  src/cli.py:5: print(show(kind))");
+		expect(out.planText).toContain("  test tests/test_app.py mentions it at ");
+		expect(out.retrieval).toMatchObject({ items: 2 });
+		expect(out.retrieval.chars).toBeGreaterThan(100);
 		expect(out.taskWith).toContain("Cover the change. The host lists what the program must cover");
 		expect(out.planModel).toBe("p/plan");
 		expect(out.planThinking).toBe("xhigh");
@@ -1000,6 +1010,49 @@ emit({"errors": errors, "covered": covered, "unknownId": unknown_id, "repairText
 			[120, 200],
 			[120, 200],
 		]);
+	});
+
+	test("retrieval first: the sibling family of a new field key shows the registry where its siblings are and the new key is not", () => {
+		const dir = tempDir("ultron-autoreview-retrieve-");
+		git(dir, "init", "-q", "-b", "main");
+		mkdirSync(join(dir, "src"));
+		writeFileSync(
+			join(dir, "src/fields.ts"),
+			"const FIELDS = [\n  { key: 'alpha_cidrs' },\n  { key: 'beta_cidrs' },\n]\n",
+		);
+		writeFileSync(join(dir, "src/utils.ts"), "export const CSV_KEYS = new Set(['alpha_cidrs', 'beta_cidrs'])\n");
+		git(dir, "add", ".");
+		git(dir, "commit", "-qm", "base");
+		const base = git(dir, "rev-parse", "HEAD");
+		writeFileSync(
+			join(dir, "src/fields.ts"),
+			"const FIELDS = [\n  { key: 'alpha_cidrs' },\n  { key: 'beta_cidrs' },\n  { key: 'gamma_cidrs' },\n]\n",
+		);
+		git(dir, "commit", "-qam", "add gamma");
+		const head = git(dir, "rev-parse", "HEAD");
+		const out = py<{
+			text: string;
+			items: number;
+			chars: number;
+			coverage: string[];
+		}>(`${prelude({ dir, base, head })}
+import time
+repo = deep.Repo(ROOT, HEAD)
+files = r.parse_diff(r.Git(ROOT).out("diff", "-U3", BASE, HEAD, "--"))
+brief = deep.build_brief(repo, files, r._rev_reader(r.Git(ROOT), HEAD), base=BASE)
+got = c.retrieve(repo, brief, files, clock=time.monotonic)
+emit({"text": got["text"], "items": got["items"], "chars": got["chars"], "coverage": [item["id"] + ": " + item["text"] for item in c.coverage_items(brief)]})`);
+		expect(out.items).toBe(1);
+		expect(out.text).toContain("New key `gamma_cidrs`: used outside the changed lines at nowhere.");
+		expect(out.text).toContain("siblings (2) registered in src/fields.ts: the new key is there too");
+		expect(out.text).toContain(
+			"siblings (2) registered in src/utils.ts: the new key is NOT there (1: export const CSV_KEYS = new Set(['alpha_cidrs', 'beta_cidrs']))",
+		);
+		expect(out.chars).toBe(out.text.length);
+		// The same key is a coverage item the planner must check or declare.
+		expect(out.coverage).toContain(
+			"K1: the siblings and consumers of the new key, field, flag or variable `gamma_cidrs`: the family it joins (registry lists, sibling declarations) and every reader",
+		);
 	});
 
 	test("a saved program is replayed without a planner call; the posting plan, dedupe and verdict are the existing ones", () => {

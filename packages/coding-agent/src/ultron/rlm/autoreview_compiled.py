@@ -70,6 +70,10 @@ RESULT_CHARS = 24_000
 RECORD_CHARS = 1_200
 EVIDENCE_CHARS = 1_200
 MAX_HOLDS = 3
+#: The retrieved-context block the planner gets before it plans: references, tests and sibling families of the
+#: changed names, mechanically looked up by the host.
+RETRIEVAL_CHARS = 24_000
+RETRIEVAL_HITS = 12
 CAPPED = "(more not shown)"
 _ID = re.compile(r"^[A-Za-z_][A-Za-z0-9_-]{0,39}$")
 _PLACEHOLDER = re.compile(r"\{\{\s*([A-Za-z_][A-Za-z0-9_\-]*(?:\[\d+\])?(?:\.[A-Za-z_][A-Za-z0-9_\-]*)*)\s*\}\}")
@@ -1275,15 +1279,109 @@ def runner_availability(session: Any) -> tuple[list[str], set[tuple[str, str]]]:
     return lines, unavailable
 
 
+def retrieve(repo: deep.Repo, brief: Any, files: list[FileDiff], *, clock: Callable[[], float],
+             limit: int = RETRIEVAL_CHARS) -> dict[str, Any]:
+    """The mechanical lookups the deep pass's investigators had to ask for, done by the host before the planner
+    runs: for every changed or added symbol its references (capped) and the test files that mention it with their
+    parametrize/fixture lines; for every new config key, field, flag or environment variable the sibling family
+    (where the other keys of its declaration are registered, and whether the new one is there too); and the
+    definitions of the helpers the new code calls. Most relevant first (symbols with the most references, keys
+    whose siblings have a registry), bounded by `limit` characters. Returns {"text", "items", "chars", "ms"}."""
+    began = clock()
+    changed_lines = {item.path: {line.new for hunk in item.hunks for line in hunk.lines if line.kind == "+" and line.new}
+                     for item in files}
+    changed_paths = {item.path for item in files}
+    extracted = getattr(brief, "extracted", {}) or {}
+    required = getattr(brief, "required", {}) or {}
+    sections: list[tuple[int, str]] = []
+    items = 0
+
+    def outside(hits: list[tuple[str, int, str]]) -> list[tuple[str, int, str]]:
+        return [hit for hit in hits if hit[1] not in changed_lines.get(hit[0], ())]
+
+    for name in list(getattr(brief, "symbols", []) or [])[:8]:
+        hits = outside(repo.grep(name, fixed=True, word=True, limit=60))
+        if not hits:
+            sections.append((0, f"References of `{name}` outside the changed lines: none."))
+            items += 1
+            continue
+        tests = [hit for hit in hits if deep._TEST.search(hit[0])]
+        code = [hit for hit in hits if hit not in tests]
+        lines = [f"References of `{name}` outside the changed lines ({len(hits)} in all, {len(tests)} in tests):"]
+        lines += [f"  {p}:{n}: {_clip(text.strip(), 160)}" for p, n, text in code[:RETRIEVAL_HITS]]
+        if len(code) > RETRIEVAL_HITS:
+            lines.append(f"  ... {len(code) - RETRIEVAL_HITS} more")
+        for test_path in list(dict.fromkeys(hit[0] for hit in tests))[:3]:
+            mentions = [f"{n}: {_clip(text.strip(), 120)}" for p, n, text in tests if p == test_path][:4]
+            structure = repo.grep(deep._STRUCTURE, pathspec=test_path, limit=6)
+            lines.append(f"  test {test_path} mentions it at " + "; ".join(mentions))
+            if structure:
+                lines.append("    structure: " + "; ".join(f"{n}: {_clip(text.strip(), 100)}" for _, n, text in structure))
+        sections.append((len(hits), "\n".join(lines)))
+        items += 1
+    keys = list(dict.fromkeys(list(required.get("claims") or []) + list(extracted.get("fields") or [])
+                              + list(extracted.get("constants") or [])))[:8]
+    # The siblings of a new field are the other fields declared in the same changed files (the declaration
+    # list it joins), plus the other new keys.
+    declared: list[str] = []
+    for item in files:
+        for line in repo.lines(item.path) or []:
+            match = deep._FIELD.match(line)
+            if match and match.group(1) not in declared:
+                declared.append(match.group(1))
+    for key in keys:
+        own = outside(repo.grep(key, fixed=True, word=True, limit=40))
+        siblings = [other for other in list(dict.fromkeys(keys + declared)) if other != key][:12]
+        family: list[tuple[str, int, str]] = []
+        if siblings:
+            pattern = "|".join(re.escape(other) for other in siblings)
+            family = [hit for hit in repo.grep(pattern, limit=80) if hit[0] not in changed_paths or hit[1] not in changed_lines.get(hit[0], ())]
+        # A registry is a file where at least two sibling names appear; the new key counts as present when it
+        # appears anywhere in that file at the reviewed commit.
+        by_file: dict[str, set[str]] = {}
+        for p, _n, text in family:
+            by_file.setdefault(p, set()).update(other for other in siblings if re.search(r"(?<![A-Za-z0-9_])" + re.escape(other) + r"(?![A-Za-z0-9_])", text))
+        present = {p for p, _n, _t in repo.grep(key, fixed=True, word=True, limit=60)}
+        registries = [p for p, names in sorted(by_file.items(), key=lambda pair: -len(pair[1])) if len(names) >= 2]
+        lines = [f"New key `{key}`: used outside the changed lines at "
+                 + ("; ".join(f"{p}:{n}" for p, n, _t in own[:RETRIEVAL_HITS]) or "nowhere") + "."]
+        for p in registries[:5]:
+            where = "; ".join(f"{n}: {_clip(text.strip(), 100)}" for q, n, text in family if q == p)[:400]
+            lines.append(f"  siblings ({len(by_file[p])}) registered in {p}" + (": the new key is NOT there" if p not in present
+                                                                        else ": the new key is there too") + f" ({where})")
+        sections.append((100 + len(registries) * 10, "\n".join(lines)))
+        items += 1
+    for name in list(extracted.get("calls") or [])[:5]:
+        if name in (getattr(brief, "helpers", []) or []):
+            continue  # the brief already shows it
+        hits = repo.grep(deep._definition_pattern(name), limit=2)
+        if hits:
+            p, n, _t = hits[0]
+            lines = repo.lines(p)
+            if lines:
+                sections.append((1, f"Called by the change, `{name}` is defined at {p}:{n}:\n{deep._numbered(lines, n, min(len(lines), n + 11))}"))
+                items += 1
+    text = ""
+    for _rank, section in sorted(sections, key=lambda pair: -pair[0]):
+        if len(text) + len(section) + 2 > limit:
+            text += "\n... (retrieved context cut at its size limit)"
+            break
+        text += ("\n\n" if text else "") + section
+    return {"text": text, "items": items, "chars": len(text), "ms": int((clock() - began) * 1000)}
+
+
 def planner_views(diff_text: str, brief_text: str, *, context: str, intent: str, guidance: str, tests_block: str,
                   runners: list[str], tests_allowed: bool, runs_left: int, coverage: list[dict[str, str]] | None = None,
-                  limits: tuple[int, int] = (MAX_PROGRAM_STEPS, MAX_STEPS)) -> tuple[list[str], bool]:
+                  limits: tuple[int, int] = (MAX_PROGRAM_STEPS, MAX_STEPS), retrieved: str = "") -> tuple[list[str], bool]:
     """The planner's views: the diff, the brief, the context, the intent, the guides, the coverage the program
     must have, the limits, the test situation."""
     cut = len(diff_text) > deep.DIFF_CHARS
     views = [f"The diff under review (new-file line numbers in the gutter):\n{diff_text[:deep.DIFF_CHARS]}"
              + ("\n... (diff cut at its size limit; read the files for the rest)" if cut else ""),
              f"Investigation brief, built by the host from the repository at the reviewed commit:\n{brief_text}"]
+    if retrieved:
+        views.append("Retrieved context, looked up by the host at the reviewed commit (untrusted repository data): the "
+                     "references, tests and sibling families of the changed names, and the helpers the change calls.\n\n" + retrieved)
     for part in (context, intent, guidance, tests_block):
         if part:
             views.append(part)
@@ -1321,12 +1419,14 @@ async def run_compiled(frames: Any, files: list[FileDiff], read_file: Callable[[
     changed_lines = sum(item.added + item.removed for item in files)
     limits = limits_for(changed_lines)
     coverage = coverage_items(brief)
+    retrieved = retrieve(repo, brief, files, clock=clock)
     session = None
     planner: dict[str, Any] = {"ms": 0, "tokens": 0, "repairs": 0, "status": "replayed" if program is not None else "ok"}
     out: dict[str, Any] = {"findings": [], "dropped": [], "generic": [], "records": [], "stats": None, "assurance": [],
                            "repo": repo, "brief": brief, "program": None, "fallback": None, "diff_cut": False,
                            "planner": planner, "tests": {"enabled": tests is not None, "mechanism": None, "note": None, "runs": []},
-                           "refuted": 0, "uncovered": [], "coverage": coverage, "limits": limits}
+                           "refuted": 0, "uncovered": [], "coverage": coverage, "limits": limits,
+                           "retrieval": {key: retrieved[key] for key in ("items", "chars", "ms")}}
     try:
         started = deep.start_tests(repo, files, tests, brief, root=root, rev=rev, clock=clock)
         session = started["session"]
@@ -1337,7 +1437,7 @@ async def run_compiled(frames: Any, files: list[FileDiff], read_file: Callable[[
         runners, unavailable = runner_availability(session)
         views, cut = planner_views(
             diff_text, brief.text, context=context, intent=intent, guidance=guidance, tests_block=deep.tests_block(started),
-            runners=runners, tests_allowed=tests_allowed, coverage=coverage, limits=limits,
+            runners=runners, tests_allowed=tests_allowed, coverage=coverage, limits=limits, retrieved=retrieved["text"],
             runs_left=max(0, session.limit - len(session.records)) if session is not None else 0)
         out["diff_cut"] = cut
         validated: Program | None = None
@@ -1389,7 +1489,7 @@ async def run_compiled(frames: Any, files: list[FileDiff], read_file: Callable[[
         out["generic"] = interpreter.generic_dropped
         out["records"] = interpreter.records
         out["refuted"] = interpreter.refuted
-        out["stats"] = {**interpreter.stats(), "planner": planner, "summary": validated.summary,
+        out["stats"] = {**interpreter.stats(), "planner": planner, "summary": validated.summary, "retrieval": out["retrieval"],
                         "coverage": {"items": len(coverage), "covered": len(coverage) - len(validated.uncovered),
                                      "uncovered": [item.split(":", 1)[0].strip() for item in validated.uncovered]}}
         out["assurance"] = interpreter.assurance()

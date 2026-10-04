@@ -235,9 +235,16 @@ flow; the expensive reasoning happens once, up front; execution is cheap, parall
 
 1. **Map**, as in the deep pass, without a model: the diff, the changed symbols and their uses, tests and
    siblings, the claims and the author's stated intent, the test runner, and the automatic test run.
-2. **Plan**: one frame on `autoreview.planModel` (thinking `autoreview.planThinking`, `high`) gets the diff
-   (bounded as in the deep pass), the brief, the pull request context, the intent, the review guides, the severity
-   rubric and the finding rules, a description of the program language, the automatic run's results and whether
+2. **Retrieve**: before the planner runs, the host does the mechanical lookups the deep pass's investigators had to
+   ask for and gives the results to the planner as one "retrieved context" block (about 24,000 characters at most,
+   most relevant first): for every changed or added symbol its references outside the diff (capped) and the test
+   files that mention it with their parametrize and fixture lines; for every new config key, field, flag or
+   environment variable the sibling family (the other keys declared in the same files, the registries where they
+   appear, and whether the new key is there too); the definitions of the helpers the new code calls. `--json`:
+   `program.retrieval {items, chars, ms}`.
+3. **Plan**: one frame on `autoreview.planModel` (thinking `autoreview.planThinking`, `high`) gets the diff
+   (bounded as in the deep pass), the brief, the retrieved context, the pull request context, the intent, the
+   review guides, the severity rubric and the finding rules, a description of the program language, the automatic run's results and whether
    tests may run, and which test runners the automatic run found available or unavailable. It is told to decide
    what must be true for the change to be correct and safe, then to write the checks that establish it, choosing
    each check by what it must establish: a test run or a mutation check for behaviour; a grep count only for the

@@ -284,6 +284,8 @@ export interface ProgramStats {
 	readonly coverage?: { readonly items: number; readonly covered: number; readonly uncovered: readonly string[] };
 	/** The step limits this review ran under (larger for a diff of more than 100 changed lines). */
 	readonly limits?: { readonly planned: number; readonly expanded: number };
+	/** The retrieved-context block the host built for the planner: items, characters and time. */
+	readonly retrieval?: { readonly items: number; readonly chars: number; readonly ms: number };
 	readonly planner: {
 		readonly ms: number;
 		readonly tokens: number;
