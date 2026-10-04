@@ -18,6 +18,12 @@ export const MIN_BUDGET_TOKENS = 10_000;
 export const DEFAULT_FRAME_CONCURRENCY = 8;
 export const MAX_FRAME_CONCURRENCY = 16;
 export const DEFAULT_THINKING: FrameThinkingLevel = "low";
+export type ReviewMode = "fast" | "deep" | "both";
+export const REVIEW_MODES: readonly ReviewMode[] = ["fast", "deep", "both"];
+export const DEFAULT_MODE: ReviewMode = "both";
+export const DEFAULT_DEEP_THINKING: FrameThinkingLevel = "medium";
+export const DEFAULT_DEEP_ROUNDS = 4;
+export const MAX_DEEP_ROUNDS = 8;
 /** 0: no deadline, the review waits for every frame. With one, what was found by then is verified and posted. */
 export const DEFAULT_DEADLINE_SECONDS = 0;
 export const MIN_DEADLINE_SECONDS = 30;
@@ -62,6 +68,11 @@ export interface AutoreviewConfig {
 	readonly frameConcurrency: number;
 	readonly thinking: FrameThinkingLevel;
 	readonly verifyThinking: FrameThinkingLevel;
+	readonly mode: ReviewMode;
+	/** `provider/model` of the investigator frames; undefined: the finder model. */
+	readonly deepModel?: string;
+	readonly deepThinking: FrameThinkingLevel;
+	readonly deepRounds: number;
 	/** 0: no deadline. */
 	readonly deadlineSeconds: number;
 	readonly frameTimeoutSeconds: number;
@@ -115,6 +126,10 @@ export function engineSettings(config: AutoreviewConfig): {
 	concurrency: number;
 	thinking: FrameThinkingLevel;
 	verifyThinking: FrameThinkingLevel;
+	mode: ReviewMode;
+	deepModel?: string;
+	deepThinking: FrameThinkingLevel;
+	deepRounds: number;
 	deadlineSeconds: number;
 	frameTimeoutSeconds: number;
 } {
@@ -125,6 +140,10 @@ export function engineSettings(config: AutoreviewConfig): {
 		concurrency: config.frameConcurrency,
 		thinking: config.thinking,
 		verifyThinking: config.verifyThinking,
+		mode: config.mode,
+		...(config.deepModel === undefined ? {} : { deepModel: config.deepModel }),
+		deepThinking: config.deepThinking,
+		deepRounds: config.deepRounds,
 		deadlineSeconds: config.deadlineSeconds,
 		frameTimeoutSeconds: config.frameTimeoutSeconds,
 	};
@@ -146,6 +165,10 @@ export function resolveConfig(settings: AutoreviewSettings, fallbacks: ModelFall
 		),
 		thinking: settings.thinking ?? DEFAULT_THINKING,
 		verifyThinking: settings.verifyThinking ?? DEFAULT_THINKING,
+		mode: settings.mode ?? DEFAULT_MODE,
+		...((settings.deepModel ?? model) === undefined ? {} : { deepModel: settings.deepModel ?? model }),
+		deepThinking: settings.deepThinking ?? DEFAULT_DEEP_THINKING,
+		deepRounds: Math.min(MAX_DEEP_ROUNDS, Math.max(1, settings.deepRounds ?? DEFAULT_DEEP_ROUNDS)),
 		deadlineSeconds:
 			settings.deadlineSeconds === undefined || settings.deadlineSeconds === 0
 				? DEFAULT_DEADLINE_SECONDS

@@ -225,6 +225,17 @@ export interface AutoreviewSettings {
 	thinking?: FrameThinkingLevel;
 	/** Thinking level of the verifier frames (default "low"). */
 	verifyThinking?: FrameThinkingLevel;
+	/**
+	 * `fast`: review the diff. `deep`: investigate beyond it (callers, helpers, tests, claims) by read-only lookups.
+	 * `both` (default): the fast pass, then the deep one with its findings as leads; one review is posted.
+	 */
+	mode?: "fast" | "deep" | "both";
+	/** `provider/model` of the deep pass's investigator frames; unset: the finder model. */
+	deepModel?: string;
+	/** Thinking level of the investigator frames (default "medium"). */
+	deepThinking?: FrameThinkingLevel;
+	/** Lookup rounds one investigator may take (default 4, maximum 8). */
+	deepRounds?: number;
 	/** Seconds a review may take: at the deadline unfinished passes are given up and the rest is posted (default 0: none, the review waits for every frame). */
 	deadlineSeconds?: number;
 	/** Seconds one frame may take before it is retried or given up (default: no timeout). */
@@ -1349,6 +1360,14 @@ export class SettingsManager {
 		if (deadlineSeconds !== undefined) out.deadlineSeconds = deadlineSeconds;
 		const frameTimeoutSeconds = count(configured.frameTimeoutSeconds);
 		if (frameTimeoutSeconds !== undefined) out.frameTimeoutSeconds = frameTimeoutSeconds;
+		if (configured.mode === "fast" || configured.mode === "deep" || configured.mode === "both")
+			out.mode = configured.mode;
+		const deepModel = modelRef(configured.deepModel);
+		if (deepModel !== undefined) out.deepModel = deepModel;
+		const deepThinking = FRAME_THINKING_LEVELS.find((level) => level === configured.deepThinking);
+		if (deepThinking !== undefined) out.deepThinking = deepThinking;
+		const deepRounds = count(configured.deepRounds);
+		if (deepRounds !== undefined) out.deepRounds = deepRounds;
 		const dryRun = flag(configured.dryRun);
 		if (dryRun !== undefined) out.dryRun = dryRun;
 		const ack = flag(configured.ack);

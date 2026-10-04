@@ -551,6 +551,92 @@ describe("the posting plan", () => {
 	});
 });
 
+describe("the summary after a deep pass", () => {
+	test("opens with what was traced, then the verdict, then every confirmed finding with how it was verified", () => {
+		const result = engineResult({
+			mode: "both",
+			assurance: [
+				"Beyond the diff, `total` was followed to 3 other uses and 1 test file: 2 investigators (behaviour, tests), 5 repository lookups, nothing executed.",
+				"average() guards count == 0 before dividing (calc.py).",
+			],
+			findings: [
+				{
+					...MAJOR,
+					severity: "minor",
+					claim: "inline minor",
+					source: "fast",
+					howVerified: "a verifier confirmed it against the source of calc.py",
+				},
+				{
+					...MAJOR,
+					file: "report.py",
+					line: 40,
+					claim: "summary() shows the sentinel string as data.",
+					replacement: undefined,
+					source: "deep:behaviour",
+					howVerified:
+						"2 quoted lines checked at the reviewed commit (helper.py:5, report.py:40); a verifier confirmed it against the source of report.py",
+				},
+			],
+		});
+		const plan = planReview(result, { selfAuthored: false, state: "open", headSha: HEAD, signature: true });
+		const lines = plan.body.split("\n");
+		expect(lines[0]).toBe(
+			"Beyond the diff, `total` was followed to 3 other uses and 1 test file: 2 investigators (behaviour, tests), 5 repository lookups, nothing executed. average() guards count == 0 before dividing (calc.py).",
+		);
+		expect(lines[2]).toBe("**Verdict: Request changes.** 1 confirmed blocker or major finding.");
+		// Most severe first; the finding outside the diff is only in the body, with its file and line.
+		const start = lines.indexOf("**Findings**");
+		expect(lines[start + 1]).toBe(
+			"- `report.py:40` (major) summary() shows the sentinel string as data. How verified: 2 quoted lines checked at the reviewed commit (helper.py:5, report.py:40); a verifier confirmed it against the source of report.py.",
+		);
+		expect(lines[start + 2]).toBe(
+			"- `calc.py:4` (minor, inline) inline minor How verified: a verifier confirmed it against the source of calc.py.",
+		);
+		expect(plan.body).not.toContain("**Findings outside the diff**");
+		expect(plan.comments.map((comment) => comment.path)).toEqual(["calc.py"]);
+		expect(plan.inSummary).toEqual([1]);
+		expect(lines.length).toBeLessThanOrEqual(60);
+		expect(lines.at(-1)).toBe(SIGNATURE);
+		expect(plan.body).not.toMatch(/\p{Extended_Pictographic}/u);
+	});
+
+	test("one review is posted for both passes; the engine is asked for the configured mode", async () => {
+		const { hub, deps, candidate, engine } = setup({
+			engine: new FakeEngine(
+				engineResult({
+					mode: "both",
+					assurance: [
+						"Beyond the diff, `total` was followed to 2 other uses: 1 investigator (behaviour), 1 repository lookup, nothing executed.",
+					],
+					findings: [
+						MAJOR,
+						{ ...MAJOR, file: "report.py", line: 40, claim: "outside the diff", source: "deep:behaviour" },
+					],
+				}),
+			),
+			settings: { deepModel: "p/deep", deepRounds: 2 },
+		});
+		const pull = hub.addPull({ ...REF, requestedReviewers: [BOT] });
+		await reviewPull(deps, candidate());
+		expect(engine.specs).toHaveLength(1);
+		expect(engine.specs[0]).toMatchObject({
+			mode: "both",
+			deepModel: "p/deep",
+			deepThinking: "medium",
+			deepRounds: 2,
+		});
+		const reviews = hub.api(/^POST repos\/o\/r\/pulls\/1\/reviews$/);
+		expect(reviews).toHaveLength(1);
+		const body = reviews[0]!.body as { body: string; comments: Array<{ path: string }> };
+		expect(body.body.startsWith("Beyond the diff, `total` was followed to 2 other uses")).toBe(true);
+		expect(body.body).toContain("- `report.py:40` (major) outside the diff");
+		// Only the finding on a diff line is an inline comment.
+		expect(body.comments.map((comment) => comment.path)).toEqual(["calc.py"]);
+		expect(pull.reviews).toHaveLength(1);
+	});
+});
+
 describe("reviewing a pull request", () => {
 	test("a requested review: one acknowledgement, then one atomic review with the commit, event, body and comments", async () => {
 		const { hub, deps, candidate, engine, token, paths, logs } = setup({
@@ -1448,6 +1534,10 @@ describe("the command", () => {
 		).toMatchObject({ thinking: "off", verifyThinking: "high", deadlineSeconds: 90 });
 		expect(() => parseAutoreviewArgs(["review", "--thinking", "loud"])).toThrow("--thinking takes one of off,");
 		expect(() => parseAutoreviewArgs(["review", "--deadline", "soon"])).toThrow("whole seconds");
+		expect(
+			parseAutoreviewArgs(["review", "--mode", "deep", "--deep-model", "p/d", "--deep-thinking", "high"]),
+		).toMatchObject({ mode: "deep", deepModel: "p/d", deepThinking: "high" });
+		expect(() => parseAutoreviewArgs(["review", "--mode", "thorough"])).toThrow("--mode takes fast, deep or both");
 		expect(parseAutoreviewArgs([]).help).toBe(true);
 	});
 
@@ -1490,6 +1580,28 @@ describe("the command", () => {
 			resolveConfig({ frameConcurrency: 64, deadlineSeconds: 5, frameTimeoutSeconds: 1, thinking: "high" }),
 		).toMatchObject({ frameConcurrency: 16, deadlineSeconds: 30, frameTimeoutSeconds: 10, thinking: "high" });
 		expect(resolveConfig({ deadlineSeconds: 0 }).deadlineSeconds).toBe(0);
+		// The deep pass: on by default, on the finder model unless it has its own.
+		expect(resolveConfig({ model: "a/m" })).toMatchObject({
+			mode: "both",
+			deepModel: "a/m",
+			deepThinking: "medium",
+			deepRounds: 4,
+		});
+		expect(resolveConfig({ mode: "fast", deepModel: "d/m", deepRounds: 99, deepThinking: "high" })).toMatchObject({
+			mode: "fast",
+			deepModel: "d/m",
+			deepRounds: 8,
+			deepThinking: "high",
+		});
+		expect(resolveConfig({}).deepModel).toBeUndefined();
+		expect(
+			SettingsManager.inMemory({
+				autoreview: { mode: "deep", deepModel: "d/m", deepThinking: "high", deepRounds: 2 },
+			}).getAutoreviewSettings(),
+		).toEqual({ mode: "deep", deepModel: "d/m", deepThinking: "high", deepRounds: 2 });
+		expect(SettingsManager.inMemory({ autoreview: { mode: "thorough" as never } }).getAutoreviewSettings()).toEqual(
+			{},
+		);
 		// The limits are opt-in, and a configured cap reaches the engine.
 		const limited = resolveConfig({ budget: 200_000, deadlineSeconds: 150, frameTimeoutSeconds: 75 });
 		expect(limited).toMatchObject({ budget: 200_000, deadlineSeconds: 150, frameTimeoutSeconds: 75 });

@@ -46,6 +46,11 @@ export interface EngineSpec {
 	/** Thinking level of the finder and of the verifier frames. */
 	readonly thinking?: string;
 	readonly verifyThinking?: string;
+	/** `fast`, `deep` or `both`; the deep pass needs `repoDir` or `workDir`. */
+	readonly mode?: "fast" | "deep" | "both";
+	readonly deepModel?: string;
+	readonly deepThinking?: string;
+	readonly deepRounds?: number;
 	/** Seconds the review may take (0: no deadline), and seconds one frame may take. */
 	readonly deadlineSeconds?: number;
 	readonly frameTimeoutSeconds?: number;
@@ -78,6 +83,12 @@ export interface EngineFinding {
 	readonly suggestedFix?: string;
 	/** The exact new text of lines `line..endLine`, when the fix is a drop-in replacement. */
 	readonly replacement?: string;
+	/** Which pass raised it: `fast`, or `deep:<lens>`. */
+	readonly source?: string;
+	/** A deep finding's citations, each quote checked by the host at its line of the reviewed commit. */
+	readonly citations?: ReadonlyArray<{ readonly path: string; readonly line: number; readonly quote: string }>;
+	/** One line on how the finding was verified. */
+	readonly howVerified?: string;
 	readonly verification: "confirmed" | "uncertain";
 	readonly confidence: number;
 	readonly evidence?: string;
@@ -103,12 +114,26 @@ export interface AlsoRaised {
 }
 
 export interface FrameTiming {
-	readonly phase: "find" | "verify" | "recheck";
+	readonly phase: "find" | "verify" | "recheck" | "deep";
 	/** The reviewer key of a finder frame; "verifier" or "recheck" otherwise. */
 	readonly reviewer: string;
 	readonly ms: number;
 	readonly status: "ok" | "incomplete" | "failed" | "timeout" | "deadline" | "budget";
 	readonly retries: number;
+	readonly tokens?: number;
+}
+
+export interface InvestigatorTiming {
+	readonly lens: string;
+	readonly rounds: number;
+	/** Lookups served, and requests refused by validation. */
+	readonly requests: number;
+	readonly rejected: number;
+	readonly ms: number;
+	readonly tokens: number;
+	readonly findings: number;
+	readonly status: string;
+	readonly error?: string;
 }
 
 export interface EngineResult {
@@ -126,8 +151,11 @@ export interface EngineResult {
 		readonly scopeMs: number;
 		readonly findMs: number;
 		readonly verifyMs: number;
+		readonly deepMs?: number;
 		/** How each frame went, in the order they finished. */
 		readonly frames?: readonly FrameTiming[];
+		/** The deep pass's investigators: lookup rounds, requests served, time and tokens. */
+		readonly investigators?: readonly InvestigatorTiming[];
 	};
 	readonly usage: {
 		readonly inputTokens: number;
@@ -142,6 +170,12 @@ export interface EngineResult {
 	readonly verifyModel: string | null;
 	readonly thinking?: string | null;
 	readonly verifyThinking?: string | null;
+	/** The mode that ran (`fast` when the deep pass could not). */
+	readonly mode?: "fast" | "deep" | "both";
+	readonly deepModel?: string | null;
+	readonly deepThinking?: string | null;
+	/** What the deep pass traced and found to hold: the sentences the summary opens with. */
+	readonly assurance?: readonly string[];
 	readonly notChecked: readonly string[];
 	/** Why coverage is incomplete; empty when `complete`. */
 	readonly incomplete: readonly string[];

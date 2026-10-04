@@ -15,7 +15,15 @@ import { FRAME_THINKING_LEVELS, type FrameThinkingLevel, SettingsManager } from 
 import { selfCommand } from "../claude/self.ts";
 import { type Account, accountKey, listAccounts, TokenStore } from "./accounts.ts";
 import { CheckoutManager } from "./checkout.ts";
-import { type AutoreviewConfig, autoreviewPaths, engineSettings, MIN_BUDGET_TOKENS, resolveConfig } from "./config.ts";
+import {
+	type AutoreviewConfig,
+	autoreviewPaths,
+	engineSettings,
+	MIN_BUDGET_TOKENS,
+	REVIEW_MODES,
+	type ReviewMode,
+	resolveConfig,
+} from "./config.ts";
 import { createLogger, Daemon } from "./daemon.ts";
 import { RuntimeReviewEngine } from "./engine.ts";
 import { parsePullTarget, pullKey } from "./github.ts";
@@ -74,11 +82,15 @@ Options:
   --thinking <level>           review: thinking level of the finder frames (off, minimal, low, medium, high, ...;
                                default: autoreview.thinking, low)
   --verify-thinking <level>    review: thinking level of the verifier frames (default: autoreview.verifyThinking, low)
+  --mode <fast|deep|both>      review: fast reviews the diff; deep investigates beyond it by read-only lookups in the
+                               repository (nothing is executed); both (default) does one after the other
+  --deep-model <p/m>           review: the model of the deep pass's investigators (default: the finder model)
+  --deep-thinking <level>      review: their thinking level (default: autoreview.deepThinking, medium)
   --deadline <seconds>         review: give up unfinished passes after this long and report the rest (default:
                                autoreview.deadlineSeconds, none)
 
 Settings (global settings.json): autoreview.accounts, pollSeconds, concurrency, model, verifyModel, budget, dryRun,
-frameConcurrency, thinking, verifyThinking, deadlineSeconds, frameTimeoutSeconds, ack, ackLines, ackArt, signature.
+frameConcurrency, mode, deepModel, deepThinking, deepRounds, thinking, verifyThinking, deadlineSeconds, frameTimeoutSeconds, ack, ackLines, ackArt, signature.
 See docs/autoreview.md.`;
 
 interface Parsed {
@@ -92,6 +104,9 @@ interface Parsed {
 	budget?: number;
 	thinking?: FrameThinkingLevel;
 	verifyThinking?: FrameThinkingLevel;
+	mode?: ReviewMode;
+	deepModel?: string;
+	deepThinking?: FrameThinkingLevel;
 	deadlineSeconds?: number;
 	repoDir?: string;
 	base?: string;
@@ -143,7 +158,14 @@ export function parseAutoreviewArgs(args: readonly string[]): Parsed {
 		else if (arg === "--budget") parsed.budget = parseTokens(value());
 		else if (arg === "--thinking") parsed.thinking = thinking();
 		else if (arg === "--verify-thinking") parsed.verifyThinking = thinking();
-		else if (arg === "--deadline") {
+		else if (arg === "--deep-thinking") parsed.deepThinking = thinking();
+		else if (arg === "--deep-model") parsed.deepModel = model();
+		else if (arg === "--mode") {
+			const name = value();
+			const mode = REVIEW_MODES.find((item) => item === name);
+			if (mode === undefined) throw new UsageError(`--mode takes fast, deep or both, not ${name}`);
+			parsed.mode = mode;
+		} else if (arg === "--deadline") {
 			const seconds = Number(value());
 			if (!Number.isInteger(seconds) || seconds < 0)
 				throw new UsageError("--deadline takes whole seconds (0 for no deadline)");
@@ -177,6 +199,9 @@ export function offlineJson(result: EngineResult, startupMs: number | undefined)
 			...(finding.suggestedFix === undefined ? {} : { suggestedFix: finding.suggestedFix }),
 			verification: finding.verification,
 			confidence: finding.confidence,
+			source: finding.source ?? "fast",
+			evidence: finding.evidence ?? "",
+			howVerified: finding.howVerified ?? "",
 		})),
 		dropped: { rejected: result.dropped.rejected, duplicates: result.dropped.duplicates },
 		timing: {
@@ -186,6 +211,7 @@ export function offlineJson(result: EngineResult, startupMs: number | undefined)
 			verifyMs: result.timing.verifyMs,
 			...(startupMs === undefined ? {} : { startupMs }),
 			frames: [...(result.timing.frames ?? [])],
+			investigators: [...(result.timing.investigators ?? [])],
 		},
 		usage: {
 			inputTokens: result.usage.inputTokens,
@@ -195,6 +221,10 @@ export function offlineJson(result: EngineResult, startupMs: number | undefined)
 		},
 		model: result.model,
 		verifyModel: result.verifyModel,
+		mode: result.mode ?? "fast",
+		assurance: (result.assurance ?? []).join(" "),
+		deepModel: result.deepModel ?? null,
+		deepThinking: result.deepThinking ?? null,
 		thinking: result.thinking ?? null,
 		verifyThinking: result.verifyThinking ?? null,
 		notChecked: [...result.notChecked],
@@ -247,6 +277,9 @@ export async function runAutoreviewCommand(
 			...(parsed.budget === undefined ? {} : { budget: parsed.budget }),
 			...(parsed.thinking === undefined ? {} : { thinking: parsed.thinking }),
 			...(parsed.verifyThinking === undefined ? {} : { verifyThinking: parsed.verifyThinking }),
+			...(parsed.mode === undefined ? {} : { mode: parsed.mode }),
+			...(parsed.deepModel === undefined ? {} : { deepModel: parsed.deepModel }),
+			...(parsed.deepThinking === undefined ? {} : { deepThinking: parsed.deepThinking }),
 			...(parsed.deadlineSeconds === undefined ? {} : { deadlineSeconds: parsed.deadlineSeconds }),
 		},
 		{

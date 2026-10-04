@@ -80,6 +80,7 @@ from review_api import (
     similar_claims,
     source_window,
 )
+import autoreview_deep as deep
 from review_prompts import ALIASES, AUTOREVIEW_VERIFIER_TASK, RECHECK_TASK, REVIEWERS, autoreview_finder_task
 
 DEFAULT_CONCURRENCY = 8
@@ -104,6 +105,9 @@ MAX_RETRY_WAIT_S = 30.0
 DEADLINE_ERROR = "not finished before the review deadline"
 THINKING_LEVELS = ("off", "minimal", "low", "medium", "high", "xhigh", "max")
 DEFAULT_THINKING = "low"
+MODES = ("fast", "deep", "both")
+DEFAULT_MODE = "both"
+DEFAULT_DEEP_THINKING = "medium"
 TITLE_CHARS = 300
 DESCRIPTION_CHARS = 2_000
 INTENT_CHARS = 600
@@ -434,6 +438,7 @@ class Frames:
             began = self.clock()
             retries = 0
             status = "ok"
+            tokens = 0
             while True:
                 left = None if cutoff is None else cutoff - self.clock()
                 if left is not None and left < MIN_START_S:
@@ -460,6 +465,7 @@ class Frames:
                                                  model=model, thinking=thinking,
                                                  concurrency=1, timeout_ms=max(1_000, int(timeout_s * 1000)))
                     self.usage.add(results)
+                    tokens += _spent(results)[1]
                     result = results[0] if len(results) else FrameError({"error": "the frame returned nothing"})
                 except Exception as error:  # a host or bridge failure is a failed frame, not a failed review
                     result = FrameError({"error": f"{type(error).__name__}: {error}"})
@@ -491,7 +497,7 @@ class Frames:
                 retries += 1
                 await self.sleep(delay)
             self.timings.append({"phase": phase, "reviewer": label, "ms": int((self.clock() - began) * 1000),
-                                 "status": status, "retries": retries})
+                                 "status": status, "retries": retries, "tokens": tokens})
             return result
 
 
@@ -700,6 +706,17 @@ def _public(finding: dict[str, Any], verification: str) -> dict[str, Any]:
         "confidence": round(float(finding["confidence"]), 2),
         "reviewers": list(finding.get("reviewers") or []),
     }
+    out["source"] = finding.get("source") or "fast"
+    citations = finding.get("citations") or []
+    if citations:
+        out["citations"] = citations
+    where = ", ".join(f"{item['path']}:{item['line']}" for item in citations[:4])
+    if verification == "confirmed":
+        out["howVerified"] = ((f"{len(citations)} quoted line{'' if len(citations) == 1 else 's'} checked at the "
+                               f"reviewed commit ({where}); " if citations else "")
+                              + f"a verifier confirmed it against the source of {finding['file']}")
+    else:
+        out["howVerified"] = "not confirmed: " + _text(finding.get("verification") or "the verifier could not decide", 160)
     out["finderSeverity"] = finding.get("finder_severity") or finding["severity"]
     out["scenario"] = finding.get("scenario") or ""
     if isinstance(finding.get("end_line"), int) and finding["end_line"] > finding["line"]:
@@ -708,8 +725,9 @@ def _public(finding: dict[str, Any], verification: str) -> dict[str, Any]:
         out["suggestedFix"] = finding["suggested_fix"]
     if finding.get("replacement"):
         out["replacement"] = finding["replacement"]
-    if finding.get("evidence"):
-        out["evidence"] = finding["evidence"]
+    cited = "; ".join(f"{item['path']}:{item['line']} `{item['quote']}`" for item in citations)
+    if cited or finding.get("evidence"):
+        out["evidence"] = " | ".join(part for part in (cited, finding.get("evidence")) if part)
     if verification == "uncertain" and finding.get("verification"):
         out["note"] = finding["verification"]
     return out
@@ -740,6 +758,10 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
     verify_model = spec.get("verifyModel") if isinstance(spec.get("verifyModel"), str) else model
     thinking = _thinking(spec.get("thinking"), DEFAULT_THINKING)
     verify_thinking = _thinking(spec.get("verifyThinking"), DEFAULT_THINKING)
+    mode = spec.get("mode") if spec.get("mode") in MODES else DEFAULT_MODE
+    deep_model = spec.get("deepModel") if isinstance(spec.get("deepModel"), str) else model
+    deep_thinking = _thinking(spec.get("deepThinking"), DEFAULT_DEEP_THINKING)
+    deep_rounds = int(_number(spec.get("deepRounds"), deep.DEFAULT_ROUNDS, 1, deep.MAX_ROUNDS))
     # 0 turns the deadline off.
     deadline_s = _number(spec.get("deadlineSeconds"), DEFAULT_DEADLINE_S, 0, 24 * 3600)
     find_cutoff = started + deadline_s * FIND_DEADLINE_SHARE if deadline_s > 0 else None
@@ -793,7 +815,12 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
     remaining = max(0, budget - usage.tokens)
     find_budget = int(remaining * FIND_SHARE)
     raised: list[dict[str, Any]] = []
-    if chunks:
+    # The deep pass needs the repository at the reviewed commit; without it the review is the fast one.
+    deep_rev = (str(spec.get("head")) if spec.get("repoDir") else "HEAD") if git is not None else None
+    if mode != "fast" and deep_rev is None:
+        not_checked.append("The deep pass was skipped: the repository was not available.")
+    run_fast = mode != "deep" or deep_rev is None
+    if chunks and run_fast:
         # The shared context is part of every finder request: plan with it counted in.
         overhead = len(shared) // 3
         plan = plan_find(chunks, reviewers, max(0, find_budget - overhead * len(chunks) * len(reviewers)))
@@ -835,7 +862,46 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
                 not_checked.append(f"{unattributed} finding(s) named no file of their slice and were dropped.")
     merged = dedupe(raised)
     duplicates = len(raised) - len(merged)
+    for finding in merged:
+        finding["source"] = "fast"
     find_ms = int((clock() - find_started) * 1000)
+
+    # The deep pass: investigators follow the change into the repository, with the fast findings as leads.
+    deep_started = clock()
+    deep_out: dict[str, Any] | None = None
+    investigators: list[dict[str, Any]] = []
+    assurance: list[str] = []
+    if chunks and mode != "fast" and deep_rev is not None:
+        try:
+            deep_out = await deep.run_deep(
+                frames_runner, scope.files, scope.read_file, root=scope.root, rev=deep_rev,
+                diff_text=SLICE_SEPARATOR.join(chunk.text for chunk in chunks), leads=merged, context=shared,
+                rounds=deep_rounds, model=deep_model, thinking=deep_thinking, cutoff=find_cutoff, clock=clock,
+                cap=capped_severity, runner=runner)
+        except Exception as error:  # the fast review stands when the deep pass cannot run
+            not_checked.append(f"The deep pass failed ({_text(f'{type(error).__name__}: {error}', 160)}); "
+                               "this is the fast review only.")
+        if deep_out is not None:
+            investigators = deep_out["investigators"]
+            assurance = deep.assurance(deep_out)
+            merged, superseded = deep.merge(merged, deep_out["findings"])
+            duplicates += superseded
+            for number, finding in enumerate(merged, 1):
+                finding["id"] = number
+            failed = [record for record in investigators if record["status"] == "failed"]
+            if failed:
+                # With a fast pass the review stands as the fast one; alone, the deep pass is then incomplete.
+                (incomplete if not run_fast else not_checked).append(
+                    f"{len(failed)} investigator(s) of the deep pass failed: "
+                    + ", ".join(f"{record['lens']} ({record.get('error', '')})" for record in failed))
+            if deep_out["dropped"]:
+                not_checked.append(f"{len(deep_out['dropped'])} deep finding(s) were dropped because their evidence "
+                                   "did not check out: " + "; ".join(deep_out["dropped"][:4]))
+            if deep_out["diff_cut"]:
+                not_checked.append("The investigators saw the first part of a large diff only.")
+            if mode == "deep" and not deep_out["lenses"]:
+                incomplete.append("no investigator applied to this change")
+    deep_ms = int((clock() - deep_started) * 1000)
 
     # Findings somebody else already raised, or that an earlier review of ours posted and are still open, are
     # not verified or posted again.
@@ -883,6 +949,10 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
                  f"Diff hunk ({finding['file']}, new-file line numbers):\n{hunk_text}"]
         if related:
             views.append(f"Other places that define or use the names involved:\n{related}")
+        cited = deep.cited_windows(deep_out["repo"], finding) if deep_out is not None and finding.get("citations") else ""
+        if cited:
+            views.append("Evidence the investigator cites, as the host reads it at the reviewed commit (the quoted "
+                         f"lines were checked to be there):\n{cited}")
         if intent:
             views.append(intent)
         cost = _estimate_tokens(AUTOREVIEW_VERIFIER_TASK, *views, output=600)
@@ -891,7 +961,7 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
             continue
         estimate += cost
         items.append(views)
-        sources.append(window + "\n" + hunk_text)
+        sources.append(window + "\n" + hunk_text + ("\n" + cited if cited else ""))
         counts.append(len(source) if source else None)
         to_verify.append(finding)
     confirmed: list[dict[str, Any]] = []
@@ -939,13 +1009,18 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
         "earlier": earlier,
         "dropped": {"rejected": len(rejected), "duplicates": duplicates},
         "timing": {"totalMs": int((clock() - started) * 1000), "scopeMs": scope_ms, "findMs": find_ms,
-                   "verifyMs": verify_ms, "frames": frames_runner.timings},
+                   "verifyMs": verify_ms, "deepMs": deep_ms, "frames": frames_runner.timings,
+                   "investigators": investigators},
         "usage": {"inputTokens": usage.input, "outputTokens": usage.output, "costUsd": round(usage.cost, 6),
                   "frames": usage.frames, "tokens": usage.tokens, "budget": cap},
         "model": model,
         "verifyModel": verify_model,
         "thinking": thinking,
         "verifyThinking": verify_thinking,
+        "mode": mode if deep_out is not None or mode == "fast" else "fast",
+        "deepModel": deep_model if deep_out is not None else None,
+        "deepThinking": deep_thinking if deep_out is not None else None,
+        "assurance": assurance,
         "notChecked": not_checked,
         "incomplete": incomplete,
         "diffLines": diff_line_ranges(post_files),

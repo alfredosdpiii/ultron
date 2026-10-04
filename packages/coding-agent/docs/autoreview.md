@@ -5,6 +5,10 @@ or @mentioned on it, and posts the review under that account. It is built for sp
 reviewed within two minutes of being picked up) and for few false alarms: every finding is checked against the real
 source by a second model call before it is posted.
 
+By default it reviews in two passes and posts one review: a fast pass over the changed lines, then a deep pass that
+follows the change into the rest of the repository (callers, called helpers, tests, sibling code, documents) through
+read-only lookups. Nothing from the reviewed repository is executed.
+
 It is the same finder-then-verifier pipeline as `/review` (`docs/review.md` in the Ultron repository), run
 directly: no root model turn, only the pipeline's own frames.
 
@@ -26,7 +30,7 @@ Posting is on by default. `--dry-run` (or the setting `autoreview.dryRun`) write
 | `ultron autoreview run` | The loop: poll every account, review what is due, until stopped. One per agent directory. |
 | `ultron autoreview once` | One poll cycle, review what it finds, then exit. `--json` prints the outcomes. |
 | `ultron autoreview review <owner/repo#N \| URL>` | Review one pull request now, whether or not it was requested. `--account <login>` picks the account (default: the host's active one); `--dry-run`, `--json`. |
-| `ultron autoreview review --repo-dir <dir> --base <sha> --head <sha>` | Review the diff between two commits of a local repository, with no GitHub access. `--json` prints one JSON object on stdout (logs go to stderr); `--model`, `--verify-model`, `--budget`, `--thinking`, `--verify-thinking` and `--deadline` override the settings. |
+| `ultron autoreview review --repo-dir <dir> --base <sha> --head <sha>` | Review the diff between two commits of a local repository, with no GitHub access. `--json` prints one JSON object on stdout (logs go to stderr); `--mode`, `--model`, `--verify-model`, `--deep-model`, `--budget`, `--thinking`, `--verify-thinking`, `--deep-thinking` and `--deadline` override the settings. |
 | `ultron autoreview status` | Accounts, last poll, queue, and recent reviews with their timings and cost. `--json` for the raw state. |
 | `ultron autoreview install` / `uninstall` | Write or remove a user service that runs `ultron autoreview run` (see below). |
 
@@ -124,6 +128,10 @@ reviewed.
 | `autoreview.concurrency` | `3` | Pull requests reviewed at once (maximum 8). |
 | `autoreview.model` | unset: `review.model`, then `rlm.frameModel`, then the default model | `provider/model` of the finder frames. |
 | `autoreview.verifyModel` | the finder model | `provider/model` of the verifier frames. |
+| `autoreview.mode` | `"both"` | `fast`: review the diff only. `deep`: only the investigation beyond the diff. `both`: the fast pass, then the deep one with its findings as leads; one review is posted. |
+| `autoreview.deepModel` | the finder model | `provider/model` of the deep pass's investigator frames. |
+| `autoreview.deepThinking` | `"medium"` | Their thinking level. |
+| `autoreview.deepRounds` | `4` | Lookup rounds one investigator may take (maximum 8). |
 | `autoreview.budget` | none | Optional token cap of one review. Unset, no pass is refused for tokens. |
 | `autoreview.thinking` | `"low"` | Thinking level of the finder frames (`off`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`). |
 | `autoreview.verifyThinking` | `"low"` | Thinking level of the verifier frames. |
@@ -147,6 +155,40 @@ reviewed.
 ```
 
 The two model ids are examples: use `provider/model` names your own providers offer (`ultron --list-models`).
+
+## The deep pass: beyond the diff, read-only
+
+Many defects are invisible from the changed lines alone: a new `except` that can never fire because the helper it
+wraps returns a sentinel instead of raising; new members that an existing parametrize list in another test file
+does not include; a comment that claims a validation the code never performs; a migration written for one database
+branch only. The deep pass looks for these.
+
+1. **Map.** Without a model, the host extracts from the diff the names it defines, changes and calls, its constants,
+   environment variables, flags and table names, and the claims its comments and documents make. It then looks them
+   up in the repository at the reviewed commit: who uses each name, what the called helpers do, which tests mention
+   them and how those test files are parametrized, sibling files, and the documents and configs that name them.
+   The result is a bounded brief with file:line anchors.
+2. **Investigators.** One frame per lens (behaviour by tracing, tests, consistency of claims and sibling code,
+   risk; lenses that do not apply are skipped) gets the diff, the brief and the fast pass's findings as leads. It
+   answers with findings and with requests: `read` (lines of a file), `grep`, `list` (a directory), `definition`
+   and `references` (of a name). The host checks each request (a tracked file of the reviewed commit, no path
+   outside the repository, bounded lines, hits and bytes per round), answers it, and asks the frame again, for at
+   most `autoreview.deepRounds` rounds.
+3. **Evidence.** Every deep finding cites file and line with the quoted source line. The host checks that each quote
+   is at its cited line; a finding with a wrong quote, or with none, is dropped. A finding whose evidence is all
+   inside the diff counts like a fast one.
+4. **Verification** is the same as for the fast pass (the verifier also sees the cited source), with the same
+   severity rules. A deep finding replaces the fast finding it extends.
+
+The review then opens with two to four sentences on what was traced, and lists each confirmed finding with one line
+on how it was verified. Findings on lines outside the diff cannot be inline comments; they are in the body with
+their file and line.
+
+Read-only by construction: the frames have no tools, and the host runs only `git grep`, `git show`, `git ls-tree`
+and `git log` on the checkout. If there is no checkout, or the deep pass fails, the fast review is posted as before.
+
+With `--json`, findings carry `source` (`fast` or `deep:<lens>`), `evidence` and `howVerified`; the object has
+`assurance`, `mode`, and `timing.investigators` (rounds, lookups, time and tokens per investigator).
 
 ## Severity
 
