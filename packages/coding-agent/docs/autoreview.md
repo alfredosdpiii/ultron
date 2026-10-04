@@ -274,7 +274,17 @@ flow; the expensive reasoning happens once, up front; execution is cheap, parall
    every claim of the change (`C1`...). A symbol or key counts as covered by a step that names it; a claim must be
    named in a step's `covers`. Items neither covered nor declared in `uncovered` ("K2: why") are validation errors
    the repair round asks for; declared items are listed in the body under "Not checked" ("The review program left
-   uncovered: ...").
+   uncovered: ..."). A **check catalogue** of generic shapes that found real defects before (a new member missing
+   from a sibling registry list; a new behaviour no test pins; a test that asserts presence, a substring or a copy
+   of the logic; an environment variable read in code but absent from manifests and CI; a manifest referencing a
+   name nothing defines; a workflow unlike its siblings; a concrete input that defeats a new guard; a guard that
+   runs after the destructive step; an except that can never fire or a rollback on one branch only; a comment that
+   promises what the code does not do; a twin implementation left unchanged; set-and-clear attribute mismatches;
+   retry loops that cannot tell failure classes apart; and a few more, 23 in all) is given to the planner with,
+   for each, when it applies, the steps that establish it, the evidence it yields and the level it supports. The
+   shapes whose trigger the map detects in the change (a new list member, a new env var or key, a new regex or
+   guard, a changed test, changed exception handling, a changed comment, a changed workflow or manifest, a twin
+   file, a retry loop) become `T<n>` coverage items: each must have a check or be declared uncovered.
 5. **Validation and fallback.** The program is checked against the language before anything runs: ids,
    references, cycles, ops, predicates, bounds, coverage, and that every finding rests on an ask, a test run or an
    exact-count presence check (a finding grounded only in a capped grep or a read is refused). A bad program gets

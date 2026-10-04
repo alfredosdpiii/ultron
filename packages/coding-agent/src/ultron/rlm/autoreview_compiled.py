@@ -41,7 +41,7 @@ from infer_api import FrameError, Incomplete
 from review_api import FileDiff, _clip, _text, normalize_category, source_window
 import autoreview_deep as deep
 import autoreview_tests as testing
-from review_prompts import ASK_TASK, COMPILED_REPAIR, RESOLVE_TASK, compiled_planner_task
+from review_prompts import ASK_TASK, CHECK_CATALOGUE, COMPILED_REPAIR, RESOLVE_TASK, TRIGGERED_SHAPES, compiled_planner_task
 
 LOOKUPS = ("read", "grep", "list", "definition", "references", "history", "blame_range", "pickaxe")
 TEST_OPS = ("run_tests", "mutation_check")
@@ -328,7 +328,61 @@ def grounded(step: dict[str, Any], by_id: dict[str, dict[str, Any]]) -> bool:
                                 for leaf in leaves)
 
 
-def coverage_items(brief: Any) -> list[dict[str, str]]:
+_EFFECT = re.compile(r"execute\(|\bDELETE\b|\bINSERT\b|\bUPDATE\b|\bDROP\b|\brm\b|\bmv\b|unlink|\.write\(|commit\(|\bsend|"
+                     r"requests\.|fetch\(|subprocess|os\.system|shutil\.", re.I)
+_GUARD = re.compile(r"validate|check|assert|verify|sanitiz|raise ValueError|throw new", re.I)
+_ERROR_PATH = re.compile(r"\b(except|catch|raise|throw|finally|rollback|on_error|errexit)\b|set -e", re.I)
+_RETRY = re.compile(r"\b(retry|retries|attempt|timeout|poll|backoff|sleep)\b", re.I)
+_WORKFLOW = re.compile(r"(^|/)\.github/workflows/|(^|/)\.gitlab-ci|(^|/)ci/|Jenkinsfile|\.circleci/", re.I)
+_MANIFEST = re.compile(r"(^|/)(k8s|helm|charts|deploy|infra|terraform|manifests?)/|\.tf$|docker-compose|(^|/)Dockerfile|"
+                       r"\.(ya?ml)$", re.I)
+
+
+def shape_items(brief: Any, files: list[FileDiff]) -> list[dict[str, str]]:
+    """The catalogue shapes whose trigger the map detects in this change, as coverage items (`T<n>`): the planner
+    must run that shape's check or declare it uncovered."""
+    extracted = getattr(brief, "extracted", {}) or {}
+    reviewable = [item for item in files if not deep.skip_reason(item)]
+    code = [item for item in reviewable if deep.file_kind(item.path) == "code"]
+    tests = [item for item in reviewable if deep.file_kind(item.path) == "test"]
+    added = "\n".join(line.text for item in reviewable for hunk in item.hunks for line in hunk.lines if line.kind == "+")
+    removed = "\n".join(line.text for item in reviewable for hunk in item.hunks for line in hunk.lines if line.kind == "-")
+    paths = [item.path for item in files]
+    triggered: dict[str, str] = {}
+    if extracted.get("fields") or extracted.get("constants") or re.search(r"^\s*['\"][\w.-]+['\"],?\s*$", added, re.M):
+        triggered["registry-member"] = ", ".join(f"`{name}`" for name in (extracted.get("fields") or extracted.get("constants") or [])[:4]) or "a new list member"
+    if code:
+        triggered["unpinned-behaviour"] = ", ".join(item.path for item in code[:3])
+    if tests:
+        triggered["test-asserts-behaviour"] = ", ".join(item.path for item in tests[:3])
+    if extracted.get("env") or extracted.get("flags") or extracted.get("config"):
+        triggered["env-in-deploy"] = ", ".join(f"`{name}`" for name in (extracted.get("env") or []) + (extracted.get("flags") or []) + (extracted.get("config") or [])[:4])
+    if any(_WORKFLOW.search(path) for path in paths):
+        triggered["workflow-siblings"] = ", ".join(path for path in paths if _WORKFLOW.search(path))[:200]
+    if any(_MANIFEST.search(path) and not _WORKFLOW.search(path) for path in paths):
+        triggered["manifest-reference"] = ", ".join(path for path in paths if _MANIFEST.search(path) and not _WORKFLOW.search(path))[:200]
+    if code and deep._INPUT_HINT.search(added):
+        triggered["input-defeats-guard"] = "the new guard, pattern, limit or parser in the diff"
+    if code and _GUARD.search(added) and _EFFECT.search(added + "\n" + removed):
+        triggered["guard-after-effect"] = "the new check beside a side-effecting operation"
+    if _ERROR_PATH.search(added) or _ERROR_PATH.search(removed):
+        triggered["error-path"] = "the changed except/catch/raise/rollback lines"
+    if extracted.get("claims") or any(deep.file_kind(item.path) == "doc" for item in reviewable):
+        triggered["comment-vs-code"] = "; ".join(_clip(text, 80) for _p, _l, text in (extracted.get("claims") or [])[:3]) or "the changed documents"
+    if "same name elsewhere:" in (getattr(brief, "text", "") or ""):
+        triggered["sibling-implementation"] = "the twin file(s) the brief names"
+    if code and _RETRY.search(added):
+        triggered["failure-retry"] = "the new retry, timeout or polling code"
+    by_key = {shape["key"]: shape for shape in CHECK_CATALOGUE}
+    items: list[dict[str, str]] = []
+    for number, key in enumerate([key for key in TRIGGERED_SHAPES if key in triggered], 1):
+        shape = by_key[key]
+        items.append({"id": f"T{number}", "kind": "shape", "name": key,
+                      "text": f"catalogue shape {key} ({triggered[key]}): when {shape['when']}; how: {shape['how']}"})
+    return items
+
+
+def coverage_items(brief: Any, files: list[FileDiff] | None = None) -> list[dict[str, str]]:
     """What a program must cover, from the map: the references of each changed signature or exported name (S),
     the siblings and consumers of each new config key, field, flag or environment variable (K), and each claim of
     the change (C). Each item has an id the planner names in a step's `covers` or in the program's `uncovered`."""
@@ -345,6 +399,8 @@ def coverage_items(brief: Any) -> list[dict[str, str]]:
                               "joins (registry lists, sibling declarations) and every reader"})
     for number, (source, text) in enumerate(list(getattr(brief, "claim_list", []) or [])[:8], 1):
         items.append({"id": f"C{number}", "kind": "claim", "name": "", "text": f"the claim [{source}] {text}"})
+    if files is not None:
+        items += shape_items(brief, files)
     return items
 
 
@@ -1387,7 +1443,8 @@ def planner_views(diff_text: str, brief_text: str, *, context: str, intent: str,
             views.append(part)
     if coverage:
         views.append("Coverage the program must have (name the id in a step's \"covers\", or list it in the program's "
-                     "\"uncovered\" as \"<id>: why\"):\n" + "\n".join(f"- {item['id']}: {item['text']}" for item in coverage))
+                     "\"uncovered\" as \"<id>: why\"; T-items are catalogue shapes whose trigger is in this change):\n"
+                     + "\n".join(f"- {item['id']}: {item['text']}" for item in coverage))
     views.append(f"Limits: {limits[0]} steps as written, {limits[1]} after for_each expansion, {MAX_ASKS} asks.")
     if tests_allowed:
         views.append(f"Tests may run: yes; executions left: {runs_left}. Test runners:\n"
@@ -1418,7 +1475,7 @@ async def run_compiled(frames: Any, files: list[FileDiff], read_file: Callable[[
                   for item in files}
     changed_lines = sum(item.added + item.removed for item in files)
     limits = limits_for(changed_lines)
-    coverage = coverage_items(brief)
+    coverage = coverage_items(brief, files)
     retrieved = retrieve(repo, brief, files, clock=clock)
     session = None
     planner: dict[str, Any] = {"ms": 0, "tokens": 0, "repairs": 0, "status": "replayed" if program is not None else "ok"}

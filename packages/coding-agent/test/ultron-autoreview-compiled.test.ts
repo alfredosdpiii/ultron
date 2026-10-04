@@ -160,6 +160,16 @@ class Rlm:
     def kinds(self):
         return [call["kind"] for call in self.calls]
 
+_repo = deep.Repo(ROOT, HEAD)
+_files = r.parse_diff(r.Git(ROOT).out("diff", "-U3", BASE, HEAD, "--"))
+_brief = deep.build_brief(_repo, _files, r._rev_reader(r.Git(ROOT), HEAD), base=BASE)
+# The catalogue shapes this fixture triggers (T1..): a test program declares them uncovered unless it checks them.
+SHAPES = [item["id"] + ": not applicable in this test" for item in c.coverage_items(_brief, _files) if item["kind"] == "shape"]
+def with_shapes(program):
+    out = dict(program)
+    out["uncovered"] = list(out.get("uncovered") or []) + SHAPES
+    return out
+
 def finding(step, when, line, claim, **extra):
     return {"id": step, "op": "finding", "when": when, "file": "src/app.py", "line": line, "level": "medium",
             "category": "tests", "claim": claim, "why": "w", "fix": "f", **extra}
@@ -211,8 +221,8 @@ describe("autoreview_compiled: the planner and the program language", () => {
 			viewChars: number;
 			retrieval: { items: number; chars: number; ms: number };
 		}>(`${prelude(repo)}
-rlm = Rlm(planner=lambda text, attempt: {"summary": "nothing to check", "uncovered": ["C1: the title", "C2: the comment restates the code"], "steps": [
-    {"id": "g", "op": "grep", "args": {"pattern": "show"}}, {"id": "a", "op": "assert", "step": "g", "predicate": "count >= 1", "expect": True}]})
+rlm = Rlm(planner=lambda text, attempt: with_shapes({"summary": "nothing to check", "uncovered": ["C1: the title", "C2: the comment restates the code"], "steps": [
+    {"id": "g", "op": "grep", "args": {"pattern": "show"}}, {"id": "a", "op": "assert", "step": "g", "predicate": "count >= 1", "expect": True}]}))
 result = asyncio.run(a.run(rlm, dict(SPEC, runTests=True, context={"title": "Add kind c", "description": "Adds c to KINDS."},
                                      planThinking="xhigh")))
 plan = next(call for call in rlm.calls if call["kind"] == "plan")
@@ -260,7 +270,7 @@ emit({"taskWith": p.compiled_planner_task(True), "taskWithout": p.compiled_plann
 		);
 		// The coverage the program must have, from the map, with ids; and the limits for this diff.
 		expect(out.planText).toContain(
-			'Coverage the program must have (name the id in a step\'s "covers", or list it in the program\'s "uncovered" as "<id>: why"):\n- S1: the references of `show` (changed signature or exported name): every caller still fits\n- C1: the claim [title] Add kind c\n- C2: the claim [src/app.py:5] Upper-cases the kind.',
+			'Coverage the program must have (name the id in a step\'s "covers", or list it in the program\'s "uncovered" as "<id>: why"; T-items are catalogue shapes whose trigger is in this change):\n- S1: the references of `show` (changed signature or exported name): every caller still fits\n- C1: the claim [title] Add kind c\n- C2: the claim [src/app.py:5] Upper-cases the kind.\n- T1: catalogue shape registry-member (`KINDS`): when a new member joins a family',
 		);
 		expect(out.planText).toContain("Limits: 80 steps as written, 120 after for_each expansion, 40 asks.");
 		// Retrieval first: the host looked up the references and tests of the changed names before the planner ran.
@@ -278,7 +288,18 @@ emit({"taskWith": p.compiled_planner_task(True), "taskWithout": p.compiled_plann
 		expect(out.planContext).toBeNull();
 		// One call carries everything: the task is a few thousand characters; the views are bounded by the diff cap.
 		expect(out.taskChars).toBeGreaterThan(4_000);
-		expect(out.taskChars).toBeLessThan(12_000);
+		expect(out.taskChars).toBeLessThan(24_000);
+		// The check catalogue: generic shapes, each with when, how, evidence and level.
+		expect(out.taskWith).toContain("Check catalogue (shapes that found real defects before");
+		expect(out.taskWith).toContain(
+			"- registry-member: when a new member joins a family whose siblings are registered elsewhere",
+		);
+		expect(out.taskWith).toContain(
+			"- guard-after-effect: when a new check runs after a destructive or irreversible step",
+		);
+		expect(out.taskWith).toMatch(
+			/- error-path: when a new except\/catch can never fire because the callee returns a sentinel/,
+		);
 		expect(out.viewChars).toBeLessThan(60_000);
 	});
 
@@ -334,8 +355,8 @@ cases = {
     "bounds": errors({"steps": [{"id": f"q{i}", "op": "ask", "question": "?", "context": ["r"]} for i in range(41)] + [{"id": "r", "op": "read", "args": {"path": "x"}}]}),
     "tooMany": errors({"steps": [{"id": f"r{i}", "op": "read", "args": {"path": "x"}} for i in range(81)]}),
 }
-GOOD = {"summary": "ok", "uncovered": ["C1: comment only"], "steps": [{"id": "g", "op": "grep", "args": {"pattern": "show"}},
-                                   {"id": "a", "op": "assert", "step": "g", "predicate": "count >= 1", "expect": True, "holds": "show is used"}]}
+GOOD = with_shapes({"summary": "ok", "uncovered": ["C1: comment only"], "steps": [{"id": "g", "op": "grep", "args": {"pattern": "show"}},
+                                   {"id": "a", "op": "assert", "step": "g", "predicate": "count >= 1", "expect": True, "holds": "show is used"}]})
 BAD = {"steps": [{"id": "g", "op": "grep", "args": {}}]}
 def summary(rlm, spec=SPEC, **more):
     result = asyncio.run(a.run(rlm, dict(spec, **more)))
@@ -494,7 +515,7 @@ def asker(text):
     if "test for KINDS" in text:
         return {"answer": "no", "quote": "this line is not in the material", "why": "x"}
     return {"answer": "yes", "quote": "", "why": ""}
-rlm = Rlm(planner=lambda text, attempt: PROGRAM, asker=asker)
+rlm = Rlm(planner=lambda text, attempt: with_shapes(PROGRAM), asker=asker)
 result = asyncio.run(a.run(rlm, dict(SPEC, askThinking="minimal"), runner=recording))
 emit({"result": result, "asks": [c for c in rlm.calls if c["kind"] == "ask"],
       "records": {rec["id"]: rec for rec in result["timing"]["program"]},
@@ -593,7 +614,7 @@ emit({"result": result, "asks": [c for c in rlm.calls if c["kind"] == "ask"],
 			refuted: 0,
 			notEmitted: { gateFalse: 1, undecided: 3, askedNo: 0, askedUnclear: 0 },
 		});
-		expect(result.program.coverage).toEqual({ items: 2, covered: 2, uncovered: [] });
+		expect(result.program.coverage).toEqual({ items: 5, covered: 2, uncovered: ["T1", "T2", "T3"] });
 		expect(result.program.limits).toEqual({ planned: 80, expanded: 120 });
 		expect(result.program.checks).toEqual({ held: 11, failed: 2, unknown: 4, contradicted: 0 });
 		expect(String(result.findings[0]!.evidence)).toBe('`assert show("a")`');
@@ -650,7 +671,7 @@ PROGRAM = {"summary": "pin the new kind and the upper-casing", "uncovered": ["C1
     {"id": "f_untracked", "op": "finding", "when": {"step": "one_caller"}, "file": "secret.txt", "line": 1, "level": "low", "category": "correctness",
      "claim": "Dropped: the file is not tracked.", "why": "w", "evidence": ["callers"]},
 ]}
-rlm = Rlm(planner=lambda text, attempt: PROGRAM)
+rlm = Rlm(planner=lambda text, attempt: with_shapes(PROGRAM))
 result = asyncio.run(a.run(rlm, dict(SPEC, runTests=True, testRuns=3)))
 emit({"result": result, "kinds": rlm.kinds(), "verifierTexts": [c["text"] for c in rlm.calls if c["kind"] == "verify"],
       "exportsLeft": sum(os.path.exists(path) for path in exports)})`);
@@ -726,10 +747,10 @@ emit({"result": result, "kinds": rlm.kinds(), "verifierTexts": [c["text"] for c 
 			],
 		]);
 		// The planner declared the comment claim uncovered: the body says so.
-		expect(result.notChecked).toContain(
-			"The review program left uncovered: C1 (the claim [src/app.py:5] Upper-cases the kind.): the comment restates the code.",
+		expect(result.notChecked.join("\n")).toContain(
+			"The review program left uncovered: C1 (the claim [src/app.py:5] Upper-cases the kind.): the comment restates the code; T1 (catalogue shape registry-member (`KINDS`): when",
 		);
-		expect(result.program.coverage).toEqual({ items: 2, covered: 1, uncovered: ["C1"] });
+		expect(result.program.coverage).toEqual({ items: 5, covered: 1, uncovered: ["C1", "T1", "T2", "T3"] });
 		// The test budget (3): the automatic run, two mutations, and the third mutation could not run.
 		expect(result.tests.runs.map((run) => [run.kind, run.status])).toEqual([
 			["automatic", "passed"],
@@ -816,7 +837,7 @@ def verifier(text):
     quote = ("if: github.event_name == 'pull_request'" if "failure comment" in text
              else "return kind.upper()" if "stops upper-casing" in text else 'assert show("a")')
     return {"verdict": "confirmed", "evidence": "\`" + quote + "\` shows it.", "corrected_line": None, "severity": "medium", "scenario_holds": "unknown"}
-rlm = Rlm(planner=lambda text, attempt: PROGRAM, asker=asker, verifier=verifier)
+rlm = Rlm(planner=lambda text, attempt: with_shapes(PROGRAM), asker=asker, verifier=verifier)
 result = asyncio.run(a.run(rlm, dict(SPEC, runTests=True, testRuns=6)))
 emit({"result": result, "kinds": rlm.kinds(), "resolves": [c for c in rlm.calls if c["kind"] == "resolve"],
       "verifierTexts": [c["text"] for c in rlm.calls if c["kind"] == "verify"],
@@ -967,7 +988,8 @@ unknown_id = c.validate(dict(COVERED, uncovered=["Z9: nothing"]), COVERAGE)[1]
 # Live: the planner forgets the comment claim, the repair round names it, the second program declares it.
 FIRST = {"summary": "first", "steps": [{"id": "g", "op": "grep", "args": {"pattern": "show", "count_only": True}},
                                       {"id": "a", "op": "assert", "step": "g", "predicate": "count >= 1", "expect": True}]}
-SECOND = dict(FIRST, uncovered=["C1: the comment restates the code, nothing to check"])
+FIRST = with_shapes(FIRST)
+SECOND = dict(FIRST, uncovered=FIRST["uncovered"] + ["C1: the comment restates the code, nothing to check"])
 rlm = Rlm(planner=lambda text, attempt: FIRST if attempt == 0 else SECOND)
 result = asyncio.run(a.run(rlm, SPEC))
 risky = r.parse_diff("""diff --git a/src/R.tsx b/src/R.tsx
@@ -995,11 +1017,11 @@ emit({"errors": errors, "covered": covered, "unknownId": unknown_id, "repairText
 		expect(out.result.mode).toBe("compiled");
 		expect(out.result.program).toMatchObject({
 			planner: { repairs: 1 },
-			coverage: { items: 2, covered: 1, uncovered: ["C1"] },
+			coverage: { items: 5, covered: 1, uncovered: ["T1", "T2", "T3", "C1"] },
 			limits: { planned: 80, expanded: 120 },
 		});
-		expect(out.result.notChecked).toContain(
-			"The review program left uncovered: C1 (the claim [src/app.py:5] Upper-cases the kind.): the comment restates the code, nothing to check.",
+		expect(out.result.notChecked.join("\n")).toContain(
+			"C1 (the claim [src/app.py:5] Upper-cases the kind.): the comment restates the code, nothing to check.",
 		);
 		// The map lists field keys declared in code (`key: '...'`): the family a new CSV-list field joins.
 		expect(out.fields).toEqual(["metrics_ingress_cidrs", "milvus_backup_schedule"]);
@@ -1074,7 +1096,7 @@ PROGRAM = {"summary": "replayed", "uncovered": ["S1: show is not changed in beha
      "claim": "KINDS gained c, but no reader of KINDS handles it.", "why": "same thing again", "evidence": ["g"]},
 ]}
 saved = os.path.join(tempfile.mkdtemp(), "program.json")
-json.dump(PROGRAM, open(saved, "w"))
+json.dump(with_shapes(PROGRAM), open(saved, "w"))
 dumped = os.path.join(os.path.dirname(saved), "dump.json")
 rlm = Rlm()
 result = asyncio.run(a.run(rlm, dict(SPEC, programPath=saved, dumpProgramPath=dumped)))
@@ -1120,6 +1142,7 @@ describe("ultron autoreview review --repo-dir --mode compiled: the offline entry
 	const requests: Array<{ model: string; body: string }> = [];
 	const PROGRAM = {
 		summary: "show() callers and the comment",
+		uncovered: ["T1: not applicable", "T2: not applicable", "T3: not applicable"],
 		steps: [
 			{ id: "callers", op: "grep", args: { pattern: "show\\(", path_glob: "src/**" } },
 			{

@@ -517,7 +517,142 @@ material that your answer rests on>", "why": "<one sentence>"}. Answer unclear w
 question. The host checks that the quote is in the material; an answer whose quote is not is treated as unclear."""
 
 
+#: Check shapes learned from what the retrieval-based deep pass found and a one-shot planner missed: each says when
+#: it applies, the program steps that establish it, the evidence it yields and the level it supports. Generic
+#: shapes only. `trigger` names what in the map makes the host require the shape (see autoreview_compiled.shape_items).
+CHECK_CATALOGUE: list[dict[str, str]] = [
+    {"key": "registry-member", "trigger": "a new member of a list, enum, field set or key family",
+     "when": "a new member joins a family whose siblings are registered elsewhere (a CSV/array key set, a label map, a "
+             "parametrize list, a schema, an allowlist)",
+     "how": "find the registries from the retrieved context or a count_only grep of two sibling names, then a count_only "
+            "grep of the new member in each registry (expect 1); or for_each over the registries with an ask",
+     "evidence": "count 0 in a registry that lists the siblings", "level": "medium"},
+    {"key": "unpinned-behaviour", "trigger": "changed code",
+     "when": "a new or changed behaviour (guard, default, branch, member) that no test would notice if it were undone",
+     "how": "mutation_check that undoes it with the nearest test file, when the runner is available; else read the nearest "
+            "test and ask whether any assertion would fail if the behaviour were undone",
+     "evidence": "a surviving mutant, or an answer with the test lines quoted", "level": "medium (tests)"},
+    {"key": "test-asserts-behaviour", "trigger": "a changed or added test",
+     "when": "a new test asserts presence, a substring, a mock's own return value or a copy of the logic built inside the "
+             "test, rather than the module's behaviour; or is defined where the runner never collects it",
+     "how": "read the test; ask whether the assertion reads the module under test and would fail if the behaviour were "
+            "wrong; count_only grep of the test name in the runner's collection order where that matters",
+     "evidence": "an answer quoting the assertion", "level": "medium (tests)"},
+    {"key": "env-in-deploy", "trigger": "a new environment variable, flag or config key",
+     "when": "code reads a variable, flag or key that must be set where the feature runs",
+     "how": "count_only grep of the name in manifests, compose files, CI workflows, deploy configs and .env examples "
+            "(expect at least 1); read the one place it is set to compare the accepted values",
+     "evidence": "count 0 where it must be set, or a value the reader does not accept", "level": "medium"},
+    {"key": "manifest-reference", "trigger": "a changed manifest, chart, deploy or infrastructure file",
+     "when": "a manifest references a name (a claim, secret, service, module variable, resource) another file must define",
+     "how": "count_only grep of the referenced name across the repository (expect at least 2: the reference and the "
+            "definition); read the definition",
+     "evidence": "count 1 (only the reference)", "level": "medium"},
+    {"key": "workflow-siblings", "trigger": "a changed CI workflow",
+     "when": "a workflow's trigger, permissions, concurrency key, pinned ref or fork guard differs from sibling workflows "
+             "in the same directory",
+     "how": "grep the sibling workflows for the same key (if:, permissions:, concurrency:, uses: ...@) and ask whether the "
+            "changed workflow follows the convention they share",
+     "evidence": "an answer quoting the sibling's line and the changed one", "level": "medium"},
+    {"key": "input-defeats-guard", "trigger": "a new regular expression, guard, limit, parser or conversion",
+     "when": "a concrete input class (punctuation, unicode, quoting, empty, boundary, escaped path) passes a new guard or "
+             "misses a new pattern",
+     "how": "read the guard's lines; ask, naming the concrete input, whether the guard admits or misses it", 
+     "evidence": "an answer quoting the pattern", "level": "medium, high with a failing scenario the author means to support"},
+    {"key": "guard-after-effect", "trigger": "a new validation beside a side-effecting operation",
+     "when": "a new check runs after a destructive or irreversible step (a DELETE, a write, a move, a send) rather than "
+             "before it; or measures a value before a transform that changes its size",
+     "how": "read the lines between the check and the effect; ask which executes first", 
+     "evidence": "an answer quoting both lines in order", "level": "high with the scenario"},
+    {"key": "error-path", "trigger": "changed exception handling",
+     "when": "a new except/catch can never fire because the callee returns a sentinel; an error is swallowed or reported "
+             "as success; a specific error became a generic skip; a cleanup or rollback runs on one failure branch only",
+     "how": "read the callee (definition); ask whether it raises or returns on the failure path; read the failure "
+            "branches and ask which ones restore state",
+     "evidence": "an answer quoting the return or the branch", "level": "high with the scenario"},
+    {"key": "comment-vs-code", "trigger": "a new or changed comment, docstring or document",
+     "when": "a comment, help text, README or description promises a behaviour, scope or default the code does not have",
+     "how": "read the lines the comment covers; ask whether the code does what the comment says",
+     "evidence": "an answer quoting the comment and the code", "level": "low (docs), medium when the claim is a safety one"},
+    {"key": "sibling-implementation", "trigger": "a changed function with a twin elsewhere",
+     "when": "only one of two parallel implementations (a dialect, a platform, a service, a second file of the same name) "
+             "was changed; or two paths now disagree (one coerces, one stores raw)",
+     "how": "read the twin at the same construct; ask whether it has the same change", 
+     "evidence": "an answer quoting the twin's line", "level": "medium"},
+    {"key": "set-and-clear", "trigger": "changed attributes of something stored and later removed",
+     "when": "what writes a record (a cookie, a key, a file, an index name) and what clears or reads it use different "
+             "attributes, so old records are left behind or not found",
+     "how": "grep the name in the writer and the eraser; read both; ask whether the attributes match",
+     "evidence": "an answer quoting both calls", "level": "medium"},
+    {"key": "failure-retry", "trigger": "a retry, timeout or polling loop",
+     "when": "a retry loop cannot tell a legitimate non-zero result from a transient failure; a wait window leaves a "
+             "server-side operation running; the retry budget exceeds the job's limit",
+     "how": "read the loop; ask what the exit status means on the success path with findings", 
+     "evidence": "an answer quoting the condition", "level": "medium"},
+    {"key": "first-wins-guard", "trigger": "a new global or module-level guard",
+     "when": "a once-only or first-caller guard blocks a later legitimate caller, or an early return silently drops an "
+             "explicit argument",
+     "how": "references of the guarded function; read two callers; ask whether the second is blocked", 
+     "evidence": "an answer quoting the guard and the caller", "level": "medium"},
+    {"key": "allowlist-vs-use", "trigger": "a changed permission, policy, schema or allowlist",
+     "when": "an allowlist (IAM actions, a schema, a permission set) lacks an action or field a caller in the same change "
+             "uses",
+     "how": "grep the calls (count_only) and the allowlist entries; ask whether every call has its entry", 
+     "evidence": "an answer quoting the missing entry", "level": "medium"},
+    {"key": "scope-filter", "trigger": "a new path, name or event filter",
+     "when": "a filter (path globs, a name prefix, an event type) excludes inputs the feature must cover (shared code, "
+             "quoted paths, another branch of the same host)",
+     "how": "read the filter; ask with a concrete excluded input", 
+     "evidence": "an answer quoting the filter", "level": "medium"},
+    {"key": "unrelated-change", "trigger": "a changed constant or name the intent does not mention",
+     "when": "a hard-coded name, index or constant changes although the stated intent is about something else",
+     "how": "count_only grep of the old and the new name; ask whether the intent covers the change", 
+     "evidence": "the counts and an answer", "level": "low, confirm this is intended"},
+    {"key": "shared-value-forced", "trigger": "one new option applied to several branches",
+     "when": "a single new value is applied to branches whose correct values differ",
+     "how": "read the branches; ask whether the same value fits each", 
+     "evidence": "an answer quoting the branches", "level": "low"},
+    {"key": "private-reach", "trigger": "an import of another module's underscored or private name",
+     "when": "code reaches a private name of another module at import time",
+     "how": "count_only grep of the private name outside its module (expect 0)", 
+     "evidence": "count above 0", "level": "low (maintainability, needs a consequence)"},
+    {"key": "stale-doc", "trigger": "a removed or renamed feature, flag or variable",
+     "when": "documentation, help text or a deploy comment still names what the change removed or repurposed",
+     "how": "count_only grep of the removed name in docs, comments and workflows (expect 0)", 
+     "evidence": "count above 0 with the hits", "level": "low"},
+    {"key": "race-produce-consume", "trigger": "a produce step and a later lookup of the produced thing",
+     "when": "what one step produced is looked up later by a non-unique key (latest version, latest object, a name), so "
+             "a concurrent producer can be consumed instead",
+     "how": "read both steps; ask whether the lookup is bound to what this run produced", 
+     "evidence": "an answer quoting the lookup", "level": "medium"},
+    {"key": "partial-rollback", "trigger": "a swap, deploy or migration with a rollback",
+     "when": "a rollback restores some of what the forward step changed (directories but not files, a table but not the "
+             "index) or runs only on one of the failure branches",
+     "how": "read the forward and the rollback blocks; ask what the forward step changed that the rollback does not restore",
+     "evidence": "an answer quoting both blocks", "level": "medium"},
+    {"key": "regression-run", "trigger": "a test file the map tied to the change",
+     "when": "a test fails at the reviewed commit and passed at the base",
+     "how": "the host's automatic run (already done); run_tests on the selection where the planner needs more", 
+     "evidence": "the run", "level": "high (host-confirmed)"},
+]
+#: The catalogue shapes the host requires from the planner when their trigger is in the map (by key).
+TRIGGERED_SHAPES = ("registry-member", "unpinned-behaviour", "test-asserts-behaviour", "env-in-deploy", "manifest-reference",
+                    "workflow-siblings", "input-defeats-guard", "guard-after-effect", "error-path", "comment-vs-code",
+                    "sibling-implementation", "failure-retry")
+
+
+def catalogue_text() -> str:
+    """The catalogue as the planner reads it."""
+    lines = ["Check catalogue (shapes that found real defects before; the host lists as T-items the ones whose trigger "
+             "is in this change, and each must have a check or be declared uncovered):"]
+    for shape in CHECK_CATALOGUE:
+        lines.append(f"- {shape['key']}: when {shape['when']}. How: {shape['how']}. Evidence: {shape['evidence']}. "
+                     f"Level: {shape['level']}.")
+    return "\n".join(lines)
+
+
 def compiled_planner_task(tests: bool = False) -> str:
-    """The planner's instructions: the method, the program language, the severity rubric and the finding rules."""
+    """The planner's instructions: the method, the program language, the severity rubric, the finding rules and the
+    check catalogue."""
     return (f"{COMPILED_PLANNER_RULES}\n\n{COMPILED_TESTS_ALLOWED if tests else COMPILED_TESTS_FORBIDDEN}\n\n"
-            f"{SEVERITY_RUBRIC}\n\nFields of a finding about tests or maintainability:\n{FINDING_RULES}")
+            f"{SEVERITY_RUBRIC}\n\nFields of a finding about tests or maintainability:\n{FINDING_RULES}\n\n{catalogue_text()}")
