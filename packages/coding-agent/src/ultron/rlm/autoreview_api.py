@@ -80,6 +80,7 @@ from review_api import (
     similar_claims,
     source_window,
 )
+import autoreview_compiled as compiled
 import autoreview_deep as deep
 from review_prompts import GUIDANCE_HEADER
 from review_prompts import ALIASES, AUTOREVIEW_VERIFIER_TASK, RECHECK_TASK, REVIEWERS, autoreview_finder_task
@@ -106,9 +107,12 @@ MAX_RETRY_WAIT_S = 30.0
 DEADLINE_ERROR = "not finished before the review deadline"
 THINKING_LEVELS = ("off", "minimal", "low", "medium", "high", "xhigh", "max")
 DEFAULT_THINKING = "low"
-MODES = ("fast", "deep", "both")
+#: `compiled`: one planner frame writes a review program the host executes (autoreview_compiled.py).
+MODES = ("fast", "deep", "both", "compiled")
 DEFAULT_MODE = "both"
 DEFAULT_DEEP_THINKING = "high"
+DEFAULT_PLAN_THINKING = "high"
+DEFAULT_ASK_THINKING = "low"
 TITLE_CHARS = 300
 DESCRIPTION_CHARS = 2_000
 INTENT_CHARS = 600
@@ -952,7 +956,7 @@ def _public(finding: dict[str, Any], verification: str) -> dict[str, Any]:
     out["finderLevel"] = finder_level
     out["finderSeverity"] = LEVEL_TO_OLD[finder_level]
     # How strong the evidence is: a test the host ran, source quoted from outside the diff, or the diff alone.
-    out["strength"] = ("test" if finding.get("test_run") or finding.get("host_confirmed")
+    out["strength"] = ("test" if finding.get("test_run")
                        else "outside" if citations and finding.get("beyond_diff") else "diff")
     if finding.get("also_at"):
         out["alsoAt"] = finding["also_at"]
@@ -1009,6 +1013,10 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
     mode = spec.get("mode") if spec.get("mode") in MODES else DEFAULT_MODE
     deep_model = spec.get("deepModel") if isinstance(spec.get("deepModel"), str) else model
     deep_thinking = _thinking(spec.get("deepThinking"), DEFAULT_DEEP_THINKING)
+    plan_model = spec.get("planModel") if isinstance(spec.get("planModel"), str) else model
+    plan_thinking = _thinking(spec.get("planThinking"), DEFAULT_PLAN_THINKING)
+    ask_model = spec.get("askModel") if isinstance(spec.get("askModel"), str) else model
+    ask_thinking = _thinking(spec.get("askThinking"), DEFAULT_ASK_THINKING)
     # History lookups must never reach the network: a blob-less clone would otherwise fetch what it lacks.
     os.environ.setdefault("GIT_NO_LAZY_FETCH", "1")
     deep_rounds = int(_number(spec.get("deepRounds"), deep.DEFAULT_ROUNDS, 1, deep.MAX_ROUNDS))
@@ -1072,9 +1080,63 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
     raised: list[dict[str, Any]] = []
     # The deep pass needs the repository at the reviewed commit; without it the review is the fast one.
     deep_rev = (str(spec.get("head")) if spec.get("repoDir") else "HEAD") if git is not None else None
-    if mode != "fast" and deep_rev is None:
+    # The host decides whether tests may run (eligibility, the setting); the pipeline only obeys.
+    test_options: dict[str, Any] | None = None
+    if spec.get("runTests") is True:
+        test_base = spec.get("base") if spec.get("repoDir") else spec.get("baseSha")
+        test_options = {
+            "base": test_base if isinstance(test_base, str) else None,
+            "runs": int(_number(spec.get("testRuns"), 6, 0, 50)),
+            "timeout_s": _number(spec.get("testTimeoutSeconds"), 300, 5, 3600),
+            "env_dir": spec.get("testEnv") if isinstance(spec.get("testEnv"), str) else None,
+            # A local checkout of the same repository (the host checked its remote): only its prepared
+            # environment directories are used, read-only.
+            "checkout": spec.get("testCheckout") if isinstance(spec.get("testCheckout"), str) else None,
+            "image": spec.get("testImage") if isinstance(spec.get("testImage"), str) else None,
+        }
+    test_report: dict[str, Any] = {"enabled": False, "mechanism": None, "note": None, "runs": []}
+
+    # The compiled mode: one planner frame writes the review program, the host runs it. When no program can be
+    # had (the planner fails, or its program is invalid after one repair), the fast and deep passes run instead.
+    program_started = clock()
+    compiled_out: dict[str, Any] | None = None
+    program_stats: dict[str, Any] | None = None
+    if mode == "compiled":
+        if deep_rev is None:
+            not_checked.append("The compiled mode was skipped: the repository was not available.")
+            mode = "fast"
+        elif chunks:
+            program: Any = None
+            if isinstance(spec.get("programPath"), str) and spec["programPath"]:
+                try:
+                    program = json.loads(Path(spec["programPath"]).read_text(encoding="utf-8"))
+                except (OSError, ValueError) as error:
+                    raise ReviewError(f"the program file could not be read: {error}") from None
+            try:
+                compiled_out = await compiled.run_compiled(
+                    frames_runner, scope.files, scope.read_file, root=scope.root, rev=deep_rev,
+                    diff_text=SLICE_SEPARATOR.join(chunk.text for chunk in chunks), context=shared, intent=stated,
+                    guidance=guidance, plan_model=plan_model, plan_thinking=plan_thinking, ask_model=ask_model,
+                    ask_thinking=ask_thinking, cutoff=find_cutoff, clock=clock, cap=capped_level, runner=runner,
+                    tests=test_options, to_level=to_level, title=_bounded(context.get("title"), TITLE_CHARS),
+                    description=_bounded(context.get("description"), DESCRIPTION_CHARS),
+                    base=(str(spec.get("base")) if spec.get("repoDir") else spec.get("baseSha")) or None,
+                    enrich=parse_rules, generic=generic_reason, program=program,
+                    dump_path=spec.get("dumpProgramPath") if isinstance(spec.get("dumpProgramPath"), str) else None)
+            except Exception as error:  # the fast and deep passes stand in for a program that could not run
+                not_checked.append(f"The review program failed ({_text(f'{type(error).__name__}: {error}', 160)}); "
+                                   "the fast and deep passes ran instead.")
+                mode = "both"
+            if compiled_out is not None and compiled_out["fallback"]:
+                not_checked.append(f"The compiled mode fell back to the fast and deep passes: {compiled_out['fallback']}.")
+                program_stats = {"planner": compiled_out["planner"], "fallback": compiled_out["fallback"]}
+                compiled_out = None
+                mode = "both"
+    program_ms = int((clock() - program_started) * 1000) if mode == "compiled" or program_stats else 0
+    if mode in ("deep", "both") and deep_rev is None:
         not_checked.append("The deep pass was skipped: the repository was not available.")
-    run_fast = mode != "deep" or deep_rev is None
+    run_fast = mode in ("fast", "both") or (mode == "deep" and deep_rev is None)
+    run_deep_pass = mode in ("deep", "both") and deep_rev is not None
     if chunks and run_fast:
         # The shared context is part of every finder request: plan with it counted in.
         overhead = len(finder_context) // 3
@@ -1134,25 +1196,43 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
 
     # The deep pass: investigators follow the change into the repository, with the fast findings as leads.
     deep_started = clock()
-    # The host decides whether tests may run (eligibility, the setting); the pipeline only obeys.
-    test_options: dict[str, Any] | None = None
-    if spec.get("runTests") is True:
-        test_base = spec.get("base") if spec.get("repoDir") else spec.get("baseSha")
-        test_options = {
-            "base": test_base if isinstance(test_base, str) else None,
-            "runs": int(_number(spec.get("testRuns"), 6, 0, 50)),
-            "timeout_s": _number(spec.get("testTimeoutSeconds"), 300, 5, 3600),
-            "env_dir": spec.get("testEnv") if isinstance(spec.get("testEnv"), str) else None,
-            # A local checkout of the same repository (the host checked its remote): only its prepared
-            # environment directories are used, read-only.
-            "checkout": spec.get("testCheckout") if isinstance(spec.get("testCheckout"), str) else None,
-            "image": spec.get("testImage") if isinstance(spec.get("testImage"), str) else None,
-        }
-    test_report: dict[str, Any] = {"enabled": False, "mechanism": None, "note": None, "runs": []}
     deep_out: dict[str, Any] | None = None
     investigators: list[dict[str, Any]] = []
     assurance: list[str] = []
-    if chunks and mode != "fast" and deep_rev is not None:
+    program_records: list[dict[str, Any]] = []
+    if compiled_out is not None:
+        # The program ran: its findings are the review's. Deterministic ones are confirmed by the host's own
+        # evidence; the ones that rest on a small-model answer are verified below like any other.
+        dropped_generic += compiled_out["generic"]
+        refuted = compiled_out["refuted"]
+        test_report = compiled_out["tests"]
+        if test_report["note"]:
+            not_checked.append(test_report["note"][0].upper() + test_report["note"][1:] + ".")
+        assurance = compiled_out["assurance"]
+        program_stats = compiled_out["stats"]
+        program_records = compiled_out["records"]
+        merged = []
+        for finding in sorted(compiled_out["findings"], key=level_rank):
+            twin = next((item for item in merged if item["file"] == finding["file"] and item["line"] == finding["line"]
+                         and similar_claims(item["claim"], finding["claim"])), None)
+            if twin is None:
+                merged.append(finding)
+            else:
+                duplicates += 1
+        for number, finding in enumerate(merged, 1):
+            finding["id"] = number
+        if compiled_out["dropped"]:
+            not_checked.append(f"{len(compiled_out['dropped'])} program finding(s) were dropped because their evidence "
+                               "did not check out: " + "; ".join(compiled_out["dropped"][:4]))
+        failed_steps = [record["id"] for record in program_records if record["status"] == "failed"]
+        if failed_steps:
+            not_checked.append(f"{len(failed_steps)} program step(s) failed: " + ", ".join(failed_steps[:6])
+                               + (" ..." if len(failed_steps) > 6 else ""))
+        if program_stats["truncated"]:
+            not_checked.append("The review program was cut at its limits: " + "; ".join(program_stats["truncated"][:3]))
+        if compiled_out["diff_cut"]:
+            not_checked.append("The planner saw the first part of a large diff only.")
+    if chunks and run_deep_pass:
         try:
             deep_out = await deep.run_deep(
                 frames_runner, scope.files, scope.read_file, root=scope.root, rev=deep_rev,
@@ -1247,10 +1327,14 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
                  f"Diff hunk ({finding['file']}, new-file line numbers):\n{hunk_text}"]
         if related:
             views.append(f"Other places that define or use the names involved:\n{related}")
-        cited = deep.cited_windows(deep_out["repo"], finding) if deep_out is not None and finding.get("citations") else ""
+        repo_at_head = (deep_out or compiled_out or {}).get("repo")
+        cited = deep.cited_windows(repo_at_head, finding) if repo_at_head is not None and finding.get("citations") else ""
         if finding.get("test_evidence"):
             views.append("A test execution the investigator cites, as the host ran it in a sandbox:\n"
                          + finding["test_evidence"])
+        if finding.get("ask_evidence"):
+            views.append("What a small model answered when the review program asked it (untrusted; the quote was "
+                         f"checked to be in the material it saw):\n{finding['ask_evidence']}")
         if cited:
             views.append("Evidence the investigator cites, as the host reads it at the reviewed commit (the quoted "
                          f"lines were checked to be there):\n{cited}")
@@ -1333,17 +1417,22 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
         "dropped": {"rejected": len(rejected), "duplicates": duplicates, "generic": len(dropped_generic),
                     "refutedByTest": refuted},
         "timing": {"totalMs": int((clock() - started) * 1000), "scopeMs": scope_ms, "findMs": find_ms,
-                   "verifyMs": verify_ms, "deepMs": deep_ms, "frames": frames_runner.timings,
-                   "investigators": investigators},
+                   "verifyMs": verify_ms, "deepMs": deep_ms, "programMs": program_ms, "frames": frames_runner.timings,
+                   "investigators": investigators, "program": program_records},
         "usage": {"inputTokens": usage.input, "outputTokens": usage.output, "costUsd": round(usage.cost, 6),
                   "frames": usage.frames, "tokens": usage.tokens, "budget": cap},
         "model": model,
         "verifyModel": verify_model,
         "thinking": thinking,
         "verifyThinking": verify_thinking,
-        "mode": mode if deep_out is not None or mode == "fast" else "fast",
+        "mode": "compiled" if compiled_out is not None else mode if deep_out is not None or mode == "fast" else "fast",
         "deepModel": deep_model if deep_out is not None else None,
         "deepThinking": deep_thinking if deep_out is not None else None,
+        "planModel": plan_model if compiled_out is not None else None,
+        "planThinking": plan_thinking if compiled_out is not None else None,
+        "askModel": ask_model if compiled_out is not None else None,
+        "askThinking": ask_thinking if compiled_out is not None else None,
+        "program": program_stats,
         "assurance": assurance,
         "tests": test_report,
         "guides": len([name for name in guide_names if os.sep in name]),

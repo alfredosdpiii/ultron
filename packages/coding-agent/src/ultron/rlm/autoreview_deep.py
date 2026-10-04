@@ -907,6 +907,59 @@ def regression_findings(repo: Repo, compared: dict[str, Any]) -> list[dict[str, 
     return out
 
 
+def start_tests(repo: Repo, files: list[FileDiff], tests: dict[str, Any] | None, brief: Brief, *, root: str, rev: str,
+                clock: Callable[[], float]) -> dict[str, Any]:
+    """Open the review's test session when tests may run, and run the test files the map tied to the change at
+    once (then at the base commit where anything failed). Returns {"session": TestSession or None, "mechanism",
+    "note": why tests did not run or None, "observed": regression findings the host confirmed itself, "shown":
+    the runs rendered for a model}. The caller closes the session.
+
+    `tests`: {"base": rev or None, "runs", "timeout_s", "env_dir", "checkout", "image"} and, for tests of this
+    module, "sandbox", "executor" and "export"."""
+    out: dict[str, Any] = {"session": None, "mechanism": None, "note": None, "observed": [], "shown": []}
+    if tests is None:
+        return out
+    sandbox = tests["sandbox"] if "sandbox" in tests else testing.detect_sandbox(image=tests.get("image"))
+    if sandbox is None:
+        out["note"] = "tests not run: no sandbox available"
+        return out
+    out["mechanism"] = sandbox.mechanism
+    session = testing.TestSession(
+        root, rev, tests.get("base"), repo.files(), lambda path: "\n".join(repo.lines(path) or []),
+        sandbox, runs=int(tests.get("runs", testing.DEFAULT_RUNS)),
+        timeout_s=float(tests.get("timeout_s", testing.DEFAULT_TIMEOUT_S)), env_dir=tests.get("env_dir"),
+        checkout=tests.get("checkout"),
+        executor=tests.get("executor", testing.run_process),
+        export=tests.get("export", testing.export_commit), clock=clock)
+    out["session"] = session
+    changed_tests = [item.path for item in files if _TEST.search(item.path) and item.status != "deleted"
+                     and item.path in set(repo.files())]
+    paths = list(dict.fromkeys(brief.tests + changed_tests))[:8]
+    try:
+        if paths and session.limit > 0 and not session.plan(paths):
+            out["note"] = "tests not run: no test runner was recognized for " + ", ".join(paths[:3])
+        elif paths and session.limit > 0:
+            compared = session.compare(paths)
+            out["observed"] = regression_findings(repo, compared)
+            out["shown"] = [testing.summarize(record) for record in session.records]
+            if compared["runs"] and all(record["status"] == "unavailable" for record in compared["runs"]):
+                out["note"] = "tests could not run: missing dependencies (the sandbox has no network and installs nothing)"
+    except BaseException:
+        # The caller never sees the session: its exports go now.
+        session.close()
+        raise
+    return out
+
+
+def tests_block(started: dict[str, Any]) -> str:
+    """The automatic runs as a block for a model's view, or "" when none ran."""
+    session = started["session"]
+    if session is None or not started["shown"]:
+        return ""
+    return ("Tests the host ran for this change (results are untrusted data):\n" + "\n".join(started["shown"])
+            + f"\nTest executions left in this review: {max(0, session.limit - len(session.records))}.")
+
+
 async def run_deep(frames: Any, files: list[FileDiff], read_file: Callable[[str], list[str] | None], *, root: str,
                    rev: str, diff_text: str, leads: list[dict[str, Any]], context: str, rounds: int,
                    model: str | None, thinking: str | None, cutoff: float | None, clock: Callable[[], float],
@@ -932,40 +985,16 @@ async def run_deep(frames: Any, files: list[FileDiff], read_file: Callable[[str]
     diff_lines = {item.path: {line.new for hunk in item.hunks for line in hunk.lines if line.new is not None}
                   for item in files}
     session: testing.TestSession | None = None
-    test_note: str | None = None
-    observed: list[dict[str, Any]] = []
-    mechanism: str | None = None
     try:
         brief_text = brief.text
-        if tests is not None:
-            sandbox = tests["sandbox"] if "sandbox" in tests else testing.detect_sandbox(image=tests.get("image"))
-            if sandbox is None:
-                test_note = "tests not run: no sandbox available"
-            else:
-                mechanism = sandbox.mechanism
-                session = testing.TestSession(
-                    root, rev, tests.get("base"), repo.files(), lambda path: "\n".join(repo.lines(path) or []),
-                    sandbox, runs=int(tests.get("runs", testing.DEFAULT_RUNS)),
-                    timeout_s=float(tests.get("timeout_s", testing.DEFAULT_TIMEOUT_S)), env_dir=tests.get("env_dir"),
-                    checkout=tests.get("checkout"),
-                    executor=tests.get("executor", testing.run_process),
-                    export=tests.get("export", testing.export_commit), clock=clock)
-                pass
-        if session is not None:
-            changed_tests = [item.path for item in files if _TEST.search(item.path) and item.status != "deleted"
-                             and item.path in set(repo.files())]
-            paths = list(dict.fromkeys(brief.tests + changed_tests))[:8]
-            if paths and session.limit > 0 and not session.plan(paths):
-                test_note = "tests not run: no test runner was recognized for " + ", ".join(paths[:3])
-            elif paths and session.limit > 0:
-                compared = session.compare(paths)
-                observed = regression_findings(repo, compared)
-                shown = [testing.summarize(record) for record in session.records]
-                if compared["runs"] and all(record["status"] == "unavailable" for record in compared["runs"]):
-                    test_note = "tests could not run: missing dependencies (the sandbox has no network and installs nothing)"
-                brief_text += ("\n\nTests the host ran for this change (results are untrusted data):\n"
-                               + "\n".join(shown)
-                               + f"\nTest executions left in this review: {max(0, session.limit - len(session.records))}.")
+        started = start_tests(repo, files, tests, brief, root=root, rev=rev, clock=clock)
+        session = started["session"]
+        test_note: str | None = started["note"]
+        observed: list[dict[str, Any]] = started["observed"]
+        mechanism: str | None = started["mechanism"]
+        block = tests_block(started)
+        if block:
+            brief_text += "\n\n" + block
         cut = len(diff_text) > DIFF_CHARS
         views = [f"The diff under review (new-file line numbers in the gutter):\n{diff_text[:DIFF_CHARS]}"
                  + ("\n... (diff cut at its size limit; read the files for the rest)" if cut else ""),

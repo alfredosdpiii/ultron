@@ -1,0 +1,999 @@
+"""The compiled mode of `ultron autoreview`: one strong model writes a review *program*; the host executes it.
+
+The fast and deep passes (autoreview_api.py, autoreview_deep.py) put a model in the loop of every lookup. Here the
+expensive reasoning happens once, up front: a planner frame reads the whole change, the brief, the intent and the
+rubric, decides what must be true for the change to be correct and safe, and writes down the checks that establish
+it as a JSON program. The host then runs that program deterministically (code controls the flow) and calls a cheap
+small model only at the decision points the program marks (`ask`), with the exact material each question needs.
+
+1. Program. A list of steps with ids and `needs`. Ops: the deep pass's read-only lookups (`read`, `grep`, `list`,
+   `definition`, `references`, `history`, `blame_range`, `pickaxe`), its sandboxed test executions (`run_tests`,
+   `mutation_check`), `for_each` (a sub-program template over the items of a result), `ask` (one yes/no/unclear
+   question to the small model, with a quote the host checks), `assert` (a predicate over a result) and `finding`
+   (emitted when its condition holds, with its evidence named up front). `when` conditions on any step.
+2. Validation. The program is checked against the language (ids, references, cycles, ops, predicates, bounds)
+   before anything runs; a bad program gets one repair round with the planner; a program still bad means the
+   review falls back to the `both` mode and says so.
+3. Execution. Independent steps run concurrently (asks under the frame concurrency); every step's input, output,
+   duration and tokens are recorded. Lookups and tests go through the same validation and limits as the deep
+   pass (`autoreview_deep.serve_request`, `autoreview_tests.TestSession`).
+4. Findings. A finding whose condition roots in deterministic results (counts, test runs, verified citations) is
+   confirmed by that evidence and skips the verifier; critical and high stand only when a run showed the failure,
+   else such a finding is at most medium. A finding whose condition or evidence rests on an `ask` goes through the
+   existing verifier frame. The asserts that held become the review's assurance.
+
+Models have no tools, nothing of the reviewed repository runs outside the sandbox, and the planner can request
+nothing but the fixed read-only lookups and the sandboxed tests. Everything a frame sees is data.
+"""
+from __future__ import annotations
+
+import json
+import re
+from typing import Any, Callable
+
+from infer_api import FrameError, Incomplete
+from review_api import FileDiff, _clip, _text, normalize_category
+import autoreview_deep as deep
+import autoreview_tests as testing
+from review_prompts import ASK_TASK, COMPILED_REPAIR, compiled_planner_task
+
+LOOKUPS = ("read", "grep", "list", "definition", "references", "history", "blame_range", "pickaxe")
+TEST_OPS = ("run_tests", "mutation_check")
+#: Results with items a `for_each` may iterate.
+ITERABLE = ("grep", "references", "list", "history", "blame_range", "pickaxe")
+OPS = (*LOOKUPS, *TEST_OPS, "for_each", "ask", "assert", "finding")
+LEVELS = ("critical", "high", "medium", "low", "nit")
+OLD_LEVELS = {"blocker": "critical", "major": "high", "minor": "low"}
+LEVEL_TO_OLD = {"critical": "blocker", "high": "major", "medium": "minor", "low": "minor", "nit": "nit"}
+#: Steps as written, steps after `for_each` expansion, asks, findings, items per `for_each`, sub-steps per template.
+MAX_PROGRAM_STEPS = 80
+MAX_STEPS = 120
+MAX_ASKS = 40
+MAX_FINDINGS = 12
+MAX_FOR_EACH_ITEMS = 20
+DEFAULT_FOR_EACH_ITEMS = 8
+MAX_TEMPLATE_STEPS = 8
+MAX_QUESTION_CHARS = 1_500
+ASK_CONTEXT_CHARS = 12_000
+RESULT_CHARS = 6_000
+RECORD_CHARS = 1_200
+EVIDENCE_CHARS = 1_200
+MAX_HOLDS = 3
+_ID = re.compile(r"^[A-Za-z_][A-Za-z0-9_-]{0,39}$")
+_PLACEHOLDER = re.compile(r"\{\{\s*([A-Za-z_][A-Za-z0-9_\-]*(?:\[\d+\])?(?:\.[A-Za-z_][A-Za-z0-9_\-]*)*)\s*\}\}")
+_COUNT = re.compile(r"^count\s*(==|!=|>=|<=|>|<)\s*(\d+)$")
+_WORD = re.compile(r"^(status|answer)\s*(==|!=)\s*([a-z_]+)$")
+_CONTAINS = re.compile(r"^(not\s+)?contains\s+(.+)$", re.S)
+_HIT = re.compile(r"^(.+?):(\d+): ?(.*)$")
+_TITLE_COUNT = re.compile(r"-> (\d+) (?:matches|commits)|\((\d+) entries\)")
+STATUSES = ("passed", "failed", "could_not_run")
+ANSWERS = ("yes", "no", "unclear")
+
+PROGRAM_CONTRACT: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "summary": {"type": "string"},
+        "steps": {
+            "type": "array",
+            "maxItems": MAX_PROGRAM_STEPS,
+            "items": {"type": "object", "properties": {"id": {"type": "string"}, "op": {"enum": list(OPS)}},
+                      "required": ["id", "op"]},
+        },
+    },
+    "required": ["steps"],
+}
+
+ASK_CONTRACT: dict[str, Any] = {
+    "type": "object",
+    "properties": {"answer": {"enum": list(ANSWERS)}, "quote": {"type": "string"}, "why": {"type": "string"}},
+    "required": ["answer", "quote"],
+}
+
+
+# --- Validation ------------------------------------------------------------------------------------------------
+
+
+def _flat(text: str) -> str:
+    return " ".join(text.split())
+
+
+def _parse_predicate(text: Any) -> tuple[str, ...] | None:
+    """A predicate as a tuple, or None: ("count", op, n), ("status"|"answer", op, word), ("contains", needle, negated)."""
+    if not isinstance(text, str) or not text.strip():
+        return None
+    text = text.strip()
+    match = _COUNT.match(text)
+    if match:
+        return ("count", match.group(1), match.group(2))
+    match = _WORD.match(text)
+    if match:
+        allowed = STATUSES if match.group(1) == "status" else ANSWERS
+        return (match.group(1), match.group(2), match.group(3)) if match.group(3) in allowed else None
+    match = _CONTAINS.match(text)
+    if match:
+        needle = match.group(2).strip()
+        if len(needle) >= 2 and needle[0] == needle[-1] and needle[0] in "\"'":
+            needle = needle[1:-1]
+        return ("contains", needle, "not" if match.group(1) else "") if needle else None
+    return None
+
+
+def _when(raw: Any) -> tuple[dict[str, Any] | None, str | None]:
+    if raw is None:
+        return None, None
+    if isinstance(raw, str):
+        raw = {"step": raw}
+    if not isinstance(raw, dict) or not isinstance(raw.get("step"), str):
+        return None, "when must be {\"step\": <id>} or {\"step\": <id>, \"not\": true}"
+    return {"step": raw["step"], "not": raw.get("not") is True}, None
+
+
+def _ids(raw: Any) -> list[str]:
+    return [item for item in raw if isinstance(item, str)] if isinstance(raw, list) else []
+
+
+class Program:
+    """A validated program: top-level steps in order, each normalized, plus the template steps of its for_each."""
+
+    def __init__(self, steps: list[dict[str, Any]], summary: str) -> None:
+        self.steps = steps
+        self.summary = summary
+
+    def as_json(self) -> dict[str, Any]:
+        return {"summary": self.summary, "steps": [_public_step(step) for step in self.steps]}
+
+
+def _public_step(step: dict[str, Any]) -> dict[str, Any]:
+    out = {key: value for key, value in step.items() if key not in ("predicate_parsed",) and value not in (None, [], {})}
+    if "steps" in out:
+        out["steps"] = [_public_step(item) for item in out["steps"]]
+    return out
+
+
+def _normalize_step(raw: Any, errors: list[str], *, inside: str | None = None) -> dict[str, Any] | None:
+    """One step's shape checked and normalized; errors are appended with the step's id."""
+    if not isinstance(raw, dict):
+        errors.append("a step is not an object")
+        return None
+    sid = raw.get("id")
+    label = f"step {sid!r}" if isinstance(sid, str) else "a step without id"
+    if not isinstance(sid, str) or not _ID.match(sid):
+        errors.append(f"{label}: id must match {_ID.pattern}")
+        return None
+    op = raw.get("op")
+    if op not in OPS:
+        errors.append(f"{label}: unknown op {op!r}; use one of {', '.join(OPS)}")
+        return None
+    step: dict[str, Any] = {"id": sid, "op": op, "needs": _ids(raw.get("needs"))}
+    when, problem = _when(raw.get("when"))
+    if problem:
+        errors.append(f"{label}: {problem}")
+    step["when"] = when
+    if op in LOOKUPS or op in TEST_OPS:
+        args = raw.get("args")
+        if not isinstance(args, dict):
+            errors.append(f"{label}: {op} takes an args object")
+            return None
+        needed = {"read": ("path",), "grep": ("pattern",), "list": ("dir",), "definition": ("symbol",),
+                  "references": ("symbol",), "history": ("path",), "blame_range": ("path",), "pickaxe": ("string",),
+                  "run_tests": ("paths",), "mutation_check": ("path", "line", "replacement", "tests")}[op]
+        for key in needed:
+            if key not in args:
+                errors.append(f"{label}: {op} needs args.{key}")
+        step["args"] = args
+    elif op == "for_each":
+        if inside is not None:
+            errors.append(f"{label}: for_each cannot be nested")
+            return None
+        if not isinstance(raw.get("over"), str):
+            errors.append(f"{label}: for_each needs over (the id of a grep, references, list or history step)")
+        step["over"] = raw.get("over")
+        try:
+            step["max_items"] = min(MAX_FOR_EACH_ITEMS, max(1, int(raw.get("max_items") or DEFAULT_FOR_EACH_ITEMS)))
+        except (TypeError, ValueError):
+            step["max_items"] = DEFAULT_FOR_EACH_ITEMS
+        template = raw.get("steps")
+        if not isinstance(template, list) or not 1 <= len(template) <= MAX_TEMPLATE_STEPS:
+            errors.append(f"{label}: for_each takes 1 to {MAX_TEMPLATE_STEPS} sub-steps")
+            template = []
+        step["steps"] = [item for item in (_normalize_step(sub, errors, inside=sid) for sub in template) if item]
+    elif op == "ask":
+        question = raw.get("question")
+        if not isinstance(question, str) or not question.strip():
+            errors.append(f"{label}: ask needs a question")
+        elif len(question) > MAX_QUESTION_CHARS:
+            errors.append(f"{label}: the question is longer than {MAX_QUESTION_CHARS} characters")
+        step["question"] = question if isinstance(question, str) else ""
+        step["context"] = _ids(raw.get("context"))
+        if not step["context"]:
+            errors.append(f"{label}: ask needs context: the ids of the steps whose results answer it")
+    elif op == "assert":
+        forms = [key for key in ("step", "all", "any") if raw.get(key) is not None]
+        if len(forms) != 1:
+            errors.append(f"{label}: assert takes exactly one of step (with predicate), all, any")
+        if raw.get("step") is not None:
+            if not isinstance(raw.get("step"), str):
+                errors.append(f"{label}: assert.step must be an id")
+            parsed = _parse_predicate(raw.get("predicate"))
+            if parsed is None:
+                errors.append(f"{label}: predicate {raw.get('predicate')!r} is not one of count ==|!=|>=|<=|>|< N, "
+                              "status == passed|failed|could_not_run, answer == yes|no|unclear, contains <text>, "
+                              "not contains <text>")
+            step["step"] = raw.get("step")
+            step["predicate"] = raw.get("predicate") if isinstance(raw.get("predicate"), str) else ""
+            step["predicate_parsed"] = parsed
+        for key in ("all", "any"):
+            if raw.get(key) is not None:
+                step[key] = _ids(raw.get(key))
+                if not step[key]:
+                    errors.append(f"{label}: assert.{key} must list ids")
+        step["holds"] = raw.get("holds") if isinstance(raw.get("holds"), str) else ""
+    elif op == "finding":
+        when, problem = _when(raw.get("when"))
+        if when is None:
+            errors.append(f"{label}: a finding needs when, naming an assert or an ask")
+        step["when"] = when
+        for key in ("file", "claim"):
+            if not isinstance(raw.get(key), str) or not raw[key].strip():
+                errors.append(f"{label}: finding needs {key}")
+        line = raw.get("line")
+        if not (isinstance(line, int) and not isinstance(line, bool)) and not (
+                isinstance(line, str) and (line.strip().isdigit() or _PLACEHOLDER.search(line))):
+            errors.append(f"{label}: finding needs line (a number or a placeholder)")
+        level = str(raw.get("level", "")).strip().lower()
+        if level not in LEVELS and level not in OLD_LEVELS:
+            errors.append(f"{label}: level must be one of {', '.join(LEVELS)}")
+        step["evidence"] = _ids(raw.get("evidence"))
+        citations = raw.get("citations")
+        step["citations"] = [item for item in citations if isinstance(item, dict)] if isinstance(citations, list) else []
+        if not step["evidence"] and not step["citations"]:
+            errors.append(f"{label}: finding needs evidence (step ids) or citations")
+        for key in ("file", "line", "level", "category", "claim", "why", "fix", "scenario", "unpinned", "consequence"):
+            step[key] = raw.get(key)
+    return step
+
+
+def _references(step: dict[str, Any]) -> list[str]:
+    """Every step id a step depends on (its needs and the ids its op reads)."""
+    refs = list(step.get("needs") or [])
+    if step.get("when"):
+        refs.append(step["when"]["step"])
+    for key in ("over", "step"):
+        if isinstance(step.get(key), str):
+            refs.append(step[key])
+    for key in ("context", "all", "any", "evidence"):
+        refs += step.get(key) or []
+    return list(dict.fromkeys(refs))
+
+
+def validate(raw: Any) -> tuple[Program | None, list[str]]:
+    """The program `raw` (the planner's reply) checked against the language: (program, []) or (None, errors)."""
+    errors: list[str] = []
+    if not isinstance(raw, dict) or not isinstance(raw.get("steps"), list):
+        return None, ["the program must be an object with a steps array"]
+    if not raw["steps"]:
+        return None, ["the program has no steps"]
+    if len(raw["steps"]) > MAX_PROGRAM_STEPS:
+        return None, [f"the program has {len(raw['steps'])} steps; at most {MAX_PROGRAM_STEPS} as written"]
+    steps = [item for item in (_normalize_step(item, errors) for item in raw["steps"]) if item]
+    by_id: dict[str, dict[str, Any]] = {}
+    for step in steps:
+        if step["id"] in by_id:
+            errors.append(f"step {step['id']!r}: duplicate id")
+        by_id[step["id"]] = step
+        for sub in step.get("steps") or []:
+            if sub["id"] in by_id:
+                errors.append(f"step {sub['id']!r}: duplicate id (sub-step ids must be unique in the program too)")
+            by_id[sub["id"]] = sub
+    top = {step["id"] for step in steps}
+    owner = {sub["id"]: step["id"] for step in steps for sub in step.get("steps") or []}
+
+    def check_refs(step: dict[str, Any], scope: set[str]) -> None:
+        for ref in _references(step):
+            if ref not in by_id:
+                errors.append(f"step {step['id']!r}: names unknown step {ref!r}")
+            elif ref not in scope:
+                errors.append(f"step {step['id']!r}: cannot name {ref!r}, a sub-step of another for_each")
+        if step["op"] == "ask":
+            for ref in step["context"]:
+                if ref in by_id and by_id[ref]["op"] not in LOOKUPS + TEST_OPS:
+                    errors.append(f"step {step['id']!r}: context must name lookups or test steps, not {by_id[ref]['op']!r} {ref!r}")
+        if step["op"] == "assert":
+            for ref in [step.get("step")] if isinstance(step.get("step"), str) else []:
+                if ref in by_id and by_id[ref]["op"] in ("assert", "finding", "for_each"):
+                    errors.append(f"step {step['id']!r}: a predicate applies to a lookup, test or ask, not to {by_id[ref]['op']!r} {ref!r}")
+            for ref in (step.get("all") or []) + (step.get("any") or []):
+                if ref in by_id and by_id[ref]["op"] not in ("assert", "ask"):
+                    errors.append(f"step {step['id']!r}: all/any list asserts and asks, not {by_id[ref]['op']!r} {ref!r}")
+        if step.get("when") and step["when"]["step"] in by_id and by_id[step["when"]["step"]]["op"] not in ("assert", "ask"):
+            errors.append(f"step {step['id']!r}: when must name an assert or an ask, not {by_id[step['when']['step']]['op']!r}")
+        if step["op"] == "for_each" and step.get("over") in by_id and by_id[step["over"]]["op"] not in ITERABLE:
+            errors.append(f"step {step['id']!r}: for_each iterates a grep, references, list or history result, not {by_id[step['over']]['op']!r}")
+        if step["op"] == "finding":
+            for ref in step["evidence"]:
+                if ref in by_id and by_id[ref]["op"] not in LOOKUPS + TEST_OPS + ("ask",):
+                    errors.append(f"step {step['id']!r}: evidence names lookups, tests or asks, not {by_id[ref]['op']!r} {ref!r}")
+
+    for step in steps:
+        check_refs(step, top)
+        for sub in step.get("steps") or []:
+            check_refs(sub, top | {other["id"] for other in step["steps"]})
+            if sub["op"] == "for_each":
+                errors.append(f"step {sub['id']!r}: for_each cannot be nested")
+    # No cycles: every reference must resolve to an earlier step in a topological order. A for_each finishes after
+    # its sub-steps, so it depends on them.
+    graph = {sid: [ref for ref in _references(step) if ref in by_id] for sid, step in by_id.items()}
+    for sid, parent in owner.items():
+        graph[parent].append(sid)
+    state: dict[str, int] = {}
+
+    def visit(node: str, path: list[str]) -> None:
+        if state.get(node) == 2:
+            return
+        if state.get(node) == 1:
+            errors.append("the dependencies form a cycle: " + " -> ".join(path[path.index(node):] + [node]))
+            return
+        state[node] = 1
+        for ref in graph.get(node, []):
+            visit(ref, path + [node])
+        state[node] = 2
+
+    for sid in by_id:
+        visit(sid, [])
+    asks = sum(1 for step in by_id.values() if step["op"] == "ask")
+    if asks > MAX_ASKS:
+        errors.append(f"{asks} ask steps; at most {MAX_ASKS}")
+    findings = sum(1 for step in by_id.values() if step["op"] == "finding")
+    if findings > MAX_FINDINGS:
+        errors.append(f"{findings} finding steps; at most {MAX_FINDINGS}")
+    if errors:
+        return None, list(dict.fromkeys(errors))[:40]
+    return Program(steps, _text(raw.get("summary"), 300)), []
+
+
+# --- Interpretation --------------------------------------------------------------------------------------------
+
+
+def _count_of(op: str, title: str, body: str) -> int | None:
+    match = _TITLE_COUNT.search(title)
+    if match:
+        return int(match.group(1) or match.group(2))
+    if op == "read":
+        return len(body.splitlines())
+    return None
+
+
+def _items_of(op: str, body: str) -> list[Any]:
+    if op in ("grep", "references", "definition"):
+        items = []
+        for line in body.splitlines():
+            match = _HIT.match(line)
+            if match:
+                items.append({"path": match.group(1), "line": int(match.group(2)), "text": match.group(3)})
+        return items
+    if op in ("list", "history", "blame_range", "pickaxe"):
+        return [line for line in body.splitlines() if line.strip() and not line.startswith("...")
+                and line not in ("0 matches", "no commits found", "no commit added or removed it",
+                                 "no history available for these lines")]
+    return []
+
+
+def _render(value: Any) -> str:
+    if isinstance(value, dict):
+        if {"path", "line"} <= set(value):
+            return f"{value['path']}:{value['line']}"
+        return json.dumps(value)
+    return "" if value is None else str(value)
+
+
+class Interpreter:
+    """Runs one validated program against the repository at the reviewed commit."""
+
+    def __init__(self, program: Program, repo: deep.Repo, *, frames: Any, session: Any, diff_lines: dict[str, set[int]],
+                 ask_model: str | None, ask_thinking: str | None, cutoff: float | None, clock: Callable[[], float],
+                 cap: Callable[..., str], to_level: Callable[[Any], str | None] | None = None,
+                 enrich: Callable[[Any, dict[str, Any]], None] | None = None,
+                 generic: Callable[[dict[str, Any]], str | None] | None = None) -> None:
+        self.program = program
+        self.repo = repo
+        self.frames = frames
+        self.session = session
+        self.diff_lines = diff_lines
+        self.ask_model = ask_model
+        self.ask_thinking = ask_thinking
+        self.cutoff = cutoff
+        self.clock = clock
+        self.cap = cap
+        self.to_level = to_level
+        self.enrich = enrich
+        self.generic = generic
+        #: Results by step id, in finishing order.
+        self.results: dict[str, dict[str, Any]] = {}
+        self.records: list[dict[str, Any]] = []
+        self.findings: list[dict[str, Any]] = []
+        self.dropped: list[str] = []
+        self.generic_dropped: list[str] = []
+        self.refuted = 0
+        self.truncated: list[str] = []
+        self.steps_by_id: dict[str, dict[str, Any]] = {}
+        self.expanded = 0
+        self.asks = 0
+        self.test_runs_before = len(session.records) if session is not None else 0
+
+    # -- placeholders --
+
+    def _value(self, ref: str, scope: dict[str, Any]) -> str | None:
+        name, _, field = ref.partition(".")
+        if name in scope:
+            value = scope[name]
+            if field:
+                return _render(value.get(field)) if isinstance(value, dict) else None
+            return _render(value)
+        result = self.results.get(name)
+        if result is None:
+            return None
+        if not field or field == "text":
+            return result.get("summary") if not field else result.get("text", "")
+        if field in ("count", "status", "answer", "quote", "why", "title", "value"):
+            value = result.get("outcome") if field == "status" and result["op"] in TEST_OPS else result.get(field)
+            return _render(value)
+        return None
+
+    def fill(self, text: Any, scope: dict[str, Any] | None = None) -> Any:
+        """`text` with every {{placeholder}} replaced by the named result or item field."""
+        if isinstance(text, dict):
+            return {key: self.fill(value, scope) for key, value in text.items()}
+        if isinstance(text, list):
+            return [self.fill(value, scope) for value in text]
+        if not isinstance(text, str):
+            return text
+
+        def replace(match: re.Match[str]) -> str:
+            value = self._value(match.group(1), scope or {})
+            return match.group(0) if value is None else value
+
+        return _PLACEHOLDER.sub(replace, text)
+
+    # -- truth --
+
+    def truth(self, sid: str) -> bool | None:
+        """Whether an assert or ask step holds; None when it did not run, or when an ask was answered unclear (an
+        undecided question decides nothing, negated or not)."""
+        result = self.results.get(sid)
+        if result is None or result["status"] != "ok":
+            return None
+        if result["op"] == "assert":
+            return bool(result.get("value"))
+        if result["op"] == "ask":
+            return None if result.get("answer") == "unclear" else result.get("answer") == "yes"
+        return None
+
+    def _condition(self, when: dict[str, Any] | None) -> bool | None:
+        if when is None:
+            return True
+        value = self.truth(when["step"])
+        return None if value is None else (not value if when["not"] else value)
+
+    def roots_in_ask(self, sid: str, seen: set[str] | None = None) -> bool:
+        """Whether a step's truth depends, transitively, on a model's answer."""
+        seen = seen or set()
+        if sid in seen:
+            return False
+        seen.add(sid)
+        step = self.steps_by_id.get(sid)
+        if step is None:
+            return False
+        if step["op"] == "ask":
+            return True
+        if step["op"] == "assert":
+            refs = ([step["step"]] if isinstance(step.get("step"), str) else []) + (step.get("all") or []) + (step.get("any") or [])
+            return any(self.roots_in_ask(ref, seen) for ref in refs)
+        return False
+
+    # -- running --
+
+    def _summary(self, op: str, result: dict[str, Any]) -> str:
+        if op in TEST_OPS:
+            return result.get("title", "") + ": " + result.get("outcome", "")
+        if op == "ask":
+            return f"answer {result.get('answer')} (quote: {_clip(result.get('quote') or '', 160)})"
+        if op == "assert":
+            return "holds" if result.get("value") else f"does not hold ({result.get('detail', '')})"
+        title = result.get("title", op)
+        if result.get("items"):
+            shown = "; ".join(_render(item) for item in result["items"][:5])
+            return f"{title}: {shown}" + (" ..." if len(result["items"]) > 5 else "")
+        return title
+
+    def _record(self, step: dict[str, Any], result: dict[str, Any], began: float, inputs: Any) -> None:
+        tokens = 0
+        if step["op"] == "ask":
+            tokens = sum(int(item.get("tokens") or 0) for item in self.frames.timings
+                         if item.get("phase") == "ask" and item.get("reviewer") == step["id"])
+        result["summary"] = self._summary(step["op"], result)
+        self.records.append({
+            "id": step["id"], "op": step["op"], "status": result["status"], "ms": int((self.clock() - began) * 1000),
+            "tokens": tokens, "input": _clip(json.dumps(inputs, default=str), RECORD_CHARS),
+            "output": _clip(result.get("text") if result.get("text") else result["summary"], RECORD_CHARS),
+            **({"detail": result["detail"]} if result.get("detail") else {}),
+        })
+        self.results[step["id"]] = result
+
+    def _skip(self, step: dict[str, Any], why: str, began: float) -> None:
+        self._record(step, {"op": step["op"], "status": "skipped", "detail": why, "text": ""}, began, None)
+
+    def _lookup(self, step: dict[str, Any], scope: dict[str, Any]) -> None:
+        began = self.clock()
+        args = self.fill(step["args"], scope)
+        try:
+            if step["op"] in TEST_OPS and self.session is None:
+                raise deep.Rejected("tests are not run in this review")
+            title, body = deep.serve_request(self.repo, {step["op"]: args}, self.session)
+        except deep.Rejected as error:
+            outcome = {"op": step["op"], "status": "failed", "detail": str(error), "text": ""}
+            if step["op"] in TEST_OPS:
+                outcome.update(status="ok", outcome="could_not_run")
+            self._record(step, outcome, began, args)
+            return
+        result: dict[str, Any] = {"op": step["op"], "status": "ok", "title": title, "text": _clip(body, RESULT_CHARS),
+                                  "count": _count_of(step["op"], title, body), "items": _items_of(step["op"], body)}
+        if step["op"] in TEST_OPS:
+            number = int(title.split()[-1]) if title.split()[-1].isdigit() else None
+            record = next((item for item in self.session.records if item["n"] == number), None)
+            result["run"] = record
+            status = (record or {}).get("status")
+            result["outcome"] = status if status in ("passed", "failed") else "could_not_run"
+            if record and record.get("mutation"):
+                result["caught"] = bool(record.get("caught"))
+        self._record(step, result, began, args)
+
+    def _assert(self, step: dict[str, Any]) -> None:
+        began = self.clock()
+        value: bool
+        detail = ""
+        if isinstance(step.get("step"), str):
+            target = self.results.get(step["step"])
+            kind, op, operand = step["predicate_parsed"]
+            if target is None or target["status"] != "ok":
+                value, detail = False, f"{step['step']} did not run"
+            elif kind == "count":
+                count = target.get("count")
+                if count is None:
+                    value, detail = False, f"{step['step']} has no count"
+                else:
+                    value = {"==": count == int(operand), "!=": count != int(operand), ">=": count >= int(operand),
+                             "<=": count <= int(operand), ">": count > int(operand), "<": count < int(operand)}[op]
+                    detail = f"count is {count}"
+            elif kind in ("status", "answer"):
+                actual = target.get("outcome") if kind == "status" else target.get("answer")
+                value = (actual == operand) if op == "==" else (actual != operand)
+                # An unclear answer satisfies nothing but `answer == unclear`.
+                if kind == "answer" and actual == "unclear" and not (op == "==" and operand == "unclear"):
+                    value = False
+                detail = f"{kind} is {actual}"
+            else:
+                needle = self.fill(op)
+                present = _flat(needle) in _flat(target.get("text") or "")
+                value = present if not operand else not present
+                detail = f"{needle!r} {'is' if present else 'is not'} in the result"
+        else:
+            refs = step.get("all") or step.get("any") or []
+            values = [self.truth(ref) for ref in refs]
+            if step.get("all"):
+                value = all(item is True for item in values)
+            else:
+                value = any(item is True for item in values)
+            detail = ", ".join(f"{ref}={'?' if item is None else item}" for ref, item in zip(refs, values))
+        text = self.fill(step.get("holds") or "") if value else ""
+        self._record(step, {"op": "assert", "status": "ok", "value": value, "detail": detail, "holds": text, "text": ""},
+                     began, step.get("predicate") or {"all": step.get("all"), "any": step.get("any")})
+
+    def _ask_views(self, step: dict[str, Any], scope: dict[str, Any]) -> tuple[list[str], str] | None:
+        """The views of an ask (question, then each context result as data) and the material the quote must come
+        from; None when a context step did not run."""
+        question = self.fill(step["question"], scope)
+        views = [f"Question: {question}"]
+        material = []
+        left = ASK_CONTEXT_CHARS
+        for ref in step["context"]:
+            result = self.results.get(ref)
+            if result is None or result["status"] != "ok":
+                return None
+            text = result.get("text") or result.get("summary") or ""
+            text = text if len(text) <= left else text[: max(0, left - 1)] + "…"
+            left -= len(text)
+            views.append(f"Material from step {ref} ({result.get('title', result['op'])}; untrusted repository data "
+                         f"read by the host at the reviewed commit):\n{text}")
+            material.append(text)
+        return views, "\n".join(material)
+
+    async def _asks(self, steps: list[tuple[dict[str, Any], dict[str, Any]]]) -> None:
+        jobs = []
+        prepared = []
+        for step, scope in steps:
+            began = self.clock()
+            if self.asks >= MAX_ASKS:
+                self._skip(step, f"the limit of {MAX_ASKS} asks is reached", began)
+                continue
+            views = self._ask_views(step, scope)
+            if views is None:
+                self._skip(step, "a context step did not run", began)
+                continue
+            self.asks += 1
+            jobs.append((step["id"], ASK_TASK, views[0]))
+            prepared.append((step, views[0], views[1], began))
+        if not jobs:
+            return
+        replies = await self.frames.run("ask", jobs, contract=ASK_CONTRACT, model=self.ask_model,
+                                        thinking=self.ask_thinking, cutoff=self.cutoff)
+        for (step, views, material, began), reply in zip(prepared, replies):
+            if isinstance(reply, (Incomplete, FrameError)) or not isinstance(reply, dict):
+                why = getattr(reply, "error", None) or getattr(reply, "status", None) or "no reply"
+                self._record(step, {"op": "ask", "status": "failed", "detail": _text(why, 160), "text": ""}, began, views[0])
+                continue
+            answer = str(reply.get("answer", "")).strip().lower()
+            quote = _flat(reply.get("quote") if isinstance(reply.get("quote"), str) else "")
+            flat = _flat(material)
+            quote_ok = len(quote) >= 4 and (quote in flat or any(
+                len(line) >= 8 and line in quote for line in (_flat(item) for item in material.splitlines())))
+            detail = ""
+            if answer not in ANSWERS:
+                answer, detail = "unclear", f"the answer {answer!r} is not yes, no or unclear"
+            elif answer != "unclear" and not quote_ok:
+                answer, detail = "unclear", "the quote is not in the material: the answer counts as unclear"
+            self._record(step, {"op": "ask", "status": "ok", "answer": answer, "quote": quote, "quote_ok": quote_ok,
+                                "why": _text(reply.get("why"), 300), "detail": detail,
+                                "text": f"answer: {answer}\nquote: {quote}\nwhy: {_text(reply.get('why'), 300)}"},
+                         began, views[0])
+
+    def _expand(self, step: dict[str, Any]) -> list[dict[str, Any]]:
+        """The instances of a for_each template over the items of its `over` result."""
+        source = self.results.get(step["over"])
+        items = (source.get("items") or []) if source and source["status"] == "ok" else []
+        instances: list[dict[str, Any]] = []
+        template_ids = {sub["id"] for sub in step["steps"]}
+        total = len(self.steps_by_id)
+        for index, item in enumerate(items[: step["max_items"]]):
+            if total + len(instances) + len(step["steps"]) > MAX_STEPS:
+                self.truncated.append(f"{step['id']}: items from {index} on were not expanded ({MAX_STEPS} steps at most)")
+                break
+            scope = {"item": item, "index": index}
+            rename = {sid: f"{step['id']}[{index}].{sid}" for sid in template_ids}
+
+            def ref(name: str) -> str:
+                return rename.get(name, name)
+
+            for sub in step["steps"]:
+                clone = json.loads(json.dumps(sub))
+                clone["id"] = rename[sub["id"]]
+                clone["needs"] = [ref(name) for name in clone.get("needs") or []]
+                if clone.get("when"):
+                    clone["when"] = {"step": ref(clone["when"]["step"]), "not": clone["when"]["not"]}
+                for key in ("over", "step"):
+                    if isinstance(clone.get(key), str):
+                        clone[key] = ref(clone[key])
+                for key in ("context", "all", "any", "evidence"):
+                    if clone.get(key):
+                        clone[key] = [ref(name) for name in clone[key]]
+                clone["scope"] = scope
+                clone["origin"] = step["id"]
+                instances.append(clone)
+        if len(items) > step["max_items"]:
+            self.truncated.append(f"{step['id']}: {len(items) - step['max_items']} items beyond max_items were not visited")
+        self.expanded += len(instances)
+        return instances
+
+    def _finding(self, step: dict[str, Any], scope: dict[str, Any]) -> None:
+        began = self.clock()
+        held = self._condition(step["when"])
+        if held is None:
+            self._skip(step, f"its condition {step['when']['step']} did not run", began)
+            return
+        if not held:
+            self._record(step, {"op": "finding", "status": "ok", "emitted": False, "text": "",
+                                "detail": f"{step['when']['step']} does not hold"}, began, None)
+            return
+        finding, problem = self._compose(step, scope)
+        if finding is None:
+            self.dropped.append(f"{step['id']}: {problem}")
+            self._record(step, {"op": "finding", "status": "ok", "emitted": False, "detail": f"dropped: {problem}", "text": ""},
+                         began, None)
+            return
+        reason = self.generic(finding) if self.generic is not None else None
+        if reason:
+            self.generic_dropped.append(reason)
+            self._record(step, {"op": "finding", "status": "ok", "emitted": False, "detail": f"dropped: {reason}", "text": ""},
+                         began, None)
+            return
+        if finding.get("proof") == "refuted":
+            self.refuted += 1
+            self._record(step, {"op": "finding", "status": "ok", "emitted": False, "text": "",
+                                "detail": "refuted: the mutant it names was caught by a test"}, began, None)
+            return
+        self.findings.append(finding)
+        self._record(step, {"op": "finding", "status": "ok", "emitted": True, "text": json.dumps(
+            {key: finding[key] for key in ("file", "line", "level", "claim")}),
+            "detail": finding.get("how_verified") or "rests on a small-model answer: goes to the verifier"}, began, None)
+
+    def _compose(self, step: dict[str, Any], scope: dict[str, Any]) -> tuple[dict[str, Any] | None, str | None]:
+        """The finding of a `finding` step whose condition holds, with its evidence composed from the results it
+        names: (finding, None) or (None, why it was dropped)."""
+        try:
+            path = self.repo.path(self.fill(step["file"], scope))
+            line = int(self.fill(step["line"], scope))
+        except (deep.Rejected, TypeError, ValueError) as error:
+            return None, f"no tracked file and line ({error})"
+        lines = self.repo.lines(path)
+        if not lines or not 1 <= line <= len(lines):
+            return None, f"{path} has no line {line}"
+        citations, problem, beyond = deep.check_citations(self.repo, self.fill(step["citations"], scope), self.diff_lines)
+        if step["citations"] and problem:
+            return None, problem
+        parts: list[str] = []
+        test_run: dict[str, Any] | None = None
+        observed = False
+        asked = self.roots_in_ask(step["when"]["step"])
+        ask_notes: list[str] = []
+        usable = 0
+        for ref in step["evidence"]:
+            result = self.results.get(ref)
+            if result is None or result["status"] != "ok":
+                parts.append(f"[{ref}] did not run")
+                continue
+            usable += 1
+            if result["op"] in TEST_OPS and result.get("run"):
+                run = result["run"]
+                if test_run is None:
+                    test_run = run
+                observed = observed or result["outcome"] in ("passed", "failed")
+                parts.append(f"[{ref}] " + testing.summarize(run).split("\n  output")[0].replace("\n", " "))
+            elif result["op"] == "ask":
+                asked = True
+                ask_notes.append(f"{ref}: {self.fill(self.steps_by_id[ref]['question'], scope)} -> {result['answer']}"
+                                 + (f", quoting `{result['quote']}`" if result.get("quote") else ""))
+                parts.append(f"[{ref}] small model answered {result['answer']}" + (f" quoting `{_clip(result['quote'], 160)}`"
+                                                                                  if result.get("quote") else ""))
+            else:
+                parts.append(f"[{ref}] {result['summary']}")
+        if usable == 0 and not citations:
+            return None, "no evidence: none of the steps it names produced a result"
+        if line not in self.diff_lines.get(path, ()):
+            beyond = True
+        if test_run is not None:
+            beyond = True
+        name = str(step.get("level", "")).strip().lower()
+        stated = (self.to_level(name) if self.to_level else name if name in LEVELS else OLD_LEVELS.get(name)) or "low"
+        category = normalize_category(_text(step.get("category"), 40), "bugs")
+        scenario = _text(self.fill(step.get("scenario") or "", scope), 500)
+        # Deterministic evidence: critical and high only when a run showed the failure; a count is a gap (medium).
+        if asked:
+            level = self.cap(stated, category, scenario)
+        else:
+            level = self.cap(stated, category, scenario, True if observed else None)
+            if level in ("critical", "high") and not observed:
+                level = "medium"
+        # The checked citations are rendered by the result (`_public`) in front of this text.
+        cited = "; ".join(f"{item['path']}:{item['line']} `{item['quote']}`" for item in citations)
+        evidence = " | ".join(parts)
+        finding: dict[str, Any] = {
+            "file": path, "line": line, "level": level, "severity": LEVEL_TO_OLD[level], "finder_level": stated,
+            "category": category, "claim": _text(self.fill(step["claim"], scope), 300),
+            "why": _text(self.fill(step.get("why") or "", scope), 600), "scenario": scenario,
+            "suggested_fix": _text(self.fill(step.get("fix") or "", scope), 500), "confidence": 0.9 if not asked else 0.7,
+            "reviewers": ["compiled"], "source": f"compiled:{step['id']}", "citations": citations, "beyond_diff": beyond,
+            "evidence": _clip(evidence, EVIDENCE_CHARS), "program_step": step["id"],
+        }
+        if test_run is not None:
+            finding["test_run"] = test_run["n"]
+            finding["test_evidence"] = testing.summarize(test_run).split("\n  output")[0]
+        if self.enrich is not None:
+            self.enrich(self.fill({"unpinned": step.get("unpinned"), "consequence": step.get("consequence")}, scope), finding)
+        # A tests finding settled by a mutation the program ran: proven when the mutant survived, refuted when caught.
+        mutation = next((self.results[ref] for ref in step["evidence"] if ref in self.results
+                         and self.results[ref]["op"] == "mutation_check" and self.results[ref]["status"] == "ok"
+                         and self.results[ref].get("run")), None)
+        if mutation is not None and category == "tests":
+            if mutation.get("caught"):
+                finding["proof"] = "refuted"
+            elif mutation["outcome"] == "passed":
+                finding["proof"] = "proven"
+                finding.setdefault("unpinned", {"behaviour": "", "change": ""})
+        if asked:
+            finding["ask_evidence"] = "\n".join(ask_notes)
+        else:
+            finding["host_confirmed"] = True
+            finding["how_verified"] = ("the review program's evidence, produced by the host: "
+                                       + _clip(" | ".join(parts) or cited, 300))
+        return finding, None
+
+    async def run(self) -> None:
+        pending: list[dict[str, Any]] = [dict(step) for step in self.program.steps]
+        for step in pending:
+            self.steps_by_id[step["id"]] = step
+        while pending:
+            ready = [step for step in pending if all(ref in self.results for ref in _references(step))
+                     and all(ref in self.results for ref in step.get("instances", []))]
+            if not ready:
+                for step in pending:
+                    self._skip(step, "its dependencies never finished", self.clock())
+                break
+            asks: list[tuple[dict[str, Any], dict[str, Any]]] = []
+            added: list[dict[str, Any]] = []
+            for step in ready:
+                began = self.clock()
+                scope = step.get("scope") or {}
+                held = self._condition(step.get("when")) if step["op"] != "finding" else True
+                if held is None:
+                    self._skip(step, f"its condition {step['when']['step']} did not run", began)
+                elif held is False:
+                    self._skip(step, f"its condition {step['when']['step']} does not hold", began)
+                elif step["op"] == "for_each":
+                    if "instances" not in step:
+                        instances = self._expand(step)
+                        step["instances"] = [item["id"] for item in instances]
+                        for item in instances:
+                            self.steps_by_id[item["id"]] = item
+                        added += instances
+                        if instances:
+                            continue  # the for_each finishes when its instances have
+                    done = [self.results[sid] for sid in step["instances"]]
+                    emitted = sum(1 for item in done if item.get("emitted"))
+                    held_count = sum(1 for item in done if item["op"] == "assert" and item.get("value"))
+                    self._record(step, {"op": "for_each", "status": "ok", "count": len(step["instances"]), "text": "",
+                                        "items": [], "detail": f"{emitted} finding(s) emitted, {held_count} assert(s) held"},
+                                 began, {"over": step["over"], "instances": len(step["instances"])})
+                elif step["op"] in LOOKUPS or step["op"] in TEST_OPS:
+                    self._lookup(step, scope)
+                elif step["op"] == "assert":
+                    self._assert(step)
+                elif step["op"] == "finding":
+                    self._finding(step, scope)
+                elif step["op"] == "ask":
+                    asks.append((step, scope))
+            if asks:
+                await self._asks(asks)
+            finished = {step["id"] for step in ready if step["id"] in self.results}
+            pending = [step for step in pending if step["id"] not in finished] + added
+
+    def stats(self) -> dict[str, Any]:
+        by_status: dict[str, int] = {}
+        for record in self.records:
+            by_status[record["status"]] = by_status.get(record["status"], 0) + 1
+        deterministic = sum(1 for item in self.findings if item.get("host_confirmed"))
+        return {
+            "planned": len(self.program.steps), "expanded": self.expanded, "executed": by_status.get("ok", 0),
+            "failed": by_status.get("failed", 0), "skipped": by_status.get("skipped", 0), "asks": self.asks,
+            "tests": (len(self.session.records) - self.test_runs_before) if self.session is not None else 0,
+            "findings": {"deterministic": deterministic, "asked": len(self.findings) - deterministic,
+                         "dropped": len(self.dropped) + len(self.generic_dropped), "refuted": self.refuted},
+            "truncated": self.truncated,
+        }
+
+    def assurance(self) -> list[str]:
+        """What the program checked and found to hold: the host's counts, then the `holds` sentences of the asserts
+        that were true (first in program order)."""
+        lookups = sum(1 for record in self.records if record["op"] in LOOKUPS and record["status"] == "ok")
+        asserts = [record for record in self.records if record["op"] == "assert" and record["status"] == "ok"]
+        held = [self.results[record["id"]] for record in asserts if self.results[record["id"]].get("value")]
+        runs = (len(self.session.records) - self.test_runs_before) if self.session is not None else 0
+        first = (f"A review program of {len(self.records)} steps ran against the reviewed commit: {lookups} repository "
+                 f"lookup{'' if lookups == 1 else 's'}, {runs} test run{'' if runs == 1 else 's'}, {self.asks} small-model "
+                 f"question{'' if self.asks == 1 else 's'}; {len(held)} of {len(asserts)} check{'' if len(asserts) == 1 else 's'} held.")
+        sentences = []
+        for result in held:
+            text = _text(result.get("holds"), 220)
+            if text and len(sentences) < MAX_HOLDS:
+                sentences.append(text if text.endswith((".", "!", "?")) else text + ".")
+        return [first, *sentences]
+
+
+# --- Orchestration ---------------------------------------------------------------------------------------------
+
+
+def planner_views(diff_text: str, brief_text: str, *, context: str, intent: str, guidance: str, tests_block: str,
+                  runner: str | None, tests_allowed: bool, runs_left: int) -> tuple[list[str], bool]:
+    """The planner's views: the diff, the brief, the context, the intent, the guides, the test situation."""
+    cut = len(diff_text) > deep.DIFF_CHARS
+    views = [f"The diff under review (new-file line numbers in the gutter):\n{diff_text[:deep.DIFF_CHARS]}"
+             + ("\n... (diff cut at its size limit; read the files for the rest)" if cut else ""),
+             f"Investigation brief, built by the host from the repository at the reviewed commit:\n{brief_text}"]
+    for part in (context, intent, guidance, tests_block):
+        if part:
+            views.append(part)
+    if tests_allowed:
+        views.append(f"Tests may run: yes; runner recognized: {runner or 'none'}; executions left: {runs_left}.")
+    else:
+        views.append("Tests may run: no.")
+    return views, cut
+
+
+async def run_compiled(frames: Any, files: list[FileDiff], read_file: Callable[[str], list[str] | None], *, root: str,
+                       rev: str, diff_text: str, context: str, intent: str, guidance: str, plan_model: str | None,
+                       plan_thinking: str | None, ask_model: str | None, ask_thinking: str | None,
+                       cutoff: float | None, clock: Callable[[], float], cap: Callable[..., str],
+                       runner: Any = None, tests: dict[str, Any] | None = None,
+                       to_level: Callable[[Any], str | None] | None = None, title: str = "", description: str = "",
+                       base: str | None = None, enrich: Callable[[Any, dict[str, Any]], None] | None = None,
+                       generic: Callable[[dict[str, Any]], str | None] | None = None,
+                       program: Any = None, dump_path: str | None = None) -> dict[str, Any]:
+    """Map, plan (one planner frame, or `program` given to replay), validate (one repair round), interpret.
+    Returns findings (deterministic ones `host_confirmed`), what was dropped, the step records, the stats, the
+    assurance, the test report and, when the program could not be had, `fallback`: why the caller should run the
+    `both` mode instead."""
+    repo = deep.Repo(root, rev, runner)
+    if not repo.files():
+        raise RuntimeError("the reviewed commit could not be read")
+    brief = deep.build_brief(repo, files, read_file, title=title, description=description, base=base)
+    diff_lines = {item.path: {line.new for hunk in item.hunks for line in hunk.lines if line.new is not None}
+                  for item in files}
+    session = None
+    planner: dict[str, Any] = {"ms": 0, "tokens": 0, "repairs": 0, "status": "replayed" if program is not None else "ok"}
+    out: dict[str, Any] = {"findings": [], "dropped": [], "generic": [], "records": [], "stats": None, "assurance": [],
+                           "repo": repo, "brief": brief, "program": None, "fallback": None, "diff_cut": False,
+                           "planner": planner, "tests": {"enabled": tests is not None, "mechanism": None, "note": None, "runs": []},
+                           "refuted": 0}
+    try:
+        started = deep.start_tests(repo, files, tests, brief, root=root, rev=rev, clock=clock)
+        session = started["session"]
+        out["tests"]["mechanism"] = started["mechanism"]
+        out["tests"]["note"] = started["note"]
+        out["findings"] = list(started["observed"])
+        tests_allowed = session is not None and session.limit > len(session.records)
+        views, cut = planner_views(
+            diff_text, brief.text, context=context, intent=intent, guidance=guidance, tests_block=deep.tests_block(started),
+            runner=session.runner.name if session is not None and session.runner else None, tests_allowed=tests_allowed,
+            runs_left=max(0, session.limit - len(session.records)) if session is not None else 0)
+        out["diff_cut"] = cut
+        validated: Program | None = None
+        errors: list[str] = []
+        if program is not None:
+            validated, errors = validate(program)
+            if validated is None:
+                out["fallback"] = "the given program is invalid: " + "; ".join(errors[:4])
+        else:
+            task = compiled_planner_task(tests_allowed)
+            began = clock()
+            for attempt in range(2):
+                extra = [] if attempt == 0 else [COMPILED_REPAIR.format(errors="\n".join(f"- {item}" for item in errors[:20]))]
+                replies = await frames.run("plan", [("planner", task, views + extra)], contract=PROGRAM_CONTRACT,
+                                           model=plan_model, thinking=plan_thinking, cutoff=cutoff)
+                reply = replies[0]
+                if isinstance(reply, (Incomplete, FrameError)) or not isinstance(reply, dict):
+                    why = getattr(reply, "error", None) or getattr(reply, "status", None) or "no reply"
+                    out["fallback"] = f"the planner frame failed ({_text(why, 160)})"
+                    planner["status"] = "failed"
+                    break
+                validated, errors = validate(reply)
+                if validated is not None:
+                    break
+                if attempt == 0:
+                    planner["repairs"] = 1
+                else:
+                    out["fallback"] = "the program was invalid after one repair: " + "; ".join(errors[:4])
+                    planner["status"] = "invalid"
+            planner["ms"] = int((clock() - began) * 1000)
+            planner["tokens"] = sum(int(item.get("tokens") or 0) for item in frames.timings if item.get("phase") == "plan")
+        if validated is None:
+            return out
+        out["program"] = validated.as_json()
+        if dump_path:
+            with open(dump_path, "w", encoding="utf-8") as handle:
+                json.dump(out["program"], handle, indent=1)
+        interpreter = Interpreter(validated, repo, frames=frames, session=session, diff_lines=diff_lines, ask_model=ask_model,
+                                  ask_thinking=ask_thinking, cutoff=cutoff, clock=clock, cap=cap, to_level=to_level,
+                                  enrich=enrich, generic=generic)
+        await interpreter.run()
+        out["findings"] += interpreter.findings
+        out["dropped"] = interpreter.dropped
+        out["generic"] = interpreter.generic_dropped
+        out["records"] = interpreter.records
+        out["refuted"] = interpreter.refuted
+        out["stats"] = {**interpreter.stats(), "planner": planner, "summary": validated.summary}
+        out["assurance"] = interpreter.assurance()
+        runs = list(session.records) if session is not None else []
+        out["tests"]["runs"] = [{key: value for key, value in record.items() if key != "output"} | {"output": record["output"][-600:]}
+                                for record in runs]
+    finally:
+        if session is not None:
+            session.close()
+    return out
