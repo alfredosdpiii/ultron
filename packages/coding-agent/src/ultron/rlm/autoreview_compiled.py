@@ -33,15 +33,20 @@ nothing but the fixed read-only lookups and the sandboxed tests. Everything a fr
 """
 from __future__ import annotations
 
+import asyncio
 import json
+import os
 import re
+import shutil
+import tempfile
 from typing import Any, Callable
 
 from infer_api import FrameError, Incomplete
 from review_api import FileDiff, _clip, _text, normalize_category, source_window
 import autoreview_deep as deep
 import autoreview_tests as testing
-from review_prompts import ASK_TASK, CHECK_CATALOGUE, COMPILED_REPAIR, RESOLVE_TASK, TRIGGERED_SHAPES, compiled_planner_task
+from review_prompts import (ASK_TASK, CHECK_CATALOGUE, COMPILED_REPAIR, RESOLVE_TASK, RV_API, TRIGGERED_SHAPES,
+                            cell_planner_task, compiled_planner_task)
 
 LOOKUPS = ("read", "grep", "list", "definition", "references", "history", "blame_range", "pickaxe")
 TEST_OPS = ("run_tests", "mutation_check")
@@ -74,6 +79,17 @@ MAX_HOLDS = 3
 #: changed names, mechanically looked up by the host.
 RETRIEVAL_CHARS = 24_000
 RETRIEVAL_HITS = 12
+#: The planner as a REPL: cells the strong model writes, each run in a sandboxed child whose only interface to the
+#: repository is `rv`.
+PLAN_STYLES = ("cell", "frame")
+DEFAULT_PLAN_STYLE = "cell"
+DEFAULT_PLAN_CELLS = 6
+MAX_PLAN_CELLS = 12
+CELL_TIMEOUT_S = 120
+CELL_OUTPUT_CHARS = 8_000
+CELL_TRANSCRIPT_CHARS = 40_000
+CELL_VALUE_CHARS = 4_000
+CELL_VALUE_ITEMS = 20
 CAPPED = "(more not shown)"
 _ID = re.compile(r"^[A-Za-z_][A-Za-z0-9_-]{0,39}$")
 _PLACEHOLDER = re.compile(r"\{\{\s*([A-Za-z_][A-Za-z0-9_\-]*(?:\[\d+\])?(?:\.[A-Za-z_][A-Za-z0-9_\-]*)*)\s*\}\}")
@@ -431,6 +447,38 @@ def uncovered_items(coverage: list[dict[str, str]], steps: list[dict[str, Any]],
     return out
 
 
+def _check_step(step: dict[str, Any], by_id: dict[str, dict[str, Any]], scope: set[str], errors: list[str]) -> None:
+    """The reference rules of one step against the steps it may name."""
+    for ref in _references(step):
+        if ref not in by_id:
+            errors.append(f"step {step['id']!r}: names unknown step {ref!r}")
+        elif ref not in scope:
+            errors.append(f"step {step['id']!r}: cannot name {ref!r}, a sub-step of another for_each")
+    if step["op"] == "ask":
+        for ref in step["context"]:
+            if ref in by_id and by_id[ref]["op"] not in LOOKUPS + TEST_OPS:
+                errors.append(f"step {step['id']!r}: context must name lookups or test steps, not {by_id[ref]['op']!r} {ref!r}")
+    if step["op"] == "assert":
+        for ref in [step.get("step")] if isinstance(step.get("step"), str) else []:
+            if ref in by_id and by_id[ref]["op"] in ("assert", "finding", "for_each"):
+                errors.append(f"step {step['id']!r}: a predicate applies to a lookup, test or ask, not to {by_id[ref]['op']!r} {ref!r}")
+        for ref in (step.get("all") or []) + (step.get("any") or []):
+            if ref in by_id and by_id[ref]["op"] not in ("assert", "ask"):
+                errors.append(f"step {step['id']!r}: all/any list asserts and asks, not {by_id[ref]['op']!r} {ref!r}")
+    if step.get("when") and step["when"]["step"] in by_id and by_id[step["when"]["step"]]["op"] not in ("assert", "ask"):
+        errors.append(f"step {step['id']!r}: when must name an assert or an ask, not {by_id[step['when']['step']]['op']!r}")
+    if step["op"] == "for_each" and step.get("over") in by_id and by_id[step["over"]]["op"] not in ITERABLE:
+        errors.append(f"step {step['id']!r}: for_each iterates a grep, references, list or history result, not {by_id[step['over']]['op']!r}")
+    if step["op"] == "finding":
+        for ref in step["evidence"]:
+            if ref in by_id and by_id[ref]["op"] not in LOOKUPS + TEST_OPS + ("ask",):
+                errors.append(f"step {step['id']!r}: evidence names lookups, tests or asks, not {by_id[ref]['op']!r} {ref!r}")
+        if not grounded(step, by_id):
+            errors.append(f"step {step['id']!r}: a finding must rest on an ask (for code semantics), a test run, or an "
+                          "exact-count presence check (a grep with \"count_only\": true); a capped grep count or a "
+                          "read alone does not establish it")
+
+
 def validate(raw: Any, coverage: list[dict[str, str]] | None = None,
              max_planned: int = MAX_PROGRAM_STEPS) -> tuple[Program | None, list[str]]:
     """The program `raw` (the planner's reply) checked against the language and, with `coverage`, against what the
@@ -456,40 +504,10 @@ def validate(raw: Any, coverage: list[dict[str, str]] | None = None,
     top = {step["id"] for step in steps}
     owner = {sub["id"]: step["id"] for step in steps for sub in step.get("steps") or []}
 
-    def check_refs(step: dict[str, Any], scope: set[str]) -> None:
-        for ref in _references(step):
-            if ref not in by_id:
-                errors.append(f"step {step['id']!r}: names unknown step {ref!r}")
-            elif ref not in scope:
-                errors.append(f"step {step['id']!r}: cannot name {ref!r}, a sub-step of another for_each")
-        if step["op"] == "ask":
-            for ref in step["context"]:
-                if ref in by_id and by_id[ref]["op"] not in LOOKUPS + TEST_OPS:
-                    errors.append(f"step {step['id']!r}: context must name lookups or test steps, not {by_id[ref]['op']!r} {ref!r}")
-        if step["op"] == "assert":
-            for ref in [step.get("step")] if isinstance(step.get("step"), str) else []:
-                if ref in by_id and by_id[ref]["op"] in ("assert", "finding", "for_each"):
-                    errors.append(f"step {step['id']!r}: a predicate applies to a lookup, test or ask, not to {by_id[ref]['op']!r} {ref!r}")
-            for ref in (step.get("all") or []) + (step.get("any") or []):
-                if ref in by_id and by_id[ref]["op"] not in ("assert", "ask"):
-                    errors.append(f"step {step['id']!r}: all/any list asserts and asks, not {by_id[ref]['op']!r} {ref!r}")
-        if step.get("when") and step["when"]["step"] in by_id and by_id[step["when"]["step"]]["op"] not in ("assert", "ask"):
-            errors.append(f"step {step['id']!r}: when must name an assert or an ask, not {by_id[step['when']['step']]['op']!r}")
-        if step["op"] == "for_each" and step.get("over") in by_id and by_id[step["over"]]["op"] not in ITERABLE:
-            errors.append(f"step {step['id']!r}: for_each iterates a grep, references, list or history result, not {by_id[step['over']]['op']!r}")
-        if step["op"] == "finding":
-            for ref in step["evidence"]:
-                if ref in by_id and by_id[ref]["op"] not in LOOKUPS + TEST_OPS + ("ask",):
-                    errors.append(f"step {step['id']!r}: evidence names lookups, tests or asks, not {by_id[ref]['op']!r} {ref!r}")
-            if not grounded(step, by_id):
-                errors.append(f"step {step['id']!r}: a finding must rest on an ask (for code semantics), a test run, or an "
-                              "exact-count presence check (a grep with \"count_only\": true); a capped grep count or a "
-                              "read alone does not establish it")
-
     for step in steps:
-        check_refs(step, top)
+        _check_step(step, by_id, top, errors)
         for sub in step.get("steps") or []:
-            check_refs(sub, top | {other["id"] for other in step["steps"]})
+            _check_step(sub, by_id, top | {other["id"] for other in step["steps"]}, errors)
             if sub["op"] == "for_each":
                 errors.append(f"step {sub['id']!r}: for_each cannot be nested")
     # No cycles: every reference must resolve to an earlier step in a topological order. A for_each finishes after
@@ -1211,8 +1229,32 @@ class Interpreter:
                                        + _clip(" | ".join(parts) or cited, 300))
         return finding, None
 
-    async def run(self) -> None:
-        pending: list[dict[str, Any]] = [dict(step) for step in self.program.steps]
+    async def execute(self, step: dict[str, Any]) -> dict[str, Any]:
+        """Run one step whose dependencies have all finished (the planner cell's path), and return its result."""
+        self.steps_by_id[step["id"]] = step
+        scope: dict[str, Any] = {}
+        began = self.clock()
+        held = self._condition(step.get("when")) if step["op"] != "finding" else True
+        if held is None:
+            self._skip(step, f"its condition {step['when']['step']} did not decide", began)
+        elif held is False:
+            self._skip(step, f"its condition {step['when']['step']} does not hold", began)
+        elif step["op"] in LOOKUPS or step["op"] in TEST_OPS:
+            self._lookup(step, scope)
+        elif step["op"] == "assert":
+            self._assert(step)
+        elif step["op"] == "ask":
+            await self._asks([(step, scope)])
+        elif step["op"] == "finding":
+            undecided = self._finding(step, scope)
+            if undecided is not None:
+                await self._resolve([undecided])
+        elif step["op"] == "for_each":
+            await self.run([step])
+        return self.results.get(step["id"]) or {"op": step["op"], "status": "skipped"}
+
+    async def run(self, steps: list[dict[str, Any]] | None = None) -> None:
+        pending: list[dict[str, Any]] = [dict(step) for step in (self.program.steps if steps is None else steps)]
         for step in pending:
             self.steps_by_id[step["id"]] = step
         while pending:
@@ -1272,7 +1314,8 @@ class Interpreter:
         deterministic = sum(1 for item in self.findings if item.get("host_confirmed"))
         asserts = [self.results[record["id"]] for record in self.records if record["op"] == "assert" and record["status"] == "ok"]
         return {
-            "planned": len(self.program.steps), "expanded": self.expanded, "executed": by_status.get("ok", 0),
+            "planned": len([sid for sid in self.steps_by_id if "[" not in sid]), "expanded": self.expanded,
+            "executed": by_status.get("ok", 0),
             "failed": by_status.get("failed", 0), "skipped": by_status.get("skipped", 0), "asks": self.asks,
             "autoAsks": self.auto_asks,
             "tests": (len(self.session.records) - self.test_runs_before) if self.session is not None else 0,
@@ -1305,6 +1348,359 @@ class Interpreter:
             if text and len(sentences) < MAX_HOLDS:
                 sentences.append(text if text.endswith((".", "!", "?")) else text + ".")
         return [first, *sentences]
+
+
+# --- The planner as a REPL: sandboxed cells over the rv API ------------------------------------------------------
+
+#: The child process that runs the planner's cells. It is launched inside the test sandbox (bubblewrap or unshare:
+#: no network, no home, no repository, an empty writable directory) as `python3 -I -c <this>`, and speaks JSON lines
+#: on stdin/stdout: the host sends {"cell": code}; the child answers every `rv.<name>(...)` with {"call", "args",
+#: "kwargs"} and waits for {"value"} or {"error"}; it ends the cell with {"done": true, "output", "error"}. Cells run
+#: with a reduced set of builtins (no open, no exec/eval, imports from a short allowlist); `--probe` lifts that for
+#: the isolation self-test only.
+CELL_RUNNER = r'''
+import sys, json, io, traceback, builtins
+_in, _out = sys.stdin, sys.stdout
+PROBE = sys.argv[1:] == ["--probe"]
+def _send(obj):
+    _out.write(json.dumps(obj, default=str) + "\n"); _out.flush()
+def _recv():
+    line = _in.readline()
+    if not line:
+        raise SystemExit(0)
+    return json.loads(line)
+class RvError(Exception):
+    pass
+class _Rv:
+    def __getattr__(self, name):
+        if name.startswith("_"):
+            raise AttributeError(name)
+        def call(*args, **kwargs):
+            _send({"call": name, "args": list(args), "kwargs": kwargs})
+            reply = _recv()
+            if "error" in reply:
+                raise RvError(reply["error"])
+            return reply.get("value")
+        call.__name__ = name
+        return call
+rv = _Rv()
+_ALLOWED = {"re", "json", "math", "collections", "itertools", "functools", "textwrap", "string", "operator",
+            "statistics", "difflib"}
+_real_import = builtins.__import__
+def _import(name, globals=None, locals=None, fromlist=(), level=0):
+    if level == 0 and name.split(".")[0] in _ALLOWED:
+        return _real_import(name, globals, locals, fromlist, level)
+    raise ImportError("import of %r is not available in a planner cell: the repository is reached through rv" % name)
+_SAFE_NAMES = ("abs", "all", "any", "bool", "chr", "dict", "divmod", "enumerate", "filter", "float", "format",
+               "frozenset", "hash", "int", "isinstance", "issubclass", "iter", "len", "list", "map", "max", "min",
+               "next", "ord", "print", "range", "repr", "reversed", "round", "set", "slice", "sorted", "str", "sum",
+               "tuple", "zip", "Exception", "ValueError", "TypeError", "KeyError", "IndexError", "StopIteration",
+               "AttributeError", "RuntimeError", "ZeroDivisionError", "NameError", "ImportError", "AssertionError",
+               "LookupError", "ArithmeticError", "NotImplementedError", "__build_class__")
+_SAFE = {name: getattr(builtins, name) for name in _SAFE_NAMES if hasattr(builtins, name)}
+_SAFE["__import__"] = _import
+_globals = {"__builtins__": builtins if PROBE else _SAFE, "rv": rv, "RvError": RvError, "__name__": "__cell__"}
+while True:
+    message = _recv()
+    code = message.get("cell") or ""
+    buffer = io.StringIO()
+    error = ""
+    previous = sys.stdout
+    sys.stdout = buffer
+    try:
+        exec(compile(code, "<cell>", "exec"), _globals)
+    except SystemExit:
+        error = "SystemExit is not available in a planner cell: call rv.done() instead"
+    except BaseException as exc:  # noqa: BLE001
+        tail = traceback.extract_tb(sys.exc_info()[2])[-1:]
+        where = " (line %d of the cell)" % tail[0].lineno if tail and tail[0].filename == "<cell>" else ""
+        error = "".join(traceback.format_exception_only(type(exc), exc)).strip() + where
+    finally:
+        sys.stdout = previous
+    _send({"done": True, "output": buffer.getvalue()[-8000:], "error": error})
+'''
+
+
+class CellRunner:
+    """A sandboxed Python child that runs the planner's cells and relays its `rv` calls to a handler."""
+
+    def __init__(self, sandbox: Any, *, python: str = "python3", probe: bool = False) -> None:
+        self.sandbox = sandbox
+        self.python = python
+        self.probe = probe
+        self.process: Any = None
+        self.workdir: str | None = None
+
+    async def start(self) -> None:
+        self.workdir = tempfile.mkdtemp(prefix="ultron-autoreview-cell-")
+        command = [self.python, "-I", "-c", CELL_RUNNER] + (["--probe"] if self.probe else [])
+        argv = self.sandbox.wrap(command, self.workdir, testing.sandbox_env()) if self.sandbox is not None else command
+        self.process = await asyncio.create_subprocess_exec(
+            *argv, stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+            cwd=self.workdir, env=testing._launch_env())
+
+    async def run_cell(self, code: str, handler: Callable[[str, list[Any], dict[str, Any]], Any],
+                       timeout_s: float = CELL_TIMEOUT_S) -> tuple[str, str]:
+        """Run one cell; `handler(name, args, kwargs)` (async) answers each rv call. Returns (output, error)."""
+        assert self.process is not None and self.process.stdin is not None and self.process.stdout is not None
+        self.process.stdin.write((json.dumps({"cell": code}) + "\n").encode("utf-8"))
+        await self.process.stdin.drain()
+        while True:
+            try:
+                line = await asyncio.wait_for(self.process.stdout.readline(), timeout_s)
+            except asyncio.TimeoutError:
+                await self.close()
+                return "", f"the cell did not finish within {timeout_s:.0f} s and the planner's sandbox was closed"
+            if not line:
+                stderr = b""
+                if self.process.stderr is not None:
+                    try:
+                        stderr = await asyncio.wait_for(self.process.stderr.read(), 2)
+                    except asyncio.TimeoutError:
+                        pass
+                await self.close()
+                return "", "the planner's sandbox exited: " + _text(stderr.decode("utf-8", "replace"), 300)
+            try:
+                message = json.loads(line.decode("utf-8", "replace"))
+            except ValueError:
+                continue
+            if message.get("done"):
+                return str(message.get("output") or "")[-CELL_OUTPUT_CHARS:], str(message.get("error") or "")
+            if "call" in message:
+                try:
+                    value = await handler(str(message["call"]), list(message.get("args") or []), dict(message.get("kwargs") or {}))
+                    reply: dict[str, Any] = {"value": value}
+                except RvError as error:
+                    reply = {"error": str(error)}
+                except Exception as error:  # noqa: BLE001  a host fault is reported to the cell, not raised into it
+                    reply = {"error": f"host error: {type(error).__name__}: {_text(str(error), 200)}"}
+                self.process.stdin.write((json.dumps(reply, default=str) + "\n").encode("utf-8"))
+                await self.process.stdin.drain()
+
+    async def close(self) -> None:
+        process, self.process = self.process, None
+        if process is not None:
+            try:
+                process.kill()
+            except ProcessLookupError:
+                pass
+            try:
+                await asyncio.wait_for(process.wait(), 5)
+            except (asyncio.TimeoutError, ProcessLookupError):
+                pass
+        if self.workdir:
+            shutil.rmtree(self.workdir, ignore_errors=True)
+            self.workdir = None
+
+
+class RvError(Exception):
+    """An rv call the host refuses; the message is raised inside the cell as RvError."""
+
+
+def _public_value(result: dict[str, Any]) -> dict[str, Any]:
+    """What a cell gets back from an rv call: the step's result, bounded."""
+    out: dict[str, Any] = {"id": result.get("id"), "status": result.get("status")}
+    for key in ("count", "capped", "truncated", "answer", "quote", "why", "value", "contradicted", "detail", "emitted",
+                "caught", "title"):
+        if key in result and result[key] is not None:
+            out[key] = result[key]
+    if result.get("op") in TEST_OPS:
+        out["status"] = result.get("outcome")
+    if result.get("items"):
+        out["items"] = result["items"][:CELL_VALUE_ITEMS]
+    if result.get("text"):
+        out["text"] = _clip(result["text"], CELL_VALUE_CHARS)
+    if result.get("op") == "finding":
+        out["gate"] = result.get("gate") or ("finding emitted" if result.get("emitted") else "")
+    return out
+
+
+class CellSession:
+    """The `rv` API as the host serves it: every call becomes a step of the shared Interpreter, with the same
+    validation, limits and accounting as the JSON program; plus coverage bookkeeping and the end of planning."""
+
+    def __init__(self, interpreter: Interpreter, coverage: list[dict[str, str]], limits: tuple[int, int]) -> None:
+        self.interpreter = interpreter
+        self.coverage = coverage
+        self.limits = limits
+        self.covered: set[str] = set()
+        self.declared: list[str] = []
+        self.done = False
+        self.counter = 0
+        self.cells: list[str] = []
+
+    def _id(self, given: Any) -> str:
+        if given is not None:
+            if not isinstance(given, str) or not _ID.match(given):
+                raise RvError(f"id must match {_ID.pattern}")
+            if given in self.interpreter.steps_by_id:
+                raise RvError(f"id {given!r} is already used")
+            return given
+        while True:
+            self.counter += 1
+            sid = f"s{self.counter}"
+            if sid not in self.interpreter.steps_by_id:
+                return sid
+
+    def _step(self, raw: dict[str, Any]) -> dict[str, Any]:
+        """Validate one synthesized step against the language and the steps so far."""
+        total = len(self.interpreter.steps_by_id)
+        if total >= self.limits[1] or len([sid for sid in self.interpreter.steps_by_id if "[" not in sid]) >= self.limits[0]:
+            raise RvError(f"the step limit is reached ({self.limits[0]} steps as written, {self.limits[1]} after expansion)")
+        errors: list[str] = []
+        step = _normalize_step(raw, errors)
+        if step is not None:
+            by_id = dict(self.interpreter.steps_by_id)
+            by_id[step["id"]] = step
+            _check_step(step, by_id, set(by_id), errors)
+            if step["op"] == "ask" and self.interpreter.asks >= MAX_ASKS:
+                errors.append(f"the limit of {MAX_ASKS} asks is reached")
+        if errors or step is None:
+            raise RvError("; ".join(errors) or "invalid step")
+        return step
+
+    async def call(self, name: str, args: list[Any], kwargs: dict[str, Any]) -> Any:
+        if self.done:
+            raise RvError("rv.done() was already called")
+        if name == "help":
+            return RV_API
+        if name == "done":
+            missing = uncovered_items(self.coverage, list(self.interpreter.steps_by_id.values()),
+                                      self.declared + [f"{item}:" for item in self.covered])
+            if missing:
+                return {"ok": False, "uncovered": [f"{item['id']}: {item['text']}" for item in missing],
+                        "hint": "cover each with a check (covers=[id]) or rv.uncovered(id, why), then call rv.done() again"}
+            self.done = True
+            return {"ok": True}
+        if name == "cover":
+            item = str(args[0] if args else kwargs.get("item", ""))
+            if item not in {entry["id"] for entry in self.coverage}:
+                raise RvError(f"{item!r} is not a coverage item")
+            self.covered.add(item)
+            return {"ok": True}
+        if name == "uncovered":
+            item = str(args[0] if args else kwargs.get("item", ""))
+            why = str(args[1] if len(args) > 1 else kwargs.get("why", ""))
+            if item not in {entry["id"] for entry in self.coverage}:
+                raise RvError(f"{item!r} is not a coverage item")
+            self.declared.append(f"{item}: {why}")
+            return {"ok": True}
+        if name == "run_program":
+            program = args[0] if args else kwargs.get("program")
+            validated, errors = validate(program, None, self.limits[0])
+            if validated is None:
+                raise RvError("the program is invalid: " + "; ".join(errors[:8]))
+            clash = [step["id"] for step in validated.steps if step["id"] in self.interpreter.steps_by_id]
+            if clash:
+                raise RvError("these ids are already used: " + ", ".join(clash))
+            self.declared += validated.uncovered
+            await self.interpreter.run(validated.steps)
+            return {"ok": True, "steps": [_public_value(dict(self.interpreter.results[s["id"]], id=s["id"]))
+                                          for s in validated.steps if s["id"] in self.interpreter.results]}
+        raw = self._raw(name, args, kwargs)
+        step = self._step(raw)
+        result = await self.interpreter.execute(step)
+        return _public_value(dict(result, id=step["id"]))
+
+    def _raw(self, name: str, args: list[Any], kwargs: dict[str, Any]) -> dict[str, Any]:
+        """One rv call as the JSON step it stands for."""
+        kwargs = dict(kwargs)
+        sid = self._id(kwargs.pop("id", None))
+        covers = kwargs.pop("covers", None)
+        if name in LOOKUPS or name in TEST_OPS:
+            names = {"read": ("path", "start", "end"), "grep": ("pattern", "glob", "start", "end", "count_only", "max"),
+                     "list": ("dir",), "definition": ("symbol",), "references": ("symbol",), "history": ("path", "n"),
+                     "blame_range": ("path", "start", "end"), "pickaxe": ("string", "n"), "run_tests": ("paths", "select"),
+                     "mutation_check": ("path", "line", "replacement", "tests")}[name]
+            params = dict(zip(names, args))
+            params.update(kwargs)
+            if "glob" in params:
+                params["path_glob"] = params.pop("glob")
+            params = {key: value for key, value in params.items() if value is not None}
+            return {"id": sid, "op": name, "args": params, "covers": covers}
+        if name == "ask":
+            params = dict(zip(("question", "context"), args))
+            params.update(kwargs)
+            return {"id": sid, "op": "ask", "question": params.get("question"), "context": params.get("context"), "covers": covers}
+        if name in ("assert_", "assert"):
+            params = dict(zip(("step", "predicate", "expect", "holds"), args))
+            params.update(kwargs)
+            return {"id": sid, "op": "assert", "step": params.get("step"), "predicate": params.get("predicate"),
+                    "expect": params.get("expect"), "holds": params.get("holds") or "", "all": params.get("all"),
+                    "any": params.get("any"), "covers": covers}
+        if name == "finding":
+            params = dict(zip(("when", "file", "line", "level", "category", "claim", "why", "fix", "scenario", "evidence"), args))
+            params.update(kwargs)
+            when = params.get("when")
+            if isinstance(when, str):
+                when = {"step": when, "not": bool(params.get("not_") or params.get("negate"))}
+            return {"id": sid, "op": "finding", "when": when, "covers": covers,
+                    **{key: params.get(key) for key in ("file", "line", "level", "category", "claim", "why", "fix", "scenario",
+                                                        "evidence", "citations", "unpinned", "consequence")}}
+        raise RvError(f"rv has no method {name!r}; rv.help() lists them")
+
+
+async def run_cells(frames: Any, *, views: list[str], task: str, plan_model: str | None, plan_thinking: str | None,
+                    cutoff: float | None, clock: Callable[[], float], interpreter: Interpreter,
+                    coverage: list[dict[str, str]], limits: tuple[int, int], sandbox: Any, cells: int,
+                    python: str = "python3") -> dict[str, Any]:
+    """The planner as a REPL: up to `cells` frames, each returning one Python cell the host runs in the sandboxed
+    child; the cell's output goes back to the planner. Returns the session and what went wrong, if anything."""
+    session = CellSession(interpreter, coverage, limits)
+    runner = CellRunner(sandbox, python=python)
+    transcript: list[str] = []
+    notes: list[str] = []
+    began = clock()
+    status = "ok"
+    try:
+        await runner.start()
+    except Exception as error:  # noqa: BLE001
+        return {"session": session, "status": "failed", "error": f"the planner's sandbox could not start: {_text(str(error), 200)}",
+                "notes": notes, "ms": int((clock() - began) * 1000)}
+    try:
+        for number in range(1, cells + 1):
+            last = number == cells
+            shown = "\n\n".join(transcript)[-CELL_TRANSCRIPT_CHARS:]
+            extra = [f"Cells so far and their output (cell {number} of at most {cells}" + (", the last" if last else "")
+                     + "):\n" + (shown or "(none yet)")]
+            if last:
+                extra.append("This is your last cell: finish what is open and call rv.done().")
+            replies = await frames.run("plan", [("planner", task, views + extra)], contract=CELL_CONTRACT, model=plan_model,
+                                       thinking=plan_thinking, cutoff=cutoff)
+            reply = replies[0]
+            if isinstance(reply, (Incomplete, FrameError)) or not isinstance(reply, dict):
+                why = getattr(reply, "error", None) or getattr(reply, "status", None) or "no reply"
+                status = "failed"
+                notes.append(f"the planner frame failed at cell {number} ({_text(why, 160)})")
+                break
+            code = reply.get("cell") if isinstance(reply.get("cell"), str) else ""
+            if not code.strip():
+                transcript.append(f"Cell {number}: (empty)")
+                if reply.get("done") is True:
+                    break
+                continue
+            session.cells.append(code)
+            output, error = await runner.run_cell(code, session.call)
+            transcript.append(f"Cell {number}:\n{code}\nOutput:\n{output or '(no output)'}" + (f"\nError: {error}" if error else ""))
+            if runner.process is None:
+                notes.append(error or "the planner's sandbox exited")
+                status = "failed"
+                break
+            if session.done or reply.get("done") is True:
+                break
+        if not session.done and status == "ok":
+            notes.append(f"the planner did not call rv.done() within {cells} cells")
+    finally:
+        await runner.close()
+    return {"session": session, "status": status, "notes": notes, "ms": int((clock() - began) * 1000),
+            "transcript": transcript}
+
+
+CELL_CONTRACT: dict[str, Any] = {
+    "type": "object",
+    "properties": {"cell": {"type": "string"}, "done": {"type": "boolean"}},
+    "required": ["cell", "done"],
+}
 
 
 # --- Orchestration ---------------------------------------------------------------------------------------------
@@ -1462,8 +1858,11 @@ async def run_compiled(frames: Any, files: list[FileDiff], read_file: Callable[[
                        to_level: Callable[[Any], str | None] | None = None, title: str = "", description: str = "",
                        base: str | None = None, enrich: Callable[[Any, dict[str, Any]], None] | None = None,
                        generic: Callable[[dict[str, Any]], str | None] | None = None,
-                       program: Any = None, dump_path: str | None = None) -> dict[str, Any]:
-    """Map, plan (one planner frame, or `program` given to replay), validate (one repair round), interpret.
+                       program: Any = None, dump_path: str | None = None, plan_style: str = DEFAULT_PLAN_STYLE,
+                       plan_cells: int = DEFAULT_PLAN_CELLS, cell_sandbox: Any = "detect",
+                       python: str = "python3") -> dict[str, Any]:
+    """Map, retrieve, plan (the planner as sandboxed cells over the rv API, or one planner frame, or `program` given
+    to replay), validate (one repair round for a frame), interpret.
     Returns findings (deterministic ones `host_confirmed`), what was dropped, the step records, the stats, the
     assurance, the test report and, when the program could not be had, `fallback`: why the caller should run the
     `both` mode instead."""
@@ -1478,11 +1877,12 @@ async def run_compiled(frames: Any, files: list[FileDiff], read_file: Callable[[
     coverage = coverage_items(brief, files)
     retrieved = retrieve(repo, brief, files, clock=clock)
     session = None
-    planner: dict[str, Any] = {"ms": 0, "tokens": 0, "repairs": 0, "status": "replayed" if program is not None else "ok"}
+    planner: dict[str, Any] = {"ms": 0, "tokens": 0, "repairs": 0, "status": "replayed" if program is not None else "ok",
+                               "style": "replay" if program is not None else plan_style, "cells": 0}
     out: dict[str, Any] = {"findings": [], "dropped": [], "generic": [], "records": [], "stats": None, "assurance": [],
                            "repo": repo, "brief": brief, "program": None, "fallback": None, "diff_cut": False,
                            "planner": planner, "tests": {"enabled": tests is not None, "mechanism": None, "note": None, "runs": []},
-                           "refuted": 0, "uncovered": [], "coverage": coverage, "limits": limits,
+                           "refuted": 0, "uncovered": [], "coverage": coverage, "limits": limits, "notes": [],
                            "retrieval": {key: retrieved[key] for key in ("items", "chars", "ms")}}
     try:
         started = deep.start_tests(repo, files, tests, brief, root=root, rev=rev, clock=clock)
@@ -1499,6 +1899,63 @@ async def run_compiled(frames: Any, files: list[FileDiff], read_file: Callable[[
         out["diff_cut"] = cut
         validated: Program | None = None
         errors: list[str] = []
+        if program is None and plan_style == "cell":
+            # The planner as a REPL: its cells run in the test sandbox (no network, no home, no repository); without a
+            # sandbox the planner runs as one frame instead.
+            sandbox = cell_sandbox
+            if sandbox == "detect":
+                sandbox = started["sandbox"] if started.get("sandbox") is not None else testing.detect_sandbox(
+                    image=(tests or {}).get("image"))
+            if sandbox is None:
+                out["notes"] = ["the planner ran as one frame: no sandbox is available for planner cells"]
+                plan_style = "frame"
+                planner["style"] = "frame"
+            else:
+                interpreter = Interpreter(Program([], ""), repo, frames=frames, session=session, diff_lines=diff_lines,
+                                          ask_model=ask_model, ask_thinking=ask_thinking, cutoff=cutoff, clock=clock, cap=cap,
+                                          to_level=to_level, enrich=enrich, generic=generic, unavailable=unavailable,
+                                          max_steps=limits[1])
+                began = clock()
+                cell_run = await run_cells(frames, views=views, task=cell_planner_task(tests_allowed), plan_model=plan_model,
+                                           plan_thinking=plan_thinking, cutoff=cutoff, clock=clock, interpreter=interpreter,
+                                           coverage=coverage, limits=limits, sandbox=sandbox,
+                                           cells=max(1, min(MAX_PLAN_CELLS, int(plan_cells))), python=python)
+                cell_session: CellSession = cell_run["session"]
+                planner["ms"] = int((clock() - began) * 1000)
+                planner["tokens"] = sum(int(item.get("tokens") or 0) for item in frames.timings if item.get("phase") == "plan")
+                planner["cells"] = len(cell_session.cells)
+                planner["status"] = cell_run["status"]
+                out["notes"] = list(cell_run.get("notes") or [])
+                if cell_run["status"] == "failed" and not cell_session.cells:
+                    out["fallback"] = cell_run.get("error") or "; ".join(cell_run["notes"]) or "the planner cells failed"
+                    return out
+                steps = [step for sid, step in interpreter.steps_by_id.items() if "[" not in sid]
+                declared = list(cell_session.declared)
+                for item in uncovered_items(coverage, steps, declared + [f"{sid}:" for sid in cell_session.covered]):
+                    declared.append(f"{item['id']}: not covered by the planner")
+                validated = Program(steps, "", declared)
+                out["program"] = {**validated.as_json(), "style": "cell", "cells": cell_session.cells}
+                if dump_path:
+                    with open(dump_path, "w", encoding="utf-8") as handle:
+                        json.dump(out["program"], handle, indent=1)
+                out["findings"] += interpreter.findings
+                out["dropped"] = interpreter.dropped
+                out["generic"] = interpreter.generic_dropped
+                out["records"] = interpreter.records
+                out["refuted"] = interpreter.refuted
+                by_id = {item["id"]: item for item in coverage}
+                for item in declared:
+                    cid, _, why = item.partition(":")
+                    text = by_id.get(cid.strip(), {}).get("text", cid.strip())
+                    out["uncovered"].append(f"{cid.strip()} ({text})" + (f": {why.strip()}" if why.strip() else ""))
+                out["stats"] = {**interpreter.stats(), "planner": planner, "summary": "", "retrieval": out["retrieval"],
+                                "coverage": {"items": len(coverage), "covered": len(coverage) - len(declared),
+                                             "uncovered": [item.split(":", 1)[0].strip() for item in declared]}}
+                out["assurance"] = interpreter.assurance()
+                runs = list(session.records) if session is not None else []
+                out["tests"]["runs"] = [{key: value for key, value in record.items() if key != "output"} | {"output": record["output"][-600:]}
+                                        for record in runs]
+                return out
         if program is not None:
             validated, errors = validate(program, coverage, limits[0])
             if validated is None:

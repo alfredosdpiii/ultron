@@ -107,7 +107,9 @@ import review_api as r
 from infer_api import MapResults, FrameError, Incomplete
 
 ROOT, BASE, HEAD = ${JSON.stringify(repo.dir)}, ${JSON.stringify(repo.base)}, ${JSON.stringify(repo.head)}
-SPEC = {"repoDir": ROOT, "base": BASE, "head": HEAD, "mode": "compiled", "planModel": "p/plan", "askModel": "p/ask"}
+# The pipeline tests below drive the one-frame planner (a JSON program); the cell planner has tests of its own.
+SPEC = {"repoDir": ROOT, "base": BASE, "head": HEAD, "mode": "compiled", "planModel": "p/plan", "askModel": "p/ask", "planStyle": "frame"}
+HAS_SANDBOX = deep.testing.detect_sandbox() is not None
 executed = []
 def executor(argv, cwd, env, timeout):
     source = open(os.path.join(cwd, "src/app.py")).read()
@@ -122,8 +124,9 @@ def recording(argv, cwd, timeout):
     return r._run_process(argv, cwd, timeout)
 
 class Rlm:
-    def __init__(self, planner=None, asker=None, verifier=None):
+    def __init__(self, planner=None, asker=None, verifier=None, cells=None):
         self.calls = []
+        self.cells = list(cells or [])
         self.planner = planner or (lambda text, attempt: {"steps": []})
         self.asker = asker or (lambda text: {"answer": "unclear", "quote": "", "why": ""})
         self.verifier = verifier or (lambda text: {"verdict": "confirmed", "evidence": "\`assert show(\\"a\\")\`",
@@ -137,6 +140,10 @@ class Rlm:
             if task.startswith("You write the review program"):
                 call["kind"] = "plan"
                 reply = self.planner(text, sum(1 for c in self.calls if c["kind"] == "plan"))
+            elif task.startswith("You plan and run the review"):
+                call["kind"] = "cell"
+                n = sum(1 for c in self.calls if c["kind"] == "cell")
+                reply = {"cell": self.cells[n] if n < len(self.cells) else "print(rv.done())", "done": n + 1 >= len(self.cells)}
             elif task == p.ASK_TASK:
                 call["kind"] = "ask"
                 reply = self.asker(text)
@@ -1135,6 +1142,185 @@ emit({"result": result, "kinds": rlm.kinds(), "dumped": json.load(open(dumped)),
 	});
 });
 
+describe("autoreview_compiled: the planner as sandboxed cells over the rv API", () => {
+	test("cells: the strong model looks, plans and runs checks through rv only; every call is a recorded step; rv.done() is refused while coverage is open; imports and open are blocked", (context) => {
+		const repo = fixture();
+		const out = py<{
+			result: Result;
+			kinds: string[];
+			cellPrompts: string[];
+			cellTask: string;
+			records: Record<string, Record<string, unknown>>;
+			sandbox: boolean;
+		}>(`${prelude(repo)}
+if not HAS_SANDBOX:
+    emit({"result": {}, "kinds": [], "cellPrompts": [], "cellTask": "", "records": {}, "sandbox": False})
+    raise SystemExit(0)
+CELLS = [
+    # Look first: a failed import and a blocked open are reported to the planner, the rest of the cell still runs.
+    "import os\\n",
+    "try:\\n    open('/etc/passwd')\\nexcept NameError as e:\\n    print('open blocked:', e)\\n"
+    "g = rv.grep('show\\\\(', glob='src/**', count_only=True, covers=['S1'])\\n"
+    "print('callers', g['count'], [i['path'] for i in g['items']])\\n"
+    "r = rv.read('tests/test_app.py', 1, 10)\\n"
+    "q = rv.ask('Does any test assert the value show() returns?', context=[r['id']], covers=['C1', 'T2'])\\n"
+    "a = rv.assert_(q['id'], 'answer == no', True, holds='the test checks truth only')\\n"
+    "f = rv.finding(a['id'], 'tests/test_app.py', 5, 'medium', 'tests', 'test_show checks show() for truth only.', 'w', 'assert the value',\\n"
+    "               evidence=[q['id'], r['id']], unpinned={'behaviour': 'show() upper-cases (src/app.py:6)', 'change': 'return the kind unchanged'})\\n"
+    "print('finding', f['id'], f['gate'])\\n"
+    "try:\\n    rv.finding(a['id'], 'nope.py', 1, 'low', 'docs', 'bad', evidence=['zz'])\\nexcept RvError as e:\\n    print('refused:', e)\\n"
+    "print('done?', rv.done())\\n",
+    "rv.uncovered('T1', 'KINDS has no registry here'); rv.uncovered('T3', 'the comment restates the code')\\nprint('done?', rv.done())\\n",
+]
+rlm = Rlm(cells=CELLS, asker=lambda text: {"answer": "no", "quote": 'assert show("a")', "why": "truth only"})
+result = asyncio.run(a.run(rlm, dict(SPEC, planStyle="cell", planCells=4)))
+emit({"result": result, "kinds": rlm.kinds(), "cellPrompts": [c["text"] for c in rlm.calls if c["kind"] == "cell"],
+      "cellTask": next(c["task"] for c in rlm.calls if c["kind"] == "cell"),
+      "records": {rec["id"]: rec for rec in result["timing"]["program"]}, "sandbox": True})`);
+		if (!out.sandbox) {
+			context.skip();
+			return;
+		}
+		const { result, records } = out;
+		expect(result.mode).toBe("compiled");
+		expect((result as unknown as { planStyle: string }).planStyle).toBe("cell");
+		// Three cells, one ask, one verifier call; the planner stopped when rv.done() was accepted.
+		expect(out.kinds).toEqual(["cell", "cell", "ask", "cell", "verify"]);
+		expect(result.program.planner).toMatchObject({ style: "cell", cells: 3, status: "ok", tokens: 300 });
+		// The first cell's import was refused inside the sandbox and reported back; the second cell saw it.
+		expect(out.cellPrompts[1]).toContain(
+			"Error: ImportError: import of 'os' is not available in a planner cell: the repository is reached through rv",
+		);
+		expect(out.cellTask).toContain("You plan and run the review of one pull request as Python cells.");
+		expect(out.cellTask).toContain("rv, the review API");
+		expect(out.cellTask).toContain('rv.done() -> {"ok": True} or {"ok": False, "uncovered": [...]}');
+		expect(out.cellTask).toContain("Check catalogue (shapes that found real defects before");
+		expect(out.cellPrompts[0]).toContain("Cells so far and their output (cell 1 of at most 4):\n(none yet)");
+		// The second cell: open is not a name; the grep, read, ask, assert and finding came back as dicts; an invalid
+		// finding raised RvError with the host's reason; rv.done() was refused while T1 and T3 were open.
+		const second = out.cellPrompts[2];
+		expect(second).toContain("open blocked: name 'open' is not defined");
+		expect(second).toContain("callers 2 ['src/app.py', 'src/cli.py']");
+		expect(second).toContain("finding s5 finding emitted");
+		expect(second).toContain("refused: step 's6': names unknown step 'zz'");
+		expect(second).toContain("done? {'ok': False, 'uncovered': ['T1: catalogue shape registry-member");
+		// Every rv call is a step with the same record shape as a JSON program's.
+		expect(Object.keys(records)).toEqual(["s1", "s2", "s3", "s4", "s5"]);
+		expect(records.s1).toMatchObject({ op: "grep", status: "ok" });
+		expect(records.s3).toMatchObject({ op: "ask", status: "ok", tokens: 100 });
+		expect(records.s4!.output).toBe("holds");
+		expect(String(records.s5!.output)).toMatch(/^finding emitted: /);
+		expect(result.findings.map((finding) => [finding.source, finding.verification, finding.level])).toEqual([
+			["compiled:s5", "confirmed", "medium"],
+		]);
+		expect(result.program.coverage).toEqual({ items: 5, covered: 3, uncovered: ["T1", "T3"] });
+		expect(result.program).toMatchObject({
+			planned: 5,
+			asks: 1,
+			checks: { held: 1, failed: 0, unknown: 0, contradicted: 0 },
+		});
+		expect(result.notChecked.join("\n")).toContain("T1 (catalogue shape registry-member (`KINDS`)");
+		expect(result.notChecked.join("\n")).toContain("KINDS has no registry here");
+		expect(result.assurance[1]).toBe("the test checks truth only.");
+		// The dumped program is replayable: the steps in creation order, with the declarations.
+		const program = result.program as unknown as { steps?: unknown };
+		expect(program.steps).toBeUndefined(); // stats carry the steps under timing.program; the program itself is in --dump-program
+	});
+
+	test("isolation: a planner cell cannot reach the repository, the home directory, the network or git, even with full builtins", (context) => {
+		const repo = fixture();
+		const out = py<{ sandbox: boolean; output: string; error: string }>(`${prelude(repo)}
+if not HAS_SANDBOX:
+    emit({"sandbox": False, "output": "", "error": ""})
+    raise SystemExit(0)
+sandbox = deep.testing.detect_sandbox()
+PROBE = """
+import os, socket, subprocess
+print("repo", os.path.exists(${JSON.stringify(repo.dir)}))
+print("home", os.path.exists(${JSON.stringify(process.env.HOME ?? "/home")}), os.environ.get("HOME"))
+try:
+    socket.create_connection(("1.1.1.1", 53), 2).close(); print("net reachable")
+except OSError as e:
+    print("net", type(e).__name__)
+r = subprocess.run(["git", "-C", ${JSON.stringify(repo.dir)}, "status"], capture_output=True, text=True)
+print("git", r.returncode)
+print("secret", any("TOKEN" in k or "KEY" in k for k in os.environ))
+"""
+async def main():
+    runner = c.CellRunner(sandbox, probe=True)
+    await runner.start()
+    async def handler(name, args, kwargs):
+        raise c.RvError("no rv in the probe")
+    out, err = await runner.run_cell(PROBE, handler)
+    await runner.close()
+    return out, err
+output, error = asyncio.run(main())
+emit({"sandbox": True, "output": output, "error": error})`);
+		if (!out.sandbox) {
+			context.skip();
+			return;
+		}
+		expect(out.error).toBe("");
+		expect(out.output).toContain("repo False");
+		expect(out.output).toContain("home False /tmp/home");
+		expect(out.output).toMatch(/net (OSError|ConnectionRefusedError|TimeoutError|gaierror)/);
+		expect(out.output).toMatch(/git (128|1|127)/);
+		expect(out.output).toContain("secret False");
+	});
+
+	test("the cell's builtins: imports beyond the allowlist, open, eval and exec are not available; the allowlisted modules are", async () => {
+		const repo = fixture();
+		const out = py<{ output: string; error: string }>(`${prelude(repo)}
+async def main():
+    runner = c.CellRunner(None)  # no sandbox: the builtins layer alone, for this unit test
+    await runner.start()
+    async def handler(name, args, kwargs):
+        return {"echo": name, "args": args}
+    out, err = await runner.run_cell("""
+import re, json
+print(re.sub('a', 'b', 'aaa'), json.dumps([1]))
+for name in ('open', 'eval', 'exec', 'compile', 'getattr', 'globals', 'input'):
+    try:
+        eval
+    except NameError:
+        pass
+    print(name, name in dir(__builtins__) if isinstance(__builtins__, dict) is False else name in __builtins__)
+try:
+    __import__('subprocess')
+except ImportError as e:
+    print('import:', e)
+print(rv.grep('x')['echo'])
+""", handler)
+    await runner.close()
+    return out, err
+output, error = asyncio.run(main())
+emit({"output": output, "error": error})`);
+		expect(out.error).toBe("");
+		expect(out.output).toContain("bbb [1]");
+		for (const name of ["open", "eval", "exec", "compile", "getattr", "globals", "input"])
+			expect(out.output).toContain(`${name} False`);
+		expect(out.output).toContain("import: import of 'subprocess' is not available in a planner cell");
+		expect(out.output).toContain("grep");
+	});
+
+	test("without a sandbox the planner runs as one frame and the review says so", () => {
+		const repo = fixture();
+		const out = py<{ result: Result; kinds: string[] }>(`${prelude(repo)}
+deep.testing.detect_sandbox = lambda **options: None
+GOOD = with_shapes({"summary": "ok", "uncovered": ["C1: comment only"], "steps": [{"id": "g", "op": "grep", "args": {"pattern": "show"}},
+                                   {"id": "a", "op": "assert", "step": "g", "predicate": "count >= 1", "expect": True}]})
+rlm = Rlm(planner=lambda text, attempt: GOOD)
+result = asyncio.run(a.run(rlm, dict(SPEC, planStyle="cell")))
+emit({"result": result, "kinds": rlm.kinds()})`);
+		expect(out.kinds).toEqual(["plan"]);
+		expect(out.result.mode).toBe("compiled");
+		expect((out.result as unknown as { planStyle: string }).planStyle).toBe("frame");
+		expect(out.result.notChecked).toContain(
+			"The planner ran as one frame: no sandbox is available for planner cells.",
+		);
+	});
+});
+
 describe("ultron autoreview review --repo-dir --mode compiled: the offline entry with a stub provider", () => {
 	let work: string;
 	let provider: Server;
@@ -1276,6 +1462,8 @@ describe("ultron autoreview review --repo-dir --mode compiled: the offline entry
 			repo.head,
 			"--plan-model",
 			"stub/plan",
+			"--plan-style",
+			"frame",
 			"--plan-thinking",
 			"medium",
 			"--ask-model",
@@ -1298,6 +1486,7 @@ describe("ultron autoreview review --repo-dir --mode compiled: the offline entry
 		expect(json.planThinking).toBe("medium");
 		expect(json.askModel).toBe("stub/ask");
 		expect(json.askThinking).toBe("low");
+		expect(json.planStyle).toBe("frame");
 		expect(json.verdict).toBe("approve");
 		expect(json.findings).toEqual([]);
 		// The program stats: steps planned and run, asks, no tests, no findings, the planner's cost, the summary.
@@ -1356,6 +1545,8 @@ describe("ultron autoreview review --repo-dir --mode compiled: the offline entry
 			repo.head,
 			"--ask-model",
 			"stub/ask",
+			"--plan-style",
+			"frame",
 			"--no-run-tests",
 			"--program",
 			dump,

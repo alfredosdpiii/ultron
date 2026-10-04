@@ -1017,6 +1017,8 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
     plan_thinking = _thinking(spec.get("planThinking"), DEFAULT_PLAN_THINKING)
     ask_model = spec.get("askModel") if isinstance(spec.get("askModel"), str) else model
     ask_thinking = _thinking(spec.get("askThinking"), DEFAULT_ASK_THINKING)
+    plan_style = spec.get("planStyle") if spec.get("planStyle") in compiled.PLAN_STYLES else compiled.DEFAULT_PLAN_STYLE
+    plan_cells = int(_number(spec.get("planCells"), compiled.DEFAULT_PLAN_CELLS, 1, compiled.MAX_PLAN_CELLS))
     # History lookups must never reach the network: a blob-less clone would otherwise fetch what it lacks.
     os.environ.setdefault("GIT_NO_LAZY_FETCH", "1")
     deep_rounds = int(_number(spec.get("deepRounds"), deep.DEFAULT_ROUNDS, 1, deep.MAX_ROUNDS))
@@ -1122,7 +1124,9 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
                     description=_bounded(context.get("description"), DESCRIPTION_CHARS),
                     base=(str(spec.get("base")) if spec.get("repoDir") else spec.get("baseSha")) or None,
                     enrich=parse_rules, generic=generic_reason, program=program,
-                    dump_path=spec.get("dumpProgramPath") if isinstance(spec.get("dumpProgramPath"), str) else None)
+                    dump_path=spec.get("dumpProgramPath") if isinstance(spec.get("dumpProgramPath"), str) else None,
+                    plan_style=plan_style, plan_cells=plan_cells,
+                    python=spec.get("cellPython") if isinstance(spec.get("cellPython"), str) else "python3")
             except Exception as error:  # the fast and deep passes stand in for a program that could not run
                 not_checked.append(f"The review program failed ({_text(f'{type(error).__name__}: {error}', 160)}); "
                                    "the fast and deep passes ran instead.")
@@ -1233,6 +1237,8 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
         if compiled_out["uncovered"]:
             not_checked.append("The review program left uncovered: " + "; ".join(compiled_out["uncovered"][:6])
                                + (" ..." if len(compiled_out["uncovered"]) > 6 else "") + ".")
+        for note in compiled_out.get("notes") or []:
+            not_checked.append(note[0].upper() + note[1:] + ".")
         if compiled_out["diff_cut"]:
             not_checked.append("The planner saw the first part of a large diff only.")
     if chunks and run_deep_pass:
@@ -1435,6 +1441,7 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
         "planThinking": plan_thinking if compiled_out is not None else None,
         "askModel": ask_model if compiled_out is not None else None,
         "askThinking": ask_thinking if compiled_out is not None else None,
+        "planStyle": (program_stats or {}).get("planner", {}).get("style") if compiled_out is not None else None,
         "program": program_stats,
         "assurance": assurance,
         "tests": test_report,

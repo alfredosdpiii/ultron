@@ -21,6 +21,8 @@ import {
 	autoreviewPaths,
 	engineSettings,
 	MIN_BUDGET_TOKENS,
+	PLAN_STYLES,
+	type PlanStyle,
 	REVIEW_MODES,
 	type ReviewMode,
 	resolveConfig,
@@ -98,6 +100,9 @@ Options:
   --ask-model <p/m>            review --mode compiled: the small model the program's questions go to (default:
                                autoreview.askModel, the finder model)
   --ask-thinking <level>       review --mode compiled: its thinking level (default: autoreview.askThinking, low)
+  --plan-style <cell|frame>    review --mode compiled: the planner as sandboxed Python cells over the rv API (default)
+                               or as one JSON-program frame
+  --plan-cells <n>             review --mode compiled: cells the planner may run (default: autoreview.planCells, 6)
   --dump-program <path>        review --mode compiled: save the validated program as JSON for inspection
   --program <path>             review --mode compiled: execute this saved program instead of calling the planner
   --run-tests | --no-run-tests review --repo-dir: let the deep pass run the project's tests in a sandbox (default:
@@ -112,7 +117,7 @@ Options:
                                autoreview.deadlineSeconds, none)
 
 Settings (global settings.json): autoreview.accounts, pollSeconds, concurrency, model, verifyModel, budget, dryRun,
-frameConcurrency, mode, deepModel, deepThinking, deepRounds, planModel, planThinking, askModel, askThinking, blockAt, maxComments, runTests, testOwners, testRuns, testTimeoutSeconds, testEnv, testImage, checkoutRoots, guides, thinking, verifyThinking, deadlineSeconds, frameTimeoutSeconds, ack, ackLines, ackArt, signature.
+frameConcurrency, mode, deepModel, deepThinking, deepRounds, planModel, planThinking, askModel, askThinking, planStyle, planCells, blockAt, maxComments, runTests, testOwners, testRuns, testTimeoutSeconds, testEnv, testImage, checkoutRoots, guides, thinking, verifyThinking, deadlineSeconds, frameTimeoutSeconds, ack, ackLines, ackArt, signature.
 See docs/autoreview.md.`;
 
 interface Parsed {
@@ -133,6 +138,8 @@ interface Parsed {
 	planThinking?: FrameThinkingLevel;
 	askModel?: string;
 	askThinking?: FrameThinkingLevel;
+	planStyle?: PlanStyle;
+	planCells?: number;
 	programPath?: string;
 	dumpProgramPath?: string;
 	deadlineSeconds?: number;
@@ -204,7 +211,16 @@ export function parseAutoreviewArgs(args: readonly string[]): Parsed {
 		else if (arg === "--plan-thinking") parsed.planThinking = thinking();
 		else if (arg === "--ask-model") parsed.askModel = model();
 		else if (arg === "--ask-thinking") parsed.askThinking = thinking();
-		else if (arg === "--program") parsed.programPath = value();
+		else if (arg === "--plan-style") {
+			const name = value();
+			const style = PLAN_STYLES.find((item) => item === name);
+			if (style === undefined) throw new UsageError(`--plan-style takes cell or frame, not ${name}`);
+			parsed.planStyle = style;
+		} else if (arg === "--plan-cells") {
+			const count = Number(value());
+			if (!Number.isInteger(count) || count < 1) throw new UsageError("--plan-cells takes a whole number of cells");
+			parsed.planCells = count;
+		} else if (arg === "--program") parsed.programPath = value();
 		else if (arg === "--dump-program") parsed.dumpProgramPath = value();
 		else if (arg === "--run-tests") parsed.runTests = true;
 		else if (arg === "--no-run-tests") parsed.runTests = false;
@@ -325,6 +341,7 @@ export function offlineJson(
 		planThinking: result.planThinking ?? null,
 		askModel: result.askModel ?? null,
 		askThinking: result.askThinking ?? null,
+		planStyle: result.planStyle ?? null,
 		program:
 			result.program === undefined || result.program === null
 				? null
@@ -390,6 +407,8 @@ export async function runAutoreviewCommand(
 			...(parsed.planThinking === undefined ? {} : { planThinking: parsed.planThinking }),
 			...(parsed.askModel === undefined ? {} : { askModel: parsed.askModel }),
 			...(parsed.askThinking === undefined ? {} : { askThinking: parsed.askThinking }),
+			...(parsed.planStyle === undefined ? {} : { planStyle: parsed.planStyle }),
+			...(parsed.planCells === undefined ? {} : { planCells: parsed.planCells }),
 			...(parsed.deadlineSeconds === undefined ? {} : { deadlineSeconds: parsed.deadlineSeconds }),
 		},
 		{

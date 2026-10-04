@@ -142,6 +142,8 @@ reviewed.
 | `autoreview.planThinking` | `"high"` | Its thinking level. |
 | `autoreview.askModel` | the finder model | `compiled` mode: `provider/model` the program's narrow questions go to (a cheap small model). |
 | `autoreview.askThinking` | `"low"` | Its thinking level. |
+| `autoreview.planStyle` | `"cell"` | `compiled` mode: `cell` has the planner write Python cells that run in a sandbox over the `rv` API; `frame` has it return one JSON program in a single frame. Without a sandbox the planner runs as a frame. |
+| `autoreview.planCells` | `6` | `compiled` mode: cells the planner may run (maximum 12). |
 | `autoreview.blockAt` | `"medium"` | A confirmed finding at this level or above makes the review request changes (`critical`, `high`, `medium`, `low`, `nit`). |
 | `autoreview.maxComments` | `5` | Inline comments per review at most; the rest are counted in the body. |
 | `autoreview.deepRounds` | `4` | Lookup rounds one investigator may take (maximum 8). |
@@ -242,7 +244,26 @@ flow; the expensive reasoning happens once, up front; execution is cheap, parall
    environment variable the sibling family (the other keys declared in the same files, the registries where they
    appear, and whether the new key is there too); the definitions of the helpers the new code calls. `--json`:
    `program.retrieval {items, chars, ms}`.
-3. **Plan**: one frame on `autoreview.planModel` (thinking `autoreview.planThinking`, `high`) gets the diff
+3. **Plan, as cells (default).** The strong model (`autoreview.planModel`, thinking `autoreview.planThinking`)
+   plans the way Ultron works: it writes Python cells, sees their output, and continues, for up to
+   `autoreview.planCells` (6) cells. Each cell is one frame reply `{"cell", "done"}`, so any frame-capable model
+   can drive it (including `claude-code/*`). The host runs the cell in a child `python3 -I` process inside the same
+   sandbox the tests use (bubblewrap, else `unshare`, else Docker: no network, no home, the repository not visible,
+   an empty writable directory only) with a reduced set of builtins (no `open`, `eval`, `exec`; imports from a
+   short allowlist: `re`, `json`, `math`, `collections`, `itertools`, `functools`, `textwrap`, `string`, `operator`,
+   `statistics`, `difflib`). The cell's only link to the host is a JSON-lines pipe carrying calls on `rv`:
+   `rv.read`, `rv.grep` (with `start`/`end`/`count_only`), `rv.references`, `rv.definition`, `rv.list`,
+   `rv.history`, `rv.blame_range`, `rv.pickaxe`, `rv.run_tests`, `rv.mutation_check`, `rv.ask`, `rv.assert_`,
+   `rv.finding`, `rv.cover`, `rv.uncovered`, `rv.run_program` (a JSON program on the same session) and `rv.done()`.
+   The host serves every call through the same interpreter as the JSON program: the same validation, limits,
+   sandboxed test runs, three-valued semantics and accounting, so `program.steps`, `coverage`, `checks` and
+   `notEmitted` have the same shape; `rv.done()` is refused while a coverage item is neither checked nor declared,
+   and when the cells run out the open items are listed under "Not checked". `--dump-program` writes the steps the
+   cells created, in order, as a replayable JSON program (with the cells). The planner cell has no tools of
+   Ultron's: no bash, read, edit, write or MCP, no network. A test runs a cell with full builtins inside the real
+   sandbox and checks that the repository and the home directory do not exist there, that the network is
+   unreachable, that `git` on the repository fails and that no credential variable is present.
+   **Plan, as one frame** (`planStyle: "frame"`, and the fallback without a sandbox): one frame gets the diff
    (bounded as in the deep pass), the brief, the retrieved context, the pull request context, the intent, the
    review guides, the severity rubric and the finding rules, a description of the program language, the automatic run's results and whether
    tests may run, and which test runners the automatic run found available or unavailable. It is told to decide

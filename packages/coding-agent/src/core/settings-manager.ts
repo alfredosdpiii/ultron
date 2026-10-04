@@ -244,6 +244,13 @@ export interface AutoreviewSettings {
 	askModel?: string;
 	/** Thinking level of those frames (default "low"). */
 	askThinking?: FrameThinkingLevel;
+	/**
+	 * `compiled` mode: `cell` (default) has the planner write Python cells run in a sandbox over the `rv` API;
+	 * `frame` has it return one JSON program in a single frame.
+	 */
+	planStyle?: "cell" | "frame";
+	/** `compiled` mode: cells the planner may run (default 6, maximum 12). */
+	planCells?: number;
 	/** Lookup rounds one investigator may take (default 4, maximum 8). */
 	deepRounds?: number;
 	/** A confirmed finding at this level or above makes the review request changes (default "medium"). */
@@ -1419,6 +1426,9 @@ export class SettingsManager {
 		if (askModel !== undefined) out.askModel = askModel;
 		const askThinking = FRAME_THINKING_LEVELS.find((level) => level === configured.askThinking);
 		if (askThinking !== undefined) out.askThinking = askThinking;
+		if (configured.planStyle === "cell" || configured.planStyle === "frame") out.planStyle = configured.planStyle;
+		const planCells = count(configured.planCells);
+		if (planCells !== undefined) out.planCells = planCells;
 		const deepRounds = count(configured.deepRounds);
 		if (deepRounds !== undefined) out.deepRounds = deepRounds;
 		const blockAt = (["critical", "high", "medium", "low", "nit"] as const).find(

@@ -25,6 +25,12 @@ export const DEFAULT_MODE: ReviewMode = "both";
 export const DEFAULT_DEEP_THINKING: FrameThinkingLevel = "high";
 export const DEFAULT_PLAN_THINKING: FrameThinkingLevel = "high";
 export const DEFAULT_ASK_THINKING: FrameThinkingLevel = "low";
+/** The planner as sandboxed Python cells over the `rv` API (`cell`), or as one JSON-program frame (`frame`). */
+export type PlanStyle = "cell" | "frame";
+export const PLAN_STYLES: readonly PlanStyle[] = ["cell", "frame"];
+export const DEFAULT_PLAN_STYLE: PlanStyle = "cell";
+export const DEFAULT_PLAN_CELLS = 6;
+export const MAX_PLAN_CELLS = 12;
 export type BlockLevel = "critical" | "high" | "medium" | "low" | "nit";
 export const BLOCK_LEVELS: readonly BlockLevel[] = ["critical", "high", "medium", "low", "nit"];
 /** A confirmed finding at this level or above asks for changes. */
@@ -93,6 +99,8 @@ export interface AutoreviewConfig {
 	/** `compiled` mode: the small model the program's questions go to (undefined: the finder model). */
 	readonly askModel?: string;
 	readonly askThinking: FrameThinkingLevel;
+	readonly planStyle: PlanStyle;
+	readonly planCells: number;
 	readonly blockAt: BlockLevel;
 	readonly maxComments: number;
 	/** Run the reviewed project's tests in the deep pass, where the repository is eligible and a sandbox exists. */
@@ -169,6 +177,8 @@ export function engineSettings(config: AutoreviewConfig): {
 	planThinking: FrameThinkingLevel;
 	askModel?: string;
 	askThinking: FrameThinkingLevel;
+	planStyle: PlanStyle;
+	planCells: number;
 	testRuns: number;
 	testTimeoutSeconds: number;
 	testImage?: string;
@@ -190,6 +200,8 @@ export function engineSettings(config: AutoreviewConfig): {
 		planThinking: config.planThinking,
 		...(config.askModel === undefined ? {} : { askModel: config.askModel }),
 		askThinking: config.askThinking,
+		planStyle: config.planStyle,
+		planCells: config.planCells,
 		testRuns: config.testRuns,
 		testTimeoutSeconds: config.testTimeoutSeconds,
 		...(config.testImage === undefined ? {} : { testImage: config.testImage }),
@@ -230,6 +242,8 @@ export function resolveConfig(settings: AutoreviewSettings, fallbacks: ModelFall
 		planThinking: settings.planThinking ?? DEFAULT_PLAN_THINKING,
 		...((settings.askModel ?? model) === undefined ? {} : { askModel: settings.askModel ?? model }),
 		askThinking: settings.askThinking ?? DEFAULT_ASK_THINKING,
+		planStyle: settings.planStyle ?? DEFAULT_PLAN_STYLE,
+		planCells: Math.min(MAX_PLAN_CELLS, Math.max(1, settings.planCells ?? DEFAULT_PLAN_CELLS)),
 		blockAt: settings.blockAt ?? DEFAULT_BLOCK_AT,
 		maxComments: Math.min(MAX_MAX_COMMENTS, settings.maxComments ?? DEFAULT_MAX_COMMENTS),
 		runTests: settings.runTests ?? true,

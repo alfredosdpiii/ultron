@@ -80,6 +80,9 @@ export interface EngineSpec {
 	readonly planThinking?: string;
 	readonly askModel?: string;
 	readonly askThinking?: string;
+	/** `compiled` mode: the planner as sandboxed Python cells over the `rv` API (`cell`) or one JSON frame (`frame`). */
+	readonly planStyle?: "cell" | "frame";
+	readonly planCells?: number;
 	/** `compiled` mode: execute this saved program instead of calling the planner (benchmarking the interpreter). */
 	readonly programPath?: string;
 	/** `compiled` mode: write the validated program here for inspection. */
@@ -291,6 +294,9 @@ export interface ProgramStats {
 		readonly tokens: number;
 		readonly repairs: number;
 		readonly status: string;
+		/** `cell`, `frame` or `replay`, and the cells the planner ran. */
+		readonly style?: string;
+		readonly cells?: number;
 	};
 	readonly summary?: string;
 	/** Why the compiled mode gave way to the fast and deep passes, when it did. */
@@ -349,6 +355,8 @@ export interface EngineResult {
 	readonly planThinking?: string | null;
 	readonly askModel?: string | null;
 	readonly askThinking?: string | null;
+	/** How the planner ran: `cell`, `frame` or `replay`; null when the compiled mode did not run. */
+	readonly planStyle?: string | null;
 	/** The compiled mode's program stats; null when it did not run. */
 	readonly program?: ProgramStats | null;
 	/** What the deep pass traced and found to hold: the sentences the summary opens with. */

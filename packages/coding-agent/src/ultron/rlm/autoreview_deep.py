@@ -936,13 +936,14 @@ def start_tests(repo: Repo, files: list[FileDiff], tests: dict[str, Any] | None,
 
     `tests`: {"base": rev or None, "runs", "timeout_s", "env_dir", "checkout", "image"} and, for tests of this
     module, "sandbox", "executor" and "export"."""
-    out: dict[str, Any] = {"session": None, "mechanism": None, "note": None, "observed": [], "shown": []}
+    out: dict[str, Any] = {"session": None, "mechanism": None, "note": None, "observed": [], "shown": [], "sandbox": None}
     if tests is None:
         return out
     sandbox = tests["sandbox"] if "sandbox" in tests else testing.detect_sandbox(image=tests.get("image"))
     if sandbox is None:
         out["note"] = "tests not run: no sandbox available"
         return out
+    out["sandbox"] = sandbox
     out["mechanism"] = sandbox.mechanism
     session = testing.TestSession(
         root, rev, tests.get("base"), repo.files(), lambda path: "\n".join(repo.lines(path) or []),

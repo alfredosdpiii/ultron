@@ -1883,6 +1883,7 @@ describe("ultron autoreview review --repo-dir: the offline JSON contract, with a
 			"model",
 			"notChecked",
 			"planModel",
+			"planStyle",
 			"planThinking",
 			"program",
 			"tests",

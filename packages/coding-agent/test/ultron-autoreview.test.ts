@@ -1973,7 +1973,18 @@ describe("the command", () => {
 			planThinking: "max",
 			askModel: "a/m",
 			askThinking: "low",
+			planStyle: "cell",
+			planCells: 6,
 		});
+		expect(resolveConfig({ planStyle: "frame", planCells: 99 })).toMatchObject({ planStyle: "frame", planCells: 12 });
+		expect(
+			parseAutoreviewArgs(["review", "--mode", "compiled", "--plan-style", "frame", "--plan-cells", "3"]),
+		).toMatchObject({ planStyle: "frame", planCells: 3 });
+		expect(() => parseAutoreviewArgs(["review", "--plan-style", "loop"])).toThrow("--plan-style takes cell or frame");
+		expect(() => parseAutoreviewArgs(["review", "--plan-cells", "0"])).toThrow("--plan-cells takes a whole number");
+		expect(
+			SettingsManager.inMemory({ autoreview: { planStyle: "frame", planCells: 4 } }).getAutoreviewSettings(),
+		).toEqual({ planStyle: "frame", planCells: 4 });
 		expect(
 			SettingsManager.inMemory({
 				autoreview: { mode: "compiled", planModel: "p/plan", askModel: "p/ask", askThinking: "minimal" },
