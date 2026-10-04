@@ -219,6 +219,16 @@ export interface AutoreviewSettings {
 	verifyModel?: string;
 	/** Token cap of one review (default 300000). */
 	budget?: number;
+	/** Model requests of one review in flight at once, for finder and verifier frames alike (default 8, max 16). */
+	frameConcurrency?: number;
+	/** Thinking level of the finder frames (default "low"). */
+	thinking?: FrameThinkingLevel;
+	/** Thinking level of the verifier frames (default "low"). */
+	verifyThinking?: FrameThinkingLevel;
+	/** Seconds a review may take: at the deadline unfinished passes are given up and the rest is posted (default 150; 0: none). */
+	deadlineSeconds?: number;
+	/** Seconds one frame may take before it is retried or given up (default 75). */
+	frameTimeoutSeconds?: number;
 	/** Write the would-be review to `<agentDir>/autoreview/dry-run/` instead of posting it (default false). */
 	dryRun?: boolean;
 	/** Post a short comment when a review starts (default true). */
@@ -1328,6 +1338,17 @@ export class SettingsManager {
 		if (verifyModel !== undefined) out.verifyModel = verifyModel;
 		const budget = count(configured.budget);
 		if (budget !== undefined) out.budget = budget;
+		const frameConcurrency = count(configured.frameConcurrency);
+		if (frameConcurrency !== undefined) out.frameConcurrency = frameConcurrency;
+		const thinking = FRAME_THINKING_LEVELS.find((level) => level === configured.thinking);
+		if (thinking !== undefined) out.thinking = thinking;
+		const verifyThinking = FRAME_THINKING_LEVELS.find((level) => level === configured.verifyThinking);
+		if (verifyThinking !== undefined) out.verifyThinking = verifyThinking;
+		if (configured.deadlineSeconds === 0) out.deadlineSeconds = 0;
+		const deadlineSeconds = count(configured.deadlineSeconds);
+		if (deadlineSeconds !== undefined) out.deadlineSeconds = deadlineSeconds;
+		const frameTimeoutSeconds = count(configured.frameTimeoutSeconds);
+		if (frameTimeoutSeconds !== undefined) out.frameTimeoutSeconds = frameTimeoutSeconds;
 		const dryRun = flag(configured.dryRun);
 		if (dryRun !== undefined) out.dryRun = dryRun;
 		const ack = flag(configured.ack);

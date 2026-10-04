@@ -8,7 +8,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type Account, accountKey, type TokenStore } from "./accounts.ts";
 import { type Checkout, type CheckoutManager, StaleHeadError } from "./checkout.ts";
-import { type AutoreviewConfig, type AutoreviewPaths, MAX_ATTEMPTS } from "./config.ts";
+import { type AutoreviewConfig, type AutoreviewPaths, engineSettings, MAX_ATTEMPTS } from "./config.ts";
 import {
 	type Comment,
 	GitHub,
@@ -442,9 +442,7 @@ export async function runReview(deps: ReviewerDeps, prepared: Prepared): Promise
 			diffPath,
 			postDiffPath,
 			label: `${ref.owner}/${ref.repo}#${ref.number}`,
-			...(deps.config.model === undefined ? {} : { model: deps.config.model }),
-			...(deps.config.verifyModel === undefined ? {} : { verifyModel: deps.config.verifyModel }),
-			budget: deps.config.budget,
+			...engineSettings(deps.config),
 			context: {
 				title: pull.title,
 				description: pull.body,

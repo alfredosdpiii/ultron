@@ -4,7 +4,7 @@
  */
 import { homedir } from "node:os";
 import { join } from "node:path";
-import type { AutoreviewSettings, RlmModelSettings } from "../../core/settings-manager.ts";
+import type { AutoreviewSettings, FrameThinkingLevel, RlmModelSettings } from "../../core/settings-manager.ts";
 import { logoText } from "../../experimental/ultron-logo.ts";
 
 export const DEFAULT_POLL_SECONDS = 45;
@@ -13,6 +13,15 @@ export const DEFAULT_CONCURRENCY = 3;
 export const MAX_CONCURRENCY = 8;
 export const DEFAULT_BUDGET_TOKENS = 300_000;
 export const MIN_BUDGET_TOKENS = 10_000;
+/** Model requests of one review in flight at once; more trips subscription rate limits. */
+export const DEFAULT_FRAME_CONCURRENCY = 8;
+export const MAX_FRAME_CONCURRENCY = 16;
+export const DEFAULT_THINKING: FrameThinkingLevel = "low";
+/** A late review is worth less than a partial one: at the deadline, what was found is verified and posted. */
+export const DEFAULT_DEADLINE_SECONDS = 150;
+export const MIN_DEADLINE_SECONDS = 30;
+export const DEFAULT_FRAME_TIMEOUT_SECONDS = 75;
+export const MIN_FRAME_TIMEOUT_SECONDS = 10;
 /** A commit is tried this many times; then one "could not review" comment is posted. */
 export const MAX_ATTEMPTS = 3;
 export const SIGNATURE = "Automated review by Ultron";
@@ -47,6 +56,12 @@ export interface AutoreviewConfig {
 	readonly model?: string;
 	readonly verifyModel?: string;
 	readonly budget: number;
+	readonly frameConcurrency: number;
+	readonly thinking: FrameThinkingLevel;
+	readonly verifyThinking: FrameThinkingLevel;
+	/** 0: no deadline. */
+	readonly deadlineSeconds: number;
+	readonly frameTimeoutSeconds: number;
 	readonly dryRun: boolean;
 	readonly ack: boolean;
 	readonly ackLines: readonly string[];
@@ -89,6 +104,29 @@ export function resolveAckArt(setting: string | false | undefined): string {
 /** Dry-run files and logs older than this are removed. */
 export const RETENTION_DAYS = 14;
 
+/** The engine spec fields every review takes from the configuration. */
+export function engineSettings(config: AutoreviewConfig): {
+	model?: string;
+	verifyModel?: string;
+	budget: number;
+	concurrency: number;
+	thinking: FrameThinkingLevel;
+	verifyThinking: FrameThinkingLevel;
+	deadlineSeconds: number;
+	frameTimeoutSeconds: number;
+} {
+	return {
+		...(config.model === undefined ? {} : { model: config.model }),
+		...(config.verifyModel === undefined ? {} : { verifyModel: config.verifyModel }),
+		budget: config.budget,
+		concurrency: config.frameConcurrency,
+		thinking: config.thinking,
+		verifyThinking: config.verifyThinking,
+		deadlineSeconds: config.deadlineSeconds,
+		frameTimeoutSeconds: config.frameTimeoutSeconds,
+	};
+}
+
 export function resolveConfig(settings: AutoreviewSettings, fallbacks: ModelFallbacks = {}): AutoreviewConfig {
 	const model = resolveModel(settings, fallbacks);
 	const verifyModel = settings.verifyModel ?? model;
@@ -99,6 +137,20 @@ export function resolveConfig(settings: AutoreviewSettings, fallbacks: ModelFall
 		...(model === undefined ? {} : { model }),
 		...(verifyModel === undefined ? {} : { verifyModel }),
 		budget: Math.max(MIN_BUDGET_TOKENS, settings.budget ?? DEFAULT_BUDGET_TOKENS),
+		frameConcurrency: Math.min(
+			MAX_FRAME_CONCURRENCY,
+			Math.max(1, settings.frameConcurrency ?? DEFAULT_FRAME_CONCURRENCY),
+		),
+		thinking: settings.thinking ?? DEFAULT_THINKING,
+		verifyThinking: settings.verifyThinking ?? DEFAULT_THINKING,
+		deadlineSeconds:
+			settings.deadlineSeconds === 0
+				? 0
+				: Math.max(MIN_DEADLINE_SECONDS, settings.deadlineSeconds ?? DEFAULT_DEADLINE_SECONDS),
+		frameTimeoutSeconds: Math.max(
+			MIN_FRAME_TIMEOUT_SECONDS,
+			settings.frameTimeoutSeconds ?? DEFAULT_FRAME_TIMEOUT_SECONDS,
+		),
 		dryRun: settings.dryRun ?? false,
 		ack: settings.ack ?? true,
 		ackLines: settings.ackLines ?? DEFAULT_ACK_LINES,

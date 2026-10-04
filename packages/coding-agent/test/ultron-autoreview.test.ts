@@ -606,7 +606,14 @@ describe("reviewing a pull request", () => {
 			ci: "1 passed, 1 failed (test)",
 			comments: [{ author: "bob", path: "calc.py", line: 5, body: "price may be missing" }],
 		});
-		expect(spec.budget).toBe(300_000);
+		expect(spec).toMatchObject({
+			budget: 300_000,
+			concurrency: 8,
+			thinking: "low",
+			verifyThinking: "low",
+			deadlineSeconds: 150,
+			frameTimeoutSeconds: 75,
+		});
 		// The worktree is removed afterwards.
 		expect(existsSync(spec.workDir!)).toBe(false);
 		// State: the reviewed commit and the posted finding with its comment and thread ids.
@@ -1434,6 +1441,11 @@ describe("the command", () => {
 		expect(() => parseAutoreviewArgs(["run", "--nope"])).toThrow("unknown option");
 		expect(() => parseAutoreviewArgs(["review", "--model", "nomodel"])).toThrow("provider/model");
 		expect(() => parseAutoreviewArgs(["review", "--budget", "5"])).toThrow("at least");
+		expect(
+			parseAutoreviewArgs(["review", "--thinking", "off", "--verify-thinking", "high", "--deadline", "90"]),
+		).toMatchObject({ thinking: "off", verifyThinking: "high", deadlineSeconds: 90 });
+		expect(() => parseAutoreviewArgs(["review", "--thinking", "loud"])).toThrow("--thinking takes one of off,");
+		expect(() => parseAutoreviewArgs(["review", "--deadline", "soon"])).toThrow("whole seconds");
 		expect(parseAutoreviewArgs([]).help).toBe(true);
 	});
 
@@ -1463,10 +1475,29 @@ describe("the command", () => {
 			pollSeconds: 45,
 			concurrency: 3,
 			budget: 300_000,
+			frameConcurrency: 8,
+			thinking: "low",
+			verifyThinking: "low",
+			deadlineSeconds: 150,
+			frameTimeoutSeconds: 75,
 			dryRun: false,
 			ack: true,
 			signature: true,
 		});
+		expect(
+			resolveConfig({ frameConcurrency: 64, deadlineSeconds: 5, frameTimeoutSeconds: 1, thinking: "high" }),
+		).toMatchObject({ frameConcurrency: 16, deadlineSeconds: 30, frameTimeoutSeconds: 10, thinking: "high" });
+		expect(resolveConfig({ deadlineSeconds: 0 }).deadlineSeconds).toBe(0);
+		expect(
+			SettingsManager.inMemory({
+				autoreview: {
+					thinking: "medium",
+					verifyThinking: "loud" as never,
+					frameConcurrency: 4,
+					deadlineSeconds: 0,
+				},
+			}).getAutoreviewSettings(),
+		).toEqual({ thinking: "medium", frameConcurrency: 4, deadlineSeconds: 0 });
 		expect(resolveConfig({ pollSeconds: 5, concurrency: 99 })).toMatchObject({ pollSeconds: 20, concurrency: 8 });
 		const fallbacks = { reviewModel: "r/m", rlm: { frameModel: "f/m" }, defaultProvider: "d", defaultModel: "m" };
 		expect(resolveConfig({ model: "a/m", verifyModel: "v/m" }, fallbacks)).toMatchObject({

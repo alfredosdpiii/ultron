@@ -54,7 +54,9 @@ class FakeRlm:
             text = item if isinstance(item, str) else "\\n".join(item)
             kind = "verify" if task == p.VERIFIER_TASK else "recheck" if task == p.RECHECK_TASK else "find"
             self.calls.append({"kind": kind, "task": task, "text": text, "context": options.get("context"),
-                               "model": options.get("model"), "concurrency": options.get("concurrency")})
+                               "model": options.get("model"), "concurrency": options.get("concurrency"),
+                               "thinking": options.get("thinking"), "timeout_ms": options.get("timeout_ms"),
+                               "tokens": options["budget"].tokens if options.get("budget") else None})
             out.append(self.verifier(text) if kind == "verify" else self.recheck(text) if kind == "recheck"
                        else self.finder(task, text))
         out.spent = {"calls": len(items), "tokens": 100 * len(items)}
@@ -239,11 +241,20 @@ emit([a.map_line(item, 1), a.map_line(item, 2), a.map_line(item, 3), a.map_line(
 		const repo = fixtureRepo();
 		const out = py<{
 			result: Result;
-			calls: Array<{ kind: string; text: string; context: string | null; model: string; concurrency: number }>;
+			calls: Array<{
+				kind: string;
+				text: string;
+				context: string | null;
+				model: string;
+				concurrency: number;
+				thinking: string;
+				timeout_ms: number;
+				tokens: number;
+			}>;
 		}>(`
 rlm = FakeRlm(finder=bugs, verifier=confirm)
 result = asyncio.run(a.run(rlm, {"repoDir": ${JSON.stringify(repo.dir)}, "base": ${JSON.stringify(repo.base)}, "head": ${JSON.stringify(repo.head)},
-    "model": "p/find", "verifyModel": "p/verify", "budget": 200000,
+    "model": "p/find", "verifyModel": "p/verify", "budget": 200000, "deadlineSeconds": 0,
     "context": {"title": "Tweak total", "description": "Faster sum."}}))
 emit({"result": result, "calls": rlm.calls})`);
 		const { result, calls } = out;
@@ -277,11 +288,25 @@ emit({"result": result, "calls": rlm.calls})`);
 		});
 		expect(result.model).toBe("p/find");
 		expect(result.verifyModel).toBe("p/verify");
-		expect(Object.keys(result.timing).sort()).toEqual(["findMs", "scopeMs", "totalMs", "verifyMs"]);
+		expect(Object.keys(result.timing).sort()).toEqual(["findMs", "frames", "scopeMs", "totalMs", "verifyMs"]);
+		// One timing record per frame: four finders, one verifier, none retried.
+		const frames = (result.timing as unknown as { frames: Array<Record<string, unknown>> }).frames;
+		expect(frames.map((frame) => [frame.phase, frame.reviewer, frame.status, frame.retries])).toEqual([
+			["find", "bugs", "ok", 0],
+			["find", "security", "ok", 0],
+			["find", "arch", "ok", 0],
+			["find", "tests", "ok", 0],
+			["verify", "verifier", "ok", 0],
+		]);
+		expect(frames.every((frame) => typeof frame.ms === "number")).toBe(true);
 		// Finders run on the finder model with the shared context; the verifier on its own model, without it.
 		const finders = calls.filter((call) => call.kind === "find");
 		expect(finders).toHaveLength(4);
-		expect(finders.every((call) => call.model === "p/find" && call.concurrency === 16)).toBe(true);
+		// Each frame is a request of its own, at the default thinking level, with the per-frame timeout and a
+		// grant (its input estimate plus 32k) out of the cap.
+		expect(finders.every((call) => call.model === "p/find" && call.concurrency === 1)).toBe(true);
+		expect(calls.every((call) => call.thinking === "low" && call.timeout_ms === 75_000)).toBe(true);
+		expect(calls.every((call) => call.tokens > 32_000 && call.tokens < 40_000)).toBe(true);
 		expect(finders[0]!.context).toContain("Title: Tweak total");
 		expect(finders[0]!.context).toContain(
 			"Repository guidelines (AGENTS.md):\n# Rules\nPrices are integers in cents.",
@@ -377,6 +402,208 @@ emit([asyncio.run(a.run(rlm, {"workDir": ${JSON.stringify(scratch)}, "diffPath":
 		expect(out[2]).toEqual({ calls: 0 });
 	});
 
+	test("a small pull request is one slice: one finder frame per reviewer, findings attributed to the file they name", () => {
+		const dir = tempDir("ultron-autoreview-multi-");
+		git(dir, "init", "-q", "-b", "main");
+		const names = ["a.py", "b.py", "pkg/c.py", "pkg/test_c.py", "README.md"];
+		mkdirSync(join(dir, "pkg"));
+		for (const name of names)
+			writeFileSync(join(dir, name), "def f(x):\n    return x\n\n\ndef g(x):\n    return x\n");
+		git(dir, "add", ".");
+		git(dir, "commit", "-qm", "base");
+		for (const name of names)
+			writeFileSync(join(dir, name), "def f(x):\n    return x + 1\n\n\ndef g(x):\n    return x\n");
+		git(dir, "commit", "-qam", "change");
+		const out = py<{ result: Result; finds: Array<{ task: string; text: string }> }>(`
+def finder(task, text):
+    if "Your specialty: Correctness" not in task or "File: a.py" not in text:
+        return []
+    return [dict(BUG, file="b.py", line=2, end_line=2, claim="b adds one."),
+            dict(BUG, file="./pkg/c.py", line=2, end_line=2, claim="c adds one."),
+            dict(BUG, file="c.py", line=2, end_line=2, claim="short name still means pkg/c.py."),
+            dict(BUG, file="nowhere.py", line=2, end_line=2, claim="names no file of the slice.")]
+rlm = FakeRlm(finder=finder, verifier=lambda text: {"verdict": "confirmed", "evidence": "\`return x + 1\`", "corrected_line": None})
+result = asyncio.run(a.run(rlm, {"repoDir": ${JSON.stringify(dir)}, "base": "HEAD~1", "head": "HEAD"}))
+emit({"result": result, "finds": [{"task": c["task"], "text": c["text"]} for c in rlm.calls if c["kind"] == "find"]})`);
+		// Three code files in one slice (every reviewer but AI), the test file in another, the document in a third
+		// (security only): 4 + 4 + 1 frames instead of 3 x 4 + 4 + 1.
+		expect(out.finds).toHaveLength(9);
+		const code = out.finds.filter((call) => call.text.includes("File: a.py"));
+		expect(code).toHaveLength(4);
+		expect(code[0]!.text).toContain(
+			"Files changed in this pull request: README.md, a.py, b.py, pkg/c.py, pkg/test_c.py",
+		);
+		expect(code[0]!.text).toMatch(
+			/File: a\.py \(modified\)[\s\S]*={40}[\s\S]*File: b\.py \(modified\)[\s\S]*={40}[\s\S]*File: pkg\/c\.py/,
+		);
+		expect(code[0]!.text).not.toContain("Other files changed in this review");
+		expect(code[0]!.text).not.toContain("test_c.py (modified)");
+		expect(code[0]!.task).toContain("The slice may hold hunks from several files");
+		// Findings keep their exact file; the short name resolves; the unknown file is dropped and said so.
+		expect(out.result.findings.map((finding) => [finding.file, finding.line, finding.claim])).toEqual([
+			["b.py", 2, "b adds one."],
+			["pkg/c.py", 2, "c adds one."],
+		]);
+		expect(out.result.dropped.duplicates).toBe(1);
+		expect(out.result.notChecked).toContain("1 finding(s) named no file of their slice and were dropped.");
+		expect(out.result.complete).toBe(true);
+		// A file too large for a shared slice gets its own; files never split across slices.
+		const packed = py<number[][]>(`
+def chunk(i, path, size, kind="code"):
+    return r.Chunk(i, path, kind, "modified", [], "File: %s (modified)\\n" % path + "x" * size)
+slices, members = a.pack_chunks([chunk(1, "b.py", 6000), chunk(2, "a.py", 6000), chunk(3, "c.py", 6000), chunk(4, "d.py", 13000), chunk(5, "t/test_a.py", 100, "test")], ["a.py"], 14000)
+emit([[m.id for m in members[s.id]] for s in slices])`);
+		expect(packed).toEqual([[2, 1], [3], [4], [5]]);
+	});
+
+	test("the token cap: frames are refused only when real spend plus the grants in flight leave no room", () => {
+		const out = py<{
+			statuses: string[];
+			grants: number[];
+			held: number;
+			spent: number;
+			maxInFlight: number;
+			tight: string[];
+		}>(`
+class Slow(FakeRlm):
+    in_flight = 0
+    max_in_flight = 0
+    async def map(self, tasks, items=None, **options):
+        Slow.in_flight += 1
+        Slow.max_in_flight = max(Slow.max_in_flight, Slow.in_flight)
+        await asyncio.sleep(0.01)
+        Slow.in_flight -= 1
+        return await FakeRlm.map(self, tasks, items, **options)
+async def main():
+    usage = a._Usage()
+    rlm = Slow(finder=lambda task, text: [])
+    frames = a.Frames(rlm, cap=300_000, usage=usage, concurrency=8)
+    # 13 frames at once, as on the 4-file pull request that ran out at 39k tokens of 300k.
+    results = await frames.run("find", [("bugs", "task", "x" * 6000)] * 13, contract=None, model=None, thinking="low")
+    first = {"statuses": [t["status"] for t in frames.timings], "grants": [c["tokens"] for c in rlm.calls],
+             "held": frames.held, "spent": usage.tokens, "maxInFlight": Slow.max_in_flight}
+    # Near the cap: one frame fits; the next, beside it, is refused, and nothing is sent for it.
+    tight = a.Frames(Slow(), cap=usage.tokens + 36_000, usage=usage, concurrency=2)
+    more = await tight.run("find", [("bugs", "task", "x" * 6000)] * 2, contract=None, model=None, thinking="low")
+    first["tight"] = [type(item).__name__ for item in more] + [t["status"] for t in tight.timings]
+    return first
+emit(asyncio.run(main()))`);
+		expect(out.statuses).toEqual(Array(13).fill("ok"));
+		expect(out.maxInFlight).toBe(8);
+		// Every frame got its full grant; nothing was left held; spend is what the frames reported.
+		expect(new Set(out.grants)).toEqual(new Set([34_001]));
+		expect(out.held).toBe(0);
+		expect(out.spent).toBe(1_300);
+		expect(out.tight).toEqual(["list", "Incomplete", "budget", "ok"]);
+	});
+
+	test("a rate limit or timeout is retried twice with backoff, honouring retry-after; other errors are not", () => {
+		const out = py<{
+			timings: Array<{ status: string; retries: number; reviewer: string }>;
+			sleeps: number[];
+			kinds: string[];
+			calls: number;
+			hints: Array<number | null>;
+		}>(`
+script = {
+    "limited": [FrameError({"error": 'frame run did not complete: failed ({"code":"assistant_error","message":"429: Rate limit reached, retry-after: 7"})'}), "value"],
+    "slow": [FrameError({"error": "cancelled"}), FrameError({"error": "cancelled"}), "value"],
+    "down": [FrameError({"error": "503 Service Unavailable"})] * 3,
+    "broken": [FrameError({"error": "400 invalid request: bad schema"})],
+    "raises": [RuntimeError("socket hang up"), "value"],
+}
+class Scripted:
+    calls = 0
+    async def map(self, tasks, items, **options):
+        Scripted.calls += 1
+        out = MapResults()
+        step = script[tasks[0]].pop(0)
+        if isinstance(step, RuntimeError):
+            raise step
+        out.append(step)
+        out.spent = {"calls": 1, "tokens": 10}
+        out.usage = {}
+        return out
+sleeps = []
+async def sleep(seconds):
+    sleeps.append(round(seconds, 2))
+async def main():
+    frames = a.Frames(Scripted(), cap=300_000, usage=a._Usage(), concurrency=1, sleep=sleep, rng=lambda: 0.5)
+    results = await frames.run("find", [(name, name, "item") for name in script], contract=None, model=None, thinking=None)
+    return {"timings": frames.timings, "sleeps": sleeps, "kinds": [type(item).__name__ for item in results],
+            "calls": Scripted.calls,
+            "hints": [a.retry_after("429 retry-after: 7"), a.retry_after('{"retry_after":1.5}'), a.retry_after("Please try again in 20s"), a.retry_after("boom")]}
+emit(asyncio.run(main()))`);
+		expect(out.timings.map((item) => [item.reviewer, item.status, item.retries])).toEqual([
+			["limited", "ok", 1],
+			["slow", "ok", 2],
+			["down", "failed", 2],
+			["broken", "failed", 0],
+			["raises", "ok", 1],
+		]);
+		// The provider's hint (7 s), then 2 s and 4 s backoff (jitter at its midpoint), each failure's own series.
+		expect(out.sleeps).toEqual([7, 2, 4, 2, 4, 2]);
+		expect(out.kinds).toEqual(["str", "str", "FrameError", "FrameError", "str"]);
+		expect(out.calls).toBe(2 + 3 + 3 + 1 + 2);
+		expect(out.hints).toEqual([7, 1.5, 20, null]);
+	});
+
+	test("the deadline: unfinished finder passes are given up, what was found is verified, the result is incomplete", () => {
+		const repo = fixtureRepo();
+		const out = py<{ result: Result; timeouts: number[]; kinds: string[] }>(`
+now = [0.0]
+class Timed(FakeRlm):
+    async def map(self, tasks, items=None, **options):
+        task = tasks[0]
+        kind = "verify" if task == p.VERIFIER_TASK else "find"
+        self.calls.append({"kind": kind, "timeout_ms": options["timeout_ms"]})
+        out = MapResults()
+        out.spent = {"calls": 1, "tokens": 100}
+        out.usage = {}
+        if kind == "find" and "Your specialty: Correctness" in task:
+            now[0] += 20
+            out.append([dict(BUG)])
+        elif kind == "find":
+            # Never answers: the host cancels it at its timeout.
+            now[0] += options["timeout_ms"] / 1000
+            out.append(FrameError({"error": "cancelled"}))
+        else:
+            now[0] += 5
+            out.append(confirm(""))
+        return out
+async def nosleep(seconds):
+    now[0] += seconds
+rlm = Timed()
+result = asyncio.run(a.run(rlm, {"repoDir": ${JSON.stringify(repo.dir)}, "base": ${JSON.stringify(repo.base)}, "head": ${JSON.stringify(repo.head)},
+                                  "deadlineSeconds": 100, "frameTimeoutSeconds": 40, "concurrency": 1},
+                           clock=lambda: now[0], sleep=nosleep, rng=lambda: 0.5))
+emit({"result": result, "timeouts": [c["timeout_ms"] for c in rlm.calls], "kinds": [c["kind"] for c in rlm.calls]})`);
+		const frames = (
+			out.result.timing as unknown as {
+				frames: Array<{ phase: string; reviewer: string; status: string; retries: number }>;
+			}
+		).frames;
+		// bugs answers at 20 s. security times out at 60 s (its 40 s limit), is retried after 2 s, and is cut at
+		// the finder cutoff (75 s). arch and tests never start.
+		expect(frames.map((frame) => [frame.phase, frame.reviewer, frame.status, frame.retries])).toEqual([
+			["find", "bugs", "ok", 0],
+			["find", "security", "deadline", 1],
+			["find", "arch", "deadline", 0],
+			["find", "tests", "deadline", 0],
+			["verify", "verifier", "ok", 0],
+		]);
+		expect(out.timeouts).toEqual([40_000, 40_000, 13_000, 25_000]);
+		expect(out.kinds).toEqual(["find", "find", "find", "verify"]);
+		// What was found is still verified and returned, and the unfinished passes are listed.
+		expect(out.result.findings).toHaveLength(1);
+		expect(out.result.findings[0]).toMatchObject({ verification: "confirmed", line: 4 });
+		expect(out.result.complete).toBe(false);
+		expect(out.result.incomplete).toEqual([
+			"3 reviewer passes were not finished at the review deadline: security on calc.py, arch on calc.py, tests on calc.py",
+		]);
+		expect(out.result.timing.totalMs).toBe(80_000);
+	});
+
 	test("frames that run out or fail make the review incomplete", () => {
 		const repo = fixtureRepo();
 		const out = py<{ find: Result; verify: Result }>(`
@@ -456,6 +683,8 @@ describe("ultron autoreview review --repo-dir: the offline JSON contract, with a
 	let provider: Server;
 	let repo: { dir: string; base: string; head: string };
 	const requests: string[] = [];
+	/** The provider answers this many requests with 429 before it works again. */
+	let rateLimited = 0;
 
 	function reply(body: string): string {
 		if (body.includes("You check one code review finding")) {
@@ -518,6 +747,12 @@ describe("ultron autoreview review --repo-dir: the offline JSON contract, with a
 			for await (const chunk of incoming) chunks.push(chunk as Buffer);
 			const body = Buffer.concat(chunks).toString("utf8");
 			requests.push(body);
+			if (rateLimited > 0) {
+				rateLimited -= 1;
+				response.writeHead(429, { "content-type": "application/json", "retry-after": "1" });
+				response.end(JSON.stringify({ error: { code: "1302", message: "Rate limit reached for requests" } }));
+				return;
+			}
 			// The request body is JSON: compare against its decoded message text.
 			const content = reply(JSON.stringify(JSON.parse(body).messages).replace(/\\n/g, "\n").replace(/\\"/g, '"'));
 			response.writeHead(200, { "content-type": "text/event-stream" });
@@ -610,6 +845,10 @@ describe("ultron autoreview review --repo-dir: the offline JSON contract, with a
 			"stub/verify",
 			"--budget",
 			"200k",
+			"--thinking",
+			"medium",
+			"--deadline",
+			"120",
 			"--json",
 			"--dry-run",
 		]);
@@ -628,10 +867,23 @@ describe("ultron autoreview review --repo-dir: the offline JSON contract, with a
 			"findings",
 			"model",
 			"notChecked",
+			"thinking",
 			"timing",
 			"usage",
 			"verdict",
 			"verifyModel",
+			"verifyThinking",
+		]);
+		expect(json.thinking).toBe("medium");
+		expect(json.verifyThinking).toBe("low");
+		const frames = (json.timing as unknown as { frames: Array<Record<string, unknown>> }).frames;
+		expect(frames.map((frame) => `${frame.phase}:${frame.reviewer}:${frame.status}`).sort()).toEqual([
+			"find:arch:ok",
+			"find:bugs:ok",
+			"find:security:ok",
+			"find:tests:ok",
+			"verify:verifier:ok",
+			"verify:verifier:ok",
 		]);
 		expect(json.verdict).toBe("request_changes");
 		expect(json.complete).toBe(true);
@@ -654,7 +906,7 @@ describe("ultron autoreview review --repo-dir: the offline JSON contract, with a
 		for (const key of ["totalMs", "scopeMs", "findMs", "verifyMs"]) expect(typeof json.timing[key]).toBe("number");
 		// 4 finder frames (bugs, security, arch, tests) and 2 verifier frames, as the provider reported them.
 		expect(json.usage).toEqual({ inputTokens: 600, outputTokens: 120, costUsd: 0.00072, frames: 6 });
-		expect(json.notChecked).toEqual(["AI and LLM integration reviewer skipped 1 chunk(s) with no LLM-related code."]);
+		expect(json.notChecked).toEqual(["AI and LLM integration reviewer skipped 1 slice(s) with no LLM-related code."]);
 		// Every request was a frame of the pipeline on the model asked for: nothing prompted a root model.
 		expect(requests).toHaveLength(6);
 		const models = requests.map((body) => (JSON.parse(body) as { model: string }).model);
@@ -667,6 +919,38 @@ describe("ultron autoreview review --repo-dir: the offline JSON contract, with a
 		// Offline: nothing is written under the dry-run or log directories, and no state.
 		const autoreview = join(work, "agent", "autoreview");
 		expect(readdirSync(autoreview).sort()).toEqual(["sessions", "work"]);
+	}, 120_000);
+
+	test("a provider rate limit on a frame is retried; the review still completes", async () => {
+		requests.length = 0;
+		rateLimited = 1;
+		const result = await run([
+			"review",
+			"--repo-dir",
+			repo.dir,
+			"--base",
+			repo.base,
+			"--head",
+			repo.head,
+			"--json",
+			"--dry-run",
+		]);
+		expect(result.code).toBe(0);
+		const json = JSON.parse(result.stdout) as {
+			complete: boolean;
+			findings: unknown[];
+			thinking: string;
+			notChecked: string[];
+			timing: { frames: Array<{ status: string; retries: number }> };
+		};
+		expect(rateLimited).toBe(0);
+		expect(json.complete).toBe(true);
+		expect(json.findings).toHaveLength(1);
+		expect(json.thinking).toBe("low");
+		expect(json.notChecked.join("\n")).not.toMatch(/429|Rate limit|cancelled/);
+		expect(json.timing.frames.every((frame) => frame.status === "ok")).toBe(true);
+		// Six frames, and the one request that was refused sent again.
+		expect(requests).toHaveLength(7);
 	}, 120_000);
 
 	test("a bad commit is an error on stderr, exit code 1, and no JSON", async () => {

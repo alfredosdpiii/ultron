@@ -26,7 +26,7 @@ Posting is on by default. `--dry-run` (or the setting `autoreview.dryRun`) write
 | `ultron autoreview run` | The loop: poll every account, review what is due, until stopped. One per agent directory. |
 | `ultron autoreview once` | One poll cycle, review what it finds, then exit. `--json` prints the outcomes. |
 | `ultron autoreview review <owner/repo#N \| URL>` | Review one pull request now, whether or not it was requested. `--account <login>` picks the account (default: the host's active one); `--dry-run`, `--json`. |
-| `ultron autoreview review --repo-dir <dir> --base <sha> --head <sha>` | Review the diff between two commits of a local repository, with no GitHub access. `--json` prints one JSON object on stdout (logs go to stderr); `--model`, `--verify-model`, `--budget` override the settings. |
+| `ultron autoreview review --repo-dir <dir> --base <sha> --head <sha>` | Review the diff between two commits of a local repository, with no GitHub access. `--json` prints one JSON object on stdout (logs go to stderr); `--model`, `--verify-model`, `--budget`, `--thinking`, `--verify-thinking` and `--deadline` override the settings. |
 | `ultron autoreview status` | Accounts, last poll, queue, and recent reviews with their timings and cost. `--json` for the raw state. |
 | `ultron autoreview install` / `uninstall` | Write or remove a user service that runs `ultron autoreview run` (see below). |
 
@@ -125,6 +125,11 @@ reviewed.
 | `autoreview.model` | unset: `review.model`, then `rlm.frameModel`, then the default model | `provider/model` of the finder frames. |
 | `autoreview.verifyModel` | the finder model | `provider/model` of the verifier frames. |
 | `autoreview.budget` | `300000` | Token cap of one review. |
+| `autoreview.thinking` | `"low"` | Thinking level of the finder frames (`off`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`). |
+| `autoreview.verifyThinking` | `"low"` | Thinking level of the verifier frames. |
+| `autoreview.frameConcurrency` | `8` | Model requests of one review in flight at once, finder and verifier frames alike (maximum 16). Lower it if your provider rate-limits. |
+| `autoreview.deadlineSeconds` | `150` | How long one review may take (minimum 30; `0` for no deadline). See below. |
+| `autoreview.frameTimeoutSeconds` | `75` | How long one frame may take before it is retried or given up. |
 | `autoreview.dryRun` | `false` | Write would-be reviews to `autoreview/dry-run/` instead of posting. |
 | `autoreview.ack` | `true` | Post the acknowledgement comment. |
 | `autoreview.ackLines` | 17 built-in lines | The lines one is picked from. |
@@ -143,6 +148,21 @@ reviewed.
 ```
 
 The two model ids are examples: use `provider/model` names your own providers offer (`ultron --list-models`).
+
+## Speed: slices, retries and the deadline
+
+- Small files are packed into one slice (up to about 14,000 characters, a file never split further), so a small
+  pull request costs one finder frame per reviewer, not one per reviewer and file. Each finding still names its file
+  and line.
+- Every frame is one model request with its own timeout. A rate limit (429), a timeout or another transient
+  provider error is retried twice, with jittered backoff or after the time the provider asks for, before the pass
+  is listed as not checked.
+- The token cap counts what was really spent plus a bounded grant for each request in flight. A pass is refused
+  only when that leaves no room for it.
+- A late review is worth less than a partial one. At three quarters of `autoreview.deadlineSeconds` unfinished
+  finder passes are given up; what was found is verified in the time left; the review is posted as incomplete
+  (so never an approval) with the unfinished passes listed under "Not checked".
+- With `--json`, `timing.frames` lists every frame: `{phase, reviewer, ms, status, retries}`.
 
 ## Run it as a service
 
