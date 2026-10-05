@@ -11,7 +11,7 @@ import { afterEach, describe, expect, test } from "vitest";
 import { forkPoint, NativeRlmHost } from "../src/ultron/rlm/native-host.ts";
 import type { NativeHostStore } from "../src/ultron/rlm/task-store.ts";
 
-const SECRET = "PARENT_CONTEXT_7d21";
+const PARENT_MARKER = "PARENT_CONTEXT_7d21";
 const SESSION_ID = "fork";
 
 function memoryStore(): NativeHostStore {
@@ -90,7 +90,7 @@ describe("rlm.spawn fork", () => {
 		const fixture = await setup();
 		cleanup = fixture.close;
 		const { main, host, captured } = fixture;
-		await main.prompt(`Remember ${SECRET}.`, undefined, BACKGROUND_CONTEXT);
+		await main.prompt(`Remember ${PARENT_MARKER}.`, undefined, BACKGROUND_CONTEXT);
 		const answered = await main.getTipId(BACKGROUND_CONTEXT);
 		// The parent's cell that calls rlm.spawn is still running: its call has no result yet.
 		await main.appendMessage(assistantCalling("call-running"), BACKGROUND_CONTEXT);
@@ -98,7 +98,7 @@ describe("rlm.spawn fork", () => {
 		const child = await spawnAndCollect(host, { fork: true });
 		expect(child.parent_branch_anchor).toBe(answered);
 		const request = captured.find((item) => item.lane.startsWith("ultron.rlm-child."))!;
-		expect(request.messages).toContain(SECRET);
+		expect(request.messages).toContain(PARENT_MARKER);
 		expect(request.messages).toContain("root acknowledged");
 		expect(request.messages).toContain("CHILD_INPUT_12");
 		expect(request.messages).toContain("Your REPL kernel is new");
@@ -109,11 +109,11 @@ describe("rlm.spawn fork", () => {
 		const fixture = await setup();
 		cleanup = fixture.close;
 		const { main, host, captured } = fixture;
-		await main.prompt(`Remember ${SECRET}.`, undefined, BACKGROUND_CONTEXT);
+		await main.prompt(`Remember ${PARENT_MARKER}.`, undefined, BACKGROUND_CONTEXT);
 		const child = await spawnAndCollect(host, {});
 		expect(child.parent_branch_anchor).toBe("");
 		const request = captured.find((item) => item.lane.startsWith("ultron.rlm-child."))!;
-		expect(request.messages).not.toContain(SECRET);
+		expect(request.messages).not.toContain(PARENT_MARKER);
 		expect(request.messages).not.toContain("Your REPL kernel is new");
 	});
 
