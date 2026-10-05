@@ -463,6 +463,17 @@ export function getBundledLokiPath(): string | undefined {
 	return candidates.find((path) => existsSync(path));
 }
 
+/**
+ * Skills shipped with Ultron (`skills/` at the package root: the pstack port, see skills/pstack/README.md), or undefined
+ * when this installation lacks them. They load after the user's and project's skills, so a skill of the same name there
+ * replaces the bundled one.
+ */
+export function getBundledSkillsDir(): string | undefined {
+	const packageDir = getPackageDir();
+	const candidates = [join(packageDir, "skills"), join(packageDir, "packages/coding-agent/skills")];
+	return candidates.find((path) => existsSync(join(path, "pstack")));
+}
+
 /** Get path to package.json */
 export function getPackageJsonPath(): string {
 	return join(getPackageDir(), "package.json");

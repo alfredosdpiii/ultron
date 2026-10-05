@@ -706,6 +706,9 @@ Ultron combines ideas from several projects and papers:
 - **waku-agent**: memory behind a retrieval gate.
 - **[xmpuspus](https://github.com/xmpuspus)**: driving Claude Code headlessly through `claude -p`, the basis of
   `ultron claude`, `ultron --claude` and the `claude-code/*` provider.
+- **[pstack](https://github.com/cursor/plugins/tree/main/pstack)** by Lauren Tan ([poteto](https://x.com/poteto)):
+  the engineering skills bundled with Ultron (`/skill:rigor` and the skills it runs), ported to the REPL. See
+  [packages/coding-agent/skills/pstack](packages/coding-agent/skills/pstack/README.md).
 
 [`supremeplan.md`](supremeplan.md) records how each one landed and what was measured.
 
@@ -730,5 +733,7 @@ Design and status: [`docs/implementation-status.md`](docs/implementation-status.
 
 Ultron is built on [Pi](https://github.com/badlogic/pi-mono) by Mario Zechner and contributors, and keeps Pi's
 MIT license (see [LICENSE](LICENSE)). It bundles [Loki](https://github.com/alfredosdpiii/loki) (MIT, its license in
-`packages/coding-agent/src/ultron/loki-engine/LICENSE`). Pi's documentation at [pi.dev](https://pi.dev) covers the interface,
+`packages/coding-agent/src/ultron/loki-engine/LICENSE`) and skills ported from
+[pstack](https://github.com/cursor/plugins/tree/main/pstack) by Lauren Tan (MIT, its license in
+`packages/coding-agent/skills/pstack/LICENSE`). Pi's documentation at [pi.dev](https://pi.dev) covers the interface,
 providers, extensions and settings that Ultron shares.

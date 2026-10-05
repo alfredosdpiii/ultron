@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, dirname, join, resolve, sep } from "node:path";
 import chalk from "chalk";
-import { CONFIG_DIR_NAME } from "../config.ts";
+import { CONFIG_DIR_NAME, getBundledSkillsDir } from "../config.ts";
 import { loadThemeFromPath, type Theme } from "../modes/interactive/theme/theme.ts";
 import type { ResourceDiagnostic } from "./diagnostics.ts";
 
@@ -163,6 +163,11 @@ export interface DefaultResourceLoaderOptions {
 	eventBus?: EventBus;
 	additionalExtensionPaths?: string[];
 	additionalSkillPaths?: string[];
+	/**
+	 * Skills shipped with Ultron, loaded after every other skill so a user or project skill of the same name wins.
+	 * Default: the bundled skills directory unless ULTRON_BUNDLED_SKILLS=off; `noSkills` leaves them out too.
+	 */
+	bundledSkillPaths?: string[];
 	additionalPromptTemplatePaths?: string[];
 	additionalThemePaths?: string[];
 	extensionFactories?: InlineExtension[];
@@ -201,6 +206,7 @@ export class DefaultResourceLoader implements ResourceLoader {
 	private packageManager: DefaultPackageManager;
 	private additionalExtensionPaths: string[];
 	private additionalSkillPaths: string[];
+	private bundledSkillPaths: string[];
 	private additionalPromptTemplatePaths: string[];
 	private additionalThemePaths: string[];
 	private extensionFactories: InlineExtension[];
@@ -263,6 +269,7 @@ export class DefaultResourceLoader implements ResourceLoader {
 		});
 		this.additionalExtensionPaths = options.additionalExtensionPaths ?? [];
 		this.additionalSkillPaths = options.additionalSkillPaths ?? [];
+		this.bundledSkillPaths = options.bundledSkillPaths ?? defaultBundledSkillPaths();
 		this.additionalPromptTemplatePaths = options.additionalPromptTemplatePaths ?? [];
 		this.additionalThemePaths = options.additionalThemePaths ?? [];
 		this.extensionFactories = options.extensionFactories ?? [];
@@ -467,7 +474,10 @@ export class DefaultResourceLoader implements ResourceLoader {
 
 		const skillPaths = this.noSkills
 			? this.mergePaths(cliEnabledSkills, this.additionalSkillPaths)
-			: this.mergePaths([...cliEnabledSkills, ...enabledSkills], this.additionalSkillPaths);
+			: this.mergePaths(
+					[...cliEnabledSkills, ...enabledSkills],
+					[...this.additionalSkillPaths, ...this.bundledSkillPaths],
+				);
 
 		this.lastSkillPaths = skillPaths;
 		this.updateSkillsFromPaths(skillPaths, metadataByPath);
@@ -689,7 +699,16 @@ export class DefaultResourceLoader implements ResourceLoader {
 				skill.sourceInfo ??
 				this.getDefaultSourceInfoForPath(skill.filePath),
 		}));
-		this.skillDiagnostics = resolvedSkills.diagnostics;
+		// A user or project skill replacing a bundled one of the same name is intended, not a warning.
+		const bundled = this.bundledSkillPaths.map((path) => resolve(path) + sep);
+		this.skillDiagnostics = resolvedSkills.diagnostics.filter(
+			(diagnostic) =>
+				!(
+					diagnostic.type === "collision" &&
+					diagnostic.collision?.loserPath !== undefined &&
+					bundled.some((dir) => diagnostic.collision!.loserPath.startsWith(dir))
+				),
+		);
 	}
 
 	private updatePromptsFromPaths(promptPaths: string[], metadataByPath?: Map<string, PathMetadata>): void {
@@ -1098,4 +1117,12 @@ export class DefaultResourceLoader implements ResourceLoader {
 
 		return conflicts;
 	}
+}
+
+/** The bundled skills directory, unless ULTRON_BUNDLED_SKILLS=off (or 0, false). */
+function defaultBundledSkillPaths(env: NodeJS.ProcessEnv = process.env): string[] {
+	const raw = env.ULTRON_BUNDLED_SKILLS?.trim().toLowerCase();
+	if (raw === "off" || raw === "0" || raw === "false") return [];
+	const dir = getBundledSkillsDir();
+	return dir === undefined ? [] : [dir];
 }

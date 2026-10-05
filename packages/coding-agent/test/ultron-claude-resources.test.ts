@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from "vitest";
+import { getBundledSkillsDir } from "../src/config.ts";
 import { DefaultResourceLoader } from "../src/core/resource-loader.ts";
 import { SettingsManager } from "../src/core/settings-manager.ts";
 import { buildSystemPromptSections } from "../src/core/system-prompt.ts";
@@ -198,7 +199,10 @@ describe("ultron claude context files and skills", () => {
 		new ProjectTrustStore(agentDir).set(project, false);
 		expect(workerProjectTrusted(project, agentDir)).toBe(false);
 		const distrusted = await loadClaudePromptResources(project, {}, agentDir);
-		expect(distrusted.skills.map((skill) => skill.name)).toEqual(["fake-global-skill"]);
+		// Skills bundled with Ultron do not depend on trust; the user's and project's are what trust decides.
+		const bundled = getBundledSkillsDir();
+		const own = distrusted.skills.filter((skill) => bundled === undefined || !skill.filePath.startsWith(bundled));
+		expect(own.map((skill) => skill.name)).toEqual(["fake-global-skill"]);
 		const native = await nativeSections(project);
 		expect(native.skills).not.toContain("fake-project-skill");
 		// Context files do not depend on trust, natively either.
