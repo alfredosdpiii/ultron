@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.87.28] - 2026-10-05
+
 ### Added
 
 - Bundled skills ported from [pstack](https://github.com/cursor/plugins/tree/main/pstack) by Lauren Tan (MIT): `/skill:rigor` (pstack's poteto-mode, with its playbooks) and the skills it runs (swarm, arena, interrogate, how, why, tdd, and 18 more), plus the 24 `principle-*` skills, reworded to run through the REPL (`rlm.spawn` with checked verdicts, `rlm.infer` judges, `rlm.find_models` panels, `/goal` for long runs). They load after the user's and project's skills, which replace any of the same name; `ULTRON_BUNDLED_SKILLS=off` or `--no-skills` leaves them out. See `skills/pstack/README.md`.

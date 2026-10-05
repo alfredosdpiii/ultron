@@ -1,6 +1,6 @@
 {
 	"name": "@bryandlp/ultron-coding-agent",
-	"version": "0.87.27",
+	"version": "0.87.28",
 	"description": "Ultron coding agent with RLM-first execution, typed agents, workflows, and session management",
 	"type": "module",
 	"piConfig": {
@@ -49,14 +49,14 @@
 		"prepublishOnly": "npm run clean && npm run build && npm run shrinkwrap"
 	},
 	"dependencies": {
-		"@ultron/chord": "^0.87.27",
-		"@ultron/agent-core": "^0.87.27",
-		"@ultron/ai": "^0.87.27",
-		"@ultron/client": "^0.87.27",
-		"@ultron/mcp": "^0.87.27",
-		"@ultron/protocol": "^0.87.27",
-		"@ultron/server": "^0.87.27",
-		"@ultron/tui": "^0.87.27",
+		"@ultron/chord": "^0.87.28",
+		"@ultron/agent-core": "^0.87.28",
+		"@ultron/ai": "^0.87.28",
+		"@ultron/client": "^0.87.28",
+		"@ultron/mcp": "^0.87.28",
+		"@ultron/protocol": "^0.87.28",
+		"@ultron/server": "^0.87.28",
+		"@ultron/tui": "^0.87.28",
 		"@silvia-odwyer/photon-node": "0.3.4",
 		"chalk": "6.0.0",
 		"cross-spawn": "7.0.6",
