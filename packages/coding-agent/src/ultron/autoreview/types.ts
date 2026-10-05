@@ -74,6 +74,14 @@ export interface EngineSpec {
 	readonly mode?: "fast" | "deep" | "both" | "compiled" | "hybrid";
 	/** `hybrid` mode: candidates verified per review at most. */
 	readonly verifyCandidates?: number;
+	/** Findings of one file a verifier frame judges together. */
+	readonly verifyBatch?: number;
+	/** Frames in flight per model at most, by `provider/model`. */
+	readonly modelConcurrency?: Readonly<Record<string, number>>;
+	/** Experimental: the shared context as the frames' system prompt instead of their first views. */
+	readonly systemPrefix?: boolean;
+	/** Run the fast pass beside the investigators' first round. */
+	readonly overlap?: boolean;
 	readonly deepModel?: string;
 	readonly deepThinking?: string;
 	readonly deepRounds?: number;
@@ -382,6 +390,8 @@ export interface EngineResult {
 		readonly tokens: number;
 		/** The token cap, or null when there was none. */
 		readonly budget: number | null;
+		/** Frames and tokens by phase (find, deep, verify, recheck, plan, ask). */
+		readonly byPhase?: Readonly<Record<string, { readonly frames: number; readonly tokens: number }>>;
 	};
 	readonly model: string | null;
 	readonly verifyModel: string | null;

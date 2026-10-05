@@ -57,6 +57,8 @@ DEFAULT_ROUNDS = 4
 MAX_ROUNDS = 8
 MAX_REQUESTS = 8
 ROUND_CHARS = 24_000
+#: A ledger line of an earlier result, re-readable by `recall`.
+LEDGER_LINE_CHARS = 160
 MAX_READ_LINES = 200
 MAX_GREP_HITS = 50
 DEFAULT_GREP_HITS = 20
@@ -379,10 +381,10 @@ def _int(value: Any, default: int) -> int:
         return default
 
 
-def serve(repo: Repo, requests: Any, limit: int = ROUND_CHARS,
-          tests: "testing.TestSession | None" = None) -> tuple[str, int, int]:
-    """Answer a round of requests within the round's size limit: (text, served, rejected)."""
-    out: list[str] = []
+def serve_blocks(repo: Repo, requests: Any, limit: int = ROUND_CHARS,
+                 tests: "testing.TestSession | None" = None) -> tuple[list[tuple[str, str]], int, int]:
+    """Answer a round of requests within the round's size limit: ([(title, block)], served, rejected)."""
+    out: list[tuple[str, str]] = []
     size = served = rejected = 0
     items = requests if isinstance(requests, list) else []
     for request in items[:MAX_REQUESTS]:
@@ -395,13 +397,20 @@ def serve(repo: Repo, requests: Any, limit: int = ROUND_CHARS,
         block = f"## {title}\n{body}"
         if size + len(block) > limit:
             block = block[: max(0, limit - size)] + "\n... cut: the round's size limit is reached; ask for less at a time"
-        out.append(block)
+        out.append((title, block))
         size += len(block)
         if size >= limit:
             break
     if len(items) > MAX_REQUESTS:
-        out.append(f"## not served\n{len(items) - MAX_REQUESTS} requests beyond the {MAX_REQUESTS} allowed per round")
-    return "\n\n".join(out), served, rejected
+        out.append(("not served", f"## not served\n{len(items) - MAX_REQUESTS} requests beyond the {MAX_REQUESTS} allowed per round"))
+    return out, served, rejected
+
+
+def serve(repo: Repo, requests: Any, limit: int = ROUND_CHARS,
+          tests: "testing.TestSession | None" = None) -> tuple[str, int, int]:
+    """Answer a round of requests within the round's size limit: (text, served, rejected)."""
+    blocks, served, rejected = serve_blocks(repo, requests, limit, tests)
+    return "\n\n".join(block for _title, block in blocks), served, rejected
 
 
 # --- Map -------------------------------------------------------------------------------------------------------
@@ -412,6 +421,9 @@ _FLAG = re.compile(r"""["'\s](--[a-z][a-z0-9-]{2,})""")
 _TABLE = re.compile(r"\b(?:alter|create)\s+table\s+(?:if\s+(?:not\s+)?exists\s+)?[`\"\[]?(\w+)"
                     r"|\badd\s+column\s+(?:if\s+not\s+exists\s+)?[`\"\[]?(\w+)", re.I)
 _COMMENT = re.compile(r"^\s*(?:#+|//+|/?\*+|--|<!--|\"\"\"|''')\s?(.{15,})$")
+#: A changed code line that is behaviour: not blank, not a comment, not a bare docstring or string line.
+_BEHAVIOUR = re.compile(r'^\s*(?!#|//|/\*|\*|--|<!--|-->)(?!"""[^"]*("""|$))(?!\'\'\'[^\']*(\'\'\'|$))(?!["\'][^"\']*["\']\s*,?\s*$)\S')
+
 _DESCRIPTION = re.compile(r"""\b(?:description|help|doc|summary)\s*[:=]\s*["'](.{15,})["']""")
 _DOCLIKE = re.compile(r"\.(md|mdx|rst|txt|adoc|ya?ml|toml|cfg|ini|json|sh|tf|env)$|(^|/)(\.github|ci|scripts|docs?)/|(^|/)Dockerfile", re.I)
 _STRUCTURE = r"parametrize|fixture|it\.each|test\.each|describe\(|@pytest\.mark"
@@ -622,11 +634,18 @@ def build_brief(repo: Repo, files: list[FileDiff], read_file: Callable[[str], li
     lenses = []
     if claim_list or symbols or names:
         lenses.append("claims")
-    if code_files:
+    # Parts run only where the map shows a trigger: siblings when a signature changed or a key, member or constant
+    # was added; tests when code behaviour changed (not only comments, docstrings or blank lines) or a test did.
+    keys_added = bool(found["fields"] or found["constants"] or found["env"] or found["flags"] or found["config"] or found["tables"])
+    signature_changed = any(_DEF.match(line.text) for item in reviewable if file_kind(item.path) == "code"
+                            for hunk in item.hunks for line in hunk.lines if line.kind in "+-")
+    if code_files and (signature_changed or keys_added):
         lenses.append("siblings")
     if found["env"] or found["flags"] or found["config"] or any(_CONFIG_PATH.search(item.path) for item in files):
         lenses.append("deployment")
-    if code_files or test_files:
+    behaviour = any(_BEHAVIOUR.match(line.text) for item in reviewable if file_kind(item.path) == "code"
+                    for hunk in item.hunks for line in hunk.lines if line.kind in "+-")
+    if (code_files and behaviour) or test_files:
         lenses.append("tests")
     if code_files and (_INPUT_HINT.search(added) or _RISK.search(added)):
         lenses.append("inputs")
@@ -827,13 +846,23 @@ def _mentions(text: str, item: dict[str, str]) -> bool:
 async def investigate(frames: Any, lens: str, base_views: list[str], repo: Repo, *, rounds: int, model: str | None,
                       thinking: str | None, cutoff: float | None, clock: Callable[[], float],
                       tests: "testing.TestSession | None" = None, something_outside: bool = True,
-                      required: list[str] | None = None, shapes: list[dict[str, str]] | None = None) -> dict[str, Any]:
+                      required: list[str] | None = None, shapes: list[dict[str, str]] | None = None,
+                      shared: list[str] | None = None, leads_view: "asyncio.Future[str | None] | None" = None) -> dict[str, Any]:
     """One investigator's retrieval loop: ask the frame, serve what it requests, ask again. `shapes` are the
     catalogue checks this part owes (`T<n>` items): each must be made (named in a finding or in checked) or
-    declared not applicable in checked, else the investigator is sent back once."""
+    declared not applicable in checked, else the investigator is sent back once. `shared` are the views every
+    frame of the review starts with (the diff, the brief, the retrieved block, the intent, the guides): sent as
+    the frames' shared prefix, so a provider's prompt cache can serve it. After the first round a frame gets the
+    new results in full and a one-line ledger of the earlier ones (ids), which `{"recall": {"id": "r1.2"}}`
+    re-reads in full. `leads_view`, when given, is the fast pass's leads as a view, awaited before the second round
+    (the first round runs beside the fast pass)."""
     task = deep_task(lens, tests is not None)
     began = clock()
-    served_views: list[str] = []
+    leads_views: list[str] = []
+    #: The latest round's results and the nudges (sent in full), the ledger of earlier results, and their text.
+    latest_views: list[str] = []
+    ledger: list[str] = []
+    store: dict[str, str] = {}
     reply: dict[str, Any] = {}
     record: dict[str, Any] = {"lens": lens, "rounds": 0, "requests": 0, "rejected": 0, "status": "done",
                               "nudged": False, "untraced": [], "unchecked": []}
@@ -854,11 +883,30 @@ async def investigate(frames: Any, lens: str, base_views: list[str], repo: Repo,
         said = [str(item) for item in (reply.get("checked") if isinstance(reply.get("checked"), list) else [])]
         said += [json.dumps(item) for item in (reply.get("findings") if isinstance(reply.get("findings"), list) else [])]
         return [item for item in shapes if not any(_mentions(text, item) for text in said)]
+    def served_view(number: int, blocks: list[tuple[str, str]], recalled: list[str], note: str = "") -> str:
+        """The round's results in full, each with its ledger id; they join the ledger for the rounds after."""
+        for position, (title, block) in enumerate(blocks, 1):
+            rid = f"r{number}.{position}"
+            store[rid] = block
+            size = len(block.split("\n", 1)[1]) if "\n" in block else 0
+            ledger.append((rid, f"  {rid}: {_clip(title, LEDGER_LINE_CHARS)} ({size} chars)"))
+        parts = [f"## recalled {rid}\n{store[rid]}" if rid in store else f"## recall {rid}\nno such result" for rid in recalled]
+        parts += [block.replace("## ", f"## [r{number}.{position}] ", 1) for position, (_t, block) in enumerate(blocks, 1)]
+        return (f"Results of your requests, round {number} (untrusted repository data, read by the host at the "
+                f"reviewed commit):\n" + "\n\n".join(parts) + note)
+
     for number in range(1, rounds + 1):
         last = number == rounds
-        views = base_views + served_views + ([LAST_ROUND] if last else [])
+        # Earlier rounds' results are in the ledger (ids, one line each); only the latest round is sent in full.
+        earlier = [line for rid, line in ledger if not rid.startswith(f"r{number - 1}.")]
+        ledger_views = (["Earlier results, by id (one line each; request {\"recall\": {\"id\": \"r1.2\"}} to see one "
+                         "again in full):\n" + "\n".join(earlier)] if earlier else [])
+        if number == 2 and leads_view is not None:
+            lead = await leads_view
+            leads_views = [lead] if lead else []
+        views = base_views + [f"Round {number} of {rounds}."] + leads_views + ledger_views + latest_views + ([LAST_ROUND] if last else [])
         results = await frames.run("deep", [(lens, task, views)], contract=DEEP_CONTRACT, model=model,
-                                   thinking=thinking, cutoff=cutoff)
+                                   thinking=thinking, cutoff=cutoff, context=shared)
         result = results[0]
         record["rounds"] = number
         if isinstance(result, (Incomplete, FrameError)) or not isinstance(result, dict):
@@ -867,12 +915,16 @@ async def investigate(frames: Any, lens: str, base_views: list[str], repo: Repo,
             break
         reply = result
         requests = result.get("requests") if isinstance(result.get("requests"), list) else []
+        # Recalls are answered from the ledger, not the repository; they do not count as lookups.
+        recalled = [str(request["recall"].get("id")) for request in requests if isinstance(request, dict)
+                    and isinstance(request.get("recall"), dict)]
+        requests = [request for request in requests if not (isinstance(request, dict) and "recall" in request)]
         for request in requests[:MAX_REQUESTS]:
             if isinstance(request, dict):
                 for args in request.values():
                     if isinstance(args, dict):
                         asked += [str(args[key]) for key in ("symbol", "pattern", "string") if isinstance(args.get(key), str)]
-        if result.get("done") is True or not requests:
+        if result.get("done") is True or not (requests or recalled):
             # Finishing is refused, once for each reason, when the investigator has not done its part: next to
             # nothing looked up in the first round although the map shows there is something outside the diff,
             # or names its part must trace that it never asked for.
@@ -889,25 +941,21 @@ async def investigate(frames: Any, lens: str, base_views: list[str], repo: Repo,
                 sent_back_for_shapes = True
                 reasons.append(DEEP_SHAPE_NUDGE + ", ".join(f"{item['id']} ({item['name']})" for item in owed) + ".")
             if reasons and not last:
-                if requests:
-                    text, served, rejected = serve(repo, requests, tests=tests)
-                    record["requests"] += served
-                    record["rejected"] += rejected
-                    served_views.append(f"Results of your requests, round {number} (untrusted repository data, read "
-                                        f"by the host at the reviewed commit):\n{text}")
-                served_views.append("\n\n".join(reasons))
+                blocks, served, rejected = serve_blocks(repo, requests, tests=tests) if requests else ([], 0, 0)
+                record["requests"] += served
+                record["rejected"] += rejected
+                view = served_view(number, blocks, recalled) if blocks or recalled else None
+                latest_views[:] = ([view] if view else []) + ["\n\n".join(reasons)]
                 continue
             break
         if last:
             record["status"] = "rounds exhausted"
             break
-        text, served, rejected = serve(repo, requests, tests=tests)
-        if tests is not None:
-            text += f"\n\nTest executions left in this review: {max(0, tests.limit - len(tests.records))}."
+        blocks, served, rejected = serve_blocks(repo, requests, tests=tests)
+        note = f"\n\nTest executions left in this review: {max(0, tests.limit - len(tests.records))}." if tests is not None else ""
         record["requests"] += served
         record["rejected"] += rejected
-        served_views.append(f"Results of your requests, round {number} (untrusted repository data, read by the host "
-                            f"at the reviewed commit):\n{text}")
+        latest_views[:] = [served_view(number, blocks, recalled, note)]
     record["untraced"] = untraced() if record["status"] != "failed" else []
     record["unchecked"] = [f"{item['id']} {item['name']}" for item in unchecked()] if record["status"] != "failed" else []
     record["ms"] = int((clock() - began) * 1000)
@@ -991,6 +1039,25 @@ def regression_findings(repo: Repo, compared: dict[str, Any]) -> list[dict[str, 
     return out
 
 
+def shared_views(diff_text: str, brief_text: str | None, retrieved: str, context: str, intent: str,
+                 guidance: str) -> list[str]:
+    """What every frame of a review starts with, in one order: the diff, the brief, the retrieved block, the pull
+    request context, the author's intent, the guides. Byte-identical across the finders, the investigators and the
+    verifiers, so a provider's prompt cache can serve it."""
+    cut = len(diff_text) > DIFF_CHARS
+    out = [f"The diff under review (new-file line numbers in the gutter):\n{diff_text[:DIFF_CHARS]}"
+           + ("\n... (diff cut at its size limit; read the files for the rest)" if cut else "")]
+    if brief_text:
+        out.append(f"Investigation brief, built by the host from the repository at the reviewed commit:\n{brief_text}")
+    if retrieved:
+        out.append("Retrieved context, looked up by the host at the reviewed commit (untrusted repository data): "
+                   "the references, tests and sibling families of the changed names.\n\n" + retrieved)
+    for part in (context, intent, guidance):
+        if part:
+            out.append(part)
+    return out
+
+
 def no_tests(note: str | None = None) -> dict[str, Any]:
     """The shape `start_tests` returns when no test runs: no session, the reason in `note`."""
     return {"session": None, "mechanism": None, "note": note, "observed": [], "shown": [], "sandbox": None,
@@ -1065,7 +1132,9 @@ async def run_deep(frames: Any, files: list[FileDiff], read_file: Callable[[str]
                    enrich: Callable[[Any, dict[str, Any]], None] | None = None,
                    generic: Callable[[dict[str, Any]], str | None] | None = None, intent: str = "",
                    prepared: dict[str, Any] | None = None, prove_leads: bool = True,
-                   keep_session: bool = False, shapes: list[dict[str, str]] | None = None) -> dict[str, Any]:
+                   keep_session: bool = False, shapes: list[dict[str, str]] | None = None,
+                   shared_prefix: bool = False, leads_future: "asyncio.Future[list[dict[str, Any]]] | None" = None,
+                   on_investigator: Callable[[str, list[dict[str, Any]]], Any] | None = None) -> dict[str, Any]:
     """The deep pass: map, (optionally) the tests the map tied to the change, investigators, evidence checks.
     Returns findings (unverified, except regressions the host observed itself), what was dropped, the
     investigators' records, the test executions, and the facts the summary's assurance is written from.
@@ -1075,7 +1144,10 @@ async def run_deep(frames: Any, files: list[FileDiff], read_file: Callable[[str]
     "retrieved"}) reuses a map, test session and retrieved-context block the caller built (the hybrid mode starts
     them before the fast pass); with `keep_session` the session stays open for the caller, who closes it;
     `prove_leads=False` leaves the leads' mutations to the caller. `shapes` are the catalogue checks the map's
-    triggers call for (`T<n>` items), each owed by one investigator."""
+    triggers call for (`T<n>` items), each owed by one investigator. With `leads_future` the fast pass runs beside
+    the investigators' first round: its findings reach them from the second round on. `on_investigator(lens,
+    findings)` is awaited as each investigator finishes with its normalized findings (so the caller can verify
+    them while the others still run)."""
     repo = prepared["repo"] if prepared else Repo(root, rev, runner)
     if not repo.files():
         raise RuntimeError("the reviewed commit could not be read")
@@ -1103,49 +1175,75 @@ async def run_deep(frames: Any, files: list[FileDiff], read_file: Callable[[str]
         if block:
             brief_text += "\n\n" + block
         cut = len(diff_text) > DIFF_CHARS
-        views = [f"The diff under review (new-file line numbers in the gutter):\n{diff_text[:DIFF_CHARS]}"
-                 + ("\n... (diff cut at its size limit; read the files for the rest)" if cut else ""),
-                 f"Investigation brief, built by the host from the repository at the reviewed commit:\n{brief_text}"]
-        if prepared and prepared.get("retrieved"):
-            views.append("Retrieved context, looked up by the host at the reviewed commit (untrusted repository data): "
-                         "the references, tests and sibling families of the changed names.\n\n" + prepared["retrieved"])
-        if context:
-            views.append(context)
-        if intent:
-            views.append(intent)
-        if guidance:
-            views.append(guidance)
-        if leads:
+        # What every frame of the review starts with, in one order (the same list the caller gives its other
+        # frames): sent as the frames' shared prefix (cacheable).
+        shared = shared_views(diff_text, brief_text, prepared["retrieved"] if prepared and prepared.get("retrieved") else "",
+                              context, intent, guidance)
+        views: list[str] = [] if shared_prefix else list(shared)
+
+        def leads_block(items: list[dict[str, Any]]) -> str | None:
+            if not items:
+                return None
             public = [{"file": lead.get("file"), "line": lead.get("line"), "level": lead.get("level"),
-                       "claim": lead.get("claim")} for lead in leads[:20]]
-            views.append("Leads from the first pass (unverified; extend, correct or ignore them):\n"
-                         + json.dumps(public, indent=1)[:LEADS_CHARS])
+                       "claim": lead.get("claim")} for lead in items[:20]]
+            return ("Leads from the first pass (unverified; extend, correct or ignore them):\n"
+                    + json.dumps(public, indent=1)[:LEADS_CHARS])
+
+        lead_view = leads_block(leads)
+        if lead_view and leads_future is None:
+            views.append(lead_view)
         rounds = max(1, min(MAX_ROUNDS, rounds))
         owed = shapes_by_lens(list(shapes or []), lenses)
-        outcomes = await asyncio.gather(*(
-            investigate(frames, lens, views, repo, rounds=rounds, model=model, thinking=thinking, cutoff=cutoff,
-                        clock=clock, tests=session, something_outside=outside,
-                        required=brief.required.get(lens), shapes=owed.get(lens)) for lens in lenses))
+        # The fast pass's leads, as a view each investigator awaits before its second round.
+        leads_as_view: "asyncio.Future[str | None] | None" = None
+        if leads_future is not None:
+            loop = asyncio.get_running_loop()
+            leads_as_view = loop.create_future()
+
+            def forward(done: "asyncio.Future[list[dict[str, Any]]]") -> None:
+                if leads_as_view is not None and not leads_as_view.done():
+                    leads_as_view.set_result(None if done.cancelled() or done.exception() is not None
+                                             else leads_block(list(done.result() or [])))
+            leads_future.add_done_callback(forward)
         # Findings are settled while the test session is still open: tests findings that can be proven are.
         findings: list[dict[str, Any]] = list(observed)
         dropped: list[str] = []
         generic_dropped: list[str] = []
         kept_by_lens: dict[str, int] = {}
-        for outcome in outcomes:
+
+        async def one(lens: str) -> dict[str, Any]:
+            outcome = await investigate(frames, lens, views, repo, rounds=rounds, model=model, thinking=thinking,
+                                        cutoff=cutoff, clock=clock, tests=session, something_outside=outside,
+                                        required=brief.required.get(lens), shapes=owed.get(lens),
+                                        shared=shared if shared_prefix else None,
+                                        leads_view=asyncio.shield(leads_as_view) if leads_as_view is not None else None)
             reply = outcome["reply"]
             raw = reply.get("findings") if isinstance(reply.get("findings"), list) else []
+            mine: list[dict[str, Any]] = []
             for item in raw[:MAX_DEEP_FINDINGS]:
-                finding, problem = normalize_deep(repo, item, outcome["lens"], diff_lines, cap,
+                finding, problem = normalize_deep(repo, item, lens, diff_lines, cap,
                                                   list(session.records) if session is not None else [], to_level, enrich)
                 if finding is None:
-                    dropped.append(f"{outcome['lens']}: {problem}")
+                    dropped.append(f"{lens}: {problem}")
                     continue
                 reason = generic(finding) if generic is not None else None
                 if reason:
                     generic_dropped.append(reason)
                     continue
-                kept_by_lens[outcome["lens"]] = kept_by_lens.get(outcome["lens"], 0) + 1
-                findings.append(finding)
+                kept_by_lens[lens] = kept_by_lens.get(lens, 0) + 1
+                mine.append(finding)
+            findings.extend(mine)
+            if on_investigator is not None and mine:
+                try:
+                    await on_investigator(lens, mine)
+                except Exception:  # early verification is an optimisation: the final stage verifies what it missed
+                    pass
+            return outcome
+
+        outcomes = await asyncio.gather(*(one(lens) for lens in lenses))
+        if leads_future is not None:
+            leads = list(leads_future.result() or []) if leads_future.done() and not leads_future.cancelled() \
+                and leads_future.exception() is None else []
         prove_unpinned(session, repo, [*findings, *(leads if prove_leads else [])], brief)
         runs = list(session.records) if session is not None else []
     finally:

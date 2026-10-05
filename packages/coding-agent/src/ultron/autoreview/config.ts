@@ -45,6 +45,49 @@ export const DEFAULT_BLOCK_AT: BlockLevel = "medium";
 export const DEFAULT_MAX_COMMENTS = 5;
 export const MAX_MAX_COMMENTS = 30;
 export const DEFAULT_DEEP_ROUNDS = 4;
+/** Findings of one file a verifier frame judges together. */
+export const DEFAULT_VERIFY_BATCH = 4;
+export const MAX_VERIFY_BATCH = 8;
+/** Frames in flight per model at most (`autoreview.modelConcurrency` sets a model's own limit, up to this). */
+export const DEFAULT_MODEL_CONCURRENCY = 8;
+export const MAX_MODEL_CONCURRENCY = 16;
+/**
+ * The recommended model: used for every stage when the user's catalog has it and no setting names another
+ * (see "Recommended models" in docs/autoreview.md).
+ */
+export const RECOMMENDED_MODEL = "cliproxyapi/gpt-6-luna";
+/** Frames in flight for the recommended model unless `autoreview.modelConcurrency` says otherwise (it never throttled). */
+export const RECOMMENDED_MODEL_CONCURRENCY = 16;
+
+/** The thinking level of each stage's frames. */
+export interface StageThinking {
+	readonly finders: FrameThinkingLevel;
+	readonly verifier: FrameThinkingLevel;
+	readonly investigators: FrameThinkingLevel;
+	readonly planner: FrameThinkingLevel;
+	readonly asks: FrameThinkingLevel;
+}
+
+/**
+ * Per-model thinking defaults, by `provider/model`, with the generic fallback under "*". Measured on a private set
+ * of real reviewed pull requests: the recommended model below `high` finds almost nothing (about 0.1 finder
+ * findings per review at `low`), so it thinks `high` at every stage; other models keep the general defaults.
+ */
+export const THINKING_DEFAULTS: Readonly<Record<string, StageThinking>> = {
+	"*": {
+		finders: DEFAULT_THINKING,
+		verifier: DEFAULT_THINKING,
+		investigators: DEFAULT_DEEP_THINKING,
+		planner: DEFAULT_PLAN_THINKING,
+		asks: DEFAULT_ASK_THINKING,
+	},
+	[RECOMMENDED_MODEL]: { finders: "high", verifier: "high", investigators: "high", planner: "high", asks: "high" },
+};
+
+/** The default thinking level of a stage for the model that runs it (undefined model: the generic default). */
+export function thinkingDefault(stage: keyof StageThinking, model: string | undefined): FrameThinkingLevel {
+	return (model === undefined ? undefined : THINKING_DEFAULTS[model]?.[stage]) ?? THINKING_DEFAULTS["*"]![stage];
+}
 export const DEFAULT_TEST_RUNS = 6;
 export const MAX_TEST_RUNS = 30;
 /** A safety limit, on by default: one test execution may not run longer. */
@@ -109,6 +152,14 @@ export interface AutoreviewConfig {
 	readonly planCells: number;
 	/** `hybrid` mode: candidates verified per review at most. */
 	readonly verifyCandidates: number;
+	/** Findings of one file one verifier frame judges together (1: one frame per finding). */
+	readonly verifyBatch: number;
+	/** Frames in flight per model at most, by `provider/model`; unset models get DEFAULT_MODEL_CONCURRENCY. */
+	readonly modelConcurrency: Readonly<Record<string, number>>;
+	/** Experimental: send each frame's shared context as its system prompt (measured to lose discovery; off). */
+	readonly systemPrefix: boolean;
+	/** Run the fast pass beside the investigators' first round (leads reach them at round 2); off: finders first. */
+	readonly overlap: boolean;
 	readonly blockAt: BlockLevel;
 	readonly maxComments: number;
 	/** Run the reviewed project's tests in the deep pass, where the repository is eligible and a sandbox exists. */
@@ -145,15 +196,19 @@ export interface ModelFallbacks {
 	readonly rlm?: RlmModelSettings;
 	readonly defaultProvider?: string;
 	readonly defaultModel?: string;
+	/** Whether the user's catalog has a `provider/model`; given, RECOMMENDED_MODEL leads the chain when it does. */
+	readonly hasModel?: (ref: string) => boolean;
 }
 
 /**
- * The finder model: `autoreview.model`, then `review.model`, then `rlm.frameModel`, then the default model.
- * Undefined when none of them is set (the engine then resolves the profile's default itself).
+ * The finder model: `autoreview.model`, then the recommended model when the catalog has it, then `review.model`,
+ * then `rlm.frameModel`, then the default model. Undefined when none of them is set (the engine then resolves the
+ * profile's default itself).
  */
 export function resolveModel(settings: AutoreviewSettings, fallbacks: ModelFallbacks): string | undefined {
 	return (
 		settings.model ??
+		(fallbacks.hasModel?.(RECOMMENDED_MODEL) ? RECOMMENDED_MODEL : undefined) ??
 		fallbacks.reviewModel ??
 		fallbacks.rlm?.frameModel ??
 		(fallbacks.defaultProvider && fallbacks.defaultModel
@@ -192,6 +247,10 @@ export function engineSettings(config: AutoreviewConfig): {
 	planStyle: PlanStyle;
 	planCells: number;
 	verifyCandidates: number;
+	verifyBatch: number;
+	modelConcurrency: Record<string, number>;
+	systemPrefix: boolean;
+	overlap: boolean;
 	testRuns: number;
 	testTimeoutSeconds: number;
 	testImage?: string;
@@ -216,6 +275,10 @@ export function engineSettings(config: AutoreviewConfig): {
 		planStyle: config.planStyle,
 		planCells: config.planCells,
 		verifyCandidates: config.verifyCandidates,
+		verifyBatch: config.verifyBatch,
+		modelConcurrency: { ...config.modelConcurrency },
+		systemPrefix: config.systemPrefix,
+		overlap: config.overlap,
 		testRuns: config.testRuns,
 		testTimeoutSeconds: config.testTimeoutSeconds,
 		...(config.testImage === undefined ? {} : { testImage: config.testImage }),
@@ -235,6 +298,17 @@ export function testsEligible(config: AutoreviewConfig, owner: string, canPush: 
 export function resolveConfig(settings: AutoreviewSettings, fallbacks: ModelFallbacks = {}): AutoreviewConfig {
 	const model = resolveModel(settings, fallbacks);
 	const verifyModel = settings.verifyModel ?? model;
+	const deepModel = settings.deepModel ?? model;
+	const planModel = settings.planModel ?? model;
+	const askModel = settings.askModel ?? model;
+	const modelConcurrency: Record<string, number> = Object.fromEntries(
+		Object.entries(settings.modelConcurrency ?? {}).map(([name, limit]) => [
+			name,
+			Math.min(MAX_MODEL_CONCURRENCY, Math.max(1, limit)),
+		]),
+	);
+	if (modelConcurrency[RECOMMENDED_MODEL] === undefined)
+		modelConcurrency[RECOMMENDED_MODEL] = RECOMMENDED_MODEL_CONCURRENCY;
 	return {
 		...(settings.accounts === undefined ? {} : { accounts: settings.accounts }),
 		pollSeconds: Math.max(MIN_POLL_SECONDS, settings.pollSeconds ?? DEFAULT_POLL_SECONDS),
@@ -246,22 +320,26 @@ export function resolveConfig(settings: AutoreviewSettings, fallbacks: ModelFall
 			MAX_FRAME_CONCURRENCY,
 			Math.max(1, settings.frameConcurrency ?? DEFAULT_FRAME_CONCURRENCY),
 		),
-		thinking: settings.thinking ?? DEFAULT_THINKING,
-		verifyThinking: settings.verifyThinking ?? DEFAULT_THINKING,
+		thinking: settings.thinking ?? thinkingDefault("finders", model),
+		verifyThinking: settings.verifyThinking ?? thinkingDefault("verifier", verifyModel),
 		mode: settings.mode ?? DEFAULT_MODE,
-		...((settings.deepModel ?? model) === undefined ? {} : { deepModel: settings.deepModel ?? model }),
-		deepThinking: settings.deepThinking ?? DEFAULT_DEEP_THINKING,
+		...(deepModel === undefined ? {} : { deepModel }),
+		deepThinking: settings.deepThinking ?? thinkingDefault("investigators", deepModel),
 		deepRounds: Math.min(MAX_DEEP_ROUNDS, Math.max(1, settings.deepRounds ?? DEFAULT_DEEP_ROUNDS)),
-		...((settings.planModel ?? model) === undefined ? {} : { planModel: settings.planModel ?? model }),
-		planThinking: settings.planThinking ?? DEFAULT_PLAN_THINKING,
-		...((settings.askModel ?? model) === undefined ? {} : { askModel: settings.askModel ?? model }),
-		askThinking: settings.askThinking ?? DEFAULT_ASK_THINKING,
+		...(planModel === undefined ? {} : { planModel }),
+		planThinking: settings.planThinking ?? thinkingDefault("planner", planModel),
+		...(askModel === undefined ? {} : { askModel }),
+		askThinking: settings.askThinking ?? thinkingDefault("asks", askModel),
 		planStyle: settings.planStyle ?? DEFAULT_PLAN_STYLE,
 		planCells: Math.min(MAX_PLAN_CELLS, Math.max(1, settings.planCells ?? DEFAULT_PLAN_CELLS)),
 		verifyCandidates: Math.min(
 			MAX_VERIFY_CANDIDATES,
 			Math.max(1, settings.verifyCandidates ?? DEFAULT_VERIFY_CANDIDATES),
 		),
+		verifyBatch: Math.min(MAX_VERIFY_BATCH, Math.max(1, settings.verifyBatch ?? DEFAULT_VERIFY_BATCH)),
+		systemPrefix: settings.systemPrefix === true,
+		overlap: settings.overlap === true,
+		modelConcurrency,
 		blockAt: settings.blockAt ?? DEFAULT_BLOCK_AT,
 		maxComments: Math.min(MAX_MAX_COMMENTS, settings.maxComments ?? DEFAULT_MAX_COMMENTS),
 		runTests: settings.runTests ?? true,

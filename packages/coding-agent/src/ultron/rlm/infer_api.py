@@ -479,12 +479,15 @@ class Inference:
     async def map(self, tasks: Any, items: Any = None, *, context: Any = None, contract: Any = None,
                   budget: Any = None, model: str | None = None, max_repairs: int | None = None,
                   concurrency: int = 8, timeout_ms: int | None = None,
-                  thinking: str | None = None) -> "MapResults":
+                  thinking: str | None = None, shared_prefix: bool = False) -> "MapResults":
         """Fan frames out under one shared budget, preserving order.
 
         `rlm.map(task, items)` runs `task` once per item (a view, a string, or a list of them);
         `rlm.map([task, ...])` runs each task. `context` is shared by every frame (sent before each item, so
-        the frames share a cacheable prefix). Entries are values, `Incomplete`, or `FrameError`.
+        the frames share a cacheable prefix). With `shared_prefix=True` the shared context goes into the frames'
+        system prompt instead, byte-identical across every call of a batch and across batches with the same
+        context, so a provider's prompt cache can serve it (the Anthropic API marks the system prompt cacheable;
+        the Claude Code CLI passes it as `--system-prompt`). Entries are values, `Incomplete`, or `FrameError`.
 
         Without `budget=Budget(tokens=...)` a top-level map is limited to the host's default token budget
         (ULTRON_RLM_MAP_TOKENS, 500,000 by default); frames past it come back `Incomplete`. The result is a
@@ -498,7 +501,8 @@ class Inference:
             hits = h.search(r'ERROR .*timeout', limit=8)
             causes = await rlm.map('Root cause of this failure, 10 words max.',
                                    [h.lines(m['line'] - 20, m['line'] + 5) for m in hits], contract=str)"""
-        shared = _wire_context(context)
+        prefix = _wire_context(context) if shared_prefix else []
+        shared = [] if shared_prefix else _wire_context(context)
         if isinstance(tasks, str):
             if items is None:
                 raise ValueError("rlm.map(task, items): items is required with a single task")
@@ -512,9 +516,10 @@ class Inference:
                 frames = [{"task": task, "context": shared + _wire_context(item)} for task, item in zip(tasks, items)]
             else:
                 frames = [{"task": task, "context": shared} for task in tasks]
-        await self._by_reference([frame["context"] for frame in frames])
+        await self._by_reference([frame["context"] for frame in frames] + ([prefix] if prefix else []))
         reply = await self._bridge.request("rlm.map", {
             "frames": frames,
+            **({"prefix": prefix} if prefix else {}),
             "contract": _schema(contract),
             "budget": _budget(budget),
             "model": model,

@@ -34,7 +34,7 @@ function tempDir(prefix: string): string {
 
 /** A fake `rlm`: finder, verifier and re-check replies come from Python callables; `calls` records every frame. */
 const PRELUDE = `
-import sys, json, asyncio
+import sys, json, asyncio, re
 sys.path.insert(0, ${JSON.stringify(RLM_DIR)})
 import autoreview_api as a
 import review_api as r
@@ -47,6 +47,20 @@ SHIPPED_MODE = a.DEFAULT_MODE
 a.DEFAULT_MODE = "fast"
 LENS = {p.deep_task(name): name for name in p.DEEP_LENSES}
 
+def round_of(text):
+    match = re.search(r"^Round (\\d+) of \\d+\\.$", text, re.M)
+    return int(match.group(1)) if match else 1
+
+def batched(verifier, task, text):
+    """A batched verifier frame holds several findings: the fake judges each on its own section."""
+    if task != p.AUTOREVIEW_VERIFIER_BATCH_TASK:
+        return verifier(text)
+    out = []
+    for number, part in enumerate(text.split("=== Finding ")[1:], 1):
+        verdict = verifier(part)
+        out.append(dict(verdict, finding=number) if isinstance(verdict, dict) else verdict)
+    return out
+
 class FakeRlm:
     def __init__(self, finder=None, verifier=None, recheck=None, investigator=None):
         self.investigator = investigator or (lambda lens, text, round: {"findings": [], "requests": [], "done": True})
@@ -57,17 +71,19 @@ class FakeRlm:
     async def map(self, tasks, items=None, **options):
         tasks = [tasks] * len(items) if isinstance(tasks, str) else list(tasks)
         out = MapResults()
+        shared = options.get("context")
+        shared = "\\n".join(shared) if isinstance(shared, list) else shared
         for task, item in zip(tasks, items):
             text = item if isinstance(item, str) else "\\n".join(item)
-            kind = ("verify" if task == p.AUTOREVIEW_VERIFIER_TASK else "recheck" if task == p.RECHECK_TASK
+            kind = ("verify" if task in (p.AUTOREVIEW_VERIFIER_TASK, p.AUTOREVIEW_VERIFIER_BATCH_TASK) else "recheck" if task == p.RECHECK_TASK
                     else "deep" if task in LENS else "find")
-            self.calls.append({"kind": kind, "task": task, "text": text, "context": options.get("context"),
+            self.calls.append({"kind": kind, "task": task, "text": text, "context": shared, "batch": task == p.AUTOREVIEW_VERIFIER_BATCH_TASK,
                                "model": options.get("model"), "concurrency": options.get("concurrency"),
                                "thinking": options.get("thinking"), "timeout_ms": options.get("timeout_ms"),
                                "tokens": options["budget"].tokens if options.get("budget") else None})
             self.calls[-1]["lens"] = LENS.get(task)
-            out.append(self.verifier(text) if kind == "verify" else self.recheck(text) if kind == "recheck"
-                       else self.investigator(LENS[task], text, text.count("Results of your requests, round") + 1)
+            out.append(batched(self.verifier, task, text) if kind == "verify" else self.recheck(text) if kind == "recheck"
+                       else self.investigator(LENS[task], text, round_of(text))
                        if kind == "deep" else self.finder(task, text))
         out.spent = {"calls": len(items), "tokens": 100 * len(items)}
         out.usage = {"input_tokens": 80 * len(items), "output_tokens": 20 * len(items), "cost": 0.001 * len(items)}
@@ -279,8 +295,9 @@ for name, (finding, verdict) in cases.items():
     unit[name] = [capped, a.final_level(dict(level=capped, category=category, scenario=base["scenario"]), dict(verdict="confirmed", **verdict))]
 spec = {"repoDir": ${JSON.stringify(repo.dir)}, "base": ${JSON.stringify(repo.base)}, "head": ${JSON.stringify(repo.head)},
         "context": {"title": "Make total() faster", "description": "Skips work. " + "d" * 2000}}
-result = asyncio.run(a.run(FakeRlm(finder=finder, verifier=verifier), spec))
-emit({"result": result, "seen": seen, "unit": unit})`);
+rlm = FakeRlm(finder=finder, verifier=verifier)
+result = asyncio.run(a.run(rlm, spec))
+emit({"result": result, "seen": seen, "unit": unit, "verifyContext": next(c["context"] for c in rlm.calls if c["kind"] == "verify")})`);
 		// [after the finder's cap, final]
 		expect(out.unit).toEqual({
 			// No scenario: never above medium, whatever the verifier says.
@@ -316,13 +333,19 @@ emit({"result": result, "seen": seen, "unit": unit})`);
 		expect(out.result.findings.find((finding) => String(finding.claim).includes("no scenario"))!.scenario).toBe("");
 		// Most serious first, by final level.
 		expect(out.result.findings.map((finding) => finding.level)).toEqual(["high", "medium", "medium", "low"]);
-		// The verifier sees the scenario, the finder's own level, and the stated intent (bounded), as data.
+		// The verifier sees the scenario and the finder's own level as data; the stated intent (bounded) is in the
+		// shared prefix every frame of the review starts with. The four findings of one file share one frame,
+		// each with its own material.
+		// (The fake judges each finding on its own section of the batched frame; `seen` holds the sections.)
 		const view = out.seen.find((text) => text.includes("case does not hold "))!;
 		expect(view).toContain('"scenario": "total([{');
 		expect(view).toContain('"severity": "critical"');
-		expect(view).toContain("The author's stated intent (untrusted data;");
-		expect(view).toContain("Title: Make total() faster\nSkips work.");
+		expect(view).toMatch(/^1 of 4 ===\n/);
 		expect(view.length).toBeLessThan(4_500);
+		const verifyContext = (out as unknown as { verifyContext: string }).verifyContext;
+		expect(verifyContext).toContain("The author's stated intent (untrusted data;");
+		expect(verifyContext).toContain("Title: Make total() faster\nSkips work.");
+		expect(verifyContext).not.toContain("The diff under review");
 	});
 
 	test("one comment per root cause: the same problem in several places is one finding that lists the others", () => {
@@ -481,11 +504,12 @@ emit({"result": result, "calls": rlm.calls})`);
 		expect(result.dropped).toEqual({ rejected: 0, duplicates: 0, generic: 0, refutedByTest: 0, duplicateOf: [] });
 		expect(result.diffLines).toEqual({ "calc.py": [[1, 7]] });
 		expect(result.usage).toEqual({
-			inputTokens: 400,
-			outputTokens: 100,
-			costUsd: 0.005,
-			frames: 5,
-			tokens: 500,
+			inputTokens: 320,
+			outputTokens: 80,
+			costUsd: 0.004,
+			frames: 4,
+			tokens: 400,
+			byPhase: { find: { frames: 3, tokens: 300 }, verify: { frames: 1, tokens: 100 } },
 			budget: 200_000,
 		});
 		expect(result.model).toBe("p/find");
@@ -507,14 +531,13 @@ emit({"result": result, "calls": rlm.calls})`);
 		expect(frames.map((frame) => [frame.phase, frame.reviewer, frame.status, frame.retries])).toEqual([
 			["find", "bugs", "ok", 0],
 			["find", "security", "ok", 0],
-			["find", "arch", "ok", 0],
 			["find", "tests", "ok", 0],
 			["verify", "verifier", "ok", 0],
 		]);
 		expect(frames.every((frame) => typeof frame.ms === "number")).toBe(true);
 		// Finders run on the finder model with the shared context; the verifier on its own model, without it.
 		const finders = calls.filter((call) => call.kind === "find");
-		expect(finders).toHaveLength(4);
+		expect(finders).toHaveLength(3);
 		// Each frame is a request of its own, at the default thinking level, with the per-frame timeout and a
 		// grant (its input estimate plus 32k) out of the cap.
 		expect(finders.every((call) => call.model === "p/find" && call.concurrency === 1)).toBe(true);
@@ -526,7 +549,9 @@ emit({"result": result, "calls": rlm.calls})`);
 		);
 		const verifier = calls.find((call) => call.kind === "verify")!;
 		expect(verifier.model).toBe("p/verify");
-		expect(verifier.context).toBeNull();
+		// The verifier's shared views are the author's intent and the guides, as before; never the diff or brief.
+		expect(verifier.context).toContain("The author's stated intent (untrusted data;");
+		expect(verifier.context).not.toContain("The diff under review");
 		// The working tree is at the later commit; the verifier saw the head commit's source.
 		expect(verifier.text).toContain(">    4 |     for i in range(len(items) - 1):");
 		// A bad commit is a request error, reported as such.
@@ -623,8 +648,9 @@ result = asyncio.run(a.run(rlm, {"repoDir": ${JSON.stringify(repo.dir)}, "base":
 many = a.Frames(FakeRlm(), cap=None, usage=a._Usage(), concurrency=8)
 asyncio.run(many.run("find", [("bugs", "task", "x" * 300000)] * 40, contract=None, model=None, thinking="low"))
 emit({"result": result, "calls": rlm.calls, "many": [t["status"] for t in many.timings]})`);
-		// No budget is passed to any frame, and the only timeout is the host's own maximum.
-		expect(out.calls).toHaveLength(5);
+		// No budget is passed to any frame, and the only timeout is the host's own maximum (three finders: the
+		// architecture specialist rides with the correctness one on a small diff; then one verifier frame).
+		expect(out.calls).toHaveLength(4);
 		expect(out.calls.every((call) => call.tokens === null && call.timeout_ms === 3_600_000)).toBe(true);
 		expect(out.result.usage.budget).toBeNull();
 		expect(out.result.complete).toBe(true);
@@ -656,11 +682,11 @@ def finder(task, text):
 rlm = FakeRlm(finder=finder, verifier=lambda text: {"verdict": "confirmed", "evidence": "\`return x + 1\`", "corrected_line": None})
 result = asyncio.run(a.run(rlm, {"repoDir": ${JSON.stringify(dir)}, "base": "HEAD~1", "head": "HEAD"}))
 emit({"result": result, "finds": [{"task": c["task"], "text": c["text"]} for c in rlm.calls if c["kind"] == "find"]})`);
-		// Three code files in one slice (every reviewer but AI), the test file in another, the document in a third
-		// (security only): 4 + 4 + 1 frames instead of 3 x 4 + 4 + 1.
-		expect(out.finds).toHaveLength(9);
+		// A small diff is one slice for every specialist: three code files, the test file and the document together,
+		// one frame each for correctness (with architecture folded in), security and tests; AI does not apply.
+		expect(out.finds).toHaveLength(3);
 		const code = out.finds.filter((call) => call.text.includes("File: a.py"));
-		expect(code).toHaveLength(4);
+		expect(code).toHaveLength(3);
 		expect(code[0]!.text).toContain(
 			"Files changed in this pull request: README.md, a.py, b.py, pkg/c.py, pkg/test_c.py",
 		);
@@ -668,8 +694,9 @@ emit({"result": result, "finds": [{"task": c["task"], "text": c["text"]} for c i
 			/File: a\.py \(modified\)[\s\S]*={40}[\s\S]*File: b\.py \(modified\)[\s\S]*={40}[\s\S]*File: pkg\/c\.py/,
 		);
 		expect(code[0]!.text).not.toContain("Other files changed in this review");
-		expect(code[0]!.text).not.toContain("test_c.py (modified)");
+		expect(code[0]!.text).toContain("test_c.py (modified)");
 		expect(code[0]!.task).toContain("The slice may hold several files");
+		expect(code[0]!.task).toContain("also architecture and maintainability");
 		// Findings keep their exact file; the short name resolves; the unknown file is dropped and said so.
 		expect(out.result.findings.map((finding) => [finding.file, finding.line, finding.claim])).toEqual([
 			["b.py", 2, "b adds one."],
@@ -814,12 +841,11 @@ emit({"result": result, "timeouts": [c["timeout_ms"] for c in rlm.calls], "kinds
 				frames: Array<{ phase: string; reviewer: string; status: string; retries: number }>;
 			}
 		).frames;
-		// bugs answers at 20 s. security times out at 60 s (its 40 s limit), is retried after 2 s, and is cut at
-		// the finder cutoff (75 s). arch and tests never start.
+		// bugs (with architecture folded in) answers at 20 s. security times out at 60 s (its 40 s limit), is retried
+		// after 2 s, and is cut at the finder cutoff (75 s). tests never starts.
 		expect(frames.map((frame) => [frame.phase, frame.reviewer, frame.status, frame.retries])).toEqual([
 			["find", "bugs", "ok", 0],
 			["find", "security", "deadline", 1],
-			["find", "arch", "deadline", 0],
 			["find", "tests", "deadline", 0],
 			["verify", "verifier", "ok", 0],
 		]);
@@ -830,7 +856,7 @@ emit({"result": result, "timeouts": [c["timeout_ms"] for c in rlm.calls], "kinds
 		expect(out.result.findings[0]).toMatchObject({ verification: "confirmed", line: 4 });
 		expect(out.result.complete).toBe(false);
 		expect(out.result.incomplete).toEqual([
-			"3 reviewer passes were not finished at the review deadline: security on calc.py, arch on calc.py, tests on calc.py",
+			"2 reviewer passes were not finished at the review deadline: security on calc.py, tests on calc.py",
 		]);
 		expect(out.result.timing.totalMs).toBe(80_000);
 	});
@@ -1152,7 +1178,7 @@ emit({"served": [[title, " ".join(line.split(" ", 2)[2:]) if False else body] fo
 				mode: string;
 				timing: { investigators: Array<Record<string, unknown>> };
 			};
-			deepCalls: Array<{ lens: string; text: string; model: string; thinking: string }>;
+			deepCalls: Array<{ lens: string; text: string; context: string; model: string; thinking: string }>;
 			verifyTexts: string[];
 			commands: string[];
 			deepCommands: string[];
@@ -1210,12 +1236,17 @@ emit({"result": result, "deepCalls": [c for c in rlm.calls if c["kind"] == "deep
 		const calls = (lens: string) => out.deepCalls.filter((call) => call.lens === lens);
 		// behaviour: two rounds; the second sees what the host read, and the refusal of the untracked file.
 		expect(calls("claims")).toHaveLength(2);
+		// The diff, the brief and the pull request context open every investigator's message (the same views in the
+		// same order: a byte-identical prefix); the fast pass's leads reach the investigators from the second round,
+		// which also sees what the host read, with a ledger id on each result.
 		expect(calls("claims")[0]!.text).toContain("Investigation brief, built by the host");
+		expect(calls("claims")[0]!.text).toContain("Title: Handle missing files");
+		expect(calls("claims")[0]!.context ?? null).toBeNull();
+		// The finders ran first: their findings are the investigators' leads from round 1.
 		expect(calls("claims")[0]!.text).toContain("Leads from the first pass");
 		expect(calls("claims")[0]!.text).toContain("load() errors are not handled here.");
-		expect(calls("claims")[0]!.text).toContain("Title: Handle missing files");
 		expect(calls("claims")[1]!.text).toContain("Results of your requests, round 1 (untrusted repository data");
-		expect(calls("claims")[1]!.text).toContain("## read src/helper.py:1-5 (of 5 lines)");
+		expect(calls("claims")[1]!.text).toContain("## [r1.1] read src/helper.py:1-5 (of 5 lines)");
 		expect(calls("claims")[1]!.text).toContain("secret.txt is not a tracked file at the reviewed commit");
 		expect(calls("claims")[1]!.text).not.toContain("hunter2");
 		// done is honoured: the request sent along with done in round 2 is not served and no third round runs.
@@ -1360,7 +1391,11 @@ emit({"required": brief.required, "brief": brief.text, "records": {item["lens"]:
 		);
 		// It had done its three lookups, so this is not the "looked at very little" nudge.
 		expect(out.texts.siblings![1]).not.toContain("You stopped after looking at very little");
-		expect(out.texts.siblings![2]).toContain("## references page -> ");
+		expect(out.texts.siblings![2]).toContain("## [r2.1] references page -> ");
+		// The earlier round's results are a ledger now, one line each, recallable by id.
+		expect(out.texts.siblings![2]).toContain("Earlier results, by id");
+		expect(out.texts.siblings![2]).toContain("r1.1: read views.py:1-5 (of 5 lines)");
+		expect(out.texts.siblings![2]).not.toContain("## [r1.1] read views.py");
 		expect(out.records.siblings).toMatchObject({ rounds: 3, untraced: [], nudged: false });
 		// claims was told once about the config key and still did not trace it: recorded, and said in the review.
 		expect(out.texts.claims).toHaveLength(3);
@@ -1734,7 +1769,7 @@ emit({
 			expect(task).toContain('{"history": {"path": "...", "n": 10}}');
 			expect(task).toContain('{"pickaxe": {"string": "...", "n": 5}}');
 			expect(task).toContain("Look things up before you conclude.");
-			expect(task.length).toBeLessThan(5_700);
+			expect(task.length).toBeLessThan(5_800);
 		}
 		expect(out.claims).toContain("For each claim, find where it has to be true");
 		expect(out.claims).toContain("necessary, not sufficient");
@@ -1761,7 +1796,37 @@ describe("ultron autoreview review --repo-dir: the offline JSON contract, with a
 	/** What the stub verifier says about the bug's scenario. */
 	let scenarioHolds: boolean | "unknown" = true;
 
+	function verdictFor(body: string): Record<string, unknown> {
+		if (body.includes("wrong mean"))
+			return {
+				verdict: "confirmed",
+				evidence: "`return total(items) / count` divides the truncated sum by the full count.",
+				corrected_line: null,
+				severity: "major",
+				scenario_holds: true,
+			};
+		if (body.includes("skips the last item"))
+			return {
+				verdict: "confirmed",
+				evidence: "`for i in range(len(items) - 1):` stops before the last index.",
+				corrected_line: null,
+				severity: "major",
+				scenario_holds: scenarioHolds,
+			};
+		return {
+			verdict: "rejected",
+			evidence: "`if count == 0:` returns first.",
+			corrected_line: null,
+			severity: "minor",
+			scenario_holds: false,
+		};
+	}
+
 	function reply(body: string): string {
+		if (body.includes("You check several findings of an automated pull request review")) {
+			const sections = body.split("=== Finding ").slice(1);
+			return JSON.stringify(sections.map((section, index) => ({ ...verdictFor(section), finding: index + 1 })));
+		}
 		if (body.includes("You check one finding of an automated pull request review")) {
 			if (body.includes("wrong mean"))
 				return JSON.stringify({
@@ -2012,11 +2077,9 @@ describe("ultron autoreview review --repo-dir: the offline JSON contract, with a
 		expect(json.verifyThinking).toBe("low");
 		const frames = (json.timing as unknown as { frames: Array<Record<string, unknown>> }).frames;
 		expect(frames.map((frame) => `${frame.phase}:${frame.reviewer}:${frame.status}`).sort()).toEqual([
-			"find:arch:ok",
 			"find:bugs:ok",
 			"find:security:ok",
 			"find:tests:ok",
-			"verify:verifier:ok",
 			"verify:verifier:ok",
 		]);
 		expect(json.verdict).toBe("request_changes");
@@ -2052,17 +2115,24 @@ describe("ultron autoreview review --repo-dir: the offline JSON contract, with a
 		expect(json.model).toBe("stub/frames");
 		expect(json.verifyModel).toBe("stub/verify");
 		for (const key of ["totalMs", "scopeMs", "findMs", "verifyMs"]) expect(typeof json.timing[key]).toBe("number");
-		// 4 finder frames (bugs, security, arch, tests) and 2 verifier frames, as the provider reported them.
-		expect(json.usage).toEqual({ inputTokens: 600, outputTokens: 120, costUsd: 0.00072, frames: 6 });
+		// 3 finder frames (bugs with architecture folded in, security, tests) and 1 batched verifier frame for the
+		// two findings of calc.py, as the provider reported them, by phase too.
+		expect(json.usage).toEqual({
+			inputTokens: 400,
+			outputTokens: 80,
+			costUsd: 0.00048,
+			frames: 4,
+			byPhase: { find: { frames: 3, tokens: 360 }, verify: { frames: 1, tokens: 120 } },
+		});
 		expect(json.notChecked).toEqual(["AI and LLM integration reviewer skipped 1 slice(s) with no LLM-related code."]);
 		// Every request was a frame of the pipeline on the model asked for: nothing prompted a root model.
-		expect(requests).toHaveLength(6);
+		expect(requests).toHaveLength(4);
 		const models = requests.map((body) => (JSON.parse(body) as { model: string }).model);
-		expect(models.filter((model) => model === "frames")).toHaveLength(4);
-		expect(models.filter((model) => model === "verify")).toHaveLength(2);
+		expect(models.filter((model) => model === "frames")).toHaveLength(3);
+		expect(models.filter((model) => model === "verify")).toHaveLength(1);
 		for (const body of requests) {
 			expect(body).toMatch(
-				/You are one specialist in a code review|You check one finding of an automated pull request review/,
+				/You are one specialist in a code review|You check (one finding|several findings) of an automated pull request review/,
 			);
 			expect(body).not.toContain('"tools"');
 		}
@@ -2101,8 +2171,8 @@ describe("ultron autoreview review --repo-dir: the offline JSON contract, with a
 		expect(json.thinking).toBe("low");
 		expect(json.notChecked.join("\n")).not.toMatch(/429|Rate limit|cancelled/);
 		expect(json.timing.frames.every((frame) => frame.status === "ok")).toBe(true);
-		// Six frames, and the one request that was refused sent again.
-		expect(requests).toHaveLength(7);
+		// Four frames (three finders, one batched verifier), and the one request that was refused sent again.
+		expect(requests).toHaveLength(5);
 	}, 120_000);
 
 	test("the verdict follows the final severity: a major whose scenario does not hold is a minor comment, not a block", async () => {
@@ -2196,14 +2266,10 @@ describe("ultron autoreview review --repo-dir: the offline JSON contract, with a
 		const behaviour = json.timing.investigators.find((item) => item.lens === "claims")!;
 		expect(behaviour).toMatchObject({ rounds: 2, requests: 1, rejected: 1, findings: 1, status: "done" });
 		expect(behaviour.tokens).toBe(240);
-		expect(json.timing.investigators.map((item) => item.lens).sort()).toEqual([
-			"claims",
-			"inputs",
-			"siblings",
-			"tests",
-		]);
+		// No signature changed and no key was added: the siblings part has no trigger and is skipped.
+		expect(json.timing.investigators.map((item) => item.lens).sort()).toEqual(["claims", "inputs", "tests"]);
 		// The investigators that stopped at once were sent back once.
-		expect(json.timing.investigators.filter((item) => item.nudged)).toHaveLength(3);
+		expect(json.timing.investigators.filter((item) => item.nudged)).toHaveLength(2);
 		// The second behaviour request carried the file the host read, and the refusal of the path outside it.
 		const second = requests.find((body) => body.includes("Results of your requests, round 1"))!;
 		expect(second).toContain("read calc.py:1-12 (of 12 lines)");
@@ -2239,6 +2305,7 @@ describe("both (the default): the retrieved context, the owed catalogue checks, 
 			mode: string;
 			finderContext: string;
 			deepTexts: Record<string, string[]>;
+			deepContexts: string[];
 			owed: Record<string, string[]>;
 			records: Record<string, { rounds: number; unchecked: string[]; untraced: string[] }>;
 			notChecked: string[];
@@ -2273,6 +2340,7 @@ rlm2 = FakeRlm(investigator=investigator)
 degraded = asyncio.run(a.run(rlm2, dict(SPEC, mode="both")))
 c.retrieve = real
 emit({"mode": result["mode"], "finderContext": finds[0]["context"] or "", "deepTexts": texts, "owed": owed, "records": records,
+      "deepContexts": [call["context"] or "" for call in rlm.calls if call["kind"] == "deep"],
       "notChecked": result["notChecked"], "stages": result["timing"]["stages"],
       "degraded": {"mode": degraded["mode"], "notChecked": degraded["notChecked"], "deeps": len([c2 for c2 in rlm2.calls if c2["kind"] == "deep"]),
                    "finderContext": [c2 for c2 in rlm2.calls if c2["kind"] == "find"][0]["context"] or ""}})`);
@@ -2282,6 +2350,7 @@ emit({"mode": result["mode"], "finderContext": finds[0]["context"] or "", "deepT
 		expect(out.finderContext).toContain("References of `show`");
 		for (const texts of Object.values(out.deepTexts))
 			expect(texts[0]).toContain("Retrieved context, looked up by the host at the reviewed commit");
+		for (const context of out.deepContexts) expect(context).toBe("");
 		// The catalogue checks the change calls for, each owed by one part: the tests part owes unpinned-behaviour.
 		expect(out.owed.tests).toContain("T2 unpinned-behaviour");
 		expect(out.deepTexts.tests![0]).toContain("Checks this change calls for and your part owes");
@@ -2306,5 +2375,211 @@ emit({"mode": result["mode"], "finderContext": finds[0]["context"] or "", "deepT
 			"The retrieval of references failed (RuntimeError: boom); the passes ran without the retrieved context.",
 		);
 		expect(out.degraded.finderContext).not.toContain("Retrieved context");
+	});
+});
+
+describe("cost: per-model limits and throttling, the investigators' ledger, lens triggers, early verification", () => {
+	test("a throttled model has its in-flight limit halved and the reset time honoured; modelConcurrency caps frames per model", () => {
+		const out = py<{
+			results: string[];
+			limits: Record<string, number>;
+			throttled: Record<string, number>;
+			sleeps: number[];
+			peak: Record<string, number>;
+			timings: Array<Record<string, unknown>>;
+		}>(`
+class Throttling:
+    def __init__(self):
+        self.calls = 0; self.in_flight = {}; self.peak = {}
+    async def map(self, tasks, items=None, **options):
+        model = options.get("model") or ""
+        self.in_flight[model] = self.in_flight.get(model, 0) + 1
+        self.peak[model] = max(self.peak.get(model, 0), self.in_flight[model])
+        await asyncio.sleep(0)
+        self.in_flight[model] -= 1
+        self.calls += 1
+        out = MapResults()
+        if model == "px/glm" and self.calls <= 1:
+            out.append(FrameError({"error": "429 model_cooldown: too many requests; reset_seconds: 3"}))
+        else:
+            out.append("ok")
+        out.spent = {"calls": 1, "tokens": 10}; out.usage = {}
+        return out
+sleeps = []
+async def nosleep(seconds):
+    sleeps.append(seconds)
+rlm = Throttling()
+frames = a.Frames(rlm, cap=None, usage=a._Usage(), concurrency=16, sleep=nosleep, rng=lambda: 0.5,
+                  model_concurrency={"px/glm": 4, "px/luna": 16})
+async def go():
+    glm = frames.run("find", [("f", "task", "item")] * 6, contract=None, model="px/glm", thinking="low")
+    luna = frames.run("find", [("f", "task", "item")] * 6, contract=None, model="px/luna", thinking="low")
+    return await asyncio.gather(glm, luna)
+results = asyncio.run(go())
+emit({"results": [r if isinstance(r, str) else "err" for batch in results for r in batch], "limits": frames.model_limits,
+      "throttled": frames.throttled, "sleeps": sleeps, "peak": rlm.peak, "timings": frames.timings})`);
+		// The one 429 was retried after the provider's reset time, and every frame came back.
+		expect(out.results).toEqual(Array(12).fill("ok"));
+		expect(out.sleeps).toEqual([3]);
+		// glm's limit went from 4 to 2 for the rest of the review; luna kept 16.
+		expect(out.limits).toEqual({ "px/glm": 2, "px/luna": 16 });
+		expect(out.throttled).toEqual({ "px/glm": 2 });
+		expect(out.peak["px/glm"]).toBeLessThanOrEqual(4);
+		// Each timing names its model; the retried frame records the error it saw.
+		expect(out.timings.every((item) => item.model === "px/glm" || item.model === "px/luna")).toBe(true);
+		expect(out.timings.filter((item) => item.retries === 1)).toHaveLength(1);
+	});
+
+	test("investigators: the ledger of earlier results, recall by id, the round number; with overlap the fast pass's leads arrive at round 2 and an investigator's findings are verified as it finishes", () => {
+		const repo = deepRepo();
+		const out = py<{
+			texts: Record<string, string[]>;
+			kinds: string[];
+			records: Record<string, { rounds: number; requests: number }>;
+			stages: Record<string, number>;
+		}>(`${deepPrelude(repo)}
+texts = {}
+import time as _time
+def investigator(lens, text, round):
+    texts.setdefault(lens, []).append(text)
+    if lens == "claims":
+        if round == 1:
+            return {"findings": [], "requests": [{"read": {"path": "src/helper.py", "start": 1, "end": 5}}, {"list": {"dir": "src"}}, {"read": {"path": "src/app.py"}}], "done": False}
+        if round == 2:
+            return {"findings": [], "requests": [{"recall": {"id": "r1.1"}}, {"recall": {"id": "r9.9"}}, {"grep": {"pattern": "KINDS"}}], "done": False}
+        return {"findings": [], "requests": [], "done": True, "checked": ["comment-vs-code: not applicable"]}
+    if lens == "siblings":
+        # Finishes at once with one finding: it is verified while claims still runs.
+        return {"findings": [{"file": "src/app.py", "line": 9, "severity": "minor", "category": "correctness", "claim": "show() swallows the sentinel string from load().",
+                              "why": "w", "scenario": "show('x') returns 'ERROR: unreadable'.", "suggested_fix": "f", "confidence": 0.7,
+                              "evidence": [{"path": "src/helper.py", "line": 5, "quote": 'return "ERROR: unreadable"'}]}],
+                "requests": [{"references": {"symbol": "show"}}, {"read": {"path": "src/helper.py"}}, {"list": {"dir": "src"}}], "done": True,
+                "checked": ["registry-member, error-path, sibling-implementation, guard-after-effect, failure-retry: not applicable"]}
+    return {"findings": [], "requests": [], "done": True, "checked": ["unpinned-behaviour, test-asserts-behaviour, env-in-deploy, manifest-reference, workflow-siblings, input-defeats-guard: not applicable"]}
+def finder(task, text):
+    if "Your specialty: Correctness" not in task:
+        return []
+    return [dict(BUG, file="src/app.py", line=9, end_line=None, replacement=None, severity="minor", scenario="", claim="load() errors are not handled here.")]
+rlm = FakeRlm(finder=finder, investigator=investigator, verifier=lambda text: {"verdict": "confirmed", "evidence": 'return "ERROR: unreadable"' if "sentinel" in text else "\`return load(path)\`", "corrected_line": None, "severity": "minor", "scenario_holds": True})
+result = asyncio.run(a.run(rlm, dict(SPEC, mode="both", deepRounds=3, overlap=True)))
+emit({"texts": texts, "kinds": [c["kind"] for c in rlm.calls], "records": {rec["lens"]: rec for rec in result["timing"]["investigators"]},
+      "stages": result["timing"]["stages"]})`);
+		const claims = out.texts.claims!;
+		expect(claims).toHaveLength(3);
+		// Round 1 says which round it is and carries no leads; round 2 has the fast pass's leads, the round-1 results
+		// in full with ledger ids, and no ledger yet.
+		expect(claims[0]).toContain("Round 1 of 3.");
+		expect(claims[0]).not.toContain("Leads from the first pass");
+		expect(claims[1]).toContain("Round 2 of 3.");
+		expect(claims[1]).toContain("Leads from the first pass");
+		expect(claims[1]).toContain("## [r1.1] read src/helper.py:1-5 (of 5 lines)");
+		expect(claims[1]).toContain("## [r1.2] list src");
+		expect(claims[1]).not.toContain("Earlier results, by id");
+		// Round 3: the round-1 results are a ledger (one line each), the recalled one is back in full, the unknown id is
+		// said so, and the new result has its own id.
+		expect(claims[2]).toContain("Earlier results, by id");
+		expect(claims[2]).toContain("r1.1: read src/helper.py:1-5 (of 5 lines)");
+		expect(claims[2]).not.toContain("## [r1.1] read src/helper.py");
+		expect(claims[2]).toContain("## recalled r1.1\n## read src/helper.py:1-5 (of 5 lines)");
+		expect(claims[2]).toContain("## recall r9.9\nno such result");
+		expect(claims[2]).toContain("## [r2.1] grep 'KINDS' -> 3 matches");
+		expect(out.records.claims).toMatchObject({ rounds: 3, requests: 4 });
+		// The finders ran beside the first deep round (the leads arrived at round 2, above); siblings' finding was
+		// verified as it finished (one frame), and the fast lead it supersedes was not verified again.
+		expect(out.kinds.filter((kind) => kind === "verify")).toHaveLength(1);
+		expect(out.stages).toHaveProperty("deepMs");
+	});
+
+	test("systemPrefix (experimental, off by default): the shared material moves from the frames' messages to their system prompt", () => {
+		const repo = deepRepo();
+		const out = py<{
+			off: {
+				finderContext: string;
+				finderText: string;
+				deepText: string;
+				deepContext: string;
+				verifyContext: string;
+			};
+			on: {
+				finderContext: string;
+				finderText: string;
+				deepText: string;
+				deepContext: string;
+				verifyContext: string;
+			};
+		}>(`${deepPrelude(repo)}
+def finder(task, text):
+    if "Your specialty: Correctness" not in task:
+        return []
+    return [dict(BUG, file="src/app.py", line=9, end_line=None, replacement=None, severity="minor", scenario="", claim="load() errors are not handled here.")]
+def shapes(spec):
+    rlm = FakeRlm(finder=finder, verifier=lambda text: {"verdict": "confirmed", "evidence": "\`return load(path)\`", "corrected_line": None, "severity": "minor", "scenario_holds": True})
+    asyncio.run(a.run(rlm, dict(SPEC, mode="both", **spec)))
+    find = next(c for c in rlm.calls if c["kind"] == "find"); deep_ = next(c for c in rlm.calls if c["kind"] == "deep"); verify = next(c for c in rlm.calls if c["kind"] == "verify")
+    return {"finderContext": find["context"] or "", "finderText": find["text"], "deepText": deep_["text"], "deepContext": deep_["context"] or "", "verifyContext": verify["context"] or ""}
+emit({"off": shapes({}), "on": shapes({"systemPrefix": True})})`);
+		// Off: the finders get the retrieved block before their slice, the investigators the diff and brief in their
+		// own message, the verifier the intent and guides only.
+		expect(out.off.finderContext).toContain("Retrieved context, looked up by the host");
+		expect(out.off.finderContext).not.toContain("The diff under review");
+		expect(out.off.finderText).toContain("File: src/app.py");
+		expect(out.off.deepText).toContain("The diff under review (new-file line numbers in the gutter):");
+		expect(out.off.deepText).toContain("Investigation brief, built by the host");
+		expect(out.off.deepContext).toBe("");
+		expect(out.off.verifyContext).toContain("The author's stated intent");
+		expect(out.off.verifyContext).not.toContain("The diff under review");
+		// On: the diff, brief and retrieved block are the shared prefix of every frame (the FakeRlm records the
+		// shared context the kernel would render into the system prompt), and out of the messages.
+		for (const context of [out.on.finderContext, out.on.deepContext, out.on.verifyContext]) {
+			expect(context).toContain("The diff under review (new-file line numbers in the gutter):");
+			expect(context).toContain("Investigation brief, built by the host");
+			expect(context).toContain("Retrieved context, looked up by the host");
+		}
+		expect(out.on.deepText).not.toContain("The diff under review");
+		expect(out.on.finderText).toContain("File: src/app.py");
+	});
+
+	test("lens triggers: no tests part when only comments changed in code; no siblings part when no signature changed and no key was added", () => {
+		const dir = mkdtempSync(join(tmpdir(), "ultron-lenses-"));
+		git(dir, "init", "-q", "-b", "main");
+		writeFileSync(join(dir, "app.py"), "def page(request, size):\n    # paging\n    return size\n");
+		git(dir, "add", ".");
+		git(dir, "commit", "-qm", "base");
+		writeFileSync(
+			join(dir, "app.py"),
+			"def page(request, size):\n    # paging, one page at a time\n    return size\n",
+		);
+		git(dir, "commit", "-qam", "comment only");
+		const comment = git(dir, "rev-parse", "HEAD");
+		writeFileSync(
+			join(dir, "app.py"),
+			"def page(request, size):\n    # paging, one page at a time\n    return size + 1\n",
+		);
+		git(dir, "commit", "-qam", "behaviour");
+		const behaviour = git(dir, "rev-parse", "HEAD");
+		writeFileSync(
+			join(dir, "app.py"),
+			"LIMIT = 10\n\n\ndef page(request, size):\n    # paging, one page at a time\n    return size + 1\n",
+		);
+		git(dir, "commit", "-qam", "key");
+		const key = git(dir, "rev-parse", "HEAD");
+		const out = py<Record<string, string[]>>(`
+ROOT = ${JSON.stringify(dir)}
+git = r.Git(ROOT)
+def lenses(base, head):
+    files = r.parse_diff(git.out("diff", "-U3", base, head, "--"))
+    return deep.build_brief(deep.Repo(ROOT, head), files, r._rev_reader(git, head)).lenses
+emit({"comment": lenses(${JSON.stringify(comment)} + "~1", ${JSON.stringify(comment)}),
+      "behaviour": lenses(${JSON.stringify(behaviour)} + "~1", ${JSON.stringify(behaviour)}),
+      "key": lenses(${JSON.stringify(key)} + "~1", ${JSON.stringify(key)})})`);
+		// A comment-only change: claims (the comment is a claim) and nothing to test or to follow into siblings.
+		expect(out.comment).not.toContain("tests");
+		expect(out.comment).not.toContain("siblings");
+		// A behaviour change in a function whose signature did not change: tests, still no siblings.
+		expect(out.behaviour).toContain("tests");
+		expect(out.behaviour).not.toContain("siblings");
+		// A new constant: a key family to follow: siblings.
+		expect(out.key).toContain("siblings");
+		expect(out.key).toContain("tests");
 	});
 });

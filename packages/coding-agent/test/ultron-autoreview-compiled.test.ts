@@ -125,6 +125,12 @@ def recording(argv, cwd, timeout):
     recorded.append(list(argv))
     return r._run_process(argv, cwd, timeout)
 
+def batched(verifier, task, text):
+    """A batched verifier frame holds several findings: the fake judges each on its own section."""
+    if task != p.AUTOREVIEW_VERIFIER_BATCH_TASK:
+        return verifier(text)
+    return [dict(verifier(part), finding=number) for number, part in enumerate(text.split("=== Finding ")[1:], 1)]
+
 class Rlm:
     def __init__(self, planner=None, asker=None, verifier=None, cells=None):
         self.calls = []
@@ -152,9 +158,9 @@ class Rlm:
             elif task == p.RESOLVE_TASK:
                 call["kind"] = "resolve"
                 reply = self.asker(text)
-            elif task == p.AUTOREVIEW_VERIFIER_TASK:
+            elif task in (p.AUTOREVIEW_VERIFIER_TASK, p.AUTOREVIEW_VERIFIER_BATCH_TASK):
                 call["kind"] = "verify"
-                reply = self.verifier(text)
+                reply = batched(self.verifier, task, text)
             elif task in {p.deep_task(name, flag) for name in p.DEEP_LENSES for flag in (False, True)}:
                 call["kind"] = "deep"
                 reply = {"findings": [], "requests": [], "done": True}
@@ -1545,10 +1551,10 @@ class Hybrid(Rlm):
                 call["kind"] = "resolve"; reply = {"answer": "yes", "quote": 'assert show("a")', "why": "the test only checks truth"}
             elif task == p.CANDIDATE_PLANNER_TASK:
                 call["kind"] = "cplan"; reply = {"extra": self.extra}
-            elif task == p.AUTOREVIEW_VERIFIER_TASK:
+            elif task in (p.AUTOREVIEW_VERIFIER_TASK, p.AUTOREVIEW_VERIFIER_BATCH_TASK):
                 call["kind"] = "verify"
-                reply = {"verdict": "confirmed", "evidence": "print(show(kind))" if "raw kind" in text else "# Upper-cases the kind.",
-                         "corrected_line": None, "severity": "low", "scenario_holds": "unknown"}
+                reply = batched(lambda part: {"verdict": "confirmed", "evidence": "print(show(kind))" if "raw kind" in part else "# Upper-cases the kind.",
+                                              "corrected_line": None, "severity": "low", "scenario_holds": "unknown"}, task, text)
             elif task in LENS:
                 call["kind"] = "deep"
                 reply = {"findings": [DEEP] if LENS[task] == "claims" else [], "requests": [], "done": True}
@@ -1743,10 +1749,10 @@ class Disc(Rlm):
                 call["kind"] = "resolve"; reply = {"answer": "unclear", "quote": "", "why": ""}
             elif task == p.CANDIDATE_PLANNER_TASK:
                 call["kind"] = "cplan"; reply = {"extra": {}}
-            elif task == p.AUTOREVIEW_VERIFIER_TASK:
+            elif task in (p.AUTOREVIEW_VERIFIER_TASK, p.AUTOREVIEW_VERIFIER_BATCH_TASK):
                 call["kind"] = "verify"
-                reply = {"verdict": "confirmed", "evidence": "print(show(kind))" if "raw kind" in text else "# Upper-cases the kind.",
-                         "corrected_line": None, "severity": "low", "scenario_holds": "unknown"}
+                reply = batched(lambda part: {"verdict": "confirmed", "evidence": "print(show(kind))" if "raw kind" in part else "# Upper-cases the kind.",
+                                              "corrected_line": None, "severity": "low", "scenario_holds": "unknown"}, task, text)
             elif task in LENS:
                 call["kind"] = "deep"; reply = {"findings": [DEEP] if LENS[task] == "claims" else [], "requests": [], "done": True}
             else:

@@ -251,6 +251,15 @@ otherwise corrected_line is null. Keep evidence under 80 words.
 
 Reply with one JSON object."""
 
+#: Several findings of one file in one verifier frame: the same judgement, one verdict object per finding.
+AUTOREVIEW_VERIFIER_BATCH_TASK = AUTOREVIEW_VERIFIER_TASK.replace(
+    "You check one finding of an automated pull request review against the real source code.",
+    "You check several findings of an automated pull request review, all in one file, against the real source code. "
+    "Each finding comes with its own material, headed \"Finding k of n\"; judge each on its own material only.").replace(
+    "Reply with one JSON object.",
+    "Reply with one JSON array holding one object per finding, in order, each with \"finding\": k (its number) and "
+    "the fields above. Never omit a finding; never let one finding's material decide another.")
+
 RECHECK_TASK = """An earlier automated review of this pull request reported the finding below. The author has pushed
 changes since. Decide what became of it.
 
@@ -298,7 +307,8 @@ Reply with one JSON object:
   {{"references": {{"symbol": "..."}}}}   where a name is used
   {{"history": {{"path": "...", "n": 10}}}}   the recent commits that touched a file
   {{"blame_range": {{"path": "...", "start": 10, "end": 20}}}}   the commits that last changed those lines
-  {{"pickaxe": {{"string": "...", "n": 5}}}}   the commits that added or removed a string{test_requests}
+  {{"pickaxe": {{"string": "...", "n": 5}}}}   the commits that added or removed a string
+  {{"recall": {{"id": "r1.2"}}}}   an earlier result in full again (after round 1 they are listed by id, one line each){test_requests}
 - findings: every problem you can prove so far (repeat earlier ones you still hold): file and line (where the
   problem is, in the diff or not), severity, category, claim (one sentence), why, scenario, suggested_fix,
   confidence, and evidence: the citations that prove it, each {{"path", "line", "quote"}}, the quote one source

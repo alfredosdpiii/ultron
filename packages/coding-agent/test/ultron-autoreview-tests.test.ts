@@ -29,7 +29,7 @@ function tempDir(prefix: string): string {
 }
 
 const PRELUDE = `
-import sys, json, asyncio, os, glob, tempfile
+import sys, json, asyncio, os, glob, tempfile, re
 sys.path.insert(0, ${JSON.stringify(RLM_DIR)})
 import autoreview_api as a
 import autoreview_deep as deep
@@ -901,12 +901,16 @@ class Rlm:
         out = MapResults()
         task, item = tasks[0], items[0]
         text = item if isinstance(item, str) else "\\n".join(item)
+        shared = options.get("context")
+        shared = "\\n".join(shared) if isinstance(shared, list) else (shared or "")
         if task in LENS:
-            self.calls.append({"lens": LENS[task], "task": task, "text": text})
-            out.append(self.investigator(LENS[task], text, text.count("Results of your requests, round") + 1))
-        elif task == p.AUTOREVIEW_VERIFIER_TASK:
+            self.calls.append({"lens": LENS[task], "task": task, "text": text, "context": shared})
+            match = re.search(r"^Round (\\d+) of \\d+\\.$", text, re.M)
+            out.append(self.investigator(LENS[task], text, int(match.group(1)) if match else 1))
+        elif task in (p.AUTOREVIEW_VERIFIER_TASK, p.AUTOREVIEW_VERIFIER_BATCH_TASK):
             self.calls.append({"lens": "verify", "task": task, "text": text})
-            out.append({"verdict": "confirmed", "evidence": "\`return kind.upper()\`", "corrected_line": None, "severity": "minor", "scenario_holds": "unknown"})
+            one = {"verdict": "confirmed", "evidence": "\`return kind.upper()\`", "corrected_line": None, "severity": "minor", "scenario_holds": "unknown"}
+            out.append(one if task == p.AUTOREVIEW_VERIFIER_TASK else [dict(one, finding=n) for n in range(1, text.count("=== Finding ") + 1)])
         else:
             out.append([])
         out.spent = {"calls": 1, "tokens": 100}
@@ -971,7 +975,7 @@ emit({"result": result, "brief": tests_calls[0]["text"], "task": tests_calls[0][
 			'{"mutation_check": {"path": "...", "line": 12, "replacement": "...", "tests": ["..."]}}',
 		);
 		expect(out.task).toContain("You have no tools, and you run nothing yourself");
-		expect(out.round2).toContain("## test run 3");
+		expect(out.round2).toContain("## [r1.1] test run 3");
 		expect(out.round2).toContain("is not a path inside the repository");
 		expect(out.round2).toContain("Test executions left in this review: 1.");
 		// The regression is a confirmed major finding by itself, verified by the two runs, not by a model.
@@ -1045,11 +1049,14 @@ def investigator(lens, text, round):
 class Verifying(Rlm):
     async def map(self, tasks, items=None, **options):
         out = await Rlm.map(self, tasks, items, **options)
-        if tasks[0] == p.AUTOREVIEW_VERIFIER_TASK:
-            # The verifier confirms each at medium, quoting the cited line.
+        if tasks[0] in (p.AUTOREVIEW_VERIFIER_TASK, p.AUTOREVIEW_VERIFIER_BATCH_TASK):
+            # The verifier confirms each at medium, quoting the cited line (one verdict per finding of a batch).
             text = chr(10).join(items[0])
-            quote = "def show(kind):" if "signature" in text else 'KINDS = ["a", "b", "c"]'
-            out[0] = {"verdict": "confirmed", "evidence": "\`" + quote + "\`", "corrected_line": None, "severity": "medium", "scenario_holds": "unknown"}
+            def one(part):
+                quote = "def show(kind):" if "signature" in part else 'KINDS = ["a", "b", "c"]'
+                return {"verdict": "confirmed", "evidence": "\`" + quote + "\`", "corrected_line": None, "severity": "medium", "scenario_holds": "unknown"}
+            out[0] = (one(text) if tasks[0] == p.AUTOREVIEW_VERIFIER_TASK
+                      else [dict(one(part), finding=n) for n, part in enumerate(text.split("=== Finding ")[1:], 1)])
         return out
 rlm = Verifying(investigator)
 result = asyncio.run(a.run(rlm, dict(SPEC, runTests=True, testRuns=6)))

@@ -139,7 +139,7 @@ reviewed.
 | `autoreview.mode` | `"both"` | `both`: the fast pass, then the deep one with its findings as leads, each finding verified by a verifier frame. `fast`: review the diff only. `deep`: only the investigation beyond the diff. Experimental: `hybrid` (the passes discover candidates and host-written check programs verify them) and `compiled` (one planner writes the whole review program); see below. |
 | `autoreview.verifyCandidates` | `12` | `hybrid` (experimental): candidates the host's checks decide per review at most (maximum 40); the rest go to the verifier frame. |
 | `autoreview.deepModel` | the finder model | `provider/model` of the deep pass's investigator frames. |
-| `autoreview.deepThinking` | `"high"` | Their thinking level. |
+| `autoreview.deepThinking` | `"high"` | Their thinking level. Measured on 30 pull requests with the same investigator model, `medium` found a third as much (0.5 against 1.5 findings per investigator, 3 against 8 lookups). |
 | `autoreview.planModel` | the finder model | `compiled` mode: `provider/model` of the planner frame (one call per review; use a strong model). |
 | `autoreview.planThinking` | `"medium"` for cells, `"high"` for a frame | Its thinking level. |
 | `autoreview.askModel` | the finder model | `compiled` mode: `provider/model` the program's narrow questions go to (a cheap small model). |
@@ -148,12 +148,16 @@ reviewed.
 | `autoreview.planCells` | `4` | `compiled` mode: cells the planner may run (maximum 12). |
 | `autoreview.blockAt` | `"medium"` | A confirmed finding at this level or above makes the review request changes (`critical`, `high`, `medium`, `low`, `nit`). |
 | `autoreview.maxComments` | `5` | Inline comments per review at most; the rest are counted in the body. |
-| `autoreview.deepRounds` | `4` | Lookup rounds one investigator may take (maximum 8). |
+| `autoreview.deepRounds` | `4` | Lookup rounds one investigator may take (maximum 8). After the first, a round gets the new results in full and a one-line ledger of the earlier ones, which `recall` re-reads. Half the investigators use the fourth round and those find the most (1.7 findings against 1.4 for three rounds). |
+| `autoreview.overlap` | `false` | Run the fast pass beside the investigators' first round and verify each investigator's findings as it finishes (about 20 s faster); the fast findings then reach the investigators at round 2 instead of being their round-1 leads. |
+| `autoreview.verifyBatch` | `4` | Findings of one file one verifier frame judges together (maximum 8; `1` is one frame per finding). A finding with a test run, or with more than 6,000 characters of material, keeps its own frame. |
+| `autoreview.modelConcurrency` | `{}` | Frames in flight per model at most, by `provider/model` (default 8 each, 16 for the recommended model, maximum 16). A model the provider throttles (429, cooldown, `reset_seconds`) has its limit halved for the rest of the review and the reset time is honoured before the retry. |
+| `autoreview.systemPrefix` | `false` | Experimental: send the diff, brief, retrieved block, context, intent and guides as every frame's system prompt (cacheable on every provider path). Measured to lose most findings; see "Speed and cost". |
 | `autoreview.guides` | none | Private review guides: markdown files or directories. Never quoted or named in what is posted. |
 | `autoreview.budget` | none | Optional token cap of one review. Unset, no pass is refused for tokens. |
-| `autoreview.thinking` | `"low"` | Thinking level of the finder frames (`off`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`). |
-| `autoreview.verifyThinking` | `"low"` | Thinking level of the verifier frames. |
-| `autoreview.frameConcurrency` | `8` | Model requests of one review in flight at once, finder and verifier frames alike (maximum 16). Lower it if your provider rate-limits. |
+| `autoreview.thinking` | `"low"` (`high` for the recommended model) | Thinking level of the finder frames (`off`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`). Every thinking default is per model: see "Recommended models". |
+| `autoreview.verifyThinking` | `"low"` (`high` for the recommended model) | Thinking level of the verifier frames. |
+| `autoreview.frameConcurrency` | `8` | Model requests of one review in flight at once, finder and verifier frames alike (maximum 16). Lower it if your provider rate-limits; `autoreview.modelConcurrency` sets a limit per model. |
 | `autoreview.deadlineSeconds` | `0` (none) | Optional limit on how long one review may take (minimum 30). Unset, the review waits for every finder and verifier frame. See below. |
 | `autoreview.frameTimeoutSeconds` | `0` (none) | Optional limit on how long one frame may take before it is retried or given up (minimum 10). |
 | `autoreview.dryRun` | `false` | Write would-be reviews to `autoreview/dry-run/` instead of posting. |
@@ -587,13 +591,60 @@ With `--json`, every finding has `level` and `finderLevel` on this scale, plus `
 `minor`, nit is `nit`. (Medium has no older name; note that a medium finding asks for changes while its `severity`
 reads `minor`.) The older names are still accepted wherever a level is read.
 
-## Speed: slices, retries and optional limits
+## Recommended models
 
-- Small files are packed into one slice (up to about 14,000 characters, a file never split further), so a small
-  pull request costs one finder frame per reviewer, not one per reviewer and file. Each finding still names its file
-  and line.
-- Every frame is one model request. A rate limit (429), a server or network error is retried twice, with jittered
-  backoff or after the time the provider asks for, before the pass is listed as not checked.
+When the catalog has `cliproxyapi/gpt-6-luna`, every stage runs on it unless a setting names another model, at
+`high` thinking for every stage (finders, investigators, verifier, and the compiled mode's planner and small
+model), with 16 frames in flight for it (`autoreview.modelConcurrency`; it has never throttled). The thinking
+defaults are a per-model table (`THINKING_DEFAULTS` in `config.ts`, generic fallback under `*`); `ultron autoreview
+doctor` and `install` print the model and thinking resolved for each stage.
+
+Measured on a private set of 30 real reviewed pull requests, against their human reviews: all stages on this model
+at `high` found 21% of the human reviewer's points (plus 5% partially), 6 of his 18 serious ones, agreed with his
+verdict in 72% of the reviews, posted 2.8 findings per pull request of which 64% were right, and raised 55 valid
+points he had not, for $0.039 a review at a median of about 190 s. The same finders and verifier with a stronger
+investigator model found 26% (plus 3%), 5 of 18 serious, 69% verdict agreement, 3.1 posted at 52% right, for $0.79
+a review. Below `high` this model finds almost nothing: at `low` thinking the finders returned about 0.1 findings
+per review and the investigators a third of what they return at `high`. Do not lower its thinking to save time.
+
+## Speed and cost: the shared prefix, slices, rounds, batches, retries and optional limits
+
+- **One prefix for every frame.** The frames of one phase start with the same views in the same order before
+  their own part (the finders: the guides, the pull request context, the intent, the retrieved block, then the
+  slice; the investigators: the diff, the brief, the retrieved block, the context, the intent, the guides, then
+  their part and results; the verifier: the intent and the guides, then the finding). After the constant frame
+  system prompt that is a byte-identical token prefix, which providers with automatic prefix caching (the OpenAI
+  API and compatible proxies, 1,024 tokens or more; a `prompt_cache_key` is set) serve from cache. The Anthropic
+  API caches only up to an explicit breakpoint, which `packages/ai` places on the system prompt and the last
+  message, so a prefix inside a differing user message is not cached there; the Claude Code CLI (`claude -p`)
+  caches its system prompt the same way. `autoreview.systemPrefix: true` (experimental) instead sends the diff,
+  brief, retrieved block, context, intent and guides as every frame's system prompt (`rlm.map(...,
+  shared_prefix=True)`; the CLI gets it as `--system-prompt`, moved into the message past about 100 KB): the
+  prefix then reaches the cache on every path, but measured live on 30 pull requests the finders and the
+  investigators returned about a tenth of their findings (recall 47-49% to 28% with the same investigator model,
+  25% to 4% all on one cheap model): models read material in the system prompt as instructions, not as the code to
+  review. It stays off unless set.
+- **Slices.** A diff under 150 changed lines is one slice for every specialist (one frame each, with the
+  architecture specialist riding with the correctness one); larger diffs are packed into slices of about 14,000
+  characters, a file never split further. The AI specialist runs only on slices that mention model or LLM code.
+- **Rounds.** Investigators take at most `autoreview.deepRounds` (4) rounds. After the first, a round gets the new
+  results in full and a one-line ledger of the earlier ones (`r1.2: read src/x.py:1-40 (of 120 lines)`), which
+  `{"recall": {"id": "r1.2"}}` re-reads in full, instead of every earlier result again. Parts run only where the
+  map shows a trigger: `siblings` when a signature changed or a key, member or constant was added; `tests` when
+  code behaviour changed (not only comments, docstrings or blank lines) or a test did; `deployment` and `inputs` as
+  before.
+- **Batches.** The verifier judges up to `autoreview.verifyBatch` (4) findings of one file in one frame, each with
+  its own material; a finding with a test run, or with more than 6,000 characters of material, keeps its own frame.
+- **Overlap** (`autoreview.overlap`, off by default). The fast pass runs beside the investigators' first round (its
+  findings reach them from the second round) and each investigator's findings go to the verifier as soon as it
+  finishes, while the others still run (tests findings wait for the mutation checks); the fast findings and anything
+  left are verified at the end. Off, the finders run first and their findings are the investigators' leads from
+  round 1, which is where they do the most good.
+- Every frame is one model request. A rate limit (429), a server or network error, or a provider refreshing its
+  credentials is retried twice, with jittered backoff or after the time the provider asks for (`retry-after`,
+  `reset_seconds`), before the pass is listed as not checked. A model the provider throttles has its in-flight limit
+  halved for the rest of the review (`autoreview.modelConcurrency` sets the limits), and the review says so under
+  "Not checked" when frames were lost to it.
 - By default there is no token cap, no per-frame timeout and no deadline: the review waits for every finder and
   verifier frame and posts when all are done. Each limit is opt-in:
   - `autoreview.budget` (or `--budget`): the cap counts what was really spent plus a bounded grant for each request
@@ -602,7 +653,8 @@ reads `minor`.) The older names are still accepted wherever a level is read.
   - `autoreview.deadlineSeconds` (or `--deadline`): at three quarters of it unfinished finder passes are given up;
     what was found is verified in the time left; the review is posted as incomplete (so never an approval) with
     the unfinished passes listed under "Not checked".
-- With `--json`, `timing.frames` lists every frame: `{phase, reviewer, ms, status, retries}`.
+- With `--json`, `timing.frames` lists every frame: `{phase, reviewer, ms, status, retries, model, error}`, and
+  `usage.byPhase` has frames and tokens per phase (`find`, `deep`, `verify`, ...).
 
 ## Run it as a service
 

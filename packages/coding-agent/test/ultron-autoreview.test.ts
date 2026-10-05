@@ -25,10 +25,13 @@ import {
 	autoreviewPaths,
 	DEFAULT_ACK_LINES,
 	engineSettings,
+	RECOMMENDED_MODEL,
 	resolveAckArt,
 	resolveConfig,
 	SIGNATURE,
+	THINKING_DEFAULTS,
 	testsEligible,
+	thinkingDefault,
 } from "../src/ultron/autoreview/config.ts";
 import { blockedPulls, createLogger, Daemon, pruneOld } from "../src/ultron/autoreview/daemon.ts";
 import { GitHub, parseApiOutput, parsePullTarget, RateLimitError } from "../src/ultron/autoreview/github.ts";
@@ -724,7 +727,12 @@ describe("the body after a deep pass", () => {
 		const pull = hub.addPull({ ...REF, requestedReviewers: [BOT] });
 		await reviewPull(deps, candidate());
 		expect(engine.specs).toHaveLength(1);
-		expect(engine.specs[0]).toMatchObject({ mode: "both", deepModel: "p/deep", deepThinking: "high", deepRounds: 2 });
+		expect(engine.specs[0]).toMatchObject({
+			mode: "both",
+			deepModel: "p/deep",
+			deepThinking: "high",
+			deepRounds: 2,
+		});
 		const reviews = hub.api(/^POST repos\/o\/r\/pulls\/1\/reviews$/);
 		expect(reviews).toHaveLength(1);
 		const body = reviews[0]!.body as { body: string; comments: Array<{ path: string }> };
@@ -814,7 +822,8 @@ describe("running the reviewed project's tests", () => {
 		expect(good.text).toContain("Tests in reviews: run for repositories the account can push to");
 		const none = await run({ mechanism: null, ok: false, message: "tests are not run: no sandbox is available" });
 		expect(none.code).toBe(1);
-		expect(none.text).toBe("Sandbox: none. tests are not run: no sandbox is available\n");
+		expect(none.text).toContain("Models:\n  finders: ");
+		expect(none.text.endsWith("Sandbox: none. tests are not run: no sandbox is available\n")).toBe(true);
 	});
 });
 
@@ -2101,6 +2110,56 @@ describe("the command", () => {
 		}
 		expect(context.hub.calls).toEqual([]);
 		expect(existsSync(context.paths.dir)).toBe(false);
+	});
+
+	test("the recommended model: leads the chain when the catalog has it, thinks high at every stage, 16 frames in flight; other models keep the generic thinking defaults", () => {
+		const has = (ref: string) => ref === RECOMMENDED_MODEL;
+		const luna = resolveConfig({}, { hasModel: has, reviewModel: "other/model" });
+		expect(luna).toMatchObject({
+			model: RECOMMENDED_MODEL,
+			verifyModel: RECOMMENDED_MODEL,
+			deepModel: RECOMMENDED_MODEL,
+			planModel: RECOMMENDED_MODEL,
+			askModel: RECOMMENDED_MODEL,
+			thinking: "high",
+			verifyThinking: "high",
+			deepThinking: "high",
+			planThinking: "high",
+			askThinking: "high",
+		});
+		expect(luna.modelConcurrency[RECOMMENDED_MODEL]).toBe(16);
+		// A setting still wins, for the model and for a stage's thinking.
+		expect(resolveConfig({ thinking: "low", deepModel: "p/deep" }, { hasModel: has })).toMatchObject({
+			model: RECOMMENDED_MODEL,
+			thinking: "low",
+			deepModel: "p/deep",
+			deepThinking: "high",
+			verifyThinking: "high",
+		});
+		expect(
+			resolveConfig({ modelConcurrency: { [RECOMMENDED_MODEL]: 4 } }, { hasModel: has }).modelConcurrency,
+		).toEqual({
+			[RECOMMENDED_MODEL]: 4,
+		});
+		// Without the model in the catalog the chain and the generic thinking defaults are what they were.
+		const other = resolveConfig({}, { hasModel: () => false, reviewModel: "other/model" });
+		expect(other).toMatchObject({
+			model: "other/model",
+			thinking: "low",
+			verifyThinking: "low",
+			deepThinking: "high",
+			askThinking: "low",
+		});
+		expect(THINKING_DEFAULTS["*"]).toEqual({
+			finders: "low",
+			verifier: "low",
+			investigators: "high",
+			planner: "high",
+			asks: "low",
+		});
+		expect(thinkingDefault("finders", RECOMMENDED_MODEL)).toBe("high");
+		expect(thinkingDefault("finders", undefined)).toBe("low");
+		expect(thinkingDefault("asks", "p/m")).toBe("low");
 	});
 
 	test("settings: defaults, bounds and the model fallback chain", () => {
