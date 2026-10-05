@@ -2,8 +2,8 @@
  * Situational hints (nano-rlm's supervisor hints): the host watches how a lane uses the runtime and ends a cell's
  * result with at most one short tagged line, `[hint:<tag>] ...`, when something worth knowing happened in that cell
  * (a command detached into a job, a long wait on a job whose completion would have arrived as an event, polling,
- * truncated output, a large file read into a string, the same exception three cells in a row, a lane that looks stuck
- * in a loop of failing or alternating cells; see loop-detector.ts). A hint is part of
+ * truncated output, a large file read into a string, the same exception three cells in a row, the same cell run again
+ * and again, a lane that looks stuck in a loop of failing or alternating cells; see loop-detector.ts). A hint is part of
  * the rlm tool result, which is appended, so it never changes an earlier message.
  *
  * A lane mutes tags it has understood with `await hints.mute(tag)` (`hints.unmute`, `hints.muted()`); each tag
@@ -21,6 +21,7 @@ export const HINT_TAGS = [
 	"blocked-on-job",
 	"poll-loop",
 	"repeated-failure",
+	"repeated-cell",
 	"large-read",
 	"output-truncated",
 ] as const;
@@ -31,6 +32,8 @@ export const DEFAULT_BLOCKED_SECONDS = 60;
 export const DEFAULT_READ_HANDLE_BYTES = 256 * 1024;
 /** Same exception type this many cells in a row. */
 const FAILURE_STREAK = 3;
+/** The same successful cell this many times in a row (and again at twice as many). */
+const CELL_REPEATS = 3;
 /** Same status call this many times in one cell. */
 const POLL_REPEATS = 3;
 const JOURNAL_VERSION = 1;
@@ -55,7 +58,8 @@ const STATUS_CALLS = new Set([
 	"rlm.list_subagents",
 ]);
 
-const TRUNCATION_MARKER = /\[\.\.\. \d+ bytes truncated \.\.\.\]/;
+/** The cut marker, which may name the file holding the whole output. */
+const TRUNCATION_MARKER = /\[\.\.\. \d+ bytes truncated(?:; [^\n]*?)? \.\.\.\]/;
 const FILE_READ = /\.read\(\s*\)|\.read_text\(|\.read_bytes\(|\.readlines\(|\bopen\(/;
 const BIG_STRING = /^<str: ([\d,]+) chars/m;
 const SLEEP = /\b(?:time|asyncio)\.sleep\(/;
@@ -126,6 +130,8 @@ type LaneState = {
 	/** Status calls of the lane's previous cell. */
 	previousStatus: Set<string>;
 	failure?: { ename: string; count: number };
+	/** The lane's previous cell (code as written) and how many times in a row it ran and succeeded. */
+	repeat?: { code: string; count: number };
 };
 
 type Persisted = { muted: string[]; fired: Partial<Record<HintTag, number>> };
@@ -316,6 +322,21 @@ export class CellHints {
 					? { ename: outcome.ename, count: state.failure.count + 1 }
 					: { ename: outcome.ename, count: 1 };
 		} else state.failure = undefined;
+		// Exact repeats only: cells that differ in numbers (paging through a list) are different work.
+		const code = cell.code.trim();
+		state.repeat =
+			outcome.ename === undefined && !cell.bashFailed
+				? state.repeat?.code === code
+					? { code, count: state.repeat.count + 1 }
+					: { code, count: 1 }
+				: undefined;
+		let repeat: [HintTag, string] | undefined;
+		if (state.repeat && (state.repeat.count === CELL_REPEATS || state.repeat.count === CELL_REPEATS * 2)) {
+			repeat = [
+				"repeated-cell",
+				`This exact cell has now run ${state.repeat.count} times in a row and succeeded each time; rerunning it will not tell you more. Use the output you have, keep values in variables instead of recomputing them, and wait for running work once (\`await job.result()\`, \`await rlm.collect(...)\`) instead of checking again.`,
+			];
+		}
 
 		const detached = cell.detached[0];
 		if (detached) {
@@ -376,6 +397,7 @@ export class CellHints {
 				"The output was cut in the middle. Keep large data in variables and print slices, counts or matches, or load big text as a handle (`h = await rlm.load(text_or_path)`; `h.search`, `h.lines`).",
 			]);
 		}
+		if (repeat) found.push(repeat);
 		return found;
 	}
 }

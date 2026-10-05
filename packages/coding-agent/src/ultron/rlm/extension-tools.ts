@@ -12,6 +12,10 @@
  * A slow REPL call detaches like a plain `bash`: after `yield_after` seconds (ULTRON_TOOL_YIELD_AFTER, else
  * ULTRON_BASH_YIELD_AFTER, default 30) the kernel gets a running handle, the call keeps running in the worker, and
  * its end is announced as a `<runtime_event kind="tool_done">`.
+ *
+ * Calls on a lane honor the tool's `executionMode` as the harness does for a model's tool calls: a "sequential" tool
+ * waits for the lane's calls in flight and runs alone, and calls started after it wait for it (first come, first
+ * served).
  */
 import { randomBytes } from "node:crypto";
 import type { AgentToolResult } from "@ultron/agent-core";
@@ -86,6 +90,8 @@ export interface ExtensionToolInfo {
 	readonly label?: string;
 	readonly description: string;
 	readonly parameters: unknown;
+	/** "sequential": the tool runs alone among its lane's calls (Pi's `executionMode`). */
+	readonly executionMode?: "sequential" | "parallel";
 }
 
 /** The worker's view of the extension runner: the live tool list and how to execute one. */
@@ -205,6 +211,8 @@ export class ExtensionToolCalls {
 	readonly #outcomes = new Map<string, Outcome>();
 	/** Native tool call id -> record id. */
 	readonly #native = new Map<string, string>();
+	/** Per-lane gate that runs "sequential" tools alone. */
+	readonly #gates = new Map<string, LaneGate>();
 	#records: ToolCallRecord[] = [];
 	#loaded?: Promise<void>;
 	#writes: Promise<void> = Promise.resolve();
@@ -418,7 +426,18 @@ export class ExtensionToolCalls {
 		const { record, controller } = live;
 		let outcome: Outcome | undefined;
 		let error: string | undefined;
+		let release: (() => void) | undefined;
 		try {
+			const exclusive =
+				this.#runner()
+					.tools()
+					.find((tool) => tool.name === record.name)?.executionMode === "sequential";
+			const gate = this.#gates.get(record.lane) ?? new LaneGate();
+			this.#gates.set(record.lane, gate);
+			release = await gate.acquire(exclusive, controller.signal, () => {
+				record.preview = "queued: waiting for a sequential tool call on this lane";
+			});
+			if (record.preview?.startsWith("queued:")) delete record.preview;
 			const result = await this.#runner().execute(
 				record.name,
 				`repl-${record.id}`,
@@ -432,6 +451,8 @@ export class ExtensionToolCalls {
 			outcome = this.#outcome(result);
 		} catch (caught) {
 			error = caught instanceof Error ? caught.message : String(caught);
+		} finally {
+			release?.();
 		}
 		record.endedAt = this.#now;
 		if (controller.signal.aborted) {
@@ -644,6 +665,61 @@ export class ExtensionToolCalls {
 		this.#closed = true;
 		await Promise.all([...this.#live.keys()].map((id) => this.cancel(id, "closed")));
 		await this.#writes;
+	}
+}
+
+type GateWaiter = { exclusive: boolean; grant: () => void };
+
+/**
+ * A first-come-first-served readers-writer gate: parallel calls share it, an exclusive call holds it alone, and a
+ * waiting exclusive call keeps later calls from overtaking it.
+ */
+export class LaneGate {
+	readonly #queue: GateWaiter[] = [];
+	#shared = 0;
+	#exclusive = false;
+
+	/** Resolves with the release once the call may run; rejects if `signal` aborts first. */
+	acquire(exclusive: boolean, signal?: AbortSignal, onQueued?: () => void): Promise<() => void> {
+		signal?.throwIfAborted();
+		return new Promise((resolve, reject) => {
+			const waiter: GateWaiter = {
+				exclusive,
+				grant: () => {
+					signal?.removeEventListener("abort", onAbort);
+					let released = false;
+					resolve(() => {
+						if (released) return;
+						released = true;
+						if (exclusive) this.#exclusive = false;
+						else this.#shared -= 1;
+						this.#pump();
+					});
+				},
+			};
+			const onAbort = () => {
+				const index = this.#queue.indexOf(waiter);
+				if (index < 0) return;
+				this.#queue.splice(index, 1);
+				reject(signal?.reason instanceof Error ? signal.reason : new Error("tool call cancelled"));
+				this.#pump();
+			};
+			signal?.addEventListener("abort", onAbort, { once: true });
+			this.#queue.push(waiter);
+			this.#pump();
+			if (this.#queue.includes(waiter)) onQueued?.();
+		});
+	}
+
+	#pump(): void {
+		while (this.#queue.length > 0) {
+			const head = this.#queue[0]!;
+			if (this.#exclusive || (head.exclusive && this.#shared > 0)) return;
+			this.#queue.shift();
+			if (head.exclusive) this.#exclusive = true;
+			else this.#shared += 1;
+			head.grant();
+		}
 	}
 }
 

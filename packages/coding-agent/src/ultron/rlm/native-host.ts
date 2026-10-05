@@ -166,7 +166,36 @@ type TaskRequest = {
 	worktree?: WorktreeRecord;
 	/** `rlm.spawn(thinking=...)`: the child lane's thinking level. */
 	thinking?: FrameThinkingLevel;
+	/** `rlm.spawn(fork=True)`: the parent's entry the child's lane starts at (its conversation so far). */
+	forkAt?: string;
+	/** No wall-clock limit (a session goal's job): `timeoutMs` is ignored. */
+	untimed?: boolean;
+	/** Usage root to admit the task under instead of the caller's (a session goal's own root). */
+	usageRoot?: string;
 };
+
+/** Leads a forked child's brief: the conversation above is its parent's, and its kernel does not have its state. */
+const FORK_BRIEF_NOTE =
+	"You are a subagent forked from the conversation above: it is your parent's context. Your REPL kernel is new: variables, imports and functions from earlier cells do not exist (files do). Do only the brief below.";
+
+/**
+ * Where a fork of `path` (a branch, oldest first) starts: the newest entry after which no tool call waits for its
+ * result, so the cell running `rlm.spawn` and its siblings stay out; undefined for an empty branch.
+ */
+export function forkPoint(path: readonly Entry[]): string | undefined {
+	const pending = new Set<string>();
+	let at: string | undefined;
+	for (const entry of path) {
+		if (entry.type === "message") {
+			const message = entry.message;
+			if (message.role === "assistant")
+				for (const part of message.content) if (part.type === "toolCall") pending.add(part.id);
+			if (message.role === "toolResult") pending.delete(message.toolCallId);
+		}
+		if (pending.size === 0) at = entry.id;
+	}
+	return at;
+}
 
 type RlmChildHandle = {
 	rlm_child_id: string;
@@ -764,6 +793,41 @@ export class NativeRlmHost {
 		).length;
 	}
 
+	/**
+	 * Start a session goal's job (goal.ts): a background agent with its own REPL and no wall-clock limit, admitted
+	 * under the goal's own usage root, whose end is announced to the root as a `task_done` event. Returns its task id.
+	 */
+	async startGoalJob(prompt: string, options: { key: string; usageRoot: string }, context: Context): Promise<string> {
+		// The journal loads before the first task, so loading it later cannot replace the live record.
+		await this.loadTasks();
+		const task = await this.spawnTask(
+			{
+				definition: "background-job@1",
+				input: { prompt },
+				key: `background:${options.key}`,
+				timeoutMs: 30 * 60 * 1000,
+				untimed: true,
+				usageRoot: options.usageRoot,
+			},
+			context,
+			undefined,
+			true,
+			"task_done",
+		);
+		return task.id;
+	}
+
+	/** Stop a running task (and its subtree); no-op when it already ended. */
+	async stopTask(id: string, reason: string): Promise<void> {
+		const task = this.tasks.get(id);
+		if (task !== undefined && task.result === undefined) await this.cancel(task, reason);
+	}
+
+	/** The lane a task runs on, once it started. */
+	laneOfTask(id: string): string | undefined {
+		return this.tasks.get(id)?.laneName;
+	}
+
 	/** Usage root of a root-lane run. */
 	rootIdOfRun(runId: string): string {
 		return this.rootAliases.get(runId) ?? `turn:${runId}`;
@@ -1029,7 +1093,11 @@ export class NativeRlmHost {
 			if (definition.id === "rlm-child" && this.externalChild !== undefined)
 				return await this.executeExternalChild(task, request, laneName, taskContext, signal);
 			if (request.lane !== undefined) await this.beforeLaneReuse?.(laneName, taskContext);
-			const lane = await this.harness.lane(laneName, taskContext);
+			// A forked child's lane starts on the parent's branch (an existing lane keeps its own tip).
+			const lane =
+				request.forkAt === undefined
+					? await this.harness.lane(laneName, taskContext)
+					: await this.harness.lane(laneName, { createAt: request.forkAt }, taskContext);
 			task.lane = lane;
 			task.laneName = laneName;
 			// A reused lane now acts for its newest invocation.
@@ -1096,7 +1164,9 @@ export class NativeRlmHost {
 				requestKey: `${task.id}:model`,
 				// The model call lives within its task's admitted deadline; a fresh full timeout would overrun it.
 				...(task.usageReservation?.deadlineAt == null
-					? { timeoutMs: request.timeoutMs }
+					? request.untimed === true
+						? {}
+						: { timeoutMs: request.timeoutMs }
 					: { deadlineAt: task.usageReservation.deadlineAt }),
 				signal,
 			});
@@ -1357,7 +1427,8 @@ export class NativeRlmHost {
 	/** A subagent's brief; a worktree child is told where it works. */
 	private childBrief(task: TaskRecord, request: TaskRequest): string {
 		const prompt = String(objectInput(request.input).prompt);
-		return task.worktree === undefined ? prompt : `${prompt}\n\n${worktreeBriefNote(task.worktree)}`;
+		const brief = request.forkAt === undefined ? prompt : `${FORK_BRIEF_NOTE}\n\n${prompt}`;
+		return task.worktree === undefined ? brief : `${brief}\n\n${worktreeBriefNote(task.worktree)}`;
 	}
 
 	/**
@@ -1794,13 +1865,13 @@ export class NativeRlmHost {
 					return prior;
 				}
 			}
-			const rootId = this.admissionRoot(parentId);
+			const rootId = request.usageRoot ?? this.admissionRoot(parentId);
 			const usageReservation = await this.usage?.reserve({
 				kind: "task",
 				...(rootId === undefined ? {} : { rootId }),
 				modelBacked: this.definition(request.definition).strategy !== "deterministic",
 				requestKey: key,
-				timeoutMs: request.timeoutMs,
+				...(request.untimed === true ? {} : { timeoutMs: request.timeoutMs }),
 				signal: context.abortSignal,
 			});
 			let admitted: Awaited<ReturnType<NativeTaskJournal["admit"]>>;
@@ -1840,25 +1911,36 @@ export class NativeRlmHost {
 			};
 			const timeoutDelay =
 				usageReservation?.deadlineAt === null || usageReservation?.deadlineAt === undefined
-					? request.timeoutMs
-					: Math.max(1, Math.min(request.timeoutMs, usageReservation.deadlineAt - this.now()));
+					? request.untimed === true
+						? undefined
+						: request.timeoutMs
+					: Math.max(
+							1,
+							Math.min(
+								request.untimed === true ? Number.POSITIVE_INFINITY : request.timeoutMs,
+								usageReservation.deadlineAt - this.now(),
+							),
+						);
 			// Only a deadline the ledger capped below the task's own timeout is the root wall deadline.
 			const deadlineTimeout =
 				usageReservation?.deadlineAt != null &&
-				usageReservation.deadlineAt < usageReservation.admittedAt + request.timeoutMs;
-			const timer = setTimeout(() => {
-				void this.cancel(
-					task,
-					deadlineTimeout
-						? "Ultron root wall deadline exceeded"
-						: `Ultron task exceeded ${request.timeoutMs}ms timeout`,
-				).catch(() => {});
-			}, timeoutDelay);
-			timer.unref();
+				(request.untimed === true || usageReservation.deadlineAt < usageReservation.admittedAt + request.timeoutMs);
+			const timer =
+				timeoutDelay === undefined
+					? undefined
+					: setTimeout(() => {
+							void this.cancel(
+								task,
+								deadlineTimeout
+									? "Ultron root wall deadline exceeded"
+									: `Ultron task exceeded ${request.timeoutMs}ms timeout`,
+							).catch(() => {});
+						}, timeoutDelay);
+			timer?.unref();
 			runContext.abortSignal?.addEventListener("abort", onAbort, { once: true });
 			const releaseActivity = this.holdActivity?.();
 			task.cleanup = () => {
-				clearTimeout(timer);
+				if (timer !== undefined) clearTimeout(timer);
 				runContext.abortSignal?.removeEventListener("abort", onAbort);
 				releaseActivity?.();
 			};
@@ -2455,7 +2537,11 @@ export class NativeRlmHost {
 				);
 			const prompt = nonemptyString(payload.prompt, "prompt");
 			const kwargs = payload.kwargs === undefined ? {} : objectInput(payload.kwargs);
-			fields(kwargs, ["name", "model", "thinking", "timeout_ms", "depth", "worktree", "worktree_setup"]);
+			fields(kwargs, ["name", "model", "thinking", "timeout_ms", "depth", "worktree", "worktree_setup", "fork"]);
+			if (kwargs.fork !== undefined && typeof kwargs.fork !== "boolean")
+				throw new Error("fork must be True or False");
+			if (kwargs.fork === true && this.externalChild !== undefined)
+				throw new Error("rlm.spawn fork=True is not available when subagents run as external processes");
 			const name = nonemptyString(kwargs.name, "name");
 			const mode = worktreeMode(kwargs.worktree, "worktree");
 			const setup = worktreeSetupOption(kwargs.worktree_setup);
@@ -2483,6 +2569,14 @@ export class NativeRlmHost {
 			};
 			if (!Number.isSafeInteger(request.timeoutMs) || request.timeoutMs < 1 || request.timeoutMs > 60 * 60 * 1000)
 				throw new Error("timeout_ms must be an integer between 1 and 3600000");
+			if (kwargs.fork === true) {
+				const forkAt = forkPoint(
+					await (await this.harness.lane(caller.lane, context)).findEntries({ order: "oldestFirst" }, context),
+				);
+				if (forkAt === undefined)
+					throw new Error("rlm.spawn fork=True: your lane has no finished conversation to fork yet");
+				request.forkAt = forkAt;
+			}
 			// The worktree branches from the spawner's tree as it is now, before the child is admitted.
 			const worktree = await this.newWorktree(mode, name, setup, parentId, context);
 			if (worktree !== undefined) request.worktree = worktree;
@@ -2510,7 +2604,7 @@ export class NativeRlmHost {
 				session_dir: "",
 				model: request.model ?? "",
 				timeout_ms: request.timeoutMs,
-				parent_branch_anchor: "",
+				parent_branch_anchor: request.forkAt ?? "",
 				worktree: worktree === undefined ? null : worktreeSummary(worktree),
 			} satisfies RlmChildHandle;
 		}

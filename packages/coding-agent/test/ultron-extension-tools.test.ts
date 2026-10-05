@@ -474,3 +474,79 @@ describe("tool calls in the RLM graph", () => {
 		await second.close();
 	});
 });
+
+describe("sequential extension tools from the REPL", () => {
+	/** Tools that log start/end; "seq_*" are executionMode "sequential". */
+	function gatedRunner(log: string[], gates: Map<string, () => void>): ExtensionToolRunner {
+		const names = ["seq_a", "seq_b", "par_a", "par_b"];
+		return {
+			tools: () =>
+				names.map((name) => ({
+					name,
+					description: name,
+					parameters: { type: "object", properties: {} },
+					...(name.startsWith("seq") ? { executionMode: "sequential" as const } : {}),
+				})),
+			execute: (name, _id, _params, signal) =>
+				new Promise((resolve, reject) => {
+					log.push(`start ${name}`);
+					gates.set(name, () => {
+						log.push(`end ${name}`);
+						resolve({ content: [{ type: "text", text: name }], details: undefined });
+					});
+					signal.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
+				}),
+		};
+	}
+
+	test("a sequential tool waits for the lane's calls in flight and runs alone; later calls wait for it", async () => {
+		const log: string[] = [];
+		const gates = new Map<string, () => void>();
+		const runner = gatedRunner(log, gates);
+		const calls = new ExtensionToolCalls({ runner: () => runner, store: createMemoryModuleStore() });
+		const parA = calls.start("main", null, "par_a", {});
+		const seqA = calls.start("main", null, "seq_a", {});
+		const seqB = calls.start("main", null, "seq_b", {});
+		const parB = calls.start("main", null, "par_b", {});
+		// Another lane is not held up by this lane's sequential call.
+		const other = calls.start("child", null, "par_b", {});
+		await until(() => log.length === 2);
+		expect(log).toEqual(["start par_a", "start par_b"]);
+		expect(seqA.record.preview).toMatch(/^queued:/);
+		gates.get("par_b")!(); // the other lane's call
+		gates.get("par_a")!();
+		await until(() => log.includes("start seq_a"));
+		await new Promise((resolve) => setTimeout(resolve, 30));
+		expect(log).not.toContain("start seq_b");
+		gates.get("seq_a")!();
+		await until(() => log.includes("start seq_b"));
+		await new Promise((resolve) => setTimeout(resolve, 30));
+		expect(log.filter((line) => line === "start par_b")).toHaveLength(1);
+		gates.get("seq_b")!();
+		await until(() => log.filter((line) => line === "start par_b").length === 2);
+		gates.get("par_b")!();
+		await Promise.all([parA.done, seqA.done, seqB.done, parB.done, other.done]);
+		expect([parA, seqA, seqB, parB, other].map((live) => live.record.status)).toEqual(Array(5).fill("completed"));
+		expect(seqA.record.preview).toBe("seq_a");
+		await calls.close();
+	});
+
+	test("a call cancelled while queued never starts and does not block the queue", async () => {
+		const log: string[] = [];
+		const gates = new Map<string, () => void>();
+		const runner = gatedRunner(log, gates);
+		const calls = new ExtensionToolCalls({ runner: () => runner, store: createMemoryModuleStore() });
+		const seqA = calls.start("main", null, "seq_a", {});
+		const seqB = calls.start("main", null, "seq_b", {});
+		const parA = calls.start("main", null, "par_a", {});
+		await until(() => log.length === 1);
+		await calls.cancel(seqB.record.id, "cancelled");
+		expect(seqB.record.status).toBe("cancelled");
+		gates.get("seq_a")!();
+		await until(() => log.includes("start par_a"));
+		gates.get("par_a")!();
+		await Promise.all([seqA.done, parA.done]);
+		expect(log).not.toContain("start seq_b");
+		await calls.close();
+	});
+});

@@ -1,6 +1,7 @@
 /**
  * Situational hints and the `read` skill:
- * - each trigger (job-detached, blocked-on-job, poll-loop, output-truncated, large-read, repeated-failure, stuck-loop) adds one
+ * - each trigger (job-detached, blocked-on-job, poll-loop, output-truncated, large-read, repeated-failure, repeated-cell,
+ *   stuck-loop) adds one
  *   `[hint:<tag>]` line to the cell's result; at most one per cell, the most specific first;
  * - `hints.mute`/`unmute`/`muted` work per lane from the kernel and persist; each tag fires at most N times per lane;
  *   ULTRON_HINTS=off disables hints;
@@ -168,6 +169,33 @@ describe("situational hints", () => {
 		expect(await cell(hints, "g", [], { ename: "ValueError" })).toBe(undefined);
 	});
 
+	test("repeated-cell: the exact same successful cell three times in a row, and again at six", async () => {
+		const hints = make();
+		const code = "print(len(rows))";
+		expect(await cell(hints, code)).toBe(undefined);
+		expect(await cell(hints, `${code}\n`)).toBe(undefined);
+		expect(await cell(hints, code)).toMatch(/^\[hint:repeated-cell\] This exact cell has now run 3 times in a row/);
+		expect(await cell(hints, code)).toBe(undefined);
+		expect(await cell(hints, code)).toBe(undefined);
+		expect(await cell(hints, code)).toMatch(/run 6 times in a row/);
+		// Paging (only numbers differ), a failure, or another cell in between is not a repeat.
+		const paging = make();
+		for (let i = 0; i < 6; i++) expect(await cell(paging, `print(rows[${i * 10}:${i * 10 + 10}])`)).toBe(undefined);
+		const broken = make();
+		await cell(broken, code);
+		await cell(broken, code, [], { ename: "KeyError" });
+		expect(await cell(broken, code)).toBe(undefined);
+	});
+
+	test("the truncation marker is recognized when it names the file with the whole output", async () => {
+		const hints = make();
+		expect(
+			await cell(hints, "print(data)", [], {
+				text: "head\n[... 5000 bytes truncated; full stdout in /tmp/x/1-2-stdout.txt ...]\ntail",
+			}),
+		).toMatch(/^\[hint:output-truncated\]/);
+	});
+
 	test("one hint per cell, most specific first; a muted or spent tag gives way to the next", async () => {
 		const hints = make({ maxPerTag: 1 });
 		const detach: [string, Record<string, unknown>, unknown] = [
@@ -175,12 +203,12 @@ describe("situational hints", () => {
 			{ yield_after: 30 },
 			{ running: true, job: { id: "job-9" } },
 		];
-		const first = await cell(hints, "x", [detach], { text: TRUNCATED });
+		const first = await cell(hints, "x1", [detach], { text: TRUNCATED });
 		expect(first).toMatch(/^\[hint:job-detached\]/);
 		expect(first).not.toContain("output-truncated");
 		// job-detached is spent (cap 1): the truncation hint fires instead.
-		expect(await cell(hints, "x", [detach], { text: TRUNCATED })).toMatch(/^\[hint:output-truncated\]/);
-		expect(await cell(hints, "x", [detach], { text: TRUNCATED })).toBe(undefined);
+		expect(await cell(hints, "x2", [detach], { text: TRUNCATED })).toMatch(/^\[hint:output-truncated\]/);
+		expect(await cell(hints, "x3", [detach], { text: TRUNCATED })).toBe(undefined);
 	});
 
 	test("mute, unmute and muted are per lane and persist; each tag fires at most N times; ULTRON_HINTS=off", async () => {
@@ -198,7 +226,7 @@ describe("situational hints", () => {
 		await expect(mute(hints, "hints.mute", ["no-such-tag"])).rejects.toThrow(/Unknown hint tag "no-such-tag"/);
 		// The cap: three per tag per lane, then silence.
 		const fired = [];
-		for (let index = 0; index < 5; index += 1) fired.push(await cell(hints, "x", [], { text: TRUNCATED }));
+		for (let index = 0; index < 5; index += 1) fired.push(await cell(hints, `x${index}`, [], { text: TRUNCATED }));
 		expect(fired.filter(Boolean)).toHaveLength(3);
 		await hints.settled();
 		// Mutes and counts are a session value: a restarted worker keeps them.

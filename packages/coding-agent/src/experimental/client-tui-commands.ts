@@ -1,6 +1,6 @@
 /**
  * Pi's interactive-mode commands and help text for the native TUI: `/name`, `/session`, `/copy`, `/export`,
- * `/hotkeys`, `/changelog`, `/quit`, and the startup header with keybinding hints; and Ultron's `/usage`.
+ * `/hotkeys`, `/changelog`, `/quit`, and the startup header with keybinding hints; and Ultron's `/usage` and `/goal`.
  *
  * Each command does what Pi's does, over the native Session: reads go through the worker's tree read (as Pi
  * entries, so Pi's stats, export and HTML renderer apply unchanged) and writes through `SessionControl`.
@@ -16,6 +16,7 @@ import { CURRENT_SESSION_VERSION, type SessionHeader } from "../core/session-man
 import { formatTokens } from "../modes/interactive/components/footer.ts";
 import { keyDisplayText, keyHint, keyText, rawKeyHint } from "../modes/interactive/components/keybinding-hints.ts";
 import { getMarkdownTheme, theme } from "../modes/interactive/theme/theme.ts";
+import { GOAL_REQUEST } from "../ultron/goal.ts";
 import { isSessionReport, SESSION_REPORT_REQUEST } from "../ultron/session-report.ts";
 import { renderSessionReport } from "../ultron/session-report-text.ts";
 import { getChangelogPath, normalizeChangelogLinks, parseChangelog } from "../utils/changelog.ts";
@@ -90,6 +91,21 @@ export function nativeCommands(host: NativeCommandHost): SlashCommandContributio
 				if (!isSessionReport(report)) throw new Error("The Session worker returned no session report");
 				const style = { bold: (text: string) => theme.bold(text), dim: (text: string) => theme.fg("dim", text) };
 				host.notice(new Text(renderSessionReport(report, { style }).join("\n"), 1, 0));
+				return undefined;
+			},
+		},
+		{
+			name: "goal",
+			description: "Set a goal the agent works on round after round (pause, resume, clear, check <command>)",
+			argumentHint: "[objective | pause | resume | clear | check <command>]",
+			async run(args, context) {
+				const control = host.control();
+				if (control === undefined) throw new Error("No Session is attached");
+				// The worker owns the goal and starts its rounds; only this command (a person) changes it.
+				const reply = (await control.inspect(GOAL_REQUEST, { args }, context)) as { text?: unknown } | undefined;
+				host.notice(
+					new Text(theme.fg("dim", typeof reply?.text === "string" ? reply.text : "No goal reply"), 1, 0),
+				);
 				return undefined;
 			},
 		},

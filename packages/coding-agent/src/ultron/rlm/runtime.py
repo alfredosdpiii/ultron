@@ -14,6 +14,7 @@ import re
 import signal
 import sys
 import threading
+import time
 import tokenize
 import traceback
 from dataclasses import dataclass
@@ -32,6 +33,7 @@ import agent_class_api
 from context_api import Context
 from infer_api import install as install_inference
 from hints_api import Hints
+from goal_api import Goal
 from secret_patterns import REDACTION_MARKER
 from tools_api import Mcp, McpError, ToolCall, ToolError, ToolResult, Tools
 from worktree_api import Worktrees, worktree_path
@@ -131,10 +133,12 @@ class RLMNamespace:
 
     async def spawn(self, prompt: str, **kwargs: Any) -> SpawnHandle:
         """Start a subagent and return its SpawnHandle at once (`h.rlm_child_id`); options: name (required),
-        model, thinking, timeout_ms, depth, worktree, worktree_setup.
+        model, thinking, timeout_ms, depth, worktree, worktree_setup, fork.
 
         The child has its own REPL and your tools and shares your filesystem, but not your conversation: give
         a self-contained brief (goal, paths, constraints, what to return). Its final reply is its result.
+        fork=True starts it on your conversation so far instead (not your kernel's variables), so a short brief
+        does; it re-reads all of that context every turn, so fork only when the child needs what you learned.
         Start several at once, then do only separate work of your own: never check on children through their
         files, logs or progress, since their results come to you. With nothing of your own left, wait for free
         with `await rlm.collect(handles)`, or (completion events on) end your turn: each end arrives as a
@@ -161,7 +165,7 @@ class RLMNamespace:
         name = kwargs.get("name")
         if not isinstance(name, str) or not name.strip():
             raise ValueError("rlm.spawn name must be a non-empty string")
-        allowed = {"name", "model", "thinking", "timeout_ms", "depth", "worktree", "worktree_setup"}
+        allowed = {"name", "model", "thinking", "timeout_ms", "depth", "worktree", "worktree_setup", "fork"}
         unknown = sorted(set(kwargs) - allowed)
         if unknown:
             raise TypeError(f"rlm.spawn unknown options: {', '.join(unknown)}")
@@ -174,6 +178,8 @@ class RLMNamespace:
         worktree = kwargs.get("worktree")
         if worktree is not None and worktree not in (True, False, "auto"):
             raise ValueError('rlm.spawn worktree must be True, False or "auto" (every worktree child gets its own)')
+        if kwargs.get("fork") is not None and not isinstance(kwargs["fork"], bool):
+            raise ValueError("rlm.spawn fork must be True or False")
         if kwargs.get("worktree_setup") is not None and not isinstance(kwargs["worktree_setup"], dict):
             raise ValueError('rlm.spawn worktree_setup must be a dict: {"link": [...], "copy": [...], "command": "..."}')
         result = await self._bridge.request("rlm.spawn", {
@@ -970,6 +976,7 @@ class RuntimeState:
         self.namespace["read"] = read
         self.namespace["view_image"] = view_image
         self.namespace["hints"] = Hints(self.bridge)
+        self.namespace["goal"] = Goal(self.bridge)
         # Extension tools (the built-in `mcp` gateway among them) as async skills.
         self.namespace["tools"] = Tools(self.bridge)
         self.namespace["mcp"] = Mcp(self.namespace["tools"])
@@ -1525,19 +1532,83 @@ def _output_budget() -> int:
     return value if value > 0 else 20_000
 
 
+# Bytes of one stream kept in its spill file, and how many spill files a kernel keeps.
+_SPILL_MAX_BYTES = 64 * 1024 * 1024
+_SPILL_KEEP = 20
+_SPILL_CHUNK = 1024 * 1024
+
+
+def _spill_dir() -> str | None:
+    """Where a cell's cut output is saved (ULTRON_RLM_SPILL_DIR, set by the session worker); None: not saved."""
+    value = os.environ.get("ULTRON_RLM_SPILL_DIR", "").strip()
+    return value or None
+
+
+def _open_spill(directory: str, name: str):
+    """A new private file (0600 in a 0700 directory) for a stream's full text; the oldest beyond _SPILL_KEEP go."""
+    os.makedirs(directory, mode=0o700, exist_ok=True)
+    os.chmod(directory, 0o700)
+    with contextlib.suppress(OSError):
+        files = sorted(
+            (entry for entry in os.scandir(directory) if entry.is_file() and entry.name.endswith(".txt")),
+            key=lambda entry: entry.stat().st_mtime_ns,
+        )
+        for entry in files[: max(0, len(files) - (_SPILL_KEEP - 1))]:
+            os.unlink(entry.path)
+    path = os.path.join(directory, f"{time.time_ns()}-{os.getpid()}-{name}.txt")
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    return path, os.fdopen(fd, "wb")
+
+
 class _MiddleTextIO(io.TextIOBase):
     """Capture a stream keeping its head and tail (each half the budget) and count what was cut,
-    so both the first error and the final summary of a long output survive (nano-rlm style)."""
+    so both the first error and the final summary of a long output survive (nano-rlm style).
+    With a spill directory, a stream that outgrows the budget is also written whole (up to
+    _SPILL_MAX_BYTES) to a private file named in the truncation marker."""
 
-    def __init__(self, limit: int) -> None:
+    def __init__(self, limit: int, name: str = "output", spill_dir: str | None = None) -> None:
         super().__init__()
         self._half = max(1, limit // 2)
         self._head = bytearray()
         self._tail = bytearray()
         self._total = 0
+        self._name = name
+        self._spill_dir = spill_dir
+        self._spill = None
+        self._spill_path: str | None = None
+        self._spilled = 0
 
     def writable(self) -> bool:
         return True
+
+    def _spill_bytes(self, data: bytes) -> None:
+        room = _SPILL_MAX_BYTES - self._spilled
+        if self._spill is None or room <= 0 or not data:
+            return
+        try:
+            self._spill.write(data[:room])
+        except OSError:
+            self._close_spill()
+            self._spill_path = None
+            return
+        self._spilled += min(len(data), room)
+
+    def _start_spill(self) -> None:
+        """Open the spill file once the stream outgrows the budget; until then head and tail hold every byte."""
+        if self._spill_dir is None or self._spill_path is not None:
+            return
+        directory, self._spill_dir = self._spill_dir, None
+        try:
+            self._spill_path, self._spill = _open_spill(directory, self._name)
+        except OSError:
+            return
+        self._spill_bytes(bytes(self._head) + bytes(self._tail))
+
+    def _close_spill(self) -> None:
+        if self._spill is not None:
+            with contextlib.suppress(OSError):
+                self._spill.close()
+            self._spill = None
 
     def write(self, text: str) -> int:
         if self.closed:
@@ -1547,6 +1618,11 @@ class _MiddleTextIO(io.TextIOBase):
         length = len(text)
         # Bound the temporary encoding of a huge write: only its ends can be kept.
         if length > 4 * self._half + 8:
+            self._start_spill()
+            for offset in range(0, length, _SPILL_CHUNK):
+                if self._spill is None or self._spilled >= _SPILL_MAX_BYTES:
+                    break
+                self._spill_bytes(text[offset:offset + _SPILL_CHUNK].encode("utf-8", errors="backslashreplace"))
             head_room = max(0, self._half - len(self._head))
             self._total += len(text.encode("utf-8", errors="backslashreplace"))
             front = text[:head_room].encode("utf-8", errors="backslashreplace")[:head_room]
@@ -1554,6 +1630,9 @@ class _MiddleTextIO(io.TextIOBase):
             self._tail = bytearray(text[-self._half:].encode("utf-8", errors="backslashreplace")[-self._half:])
             return length
         encoded = text.encode("utf-8", errors="backslashreplace")
+        if self._total + len(encoded) > 2 * self._half:
+            self._start_spill()
+        self._spill_bytes(encoded)
         self._total += len(encoded)
         head_room = self._half - len(self._head)
         if head_room > 0:
@@ -1566,15 +1645,20 @@ class _MiddleTextIO(io.TextIOBase):
         return length
 
     def getvalue(self) -> str:
+        self._close_spill()
         tail = bytes(self._tail[-self._half:])
         kept = len(self._head) + len(tail)
         head = self._head.decode("utf-8", errors="ignore")
         if kept >= self._total:
             return head + tail.decode("utf-8", errors="ignore")
+        where = ""
+        if self._spill_path is not None:
+            whole = "full" if self._spilled >= self._total else f"first {self._spilled} bytes of"
+            where = f"; {whole} {self._name} in {self._spill_path}"
         # Drop partial code points at the cut rather than add replacement glyphs.
         return (
             head
-            + f"\n[... {self._total - kept} bytes truncated ...]\n"
+            + f"\n[... {self._total - kept} bytes truncated{where} ...]\n"
             + tail.decode("utf-8", errors="ignore")
         )
 
@@ -1956,8 +2040,9 @@ _STATE = RuntimeState()
 async def execute_cell(request_id: str, source: str) -> None:
     async with _STATE.execution_lock:
         budget = _output_budget()
-        stdout = _MiddleTextIO(budget)
-        stderr = _MiddleTextIO(budget)
+        spill_dir = _spill_dir()
+        stdout = _MiddleTextIO(budget, "stdout", spill_dir)
+        stderr = _MiddleTextIO(budget, "stderr", spill_dir)
         _STATE.namespace.pop("_rlm_result", None)
         try:
             compiled, note = _prepare_code(source)
