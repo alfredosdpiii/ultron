@@ -12,6 +12,7 @@
 import { existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { APP_NAME, getAgentDir, getRlmRuntimePath } from "../../config.ts";
+import { ModelConfig } from "../../core/model-config.ts";
 import { FRAME_THINKING_LEVELS, type FrameThinkingLevel, SettingsManager } from "../../core/settings-manager.ts";
 import { selfCommand } from "../claude/self.ts";
 import { type Account, accountKey, listAccounts, TokenStore } from "./accounts.ts";
@@ -23,6 +24,7 @@ import {
 	MIN_BUDGET_TOKENS,
 	PLAN_STYLES,
 	type PlanStyle,
+	RECOMMENDED_MODEL,
 	REVIEW_MODES,
 	type ReviewMode,
 	resolveConfig,
@@ -102,7 +104,10 @@ Options:
   --verify-candidates <n>      review --mode hybrid (experimental): candidates verified at most (default:
                                autoreview.verifyCandidates, 12)
   --deep-model <p/m>           review: the model of the deep pass's investigators (default: the finder model)
-  --deep-thinking <level>      review: their thinking level (default: autoreview.deepThinking, high)
+  --deep-thinking <level>      review: their thinking level (default: autoreview.deepThinking, medium; high is
+                               slower and more thorough)
+  --verify-batch <n>           review: findings of one file judged by one verifier frame (default:
+                               autoreview.verifyBatch, 4; 1 is one frame per finding)
   --plan-model <p/m>           review --mode compiled: the planner's model (default: autoreview.planModel, the finder model)
   --plan-thinking <level>      review --mode compiled: its thinking level (default: autoreview.planThinking; medium for
                                cells, high for a frame)
@@ -128,7 +133,7 @@ Options:
                                autoreview.deadlineSeconds, none)
 
 Settings (global settings.json): autoreview.accounts, pollSeconds, concurrency, model, verifyModel, budget, dryRun,
-frameConcurrency, mode, deepModel, deepThinking, deepRounds, planModel, planThinking, askModel, askThinking, planStyle, planCells, verifyCandidates, prepareEnvs, mise, blockAt, maxComments, runTests, testOwners, testRuns, testTimeoutSeconds, testEnv, testImage, checkoutRoots, guides, thinking, verifyThinking, deadlineSeconds, frameTimeoutSeconds, ack, ackLines, ackArt, signature.
+frameConcurrency, modelConcurrency, mode, deepModel, deepThinking, deepRounds, verifyBatch, planModel, planThinking, askModel, askThinking, planStyle, planCells, verifyCandidates, prepareEnvs, mise, blockAt, maxComments, runTests, testOwners, testRuns, testTimeoutSeconds, testEnv, testImage, checkoutRoots, guides, thinking, verifyThinking, deadlineSeconds, frameTimeoutSeconds, ack, ackLines, ackArt, signature.
 See docs/autoreview.md.`;
 
 interface Parsed {
@@ -152,6 +157,7 @@ interface Parsed {
 	planStyle?: PlanStyle;
 	planCells?: number;
 	verifyCandidates?: number;
+	verifyBatch?: number;
 	programPath?: string;
 	dumpProgramPath?: string;
 	deadlineSeconds?: number;
@@ -238,6 +244,10 @@ export function parseAutoreviewArgs(args: readonly string[]): Parsed {
 			const count = Number(value());
 			if (!Number.isInteger(count) || count < 1) throw new UsageError("--verify-candidates takes a whole number");
 			parsed.verifyCandidates = count;
+		} else if (arg === "--verify-batch") {
+			const count = Number(value());
+			if (!Number.isInteger(count) || count < 1) throw new UsageError("--verify-batch takes a whole number");
+			parsed.verifyBatch = count;
 		} else if (arg === "--program") parsed.programPath = value();
 		else if (arg === "--dump-program") parsed.dumpProgramPath = value();
 		else if (arg === "--run-tests") parsed.runTests = true;
@@ -283,6 +293,21 @@ export function parseAutoreviewArgs(args: readonly string[]): Parsed {
 }
 
 /** The JSON object `review --repo-dir ... --json` prints. */
+/** The model each stage runs on, with its thinking level, for `doctor` and `install`. */
+export function describeModels(config: AutoreviewConfig): string[] {
+	const finder = config.model ?? "the session's default model";
+	const stage = (name: string, model: string | undefined, thinking: string): string =>
+		`  ${name}: ${model ?? finder} (thinking ${thinking})`;
+	return [
+		`Models${config.model === RECOMMENDED_MODEL ? " (the recommended set)" : ""}:`,
+		stage("finders", config.model, config.thinking),
+		stage("investigators", config.deepModel, config.deepThinking),
+		stage("verifier", config.verifyModel, config.verifyThinking),
+		stage("planner (compiled)", config.planModel, config.planThinking),
+		stage("questions (compiled)", config.askModel, config.askThinking),
+	];
+}
+
 /** The per-stage durations of a review for the status line: "; map 1 s, tests 20 s, find 31 s, deep 58 s, verify 19 s, post 3 s". */
 export function describeStages(stages: Readonly<Record<string, number>> | undefined): string {
 	if (stages === undefined) return "";
@@ -367,6 +392,7 @@ export function offlineJson(
 			outputTokens: result.usage.outputTokens,
 			costUsd: result.usage.costUsd,
 			frames: result.usage.frames,
+			...(result.usage.byPhase === undefined ? {} : { byPhase: result.usage.byPhase }),
 		},
 		model: result.model,
 		verifyModel: result.verifyModel,
@@ -430,6 +456,14 @@ export async function runAutoreviewCommand(
 	const reviewModel = settings.getReviewModel();
 	const defaultProvider = settings.getDefaultProvider();
 	const defaultModel = settings.getDefaultModel();
+	// The user's own catalog (models.json): the recommended model leads the fallback chain when it is there.
+	const catalog = await ModelConfig.load(join(agentDir, "models.json")).catch(() => undefined);
+	const hasModel = (ref: string): boolean => {
+		const slash = ref.indexOf("/");
+		if (slash <= 0 || catalog === undefined) return false;
+		const models = catalog.getProvider(ref.slice(0, slash))?.models ?? [];
+		return models.some((model) => model.id === ref.slice(slash + 1));
+	};
 	const base = resolveConfig(
 		{
 			...saved,
@@ -452,6 +486,7 @@ export async function runAutoreviewCommand(
 			...(parsed.planStyle === undefined ? {} : { planStyle: parsed.planStyle }),
 			...(parsed.planCells === undefined ? {} : { planCells: parsed.planCells }),
 			...(parsed.verifyCandidates === undefined ? {} : { verifyCandidates: parsed.verifyCandidates }),
+			...(parsed.verifyBatch === undefined ? {} : { verifyBatch: parsed.verifyBatch }),
 			...(parsed.deadlineSeconds === undefined ? {} : { deadlineSeconds: parsed.deadlineSeconds }),
 		},
 		{
@@ -459,9 +494,11 @@ export async function runAutoreviewCommand(
 			rlm: settings.getRlmModelSettings(),
 			...(defaultProvider === undefined ? {} : { defaultProvider }),
 			...(defaultModel === undefined ? {} : { defaultModel }),
+			hasModel,
 		},
 	);
 	const config: AutoreviewConfig = { ...base, dryRun: parsed.dryRun || base.dryRun };
+	const modelLines = describeModels(config);
 	const store = new StateStore(paths.state);
 
 	try {
@@ -480,7 +517,7 @@ export async function runAutoreviewCommand(
 				if (parsed.command === "install") {
 					installService(file);
 					io.stdout(
-						`Wrote ${file.path}\nNot enabled. To start it now and at login:\n${file.enable.map((line) => `  ${line}`).join("\n")}\n`,
+						`Wrote ${file.path}\n${modelLines.join("\n")}\nNot enabled. To start it now and at login:\n${file.enable.map((line) => `  ${line}`).join("\n")}\n`,
 					);
 				} else if (uninstallService(file))
 					io.stdout(
@@ -622,7 +659,9 @@ export async function runAutoreviewCommand(
 						`${JSON.stringify({ ...report, runTests: config.runTests, ...(lent ? { lent } : {}), ...(prepared ? { prepared } : {}) })}\n`,
 					);
 				else if (report.mechanism === null)
-					io.stdout(`${[`Sandbox: none. ${report.message ?? ""}`, ...lentLines, ...preparedLines].join("\n")}\n`);
+					io.stdout(
+						`${[...modelLines, `Sandbox: none. ${report.message ?? ""}`, ...lentLines, ...preparedLines].join("\n")}\n`,
+					);
 				else {
 					const check = report.selfCheck ?? {};
 					const owners = config.testOwners.length ? ` and owners ${config.testOwners.join(", ")}` : "";
@@ -633,6 +672,7 @@ export async function runAutoreviewCommand(
 							: "not run (the self-check failed)";
 					io.stdout(
 						`${[
+							...modelLines,
 							`Sandbox: ${report.isolation}`,
 							`Self-check: ${report.ok ? "passed" : "FAILED"}`,
 							`  network: ${String(check.network)}`,

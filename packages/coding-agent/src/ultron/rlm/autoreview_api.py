@@ -78,12 +78,14 @@ from review_api import (
     related_code,
     render_hunk,
     similar_claims,
+    skip_reason,
     source_window,
 )
 import autoreview_compiled as compiled
 import autoreview_deep as deep
 from review_prompts import GUIDANCE_HEADER
-from review_prompts import ALIASES, AUTOREVIEW_VERIFIER_TASK, RECHECK_TASK, REVIEWERS, autoreview_finder_task
+from review_prompts import (ALIASES, AUTOREVIEW_VERIFIER_BATCH_TASK, AUTOREVIEW_VERIFIER_TASK, RECHECK_TASK, REVIEWERS,
+                            Reviewer, autoreview_finder_task)
 
 DEFAULT_CONCURRENCY = 8
 MAX_CONCURRENCY = 16
@@ -111,7 +113,7 @@ DEFAULT_THINKING = "low"
 #: fast and deep passes discover candidates, host-written check programs verify them (the default).
 MODES = ("fast", "deep", "both", "compiled", "hybrid")
 DEFAULT_MODE = "both"
-DEFAULT_DEEP_THINKING = "high"
+DEFAULT_DEEP_THINKING = "medium"
 DEFAULT_PLAN_THINKING = "high"
 DEFAULT_ASK_THINKING = "low"
 TITLE_CHARS = 300
@@ -239,6 +241,14 @@ AUTOREVIEW_VERDICT_CONTRACT: dict[str, Any] = {
         "scenario_holds": {"enum": [True, False, "unknown"]},
     },
     "required": [*VERDICT_CONTRACT["required"], "severity", "scenario_holds"],
+}
+
+#: Several verdicts in one frame (the batched verifier): one object per finding, numbered.
+AUTOREVIEW_VERDICT_BATCH_CONTRACT: dict[str, Any] = {
+    "type": "array",
+    "items": {**AUTOREVIEW_VERDICT_CONTRACT,
+              "properties": {**AUTOREVIEW_VERDICT_CONTRACT["properties"], "finding": {"type": "integer"}},
+              "required": [*AUTOREVIEW_VERDICT_CONTRACT["required"], "finding"]},
 }
 
 #: Levels that need a concrete failing scenario, shown to hold.
@@ -574,11 +584,17 @@ class _Usage:
         self.input = 0
         self.output = 0
         self.cost = 0.0
+        #: Frames and tokens by phase (find, deep, verify, ...), for the JSON's `usage.byPhase`.
+        self.by_phase: dict[str, dict[str, int]] = {}
 
-    def add(self, results: Any) -> None:
+    def add(self, results: Any, phase: str | None = None) -> None:
         calls, tokens = _spent(results)
         self.frames += calls
         self.tokens += tokens
+        if phase:
+            entry = self.by_phase.setdefault(phase, {"frames": 0, "tokens": 0})
+            entry["frames"] += calls
+            entry["tokens"] += tokens
         usage = getattr(results, "usage", None) or {}
         self.input += int(usage.get("input_tokens") or 0)
         self.output += int(usage.get("output_tokens") or 0)
@@ -597,24 +613,32 @@ _TRANSIENT = re.compile(
 #: are retried too, after a longer pause.
 _AUTH = re.compile(r"not logged in|failed to authenticate|session expired|unauthori[sz]ed|\b401\b|auth login", re.I)
 AUTH_RETRY_S = 8.0
-_RETRY_AFTER = re.compile(r"retry[-_ ]?after\D{0,12}(\d+(?:\.\d+)?)|try again in (\d+(?:\.\d+)?) ?s", re.I)
+_RETRY_AFTER = re.compile(r"retry[-_ ]?after\D{0,12}(\d+(?:\.\d+)?)|try again in (\d+(?:\.\d+)?) ?s"
+                          r"|reset[-_ ]?(?:seconds|in|after)\D{0,6}(\d+(?:\.\d+)?)", re.I)
+#: A provider that throttles a model: the model's in-flight limit is halved for the rest of the review and the
+#: reset time, when given, is honoured before the retry.
+_THROTTLE = re.compile(r"\b429\b|rate.?limit|too many requests|cooldown|model_cooldown|reset_seconds|overloaded", re.I)
 
 
 def is_transient(result: Any) -> bool:
     """A frame failure worth another try: a rate limit, a timeout, an overloaded or unreachable provider, or a
     provider whose credentials are being refreshed."""
     return isinstance(result, FrameError) and result.error != DEADLINE_ERROR and bool(
-        _TRANSIENT.search(result.error) or _AUTH.search(result.error))
+        _TRANSIENT.search(result.error) or _AUTH.search(result.error) or _THROTTLE.search(result.error))
 
 
 def is_auth_failure(result: Any) -> bool:
     return isinstance(result, FrameError) and bool(_AUTH.search(result.error))
 
 
+def is_throttled(result: Any) -> bool:
+    return isinstance(result, FrameError) and bool(_THROTTLE.search(result.error))
+
+
 def retry_after(error: str) -> float | None:
     """Seconds the provider asked to wait, when its error says so."""
     match = _RETRY_AFTER.search(error)
-    return float(match.group(1) or match.group(2)) if match else None
+    return float(match.group(1) or match.group(2) or match.group(3)) if match else None
 
 
 def _item_chars(item: Any) -> int:
@@ -628,11 +652,18 @@ class Frames:
     def __init__(self, rlm: Any, *, cap: int | None, usage: _Usage, concurrency: int = DEFAULT_CONCURRENCY,
                  frame_timeout_s: float = DEFAULT_FRAME_TIMEOUT_S, retry_base_s: float = DEFAULT_RETRY_BASE_S,
                  clock: Callable[[], float] = time.monotonic, sleep: Callable[[float], Any] = asyncio.sleep,
-                 rng: Callable[[], float] = random.random) -> None:
+                 rng: Callable[[], float] = random.random, model_concurrency: dict[str, int] | None = None) -> None:
         self.rlm = rlm
         self.cap = cap
         self.usage = usage
         self.concurrency = max(1, min(MAX_CONCURRENCY, concurrency))
+        #: Frames in flight per model at most (`autoreview.modelConcurrency`; DEFAULT_MODEL_CONCURRENCY otherwise),
+        #: halved for a model the provider throttles; and what happened, for the report.
+        self.model_limits: dict[str, int] = {name: max(1, min(MAX_MODEL_CONCURRENCY, int(limit)))
+                                             for name, limit in (model_concurrency or {}).items()}
+        self.in_flight: dict[str, int] = {}
+        self.throttled: dict[str, int] = {}
+        self._changed: asyncio.Condition | None = None
         self.frame_timeout_s = frame_timeout_s
         self.retry_base_s = retry_base_s
         self.clock = clock
@@ -644,20 +675,52 @@ class Frames:
         self._slots: asyncio.Semaphore | None = None
 
     async def run(self, phase: str, jobs: list[tuple[str, str, Any]], *, contract: Any, model: str | None,
-                  thinking: str | None, context: str | None = None, cutoff: float | None = None) -> list[Any]:
+                  thinking: str | None, context: Any = None, cutoff: float | None = None,
+                  contracts: list[Any] | None = None) -> list[Any]:
         """Run `jobs` ((label, task, item) each) and return their results in order: a value, an `Incomplete`
-        (the cap is spent) or a `FrameError` (failed after retries, or unfinished at `cutoff`)."""
+        (the cap is spent) or a `FrameError` (failed after retries, or unfinished at `cutoff`). `context` is the
+        shared prefix of every frame (a list of views); `contracts`, one per job, overrides `contract`."""
         if self._slots is None:
             self._slots = asyncio.Semaphore(self.concurrency)
         return list(await asyncio.gather(*(
-            self._one(phase, label, task, item, contract=contract, model=model, thinking=thinking, context=context,
-                      cutoff=cutoff) for label, task, item in jobs)))
+            self._one(phase, label, task, item, contract=contracts[index] if contracts else contract, model=model,
+                      thinking=thinking, context=context, cutoff=cutoff)
+            for index, (label, task, item) in enumerate(jobs))))
+
+    def limit_of(self, model: str | None) -> int:
+        return self.model_limits.get(model or "", DEFAULT_MODEL_CONCURRENCY)
+
+    async def _admit(self, model: str | None) -> None:
+        """Wait until the model has a free slot under its in-flight limit."""
+        if self._changed is None:
+            self._changed = asyncio.Condition()
+        key = model or ""
+        async with self._changed:
+            while self.in_flight.get(key, 0) >= self.limit_of(model):
+                await self._changed.wait()
+            self.in_flight[key] = self.in_flight.get(key, 0) + 1
+
+    async def _release(self, model: str | None) -> None:
+        assert self._changed is not None
+        key = model or ""
+        async with self._changed:
+            self.in_flight[key] = max(0, self.in_flight.get(key, 0) - 1)
+            self._changed.notify_all()
+
+    def _throttle(self, model: str | None) -> None:
+        """The provider throttled this model: halve its in-flight limit for the rest of the review."""
+        key = model or ""
+        limit = max(1, self.limit_of(model) // 2)
+        self.model_limits[key] = limit
+        self.throttled[key] = limit
 
     async def _one(self, phase: str, label: str, task: str, item: Any, *, contract: Any, model: str | None,
                    thinking: str | None, context: str | None, cutoff: float | None) -> Any:
-        estimate = (len(task) + _item_chars(item) + len(context or "")) // 3
+        estimate = (len(task) + _item_chars(item) + _item_chars(context or "")) // 3
         assert self._slots is not None
         async with self._slots:
+          await self._admit(model)
+          try:
             began = self.clock()
             retries = 0
             status = "ok"
@@ -683,11 +746,13 @@ class Frames:
                 at_cutoff = left is not None and (own is None or left <= own)
                 self.held += grant
                 try:
-                    results = await self.rlm.map([task], [item], context=context, contract=contract,
+                    # The shared context is the frames' prefix: identical for every frame of the review, so a
+                    # provider's prompt cache can serve it (it goes into the frames' system prompt).
+                    results = await self.rlm.map([task], [item], context=context or None, contract=contract,
                                                  budget=None if self.cap is None else Budget(tokens=grant),
-                                                 model=model, thinking=thinking,
+                                                 model=model, thinking=thinking, shared_prefix=bool(context),
                                                  concurrency=1, timeout_ms=max(1_000, int(timeout_s * 1000)))
-                    self.usage.add(results)
+                    self.usage.add(results, phase)
                     tokens += _spent(results)[1]
                     result = results[0] if len(results) else FrameError({"error": "the frame returned nothing"})
                 except Exception as error:  # a host or bridge failure is a failed frame, not a failed review
@@ -710,6 +775,8 @@ class Frames:
                     status = "timeout"
                 else:
                     status = "failed"
+                if is_throttled(result):
+                    self._throttle(model)
                 if not is_transient(result) or retries >= MAX_RETRIES:
                     break
                 hint = retry_after(result.error)
@@ -721,8 +788,11 @@ class Frames:
                 await self.sleep(delay)
             self.timings.append({"phase": phase, "reviewer": label, "ms": int((self.clock() - began) * 1000),
                                  "status": status, "retries": retries, "tokens": tokens,
+                                 **({"model": model} if model else {}),
                                  **({"error": _text(result.error, 200)} if isinstance(result, FrameError) else {})})
             return result
+          finally:
+            await self._release(model)
 
 
 def describe_failure(result: Any) -> str | None:
@@ -741,19 +811,33 @@ def describe_failure(result: Any) -> str | None:
 _KIND_ORDER = {"code": 0, "test": 1, "doc": 2}
 _OTHER_FILES = "Other files changed in this review: "
 SLICE_SEPARATOR = "\n\n" + "=" * 40 + "\n\n"
+#: Diffs under this many changed lines go to each finder as one slice (one frame per applicable specialist).
+SINGLE_SLICE_LINES = 400
+#: Under this many changed lines the architecture specialist is folded into the correctness one.
+MERGE_ARCH_LINES = 150
+#: Findings of one file a verifier frame judges together; a finding with a test run, or with more than
+#: VERIFY_SOLO_CHARS of material, keeps a frame of its own.
+DEFAULT_VERIFY_BATCH = 4
+MAX_VERIFY_BATCH = 8
+VERIFY_SOLO_CHARS = 6_000
+#: Frames in flight per model, unless `modelConcurrency` says otherwise; a model the provider throttles has its
+#: limit halved for the rest of the review.
+DEFAULT_MODEL_CONCURRENCY = 8
+MAX_MODEL_CONCURRENCY = 16
 
 
-def pack_chunks(chunks: list[Chunk], changed: list[str], max_chars: int = CHUNK_CHARS
+def pack_chunks(chunks: list[Chunk], changed: list[str], max_chars: int = CHUNK_CHARS, single: bool = False
                 ) -> tuple[list[Chunk], dict[int, list[Chunk]]]:
     """Pack file chunks into slices of up to `max_chars`: files of one kind (code, tests, docs) in path order,
-    a file's chunk never split further. Returns the slices (as chunks, for planning) and each slice's members."""
+    a file's chunk never split further; with `single`, everything into one slice (a small diff: one frame per
+    specialist). Returns the slices (as chunks, for planning) and each slice's members."""
     listing = ", ".join(changed[:30]) + (f" (+{len(changed) - 30} more)" if len(changed) > 30 else "")
     header = f"Files changed in this pull request: {listing}" if len(changed) > 1 else ""
     groups: list[list[Chunk]] = []
     size = 0
     for chunk in sorted(chunks, key=lambda item: (_KIND_ORDER[item.kind], item.path, item.part)):
         body = len(chunk.text)
-        if groups and groups[-1][0].kind == chunk.kind and size + body <= max_chars:
+        if groups and (single or (groups[-1][0].kind == chunk.kind and size + body <= max_chars)):
             groups[-1].append(chunk)
             size += body
         else:
@@ -771,6 +855,24 @@ def pack_chunks(chunks: list[Chunk], changed: list[str], max_chars: int = CHUNK_
                             text))
         members[number] = group
     return slices, members
+
+
+def merged_reviewers(reviewers: list[Reviewer], changed_lines: int) -> list[Reviewer]:
+    """Under MERGE_ARCH_LINES changed lines the architecture specialist rides with the correctness one: one
+    frame with both checklists (its findings keep their own categories)."""
+    if changed_lines >= MERGE_ARCH_LINES or not any(item.key == "arch" for item in reviewers) \
+            or not any(item.key == "bugs" for item in reviewers):
+        return reviewers
+    arch = next(item for item in reviewers if item.key == "arch")
+    out: list[Reviewer] = []
+    for item in reviewers:
+        if item.key == "arch":
+            continue
+        if item.key == "bugs":
+            item = item._replace(title=f"{item.title}; also {arch.title.lower()}",
+                                 focus=f"{item.focus} Also: {arch.focus}", checklist=item.checklist + arch.checklist)
+        out.append(item)
+    return out
 
 
 def member_for(group: list[Chunk], raw: Any) -> Chunk | None:
@@ -1115,6 +1217,10 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
     plan_cells = int(_number(spec.get("planCells"), compiled.DEFAULT_PLAN_CELLS, 1, compiled.MAX_PLAN_CELLS))
     verify_candidates_cap = int(_number(spec.get("verifyCandidates"), compiled.DEFAULT_VERIFY_CANDIDATES, 1,
                                         compiled.MAX_VERIFY_CANDIDATES))
+    verify_batch_size = int(_number(spec.get("verifyBatch"), DEFAULT_VERIFY_BATCH, 1, MAX_VERIFY_BATCH))
+    model_concurrency = {str(name): int(_number(limit, DEFAULT_MODEL_CONCURRENCY, 1, MAX_MODEL_CONCURRENCY))
+                         for name, limit in (spec.get("modelConcurrency") or {}).items()
+                         if isinstance(spec.get("modelConcurrency"), dict)}
     # History lookups must never reach the network: a blob-less clone would otherwise fetch what it lacks.
     os.environ.setdefault("GIT_NO_LAZY_FETCH", "1")
     deep_rounds = int(_number(spec.get("deepRounds"), deep.DEFAULT_ROUNDS, 1, deep.MAX_ROUNDS))
@@ -1130,7 +1236,7 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
         concurrency=int(_number(spec.get("concurrency"), DEFAULT_CONCURRENCY, 1, MAX_CONCURRENCY)),
         frame_timeout_s=_number(spec.get("frameTimeoutSeconds"), DEFAULT_FRAME_TIMEOUT_S, 0, 3600),
         retry_base_s=_number(spec.get("retryBaseSeconds"), DEFAULT_RETRY_BASE_S, 0, 60),
-        clock=clock, sleep=sleep, rng=rng)
+        clock=clock, sleep=sleep, rng=rng, model_concurrency=model_concurrency)
     not_checked: list[str] = []
     context = spec.get("context") if isinstance(spec.get("context"), dict) else {}
     others = [item for item in context.get("comments") or [] if isinstance(item, dict)]
@@ -1144,7 +1250,11 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
     post_text = _read_text(spec.get("postDiffPath"))
     post_files = parse_diff(post_text) if post_text else scope.files
     file_chunks, skipped = build_chunks(scope.files, scope.read_file)
-    chunks, members = pack_chunks(file_chunks, [item.path for item in scope.files])
+    # A small diff is one slice (one frame per specialist), and under MERGE_ARCH_LINES the architecture specialist
+    # rides with the correctness one.
+    changed_lines = sum(item.added + item.removed for item in scope.files if not skip_reason(item))
+    chunks, members = pack_chunks(file_chunks, [item.path for item in scope.files], single=changed_lines < SINGLE_SLICE_LINES)
+    reviewers = merged_reviewers(reviewers, changed_lines)
     not_checked += [f"{path}: {reason}" for path, reason in skipped]
     if not chunks:
         # Nothing was read (an empty diff, or only binary, generated and deleted files): that is not an approval.
@@ -1297,10 +1407,25 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
         mode = "both"
     run_fast = mode in ("fast", "both", "hybrid") or (mode == "deep" and deep_rev is None)
     run_deep_pass = mode in ("deep", "both", "hybrid") and deep_rev is not None
-    if chunks and run_fast:
+    # What every frame of the review starts with, in one order (the diff, the brief, the retrieved block, the
+    # pull request context, the intent, the guides): sent as the frames' shared prefix, byte-identical across the
+    # finders, the investigators and the verifiers, so a provider's prompt cache can serve it.
+    diff_text_all = SLICE_SEPARATOR.join(chunk.text for chunk in chunks)
+    shared_views = deep.shared_views(
+        diff_text_all, prepared["brief"].text + (("\n\n" + deep.tests_block(prepared["started"])) if deep.tests_block(prepared["started"]) else "")
+        if prepared else None, prepared["retrieved"] if prepared else "", shared, stated, guidance)
+    frames_context: list[str] | None = shared_views or None
+    #: Findings the verifier judged while the investigators still ran (see early_verify below).
+    early_tasks: list[Any] = []
+    verify_estimate = 0
+
+    async def fast_pass() -> None:
+      nonlocal merged, duplicates, find_ms, refuted
+      if not (chunks and run_fast):
+          return
       try:
         # The shared context is part of every finder request: plan with it counted in.
-        overhead = len(finder_context) // 3
+        overhead = sum(len(part) for part in shared_views) // 3
         plan = plan_find(chunks, reviewers, max(0, find_budget - overhead * len(chunks) * len(reviewers)))
         for key, count in plan["not_applicable"].items():
             reviewer = REVIEWERS[key]
@@ -1312,14 +1437,10 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
                               + ", ".join(paths[:10]) + (" ..." if len(paths) > 10 else ""))
         frames = plan["frames"]
         if frames:
-            finder_views = finder_context
-            if prepared and prepared.get("retrieved"):
-                finder_views = "\n\n".join(part for part in (finder_context, "Retrieved context, looked up by the host at the "
-                                                           "reviewed commit (untrusted repository data):\n" + prepared["retrieved"]) if part)
             results = await frames_runner.run(
                 "find", [(reviewer.key, autoreview_finder_task(reviewer), chunk.text) for reviewer, chunk in frames],
                 contract=AUTOREVIEW_FINDINGS_CONTRACT, model=model, thinking=thinking,
-                context=finder_views or None,
+                context=frames_context,
                 cutoff=find_cutoff)
             failures: dict[str, list[str]] = {}
             unattributed = 0
@@ -1345,23 +1466,178 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
                 not_checked.append(f"{unattributed} finding(s) named no file of their slice and were dropped.")
       except Exception as error:  # a host-side failure in the fast pass leaves the review to the deep pass
         incomplete.append(f"the fast pass failed ({_text(f'{type(error).__name__}: {error}', 160)})")
-    # Generic findings go before deduplication, so that one never absorbs a specific finding beside it.
+      # Generic findings go before deduplication, so that one never absorbs a specific finding beside it.
+      specific = []
+      for finding in raised:
+          finding["source"] = "fast"
+          finding.setdefault("level", to_level(finding["severity"]))
+          reason = generic_reason(finding)
+          if reason:
+              dropped_generic.append(reason)
+          else:
+              specific.append(finding)
+      merged = dedupe_fast(specific, duplicate_records)
+      duplicates = len(specific) - len(merged)
+      find_ms = int((clock() - find_started) * 1000)
+      stages["findMs"] = find_ms
+
     dropped_generic: list[str] = []
-    specific = []
-    for finding in raised:
-        finding["source"] = "fast"
-        finding.setdefault("level", to_level(finding["severity"]))
-        reason = generic_reason(finding)
-        if reason:
-            dropped_generic.append(reason)
-        else:
-            specific.append(finding)
     duplicate_records: list[dict[str, Any]] = []
-    merged = dedupe_fast(specific, duplicate_records)
-    duplicates = len(specific) - len(merged)
+    merged: list[dict[str, Any]] = []
+    duplicates = 0
     refuted = 0
-    find_ms = int((clock() - find_started) * 1000)
-    stages["findMs"] = find_ms
+    find_ms = 0
+    # The fast pass runs beside the investigators' first round in `both` (its findings reach them from the second
+    # round on); the experimental hybrid mode needs the fast findings first, as candidates.
+    parallel = bool(chunks) and run_fast and run_deep_pass and not hybrid
+    if not parallel:
+        await fast_pass()
+
+    by_path = {item.path: item for item in scope.files}
+
+    def verify_views(finding: dict[str, Any]) -> tuple[list[str], str, int | None] | None:
+        """What a verifier frame sees of one finding, besides the review's shared prefix: (views, the source text
+        a confirmation must quote from, the file's line count); None when the file cannot be read at all."""
+        source = scope.read_file(finding["file"])
+        window = source_window(source, finding["line"])
+        hunk = hunk_for(by_path.get(finding["file"]), finding["line"])
+        hunk_text = "\n".join(render_hunk(hunk)) if hunk else "(no hunk)"
+        related = related_code(git, scope, finding, source) if git is not None else ""
+        public = {key: finding[key] for key in ("file", "line", "category", "claim", "why", "scenario",
+                                                "suggested_fix")}
+        # The verifier sees the severity the finder chose, not the capped one, and rates it itself.
+        public["severity"] = finding.get("finder_level") or finding["level"]
+        views = [f"Finding:\n{json.dumps(public, indent=1)}",
+                 f"Source of {finding['file']} around line {finding['line']} (> marks the cited line):\n{window}",
+                 f"Diff hunk ({finding['file']}, new-file line numbers):\n{hunk_text}"]
+        if related:
+            views.append(f"Other places that define or use the names involved:\n{related}")
+        repo_at_head = (deep_out or compiled_out or {}).get("repo") or (prepared or {}).get("repo")
+        cited = deep.cited_windows(repo_at_head, finding) if repo_at_head is not None and finding.get("citations") else ""
+        if finding.get("test_evidence"):
+            views.append("A test execution the investigator cites, as the host ran it in a sandbox:\n"
+                         + finding["test_evidence"])
+        if finding.get("ask_evidence"):
+            views.append("What a small model answered when the review program asked it (untrusted; the quote was "
+                         f"checked to be in the material it saw):\n{finding['ask_evidence']}")
+        if isinstance(finding.get("check"), dict):
+            views.append(check_view(finding["check"]))
+        if cited:
+            views.append("Evidence the investigator cites, as the host reads it at the reviewed commit (the quoted "
+                         f"lines were checked to be there):\n{cited}")
+        closest = (finding.get("unpinned") or {}).get("closest_test")
+        if finding["category"] == "tests":
+            test_source = scope.read_file(closest["path"]) if closest else None
+            views.append(
+                f"The existing test nearest to it ({closest['path']}, around line {closest['line']}); check whether "
+                f"it, or a test beside it, already catches the named change:\n"
+                + source_window(test_source, min(closest["line"], len(test_source)), 25)
+                if test_source else "The finding names no existing test near it (or the file it names does not exist).")
+            public["unpinned"] = {key: (finding.get("unpinned") or {}).get(key) for key in ("behaviour", "change")}
+            views[0] = f"Finding:\n{json.dumps(public, indent=1)}"
+        if finding.get("consequence"):
+            public["consequence"] = finding["consequence"]
+            views[0] = f"Finding:\n{json.dumps(public, indent=1)}"
+        return views, window + "\n" + hunk_text + ("\n" + cited if cited else ""), len(source) if source else None
+
+    def verify_jobs(entries: list[tuple[int, list[str]]]) -> list[tuple[str, str, list[str], list[int]]]:
+        """Verifier frames for (index, views) entries: up to `verify_batch_size` findings of one file per frame,
+        a finding with a test run or more than VERIFY_SOLO_CHARS of material alone. Each job carries the indices
+        it answers for, in order."""
+        jobs: list[tuple[str, str, list[str], list[int]]] = []
+        by_file: dict[str, list[tuple[int, list[str]]]] = {}
+        for index, views in entries:
+            finding = verify_pool[index]
+            solo = bool(finding.get("test_evidence") or finding.get("test_run")) or sum(len(view) for view in views) > VERIFY_SOLO_CHARS
+            if solo or verify_batch_size <= 1:
+                jobs.append(("verifier", AUTOREVIEW_VERIFIER_TASK, views, [index]))
+            else:
+                by_file.setdefault(finding["file"], []).append((index, views))
+        for _path, group in by_file.items():
+            for start in range(0, len(group), verify_batch_size):
+                batch = group[start:start + verify_batch_size]
+                if len(batch) == 1:
+                    jobs.append(("verifier", AUTOREVIEW_VERIFIER_TASK, batch[0][1], [batch[0][0]]))
+                    continue
+                views: list[str] = []
+                for number, (_index, item_views) in enumerate(batch, 1):
+                    views.append(f"=== Finding {number} of {len(batch)} ===\n{item_views[0]}")
+                    views.extend(item_views[1:])
+                jobs.append(("verifier", AUTOREVIEW_VERIFIER_BATCH_TASK, views, [index for index, _v in batch]))
+        return jobs
+
+    def unpack_batch(result: Any, size: int) -> list[Any]:
+        """The verdicts of a batched frame, one per finding by its number (else by position)."""
+        if not isinstance(result, list):
+            return [result if isinstance(result, (Incomplete, FrameError)) else FrameError({"error": "the batched verifier returned no array"})] * size
+        out: list[Any] = [None] * size
+        for position, item in enumerate(result):
+            if not isinstance(item, dict):
+                continue
+            number = item.get("finding")
+            slot = number - 1 if isinstance(number, int) and 1 <= number <= size and out[number - 1] is None else position
+            if 0 <= slot < size and out[slot] is None:
+                out[slot] = item
+        return [item if item is not None else FrameError({"error": "no verdict for this finding in the batch"}) for item in out]
+
+    verify_pool: list[dict[str, Any]] = []
+
+    async def run_verifier(findings: list[dict[str, Any]], views: list[list[str]]) -> list[Any]:
+        """Verdicts for findings, in order, by batched frames."""
+        base = len(verify_pool)
+        verify_pool.extend(findings)
+        entries = [(base + offset, item) for offset, item in enumerate(views)]
+        jobs = verify_jobs(entries)
+        results = await frames_runner.run("verify", [(label, task, item) for label, task, item, _ids in jobs],
+                                          contract=None, model=verify_model, thinking=verify_thinking, cutoff=verify_cutoff,
+                                          context=frames_context, contracts=[
+                                              AUTOREVIEW_VERDICT_CONTRACT if len(ids) == 1 else AUTOREVIEW_VERDICT_BATCH_CONTRACT
+                                              for _l, _t, _i, ids in jobs])
+        verdicts: dict[int, Any] = {}
+        for (_label, _task, _item, ids), result in zip(jobs, results):
+            if len(ids) == 1:
+                verdicts[ids[0]] = result
+            else:
+                for index, verdict in zip(ids, unpack_batch(result, len(ids))):
+                    verdicts[index] = verdict
+        return [verdicts.get(base + offset, FrameError({"error": "no verdict"})) for offset in range(len(findings))]
+
+    async def early_verify(lens: str, findings: list[dict[str, Any]]) -> None:
+        """Verify an investigator's findings as soon as it finishes (not tests findings, which a mutation check
+        may still settle, nor ones somebody else raised or that duplicate a finding already sent)."""
+        nonlocal verify_estimate
+        queued = [item for item in verify_pool] + [item for task in early_tasks for item in getattr(task, "_findings", [])]
+        chosen: list[dict[str, Any]] = []
+        views_of: list[list[str]] = []
+        meta: list[tuple[str, int | None]] = []
+        for finding in findings:
+            if finding.get("host_confirmed") or finding["category"] == "tests" or skip_candidate(finding):
+                continue
+            if any(other["file"] == finding["file"] and other["category"] == finding["category"] and (
+                    abs(other["line"] - finding["line"]) <= deep.MERGE_WINDOW or nearly_identical(other["claim"], finding["claim"]))
+                   for other in queued + chosen):
+                continue
+            built = verify_views(finding)
+            if built is None:
+                continue
+            views, source_text, count = built
+            cost = _estimate_tokens(AUTOREVIEW_VERIFIER_TASK, *views, output=600)
+            if verify_estimate + cost > max(0, budget - usage.tokens):
+                continue
+            verify_estimate += cost
+            chosen.append(finding)
+            views_of.append(views)
+            meta.append((source_text, count))
+        if not chosen:
+            return
+
+        async def judge() -> None:
+            verdicts = await run_verifier(chosen, views_of)
+            for finding, verdict, (source_text, count) in zip(chosen, verdicts, meta):
+                finding["_early"] = {"verdict": verdict, "source": source_text, "count": count}
+        task = asyncio.ensure_future(judge())
+        task._findings = chosen  # type: ignore[attr-defined]
+        early_tasks.append(task)
 
     # The deep pass: investigators follow the change into the repository, with the fast findings as leads.
     deep_started = clock()
@@ -1441,9 +1717,12 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
 
     if chunks and run_deep_pass:
         try:
+            leads_future: Any = None
+            if parallel:
+                leads_future = asyncio.get_running_loop().create_future()
             deep_call = deep.run_deep(
                 frames_runner, scope.files, scope.read_file, root=scope.root, rev=deep_rev,
-                diff_text=SLICE_SEPARATOR.join(chunk.text for chunk in chunks), leads=merged, context=shared,
+                diff_text=diff_text_all, leads=[] if parallel else merged, context=shared,
                 rounds=deep_rounds, model=deep_model, thinking=deep_thinking, cutoff=find_cutoff, clock=clock,
                 cap=capped_level, runner=runner, tests=test_options, to_level=to_level,
                 title=_bounded(context.get("title"), TITLE_CHARS),
@@ -1451,8 +1730,22 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
                 base=(str(spec.get("base")) if spec.get("repoDir") else spec.get("baseSha")) or None,
                 guidance=guidance, enrich=parse_rules, generic=generic_reason, intent=stated,
                 prepared=prepared, prove_leads=not hybrid, keep_session=hybrid,
-                shapes=prepared["shapes"] if prepared else None)
-            if hybrid:
+                shapes=prepared["shapes"] if prepared else None, leads_future=leads_future,
+                on_investigator=early_verify if parallel else None)
+            if parallel:
+                async def fast_then_leads() -> None:
+                    try:
+                        await fast_pass()
+                    finally:
+                        if not leads_future.done():
+                            leads_future.set_result(list(merged))
+                fast_result, deep_result = await asyncio.gather(fast_then_leads(), deep_call, return_exceptions=True)
+                if isinstance(fast_result, BaseException):
+                    incomplete.append(f"the fast pass failed ({_text(f'{type(fast_result).__name__}: {fast_result}', 160)})")
+                if isinstance(deep_result, BaseException):
+                    raise deep_result
+                deep_out = deep_result
+            elif hybrid:
                 # Discovery continues while the fast candidates, already final, are being checked. Both finish
                 # whatever the other does: a failed deep pass leaves the fast verdicts standing.
                 fast_candidates = [item for item in merged if not skip_candidate(item)]
@@ -1575,81 +1868,48 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
         candidates.append(finding)
 
     verify_budget = max(0, budget - usage.tokens)
-    # The verifier judges intent too: it gets what the author says the change is for.
-    intent = stated
-    by_path = {item.path: item for item in scope.files}
     items: list[list[str]] = []
     sources: list[str] = []
     counts: list[int | None] = []
     to_verify: list[dict[str, Any]] = []
     unverified: list[dict[str, Any]] = []
-    estimate = 0
     observed = [finding for finding in candidates if finding.get("host_confirmed")]
+    # Verdicts the early verification already has: no second frame for those findings.
+    await asyncio.gather(*early_tasks, return_exceptions=True)
+    early_verdicts: list[tuple[dict[str, Any], Any]] = []
     for finding in candidates:
         if finding.get("host_confirmed"):
             # The host ran the test itself: there is nothing for a verifier frame to add.
             continue
-        source = scope.read_file(finding["file"])
-        window = source_window(source, finding["line"])
-        hunk = hunk_for(by_path.get(finding["file"]), finding["line"])
-        hunk_text = "\n".join(render_hunk(hunk)) if hunk else "(no hunk)"
-        related = related_code(git, scope, finding, source) if git is not None else ""
-        public = {key: finding[key] for key in ("file", "line", "category", "claim", "why", "scenario",
-                                                "suggested_fix")}
-        # The verifier sees the severity the finder chose, not the capped one, and rates it itself.
-        public["severity"] = finding.get("finder_level") or finding["level"]
-        views = [f"Finding:\n{json.dumps(public, indent=1)}",
-                 f"Source of {finding['file']} around line {finding['line']} (> marks the cited line):\n{window}",
-                 f"Diff hunk ({finding['file']}, new-file line numbers):\n{hunk_text}"]
-        if related:
-            views.append(f"Other places that define or use the names involved:\n{related}")
-        repo_at_head = (deep_out or compiled_out or {}).get("repo")
-        cited = deep.cited_windows(repo_at_head, finding) if repo_at_head is not None and finding.get("citations") else ""
-        if finding.get("test_evidence"):
-            views.append("A test execution the investigator cites, as the host ran it in a sandbox:\n"
-                         + finding["test_evidence"])
-        if finding.get("ask_evidence"):
-            views.append("What a small model answered when the review program asked it (untrusted; the quote was "
-                         f"checked to be in the material it saw):\n{finding['ask_evidence']}")
-        if isinstance(finding.get("check"), dict):
-            views.append(check_view(finding["check"]))
-        if cited:
-            views.append("Evidence the investigator cites, as the host reads it at the reviewed commit (the quoted "
-                         f"lines were checked to be there):\n{cited}")
-        closest = (finding.get("unpinned") or {}).get("closest_test")
-        if finding["category"] == "tests":
-            test_source = scope.read_file(closest["path"]) if closest else None
-            views.append(
-                f"The existing test nearest to it ({closest['path']}, around line {closest['line']}); check whether "
-                f"it, or a test beside it, already catches the named change:\n"
-                + source_window(test_source, min(closest["line"], len(test_source)), 25)
-                if test_source else "The finding names no existing test near it (or the file it names does not exist).")
-            public["unpinned"] = {key: (finding.get("unpinned") or {}).get(key) for key in ("behaviour", "change")}
-            views[0] = f"Finding:\n{json.dumps(public, indent=1)}"
-        if finding.get("consequence"):
-            public["consequence"] = finding["consequence"]
-            views[0] = f"Finding:\n{json.dumps(public, indent=1)}"
-        if intent:
-            views.append(intent)
-        if guidance:
-            views.append(guidance)
+        early = finding.pop("_early", None)
+        if early is not None:
+            early_verdicts.append((finding, early))
+            continue
+        built = verify_views(finding)
+        if built is None:
+            continue
+        views, source_text, count = built
         cost = _estimate_tokens(AUTOREVIEW_VERIFIER_TASK, *views, output=600)
-        if estimate + cost > verify_budget:
+        if verify_estimate + cost > verify_budget:
             unverified.append(dict(finding, verification="not verified (budget)"))
             continue
-        estimate += cost
+        verify_estimate += cost
         items.append(views)
-        sources.append(window + "\n" + hunk_text + ("\n" + cited if cited else ""))
-        counts.append(len(source) if source else None)
+        sources.append(source_text)
+        counts.append(count)
         to_verify.append(finding)
     confirmed: list[dict[str, Any]] = []
     uncertain: list[dict[str, Any]] = []
     rejected: list[dict[str, Any]] = []
-    if to_verify:
+    verdicts: list[Any] = []
+    if to_verify or early_verdicts:
       try:
-        verdicts = await frames_runner.run("verify", [("verifier", AUTOREVIEW_VERIFIER_TASK, views) for views in items],
-                                           contract=AUTOREVIEW_VERDICT_CONTRACT, model=verify_model,
-                                           thinking=verify_thinking, cutoff=verify_cutoff)
+        verdicts = await run_verifier(to_verify, items) if to_verify else []
+        for finding, early in early_verdicts:
+            to_verify.append(finding)
+            verdicts.append(early["verdict"])
+            sources.append(early["source"])
+            counts.append(early["count"])
         by_id = {finding["id"]: verdict for finding, verdict in zip(to_verify, verdicts)}
         for finding in to_verify:
             verdict = by_id.get(finding["id"])
@@ -1723,6 +1983,11 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
             not_checked.append(f"A candidate could not be checked: {item}.")
     if unverified:
         incomplete.append(f"{len(unverified)} finding(s) were not verified within the token budget")
+    if frames_runner.throttled:
+        lost = sum(1 for item in frames_runner.timings if item.get("status") in ("failed", "timeout") and is_throttled(FrameError({"error": item.get("error", "")})))
+        not_checked.append("The provider throttled " + ", ".join(f"{name or 'the model'} (frames in flight lowered to {limit})"
+                                                               for name, limit in frames_runner.throttled.items())
+                           + (f"; {lost} frame(s) were lost to it." if lost else "; no frame was lost to it."))
     verify_ms = int((clock() - verify_started) * 1000) + recheck_ms
     stages["verifyMs"] = int((clock() - verify_started) * 1000)
     if program_ms:
@@ -1756,7 +2021,7 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
                    "verifyMs": verify_ms, "deepMs": deep_ms, "programMs": program_ms, "stages": stages,
                    "frames": frames_runner.timings, "investigators": investigators, "program": program_records},
         "usage": {"inputTokens": usage.input, "outputTokens": usage.output, "costUsd": round(usage.cost, 6),
-                  "frames": usage.frames, "tokens": usage.tokens, "budget": cap},
+                  "frames": usage.frames, "tokens": usage.tokens, "budget": cap, "byPhase": usage.by_phase},
         "model": model,
         "verifyModel": verify_model,
         "thinking": thinking,

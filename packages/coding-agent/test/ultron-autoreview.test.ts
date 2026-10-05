@@ -724,7 +724,12 @@ describe("the body after a deep pass", () => {
 		const pull = hub.addPull({ ...REF, requestedReviewers: [BOT] });
 		await reviewPull(deps, candidate());
 		expect(engine.specs).toHaveLength(1);
-		expect(engine.specs[0]).toMatchObject({ mode: "both", deepModel: "p/deep", deepThinking: "high", deepRounds: 2 });
+		expect(engine.specs[0]).toMatchObject({
+			mode: "both",
+			deepModel: "p/deep",
+			deepThinking: "medium",
+			deepRounds: 2,
+		});
 		const reviews = hub.api(/^POST repos\/o\/r\/pulls\/1\/reviews$/);
 		expect(reviews).toHaveLength(1);
 		const body = reviews[0]!.body as { body: string; comments: Array<{ path: string }> };
@@ -814,7 +819,8 @@ describe("running the reviewed project's tests", () => {
 		expect(good.text).toContain("Tests in reviews: run for repositories the account can push to");
 		const none = await run({ mechanism: null, ok: false, message: "tests are not run: no sandbox is available" });
 		expect(none.code).toBe(1);
-		expect(none.text).toBe("Sandbox: none. tests are not run: no sandbox is available\n");
+		expect(none.text).toContain("Models:\n  finders: ");
+		expect(none.text.endsWith("Sandbox: none. tests are not run: no sandbox is available\n")).toBe(true);
 	});
 });
 
@@ -2126,8 +2132,8 @@ describe("the command", () => {
 			mode: "both",
 			verifyCandidates: 12,
 			deepModel: "a/m",
-			deepThinking: "high",
-			deepRounds: 4,
+			deepThinking: "medium",
+			deepRounds: 3,
 			blockAt: "medium",
 			maxComments: 5,
 		});

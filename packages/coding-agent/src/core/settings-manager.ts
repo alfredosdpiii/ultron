@@ -235,9 +235,13 @@ export interface AutoreviewSettings {
 	mode?: "fast" | "deep" | "both" | "compiled" | "hybrid";
 	/** `hybrid` mode: candidates verified per review at most (default 12, maximum 40). */
 	verifyCandidates?: number;
+	/** Findings of one file a verifier frame judges together (default 4, maximum 8; 1 is one frame per finding). */
+	verifyBatch?: number;
+	/** Frames in flight per model at most, by `provider/model` (default 8 each, maximum 16). */
+	modelConcurrency?: Record<string, number>;
 	/** `provider/model` of the deep pass's investigator frames; unset: the finder model. */
 	deepModel?: string;
-	/** Thinking level of the investigator frames (default "high"). */
+	/** Thinking level of the investigator frames (default "medium"; "high" for the slow, thorough setting). */
 	deepThinking?: FrameThinkingLevel;
 	/** `compiled` mode: `provider/model` of the planner frame; unset: the finder model. */
 	planModel?: string;
@@ -254,7 +258,7 @@ export interface AutoreviewSettings {
 	planStyle?: "cell" | "frame";
 	/** `compiled` mode: cells the planner may run (default 4, maximum 12). */
 	planCells?: number;
-	/** Lookup rounds one investigator may take (default 4, maximum 8). */
+	/** Lookup rounds one investigator may take (default 3, maximum 8). */
 	deepRounds?: number;
 	/** A confirmed finding at this level or above makes the review request changes (default "medium"). */
 	blockAt?: "critical" | "high" | "medium" | "low" | "nit";
@@ -1427,6 +1431,16 @@ export class SettingsManager {
 			out.mode = configured.mode;
 		const verifyCandidates = count(configured.verifyCandidates);
 		if (verifyCandidates !== undefined) out.verifyCandidates = verifyCandidates;
+		const verifyBatch = count(configured.verifyBatch);
+		if (verifyBatch !== undefined) out.verifyBatch = verifyBatch;
+		if (configured.modelConcurrency && typeof configured.modelConcurrency === "object") {
+			const limits: Record<string, number> = {};
+			for (const [name, limit] of Object.entries(configured.modelConcurrency as Record<string, unknown>)) {
+				const parsed = count(limit);
+				if (parsed !== undefined && name.includes("/")) limits[name] = parsed;
+			}
+			if (Object.keys(limits).length > 0) out.modelConcurrency = limits;
+		}
 		const deepModel = modelRef(configured.deepModel);
 		if (deepModel !== undefined) out.deepModel = deepModel;
 		const deepThinking = FRAME_THINKING_LEVELS.find((level) => level === configured.deepThinking);

@@ -28,7 +28,7 @@ export const REVIEW_MODES: readonly ReviewMode[] = ["fast", "deep", "both", "com
 export const DEFAULT_MODE: ReviewMode = "both";
 export const DEFAULT_VERIFY_CANDIDATES = 12;
 export const MAX_VERIFY_CANDIDATES = 40;
-export const DEFAULT_DEEP_THINKING: FrameThinkingLevel = "high";
+export const DEFAULT_DEEP_THINKING: FrameThinkingLevel = "medium";
 export const DEFAULT_PLAN_THINKING: FrameThinkingLevel = "high";
 export const DEFAULT_ASK_THINKING: FrameThinkingLevel = "low";
 /** The planner as sandboxed Python cells over the `rv` API (`cell`), or as one JSON-program frame (`frame`). */
@@ -44,7 +44,18 @@ export const DEFAULT_BLOCK_AT: BlockLevel = "medium";
 /** Few, heavy comments: inline comments per review. */
 export const DEFAULT_MAX_COMMENTS = 5;
 export const MAX_MAX_COMMENTS = 30;
-export const DEFAULT_DEEP_ROUNDS = 4;
+export const DEFAULT_DEEP_ROUNDS = 3;
+/** Findings of one file a verifier frame judges together. */
+export const DEFAULT_VERIFY_BATCH = 4;
+export const MAX_VERIFY_BATCH = 8;
+/** Frames in flight per model at most (`autoreview.modelConcurrency` sets a model's own limit, up to this). */
+export const DEFAULT_MODEL_CONCURRENCY = 8;
+export const MAX_MODEL_CONCURRENCY = 16;
+/**
+ * The recommended model: used for every stage when the user's catalog has it and no setting names another
+ * (see "Recommended models" in docs/autoreview.md).
+ */
+export const RECOMMENDED_MODEL = "cliproxyapi/gpt-6-luna";
 export const DEFAULT_TEST_RUNS = 6;
 export const MAX_TEST_RUNS = 30;
 /** A safety limit, on by default: one test execution may not run longer. */
@@ -109,6 +120,10 @@ export interface AutoreviewConfig {
 	readonly planCells: number;
 	/** `hybrid` mode: candidates verified per review at most. */
 	readonly verifyCandidates: number;
+	/** Findings of one file one verifier frame judges together (1: one frame per finding). */
+	readonly verifyBatch: number;
+	/** Frames in flight per model at most, by `provider/model`; unset models get DEFAULT_MODEL_CONCURRENCY. */
+	readonly modelConcurrency: Readonly<Record<string, number>>;
 	readonly blockAt: BlockLevel;
 	readonly maxComments: number;
 	/** Run the reviewed project's tests in the deep pass, where the repository is eligible and a sandbox exists. */
@@ -145,15 +160,19 @@ export interface ModelFallbacks {
 	readonly rlm?: RlmModelSettings;
 	readonly defaultProvider?: string;
 	readonly defaultModel?: string;
+	/** Whether the user's catalog has a `provider/model`; given, RECOMMENDED_MODEL leads the chain when it does. */
+	readonly hasModel?: (ref: string) => boolean;
 }
 
 /**
- * The finder model: `autoreview.model`, then `review.model`, then `rlm.frameModel`, then the default model.
- * Undefined when none of them is set (the engine then resolves the profile's default itself).
+ * The finder model: `autoreview.model`, then the recommended model when the catalog has it, then `review.model`,
+ * then `rlm.frameModel`, then the default model. Undefined when none of them is set (the engine then resolves the
+ * profile's default itself).
  */
 export function resolveModel(settings: AutoreviewSettings, fallbacks: ModelFallbacks): string | undefined {
 	return (
 		settings.model ??
+		(fallbacks.hasModel?.(RECOMMENDED_MODEL) ? RECOMMENDED_MODEL : undefined) ??
 		fallbacks.reviewModel ??
 		fallbacks.rlm?.frameModel ??
 		(fallbacks.defaultProvider && fallbacks.defaultModel
@@ -192,6 +211,8 @@ export function engineSettings(config: AutoreviewConfig): {
 	planStyle: PlanStyle;
 	planCells: number;
 	verifyCandidates: number;
+	verifyBatch: number;
+	modelConcurrency: Record<string, number>;
 	testRuns: number;
 	testTimeoutSeconds: number;
 	testImage?: string;
@@ -216,6 +237,8 @@ export function engineSettings(config: AutoreviewConfig): {
 		planStyle: config.planStyle,
 		planCells: config.planCells,
 		verifyCandidates: config.verifyCandidates,
+		verifyBatch: config.verifyBatch,
+		modelConcurrency: { ...config.modelConcurrency },
 		testRuns: config.testRuns,
 		testTimeoutSeconds: config.testTimeoutSeconds,
 		...(config.testImage === undefined ? {} : { testImage: config.testImage }),
@@ -261,6 +284,13 @@ export function resolveConfig(settings: AutoreviewSettings, fallbacks: ModelFall
 		verifyCandidates: Math.min(
 			MAX_VERIFY_CANDIDATES,
 			Math.max(1, settings.verifyCandidates ?? DEFAULT_VERIFY_CANDIDATES),
+		),
+		verifyBatch: Math.min(MAX_VERIFY_BATCH, Math.max(1, settings.verifyBatch ?? DEFAULT_VERIFY_BATCH)),
+		modelConcurrency: Object.fromEntries(
+			Object.entries(settings.modelConcurrency ?? {}).map(([name, limit]) => [
+				name,
+				Math.min(MAX_MODEL_CONCURRENCY, Math.max(1, limit)),
+			]),
 		),
 		blockAt: settings.blockAt ?? DEFAULT_BLOCK_AT,
 		maxComments: Math.min(MAX_MAX_COMMENTS, settings.maxComments ?? DEFAULT_MAX_COMMENTS),
