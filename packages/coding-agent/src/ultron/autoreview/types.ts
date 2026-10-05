@@ -375,8 +375,10 @@ export interface EngineResult {
 		readonly refuted: number;
 		readonly unknown: number;
 		readonly dropped: number;
-		/** Confirmed by an ask whose quote was not in the cited lines: critical/high capped at medium. */
+		/** Answered yes by an ask whose quote was outside the cited lines: left to the verifier frame. */
 		readonly capped: number;
+		/** Undecided candidates (unclear, a test that could not run, beyond the cap) the verifier frame judged. */
+		readonly toVerifier: number;
 		readonly shapes: Readonly<Record<string, number>>;
 		readonly planner: ReadonlyArray<{
 			readonly status: string;

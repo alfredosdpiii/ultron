@@ -514,7 +514,11 @@ tools: answer from the material only.
 
 Reply with one JSON object: {"answer": "yes" | "no" | "unclear", "quote": "<one line copied exactly from the
 material that your answer rests on>", "why": "<one sentence>"}. Answer unclear when the material does not settle the
-question. The host checks that the quote is in the material; an answer whose quote is not is treated as unclear."""
+question. The host checks that the quote is in the material; an answer whose quote is not is treated as unclear.
+When the question is whether a claimed problem is there: before a yes, name what the material would have to
+contain for the claim to be false and check it is absent; a yes quotes the line that has the problem, from the
+lines the finding cites (a quote from attached context alone does not confirm); a no quotes the line that prevents
+it. Say the decisive point in `why`."""
 
 
 #: Check shapes learned from what the retrieval-based deep pass found and a one-shot planner missed: each says when

@@ -137,7 +137,7 @@ reviewed.
 | `autoreview.model` | unset: `review.model`, then `rlm.frameModel`, then the default model | `provider/model` of the finder frames. |
 | `autoreview.verifyModel` | the finder model | `provider/model` of the verifier frames. |
 | `autoreview.mode` | `"hybrid"` | `hybrid`: the fast and deep passes discover candidates and host-written check programs verify them (see "The hybrid mode"). `fast`: review the diff only. `deep`: only the investigation beyond the diff. `both`: the fast pass, then the deep one with its findings as leads, each finding verified by a verifier frame. `compiled` (experimental): one planner writes the whole review program; see below. |
-| `autoreview.verifyCandidates` | `12` | `hybrid`: candidates verified per review at most (maximum 40); the rest are counted as undecided. |
+| `autoreview.verifyCandidates` | `12` | `hybrid`: candidates the host's checks decide per review at most (maximum 40); the rest go to the verifier frame. |
 | `autoreview.deepModel` | the finder model | `provider/model` of the deep pass's investigator frames. |
 | `autoreview.deepThinking` | `"high"` | Their thinking level. |
 | `autoreview.planModel` | the finder model | `compiled` mode: `provider/model` of the planner frame (one call per review; use a strong model). |
@@ -252,16 +252,22 @@ them in sequence:
    - `env-in-deploy` (the claim names a new environment variable, flag or config key): `count_only` greps of the
      name in workflows, YAML, Terraform and env files; absent everywhere confirms.
    - `comment-vs-code`, `error-path`, `input-defeats-guard`, `consistency` (everything else): reads of the cited
-     lines (the finding's line and its citations) and one yes/no ask carrying the claim, reason and scenario,
-     answered with a quote the host checks.
+     lines (the finding's line ±12 and its citations), with the diff hunk at the line and the retrieved references
+     of the names the claim uses attached, and one two-sided ask (what would make the claim false, is it there;
+     then yes/no/unclear) carrying the claim, reason and scenario, answered with a quote the host checks. A yes
+     counts only when the quote comes from the cited lines, not from the attached material.
    One bounded planner frame per batch (the strong model, `autoreview.planModel`) sees the candidates with their
    template programs and may add up to three steps per candidate where a template cannot decide (another registry,
    a caller to compare, the decisive lines); it never writes a program from scratch, and if it fails the templates
    run alone. A candidate is confirmed only when its check decides in its favour, under the three-valued rules of
    the compiled mode: unknown goes to the small model with the raw results, a contradiction of the template's
    expectation too (except a finished test run, which is ground truth), and the level follows the compiled rules
-   (critical or high only with a test run, or an ask whose quote is in the cited lines; else capped at medium).
-   Candidates beyond the cap, or whose check could not run, are counted as undecided and never posted.
+   (critical or high only with a test run, or an ask whose quote is in the cited lines).
+   A candidate the checks leave undecided (an unclear answer, a yes quoting outside the cited lines, a test that
+   could not run, one beyond the cap) is not dropped: the verifier frame of `both` judges it, told what the check
+   did and what the small model answered; such a finding carries `verifiedBy: "verifier:<candidate>"`. A test
+   check whose runner the automatic run found unavailable is not planned: the ask variant runs instead. A failure
+   inside the checks never ends the review: the batch's candidates go to the verifier frame and the report says so.
 4. **Overlap.** The fast candidates are final when the finders return, so they are checked while the investigators
    still run; the deep candidates are checked when the deep pass returns, inheriting the verdict of a fast twin
    they supersede. The test session opened for the automatic run serves every mutation check and is closed after
@@ -269,8 +275,8 @@ them in sequence:
 5. **Post.** Dedupe, ranking, the posting plan and the body are the existing ones; the assurance paragraph adds what
    the checks did ("Discovery raised N candidates; the host checked K ...: confirmed, refuted, undecided"). With
    `--json`, every finding keeps `source` (the discovering pass) and gains `verifiedBy: "check:<step id>"`;
-   `verification` carries the candidate counts (checked, confirmed, refuted, unknown, capped), the shapes used, the
-   planner batches and what could not be checked; `program` carries the check programs' stats.
+   `verification` carries the candidate counts (checked, confirmed, refuted, unknown, capped, toVerifier), the
+   shapes used, the planner batches and what could not be checked; `program` carries the check programs' stats.
 
 ## The compiled mode: one plan, deterministic execution (experimental)
 

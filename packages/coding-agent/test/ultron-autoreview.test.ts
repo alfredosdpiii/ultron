@@ -2009,6 +2009,7 @@ describe("the command", () => {
 					unknown: 1,
 					dropped: 0,
 					capped: 0,
+					toVerifier: 1,
 					shapes: { "unpinned-behaviour": 2, consistency: 1 },
 					planner: [{ status: "ok", extra: 1, ms: 10, tokens: 100 }],
 					batches: [{ batch: "fast", candidates: 3, ms: 20 }],

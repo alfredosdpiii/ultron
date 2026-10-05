@@ -1529,13 +1529,16 @@ class Hybrid(Rlm):
                 call["kind"] = "ask"
                 reply = ({"answer": "yes", "quote": "# Upper-cases the kind.", "why": "accurate"} if "comment" in text
                          else {"answer": "yes", "quote": "print(show(kind))", "why": "no validation"} if "raw kind" in text
+                         else {"answer": "yes", "quote": 'assert show("a")', "why": "the test only checks truth"} if "Behaviour:" in text
                          else {"answer": "no", "quote": 'assert show("a")', "why": "x"})
             elif task == p.RESOLVE_TASK:
                 call["kind"] = "resolve"; reply = {"answer": "yes", "quote": 'assert show("a")', "why": "the test only checks truth"}
             elif task == p.CANDIDATE_PLANNER_TASK:
                 call["kind"] = "cplan"; reply = {"extra": self.extra}
             elif task == p.AUTOREVIEW_VERIFIER_TASK:
-                call["kind"] = "verify"; reply = {"verdict": "confirmed", "evidence": "x", "corrected_line": None, "severity": "low", "scenario_holds": "unknown"}
+                call["kind"] = "verify"
+                reply = {"verdict": "confirmed", "evidence": "print(show(kind))" if "raw kind" in text else "# Upper-cases the kind.",
+                         "corrected_line": None, "severity": "low", "scenario_holds": "unknown"}
             elif task in LENS:
                 call["kind"] = "deep"
                 reply = {"findings": [DEEP] if LENS[task] == "claims" else [], "requests": [], "done": True}
@@ -1629,14 +1632,218 @@ emit({"result": result, "kinds": rlm.kinds(), "cplan": next(c["text"] for c in r
 			"Discovery raised 4 candidate findings; the host checked 4 with 2 test runs and 2 small-model questions: 3 confirmed, 1 refuted, 0 undecided; 2 checks held.",
 		);
 		expect(result.program).toMatchObject({ tests: 2, asks: 2, checks: { held: 2, failed: 1, contradicted: 1 } });
-		// Runner unavailable: the mutation could not run, the gate is unknown, the small model decides with the nearest
-		// test attached; the cap leaves the third candidate undecided and never posted.
-		expect(out.secondKinds.filter((kind) => kind === "resolve")).toHaveLength(2);
-		expect(out.second.verification).toMatchObject({ candidates: 2, confirmed: 2, refuted: 0 });
-		const resolved = out.second.findings.filter((finding) => finding.verification === "confirmed");
-		expect(resolved.map((finding) => finding.verifiedBy)).toEqual(["check:c1_f", "check:c2_f"]);
-		expect(out.second.findings.filter((finding) => finding.verification === "uncertain")).toHaveLength(2);
+		// Runner unavailable (the automatic run showed it): no mutation check is planned and nothing is put to the
+		// RESOLVE frame; the template's ask variant reads the nearest test and decides. The two candidates beyond the
+		// cap are not dropped: the verifier frame judges them and they carry verifier:beyond-cap.
+		expect(out.secondKinds.filter((kind) => kind === "resolve")).toHaveLength(0);
+		expect(out.secondKinds.filter((kind) => kind === "ask")).toHaveLength(2);
+		expect(out.secondKinds.filter((kind) => kind === "verify")).toHaveLength(2);
+		expect(out.second.verification).toMatchObject({
+			candidates: 4,
+			checked: 2,
+			confirmed: 2,
+			refuted: 0,
+			unknown: 2,
+			toVerifier: 2,
+		});
+		const byCheck = out.second.findings.filter((finding) => String(finding.verifiedBy).startsWith("check:"));
+		expect(byCheck.map((finding) => [finding.verifiedBy, finding.verification])).toEqual([
+			["check:c1_f", "confirmed"],
+			["check:c2_f", "confirmed"],
+		]);
+		expect(String(byCheck[0]!.howVerified)).toContain("Behaviour:");
+		const byVerifier = out.second.findings.filter((finding) => String(finding.verifiedBy).startsWith("verifier:"));
+		expect(byVerifier.map((finding) => [finding.verifiedBy, finding.verification])).toEqual([
+			["verifier:beyond-cap", "confirmed"],
+			["verifier:beyond-cap", "confirmed"],
+		]);
+		expect(out.second.assurance.at(-1)).toContain("2 undecided (the verifier frame judged 2)");
 		expect(out.second.notChecked.join("\n")).toContain("Tests could not run: missing dependencies");
+	});
+
+	test("undecided is not dropped: a list-shaped retrieval never crashes the shape; the ask carries the hunk and the references; a check crash, an unclear answer, a yes quoting outside the cited lines and a test that could not run all go to the verifier frame", () => {
+		const repo = fixture();
+		const out = py<{
+			shapeList: string;
+			registriesType: string;
+			sectionNames: string[];
+			askMaterial: string[];
+			how: string;
+			unrunnable: Array<[string, string]>;
+			deferred: Record<string, unknown>;
+			deferredPhases: string[];
+			resolvedPhases: string[];
+			crashed: Result & {
+				verification: Record<string, unknown> | null;
+				findings: Array<Finding & { verifiedBy?: string }>;
+			};
+			crashedKinds: string[];
+			routed: Result & { verification: Record<string, unknown>; findings: Array<Finding & { verifiedBy?: string }> };
+			routedKinds: string[];
+			verifierTexts: string[];
+			gates: Record<string, string>;
+		}>(`${prelude(repo)}
+import time
+# 1. The crash: a list where the per-key dict is expected (retrieve once returned the last key's list).
+retrieval = c.retrieve(_repo, _brief, _files, clock=time.monotonic)
+cand = {"file": "src/app.py", "line": 1, "category": "correctness", "claim": "KINDS gained c but the cli registry was not updated.", "why": "w", "level": "medium"}
+shape_list = c.candidate_shape(cand, _brief, {"keys": ["KINDS"], "registries": ["src/cli.py"]})[0]
+# 2. The generic ask attaches the diff hunk at the line and the retrieved references of the names the claim uses.
+other = {"file": "src/app.py", "line": 4, "category": "correctness", "claim": "show() upper-cases without checking KINDS.", "why": "w", "level": "low"}
+steps, how = c.template_steps("c1", other, "consistency", {}, repo=_repo, brief=_brief, tests_available=False, files=_files, retrieval=retrieval)
+ask = next(s for s in steps if s["op"] == "ask")
+assert c.validate({"steps": steps})[0] is not None, c.validate({"steps": steps})[1]
+# 3. A runner the automatic run found unavailable: the mutation variant is not planned.
+tests_mut = {"file": "src/app.py", "line": 1, "category": "tests", "claim": "Nothing pins KINDS.", "why": "w", "level": "medium",
+             "unpinned": {"behaviour": "KINDS lists c", "change": "drop c", "closest_test": {"path": "tests/test_app.py", "line": 5},
+                          "mutation": {"path": "src/app.py", "line": 1, "replacement": 'KINDS = ["a", "b"]'}}}
+unrunnable, _how = c.template_steps("c2", tests_mut, "unpinned-behaviour", {}, repo=_repo, brief=_brief, tests_available=True, files=_files, retrieval=retrieval, runnable=lambda paths: False)
+# 4. A test step that could not run at run time: with defer_unrunnable the finding is left undecided, no RESOLVE ask.
+class F:
+    def __init__(self): self.timings = []; self.phases = []
+    async def run(self, phase, jobs, **kw):
+        self.phases.append(phase); return [{"answer": "unclear", "quote": "", "why": ""} for _ in jobs]
+PROG = {"steps": [{"id": "m", "op": "mutation_check", "args": {"path": "src/app.py", "line": 1, "replacement": 'KINDS = ["a", "b"]', "tests": ["tests/test_app.py"]}},
+                  {"id": "a", "op": "assert", "step": "m", "predicate": "status == passed", "expect": True},
+                  {"id": "f", "op": "finding", "when": {"step": "a"}, "file": "src/app.py", "line": 1, "level": "medium", "category": "tests", "claim": "Nothing pins KINDS.", "why": "w", "evidence": ["m"]}]}
+def run_prog(defer):
+    frames = F()
+    it = c.Interpreter(c.validate(PROG)[0], _repo, frames=frames, session=None, diff_lines={}, ask_model=None, ask_thinking=None, cutoff=None,
+                       clock=time.monotonic, cap=lambda *a, **k: "medium", defer_unrunnable=defer)
+    asyncio.run(it.run())
+    return it, frames
+deferred_it, deferred_frames = run_prog(True)
+resolved_it, resolved_frames = run_prog(False)
+# 5. End to end. Discovery: one fast candidate (docs, src/app.py:5) and one deep candidate (claims, src/cli.py:5).
+LENS = {p.deep_task(n, f): n for n in p.DEEP_LENSES for f in (False, True)}
+FAST = {"file": "src/app.py", "line": 5, "severity": "low", "category": "docs", "claim": "The comment on show() says it upper-cases but the code lower-cases.", "why": "w", "scenario": "", "suggested_fix": "fix", "confidence": 0.5}
+DEEP = {"file": "src/cli.py", "line": 5, "severity": "medium", "category": "correctness", "claim": "main() prints the raw kind without validating it against KINDS.",
+        "why": "w", "scenario": "main('zzz') prints ZZZ.", "suggested_fix": "validate", "confidence": 0.7, "evidence": [{"path": "src/cli.py", "line": 5, "quote": "print(show(kind))"}]}
+class Disc(Rlm):
+    def __init__(self, asker):
+        Rlm.__init__(self); self.asker = asker
+    async def map(self, tasks, items=None, **options):
+        out = MapResults()
+        for task, item in zip(tasks, items):
+            text = chr(10).join(item) if isinstance(item, list) else item
+            call = {"task": task, "text": text}
+            if task == p.ASK_TASK:
+                call["kind"] = "ask"; reply = self.asker(text)
+            elif task == p.RESOLVE_TASK:
+                call["kind"] = "resolve"; reply = {"answer": "unclear", "quote": "", "why": ""}
+            elif task == p.CANDIDATE_PLANNER_TASK:
+                call["kind"] = "cplan"; reply = {"extra": {}}
+            elif task == p.AUTOREVIEW_VERIFIER_TASK:
+                call["kind"] = "verify"
+                reply = {"verdict": "confirmed", "evidence": "print(show(kind))" if "raw kind" in text else "# Upper-cases the kind.",
+                         "corrected_line": None, "severity": "low", "scenario_holds": "unknown"}
+            elif task in LENS:
+                call["kind"] = "deep"; reply = {"findings": [DEEP] if LENS[task] == "claims" else [], "requests": [], "done": True}
+            else:
+                call["kind"] = "find"; reply = [FAST] if "Correctness" in task and "src/app.py" in text else []
+            self.calls.append(call); out.append(reply)
+        out.spent = {"calls": len(items), "tokens": 100 * len(items)}; out.usage = {}
+        return out
+SPEC_H = {"repoDir": ROOT, "base": BASE, "head": HEAD, "mode": "hybrid", "runTests": False, "planModel": "p/plan", "askModel": "p/ask"}
+# a. The checks crash: the review completes in hybrid mode, the deep pass's findings are kept, the verifier frame judges.
+real = c.verify_candidates
+async def boom(*args, **kwargs):
+    raise RuntimeError("boom")
+c.verify_candidates = boom
+try:
+    crashed_rlm = Disc(lambda text: {"answer": "unclear", "quote": "", "why": ""})
+    crashed = asyncio.run(a.run(crashed_rlm, SPEC_H))
+finally:
+    c.verify_candidates = real
+# b. The comment candidate: yes, quoting the removed line from the attached hunk (outside the cited lines). The deep
+# candidate: unclear. Both go to the verifier frame, which is told what the check did.
+def asker(text):
+    if "comment" in text:
+        return {"answer": "yes", "quote": 'KINDS = ["a", "b"]', "why": "from the hunk"}
+    return {"answer": "unclear", "quote": "print(show(kind))", "why": "cannot tell"}
+routed_rlm = Disc(asker)
+routed = asyncio.run(a.run(routed_rlm, SPEC_H))
+emit({"shapeList": shape_list, "registriesType": type(retrieval["registries"]).__name__, "sectionNames": sorted(retrieval["sections"]),
+      "askMaterial": [m.split(chr(10))[0] for m in ask["material"]], "how": how, "unrunnable": [[s["id"], s["op"]] for s in unrunnable],
+      "deferred": next(r for r in deferred_it.records if r["id"] == "f"), "deferredPhases": deferred_frames.phases, "resolvedPhases": resolved_frames.phases,
+      "crashed": crashed, "crashedKinds": crashed_rlm.kinds(), "routed": routed, "routedKinds": routed_rlm.kinds(),
+      "verifierTexts": [call["text"] for call in routed_rlm.calls if call["kind"] == "verify"],
+      "gates": {r["id"]: r.get("output", "") for r in routed["timing"]["program"] if r["op"] == "finding"}})`);
+		// 1. A list where the dict is expected: no crash, no registry shape.
+		expect(out.shapeList).toBe("consistency");
+		expect(out.registriesType).toBe("dict");
+		expect(out.sectionNames).toContain("show");
+		// 2. The ask's material: the hunk at the finding's line and the references of the names the claim uses.
+		expect(out.askMaterial).toEqual([
+			"Diff hunk of src/app.py (new-file line numbers; + added, - removed):",
+			"Retrieved references of the names the claim uses (outside the changed lines, at the reviewed commit):",
+		]);
+		expect(out.how).toBe(
+			"ask over c1_r with the claim, reason and scenario, the diff hunk and retrieved references attached",
+		);
+		// 3. Runner known unavailable: the ask variant, no mutation check.
+		expect(out.unrunnable).toEqual([
+			["c2_t", "read"],
+			["c2_r", "read"],
+			["c2_q", "ask"],
+			["c2_f", "finding"],
+		]);
+		// 4. A test that could not run: left to the verifier, no RESOLVE frame; without the flag the small model is asked.
+		expect(out.deferred).toMatchObject({
+			op: "finding",
+			status: "ok",
+			output: "gate unknown; the test could not run",
+		});
+		expect(out.deferredPhases).toEqual([]);
+		expect(out.resolvedPhases).toEqual(["ask"]);
+		// 5a. The checks crashed: the review stands, in hybrid mode, with both candidates judged by the verifier frame.
+		expect(out.crashed.mode).toBe("hybrid");
+		expect(out.crashed.notChecked.join("\n")).toContain(
+			"The host's checks failed for the fast candidates (RuntimeError: boom); the verifier frame judged 1 candidate(s) instead.",
+		);
+		expect(out.crashed.notChecked.join("\n")).toContain(
+			"The host's checks failed for the deep candidates (RuntimeError: boom)",
+		);
+		expect(out.crashed.notChecked.join("\n")).not.toContain("The deep pass failed");
+		expect(out.crashedKinds.filter((kind) => kind === "deep").length).toBeGreaterThan(0);
+		expect(out.crashedKinds.filter((kind) => kind === "verify")).toHaveLength(2);
+		expect(out.crashed.findings.map((finding) => [finding.source, finding.verification, finding.verifiedBy])).toEqual(
+			[
+				["deep:claims", "confirmed", undefined],
+				["fast", "confirmed", undefined],
+			],
+		);
+		// 5b. Undecided by the checks, decided by the verifier frame, which saw what the check did.
+		// The program emitted c1 (the ask said yes); the host then held it back for the verifier because the quote
+		// came from the attached hunk, not the cited lines. c2's ask was unclear: undecided, no RESOLVE frame.
+		expect(out.gates.c1_f).toMatch(/^finding emitted: /);
+		expect(out.gates.c2_f).toBe("gate undecided");
+		expect(out.routed.verification).toMatchObject({
+			candidates: 2,
+			checked: 2,
+			confirmed: 0,
+			refuted: 0,
+			unknown: 2,
+			capped: 1,
+			toVerifier: 2,
+		});
+		expect(out.routedKinds.filter((kind) => kind === "verify")).toHaveLength(2);
+		expect(out.routedKinds.filter((kind) => kind === "resolve")).toHaveLength(0);
+		expect(out.routed.findings.map((finding) => [finding.verification, finding.verifiedBy])).toEqual([
+			["confirmed", "verifier:c2"],
+			["confirmed", "verifier:c1"],
+		]);
+		const comment = out.verifierTexts.find((text) => text.includes("comment on show()"))!;
+		expect(comment).toContain(
+			"A host-written check ran first and did not decide this finding (shape comment-vs-code;",
+		);
+		expect(comment).toContain("quoted outside the cited lines (left to the verifier)");
+		expect(comment).toContain('The small model it asked answered yes, quoting `KINDS = ["a", "b"]`: from the hunk.');
+		const raw = out.verifierTexts.find((text) => text.includes("raw kind"))!;
+		expect(raw).toContain("The small model it asked answered unclear, quoting `print(show(kind))`: cannot tell.");
+		expect(out.routed.assurance.at(-1)).toBe(
+			"Discovery raised 2 candidate findings; the host checked 2 with 0 test runs and 2 small-model questions: 0 confirmed, 0 refuted, 2 undecided (the verifier frame judged 2); 0 checks held.",
+		);
 	});
 });
 

@@ -926,6 +926,19 @@ def group_root_causes(confirmed: list[dict[str, Any]]) -> tuple[list[dict[str, A
     return kept, merged
 
 
+def check_view(check: dict[str, Any]) -> str:
+    """What the verifier frame is told about a host-written check that did not decide a candidate."""
+    text = (f"A host-written check ran first and did not decide this finding (shape {check.get('shape') or 'none'}; "
+            f"{check.get('template') or 'no template'}): "
+            + _text(check.get("detail") or check.get("gate") or "undecided", 240) + ".")
+    asked = check.get("asked")
+    if isinstance(asked, dict) and asked.get("answer"):
+        text += (f"\nThe small model it asked answered {asked['answer']}"
+                 + (f", quoting `{asked['quote']}`" if asked.get("quote") else "")
+                 + (f": {_text(asked['why'], 300)}" if asked.get("why") else "") + ". Untrusted; judge from the source.")
+    return text
+
+
 def _public(finding: dict[str, Any], verification: str) -> dict[str, Any]:
     out: dict[str, Any] = {
         "id": finding.get("id"),
@@ -1289,18 +1302,28 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
             item["file"] == finding["file"] and abs(item["line"] - finding["line"]) <= EARLIER_WINDOW
             and similar_claims(item["claim"], finding["claim"]) for item in open_earlier)
 
-    def verify_batch(batch: str, items: list[dict[str, Any]], start: int) -> Any:
+    async def verify_batch(batch: str, items: list[dict[str, Any]], start: int, limit: int) -> dict[str, Any] | None:
+        """One batch of candidates decided by the host's checks. A failure inside the checks never ends the
+        review: the batch's candidates lose their verdicts and the verifier frame judges them instead."""
         assert prepared is not None
-        return compiled.verify_candidates(
-            items, batch=batch, repo=prepared["repo"], brief=prepared["brief"], retrieval=prepared["retrieval"],
-            frames=frames_runner, session=prepared["started"]["session"],
-            diff_lines={item.path: {line.new for hunk in item.hunks for line in hunk.lines if line.new is not None}
-                        for item in scope.files},
-            diff_text=SLICE_SEPARATOR.join(chunk.text for chunk in chunks), plan_model=plan_model, plan_thinking=plan_thinking,
-            ask_model=ask_model, ask_thinking=ask_thinking, cutoff=verify_cutoff, clock=clock, cap=capped_level,
-            to_level=to_level, enrich=parse_rules, generic=generic_reason,
-            unavailable=compiled.runner_availability(prepared["started"]["session"])[1], limit=verify_candidates_cap,
-            start_index=start)
+        try:
+            return await compiled.verify_candidates(
+                items, batch=batch, repo=prepared["repo"], brief=prepared["brief"], retrieval=prepared["retrieval"],
+                frames=frames_runner, session=prepared["started"]["session"],
+                diff_lines={item.path: {line.new for hunk in item.hunks for line in hunk.lines if line.new is not None}
+                            for item in scope.files},
+                diff_text=SLICE_SEPARATOR.join(chunk.text for chunk in chunks), plan_model=plan_model, plan_thinking=plan_thinking,
+                ask_model=ask_model, ask_thinking=ask_thinking, cutoff=verify_cutoff, clock=clock, cap=capped_level,
+                to_level=to_level, enrich=parse_rules, generic=generic_reason,
+                unavailable=compiled.runner_availability(prepared["started"]["session"])[1], limit=limit,
+                start_index=start, files=scope.files)
+        except Exception as error:
+            for item in items:
+                item.pop("verification", None)
+                item.pop("_steps", None)
+            not_checked.append(f"The host's checks failed for the {batch} candidates ({_text(f'{type(error).__name__}: {error}', 160)}); "
+                               f"the verifier frame judged {len(items)} candidate(s) instead.")
+            return None
 
     if chunks and run_deep_pass:
         try:
@@ -1315,10 +1338,16 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
                 guidance=guidance, enrich=parse_rules, generic=generic_reason, intent=stated,
                 prepared=prepared, prove_leads=not hybrid, keep_session=hybrid)
             if hybrid:
-                # Discovery continues while the fast candidates, already final, are being checked.
-                fast_candidates = [item for item in merged if not skip_candidate(item)][:verify_candidates_cap]
-                deep_out, fast_batch = await asyncio.gather(deep_call, verify_batch("fast", fast_candidates, 0))
-                verify_batches.append(fast_batch)
+                # Discovery continues while the fast candidates, already final, are being checked. Both finish
+                # whatever the other does: a failed deep pass leaves the fast verdicts standing.
+                fast_candidates = [item for item in merged if not skip_candidate(item)]
+                deep_result, fast_batch = await asyncio.gather(deep_call, verify_batch("fast", fast_candidates, 0, verify_candidates_cap),
+                                                               return_exceptions=True)
+                if isinstance(fast_batch, dict):
+                    verify_batches.append(fast_batch)
+                if isinstance(deep_result, BaseException):
+                    raise deep_result
+                deep_out = deep_result
             else:
                 deep_out = await deep_call
         except Exception as error:  # the fast review stands when the deep pass cannot run
@@ -1326,7 +1355,6 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
                                "this is the fast review only.")
             if prepared is not None and prepared["started"]["session"] is not None:
                 prepared["started"]["session"].close()
-            hybrid = False
         if deep_out is not None:
             investigators = deep_out["investigators"]
             dropped_generic += deep_out["generic"]
@@ -1359,15 +1387,14 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
                                 finding[key] = twin[key]
                         finding["verification"] = dict(finding["verification"], inherited_from=twin.get("source"))
                 deep_candidates = [item for item in merged if not item.get("verification") and not skip_candidate(item)]
-                checked_so_far = sum(batch["candidates"] for batch in verify_batches)
+                checked_so_far = sum(batch["checked"] for batch in verify_batches)
                 try:
-                    verify_batches.append(await verify_batch("deep", deep_candidates[:max(0, verify_candidates_cap - checked_so_far)],
-                                                             checked_so_far))
+                    deep_batch = await verify_batch("deep", deep_candidates, checked_so_far, max(0, verify_candidates_cap - checked_so_far))
+                    if deep_batch is not None:
+                        verify_batches.append(deep_batch)
                 finally:
                     if prepared is not None and prepared["started"]["session"] is not None:
                         prepared["started"]["session"].close()
-                for item in deep_candidates[max(0, verify_candidates_cap - checked_so_far):]:
-                    item["verification"] = {"state": "unknown", "detail": "beyond the candidate cap"}
                 test_report = deep_out["tests"]
                 test_report["runs"] = [{key: value for key, value in record.items() if key != "output"} | {"output": record["output"][-600:]}
                                        for record in prepared["started"]["session"].records] if prepared["started"]["session"] is not None else []
@@ -1397,8 +1424,8 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
     candidates: list[dict[str, Any]] = []
     open_earlier = [item for item in earlier if item["status"] in ("still_present", "unknown")]
     hybrid_confirmed: list[dict[str, Any]] = []
-    hybrid_uncertain: list[dict[str, Any]] = []
     hybrid_refuted = 0
+    hybrid_undecided = 0
     for finding in merged:
         logins = raised_by_others(finding, others)
         if logins:
@@ -1409,17 +1436,18 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
                and similar_claims(item["claim"], finding["claim"]) for item in open_earlier):
             duplicates += 1
             continue
-        if hybrid and finding.get("verification"):
+        if hybrid and isinstance(finding.get("verification"), dict):
             state = finding["verification"]["state"]
             if state == "confirmed":
                 hybrid_confirmed.append(finding)
-            elif state in ("refuted", "dropped"):
+                continue
+            if state in ("refuted", "dropped"):
                 hybrid_refuted += 1
-            else:
-                finding["verification_note"] = "the host's check could not decide it: " + _text(
-                    finding["verification"].get("detail") or finding["verification"].get("gate") or "undecided", 160)
-                hybrid_uncertain.append(finding)
-            continue
+                continue
+            # Undecided by the check (unclear, a test that could not run, beyond the cap): the verifier frame
+            # judges it as in `both`, seeing what the check did.
+            finding["check"] = finding.pop("verification")
+            hybrid_undecided += 1
         candidates.append(finding)
 
     verify_budget = max(0, budget - usage.tokens)
@@ -1459,6 +1487,8 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
         if finding.get("ask_evidence"):
             views.append("What a small model answered when the review program asked it (untrusted; the quote was "
                          f"checked to be in the material it saw):\n{finding['ask_evidence']}")
+        if isinstance(finding.get("check"), dict):
+            views.append(check_view(finding["check"]))
         if cited:
             views.append("Evidence the investigator cites, as the host reads it at the reviewed commit (the quoted "
                          f"lines were checked to be there):\n{cited}")
@@ -1502,6 +1532,9 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
                 finding["unclear"] = True
         before = {finding["id"]: finding["line"] for finding in to_verify}
         confirmed, uncertain, rejected = apply_verdicts(to_verify, list(verdicts), sources, counts)
+        for finding in confirmed + uncertain:
+            if isinstance(finding.get("check"), dict):
+                finding["verified_by"] = f"verifier:{finding['check'].get('candidate') or 'beyond-cap'}"
         for finding in confirmed:
             # The verifier judged how serious it is, not only whether it is true.
             set_level(finding, final_level(finding, by_id.get(finding["id"])))
@@ -1521,9 +1554,6 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
     uncertain += unverified
     if hybrid:
         confirmed += hybrid_confirmed
-        for finding in hybrid_uncertain:
-            finding["verification"] = finding.pop("verification_note")
-        uncertain += hybrid_uncertain
         rejected += [{}] * hybrid_refuted
         totals = {"candidates": sum(b["candidates"] for b in verify_batches), "checked": sum(b["checked"] for b in verify_batches),
                   "confirmed": sum(b["confirmed"] for b in verify_batches), "refuted": sum(b["refuted"] for b in verify_batches),
@@ -1533,7 +1563,7 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
         for batch in verify_batches:
             for shape, count in batch["shapes"].items():
                 shapes[shape] = shapes.get(shape, 0) + count
-        verification = {**totals, "shapes": shapes, "planner": [batch["planner"] for batch in verify_batches],
+        verification = {**totals, "toVerifier": hybrid_undecided, "shapes": shapes, "planner": [batch["planner"] for batch in verify_batches],
                         "batches": [{"batch": b["batch"], "candidates": b["candidates"], "ms": b["ms"]} for b in verify_batches],
                         "skipped": [item for batch in verify_batches for item in batch["skipped"]]}
         program_records = [record for batch in verify_batches for record in batch["records"]]
@@ -1553,7 +1583,9 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
             f"Discovery raised {totals['candidates']} candidate finding{'' if totals['candidates'] == 1 else 's'}; the host "
             f"checked {totals['checked']} with {program_stats['tests']} test run{'' if program_stats['tests'] == 1 else 's'} and "
             f"{program_stats['asks']} small-model question{'' if program_stats['asks'] == 1 else 's'}: {totals['confirmed']} confirmed, "
-            f"{totals['refuted']} refuted, {totals['unknown']} undecided; {checks_held} check{'' if checks_held == 1 else 's'} held.")]
+            f"{totals['refuted']} refuted, {totals['unknown']} undecided"
+            + (f" (the verifier frame judged {hybrid_undecided})" if hybrid_undecided else "")
+            + f"; {checks_held} check{'' if checks_held == 1 else 's'} held.")]
         for batch in verify_batches:
             if batch["planner"].get("status") == "failed":
                 not_checked.append(f"The candidate planner failed for the {batch['batch']} batch ({batch['planner'].get('error', '')}); "
@@ -1590,7 +1622,7 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
         "verifyModel": verify_model,
         "thinking": thinking,
         "verifyThinking": verify_thinking,
-        "mode": "compiled" if compiled_out is not None else "hybrid" if hybrid and deep_out is not None
+        "mode": "compiled" if compiled_out is not None else "hybrid" if hybrid
         else ("both" if mode == "hybrid" else mode) if deep_out is not None or mode == "fast" else "fast",
         "verification": verification,
         "deepModel": deep_model if deep_out is not None else None,

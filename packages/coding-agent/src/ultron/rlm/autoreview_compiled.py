@@ -42,7 +42,7 @@ import tempfile
 from typing import Any, Callable
 
 from infer_api import FrameError, Incomplete
-from review_api import FileDiff, _clip, _text, normalize_category, source_window
+from review_api import FileDiff, _clip, _text, hunk_for, normalize_category, render_hunk, source_window
 import autoreview_deep as deep
 import autoreview_tests as testing
 from review_prompts import (ASK_TASK, CANDIDATE_PLANNER_TASK, CHECK_CATALOGUE, COMPILED_REPAIR, RESOLVE_TASK, RV_API,
@@ -70,6 +70,9 @@ DEFAULT_FOR_EACH_ITEMS = 8
 MAX_TEMPLATE_STEPS = 8
 MAX_QUESTION_CHARS = 1_500
 ASK_CONTEXT_CHARS = 12_000
+#: Material attached to an ask as written (each piece, and how many).
+ASK_MATERIAL_CHARS = 4_000
+MAX_ASK_MATERIAL = 4
 #: A result's text is kept up to this; a `contains` over a cut text that finds nothing is unknown.
 RESULT_CHARS = 24_000
 RECORD_CHARS = 1_200
@@ -265,6 +268,10 @@ def _normalize_step(raw: Any, errors: list[str], *, inside: str | None = None) -
         step["context"] = _ids(raw.get("context"))
         if not step["context"]:
             errors.append(f"{label}: ask needs context: the ids of the steps whose results answer it")
+        # Material the host attaches as written (a diff hunk, retrieved references): shown with the context
+        # results, and part of what a quote may come from.
+        step["material"] = [_clip(item, ASK_MATERIAL_CHARS) for item in (raw.get("material") or [])
+                            if isinstance(item, str) and item.strip()][:MAX_ASK_MATERIAL]
     elif op == "assert":
         forms = [key for key in ("step", "all", "any") if raw.get(key) is not None]
         if len(forms) != 1:
@@ -629,9 +636,13 @@ class Interpreter:
                  cap: Callable[..., str], to_level: Callable[[Any], str | None] | None = None,
                  enrich: Callable[[Any, dict[str, Any]], None] | None = None,
                  generic: Callable[[dict[str, Any]], str | None] | None = None,
-                 unavailable: set[tuple[str, str]] | None = None, max_steps: int = MAX_STEPS) -> None:
+                 unavailable: set[tuple[str, str]] | None = None, max_steps: int = MAX_STEPS,
+                 defer_unrunnable: bool = False) -> None:
         self.program = program
         self.max_steps = max_steps
+        #: A finding whose test check could not run is left undecided for the caller's verifier instead of being
+        #: put to the small model with the failed run (the hybrid mode's verifier frame reads the test itself).
+        self.defer_unrunnable = defer_unrunnable
         self.max_planned = LARGE_PROGRAM_STEPS if max_steps > MAX_STEPS else MAX_PROGRAM_STEPS
         self.repo = repo
         self.frames = frames
@@ -757,6 +768,12 @@ class Interpreter:
             return False
         target = self.results.get(step["step"]) or {}
         return target.get("op") in TEST_OPS and target.get("outcome") in ("passed", "failed")
+
+    def test_could_not_run(self, sid: str) -> bool:
+        """Whether a gate rests on a test step that could not run: the small model cannot settle that."""
+        leaves = _assert_leaves(sid, self.steps_by_id)
+        return any(leaf["op"] in TEST_OPS and (self.results.get(leaf["id"]) or {}).get("outcome") == "could_not_run"
+                   for leaf in leaves)
 
     # -- running --
 
@@ -917,6 +934,10 @@ class Interpreter:
         if any(self.results.get(ref) is None or self.results[ref]["status"] != "ok" for ref in step["context"]):
             return None
         views, texts = self._material(step["context"], ASK_CONTEXT_CHARS)
+        for item in step.get("material") or []:
+            views.append("Material attached to the question (untrusted repository data read by the host at the "
+                         f"reviewed commit):\n{item}")
+            texts.append(item)
         return [f"Question: {self.fill(step['question'], scope)}", *views], "\n".join(texts)
 
     def _check_quote(self, reply: Any, material: str) -> tuple[str, str, bool, str]:
@@ -1069,6 +1090,13 @@ class Interpreter:
             # outright; only checks that read something else are put to the small model when they surprise.
             if self.contradicted(when["step"]) and not self.test_decided(when["step"]):
                 return step, scope, "against the planner's expectation"
+            if held is None and self.defer_unrunnable and self.test_could_not_run(when["step"]):
+                self.not_emitted["undecided"] += 1
+                self._record(step, {"op": "finding", "status": "ok", "emitted": False, "text": "",
+                                    "gate": "gate unknown; the test could not run",
+                                    "detail": f"its check {when['step']} rests on a test that could not run (left to the verifier)"},
+                             began, None)
+                return None
             if held is None:
                 return step, scope, "unknown"
         if held is None:
@@ -1852,9 +1880,10 @@ def candidate_shape(candidate: dict[str, Any], brief: Any, retrieval: dict[str, 
     if candidate.get("category") == "tests":
         return "unpinned-behaviour", {}
     extracted = getattr(brief, "extracted", {}) or {}
+    registries = retrieval.get("registries") if isinstance(retrieval.get("registries"), dict) else {}
     for key in (retrieval.get("keys") or []):
-        if key in names and retrieval.get("registries", {}).get(key):
-            return "registry-member", {"key": key, "registries": retrieval["registries"][key][:3]}
+        if key in names and isinstance(registries.get(key), list) and registries[key]:
+            return "registry-member", {"key": key, "registries": registries[key][:3]}
     for name in list(extracted.get("env") or []) + list(extracted.get("flags") or []) + list(extracted.get("config") or []):
         if name in names:
             return "env-in-deploy", {"name": name}
@@ -1878,14 +1907,35 @@ def _finding_fields(candidate: dict[str, Any]) -> dict[str, Any]:
             "unpinned": unpinned, "consequence": candidate.get("consequence") or ""}
 
 
+def ask_material(candidate: dict[str, Any], files: list[FileDiff] | None, retrieval: dict[str, Any] | None) -> list[str]:
+    """What an ask about a candidate gets besides the cited lines: the diff hunk at the finding's line and the
+    retrieved references of the names its claim uses (the host looked them up before the review)."""
+    out: list[str] = []
+    path, line = candidate.get("file"), int(candidate.get("line") or 0)
+    hunk = hunk_for(next((item for item in files or [] if item.path == path), None), line)
+    if hunk is not None:
+        out.append(f"Diff hunk of {path} (new-file line numbers; + added, - removed):\n" + "\n".join(render_hunk(hunk)))
+    names = set(_WORDS.findall(f"{candidate.get('claim', '')} {candidate.get('why', '')}"))
+    sections = (retrieval or {}).get("sections") if isinstance((retrieval or {}).get("sections"), dict) else {}
+    used = [sections[name] for name in sections if name in names][:2]
+    if used:
+        out.append("Retrieved references of the names the claim uses (outside the changed lines, at the reviewed commit):\n\n"
+                   + "\n\n".join(used))
+    return out
+
+
 def template_steps(cid: str, candidate: dict[str, Any], shape: str, details: dict[str, Any], *, repo: deep.Repo,
-                   brief: Any, tests_available: bool) -> tuple[list[dict[str, Any]], str]:
+                   brief: Any, tests_available: bool, files: list[FileDiff] | None = None,
+                   retrieval: dict[str, Any] | None = None,
+                   runnable: Callable[[list[str]], bool] | None = None) -> tuple[list[dict[str, Any]], str]:
     """The check program of one candidate, from its shape: (steps, what the template does). The finding step
-    carries the candidate's own wording and is gated on the decisive check."""
+    carries the candidate's own wording and is gated on the decisive check. `runnable(test_paths)` says whether
+    the runner of those tests is available (a mutation check is planned only then; else the ask variant)."""
     fields = _finding_fields(candidate)
     path, line = fields["file"], fields["line"]
     lines = repo.lines(path) or []
     steps: list[dict[str, Any]] = []
+    material = ask_material(candidate, files, retrieval)
 
     def read(sid: str, target: str, at: int, radius: int) -> dict[str, Any] | None:
         total = len(repo.lines(target) or [])
@@ -1903,7 +1953,7 @@ def template_steps(cid: str, candidate: dict[str, Any], shape: str, details: dic
         mutation = unpinned.get("mutation") if isinstance(unpinned, dict) else None
         closest = unpinned.get("closest_test") if isinstance(unpinned, dict) else None
         test_paths = [closest["path"]] if isinstance(closest, dict) and closest.get("path") in repo.files() else list(getattr(brief, "tests", [])[:2])
-        if mutation and tests_available and test_paths:
+        if mutation and tests_available and test_paths and (runnable is None or runnable(test_paths)):
             steps.append({"id": f"{cid}_m", "op": "mutation_check", "args": {"path": mutation["path"], "line": mutation["line"],
                                                                              "replacement": mutation["replacement"], "tests": test_paths}})
             steps.append({"id": f"{cid}_a", "op": "assert", "step": f"{cid}_m", "predicate": "status == passed", "expect": True,
@@ -1924,9 +1974,10 @@ def template_steps(cid: str, candidate: dict[str, Any], shape: str, details: dic
         change = unpinned.get("change") if isinstance(unpinned, dict) else ""
         question = (f"Behaviour: {behaviour or fields['claim']}. Change to it: {change or 'undo the new behaviour'}. "
                     "Looking at the test lines shown, would every assertion still pass after that change (that is, does no "
-                    "shown test pin this behaviour)? Answer yes if the behaviour is unpinned, no if a shown assertion would fail, "
-                    "unclear if the lines cannot tell.")
-        steps.append({"id": f"{cid}_q", "op": "ask", "question": question, "context": context})
+                    "shown test pin this behaviour)? Say first which shown assertion would fail if one would. Answer yes if the "
+                    "behaviour is unpinned, quoting the closest assertion that still passes; no if a shown assertion would fail, "
+                    "quoting it; unclear if the lines cannot tell.")
+        steps.append({"id": f"{cid}_q", "op": "ask", "question": question, "context": context, "material": material})
         finding(f"{cid}_q", [f"{cid}_q", *context])
         return steps, f"ask over {test_path or path} whether the change would be caught"
     if shape == "registry-member":
@@ -1967,11 +2018,18 @@ def template_steps(cid: str, candidate: dict[str, Any], shape: str, details: dic
         return [], "no source to read"
     question = (f"Candidate finding at {path}:{line}: {fields['claim']} Reason given: {fields['why'] or '(none)'}"
                 + (f" Scenario: {fields['scenario']}" if fields["scenario"] else "")
-                + " Do the lines shown have this problem as described? Answer yes only if the shown lines show it; no if "
-                  "the code shown prevents it or the claim misreads the code; unclear if the lines cannot show it.")
-    steps.append({"id": f"{cid}_q", "op": "ask", "question": _clip(question, MAX_QUESTION_CHARS), "context": context})
+                + " Two sides: first, what would the material have to show for this claim to be false (a guard, a handler, "
+                  "a caller that validates, a test that pins it, a different order)? Is that there? Then answer yes only "
+                  "if the cited lines have the problem as described and nothing shown prevents it, quoting the cited line "
+                  "that has it; no if the code shown prevents it or the claim misreads the code, quoting the line that does; "
+                  "unclear if the material cannot tell.")
+    steps.append({"id": f"{cid}_q", "op": "ask", "question": _clip(question, MAX_QUESTION_CHARS), "context": context,
+                  "material": material})
     finding(f"{cid}_q", [f"{cid}_q", *context])
-    return steps, f"ask over {', '.join(context)} with the claim, reason and scenario"
+    return steps, (f"ask over {', '.join(context)} with the claim, reason and scenario"
+                   + (f", the diff hunk and retrieved references attached" if len(material) == 2
+                      else ", the diff hunk attached" if material and material[0].startswith("Diff hunk")
+                      else ", retrieved references attached" if material else ""))
 
 
 def _quote_in(repo: deep.Repo, path: str, line: int, quote: str, radius: int = CANDIDATE_READ_RADIUS) -> bool:
@@ -1985,6 +2043,19 @@ def _quote_in(repo: deep.Repo, path: str, line: int, quote: str, radius: int = C
     return False
 
 
+def _quote_in_reads(repo: deep.Repo, steps: list[dict[str, Any]], quote: str) -> bool:
+    """Whether a quote comes from the lines a check program read (the cited lines, not the material attached)."""
+    for step in steps:
+        if step.get("op") != "read" or not isinstance(step.get("args"), dict):
+            continue
+        args = step["args"]
+        start, end = int(args.get("start") or 1), int(args.get("end") or 0)
+        middle = (start + end) // 2
+        if _quote_in(repo, str(args.get("path")), middle, quote, radius=max(1, (end - start) // 2 + 1)):
+            return True
+    return False
+
+
 async def verify_candidates(candidates: list[dict[str, Any]], *, batch: str, repo: deep.Repo, brief: Any,
                             retrieval: dict[str, Any], frames: Any, session: Any, diff_lines: dict[str, set[int]],
                             diff_text: str, plan_model: str | None, plan_thinking: str | None, ask_model: str | None,
@@ -1992,13 +2063,27 @@ async def verify_candidates(candidates: list[dict[str, Any]], *, batch: str, rep
                             cap: Callable[..., str], to_level: Callable[[Any], str | None] | None,
                             enrich: Callable[[Any, dict[str, Any]], None] | None, generic: Callable[[dict[str, Any]], str | None] | None,
                             unavailable: set[tuple[str, str]] | None, limit: int, use_planner: bool = True,
-                            start_index: int = 0) -> dict[str, Any]:
+                            start_index: int = 0, files: list[FileDiff] | None = None) -> dict[str, Any]:
     """Decide a batch of candidate findings with host-written check programs: a template per candidate shape,
     plus one bounded planner frame that may add up to 3 steps per candidate. Each candidate ends confirmed
-    (its finding step emitted: by a deterministic check, or by an ask), refuted (gate false, or the small model
-    said no), or unknown (unclear). Sets `verification` on every candidate and returns the batch's stats."""
+    (its finding step emitted: by a deterministic check, or by an ask whose quote is in the cited lines),
+    refuted (gate false, or the small model said no), or unknown (unclear, a test that could not run, a quote
+    from outside the cited lines, beyond the cap): the caller's verifier frame takes the unknown ones. Sets
+    `verification` on every candidate and returns the batch's stats."""
     began = clock()
     tests_available = session is not None and session.limit > len(session.records)
+    known_unavailable = set(unavailable or ())
+
+    def runnable(test_paths: list[str]) -> bool:
+        """Whether the runner of these tests is available (not found missing by an earlier run)."""
+        if session is None or not known_unavailable:
+            return session is not None
+        try:
+            groups = session.plan(session.paths(test_paths))
+        except testing.TestsRejected:
+            return True
+        return not any((runner.name, directory or ".") in known_unavailable for runner, directory, _paths in groups)
+
     plans: list[tuple[str, dict[str, Any], str, str]] = []
     skipped: list[str] = []
     for index, candidate in enumerate(candidates[:limit], start_index + 1):
@@ -2009,7 +2094,8 @@ async def verify_candidates(candidates: list[dict[str, Any]], *, batch: str, rep
                                          "template": "the host ran the test at both commits", "by": f"test:{candidate.get('test_run')}"}
             continue
         shape, details = candidate_shape(candidate, brief, retrieval)
-        steps, how = template_steps(cid, candidate, shape, details, repo=repo, brief=brief, tests_available=tests_available)
+        steps, how = template_steps(cid, candidate, shape, details, repo=repo, brief=brief, tests_available=tests_available,
+                                    files=files, retrieval=retrieval, runnable=runnable)
         candidate["verification"].update(shape=shape, template=how)
         if not steps:
             candidate["verification"].update(state="unknown", detail=how)
@@ -2069,32 +2155,39 @@ async def verify_candidates(candidates: list[dict[str, Any]], *, batch: str, rep
         program, errors = validate({"steps": kept}) if kept else (Program([], ""), [])
     interpreter = Interpreter(program or Program([], ""), repo, frames=frames, session=session, diff_lines=diff_lines,
                               ask_model=ask_model, ask_thinking=ask_thinking, cutoff=cutoff, clock=clock, cap=cap,
-                              to_level=to_level, enrich=enrich, generic=generic, unavailable=unavailable, max_steps=MAX_STEPS)
+                              to_level=to_level, enrich=enrich, generic=generic, unavailable=unavailable, max_steps=MAX_STEPS,
+                              defer_unrunnable=True)
     if program is not None and program.steps:
         await interpreter.run()
     composed = {finding["program_step"]: finding for finding in interpreter.findings}
     results = interpreter.results
     capped = 0
     for cid, candidate, shape, _how in plans:
-        candidate.pop("_steps", None)
+        steps = candidate.pop("_steps", None) or []
         state = candidate["verification"]
         if state["state"] != "pending":
             continue
         record = results.get(f"{cid}_f")
         emitted = composed.get(f"{cid}_f")
         gate = (record or {}).get("gate") or ""
+        ask = results.get(f"{cid}_q")
+        if ask is not None and ask.get("op") == "ask" and ask.get("status") == "ok":
+            state["asked"] = {"answer": ask.get("answer"), "quote": _clip(ask.get("quote") or "", 200), "why": ask.get("why") or ""}
         if emitted is not None:
-            # Confirmed: the candidate keeps its identity and takes the check's evidence and level.
+            # Confirmed: the candidate keeps its identity and takes the check's evidence and level. A yes rests on
+            # a quote from the cited lines; a quote from the attached material alone leaves it to the verifier.
             asked = not emitted.get("host_confirmed")
             level = emitted["level"]
-            if asked and level in ("critical", "high"):
+            if asked:
                 quote = ""
                 for ref in emitted.get("ask_evidence", "").split("\n"):
                     if "quoting `" in ref:
                         quote = ref.split("quoting `", 1)[1].rsplit("`", 1)[0]
-                if not _quote_in(repo, candidate["file"], int(candidate["line"]), quote):
-                    level = "medium"
+                if not _quote_in_reads(repo, steps, quote):
                     capped += 1
+                    state.update(state="unknown", gate=gate or "gate true",
+                                 detail="the small model answered yes but quoted outside the cited lines (left to the verifier)")
+                    continue
             candidate.update({"level": level, "severity": LEVEL_TO_OLD[level], "evidence": emitted.get("evidence", ""),
                               "beyond_diff": emitted.get("beyond_diff") or candidate.get("beyond_diff"),
                               "verified_by": f"check:{emitted['program_step']}"})
@@ -2172,6 +2265,8 @@ def retrieve(repo: deep.Repo, brief: Any, files: list[FileDiff], *, clock: Calla
     #: Per new key: the files where two or more siblings are registered and the key is absent, and its own uses.
     registries: dict[str, list[str]] = {}
     present_in: dict[str, list[str]] = {}
+    #: The section of each symbol and key, for the checks that attach the references of the names a claim uses.
+    by_name: dict[str, str] = {}
 
     def outside(hits: list[tuple[str, int, str]]) -> list[tuple[str, int, str]]:
         return [hit for hit in hits if hit[1] not in changed_lines.get(hit[0], ())]
@@ -2180,6 +2275,7 @@ def retrieve(repo: deep.Repo, brief: Any, files: list[FileDiff], *, clock: Calla
         hits = outside(repo.grep(name, fixed=True, word=True, limit=60))
         if not hits:
             sections.append((0, f"References of `{name}` outside the changed lines: none."))
+            by_name[name] = sections[-1][1]
             items += 1
             continue
         tests = [hit for hit in hits if deep._TEST.search(hit[0])]
@@ -2195,10 +2291,10 @@ def retrieve(repo: deep.Repo, brief: Any, files: list[FileDiff], *, clock: Calla
             if structure:
                 lines.append("    structure: " + "; ".join(f"{n}: {_clip(text.strip(), 100)}" for _, n, text in structure))
         sections.append((len(hits), "\n".join(lines)))
+        by_name[name] = sections[-1][1]
         items += 1
     keys = list(dict.fromkeys(list(required.get("claims") or []) + list(extracted.get("fields") or [])
                               + list(extracted.get("constants") or [])))[:8]
-    registries_missing_map = registries
     # The siblings of a new field are the other fields declared in the same changed files (the declaration
     # list it joins), plus the other new keys.
     declared: list[str] = []
@@ -2220,18 +2316,21 @@ def retrieve(repo: deep.Repo, brief: Any, files: list[FileDiff], *, clock: Calla
         for p, _n, text in family:
             by_file.setdefault(p, set()).update(other for other in siblings if re.search(r"(?<![A-Za-z0-9_])" + re.escape(other) + r"(?![A-Za-z0-9_])", text))
         present = {p for p, _n, _t in repo.grep(key, fixed=True, word=True, limit=60)}
-        registries = [p for p, names in sorted(by_file.items(), key=lambda pair: -len(pair[1])) if len(names) >= 2]
-        registries_missing = [p for p in registries if p not in present]
-        if registries_missing:
-            registries_missing_map[key] = registries_missing
+        # `registries` stays the per-key dict the templates read (a local list once shadowed it and the
+        # registry-member shape then crashed on `.get`): the files found go in `found`.
+        found = [p for p, names in sorted(by_file.items(), key=lambda pair: -len(pair[1])) if len(names) >= 2]
+        missing = [p for p in found if p not in present]
+        if missing:
+            registries[key] = missing
         present_in[key] = sorted(present)
         lines = [f"New key `{key}`: used outside the changed lines at "
                  + ("; ".join(f"{p}:{n}" for p, n, _t in own[:RETRIEVAL_HITS]) or "nowhere") + "."]
-        for p in registries[:5]:
+        for p in found[:5]:
             where = "; ".join(f"{n}: {_clip(text.strip(), 100)}" for q, n, text in family if q == p)[:400]
             lines.append(f"  siblings ({len(by_file[p])}) registered in {p}" + (": the new key is NOT there" if p not in present
                                                                         else ": the new key is there too") + f" ({where})")
-        sections.append((100 + len(registries) * 10, "\n".join(lines)))
+        sections.append((100 + len(found) * 10, "\n".join(lines)))
+        by_name[key] = "\n".join(lines)
         items += 1
     for name in list(extracted.get("calls") or [])[:5]:
         if name in (getattr(brief, "helpers", []) or []):
@@ -2250,7 +2349,7 @@ def retrieve(repo: deep.Repo, brief: Any, files: list[FileDiff], *, clock: Calla
             break
         text += ("\n\n" if text else "") + section
     return {"text": text, "items": items, "chars": len(text), "ms": int((clock() - began) * 1000),
-            "registries": registries, "present": present_in, "keys": keys}
+            "registries": registries, "present": present_in, "keys": keys, "sections": by_name}
 
 
 def planner_views(diff_text: str, brief_text: str, *, context: str, intent: str, guidance: str, tests_block: str,
