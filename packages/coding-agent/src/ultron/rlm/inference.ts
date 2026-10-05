@@ -22,7 +22,7 @@ import { isJsonValue, type JsonValue } from "@ultron/chord";
 import { BACKGROUND_CONTEXT } from "@ultron/chord/context";
 import type { TSchema } from "typebox";
 import { Check, Errors } from "typebox/value";
-import type { FrameThinkingLevel, RlmModelSettings } from "../../core/settings-manager.ts";
+import { FRAME_THINKING_LEVELS, type FrameThinkingLevel, type RlmModelSettings } from "../../core/settings-manager.ts";
 import type { NativeUsageCallStatus, NativeUsageLedgerLike, NativeUsageMeasurement } from "../usage.ts";
 import { validateJsonSchema } from "./definition-registry.ts";
 import type { HostCaller, NativeHostApi, NativeHostModule } from "./host-module.ts";
@@ -226,6 +226,8 @@ type FrameState = {
 	lastEstimate?: number;
 	exhausted?: string;
 	outputs: string[];
+	/** Provider-reported usage of the frame's requests (summed into `rlm.map`'s reply). */
+	measured: { inputTokens: number; outputTokens: number; cost: number };
 	attempts: Array<{ attempt: number; at: number; output: string; error?: string }>;
 	requests: Array<{ at: number; tranche: number; held: number; charged: number; status: string }>;
 	outcome?: FrameOutcome;
@@ -766,7 +768,13 @@ export class InferenceRuntime {
 		// A frame with depth runs the rlm cell, so it keeps the session's tool-capable model.
 		const settings = this.modelSettings();
 		if (model === undefined && depth === 1) model = effectiveFrameModel(this.env, settings.rlm).model;
-		const thinking = settings.rlm.frameThinking;
+		// The call's own `thinking=` wins over `rlm.frameThinking`.
+		let thinking = settings.rlm.frameThinking;
+		if (payload.thinking != null) {
+			const level = FRAME_THINKING_LEVELS.find((item) => item === payload.thinking);
+			if (level === undefined) throw new Error(`thinking must be one of ${FRAME_THINKING_LEVELS.join(", ")}`);
+			thinking = level;
+		}
 		// A top-level map without a token limit gets the default one; a nested map already draws on its frame's pool.
 		const defaultTokens = kind === "map" && tokens === null && !parentFrame;
 		if (defaultTokens) tokens = defaultMapTokens();
@@ -807,6 +815,7 @@ export class InferenceRuntime {
 			settled: { requests: 0, tokens: 0 },
 			conversationChars: 0,
 			outputs: [],
+			measured: { inputTokens: 0, outputTokens: 0, cost: 0 },
 			attempts: [],
 			requests: [],
 			startedAt: this.now(),
@@ -853,7 +862,7 @@ export class InferenceRuntime {
 	}
 
 	private async infer(payload: Payload, caller: HostCaller, context: Context, host: NativeHostApi) {
-		fields(payload, ["task", "context", "contract", "budget", "model", "max_repairs", "timeout_ms"]);
+		fields(payload, ["task", "context", "contract", "budget", "model", "max_repairs", "timeout_ms", "thinking"]);
 		const options = this.options(payload, caller, host);
 		const frame = this.newFrame(
 			this.request({ task: payload.task, context: payload.context }, options.depth),
@@ -864,7 +873,16 @@ export class InferenceRuntime {
 	}
 
 	private async map(payload: Payload, caller: HostCaller, context: Context, host: NativeHostApi) {
-		fields(payload, ["frames", "contract", "budget", "model", "max_repairs", "concurrency", "timeout_ms"]);
+		fields(payload, [
+			"frames",
+			"contract",
+			"budget",
+			"model",
+			"max_repairs",
+			"concurrency",
+			"timeout_ms",
+			"thinking",
+		]);
 		if (!Array.isArray(payload.frames)) throw new Error("frames must be a list");
 		if (payload.frames.length > MAX_MAP_FRAMES) throw new Error(`rlm.map takes at most ${MAX_MAP_FRAMES} frames`);
 		const concurrency = optionalInteger(payload.concurrency, "concurrency", 1, MAX_CONCURRENCY) ?? 8;
@@ -887,6 +905,11 @@ export class InferenceRuntime {
 		return {
 			results: frames.map((frame) => this.observation(frame)),
 			budget: { ...options.node.snapshot(), remaining: options.node.remaining() },
+			usage: {
+				input_tokens: frames.reduce((sum, frame) => sum + frame.measured.inputTokens, 0),
+				output_tokens: frames.reduce((sum, frame) => sum + frame.measured.outputTokens, 0),
+				cost: frames.reduce((sum, frame) => sum + frame.measured.cost, 0),
+			},
 		};
 	}
 
@@ -1056,8 +1079,14 @@ export class InferenceRuntime {
 				throw error;
 			} finally {
 				this.settlePrompt(frame, entries);
+				const measured = measurement(entries);
+				if (measured !== undefined) {
+					frame.measured.inputTokens += measured.inputTokens ?? 0;
+					frame.measured.outputTokens += measured.outputTokens ?? 0;
+					frame.measured.cost += measured.cost ?? 0;
+				}
 				if (reservation) {
-					const usage = measurement(entries);
+					const usage = measured;
 					await this.usage?.settle(reservation, { status, ...(usage === undefined ? {} : { usage }) });
 				}
 			}

@@ -170,6 +170,7 @@ export interface Settings {
 	rlm?: RlmModelSettings; // Ultron: models of RLM frames and sub-agents (/settings → Models); global only
 	worktrees?: WorktreeSettings; // Ultron: how `rlm.spawn(..., worktree=True)` prepares a sub-agent's worktree
 	review?: ReviewSettings; // Ultron: /review (/settings → Models); global only
+	autoreview?: AutoreviewSettings; // Ultron: `ultron autoreview`, the automated pull-request reviewer; global only
 }
 
 /** A `provider/model` reference, as `--model`, `model=` and ULTRON_*_MODEL take it. */
@@ -199,6 +200,116 @@ export interface RlmModelSettings {
 export interface ReviewSettings {
 	/** `provider/model` of /review frames; `--model` and ULTRON_REVIEW_MODEL override it; unset, `rlm.frameModel`. */
 	model?: string;
+}
+
+/**
+ * `ultron autoreview`: automated pull-request reviews under the logged-in `gh` accounts. Global only: a repository
+ * under review must not be able to change how it is reviewed. Defaults are in ultron/autoreview/config.ts.
+ */
+export interface AutoreviewSettings {
+	/** Logins to review as; unset, every account `gh auth status` lists. */
+	accounts?: string[];
+	/** Seconds between discovery polls (default 45, minimum 20). */
+	pollSeconds?: number;
+	/** Pull requests reviewed at once (default 3). */
+	concurrency?: number;
+	/** `provider/model` of the finder frames; unset: `review.model`, then `rlm.frameModel`, then the default model. */
+	model?: string;
+	/** `provider/model` of the verifier frames; unset: the finder model. */
+	verifyModel?: string;
+	/** Token cap of one review (default: none). */
+	budget?: number;
+	/** Model requests of one review in flight at once, for finder and verifier frames alike (default 8, max 16). */
+	frameConcurrency?: number;
+	/** Thinking level of the finder frames (default "low"). */
+	thinking?: FrameThinkingLevel;
+	/** Thinking level of the verifier frames (default "low"). */
+	verifyThinking?: FrameThinkingLevel;
+	/**
+	 * `fast`: review the diff. `deep`: investigate beyond it (callers, helpers, tests, claims) by read-only lookups.
+	 * `both` (default): the fast pass, then the deep one with its findings as leads; one review is posted.
+	 * `compiled` (experimental): one strong model writes a review program once; the host executes it and asks a
+	 * small model only the narrow questions the program poses. `hybrid` (default): the fast and deep passes discover
+	 * candidates, host-written check programs verify them.
+	 */
+	mode?: "fast" | "deep" | "both" | "compiled" | "hybrid";
+	/** `hybrid` mode: candidates verified per review at most (default 12, maximum 40). */
+	verifyCandidates?: number;
+	/** `provider/model` of the deep pass's investigator frames; unset: the finder model. */
+	deepModel?: string;
+	/** Thinking level of the investigator frames (default "high"). */
+	deepThinking?: FrameThinkingLevel;
+	/** `compiled` mode: `provider/model` of the planner frame; unset: the finder model. */
+	planModel?: string;
+	/** Thinking level of the planner (default "medium" for the cell style, "high" for the frame style). */
+	planThinking?: FrameThinkingLevel;
+	/** `compiled` mode: `provider/model` of the small model the program's questions go to; unset: the finder model. */
+	askModel?: string;
+	/** Thinking level of those frames (default "low"). */
+	askThinking?: FrameThinkingLevel;
+	/**
+	 * `compiled` mode: `cell` (default) has the planner write Python cells run in a sandbox over the `rv` API;
+	 * `frame` has it return one JSON program in a single frame.
+	 */
+	planStyle?: "cell" | "frame";
+	/** `compiled` mode: cells the planner may run (default 4, maximum 12). */
+	planCells?: number;
+	/** Lookup rounds one investigator may take (default 4, maximum 8). */
+	deepRounds?: number;
+	/** A confirmed finding at this level or above makes the review request changes (default "medium"). */
+	blockAt?: "critical" | "high" | "medium" | "low" | "nit";
+	/** Inline comments posted per review at most (default 5); the rest are counted in the body. */
+	maxComments?: number;
+	/**
+	 * Let the deep pass run the reviewed project's tests, sandboxed (default true). They run only for repositories
+	 * the reviewing account can push to, or whose owner is in `testOwners`, and only when a sandbox is available.
+	 */
+	runTests?: boolean;
+	/** Repository owners (users or organizations) whose repositories' tests may be run. */
+	testOwners?: string[];
+	/** Test executions per review (default 6). */
+	testRuns?: number;
+	/** Wall-clock limit of one test execution, in seconds (default 300). */
+	testTimeoutSeconds?: number;
+	/** `owner/repo` -> directory of a pre-built environment (a virtualenv, a node_modules) bound read-only into the sandbox. */
+	testEnv?: Record<string, string>;
+	/**
+	 * Directories that hold local checkouts (`<root>/<repo>`). When one is the reviewed repository (its git remote
+	 * is checked), its prepared environments (`.venv`, `venv`, `node_modules`) are bound read-only into the test
+	 * sandbox. Nothing else of the checkout is ever used.
+	 */
+	checkoutRoots?: string[];
+	/**
+	 * Private review guides: markdown files, or directories of them. Their content (bounded) guides the review's
+	 * frames; it is never quoted, named or referred to in anything posted.
+	 */
+	guides?: string[];
+	/** A local Docker image for the sandbox when neither bubblewrap nor unshare is available. */
+	testImage?: string;
+	/**
+	 * Prepare a repository's test environment (uv virtualenv, npm ci, mise toolchains) before its first review and
+	 * when its lockfile changes, with the network, into the cache; never during a review (default true).
+	 */
+	prepareEnvs?: boolean;
+	/** Resolve and install toolchains with mise during prepare (default: when a mise binary exists); or its path. */
+	mise?: boolean | string;
+	/** Seconds a review may take: at the deadline unfinished passes are given up and the rest is posted (default 0: none, the review waits for every frame). */
+	deadlineSeconds?: number;
+	/** Seconds one frame may take before it is retried or given up (default: no timeout). */
+	frameTimeoutSeconds?: number;
+	/** Write the would-be review to `<agentDir>/autoreview/dry-run/` instead of posting it (default false). */
+	dryRun?: boolean;
+	/** Post a short comment when a review starts (default true). */
+	ack?: boolean;
+	/** The lines one is picked from for that comment. */
+	ackLines?: string[];
+	/**
+	 * Art appended to that comment in a fenced code block: unset or `"logo"`, Ultron's logo; `"none"` or `false`,
+	 * no art; any other text, that text verbatim.
+	 */
+	ackArt?: string | false;
+	/** End the review summary with "Automated review by Ultron" (default true). */
+	signature?: boolean;
 }
 
 /**
@@ -1268,6 +1379,113 @@ export class SettingsManager {
 		this.globalSettings.review = { ...current, model };
 		this.markModified("review", "model");
 		this.save();
+	}
+
+	/** Ultron: `ultron autoreview` settings as saved, invalid values dropped. Global only. */
+	getAutoreviewSettings(): AutoreviewSettings {
+		const configured = this.globalSettings.autoreview;
+		if (!isMergeableObject(configured)) return {};
+		const strings = (value: unknown): string[] | undefined => {
+			if (!Array.isArray(value)) return undefined;
+			const items = value.filter((item): item is string => typeof item === "string" && item.trim() !== "");
+			return items.length === 0 ? undefined : items.map((item) => item.trim());
+		};
+		const count = (value: unknown): number | undefined =>
+			typeof value === "number" && Number.isFinite(value) && value > 0 ? Math.floor(value) : undefined;
+		const flag = (value: unknown): boolean | undefined => (typeof value === "boolean" ? value : undefined);
+		const out: AutoreviewSettings = {};
+		const accounts = strings(configured.accounts);
+		if (accounts !== undefined) out.accounts = accounts;
+		const pollSeconds = count(configured.pollSeconds);
+		if (pollSeconds !== undefined) out.pollSeconds = pollSeconds;
+		const concurrency = count(configured.concurrency);
+		if (concurrency !== undefined) out.concurrency = concurrency;
+		const model = modelRef(configured.model);
+		if (model !== undefined) out.model = model;
+		const verifyModel = modelRef(configured.verifyModel);
+		if (verifyModel !== undefined) out.verifyModel = verifyModel;
+		const budget = count(configured.budget);
+		if (budget !== undefined) out.budget = budget;
+		const frameConcurrency = count(configured.frameConcurrency);
+		if (frameConcurrency !== undefined) out.frameConcurrency = frameConcurrency;
+		const thinking = FRAME_THINKING_LEVELS.find((level) => level === configured.thinking);
+		if (thinking !== undefined) out.thinking = thinking;
+		const verifyThinking = FRAME_THINKING_LEVELS.find((level) => level === configured.verifyThinking);
+		if (verifyThinking !== undefined) out.verifyThinking = verifyThinking;
+		if (configured.deadlineSeconds === 0) out.deadlineSeconds = 0;
+		const deadlineSeconds = count(configured.deadlineSeconds);
+		if (deadlineSeconds !== undefined) out.deadlineSeconds = deadlineSeconds;
+		const frameTimeoutSeconds = count(configured.frameTimeoutSeconds);
+		if (frameTimeoutSeconds !== undefined) out.frameTimeoutSeconds = frameTimeoutSeconds;
+		if (
+			configured.mode === "fast" ||
+			configured.mode === "deep" ||
+			configured.mode === "both" ||
+			configured.mode === "compiled" ||
+			configured.mode === "hybrid"
+		)
+			out.mode = configured.mode;
+		const verifyCandidates = count(configured.verifyCandidates);
+		if (verifyCandidates !== undefined) out.verifyCandidates = verifyCandidates;
+		const deepModel = modelRef(configured.deepModel);
+		if (deepModel !== undefined) out.deepModel = deepModel;
+		const deepThinking = FRAME_THINKING_LEVELS.find((level) => level === configured.deepThinking);
+		if (deepThinking !== undefined) out.deepThinking = deepThinking;
+		const planModel = modelRef(configured.planModel);
+		if (planModel !== undefined) out.planModel = planModel;
+		const planThinking = FRAME_THINKING_LEVELS.find((level) => level === configured.planThinking);
+		if (planThinking !== undefined) out.planThinking = planThinking;
+		const askModel = modelRef(configured.askModel);
+		if (askModel !== undefined) out.askModel = askModel;
+		const askThinking = FRAME_THINKING_LEVELS.find((level) => level === configured.askThinking);
+		if (askThinking !== undefined) out.askThinking = askThinking;
+		if (configured.planStyle === "cell" || configured.planStyle === "frame") out.planStyle = configured.planStyle;
+		const planCells = count(configured.planCells);
+		if (planCells !== undefined) out.planCells = planCells;
+		const deepRounds = count(configured.deepRounds);
+		if (deepRounds !== undefined) out.deepRounds = deepRounds;
+		const blockAt = (["critical", "high", "medium", "low", "nit"] as const).find(
+			(level) => level === configured.blockAt,
+		);
+		if (blockAt !== undefined) out.blockAt = blockAt;
+		if (configured.maxComments === 0) out.maxComments = 0;
+		const maxComments = count(configured.maxComments);
+		if (maxComments !== undefined) out.maxComments = maxComments;
+		const runTests = flag(configured.runTests);
+		if (runTests !== undefined) out.runTests = runTests;
+		const testOwners = strings(configured.testOwners);
+		if (testOwners !== undefined) out.testOwners = testOwners;
+		const testRuns = count(configured.testRuns);
+		if (testRuns !== undefined) out.testRuns = testRuns;
+		const testTimeoutSeconds = count(configured.testTimeoutSeconds);
+		if (testTimeoutSeconds !== undefined) out.testTimeoutSeconds = testTimeoutSeconds;
+		if (isMergeableObject(configured.testEnv)) {
+			const testEnv: Record<string, string> = {};
+			for (const [repo, dir] of Object.entries(configured.testEnv))
+				if (typeof dir === "string" && dir.trim() !== "") testEnv[repo.toLowerCase()] = dir.trim();
+			if (Object.keys(testEnv).length > 0) out.testEnv = testEnv;
+		}
+		const checkoutRoots = strings(configured.checkoutRoots);
+		if (checkoutRoots !== undefined) out.checkoutRoots = checkoutRoots;
+		const guides = strings(configured.guides);
+		if (guides !== undefined) out.guides = guides;
+		if (typeof configured.testImage === "string" && configured.testImage.trim() !== "")
+			out.testImage = configured.testImage.trim();
+		const prepareEnvs = flag(configured.prepareEnvs);
+		if (prepareEnvs !== undefined) out.prepareEnvs = prepareEnvs;
+		if (typeof configured.mise === "boolean") out.mise = configured.mise;
+		else if (typeof configured.mise === "string" && configured.mise.trim() !== "") out.mise = configured.mise.trim();
+		const dryRun = flag(configured.dryRun);
+		if (dryRun !== undefined) out.dryRun = dryRun;
+		const ack = flag(configured.ack);
+		if (ack !== undefined) out.ack = ack;
+		const ackLines = strings(configured.ackLines);
+		if (ackLines !== undefined) out.ackLines = ackLines;
+		if (configured.ackArt === false) out.ackArt = false;
+		else if (typeof configured.ackArt === "string" && configured.ackArt.trim() !== "") out.ackArt = configured.ackArt;
+		const signature = flag(configured.signature);
+		if (signature !== undefined) out.signature = signature;
+		return out;
 	}
 
 	/** Ultron: the built-in Loki guardrail settings. Global only, so a repository cannot turn its own checks off. */

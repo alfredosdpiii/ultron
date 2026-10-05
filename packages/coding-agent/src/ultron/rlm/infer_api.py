@@ -346,6 +346,8 @@ class MapResults(list):
     spent: dict[str, Any]
     budget: dict[str, Any]
     remaining: dict[str, Any]
+    #: Provider-reported totals of the map's requests: input_tokens, output_tokens, cost (USD); empty when unknown.
+    usage: dict[str, Any]
 
     def summary(self) -> str:
         complete = sum(1 for item in self if not isinstance(item, (Incomplete, FrameError)))
@@ -448,7 +450,8 @@ class Inference:
             item.update(handle._wire())
 
     async def infer(self, task: str, context: Any = None, *, contract: Any = None, budget: Any = None,
-                    model: str | None = None, max_repairs: int | None = None, timeout_ms: int | None = None) -> Any:
+                    model: str | None = None, max_repairs: int | None = None, timeout_ms: int | None = None,
+                    thinking: str | None = None) -> Any:
         """Run one private inference frame over explicit context views. Returns the contract-validated value
         (or the reply text without a contract), an `Incomplete` when budget or repairs run out, and raises
         `InferenceError` when the frame fails. `max_repairs` defaults to 2 re-asks (1 for a scalar contract).
@@ -456,7 +459,8 @@ class Inference:
         The frame is a sub-model that sees only `task` and the `context` views or strings: no transcript, no
         tools. `contract` is a JSON schema, int/str/float/bool/list/dict, list[T], Literal[...], T | None, a
         dataclass or `{'field': type}`. Large text goes to the host by handle. An `Incomplete` is falsy
-        (`.status`, `.spent`, `.last_outputs`), not an exception. `budget=Budget(calls, tokens, depth)` caps the
+        (`.status`, `.spent`, `.last_outputs`), not an exception. `thinking` ('off', 'low', 'medium', 'high', ...)
+        sets the frame's thinking level; unset, `rlm.frameThinking` or the session's. `budget=Budget(calls, tokens, depth)` caps the
         frame subtree; the frame's responses also count once toward the root's own turn, token and cost limits."""
         wired = _wire_context(context)
         await self._by_reference([wired])
@@ -468,12 +472,14 @@ class Inference:
             "model": model,
             "max_repairs": max_repairs,
             "timeout_ms": timeout_ms,
+            "thinking": thinking,
         })
         return _outcome(reply, raise_errors=True)
 
     async def map(self, tasks: Any, items: Any = None, *, context: Any = None, contract: Any = None,
                   budget: Any = None, model: str | None = None, max_repairs: int | None = None,
-                  concurrency: int = 8, timeout_ms: int | None = None) -> "MapResults":
+                  concurrency: int = 8, timeout_ms: int | None = None,
+                  thinking: str | None = None) -> "MapResults":
         """Fan frames out under one shared budget, preserving order.
 
         `rlm.map(task, items)` runs `task` once per item (a view, a string, or a list of them);
@@ -515,12 +521,14 @@ class Inference:
             "max_repairs": max_repairs,
             "concurrency": concurrency,
             "timeout_ms": timeout_ms,
+            "thinking": thinking,
         })
         results = MapResults(_outcome(item, raise_errors=False) for item in reply["results"])
         budget = reply.get("budget") if isinstance(reply.get("budget"), dict) else {}
         results.spent = dict(budget.get("spent") or {})
         results.budget = dict(budget.get("limits") or {})
         results.remaining = dict(budget.get("remaining") or {})
+        results.usage = dict(reply.get("usage") or {}) if isinstance(reply.get("usage"), dict) else {}
         print(results.summary())
         return results
 
