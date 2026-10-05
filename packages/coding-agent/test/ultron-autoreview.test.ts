@@ -25,10 +25,13 @@ import {
 	autoreviewPaths,
 	DEFAULT_ACK_LINES,
 	engineSettings,
+	RECOMMENDED_MODEL,
 	resolveAckArt,
 	resolveConfig,
 	SIGNATURE,
+	THINKING_DEFAULTS,
 	testsEligible,
+	thinkingDefault,
 } from "../src/ultron/autoreview/config.ts";
 import { blockedPulls, createLogger, Daemon, pruneOld } from "../src/ultron/autoreview/daemon.ts";
 import { GitHub, parseApiOutput, parsePullTarget, RateLimitError } from "../src/ultron/autoreview/github.ts";
@@ -2107,6 +2110,56 @@ describe("the command", () => {
 		}
 		expect(context.hub.calls).toEqual([]);
 		expect(existsSync(context.paths.dir)).toBe(false);
+	});
+
+	test("the recommended model: leads the chain when the catalog has it, thinks high at every stage, 16 frames in flight; other models keep the generic thinking defaults", () => {
+		const has = (ref: string) => ref === RECOMMENDED_MODEL;
+		const luna = resolveConfig({}, { hasModel: has, reviewModel: "other/model" });
+		expect(luna).toMatchObject({
+			model: RECOMMENDED_MODEL,
+			verifyModel: RECOMMENDED_MODEL,
+			deepModel: RECOMMENDED_MODEL,
+			planModel: RECOMMENDED_MODEL,
+			askModel: RECOMMENDED_MODEL,
+			thinking: "high",
+			verifyThinking: "high",
+			deepThinking: "high",
+			planThinking: "high",
+			askThinking: "high",
+		});
+		expect(luna.modelConcurrency[RECOMMENDED_MODEL]).toBe(16);
+		// A setting still wins, for the model and for a stage's thinking.
+		expect(resolveConfig({ thinking: "low", deepModel: "p/deep" }, { hasModel: has })).toMatchObject({
+			model: RECOMMENDED_MODEL,
+			thinking: "low",
+			deepModel: "p/deep",
+			deepThinking: "high",
+			verifyThinking: "high",
+		});
+		expect(
+			resolveConfig({ modelConcurrency: { [RECOMMENDED_MODEL]: 4 } }, { hasModel: has }).modelConcurrency,
+		).toEqual({
+			[RECOMMENDED_MODEL]: 4,
+		});
+		// Without the model in the catalog the chain and the generic thinking defaults are what they were.
+		const other = resolveConfig({}, { hasModel: () => false, reviewModel: "other/model" });
+		expect(other).toMatchObject({
+			model: "other/model",
+			thinking: "low",
+			verifyThinking: "low",
+			deepThinking: "high",
+			askThinking: "low",
+		});
+		expect(THINKING_DEFAULTS["*"]).toEqual({
+			finders: "low",
+			verifier: "low",
+			investigators: "high",
+			planner: "high",
+			asks: "low",
+		});
+		expect(thinkingDefault("finders", RECOMMENDED_MODEL)).toBe("high");
+		expect(thinkingDefault("finders", undefined)).toBe("low");
+		expect(thinkingDefault("asks", "p/m")).toBe("low");
 	});
 
 	test("settings: defaults, bounds and the model fallback chain", () => {

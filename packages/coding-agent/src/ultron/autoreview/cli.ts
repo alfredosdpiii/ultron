@@ -105,7 +105,8 @@ Options:
                                autoreview.verifyCandidates, 12)
   --deep-model <p/m>           review: the model of the deep pass's investigators (default: the finder model)
   --deep-thinking <level>      review: their thinking level (default: autoreview.deepThinking, high; medium was
-                               measured to find a third as much)
+                               measured to find a third as much). Every --*-thinking default is per model: the
+                               recommended model thinks high at every stage
   --verify-batch <n>           review: findings of one file judged by one verifier frame (default:
                                autoreview.verifyBatch, 4; 1 is one frame per finding)
   --plan-model <p/m>           review --mode compiled: the planner's model (default: autoreview.planModel, the finder model)
@@ -299,7 +300,7 @@ export function describeModels(config: AutoreviewConfig): string[] {
 	const stage = (name: string, model: string | undefined, thinking: string): string =>
 		`  ${name}: ${model ?? finder} (thinking ${thinking})`;
 	return [
-		`Models${config.model === RECOMMENDED_MODEL ? " (the recommended set)" : ""}:`,
+		`Models${config.model === RECOMMENDED_MODEL ? " (the recommended set; it thinks high at every stage)" : ""}:`,
 		stage("finders", config.model, config.thinking),
 		stage("investigators", config.deepModel, config.deepThinking),
 		stage("verifier", config.verifyModel, config.verifyThinking),

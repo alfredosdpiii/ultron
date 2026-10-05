@@ -56,6 +56,38 @@ export const MAX_MODEL_CONCURRENCY = 16;
  * (see "Recommended models" in docs/autoreview.md).
  */
 export const RECOMMENDED_MODEL = "cliproxyapi/gpt-6-luna";
+/** Frames in flight for the recommended model unless `autoreview.modelConcurrency` says otherwise (it never throttled). */
+export const RECOMMENDED_MODEL_CONCURRENCY = 16;
+
+/** The thinking level of each stage's frames. */
+export interface StageThinking {
+	readonly finders: FrameThinkingLevel;
+	readonly verifier: FrameThinkingLevel;
+	readonly investigators: FrameThinkingLevel;
+	readonly planner: FrameThinkingLevel;
+	readonly asks: FrameThinkingLevel;
+}
+
+/**
+ * Per-model thinking defaults, by `provider/model`, with the generic fallback under "*". Measured on a private set
+ * of real reviewed pull requests: the recommended model below `high` finds almost nothing (about 0.1 finder
+ * findings per review at `low`), so it thinks `high` at every stage; other models keep the general defaults.
+ */
+export const THINKING_DEFAULTS: Readonly<Record<string, StageThinking>> = {
+	"*": {
+		finders: DEFAULT_THINKING,
+		verifier: DEFAULT_THINKING,
+		investigators: DEFAULT_DEEP_THINKING,
+		planner: DEFAULT_PLAN_THINKING,
+		asks: DEFAULT_ASK_THINKING,
+	},
+	[RECOMMENDED_MODEL]: { finders: "high", verifier: "high", investigators: "high", planner: "high", asks: "high" },
+};
+
+/** The default thinking level of a stage for the model that runs it (undefined model: the generic default). */
+export function thinkingDefault(stage: keyof StageThinking, model: string | undefined): FrameThinkingLevel {
+	return (model === undefined ? undefined : THINKING_DEFAULTS[model]?.[stage]) ?? THINKING_DEFAULTS["*"]![stage];
+}
 export const DEFAULT_TEST_RUNS = 6;
 export const MAX_TEST_RUNS = 30;
 /** A safety limit, on by default: one test execution may not run longer. */
@@ -266,6 +298,17 @@ export function testsEligible(config: AutoreviewConfig, owner: string, canPush: 
 export function resolveConfig(settings: AutoreviewSettings, fallbacks: ModelFallbacks = {}): AutoreviewConfig {
 	const model = resolveModel(settings, fallbacks);
 	const verifyModel = settings.verifyModel ?? model;
+	const deepModel = settings.deepModel ?? model;
+	const planModel = settings.planModel ?? model;
+	const askModel = settings.askModel ?? model;
+	const modelConcurrency: Record<string, number> = Object.fromEntries(
+		Object.entries(settings.modelConcurrency ?? {}).map(([name, limit]) => [
+			name,
+			Math.min(MAX_MODEL_CONCURRENCY, Math.max(1, limit)),
+		]),
+	);
+	if (modelConcurrency[RECOMMENDED_MODEL] === undefined)
+		modelConcurrency[RECOMMENDED_MODEL] = RECOMMENDED_MODEL_CONCURRENCY;
 	return {
 		...(settings.accounts === undefined ? {} : { accounts: settings.accounts }),
 		pollSeconds: Math.max(MIN_POLL_SECONDS, settings.pollSeconds ?? DEFAULT_POLL_SECONDS),
@@ -277,16 +320,16 @@ export function resolveConfig(settings: AutoreviewSettings, fallbacks: ModelFall
 			MAX_FRAME_CONCURRENCY,
 			Math.max(1, settings.frameConcurrency ?? DEFAULT_FRAME_CONCURRENCY),
 		),
-		thinking: settings.thinking ?? DEFAULT_THINKING,
-		verifyThinking: settings.verifyThinking ?? DEFAULT_THINKING,
+		thinking: settings.thinking ?? thinkingDefault("finders", model),
+		verifyThinking: settings.verifyThinking ?? thinkingDefault("verifier", verifyModel),
 		mode: settings.mode ?? DEFAULT_MODE,
-		...((settings.deepModel ?? model) === undefined ? {} : { deepModel: settings.deepModel ?? model }),
-		deepThinking: settings.deepThinking ?? DEFAULT_DEEP_THINKING,
+		...(deepModel === undefined ? {} : { deepModel }),
+		deepThinking: settings.deepThinking ?? thinkingDefault("investigators", deepModel),
 		deepRounds: Math.min(MAX_DEEP_ROUNDS, Math.max(1, settings.deepRounds ?? DEFAULT_DEEP_ROUNDS)),
-		...((settings.planModel ?? model) === undefined ? {} : { planModel: settings.planModel ?? model }),
-		planThinking: settings.planThinking ?? DEFAULT_PLAN_THINKING,
-		...((settings.askModel ?? model) === undefined ? {} : { askModel: settings.askModel ?? model }),
-		askThinking: settings.askThinking ?? DEFAULT_ASK_THINKING,
+		...(planModel === undefined ? {} : { planModel }),
+		planThinking: settings.planThinking ?? thinkingDefault("planner", planModel),
+		...(askModel === undefined ? {} : { askModel }),
+		askThinking: settings.askThinking ?? thinkingDefault("asks", askModel),
 		planStyle: settings.planStyle ?? DEFAULT_PLAN_STYLE,
 		planCells: Math.min(MAX_PLAN_CELLS, Math.max(1, settings.planCells ?? DEFAULT_PLAN_CELLS)),
 		verifyCandidates: Math.min(
@@ -296,12 +339,7 @@ export function resolveConfig(settings: AutoreviewSettings, fallbacks: ModelFall
 		verifyBatch: Math.min(MAX_VERIFY_BATCH, Math.max(1, settings.verifyBatch ?? DEFAULT_VERIFY_BATCH)),
 		systemPrefix: settings.systemPrefix === true,
 		overlap: settings.overlap === true,
-		modelConcurrency: Object.fromEntries(
-			Object.entries(settings.modelConcurrency ?? {}).map(([name, limit]) => [
-				name,
-				Math.min(MAX_MODEL_CONCURRENCY, Math.max(1, limit)),
-			]),
-		),
+		modelConcurrency,
 		blockAt: settings.blockAt ?? DEFAULT_BLOCK_AT,
 		maxComments: Math.min(MAX_MAX_COMMENTS, settings.maxComments ?? DEFAULT_MAX_COMMENTS),
 		runTests: settings.runTests ?? true,

@@ -151,12 +151,12 @@ reviewed.
 | `autoreview.deepRounds` | `4` | Lookup rounds one investigator may take (maximum 8). After the first, a round gets the new results in full and a one-line ledger of the earlier ones, which `recall` re-reads. Half the investigators use the fourth round and those find the most (1.7 findings against 1.4 for three rounds). |
 | `autoreview.overlap` | `false` | Run the fast pass beside the investigators' first round and verify each investigator's findings as it finishes (about 20 s faster); the fast findings then reach the investigators at round 2 instead of being their round-1 leads. |
 | `autoreview.verifyBatch` | `4` | Findings of one file one verifier frame judges together (maximum 8; `1` is one frame per finding). A finding with a test run, or with more than 6,000 characters of material, keeps its own frame. |
-| `autoreview.modelConcurrency` | `{}` | Frames in flight per model at most, by `provider/model` (default 8 each, maximum 16). A model the provider throttles (429, cooldown, `reset_seconds`) has its limit halved for the rest of the review and the reset time is honoured before the retry. |
+| `autoreview.modelConcurrency` | `{}` | Frames in flight per model at most, by `provider/model` (default 8 each, 16 for the recommended model, maximum 16). A model the provider throttles (429, cooldown, `reset_seconds`) has its limit halved for the rest of the review and the reset time is honoured before the retry. |
 | `autoreview.systemPrefix` | `false` | Experimental: send the diff, brief, retrieved block, context, intent and guides as every frame's system prompt (cacheable on every provider path). Measured to lose most findings; see "Speed and cost". |
 | `autoreview.guides` | none | Private review guides: markdown files or directories. Never quoted or named in what is posted. |
 | `autoreview.budget` | none | Optional token cap of one review. Unset, no pass is refused for tokens. |
-| `autoreview.thinking` | `"low"` | Thinking level of the finder frames (`off`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`). |
-| `autoreview.verifyThinking` | `"low"` | Thinking level of the verifier frames. |
+| `autoreview.thinking` | `"low"` (`high` for the recommended model) | Thinking level of the finder frames (`off`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`). Every thinking default is per model: see "Recommended models". |
+| `autoreview.verifyThinking` | `"low"` (`high` for the recommended model) | Thinking level of the verifier frames. |
 | `autoreview.frameConcurrency` | `8` | Model requests of one review in flight at once, finder and verifier frames alike (maximum 16). Lower it if your provider rate-limits; `autoreview.modelConcurrency` sets a limit per model. |
 | `autoreview.deadlineSeconds` | `0` (none) | Optional limit on how long one review may take (minimum 30). Unset, the review waits for every finder and verifier frame. See below. |
 | `autoreview.frameTimeoutSeconds` | `0` (none) | Optional limit on how long one frame may take before it is retried or given up (minimum 10). |
@@ -593,11 +593,19 @@ reads `minor`.) The older names are still accepted wherever a level is read.
 
 ## Recommended models
 
-When the catalog has `cliproxyapi/gpt-6-luna`, every stage runs on it unless a setting names another model:
-finders at `thinking: low`, investigators at `deepThinking: medium`, the verifier at `verifyThinking: low` (the
-compiled mode's planner and small model too). `high` stays available for the investigators. `ultron autoreview
-doctor` and `install` print the model resolved for each stage. The measured numbers for this set follow when the
-comparison has run.
+When the catalog has `cliproxyapi/gpt-6-luna`, every stage runs on it unless a setting names another model, at
+`high` thinking for every stage (finders, investigators, verifier, and the compiled mode's planner and small
+model), with 16 frames in flight for it (`autoreview.modelConcurrency`; it has never throttled). The thinking
+defaults are a per-model table (`THINKING_DEFAULTS` in `config.ts`, generic fallback under `*`); `ultron autoreview
+doctor` and `install` print the model and thinking resolved for each stage.
+
+Measured on a private set of 30 real reviewed pull requests, against their human reviews: all stages on this model
+at `high` found 21% of the human reviewer's points (plus 5% partially), 6 of his 18 serious ones, agreed with his
+verdict in 72% of the reviews, posted 2.8 findings per pull request of which 64% were right, and raised 55 valid
+points he had not, for $0.039 a review at a median of about 190 s. The same finders and verifier with a stronger
+investigator model found 26% (plus 3%), 5 of 18 serious, 69% verdict agreement, 3.1 posted at 52% right, for $0.79
+a review. Below `high` this model finds almost nothing: at `low` thinking the finders returned about 0.1 findings
+per review and the investigators a third of what they return at `high`. Do not lower its thinking to save time.
 
 ## Speed and cost: the shared prefix, slices, rounds, batches, retries and optional limits
 
