@@ -2123,7 +2123,7 @@ describe("the command", () => {
 		expect(resolveConfig({ deadlineSeconds: 0 }).deadlineSeconds).toBe(0);
 		// The deep pass: on by default, on the finder model unless it has its own.
 		expect(resolveConfig({ model: "a/m" })).toMatchObject({
-			mode: "hybrid",
+			mode: "both",
 			verifyCandidates: 12,
 			deepModel: "a/m",
 			deepThinking: "high",

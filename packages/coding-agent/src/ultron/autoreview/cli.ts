@@ -95,10 +95,12 @@ Options:
   --verify-thinking <level>    review: thinking level of the verifier frames (default: autoreview.verifyThinking, low)
   --mode <fast|deep|both|compiled|hybrid>
                                review: fast reviews the diff; deep investigates beyond it by read-only lookups in the
-                               repository (nothing is executed); both does one after the other; hybrid (default) runs
-                               both as discovery and verifies each candidate with a host-written check program;
-                               compiled (experimental) has one planner write the whole program
-  --verify-candidates <n>      review --mode hybrid: candidates verified at most (default: autoreview.verifyCandidates, 12)
+                               repository (nothing is executed); both (default) does one after the other, each
+                               finding verified by a verifier frame. Experimental: hybrid runs both as discovery and
+                               verifies each candidate with a host-written check program; compiled has one planner
+                               write the whole program
+  --verify-candidates <n>      review --mode hybrid (experimental): candidates verified at most (default:
+                               autoreview.verifyCandidates, 12)
   --deep-model <p/m>           review: the model of the deep pass's investigators (default: the finder model)
   --deep-thinking <level>      review: their thinking level (default: autoreview.deepThinking, high)
   --plan-model <p/m>           review --mode compiled: the planner's model (default: autoreview.planModel, the finder model)
@@ -281,6 +283,15 @@ export function parseAutoreviewArgs(args: readonly string[]): Parsed {
 }
 
 /** The JSON object `review --repo-dir ... --json` prints. */
+/** The per-stage durations of a review for the status line: "; map 1 s, tests 20 s, find 31 s, deep 58 s, verify 19 s, post 3 s". */
+export function describeStages(stages: Readonly<Record<string, number>> | undefined): string {
+	if (stages === undefined) return "";
+	const parts = Object.entries(stages)
+		.filter(([, ms]) => typeof ms === "number" && ms > 0)
+		.map(([name, ms]) => `${name.replace(/Ms$/, "")} ${Math.round(ms / 1000)} s`);
+	return parts.length === 0 ? "" : `; ${parts.join(", ")}`;
+}
+
 export function offlineJson(
 	result: EngineResult,
 	startupMs: number | undefined,
@@ -347,6 +358,7 @@ export function offlineJson(
 			findMs: result.timing.findMs,
 			verifyMs: result.timing.verifyMs,
 			...(startupMs === undefined ? {} : { startupMs }),
+			...(result.timing.stages === undefined ? {} : { stages: { ...result.timing.stages } }),
 			frames: [...(result.timing.frames ?? [])],
 			investigators: [...(result.timing.investigators ?? [])],
 		},
@@ -510,7 +522,7 @@ export async function runAutoreviewCommand(
 				if (state.recent.length === 0) lines.push("  none");
 				for (const record of state.recent.slice(-15).reverse())
 					lines.push(
-						`  ${record.at}  ${record.pull} ${record.sha.slice(0, 7)} as ${record.account.split("/").pop()}: ${record.outcome}${record.verdict ? ` ${record.verdict}` : ""}, ${record.findings ?? 0} findings, pipeline ${Math.round((record.totalMs ?? 0) / 1000)} s, ${record.tagToAckMs === undefined ? "" : `tag to ack ${(record.tagToAckMs / 1000).toFixed(1)} s, `}${record.ackToPostMs === undefined ? "" : `ack to review ${Math.round(record.ackToPostMs / 1000)} s, `}pickup to post ${Math.round((record.pickupToPostMs ?? 0) / 1000)} s${record.costUsd ? `, $${record.costUsd.toFixed(2)}` : ""}`,
+						`  ${record.at}  ${record.pull} ${record.sha.slice(0, 7)} as ${record.account.split("/").pop()}: ${record.outcome}${record.verdict ? ` ${record.verdict}` : ""}, ${record.findings ?? 0} findings, pipeline ${Math.round((record.totalMs ?? 0) / 1000)} s, ${record.tagToAckMs === undefined ? "" : `tag to ack ${(record.tagToAckMs / 1000).toFixed(1)} s, `}${record.ackToPostMs === undefined ? "" : `ack to review ${Math.round(record.ackToPostMs / 1000)} s, `}pickup to post ${Math.round((record.pickupToPostMs ?? 0) / 1000)} s${record.costUsd ? `, $${record.costUsd.toFixed(2)}` : ""}${describeStages(record.stages)}`,
 					);
 				io.stdout(`${lines.join("\n")}\n`);
 				return 0;

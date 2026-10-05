@@ -107,10 +107,10 @@ MAX_RETRY_WAIT_S = 30.0
 DEADLINE_ERROR = "not finished before the review deadline"
 THINKING_LEVELS = ("off", "minimal", "low", "medium", "high", "xhigh", "max")
 DEFAULT_THINKING = "low"
-#: `compiled`: one planner frame writes a review program the host executes (autoreview_compiled.py). `hybrid`: the
+#: `compiled` (experimental): one planner frame writes a review program the host executes (autoreview_compiled.py). `hybrid` (experimental): the
 #: fast and deep passes discover candidates, host-written check programs verify them (the default).
 MODES = ("fast", "deep", "both", "compiled", "hybrid")
-DEFAULT_MODE = "hybrid"
+DEFAULT_MODE = "both"
 DEFAULT_DEEP_THINKING = "high"
 DEFAULT_PLAN_THINKING = "high"
 DEFAULT_ASK_THINKING = "low"
@@ -1150,6 +1150,8 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
         # Nothing was read (an empty diff, or only binary, generated and deleted files): that is not an approval.
         incomplete.append("the diff has no reviewable changes" if scope.files else "the diff is empty")
     scope_ms = int((clock() - started) * 1000)
+    #: Where the time goes, by stage (milliseconds), for the service's status.
+    stages: dict[str, int] = {}
 
     # Earlier findings first: they are few, and the summary's status table and thread resolution need them.
     verify_started = clock()
@@ -1164,9 +1166,15 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
                                        "--src-prefix=a/", "--dst-prefix=b/", str(spec["earlierBase"]), str(spec["head"]),
                                        "--")
             since = parse_diff(stdout) if code == 0 else None
-        earlier = await recheck_earlier(rlm, earlier_spec, since, scope, frames=frames_runner,
-                                        budget_tokens=int(budget * RECHECK_SHARE), model=verify_model,
-                                        thinking=verify_thinking, cutoff=find_cutoff)
+        try:
+            earlier = await recheck_earlier(rlm, earlier_spec, since, scope, frames=frames_runner,
+                                            budget_tokens=int(budget * RECHECK_SHARE), model=verify_model,
+                                            thinking=verify_thinking, cutoff=find_cutoff)
+        except Exception as error:  # the earlier findings stay as they were
+            earlier = [{"id": item.get("id"), "file": str(item.get("file") or ""), "line": int(item.get("line") or 1),
+                        "claim": _text(item.get("claim"), 300), "severity": to_level(item.get("severity")), "status": "unknown",
+                        "evidence": ""} for item in earlier_spec if isinstance(item.get("file"), str)]
+            incomplete.append(f"the re-check of earlier findings failed ({_text(f'{type(error).__name__}: {error}', 160)})")
         unknown = sum(1 for item in earlier if item["status"] == "unknown")
         if unknown:
             incomplete.append(f"{unknown} earlier finding(s) could not be re-checked")
@@ -1240,12 +1248,15 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
     program_ms = int((clock() - program_started) * 1000) if mode == "compiled" or program_stats else 0
     if mode in ("deep", "both", "hybrid") and deep_rev is None:
         not_checked.append("The deep pass was skipped: the repository was not available.")
-    # The hybrid mode: the map, the retrieved context and the automatic test run come first (the finders and the
-    # investigators then both see them); discovery's findings are candidates that host-written checks decide.
-    hybrid = mode == "hybrid" and deep_rev is not None and bool(chunks)
+    # Whenever the repository is there, the map, the automatic test run and the retrieved context come first: the
+    # finders and the investigators both see them. Each stage degrades alone: a failure in one leaves the review
+    # to the others, never ends it.
+    stages["scopeMs"] = scope_ms
+    stages["recheckMs"] = recheck_ms
     prepared: dict[str, Any] | None = None
-    hybrid_fallback: str | None = None
-    if hybrid:
+    if deep_rev is not None and chunks and mode in ("deep", "both", "hybrid"):
+        stage_began = clock()
+        brief_at: Any = None
         try:
             repo_at = deep.Repo(scope.root, deep_rev, runner)
             if not repo_at.files():
@@ -1253,18 +1264,41 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
             brief_at = deep.build_brief(repo_at, scope.files, scope.read_file, title=_bounded(context.get("title"), TITLE_CHARS),
                                         description=_bounded(context.get("description"), DESCRIPTION_CHARS),
                                         base=(str(spec.get("base")) if spec.get("repoDir") else spec.get("baseSha")) or None)
-            started_at = deep.start_tests(repo_at, scope.files, test_options, brief_at, root=scope.root, rev=deep_rev, clock=clock)
-            retrieved_at = compiled.retrieve(repo_at, brief_at, scope.files, clock=clock)
+        except Exception as error:  # the deep pass builds its own map, or fails on its own and says so
+            not_checked.append(f"The repository map failed ({_text(f'{type(error).__name__}: {error}', 160)}); "
+                               "the passes ran without the retrieved context.")
+        stages["mapMs"] = int((clock() - stage_began) * 1000)
+        if brief_at is not None:
+            stage_began = clock()
+            try:
+                started_at = deep.start_tests(repo_at, scope.files, test_options, brief_at, root=scope.root, rev=deep_rev, clock=clock)
+            except Exception as error:
+                started_at = deep.no_tests(f"tests not run: the test session failed ({type(error).__name__}: {_text(str(error), 120)})")
+            stages["testsMs"] = int((clock() - stage_began) * 1000)
+            stage_began = clock()
+            try:
+                retrieved_at = compiled.retrieve(repo_at, brief_at, scope.files, clock=clock)
+            except Exception as error:
+                retrieved_at = {"text": "", "items": 0, "chars": 0, "ms": 0, "registries": {}, "present": {}, "keys": [], "sections": {}}
+                not_checked.append(f"The retrieval of references failed ({_text(f'{type(error).__name__}: {error}', 160)}); "
+                                   "the passes ran without the retrieved context.")
+            stages["retrievalMs"] = int((clock() - stage_began) * 1000)
+            try:
+                shapes_at = compiled.shape_items(brief_at, scope.files)
+            except Exception:
+                shapes_at = []
             prepared = {"repo": repo_at, "brief": brief_at, "started": started_at, "retrieved": retrieved_at["text"],
-                        "retrieval": retrieved_at}
-        except Exception as error:  # the fast and deep passes stand in
-            hybrid_fallback = f"{type(error).__name__}: {error}"
-            not_checked.append(f"The hybrid mode's map failed ({_text(hybrid_fallback, 160)}); the fast and deep passes ran instead.")
-            hybrid = False
-            mode = "both"
+                        "retrieval": retrieved_at, "shapes": shapes_at}
+    # The hybrid mode (experimental): discovery's findings are candidates that host-written checks decide.
+    hybrid = mode == "hybrid" and prepared is not None
+    if mode == "hybrid" and not hybrid:
+        if deep_rev is not None and chunks:
+            not_checked.append("The hybrid mode's map failed; the fast and deep passes ran instead.")
+        mode = "both"
     run_fast = mode in ("fast", "both", "hybrid") or (mode == "deep" and deep_rev is None)
     run_deep_pass = mode in ("deep", "both", "hybrid") and deep_rev is not None
     if chunks and run_fast:
+      try:
         # The shared context is part of every finder request: plan with it counted in.
         overhead = len(finder_context) // 3
         plan = plan_find(chunks, reviewers, max(0, find_budget - overhead * len(chunks) * len(reviewers)))
@@ -1309,6 +1343,8 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
                                   + (" ..." if len(where) > 8 else ""))
             if unattributed:
                 not_checked.append(f"{unattributed} finding(s) named no file of their slice and were dropped.")
+      except Exception as error:  # a host-side failure in the fast pass leaves the review to the deep pass
+        incomplete.append(f"the fast pass failed ({_text(f'{type(error).__name__}: {error}', 160)})")
     # Generic findings go before deduplication, so that one never absorbs a specific finding beside it.
     dropped_generic: list[str] = []
     specific = []
@@ -1325,6 +1361,7 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
     duplicates = len(specific) - len(merged)
     refuted = 0
     find_ms = int((clock() - find_started) * 1000)
+    stages["findMs"] = find_ms
 
     # The deep pass: investigators follow the change into the repository, with the fast findings as leads.
     deep_started = clock()
@@ -1413,7 +1450,8 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
                 description=_bounded(context.get("description"), DESCRIPTION_CHARS),
                 base=(str(spec.get("base")) if spec.get("repoDir") else spec.get("baseSha")) or None,
                 guidance=guidance, enrich=parse_rules, generic=generic_reason, intent=stated,
-                prepared=prepared, prove_leads=not hybrid, keep_session=hybrid)
+                prepared=prepared, prove_leads=not hybrid, keep_session=hybrid,
+                shapes=prepared["shapes"] if prepared else None)
             if hybrid:
                 # Discovery continues while the fast candidates, already final, are being checked. Both finish
                 # whatever the other does: a failed deep pass leaves the fast verdicts standing.
@@ -1488,11 +1526,16 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
             if lax:
                 not_checked.append("Not traced by the deep pass: " + "; ".join(
                     f"{', '.join(record['untraced'][:4])} ({record['lens']})" for record in lax) + ".")
+            owed = [record for record in investigators if record.get("unchecked")]
+            if owed:
+                not_checked.append("Checks the deep pass neither made nor declared: " + "; ".join(
+                    f"{', '.join(record['unchecked'][:4])} ({record['lens']})" for record in owed) + ".")
             if deep_out["diff_cut"]:
                 not_checked.append("The investigators saw the first part of a large diff only.")
             if mode == "deep" and not deep_out["lenses"]:
                 incomplete.append("no investigator applied to this change")
     deep_ms = int((clock() - deep_started) * 1000)
+    stages["deepMs"] = deep_ms
 
     # Findings somebody else already raised, or that an earlier review of ours posted and are still open, are
     # not verified or posted again.
@@ -1603,6 +1646,7 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
     uncertain: list[dict[str, Any]] = []
     rejected: list[dict[str, Any]] = []
     if to_verify:
+      try:
         verdicts = await frames_runner.run("verify", [("verifier", AUTOREVIEW_VERIFIER_TASK, views) for views in items],
                                            contract=AUTOREVIEW_VERDICT_CONTRACT, model=verify_model,
                                            thinking=verify_thinking, cutoff=verify_cutoff)
@@ -1631,6 +1675,10 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
                 f"{failed} finding(s) could not be verified (" + (
                     "the review deadline was reached" if late == failed
                     else "the verifier frame ran out or failed") + ")")
+      except Exception as error:  # a host-side failure in verification leaves every candidate unconfirmed
+        confirmed, rejected = [], []
+        uncertain = [dict(finding, verification="not verified (the verifier stage failed)") for finding in to_verify]
+        incomplete.append(f"the verifier stage failed ({_text(f'{type(error).__name__}: {error}', 160)})")
     confirmed += observed
     uncertain += unverified
     if hybrid:
@@ -1676,6 +1724,9 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
     if unverified:
         incomplete.append(f"{len(unverified)} finding(s) were not verified within the token budget")
     verify_ms = int((clock() - verify_started) * 1000) + recheck_ms
+    stages["verifyMs"] = int((clock() - verify_started) * 1000)
+    if program_ms:
+        stages["programMs"] = program_ms
 
     confirmed, merged_causes = group_root_causes(confirmed, duplicate_records)
     duplicates += merged_causes
@@ -1702,8 +1753,8 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
         "dropped": {"rejected": len(rejected), "duplicates": duplicates, "generic": len(dropped_generic),
                     "refutedByTest": refuted, "duplicateOf": duplicate_records},
         "timing": {"totalMs": int((clock() - started) * 1000), "scopeMs": scope_ms, "findMs": find_ms,
-                   "verifyMs": verify_ms, "deepMs": deep_ms, "programMs": program_ms, "frames": frames_runner.timings,
-                   "investigators": investigators, "program": program_records},
+                   "verifyMs": verify_ms, "deepMs": deep_ms, "programMs": program_ms, "stages": stages,
+                   "frames": frames_runner.timings, "investigators": investigators, "program": program_records},
         "usage": {"inputTokens": usage.input, "outputTokens": usage.output, "costUsd": round(usage.cost, 6),
                   "frames": usage.frames, "tokens": usage.tokens, "budget": cap},
         "model": model,

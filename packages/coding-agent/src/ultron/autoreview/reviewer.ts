@@ -506,6 +506,7 @@ export async function runReview(deps: ReviewerDeps, prepared: Prepared): Promise
 					}),
 		};
 		const result = await deps.engine.review(spec);
+		const reviewedAtMs = now();
 
 		// A review of a commit that is no longer the head would be stale: drop it and come back.
 		const current = await github.pull(ref);
@@ -666,6 +667,7 @@ export async function runReview(deps: ReviewerDeps, prepared: Prepared): Promise
 				verdict: plan.verdict,
 				findings: result.findings.length,
 				totalMs: result.timing.totalMs,
+				stages: { ...(result.timing.stages ?? {}), postMs: Math.max(0, now() - reviewedAtMs) },
 				pickupToPostMs: now() - candidate.pickedAt,
 				...(prepared.tagToAckMs === undefined ? {} : { tagToAckMs: prepared.tagToAckMs }),
 				...(ackToPostMs === undefined ? {} : { ackToPostMs }),

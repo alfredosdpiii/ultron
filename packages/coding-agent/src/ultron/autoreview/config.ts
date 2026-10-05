@@ -19,12 +19,13 @@ export const DEFAULT_FRAME_CONCURRENCY = 8;
 export const MAX_FRAME_CONCURRENCY = 16;
 export const DEFAULT_THINKING: FrameThinkingLevel = "low";
 /**
- * `hybrid` (default): the fast and deep passes discover candidates, host-written check programs verify them.
- * `compiled` is experimental: a planner writes the whole review program.
+ * `both` (default): the fast pass, then the deep pass with its findings as leads, each finding verified by a
+ * verifier frame. `hybrid` and `compiled` are experimental: host-written check programs verify discovery's
+ * candidates, or a planner writes the whole review program.
  */
 export type ReviewMode = "fast" | "deep" | "both" | "compiled" | "hybrid";
 export const REVIEW_MODES: readonly ReviewMode[] = ["fast", "deep", "both", "compiled", "hybrid"];
-export const DEFAULT_MODE: ReviewMode = "hybrid";
+export const DEFAULT_MODE: ReviewMode = "both";
 export const DEFAULT_VERIFY_CANDIDATES = 12;
 export const MAX_VERIFY_CANDIDATES = 40;
 export const DEFAULT_DEEP_THINKING: FrameThinkingLevel = "high";

@@ -362,6 +362,11 @@ export interface EngineResult {
 		readonly verifyMs: number;
 		readonly deepMs?: number;
 		readonly programMs?: number;
+		/**
+		 * Where the time went, by stage, in milliseconds: scope, recheck, map, tests (the automatic run), retrieval,
+		 * find, deep, verify (and program for the compiled mode); the deep pass's parts are in `investigators`.
+		 */
+		readonly stages?: Readonly<Record<string, number>>;
 		/** How each frame went, in the order they finished. */
 		readonly frames?: readonly FrameTiming[];
 		/** The deep pass's investigators: lookup rounds, requests served, time and tokens. */

@@ -42,7 +42,7 @@ import autoreview_deep as deep
 import review_prompts as p
 from infer_api import MapResults, Incomplete, FrameError
 
-# The pipeline tests below are about the fast pass unless a spec says otherwise; the shipped default is "hybrid".
+# The pipeline tests below are about the fast pass unless a spec says otherwise; the shipped default is "both".
 SHIPPED_MODE = a.DEFAULT_MODE
 a.DEFAULT_MODE = "fast"
 LENS = {p.deep_task(name): name for name in p.DEEP_LENSES}
@@ -498,6 +498,7 @@ emit({"result": result, "calls": rlm.calls})`);
 			"program",
 			"programMs",
 			"scopeMs",
+			"stages",
 			"totalMs",
 			"verifyMs",
 		]);
@@ -1169,19 +1170,21 @@ PARAM = {"unpinned": {"behaviour": "KINDS lists the kinds (src/app.py:3)", "chan
          "claim": "The parametrize list still has only a and b; the new kind c is never exercised.",
          "why": "KINDS gained c.", "scenario": "", "suggested_fix": "Add c.", "confidence": 0.8,
          "evidence": [{"path": "tests/test_app.py", "line": 4, "quote": '@pytest.mark.parametrize("kind", ["a", "b"])'}]}
+# Declares every catalogue check (by shape name): the owed-checks nudge is covered by its own test below.
+DECLARED = ["not applicable here: " + ", ".join(p.TRIGGERED_SHAPES)]
 def investigator(lens, text, round):
     if lens == "claims":
         if round == 1:
             return {"findings": [], "requests": [{"read": {"path": "src/helper.py", "start": 1, "end": 5}},
                                                  {"read": {"path": "secret.txt"}}], "done": False}
         return {"findings": [SENTINEL], "requests": [{"list": {"dir": "src"}}], "done": True,
-                "checked": ["show() is only called from the tests (tests/test_app.py)"]}
+                "checked": ["show() is only called from the tests (tests/test_app.py)", *DECLARED]}
     if lens == "tests":
         return {"findings": [PARAM,
                              dict(PARAM, claim="Fabricated quote.", line=1, evidence=[{"path": "tests/test_app.py", "line": 2, "quote": "assert show('x') is None"}]),
                              dict(PARAM, claim="No evidence at all.", line=2, evidence=[]),
                              dict(PARAM, claim="Cites a file that is not tracked.", line=3, evidence=[{"path": "secret.txt", "line": 1, "quote": "hunter2"}])],
-                "requests": [], "done": False}
+                "requests": [], "done": False, "checked": DECLARED}
     # Never satisfied: asks every round.
     return {"findings": [], "requests": [{"references": {"symbol": "show"}}], "done": False}
 def finder(task, text):
@@ -1322,18 +1325,19 @@ git = r.Git(ROOT)
 files = r.parse_diff(git.out("diff", "-U3", "HEAD~1", "HEAD", "--"))
 repo = deep.Repo(ROOT, "HEAD")
 brief = deep.build_brief(repo, files, r._rev_reader(git, "HEAD"))
+DECLARED = ["not applicable here: " + ", ".join(p.TRIGGERED_SHAPES)]
 def investigator(lens, text, round):
     if lens == "siblings":
         # Looks things up, but never the changed signature: sent back for it, then asks.
         if "You have not looked up every name" in text:
-            return {"findings": [], "requests": [{"references": {"symbol": "page"}}], "done": False} if round == 2 else {"findings": [], "requests": [], "done": True}
-        return {"findings": [], "requests": [{"read": {"path": "views.py"}}, {"list": {"dir": "."}}, {"read": {"path": "app.py"}}], "done": True}
+            return {"findings": [], "requests": [{"references": {"symbol": "page"}}], "done": False} if round == 2 else {"findings": [], "requests": [], "done": True, "checked": DECLARED}
+        return {"findings": [], "requests": [{"read": {"path": "views.py"}}, {"list": {"dir": "."}}, {"read": {"path": "app.py"}}], "done": True, "checked": DECLARED}
     if lens == "claims":
         # Traces the environment variable and the request input, never the config key, even when told.
         if round == 1:
             return {"findings": [], "requests": [{"grep": {"pattern": "PAGE_LIMIT"}}, {"references": {"symbol": "sort_key"}}, {"read": {"path": "app.py"}}], "done": False}
-        return {"findings": [], "requests": [], "done": True}
-    return {"findings": [], "requests": [{"read": {"path": "app.py"}}, {"read": {"path": "views.py"}}, {"list": {"dir": "deploy"}}], "done": True}
+        return {"findings": [], "requests": [], "done": True, "checked": DECLARED}
+    return {"findings": [], "requests": [{"read": {"path": "app.py"}}, {"read": {"path": "views.py"}}, {"list": {"dir": "deploy"}}], "done": True, "checked": DECLARED}
 rlm = FakeRlm(investigator=investigator)
 result = asyncio.run(a.run(rlm, {"repoDir": ROOT, "base": "HEAD~1", "head": "HEAD", "mode": "deep"}))
 texts = {}
@@ -1692,7 +1696,7 @@ emit({
     "deepOnlyFails": None,
     "fast": summary(dict(SPEC, mode="fast")),
 })`);
-		expect(out.default!.mode).toBe("hybrid");
+		expect(out.default!.mode).toBe("both");
 		// No checkout: the fast pass only (and, being diff-only, incomplete as before).
 		expect(out.diffOnly).toMatchObject({ mode: "fast", deeps: 0, assurance: [] });
 		expect(out.diffOnly!.notChecked).toContain("The deep pass was skipped: the repository was not available.");
@@ -2226,4 +2230,81 @@ describe("ultron autoreview review --repo-dir: the offline JSON contract, with a
 		expect(result.stdout).toBe("");
 		expect(result.stderr).toContain("base 'nope' is not a commit");
 	}, 120_000);
+});
+
+describe("both (the default): the retrieved context, the owed catalogue checks, stage timings and stage hardening", () => {
+	test("finders and investigators get the retrieved block; each investigator owes the catalogue checks of its part (made, declared, or sent back once and reported); timing.stages; a failed retrieval degrades only itself", () => {
+		const repo = deepRepo();
+		const out = py<{
+			mode: string;
+			finderContext: string;
+			deepTexts: Record<string, string[]>;
+			owed: Record<string, string[]>;
+			records: Record<string, { rounds: number; unchecked: string[]; untraced: string[] }>;
+			notChecked: string[];
+			stages: Record<string, number>;
+			degraded: { mode: string; notChecked: string[]; deeps: number; finderContext: string };
+		}>(`${deepPrelude(repo)}
+import re
+import autoreview_compiled as c
+brief = deep.build_brief(repo, files, reader, base=BASE)
+owed = {lens: [item["id"] + " " + item["name"] for item in items] for lens, items in deep.shapes_by_lens(c.shape_items(brief, files), brief.lenses).items()}
+texts = {}
+def investigator(lens, text, round):
+    texts.setdefault(lens, []).append(text)
+    if lens == "siblings":
+        # Looks up plenty in round 1 but says nothing of the checks it owes: sent back once; then declares each.
+        if "Your part owes checks" in text:
+            ids = re.findall(r"(T\\\\d+) \\\\(", text.split("Your part owes checks", 1)[1])
+            return {"findings": [], "requests": [], "checked": [f"{i}: not applicable in this test" for i in ids], "done": True}
+        return {"findings": [], "requests": [{"references": {"symbol": "show"}}, {"references": {"symbol": "load"}}, {"read": {"path": "src/helper.py"}}, {"grep": {"pattern": "KINDS"}}], "done": True}
+    # The other parts finish at once and never mention their checks: reported, not fatal.
+    return {"findings": [], "requests": [], "done": True}
+rlm = FakeRlm(investigator=investigator)
+result = asyncio.run(a.run(rlm, dict(SPEC, mode="both")))
+finds = [call for call in rlm.calls if call["kind"] == "find"]
+records = {rec["lens"]: rec for rec in result["timing"]["investigators"]}
+# A retrieval failure degrades that stage only: the passes run, the report says so.
+real = c.retrieve
+def boom(*args, **kwargs):
+    raise RuntimeError("boom")
+c.retrieve = boom
+rlm2 = FakeRlm(investigator=investigator)
+degraded = asyncio.run(a.run(rlm2, dict(SPEC, mode="both")))
+c.retrieve = real
+emit({"mode": result["mode"], "finderContext": finds[0]["context"] or "", "deepTexts": texts, "owed": owed, "records": records,
+      "notChecked": result["notChecked"], "stages": result["timing"]["stages"],
+      "degraded": {"mode": degraded["mode"], "notChecked": degraded["notChecked"], "deeps": len([c2 for c2 in rlm2.calls if c2["kind"] == "deep"]),
+                   "finderContext": [c2 for c2 in rlm2.calls if c2["kind"] == "find"][0]["context"] or ""}})`);
+		expect(out.mode).toBe("both");
+		// The retrieved block reaches the finders' shared context and every investigator's views.
+		expect(out.finderContext).toContain("Retrieved context, looked up by the host at the reviewed commit");
+		expect(out.finderContext).toContain("References of `show`");
+		for (const texts of Object.values(out.deepTexts))
+			expect(texts[0]).toContain("Retrieved context, looked up by the host at the reviewed commit");
+		// The catalogue checks the change calls for, each owed by one part: the tests part owes unpinned-behaviour.
+		expect(out.owed.tests).toContain("T2 unpinned-behaviour");
+		expect(out.deepTexts.tests![0]).toContain("Checks this change calls for and your part owes");
+		expect(out.deepTexts.tests![0]).toMatch(/T2: catalogue shape unpinned-behaviour/);
+		// siblings was sent back once for its owed checks and declared them; tests never did: reported under Not checked.
+		expect(out.records.siblings).toMatchObject({ rounds: 2, unchecked: [] });
+		expect(out.deepTexts.siblings![1]).toContain("Your part owes checks you have neither made nor declared.");
+		expect(out.records.tests).toMatchObject({ rounds: 2, unchecked: out.owed.tests });
+		const owedNote = out.notChecked.find((note) =>
+			note.startsWith("Checks the deep pass neither made nor declared: "),
+		)!;
+		expect(owedNote).toContain("T2 unpinned-behaviour (tests)");
+		expect(owedNote).not.toContain("(siblings)");
+		// Where the time went, by stage, with the deadline off.
+		expect(Object.keys(out.stages).sort()).toEqual(
+			["deepMs", "findMs", "mapMs", "recheckMs", "retrievalMs", "scopeMs", "testsMs", "verifyMs"].sort(),
+		);
+		// The retrieval failed: the passes ran without the block, and the review says so.
+		expect(out.degraded.mode).toBe("both");
+		expect(out.degraded.deeps).toBeGreaterThan(0);
+		expect(out.degraded.notChecked.join("\n")).toContain(
+			"The retrieval of references failed (RuntimeError: boom); the passes ran without the retrieved context.",
+		);
+		expect(out.degraded.finderContext).not.toContain("Retrieved context");
+	});
 });

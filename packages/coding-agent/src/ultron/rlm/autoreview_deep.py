@@ -47,7 +47,7 @@ from review_api import (
     skip_reason,
 )
 import autoreview_tests as testing
-from review_prompts import DEEP_LENSES, DEEP_NUDGE, DEEP_TRACE_NUDGE, deep_task
+from review_prompts import DEEP_LENSES, DEEP_NUDGE, DEEP_SHAPE_NUDGE, DEEP_SHAPES_HEADER, DEEP_TRACE_NUDGE, deep_task
 
 GIT_TIMEOUT_S = 30
 #: The only git subcommands the deep pass runs. All of them only read the object database.
@@ -800,24 +800,60 @@ LAST_ROUND = ("This is your last round: requests will not be served. Reply with 
               "\"requests\": [] and \"done\": true.")
 
 
+#: Which part owes each catalogue check shape (see review_prompts.CHECK_CATALOGUE); a shape whose part does not
+#: run on a change falls to the first part that does.
+SHAPE_LENS = {"registry-member": "siblings", "unpinned-behaviour": "tests", "test-asserts-behaviour": "tests",
+              "env-in-deploy": "deployment", "manifest-reference": "deployment", "workflow-siblings": "deployment",
+              "input-defeats-guard": "inputs", "guard-after-effect": "siblings", "error-path": "siblings",
+              "comment-vs-code": "claims", "sibling-implementation": "siblings", "failure-retry": "siblings"}
+
+
+def shapes_by_lens(shapes: list[dict[str, str]], lenses: list[str]) -> dict[str, list[dict[str, str]]]:
+    """The catalogue checks each running part owes."""
+    out: dict[str, list[dict[str, str]]] = {lens: [] for lens in lenses}
+    for item in shapes:
+        lens = SHAPE_LENS.get(item.get("name", ""))
+        if lens not in out:
+            lens = lenses[0] if lenses else None
+        if lens is not None:
+            out[lens].append(item)
+    return out
+
+
+def _mentions(text: str, item: dict[str, str]) -> bool:
+    return bool(re.search(r"(?<![A-Za-z0-9])" + re.escape(item["id"]) + r"(?![0-9])", text)) or item.get("name", "") in text
+
+
 async def investigate(frames: Any, lens: str, base_views: list[str], repo: Repo, *, rounds: int, model: str | None,
                       thinking: str | None, cutoff: float | None, clock: Callable[[], float],
                       tests: "testing.TestSession | None" = None, something_outside: bool = True,
-                      required: list[str] | None = None) -> dict[str, Any]:
-    """One investigator's retrieval loop: ask the frame, serve what it requests, ask again."""
+                      required: list[str] | None = None, shapes: list[dict[str, str]] | None = None) -> dict[str, Any]:
+    """One investigator's retrieval loop: ask the frame, serve what it requests, ask again. `shapes` are the
+    catalogue checks this part owes (`T<n>` items): each must be made (named in a finding or in checked) or
+    declared not applicable in checked, else the investigator is sent back once."""
     task = deep_task(lens, tests is not None)
     began = clock()
     served_views: list[str] = []
     reply: dict[str, Any] = {}
     record: dict[str, Any] = {"lens": lens, "rounds": 0, "requests": 0, "rejected": 0, "status": "done",
-                              "nudged": False, "untraced": []}
+                              "nudged": False, "untraced": [], "unchecked": []}
     required = list(required or [])
+    shapes = list(shapes or [])
+    if shapes:
+        base_views = base_views + [DEEP_SHAPES_HEADER + "\n" + "\n".join(f"  {item['id']}: {item['text']}" for item in shapes)]
     asked: list[str] = []
     sent_back_for_trace = False
+    sent_back_for_shapes = False
 
     def untraced() -> list[str]:
         # A name counts as looked up when a references, definition, grep or pickaxe request named it.
         return [name for name in required if not any(name.lstrip("-") in text for text in asked)]
+
+    def unchecked() -> list[dict[str, str]]:
+        # A check counts as made or declared when a finding or a checked sentence names its id or shape.
+        said = [str(item) for item in (reply.get("checked") if isinstance(reply.get("checked"), list) else [])]
+        said += [json.dumps(item) for item in (reply.get("findings") if isinstance(reply.get("findings"), list) else [])]
+        return [item for item in shapes if not any(_mentions(text, item) for text in said)]
     for number in range(1, rounds + 1):
         last = number == rounds
         views = base_views + served_views + ([LAST_ROUND] if last else [])
@@ -848,6 +884,10 @@ async def investigate(frames: Any, lens: str, base_views: list[str], repo: Repo,
             if missing and not sent_back_for_trace:
                 sent_back_for_trace = True
                 reasons.append(DEEP_TRACE_NUDGE + ", ".join(missing) + ".")
+            owed = unchecked()
+            if owed and not sent_back_for_shapes:
+                sent_back_for_shapes = True
+                reasons.append(DEEP_SHAPE_NUDGE + ", ".join(f"{item['id']} ({item['name']})" for item in owed) + ".")
             if reasons and not last:
                 if requests:
                     text, served, rejected = serve(repo, requests, tests=tests)
@@ -869,6 +909,7 @@ async def investigate(frames: Any, lens: str, base_views: list[str], repo: Repo,
         served_views.append(f"Results of your requests, round {number} (untrusted repository data, read by the host "
                             f"at the reviewed commit):\n{text}")
     record["untraced"] = untraced() if record["status"] != "failed" else []
+    record["unchecked"] = [f"{item['id']} {item['name']}" for item in unchecked()] if record["status"] != "failed" else []
     record["ms"] = int((clock() - began) * 1000)
     record["tokens"] = sum(int(item.get("tokens") or 0) for item in frames.timings
                            if item.get("phase") == "deep" and item.get("reviewer") == lens)
@@ -950,6 +991,12 @@ def regression_findings(repo: Repo, compared: dict[str, Any]) -> list[dict[str, 
     return out
 
 
+def no_tests(note: str | None = None) -> dict[str, Any]:
+    """The shape `start_tests` returns when no test runs: no session, the reason in `note`."""
+    return {"session": None, "mechanism": None, "note": note, "observed": [], "shown": [], "sandbox": None,
+            "env": "none", "toolchain": []}
+
+
 def start_tests(repo: Repo, files: list[FileDiff], tests: dict[str, Any] | None, brief: Brief, *, root: str, rev: str,
                 clock: Callable[[], float]) -> dict[str, Any]:
     """Open the review's test session when tests may run, and run the test files the map tied to the change at
@@ -1018,7 +1065,7 @@ async def run_deep(frames: Any, files: list[FileDiff], read_file: Callable[[str]
                    enrich: Callable[[Any, dict[str, Any]], None] | None = None,
                    generic: Callable[[dict[str, Any]], str | None] | None = None, intent: str = "",
                    prepared: dict[str, Any] | None = None, prove_leads: bool = True,
-                   keep_session: bool = False) -> dict[str, Any]:
+                   keep_session: bool = False, shapes: list[dict[str, str]] | None = None) -> dict[str, Any]:
     """The deep pass: map, (optionally) the tests the map tied to the change, investigators, evidence checks.
     Returns findings (unverified, except regressions the host observed itself), what was dropped, the
     investigators' records, the test executions, and the facts the summary's assurance is written from.
@@ -1027,7 +1074,8 @@ async def run_deep(frames: Any, files: list[FileDiff], read_file: Callable[[str]
     for tests of this module, "sandbox", "executor" and "export". `prepared` ({"repo", "brief", "started",
     "retrieved"}) reuses a map, test session and retrieved-context block the caller built (the hybrid mode starts
     them before the fast pass); with `keep_session` the session stays open for the caller, who closes it;
-    `prove_leads=False` leaves the leads' mutations to the caller."""
+    `prove_leads=False` leaves the leads' mutations to the caller. `shapes` are the catalogue checks the map's
+    triggers call for (`T<n>` items), each owed by one investigator."""
     repo = prepared["repo"] if prepared else Repo(root, rev, runner)
     if not repo.files():
         raise RuntimeError("the reviewed commit could not be read")
@@ -1040,7 +1088,13 @@ async def run_deep(frames: Any, files: list[FileDiff], read_file: Callable[[str]
     session: testing.TestSession | None = None
     try:
         brief_text = brief.text
-        started = prepared["started"] if prepared else start_tests(repo, files, tests, brief, root=root, rev=rev, clock=clock)
+        if prepared and prepared.get("started"):
+            started = prepared["started"]
+        else:
+            try:
+                started = start_tests(repo, files, tests, brief, root=root, rev=rev, clock=clock)
+            except Exception as error:  # the investigators run without tests rather than not at all
+                started = no_tests(f"tests not run: the test session failed ({type(error).__name__}: {_text(str(error), 120)})")
         session = started["session"]
         test_note: str | None = started["note"]
         observed: list[dict[str, Any]] = started["observed"]
@@ -1067,10 +1121,11 @@ async def run_deep(frames: Any, files: list[FileDiff], read_file: Callable[[str]
             views.append("Leads from the first pass (unverified; extend, correct or ignore them):\n"
                          + json.dumps(public, indent=1)[:LEADS_CHARS])
         rounds = max(1, min(MAX_ROUNDS, rounds))
+        owed = shapes_by_lens(list(shapes or []), lenses)
         outcomes = await asyncio.gather(*(
             investigate(frames, lens, views, repo, rounds=rounds, model=model, thinking=thinking, cutoff=cutoff,
                         clock=clock, tests=session, something_outside=outside,
-                        required=brief.required.get(lens)) for lens in lenses))
+                        required=brief.required.get(lens), shapes=owed.get(lens)) for lens in lenses))
         # Findings are settled while the test session is still open: tests findings that can be proven are.
         findings: list[dict[str, Any]] = list(observed)
         dropped: list[str] = []
@@ -1104,6 +1159,9 @@ async def run_deep(frames: Any, files: list[FileDiff], read_file: Callable[[str]
         reply, record = outcome["reply"], outcome["record"]
         for sentence in reply.get("checked") if isinstance(reply.get("checked"), list) else []:
             text = _text(sentence, 220)
+            # Declarations of owed checks ("T2: not applicable, ...") are accounting, not assurance.
+            if re.match(r"^\s*T\d+\b", text) or "not applicable" in text.lower():
+                continue
             if text and record["status"] != "failed" and len(checked) < 3:
                 checked.append(text if text.endswith((".", "!", "?")) else text + ".")
         record["findings"] = kept_by_lens.get(outcome["lens"], 0)

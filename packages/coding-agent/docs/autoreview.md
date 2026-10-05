@@ -136,8 +136,8 @@ reviewed.
 | `autoreview.concurrency` | `3` | Pull requests reviewed at once (maximum 8). |
 | `autoreview.model` | unset: `review.model`, then `rlm.frameModel`, then the default model | `provider/model` of the finder frames. |
 | `autoreview.verifyModel` | the finder model | `provider/model` of the verifier frames. |
-| `autoreview.mode` | `"hybrid"` | `hybrid`: the fast and deep passes discover candidates and host-written check programs verify them (see "The hybrid mode"). `fast`: review the diff only. `deep`: only the investigation beyond the diff. `both`: the fast pass, then the deep one with its findings as leads, each finding verified by a verifier frame. `compiled` (experimental): one planner writes the whole review program; see below. |
-| `autoreview.verifyCandidates` | `12` | `hybrid`: candidates the host's checks decide per review at most (maximum 40); the rest go to the verifier frame. |
+| `autoreview.mode` | `"both"` | `both`: the fast pass, then the deep one with its findings as leads, each finding verified by a verifier frame. `fast`: review the diff only. `deep`: only the investigation beyond the diff. Experimental: `hybrid` (the passes discover candidates and host-written check programs verify them) and `compiled` (one planner writes the whole review program); see below. |
+| `autoreview.verifyCandidates` | `12` | `hybrid` (experimental): candidates the host's checks decide per review at most (maximum 40); the rest go to the verifier frame. |
 | `autoreview.deepModel` | the finder model | `provider/model` of the deep pass's investigator frames. |
 | `autoreview.deepThinking` | `"high"` | Their thinking level. |
 | `autoreview.planModel` | the finder model | `compiled` mode: `provider/model` of the planner frame (one call per review; use a strong model). |
@@ -186,9 +186,16 @@ branch only. The deep pass looks for these.
    changes and calls, its constants, environment variables, flags and table names. It looks them up in the
    repository at the reviewed commit: who uses each name, what the called helpers do, which tests mention them and
    how those test files are parametrized, sibling files, and the documents and configs that name them. The result
-   is a bounded brief with file:line anchors, led by the claims and where each has to hold.
-2. **Investigators.** The method is claim-driven. One frame per part gets the diff, the brief and the fast pass's
-   findings as leads; parts that do not apply to the change are skipped:
+   is a bounded brief with file:line anchors, led by the claims and where each has to hold. Beside the brief the
+   host retrieves, before any model runs, what the investigators used to ask for first: the references of every
+   changed or added symbol outside the diff (and the test files that mention it, with their structure), for every
+   new key, field, flag or variable the sibling family and the registries where the siblings are listed and the new
+   one is not, and the definitions of the helpers the new code calls. This retrieved block goes to the fast pass's
+   finders and to the investigators alike. The map also runs the project's tests tied to the change (when tests may
+   run) and lists the catalogue checks the change calls for (`T1`..: a new registry member, a new environment
+   variable, a changed error path, ...), each owed by one investigator.
+2. **Investigators.** The method is claim-driven. One frame per part gets the diff, the brief, the retrieved block,
+   the checks its part owes, and the fast pass's findings as leads; parts that do not apply to the change are skipped:
    - `claims`: for each claim, find where it must be true (the path that failed, every other reader and writer)
      and check it there; what holds feeds the review's first paragraph.
    - `siblings`: other producers and consumers, parallel implementations, families (keywords, enum members,
@@ -230,12 +237,17 @@ The lookups are read-only by construction: the frames have no tools, and the hos
 With `--json`, findings carry `source` (`fast` or `deep:<part>`), `evidence` and `howVerified`; the object has
 `assurance`, `mode`, and `timing.investigators` (rounds, lookups, time and tokens per investigator).
 
-## The hybrid mode: discovery by the passes, verification by checks (the default)
+## The hybrid mode: discovery by the passes, verification by checks (experimental)
 
 The 30-pull-request comparison showed the two halves of this reviewer have different strengths: the fast and deep
 passes find (recall near half of a human reviewer's substantive comments, but a third of what they post is wrong),
 while the compiled checks are a precision engine (nine in ten posted findings right, but few found). `hybrid` puts
-them in sequence:
+them in sequence. Measured on the same 30 pull requests it did not pay: against `both` it found less (recall 43%
+against 49%), agreed with the human verdict less often (62% against 76%), posted slightly more at a lower
+precision (50% against 63% right), and cost more ($2.62 against $2.25 a review) at the same latency; the check
+layer added cost and noise without recall or precision, so `both` stays the default and the parts of `hybrid` that
+proved useful (the retrieved context, the catalogue's checks as owed items, the stage hardening) moved into it.
+`autoreview.mode: "hybrid"` (or `--mode hybrid`) still runs it:
 
 1. **Map, retrieve, run the tests first.** The repository map, the retrieved-context block and the automatic test
    run are built before any model is called; the finders and the investigators both get the retrieved block.
@@ -280,8 +292,8 @@ them in sequence:
 
 ## The compiled mode: one plan, deterministic execution (experimental)
 
-`autoreview.mode: "compiled"` (or `--mode compiled`) turns the review around; it stays experimental, the hybrid
-mode above is what ships by default. The fast and deep passes put a model
+`autoreview.mode: "compiled"` (or `--mode compiled`) turns the review around; it stays experimental, `both` is what
+ships by default. The fast and deep passes put a model
 in the loop of every lookup. Here one strong model reads the whole change once and writes a review *program*; the
 host executes it, calling a cheap small model only at the decision points the program marks. Code controls the
 flow; the expensive reasoning happens once, up front; execution is cheap, parallel and auditable.
@@ -527,8 +539,10 @@ A review in which every model frame failed (a provider outage, expired credentia
 empty one: the daemon tries again later, the local entry exits non-zero. A provider that cannot authenticate for a
 moment (the Claude Code CLI refreshing its session) is retried after a longer pause.
 
-With `--json`, `dropped` has `generic`, `refutedByTest` and `duplicateOf` (what was merged into what, and at which
-stage) beside `rejected` and `duplicates`; confirmed findings carry `verifierLevel` and `verifierScenarioHolds`; a tests finding
+With `--json`, `timing.stages` says where the time went (`scopeMs`, `recheckMs`, `mapMs`, `testsMs`, `retrievalMs`,
+`findMs`, `deepMs`, `verifyMs`; the service's `status` adds `postMs` and prints them per recent review); `dropped`
+has `generic`, `refutedByTest` and `duplicateOf` (what was merged into what, and at which stage) beside `rejected`
+and `duplicates`; confirmed findings carry `verifierLevel` and `verifierScenarioHolds`; a tests finding
 carries `unpinned`; and every finding has `posted` (`inline`, `body` or `counted`: what the poster would do with
 it under `--block-at` and `--max-comments`) and `rank`.
 

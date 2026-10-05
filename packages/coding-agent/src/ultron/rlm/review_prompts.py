@@ -239,7 +239,8 @@ verdict:
 - uncertain: deciding needs code or runtime facts that are not in the views; say what is missing.
 
 scenario_holds: true when the source as written really fails in the finding's scenario; false when it does not;
-"unknown" when there is no scenario or the views cannot show it.
+"unknown" when there is no scenario or the views cannot show it. Two-sided: name what would stop the scenario
+failing (a guard, a handler, a checking caller) and look for it; false when it is shown (quote it).
 
 severity: your own level, whatever the reviewer chose. Raise it when the scenario is a wrong result on an input
 the author means to support; lower it when the evidence is weaker than the level claims.
@@ -345,6 +346,15 @@ lines it passes through and the result. A finding here needs that input in its s
 #: Sent once to an investigator that finishes without the lookups its part requires; the names follow.
 DEEP_TRACE_NUDGE = """You have not looked up every name your part must trace. Request the references of each of these
 (and follow them) before you finish: """
+
+#: Sent once to an investigator that finishes without saying what became of the checks its part owes.
+DEEP_SHAPE_NUDGE = """Your part owes checks you have neither made nor declared. For each of these, either make it (request
+what it needs, then report the result as a finding or in checked, naming its id) or say in checked why it does not
+apply ("T2: not applicable, ..."): """
+
+#: Heads the per-part list of catalogue checks the map's triggers call for.
+DEEP_SHAPES_HEADER = """Checks this change calls for and your part owes (each either made, with its id named in a finding or in
+checked, or declared not applicable in checked with the reason):"""
 
 #: Heads the user's own review guidance when there is any. It is trusted, and private.
 GUIDANCE_HEADER = """Reviewer guidance from the person this review is for. Apply it: it says what matters in this

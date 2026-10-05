@@ -70,6 +70,8 @@ export interface ReviewRecord {
 	readonly verdict?: string;
 	readonly findings?: number;
 	readonly totalMs?: number;
+	/** Where the time went, by stage (the pipeline's stages, then `post`), in milliseconds. */
+	readonly stages?: Readonly<Record<string, number>>;
 	readonly pickupToPostMs?: number;
 	/** From the notification's update time to the acknowledgement comment. */
 	readonly tagToAckMs?: number;

@@ -1139,10 +1139,12 @@ emit(out)`);
 		// Not eligible, or not asked for: the deep pass stays read-only.
 		expect(out.notAllowed).toMatchObject({ note: null, runs: 0, executed: 0 });
 		expect(out.unset).toMatchObject({ note: null, runs: 0, executed: 0 });
-		// A sandbox that breaks mid-review: the fast review stands, and the exports are still removed.
+		// A sandbox that breaks mid-review: only the test stage is lost (the passes run without tests), and the exports
+		// are still removed.
 		expect(out.crash!.notChecked.join("\n")).toContain(
-			"The deep pass failed (OSError: bwrap vanished); this is the fast review only.",
+			"Tests not run: the test session failed (OSError: bwrap vanished).",
 		);
+		expect(out.crash!.notChecked.join("\n")).not.toContain("The deep pass failed");
 		expect(out.crash!.executed).toBe(0);
 	});
 });
