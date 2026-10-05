@@ -6,7 +6,7 @@
  * - tool results are middle-truncated at a byte budget and a large last value is shown by reference;
  * - the system prompt carries the runtime guide, and a scripted model edits a file through `rlm` + `edit`.
  */
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -78,7 +78,8 @@ describe("default tool set", () => {
 		// 13,976 characters and a 2,185-character tool description before the cost pass (2026-09-27); 9,462 and
 		// 1,117 before the compact guide (5,084 and 439 after, same day); 5,318 before the wait-for-children wording
 		// replaced "keep working" (5,493 after, 2026-09-28); 5,485 with the subagent verdict lines (2026-09-29); 5,486
-		// with the worktree line, after trimming the search example and two phrasings (2026-09-30).
+		// with the worktree line, after trimming the search example and two phrasings (2026-09-30); 5,486 with the
+		// spill-file note, after trimming two phrasings (2026-10-05).
 		expect(guide.length).toBeLessThan(5_500);
 		expect(RLM_TOOL_DESCRIPTION.length).toBeLessThan(600);
 		expect(rlmRuntimePrompt(["rlm"])).toBe(guide);
@@ -88,7 +89,7 @@ describe("default tool set", () => {
 			"narrow with code",
 			"Never end a turn with a promise",
 			"A turn ends when you reply without calling rlm",
-			"Output over about 20 KB is cut in the middle",
+			"Output over ~20 KB is cut in the middle",
 			"run all project code (tests, repros, builds, imports) through `bash`",
 			"replaces exactly one occurrence and raises ValueError",
 			"never sleep, poll or loop",
@@ -304,6 +305,98 @@ describe("the rlm tool's result", () => {
 			else process.env.ULTRON_RLM_OUTPUT_BYTES = previous;
 			await tool.close();
 			rmSync(cwd, { recursive: true, force: true });
+		}
+	});
+});
+
+describe("cut cell output is saved, not discarded", () => {
+	const previous = process.env.ULTRON_RLM_OUTPUT_BYTES;
+	let root: string;
+
+	beforeEach(() => {
+		root = mkdtempSync(join(tmpdir(), "ultron-rlm-spill-"));
+		process.env.ULTRON_RLM_OUTPUT_BYTES = "1024";
+	});
+
+	afterEach(() => {
+		if (previous === undefined) delete process.env.ULTRON_RLM_OUTPUT_BYTES;
+		else process.env.ULTRON_RLM_OUTPUT_BYTES = previous;
+		rmSync(root, { recursive: true, force: true });
+	});
+
+	test("a stream over budget is written whole to a private file named in the marker", async () => {
+		const spill = join(root, "spill");
+		const kernel = new RlmKernel({ cwd: root, runtimePath, env: { ULTRON_RLM_SPILL_DIR: spill } }, async (type) => {
+			throw new Error(`unexpected host request ${type}`);
+		});
+		try {
+			const result = await kernel.execute(
+				"for i in range(300): print(f'row {i:04d} ' + 'x' * 20)\nprint('big ' + 'q' * 50_000)",
+			);
+			const path = result.stdout.match(/full stdout in (\S+) \.\.\.\]/)?.[1];
+			expect(path).toBeDefined();
+			expect(result.stdout).not.toContain("row 0150 ");
+			const full = readFileSync(path!, "utf8");
+			expect(full).toContain("row 0150 ");
+			expect(full.split("\n").length).toBe(302);
+			expect(full).toContain("q".repeat(50_000));
+			expect(statSync(path!).mode & 0o777).toBe(0o600);
+			expect(statSync(spill).mode & 0o777).toBe(0o700);
+			// Output within budget writes nothing.
+			await kernel.execute("print('small')");
+			expect(readdirSync(spill)).toHaveLength(1);
+			// The directory keeps the newest 20 files.
+			for (let i = 0; i < 22; i++) await kernel.execute("print('z' * 5000)");
+			expect(readdirSync(spill)).toHaveLength(20);
+		} finally {
+			await kernel.shutdown();
+		}
+	});
+
+	test("without a spill directory the marker is unchanged", async () => {
+		const kernel = new RlmKernel({ cwd: root, runtimePath }, async (type) => {
+			throw new Error(`unexpected host request ${type}`);
+		});
+		try {
+			const result = await kernel.execute("print('w' * 5000)");
+			expect(result.stdout).toMatch(/\[\.\.\. \d+ bytes truncated \.\.\.\]/);
+		} finally {
+			await kernel.shutdown();
+		}
+	});
+
+	test("the rlm tool saves a cut combined result under its lane's output directory", async () => {
+		const outputDir = join(root, "output");
+		const tool = createUltronRlmTool(
+			root,
+			async (type) => {
+				throw new Error(`unexpected host request ${type}`);
+			},
+			undefined,
+			{ outputDir },
+		);
+		try {
+			// Neither stream alone is over budget, together they are.
+			const result = await tool.execute(
+				"call",
+				{ code: "import sys\nprint('o' * 900)\nprint('e' * 900, file=sys.stderr)" },
+				() => {},
+				{ env: new NodeExecutionEnv({ cwd: root }) },
+				{
+					invocationId: "rlm-spill",
+					operationId: "operation-rlm-spill",
+					turnId: "turn-rlm-spill",
+					getMemo: async () => undefined,
+					setMemo: async () => undefined,
+				},
+				BACKGROUND_CONTEXT,
+			);
+			const text = (result.content[0] as { text: string }).text;
+			const path = text.match(/full output in (\S+) \.\.\.\]/)?.[1];
+			expect(path?.startsWith(join(outputDir, "main"))).toBe(true);
+			expect(readFileSync(path!, "utf8")).toBe(`${"o".repeat(900)}\n${"e".repeat(900)}`);
+		} finally {
+			await tool.close();
 		}
 	});
 });

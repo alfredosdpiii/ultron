@@ -138,6 +138,7 @@ export class LegacyExtensionAdapter {
 				...(definition.label === undefined ? {} : { label: definition.label }),
 				description: definition.description,
 				parameters: definition.parameters,
+				...(definition.executionMode === undefined ? {} : { executionMode: definition.executionMode }),
 			}));
 	}
 

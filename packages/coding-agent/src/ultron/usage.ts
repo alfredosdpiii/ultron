@@ -32,6 +32,12 @@ export type NativeRootBudgetSettings = { maxTotalTokens?: number; maxTotalTurns?
 export const DEFAULT_NATIVE_USAGE_LIMITS = { maxAdmittedTasks: 24, maxWallMs: 30 * 60 * 1000 } as const;
 
 /**
+ * Usage roots of session goals (`/goal`, goal.ts). A goal runs until it is done, blocked, stuck or stopped by the
+ * user, so its root has no wall deadline and no admitted-task limit; the turn, token and cost caps still apply.
+ */
+export const GOAL_USAGE_ROOT_PREFIX = "goal:";
+
+/**
  * Limits from `ULTRON_MAX_WALL_MS`, `ULTRON_MAX_ADMITTED_TASKS` and `ULTRON_MAX_COST_USD`. A missing or
  * invalid value keeps the default; `none`, `off` or `unlimited` removes the wall or admission limit.
  * The cost cap is off unless set to a nonnegative number (an optional leading `$` is accepted).
@@ -774,13 +780,15 @@ export class NativeUsageLedger implements NativeUsageLedgerLike {
 				: undefined;
 			if (existing) return cloneReservation(existing);
 			const now = this.now();
+			const goal = rootId.startsWith(GOAL_USAGE_ROOT_PREFIX);
 			if (root.startedAt === null) {
 				root.startedAt = now;
-				root.deadlineAt = Number.isFinite(this.limits.maxWallMs) ? now + this.limits.maxWallMs : null;
+				root.deadlineAt = !goal && Number.isFinite(this.limits.maxWallMs) ? now + this.limits.maxWallMs : null;
 			}
 			if (root.deadlineAt !== null && now >= root.deadlineAt)
 				throw this.refused(`Usage wall deadline exceeded for root ${rootId}`);
 			if (
+				!goal &&
 				request.kind === "task" &&
 				root.reservations.filter((reservation) => reservation.kind === "task").length >=
 					this.limits.maxAdmittedTasks

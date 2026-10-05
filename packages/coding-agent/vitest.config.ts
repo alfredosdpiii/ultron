@@ -12,11 +12,14 @@ export default mergeConfig(
 			// Offline by default, never against the user's real Hindsight memory server, and never writing RLM
 			// snapshot keys of temporary profiles into the user's login keyring. Loki guardrails are off unless a test
 			// turns them on (ultron-loki*.test.ts), so sessions in temporary repositories get no `.loki/` commit.
+			// The `[clock]` line is off too: scripted providers match the first and latest user messages exactly, and
+			// it depends on the time of day (ultron-clock-context.test.ts installs it directly).
 			env: {
 				PI_OFFLINE: "1",
 				ULTRON_HINDSIGHT_URL: "off",
 				ULTRON_RLM_SNAPSHOT_KEY_STORE: "file",
 				ULTRON_LOKI: "off",
+				ULTRON_CLOCK_CONTEXT: "off",
 			},
 			unstubEnvs: true,
 			// Provider API keys from the developer's shell are removed unless ULTRON_LIVE_TESTS=1.

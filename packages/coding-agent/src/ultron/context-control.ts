@@ -14,6 +14,10 @@
  *   The full result stays in the journal (`agents.result`) and in whatever kernel variable holds it.
  * - Compaction: edits apply before summarizing (see `applyContextEdits`), and notes and pinned items that a
  *   compaction cut off are shown again right after the compaction summary.
+ * - Trim before compaction: when a threshold compaction is about to run, tool results the model has already answered
+ *   after that are over TRIM_MIN_CHARS are cut to their head and tail by one edit; if that brings the estimate under
+ *   the threshold the compaction is declined, so no summary is paid for. Otherwise nothing is edited. The full
+ *   result stays in the transcript (`ctx.get(id)`). ULTRON_COMPACTION_TRIM=off disables it.
  * - Observers (extensions) get every edit that lands on a branch through `observe`.
  */
 import {
@@ -60,6 +64,12 @@ const COLLAPSE_MIN_BYTES = 600;
 const COLLAPSE_HEAD_CHARS = 200;
 const COLLAPSE_MAX_TASKS = 8;
 const MAX_PENDING_CELLS = 64;
+/** Tool results over this many characters are trimmed before a compaction, to their head and tail. */
+const TRIM_MIN_CHARS = 8192;
+const TRIM_HEAD_CHARS = 4096;
+const TRIM_TAIL_CHARS = 1024;
+/** Trimming replaces a compaction only when it leaves the estimate this far under the threshold. */
+const TRIM_TARGET = 0.9;
 const STATE_LIST_MAX = 20;
 
 export type ContextItemKind = "user" | "assistant" | "tool" | "custom" | "note" | "summary" | "compaction";
@@ -98,6 +108,20 @@ export interface ContextControlOptions {
 	rootLane: AgentLane;
 	/** Receives every context edit that lands on a branch (the worker forwards it to extensions). */
 	observe?: (event: ContextEditEvent) => void;
+	/** Trim old tool results before a threshold compaction (default: ULTRON_COMPACTION_TRIM is not "off"). */
+	trimBeforeCompaction?: boolean;
+}
+
+/** Whether old tool results are trimmed before a threshold compaction: ULTRON_COMPACTION_TRIM=off disables it. */
+export function compactionTrimEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
+	const raw = env.ULTRON_COMPACTION_TRIM?.trim().toLowerCase();
+	return !(raw === "off" || raw === "0" || raw === "false");
+}
+
+/** The trimmed form of a tool result: head and tail, and how to read the rest. */
+export function trimmedResultText(entryId: string, original: string): string {
+	const cut = original.length - TRIM_HEAD_CHARS - TRIM_TAIL_CHARS;
+	return `${original.slice(0, TRIM_HEAD_CHARS)}\n[... ${cut} characters trimmed before compaction; ctx.get("${entryId}") shows them ...]\n${original.slice(original.length - TRIM_TAIL_CHARS)}`;
 }
 
 type Pending = { lane: string; entry: Entry };
@@ -236,6 +260,12 @@ export class ContextControl {
 	readonly #harness: AgentHarness;
 	readonly #lanes = new Map<string, AgentLane>();
 	readonly #observe: ContextControlOptions["observe"];
+	readonly #trim: boolean;
+	/**
+	 * Tokens freed by trims since a lane's newest assistant message: its reported usage predates them, so the next
+	 * compaction estimate still counts them until a newer response reports real usage.
+	 */
+	readonly #trimmed = new Map<string, { assistantId: string; saved: number }>();
 	/** Entries this worker appended that a running turn has not placed on the branch yet. */
 	#pending: Pending[] = [];
 	/** Root cell running now (tool call id). */
@@ -251,6 +281,7 @@ export class ContextControl {
 		this.#harness = options.harness;
 		this.#lanes.set(options.rootLane.name, options.rootLane);
 		this.#observe = options.observe;
+		this.#trim = options.trimBeforeCompaction ?? compactionTrimEnabled();
 	}
 
 	/** Host module for `ctx.*` requests from any lane's kernel; each lane edits its own branch. */
@@ -316,6 +347,19 @@ export class ContextControl {
 				return { messages };
 			}),
 		);
+		if (this.#trim)
+			this.#removers.push(
+				this.#harness.hooks.on("before_compaction", async (event, context) => {
+					if (event.reason !== "threshold") return undefined;
+					const lane = await this.#lane(event.lane, context);
+					const model = await lane.getModel(context);
+					if (model === undefined) return undefined;
+					const threshold = model.contextWindow - event.preparation.settings.reserveTokens;
+					return (await this.#trimInstead(lane, event.preparation.tokensBefore, threshold, context))
+						? { decline: true }
+						: undefined;
+				}),
+			);
 		return () => {
 			for (const remove of this.#removers.splice(0)) remove();
 		};
@@ -352,7 +396,7 @@ export class ContextControl {
 		};
 		const edited = [...view.edits.entries()].filter(([id]) => view.byId.has(id));
 		const forgotten = edited
-			.filter(([, value]) => value.source !== "collapse")
+			.filter(([, value]) => value.source !== "collapse" && value.source !== "trim")
 			.map(([id, value]) => ({
 				...item(id),
 				source: value.source,
@@ -695,6 +739,51 @@ export class ContextControl {
 			{ edits: edits.reverse(), source: "collapse", reason: "task results returned", tasks },
 			BACKGROUND_CONTEXT,
 		);
+	}
+
+	/**
+	 * Trim tool results the model has answered after; true when that brings `tokens` (the compaction's estimate) under
+	 * TRIM_TARGET of `threshold` and the edit was appended. Nothing is edited otherwise: an edit that does not
+	 * replace the compaction would only cost the prompt cache.
+	 */
+	async #trimInstead(lane: AgentLane, tokens: number, threshold: number, context: Context): Promise<boolean> {
+		const view = await this.#view(lane, context);
+		const target = threshold * TRIM_TARGET;
+		const lastAssistant = [...view.window]
+			.reverse()
+			.find((entry) => entry.type === "message" && entry.message.role === "assistant")?.id;
+		const earlier = this.#trimmed.get(lane.name);
+		const credit = earlier !== undefined && earlier.assistantId === lastAssistant ? earlier.saved : 0;
+		if (tokens - credit <= target) return true;
+		const edits: Array<{ targetId: string; replacement: { content: string } }> = [];
+		let saved = 0;
+		let answeredAfter = false;
+		for (let index = view.window.length - 1; index >= 0; index -= 1) {
+			const entry = view.window[index]!;
+			if (entry.type !== "message") continue;
+			if (entry.message.role === "assistant") {
+				answeredAfter = true;
+				continue;
+			}
+			if (entry.message.role !== "toolResult" || !answeredAfter) continue;
+			if (view.pins.has(entry.id) || view.edits.has(entry.id) || view.protectedIds.has(entry.id)) continue;
+			// Text only: an image's cost is not in its characters.
+			if (entry.message.content.some((part) => part.type !== "text")) continue;
+			const original = messageText(entry.message);
+			if (original.length <= TRIM_MIN_CHARS) continue;
+			const content = trimmedResultText(entry.id, original);
+			edits.push({ targetId: entry.id, replacement: { content } });
+			saved += Math.floor((original.length - content.length) / 4);
+		}
+		if (edits.length === 0 || tokens - credit - saved > target || lastAssistant === undefined) return false;
+		await this.#append(
+			lane,
+			CONTEXT_EDIT_CUSTOM_TYPE,
+			{ edits: edits.reverse(), source: "trim", reason: "trimmed old tool results instead of compacting" },
+			context,
+		);
+		this.#trimmed.set(lane.name, { assistantId: lastAssistant, saved: credit + saved });
+		return true;
 	}
 
 	/** Notes and pinned items that the newest compaction cut off, as one bounded text block. */

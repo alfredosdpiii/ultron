@@ -66,7 +66,7 @@ const EDIT_SKILL_WITH_TOOL =
 const PROJECT_ENV = `- The kernel is the system Python without the project's packages: run all project code (tests, repros, builds, imports) through \`bash\` with the project's own interpreter and toolchain (\`.venv/bin/python -m pytest -q\`, \`npm test\`). Work on data files in the cell itself, not in a \`python - <<EOF\` heredoc through \`bash\`, and write the requested output in the cell that computes it.`;
 
 const RUNTIME = `## Runtime
-Each rlm call runs a cell in your lane's persistent kernel: program over files, shell and agents, keep data in variables and print only what the next step needs. Output over about 20 KB is cut in the middle and a large value is shown by reference; \`preview(x)\` gives a bounded view. APIs are pre-imported and async; check \`help(obj)\` before guessing. Act on a trailing \`[hint:<tag>]\` line (\`await hints.mute(tag)\` once understood).
+Each rlm call runs a cell in your lane's persistent kernel: program over files, shell and agents, keep data in variables and print only what the next step needs. Output over ~20 KB is cut in the middle (the marker names a file with all of it) and a large value is shown by reference; \`preview(x)\` gives a bounded view. APIs are pre-imported and async; check \`help(obj)\` before guessing. Act on a trailing \`[hint:<tag>]\` line (\`await hints.mute(tag)\` once understood).
 A turn ends when you reply without calling rlm; that reply is your answer. Never end a turn with a promise ("I'll check next"): do the work now. An exception ends the cell after what it printed: fix the cause, do not rerun: its writes and started agents may already have happened. Subagents, tasks and jobs survive a kernel restart, and so does \`state\` (a dict); re-create imports and functions.`;
 
 /** How completion events reach the model (ULTRON_ASYNC_EVENTS, on by default). */
@@ -89,7 +89,7 @@ const ASYNC_EVENTS_OFF =
 
 /** The cost rule that matters most on large inputs: narrow with code, read candidates, delegate last. */
 const SEARCH_FIRST = `## Search before delegating
-For many files or a large input, narrow with code first: 1. search the concept and its synonyms (\`re\`, \`h.search\`, \`rg -il\`) and count hits; 2. print one compact line per candidate (id and matching sentence); 3. read the deciding passages of unclear candidates and judge them yourself. Use \`rlm.map\` only for candidates a line or two cannot settle, or text still over about 100 KB, one passage per frame. Do not spawn subagents to read or classify documents: each re-sends this prompt and its transcript every turn.`;
+For many files or a large input, narrow with code first: 1. search the concept and its synonyms (\`re\`, \`h.search\`, \`rg -il\`) and count hits; 2. print one compact line per candidate (id and matching sentence); 3. read the deciding passages of unclear candidates and judge them yourself. Use \`rlm.map\` only for candidates a line or two cannot settle, or text over ~100 KB, one passage per frame. Do not spawn subagents to read or classify documents: each re-sends this prompt and its transcript every turn.`;
 
 const BOUNDED_INFERENCE = `## Bounded inference\n${INFERENCE_PROMPT}`;
 
@@ -100,7 +100,7 @@ function delegationPrompt(delivery: EventDelivery): string {
 			? "`await rlm.collect(hs)` (free), or end your turn: each end arrives as a `child_done` event"
 			: "`await rlm.collect(hs)` (free)";
 	return `## Delegation
-\`h = await rlm.spawn(brief, name=...)\` starts a subagent (own REPL, your tools and files, not your chat). Spawn only for independent multi-step work, with a self-contained brief (goal, paths, constraints, what to return), several at once; \`depth=N\` lets a child delegate too (≤3 levels) if its part splits again. Children editing files: \`worktree=True\` each (coupled work in one brief), then \`await rlm.merge(hs)\`. Then do only work no child owns; never check on children's files, logs or progress: results come to you. With nothing of your own left, ${wait}. Trust only verdicts whose \`check.outcome\` is "verified"; re-check the rest. \`help(rlm.spawn)\`.
+\`h = await rlm.spawn(brief, name=...)\` starts a subagent (own REPL, your tools and files, not your chat). Spawn only for independent multi-step work, with a self-contained brief (goal, paths, constraints, what to return), several at once; \`depth=N\` lets a child delegate too (≤3 levels). Children editing files: \`worktree=True\` each (coupled work in one brief), then \`await rlm.merge(hs)\`. Then do only work no child owns; never check on children's files, logs or progress: results come to you. With nothing of your own left, ${wait}. Trust only verdicts whose \`check.outcome\` is "verified"; re-check the rest. \`help(rlm.spawn)\`.
 If you are a subagent, do the brief yourself (spawn only if given depth), then \`await rlm.finish(status, summary, evidence=[...], changed_files=[...])\` and reply briefly with paths and uncertainties.
 Typed agents, graphs, jobs: \`help(agents)\`, \`help(workflows)\`, \`help(background)\`.`;
 }

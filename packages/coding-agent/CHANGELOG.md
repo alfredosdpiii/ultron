@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+### Added
+
+- Added `/goal`: a person sets an objective (`pause`, `resume`, `clear`, `check <command>`) and a background job with its own REPL works on it, with no wall-clock limit, under its own usage root (exempt from the per-root wall deadline and task cap; explicit token, turn and cost caps still apply). The job tests with `goal.check()` and ends the goal with `goal.complete(revision, summary, evidence)`, which needs the host's run of the check to exit 0 when one is set, or `goal.blocked` after three checks; ten identical failing checks in a row pause it, and a job that ends early is started again only if its run changed the check result.
+- Added `rlm.spawn(..., fork=True)`: the subagent starts on the parent's conversation so far (without the running cell), with a fresh kernel.
+- Added saving of cut cell output: stdout, stderr or a combined result over the output budget is written whole to a private file under the agent directory (`rlm-output/<session>/<lane>`, newest 20 kept), and the truncation marker names it.
+- Added trimming before compaction: when a threshold compaction is due, already-answered tool results over 8 KB are cut to their head and tail (`ctx.get(id)` shows them whole); if that is enough, the compaction and its summary are skipped. `ULTRON_COMPACTION_TRIM=off` disables it.
+- Added a `[clock]` line with the local time before a user message that opens a root or subagent conversation or follows 10 minutes of idle (`ULTRON_CLOCK_CONTEXT=off` disables it).
+- Added an image budget: past `ULTRON_CONTEXT_IMAGES` (default 8) tool-result images, the oldest are replaced by a note in requests, in batches of four.
+- Added the `repeated-cell` hint for the exact same successful cell run three times in a row.
+
+### Fixed
+
+- Fixed extension tools marked `executionMode: "sequential"` running concurrently when called from the REPL (for example under `asyncio.gather`); they now wait for the lane's calls in flight and run alone.
+
 ## [0.87.1] - 2026-09-22
 
 ### New Features

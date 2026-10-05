@@ -79,12 +79,15 @@ import {
 import { DEFAULT_CLAUDE_MODEL } from "../ultron/claude/claude-cli.ts";
 import { EXTERNAL_ROOT_OPERATION, ExternalRootController } from "../ultron/claude/external-root.ts";
 import { claudeRootRequested, installClaudeCodeLanes } from "../ultron/claude/worker-root.ts";
+import { clockContextEnabled, installClockContext } from "../ultron/clock-context.ts";
 import { CodeSkills, codeSkillsDir, codeSkillsToolSection } from "../ultron/code-skills.ts";
 import { CONTEXT_EDIT_EVENT, CONTEXT_ENTRY_PROJECTORS, ContextControl } from "../ultron/context-control.ts";
 import { createFamilyModule } from "../ultron/family.ts";
 import { BEFORE_WRITE_REQUEST, FileHooks, type GuardStats, type ProposedWrite } from "../ultron/file-hooks.ts";
 import { assertSessionFormatsReadable } from "../ultron/format-version.ts";
+import { GOAL_REQUEST, GoalDriver } from "../ultron/goal.ts";
 import { createGrantModule } from "../ultron/grants.ts";
+import { installImageBudget } from "../ultron/image-budget.ts";
 import { createInstanceModule } from "../ultron/instances.ts";
 import { createNativeJevClient, JEV_RECALL_THRESHOLD } from "../ultron/jev.ts";
 import { JEV_DECISION_CAPACITY, JevDecisionLog, recordingJevClient } from "../ultron/jev-decisions.ts";
@@ -189,6 +192,8 @@ export type UltronRlmCellOutput = { text: string; images: CellImages; masked: nu
 export class UltronRlmKernel {
 	private readonly kernel: RlmKernel;
 	private readonly hostHandler: KernelHostHandler;
+	/** Where a cut cell result is saved whole (the kernel's ULTRON_RLM_SPILL_DIR). */
+	private readonly spillDir: string | undefined;
 
 	constructor(
 		cwd: string,
@@ -209,6 +214,7 @@ export class UltronRlmKernel {
 			hostHandler,
 		);
 		this.hostHandler = hostHandler;
+		this.spillDir = env.ULTRON_RLM_SPILL_DIR || undefined;
 	}
 
 	snapshot(path?: string): Promise<KernelExecutionResult> {
@@ -246,11 +252,15 @@ export class UltronRlmKernel {
 			const traceback = (result.error?.traceback ?? []).join("\n");
 			const failure = !traceback ? summary : traceback.endsWith(summary) ? traceback : `${traceback}\n${summary}`;
 			const masked = maskCellOutputCounted([stdout, stderr, failure].filter(Boolean).join("\n"));
-			throw new RlmCellError(truncateToolOutput(masked.text), result.error?.ename ?? "PythonError", masked.masked);
+			throw new RlmCellError(
+				truncateToolOutput(masked.text, undefined, this.spillDir),
+				result.error?.ename ?? "PythonError",
+				masked.masked,
+			);
 		}
 		// Secrets are masked before the cut, so a truncation boundary cannot split one past recognition.
 		const masked = maskCellOutputCounted([stdout, stderr, result.result].filter(Boolean).join("\n"));
-		return { text: truncateToolOutput(masked.text), images, masked: masked.masked };
+		return { text: truncateToolOutput(masked.text, undefined, this.spillDir), images, masked: masked.masked };
 	}
 
 	async resetScratch(): Promise<void> {
@@ -355,6 +365,8 @@ export function createUltronRlmTool(
 	resolveLane: (invocation: AgentHarnessToolInvocation, context: Context) => Promise<string> = async () => "main",
 	options: {
 		readonly snapshotDir?: string;
+		/** Per-session directory for cut cell output (a folder per lane); absent: cut output is not saved. */
+		readonly outputDir?: string;
 		/** Host-held HMAC key for lane snapshots; see loadOrCreateSnapshotKey. */
 		readonly snapshotKey?: Uint8Array;
 		readonly maxLive?: number;
@@ -419,10 +431,9 @@ export function createUltronRlmTool(
 	};
 	// Idle kernels are evicted after a snapshot, so a lane's declared state survives and a crowded session
 	// cannot keep unbounded Python processes alive (A43). Running cells are never evicted.
+	const laneDir = (lane: string): string => lane.replace(/[^A-Za-z0-9._-]/g, "_");
 	const snapshotPath = (lane: string): string | undefined =>
-		options.snapshotDir === undefined
-			? undefined
-			: join(options.snapshotDir, `${lane.replace(/[^A-Za-z0-9._-]/g, "_")}.snapshot`);
+		options.snapshotDir === undefined ? undefined : join(options.snapshotDir, `${laneDir(lane)}.snapshot`);
 	const maxLive = options.maxLive ?? 16;
 	const kernels = new KernelPool<UltronRlmKernel>({
 		create: (lane) => {
@@ -436,6 +447,9 @@ export function createUltronRlmTool(
 				{
 					ULTRON_CODE_SKILLS_DIR: codeSkillsDir(),
 					...(fileHooks === undefined ? {} : { ULTRON_FILE_HOOKS: "1" }),
+					...(options.outputDir === undefined
+						? {}
+						: { ULTRON_RLM_SPILL_DIR: join(options.outputDir, laneDir(lane)) }),
 					...workspace?.env,
 				},
 			);
@@ -1820,6 +1834,8 @@ export async function createUltronRuntime(
 		// profile file unless ULTRON_RLM_SNAPSHOT_KEY_STORE opts into the OS keyring.
 		{
 			snapshotDir,
+			// Cut cell output is saved here (private, like snapshots) so the model can read it back.
+			outputDir: join(getAgentDir(), "rlm-output", options.metadata.id),
 			snapshotKey: snapshotKey.key,
 			hints: cellHints,
 			// The lane's current model (it can change mid-session); the harness exists by the time a cell runs.
@@ -2083,6 +2099,28 @@ export async function createUltronRuntime(
 			observe: (event) => extensionEvents.emit(CONTEXT_EDIT_EVENT, event),
 		});
 		const removeContextControl = contextControl.install();
+		// The local time before a user message that opens a conversation or follows an idle gap (clock-context.ts).
+		const removeClockContext = clockContextEnabled() ? installClockContext(harness) : () => {};
+		// Old view_image results beyond the image budget leave the request (image-budget.ts).
+		const removeImageBudget = installImageBudget(harness);
+		// The session goal (`/goal`): a background job with its own REPL works on it (goal.ts).
+		const goals = new GoalDriver({
+			store: createSessionModuleStore(session, "goal"),
+			runCheck: async (command, timeoutSeconds) => {
+				const result = await runHostBash(
+					{ command, timeout: timeoutSeconds },
+					options.metadata.cwd,
+					createLocalBashOperations({ shellPath: settingsManager.getShellPath() }),
+				);
+				return { exit_code: result.exit_code, timed_out: result.timed_out, output: result.output };
+			},
+			startJob: (prompt, jobOptions, context) => {
+				if (!host) throw new Error("Ultron RLM host is not initialized");
+				return host.startGoalJob(prompt, jobOptions, context);
+			},
+			stopJob: async (taskId, reason) => host?.stopTask(taskId, reason),
+			laneOfJob: (taskId) => host?.laneOfTask(taskId),
+		});
 		// A worktree subagent's system prompt names its worktree as the working directory, not the parent's checkout.
 		const removeWorktreePrompt = harness.hooks.on("transform_context", (event) => {
 			const workspace = host?.laneWorkspace(event.lane);
@@ -2165,6 +2203,7 @@ export async function createUltronRuntime(
 			unpinLane: (lane, holder) => rlmTool.unpin(lane, holder),
 			onTaskEnd: (task, info) => {
 				contextControl.taskEnded(task, info);
+				goals.taskEnded(task);
 				if (task.definition.startsWith("rlm-child@") && info.model !== undefined)
 					sessionStats.childModel(task.id, info.model);
 			},
@@ -2228,6 +2267,7 @@ export async function createUltronRuntime(
 				cellHints.module,
 				contextControl.module,
 				inference.module,
+				goals.module,
 				createFamilyModule({ store: createSessionModuleStore(session, "family") }),
 				createProgressModule({ store: createSessionModuleStore(session, "progress") }),
 				createScheduleModule({ store: createSessionModuleStore(session, "schedules") }),
@@ -2446,6 +2486,9 @@ export async function createUltronRuntime(
 				removeAsyncEvents();
 				await events?.close();
 				removeContextControl();
+				removeClockContext();
+				removeImageBudget();
+				await goals.close();
 				removeWorktreePrompt();
 				removeInferenceHooks();
 				removeAutoMemory();
@@ -2468,6 +2511,12 @@ export async function createUltronRuntime(
 			},
 			inspect: async (request, payload, context) => {
 				if (request === "rlm.pool") return rlmTool.poolStats();
+				// `/goal ...`: a person sets, edits, pauses or clears the session goal; the answer is the text to show.
+				if (request === GOAL_REQUEST) {
+					if (external !== undefined)
+						return { text: "/goal needs the native root (this root is driven from outside)." };
+					return { text: await goals.command(typeof payload.args === "string" ? payload.args : "", context) };
+				}
 				// The session report (`/usage`): the session file as written so far, plus the counters still in memory.
 				if (request === SESSION_REPORT_REQUEST) {
 					const providers = new Set<string>();
@@ -2648,6 +2697,7 @@ function loadedExtensionTools(resourceLoader: ResourceLoader): ExtensionToolInfo
 					...(definition.label === undefined ? {} : { label: definition.label }),
 					description: definition.description,
 					parameters: definition.parameters,
+					...(definition.executionMode === undefined ? {} : { executionMode: definition.executionMode }),
 				});
 	return [...byName.values()];
 }

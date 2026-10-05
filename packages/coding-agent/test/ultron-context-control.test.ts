@@ -8,8 +8,9 @@ import {
 	type Entry,
 	MemorySessionRepo,
 } from "@ultron/agent-core";
-import { createModels, fauxAssistantMessage, fauxProvider } from "@ultron/ai";
+import { createModels, fauxAssistantMessage, fauxProvider, fauxToolCall } from "@ultron/ai";
 import { BACKGROUND_CONTEXT } from "@ultron/chord/context";
+import { Type } from "typebox";
 import { describe, expect, test } from "vitest";
 import { renderRlmDock } from "../src/experimental/rlm-graph.ts";
 import { PLAIN_STYLE, parseContextState } from "../src/experimental/rlm-visualizer.ts";
@@ -19,8 +20,10 @@ import {
 	ContextControl,
 	type ContextEditEvent,
 	collapsedCellText,
+	compactionTrimEnabled,
 	messageText,
 	taskLine,
+	trimmedResultText,
 } from "../src/ultron/context-control.ts";
 import type { NativeHostApi } from "../src/ultron/rlm/host-module.ts";
 
@@ -246,5 +249,118 @@ describe("ctx host module on a real lane", () => {
 			uninstall();
 			await harness.close(BACKGROUND_CONTEXT);
 		}
+	});
+});
+
+describe("trim before compaction", () => {
+	const BIG = `HEAD_MARK${"x".repeat(70_000)}MIDDLE_MARK${"y".repeat(10_000)}TAIL_MARK`;
+	/**
+	 * Two prompts on a 40,000-token window (compaction threshold 30,000). The first asks `question` and the model
+	 * calls rlm, which returns `output`; the faux provider reports usage from the prompt's size.
+	 */
+	async function scenario(question: string, output: string) {
+		const repo = new MemorySessionRepo();
+		const session = await repo.create({ id: "trim" }, BACKGROUND_CONTEXT);
+		const faux = fauxProvider({ models: [{ id: "small", contextWindow: 40_000 }] });
+		const seen: string[] = [];
+		const record = (context: { messages: AgentMessage[] }) =>
+			seen.push(context.messages.map((item) => messageText(item)).join("\n"));
+		faux.setResponses([
+			((context: { messages: AgentMessage[] }) => {
+				record(context);
+				return fauxAssistantMessage(fauxToolCall("rlm", {}, { id: "c1" }), { stopReason: "toolUse" });
+			}) as never,
+			((context: { messages: AgentMessage[] }) => {
+				record(context);
+				return fauxAssistantMessage("read it");
+			}) as never,
+			...Array.from(
+				{ length: 4 },
+				() =>
+					((context: { messages: AgentMessage[] }) => {
+						record(context);
+						return fauxAssistantMessage("SUMMARY_TEXT");
+					}) as never,
+			),
+		]);
+		const models = createModels();
+		models.setProvider(faux.provider);
+		const { harness } = await AgentHarness.create(
+			{
+				session,
+				models,
+				model: faux.getModel("small")!,
+				activeToolNames: ["rlm"],
+				compaction: { enabled: true, reserveTokens: 10_000, keepRecentTokens: 100 },
+				tools: [
+					{
+						name: "rlm",
+						label: "rlm",
+						description: "runs a cell",
+						parameters: Type.Object({}),
+						execute: async () => ({ content: [{ type: "text" as const, text: output }], details: {} }),
+					},
+				],
+				entryProjectors: CONTEXT_ENTRY_PROJECTORS,
+			},
+			BACKGROUND_CONTEXT,
+		);
+		const lane = await harness.lane("main", BACKGROUND_CONTEXT);
+		const events: ContextEditEvent[] = [];
+		const compactions: string[] = [];
+		harness.events.on("compaction_end", (event) => {
+			compactions.push(event.status);
+		});
+		const control = new ContextControl({
+			harness,
+			rootLane: lane,
+			observe: (event) => events.push(event),
+			trimBeforeCompaction: true,
+		});
+		const uninstall = control.install();
+		try {
+			await lane.prompt(question, undefined, BACKGROUND_CONTEXT);
+			await lane.prompt("next question", undefined, BACKGROUND_CONTEXT);
+			const entries = await lane.findEntries({ order: "oldestFirst" }, BACKGROUND_CONTEXT);
+			return { seen, events, compactions, entries };
+		} finally {
+			uninstall();
+			await harness.close(BACKGROUND_CONTEXT);
+		}
+	}
+
+	test("an answered large result is trimmed and the threshold compaction declined", async () => {
+		// About 40,000 tokens are over the threshold; trimming 75,000 characters frees about 18,700.
+		const { seen, events, compactions, entries } = await scenario("look at the data", BIG);
+		// Declined after the first run, and before the second prompt, whose estimate still uses the usage reported
+		// before the trim.
+		expect(compactions).toEqual(["declined", "declined"]);
+		expect(entries.some((entry) => entry.type === "compaction")).toBe(false);
+		expect(events.map((event) => event.source)).toEqual(["trim"]);
+		const next = seen.at(-1)!;
+		expect(next).toContain("HEAD_MARK");
+		expect(next).toContain("TAIL_MARK");
+		expect(next).not.toContain("MIDDLE_MARK");
+		expect(next).toMatch(/characters trimmed before compaction; ctx\.get\("[^"]+"\) shows them/);
+		// The durable transcript keeps the whole result.
+		expect(JSON.stringify(entries)).toContain("MIDDLE_MARK");
+	});
+
+	test("when trimming cannot get under the threshold, nothing is edited and the compaction runs", async () => {
+		// The bulk is the question itself; trimming the 9,000-character result frees about 1,000 tokens.
+		const { events, compactions, entries } = await scenario(`question ${"q".repeat(70_000)}`, "r".repeat(9000));
+		expect(events).toEqual([]);
+		expect(compactions.length).toBeGreaterThan(0);
+		expect(compactions.every((status) => status === "completed")).toBe(true);
+		expect(entries.some((entry) => entry.type === "compaction")).toBe(true);
+	});
+
+	test("trimmed text and the off switch", () => {
+		const text = trimmedResultText("e1", "a".repeat(5000) + "b".repeat(5000));
+		expect(text.startsWith("a".repeat(4096))).toBe(true);
+		expect(text.endsWith("b".repeat(1024))).toBe(true);
+		expect(text).toContain("[... 4880 characters trimmed before compaction");
+		expect(compactionTrimEnabled({})).toBe(true);
+		expect(compactionTrimEnabled({ ULTRON_COMPACTION_TRIM: "off" })).toBe(false);
 	});
 });
