@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.87.27] - 2026-10-05
+
 ### Added
 
 - Added `/goal`: a person sets an objective (`pause`, `resume`, `clear`, `check <command>`) and a background job with its own REPL works on it, with no wall-clock limit, under its own usage root (exempt from the per-root wall deadline and task cap; explicit token, turn and cost caps still apply). The job tests with `goal.check()` and ends the goal with `goal.complete(revision, summary, evidence)`, which needs the host's run of the check to exit 0 when one is set, or `goal.blocked` after three checks; ten identical failing checks in a row pause it, and a job that ends early is started again only if its run changed the check result.
