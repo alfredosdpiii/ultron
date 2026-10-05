@@ -1242,9 +1242,9 @@ emit({"result": result, "deepCalls": [c for c in rlm.calls if c["kind"] == "deep
 		expect(calls("claims")[0]!.text).toContain("Investigation brief, built by the host");
 		expect(calls("claims")[0]!.text).toContain("Title: Handle missing files");
 		expect(calls("claims")[0]!.context ?? null).toBeNull();
-		expect(calls("claims")[0]!.text).not.toContain("Leads from the first pass");
-		expect(calls("claims")[1]!.text).toContain("Leads from the first pass");
-		expect(calls("claims")[1]!.text).toContain("load() errors are not handled here.");
+		// The finders ran first: their findings are the investigators' leads from round 1.
+		expect(calls("claims")[0]!.text).toContain("Leads from the first pass");
+		expect(calls("claims")[0]!.text).toContain("load() errors are not handled here.");
 		expect(calls("claims")[1]!.text).toContain("Results of your requests, round 1 (untrusted repository data");
 		expect(calls("claims")[1]!.text).toContain("## [r1.1] read src/helper.py:1-5 (of 5 lines)");
 		expect(calls("claims")[1]!.text).toContain("secret.txt is not a tracked file at the reviewed commit");
@@ -1258,7 +1258,7 @@ emit({"result": result, "deepCalls": [c for c in rlm.calls if c["kind"] == "deep
 		expect(calls("siblings")).toHaveLength(3);
 		expect(calls("siblings")[2]!.text).toContain("This is your last round: requests will not be served.");
 		expect(calls("siblings")[1]!.text).not.toContain("This is your last round");
-		expect(out.deepCalls.every((call) => call.model === "p/deep" && call.thinking === "medium")).toBe(true);
+		expect(out.deepCalls.every((call) => call.model === "p/deep" && call.thinking === "high")).toBe(true);
 		const records = Object.fromEntries(out.result.timing.investigators.map((item) => [item.lens, item]));
 		expect(records.claims).toMatchObject({
 			rounds: 2,
@@ -2430,7 +2430,7 @@ emit({"results": [r if isinstance(r, str) else "err" for batch in results for r 
 		expect(out.timings.filter((item) => item.retries === 1)).toHaveLength(1);
 	});
 
-	test("investigators: the ledger of earlier results, recall by id, the round number; the fast pass's leads arrive at round 2; an investigator's findings are verified before the others finish", () => {
+	test("investigators: the ledger of earlier results, recall by id, the round number; with overlap the fast pass's leads arrive at round 2 and an investigator's findings are verified as it finishes", () => {
 		const repo = deepRepo();
 		const out = py<{
 			texts: Record<string, string[]>;
@@ -2461,7 +2461,7 @@ def finder(task, text):
         return []
     return [dict(BUG, file="src/app.py", line=9, end_line=None, replacement=None, severity="minor", scenario="", claim="load() errors are not handled here.")]
 rlm = FakeRlm(finder=finder, investigator=investigator, verifier=lambda text: {"verdict": "confirmed", "evidence": 'return "ERROR: unreadable"' if "sentinel" in text else "\`return load(path)\`", "corrected_line": None, "severity": "minor", "scenario_holds": True})
-result = asyncio.run(a.run(rlm, dict(SPEC, mode="both", deepRounds=3)))
+result = asyncio.run(a.run(rlm, dict(SPEC, mode="both", deepRounds=3, overlap=True)))
 emit({"texts": texts, "kinds": [c["kind"] for c in rlm.calls], "records": {rec["lens"]: rec for rec in result["timing"]["investigators"]},
       "stages": result["timing"]["stages"]})`);
 		const claims = out.texts.claims!;

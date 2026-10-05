@@ -241,9 +241,11 @@ export interface AutoreviewSettings {
 	modelConcurrency?: Record<string, number>;
 	/** Experimental: send each frame's shared context (diff, brief, retrieved block) as its system prompt. Off. */
 	systemPrefix?: boolean;
+	/** Run the fast pass beside the investigators' first round (their leads then arrive at round 2). Off. */
+	overlap?: boolean;
 	/** `provider/model` of the deep pass's investigator frames; unset: the finder model. */
 	deepModel?: string;
-	/** Thinking level of the investigator frames (default "medium"; "high" for the slow, thorough setting). */
+	/** Thinking level of the investigator frames (default "high"; measured, medium finds a third as much). */
 	deepThinking?: FrameThinkingLevel;
 	/** `compiled` mode: `provider/model` of the planner frame; unset: the finder model. */
 	planModel?: string;
@@ -260,7 +262,7 @@ export interface AutoreviewSettings {
 	planStyle?: "cell" | "frame";
 	/** `compiled` mode: cells the planner may run (default 4, maximum 12). */
 	planCells?: number;
-	/** Lookup rounds one investigator may take (default 3, maximum 8). */
+	/** Lookup rounds one investigator may take (default 4, maximum 8). */
 	deepRounds?: number;
 	/** A confirmed finding at this level or above makes the review request changes (default "medium"). */
 	blockAt?: "critical" | "high" | "medium" | "low" | "nit";
@@ -1436,6 +1438,7 @@ export class SettingsManager {
 		const verifyBatch = count(configured.verifyBatch);
 		if (verifyBatch !== undefined) out.verifyBatch = verifyBatch;
 		if (typeof configured.systemPrefix === "boolean") out.systemPrefix = configured.systemPrefix;
+		if (typeof configured.overlap === "boolean") out.overlap = configured.overlap;
 		if (configured.modelConcurrency && typeof configured.modelConcurrency === "object") {
 			const limits: Record<string, number> = {};
 			for (const [name, limit] of Object.entries(configured.modelConcurrency as Record<string, unknown>)) {

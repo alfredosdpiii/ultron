@@ -53,7 +53,7 @@ GIT_TIMEOUT_S = 30
 #: The only git subcommands the deep pass runs. All of them only read the object database.
 ALLOWED_GIT = ("grep", "show", "ls-tree", "log")
 
-DEFAULT_ROUNDS = 3
+DEFAULT_ROUNDS = 4
 MAX_ROUNDS = 8
 MAX_REQUESTS = 8
 ROUND_CHARS = 24_000

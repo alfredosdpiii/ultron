@@ -113,7 +113,7 @@ DEFAULT_THINKING = "low"
 #: fast and deep passes discover candidates, host-written check programs verify them (the default).
 MODES = ("fast", "deep", "both", "compiled", "hybrid")
 DEFAULT_MODE = "both"
-DEFAULT_DEEP_THINKING = "medium"
+DEFAULT_DEEP_THINKING = "high"
 DEFAULT_PLAN_THINKING = "high"
 DEFAULT_ASK_THINKING = "low"
 TITLE_CHARS = 300
@@ -1503,9 +1503,11 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
     duplicates = 0
     refuted = 0
     find_ms = 0
-    # The fast pass runs beside the investigators' first round in `both` (its findings reach them from the second
-    # round on); the experimental hybrid mode needs the fast findings first, as candidates.
-    parallel = bool(chunks) and run_fast and run_deep_pass and not hybrid
+    # With `overlap` the fast pass runs beside the investigators' first round in `both` and its findings reach them
+    # from the second round on; by default the finders run first and their findings are the investigators' leads
+    # from round 1 (measured: investigators without round-1 leads look up and find less). The experimental hybrid
+    # mode needs the fast findings first, as candidates.
+    parallel = bool(chunks) and run_fast and run_deep_pass and not hybrid and spec.get("overlap") is True
     if not parallel:
         await fast_pass()
 

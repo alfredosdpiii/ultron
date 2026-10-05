@@ -28,7 +28,7 @@ export const REVIEW_MODES: readonly ReviewMode[] = ["fast", "deep", "both", "com
 export const DEFAULT_MODE: ReviewMode = "both";
 export const DEFAULT_VERIFY_CANDIDATES = 12;
 export const MAX_VERIFY_CANDIDATES = 40;
-export const DEFAULT_DEEP_THINKING: FrameThinkingLevel = "medium";
+export const DEFAULT_DEEP_THINKING: FrameThinkingLevel = "high";
 export const DEFAULT_PLAN_THINKING: FrameThinkingLevel = "high";
 export const DEFAULT_ASK_THINKING: FrameThinkingLevel = "low";
 /** The planner as sandboxed Python cells over the `rv` API (`cell`), or as one JSON-program frame (`frame`). */
@@ -44,7 +44,7 @@ export const DEFAULT_BLOCK_AT: BlockLevel = "medium";
 /** Few, heavy comments: inline comments per review. */
 export const DEFAULT_MAX_COMMENTS = 5;
 export const MAX_MAX_COMMENTS = 30;
-export const DEFAULT_DEEP_ROUNDS = 3;
+export const DEFAULT_DEEP_ROUNDS = 4;
 /** Findings of one file a verifier frame judges together. */
 export const DEFAULT_VERIFY_BATCH = 4;
 export const MAX_VERIFY_BATCH = 8;
@@ -126,6 +126,8 @@ export interface AutoreviewConfig {
 	readonly modelConcurrency: Readonly<Record<string, number>>;
 	/** Experimental: send each frame's shared context as its system prompt (measured to lose discovery; off). */
 	readonly systemPrefix: boolean;
+	/** Run the fast pass beside the investigators' first round (leads reach them at round 2); off: finders first. */
+	readonly overlap: boolean;
 	readonly blockAt: BlockLevel;
 	readonly maxComments: number;
 	/** Run the reviewed project's tests in the deep pass, where the repository is eligible and a sandbox exists. */
@@ -216,6 +218,7 @@ export function engineSettings(config: AutoreviewConfig): {
 	verifyBatch: number;
 	modelConcurrency: Record<string, number>;
 	systemPrefix: boolean;
+	overlap: boolean;
 	testRuns: number;
 	testTimeoutSeconds: number;
 	testImage?: string;
@@ -243,6 +246,7 @@ export function engineSettings(config: AutoreviewConfig): {
 		verifyBatch: config.verifyBatch,
 		modelConcurrency: { ...config.modelConcurrency },
 		systemPrefix: config.systemPrefix,
+		overlap: config.overlap,
 		testRuns: config.testRuns,
 		testTimeoutSeconds: config.testTimeoutSeconds,
 		...(config.testImage === undefined ? {} : { testImage: config.testImage }),
@@ -291,6 +295,7 @@ export function resolveConfig(settings: AutoreviewSettings, fallbacks: ModelFall
 		),
 		verifyBatch: Math.min(MAX_VERIFY_BATCH, Math.max(1, settings.verifyBatch ?? DEFAULT_VERIFY_BATCH)),
 		systemPrefix: settings.systemPrefix === true,
+		overlap: settings.overlap === true,
 		modelConcurrency: Object.fromEntries(
 			Object.entries(settings.modelConcurrency ?? {}).map(([name, limit]) => [
 				name,

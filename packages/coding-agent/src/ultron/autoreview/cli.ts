@@ -104,8 +104,8 @@ Options:
   --verify-candidates <n>      review --mode hybrid (experimental): candidates verified at most (default:
                                autoreview.verifyCandidates, 12)
   --deep-model <p/m>           review: the model of the deep pass's investigators (default: the finder model)
-  --deep-thinking <level>      review: their thinking level (default: autoreview.deepThinking, medium; high is
-                               slower and more thorough)
+  --deep-thinking <level>      review: their thinking level (default: autoreview.deepThinking, high; medium was
+                               measured to find a third as much)
   --verify-batch <n>           review: findings of one file judged by one verifier frame (default:
                                autoreview.verifyBatch, 4; 1 is one frame per finding)
   --plan-model <p/m>           review --mode compiled: the planner's model (default: autoreview.planModel, the finder model)

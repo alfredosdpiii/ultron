@@ -727,7 +727,7 @@ describe("the body after a deep pass", () => {
 		expect(engine.specs[0]).toMatchObject({
 			mode: "both",
 			deepModel: "p/deep",
-			deepThinking: "medium",
+			deepThinking: "high",
 			deepRounds: 2,
 		});
 		const reviews = hub.api(/^POST repos\/o\/r\/pulls\/1\/reviews$/);
@@ -2132,8 +2132,8 @@ describe("the command", () => {
 			mode: "both",
 			verifyCandidates: 12,
 			deepModel: "a/m",
-			deepThinking: "medium",
-			deepRounds: 3,
+			deepThinking: "high",
+			deepRounds: 4,
 			blockAt: "medium",
 			maxComments: 5,
 		});

@@ -80,6 +80,8 @@ export interface EngineSpec {
 	readonly modelConcurrency?: Readonly<Record<string, number>>;
 	/** Experimental: the shared context as the frames' system prompt instead of their first views. */
 	readonly systemPrefix?: boolean;
+	/** Run the fast pass beside the investigators' first round. */
+	readonly overlap?: boolean;
 	readonly deepModel?: string;
 	readonly deepThinking?: string;
 	readonly deepRounds?: number;
