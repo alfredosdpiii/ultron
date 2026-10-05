@@ -113,8 +113,10 @@ HAS_SANDBOX = deep.testing.detect_sandbox() is not None
 executed = []
 def executor(argv, cwd, env, timeout):
     source = open(os.path.join(cwd, "src/app.py")).read()
+    cli = open(os.path.join(cwd, "src/cli.py")).read()
     executed.append(source)
-    show = "PASSED tests/test_app.py::test_show" if "upper()" in source else "FAILED tests/test_app.py::test_show - AssertionError"
+    show = ("PASSED tests/test_app.py::test_show" if "upper()" in source and "print(show(kind))" in cli
+            else "FAILED tests/test_app.py::test_show - AssertionError")
     return (1 if "FAILED" in show else 0), show + chr(10)
 deep.testing.detect_sandbox = lambda **options: deep.testing.Sandbox("bwrap")
 deep.testing.run_process = executor
@@ -1499,6 +1501,14 @@ emit({"shapes": shapes, "programs": programs, "how": how})`);
 
 	test("end to end: candidates confirmed by a surviving mutant, refuted by a caught one, resolved by an ask when the runner is unavailable; the planner batch adds a step; the cap; the overlap; the JSON", () => {
 		const repo = fixture();
+		// Two tests findings in one file merge when within five lines: spread the file so the proven one (line 1) and
+		// the refuted one (line 12) stay two candidates.
+		writeFileSync(
+			join(repo.dir, "src/app.py"),
+			`KINDS = ["a", "b", "c"]\n${"\n".repeat(8)}def show(kind):\n    # Upper-cases the kind.\n    return kind.upper()\n`,
+		);
+		git(repo.dir, "commit", "-qam", "spread");
+		repo.head = git(repo.dir, "rev-parse", "HEAD");
 		const out = py<{
 			result: Result & {
 				verification: Record<string, unknown>;
@@ -1511,10 +1521,10 @@ emit({"shapes": shapes, "programs": programs, "how": how})`);
 			secondKinds: string[];
 		}>(`${prelude(repo)}
 LENS = {p.deep_task(n, f): n for n in p.DEEP_LENSES for f in (False, True)}
-def pin(line, claim, repl, change):
-    return {"file": "src/app.py", "line": line, "severity": "medium", "category": "tests", "claim": claim, "why": "w", "scenario": "", "suggested_fix": "f", "confidence": 0.8,
-            "unpinned": {"behaviour": f"src/app.py:{line} behaviour", "change": change, "closest_test": {"path": "tests/test_app.py", "line": 5},
-                         "mutation": {"path": "src/app.py", "line": line, "replacement": repl}}}
+def pin(line, claim, repl, change, path="src/app.py"):
+    return {"file": path, "line": line, "severity": "medium", "category": "tests", "claim": claim, "why": "w", "scenario": "", "suggested_fix": "f", "confidence": 0.8,
+            "unpinned": {"behaviour": f"{path}:{line} behaviour", "change": change, "closest_test": {"path": "tests/test_app.py", "line": 5},
+                         "mutation": {"path": path, "line": line, "replacement": repl}}}
 DEEP = {"file": "src/cli.py", "line": 5, "severity": "medium", "category": "correctness", "claim": "main() prints the raw kind without validating it against KINDS.",
         "why": "w", "scenario": "main('zzz') prints ZZZ.", "suggested_fix": "validate", "confidence": 0.7, "evidence": [{"path": "src/cli.py", "line": 5, "quote": "print(show(kind))"}]}
 class Hybrid(Rlm):
@@ -1545,10 +1555,10 @@ class Hybrid(Rlm):
             else:
                 call["kind"] = "find"
                 if "Correctness" in task and "src/app.py" in text:
-                    reply = [{"file": "src/app.py", "line": 5, "severity": "low", "category": "docs", "claim": "The comment on show() says it upper-cases but the code lower-cases.", "why": "w", "scenario": "", "suggested_fix": "fix", "confidence": 0.5}]
+                    reply = [{"file": "src/app.py", "line": 11, "severity": "low", "category": "docs", "claim": "The comment on show() says it upper-cases but the code lower-cases.", "why": "w", "scenario": "", "suggested_fix": "fix", "confidence": 0.5}]
                 elif "Tests and QA" in task and "src/app.py" in text:
                     reply = [pin(1, "Nothing fails when the new kind c is dropped again.", 'KINDS = ["a", "b"]', "drop c from KINDS"),
-                             pin(6, "Nothing fails when show() stops upper-casing.", "    return kind", "return the kind unchanged")]
+                             pin(12, "Nothing fails when show() stops upper-casing.", "    return kind", "return the kind unchanged")]
                 else:
                     reply = []
             self.calls.append(call); out.append(reply)
@@ -1594,7 +1604,7 @@ emit({"result": result, "kinds": rlm.kinds(), "cplan": next(c["text"] for c in r
 			verification: "confirmed",
 			level: "low",
 		});
-		expect(String(comment.howVerified)).toMatch(/^check c3_f: c3_q: Candidate finding at src\/app\.py:5/);
+		expect(String(comment.howVerified)).toMatch(/^check c3_f: c3_q: Candidate finding at src\/app\.py:11/);
 		// The deep candidate, checked in the second batch with the planner's extra step recorded.
 		const deepOne = byClaim["main() prints the raw kind without validating it against KINDS."]!;
 		expect(deepOne).toMatchObject({ source: "deep:claims", verifiedBy: "check:c4_f", verification: "confirmed" });

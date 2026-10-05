@@ -67,9 +67,9 @@ from review_api import (
     _rev_reader,
     _spent,
     _text,
+    _words,
     apply_verdicts,
     build_chunks,
-    dedupe,
     evidence_quotes_source,
     hunk_for,
     normalize_findings,
@@ -534,6 +534,8 @@ def final_level(finding: dict[str, Any], verdict: Any) -> str:
     rated = to_level(verdict.get("severity"), None) if isinstance(verdict, dict) else None
     level = rated or finding["level"]
     holds = _holds(verdict.get("scenario_holds")) if isinstance(verdict, dict) else None
+    finding["verifier_level"] = rated
+    finding["verifier_holds"] = holds if holds is not None else "unknown"
     if level in SERIOUS and holds is not True:
         return "low"
     # A tests finding the host could not prove by a mutation stays low unless the verifier itself rates it.
@@ -590,12 +592,23 @@ _TRANSIENT = re.compile(
     r"|timed? ?out|timeout|econnreset|etimedout|epipe|socket hang up|fetch failed|network|connection (reset|closed)",
     re.I,
 )
+#: A provider that cannot authenticate right now. The Claude Code CLI refreshes its OAuth session on use, and a
+#: request that lands during the refresh is refused ("not logged in") although the next one succeeds; so these
+#: are retried too, after a longer pause.
+_AUTH = re.compile(r"not logged in|failed to authenticate|session expired|unauthori[sz]ed|\b401\b|auth login", re.I)
+AUTH_RETRY_S = 8.0
 _RETRY_AFTER = re.compile(r"retry[-_ ]?after\D{0,12}(\d+(?:\.\d+)?)|try again in (\d+(?:\.\d+)?) ?s", re.I)
 
 
 def is_transient(result: Any) -> bool:
-    """A frame failure worth another try: a rate limit, a timeout, an overloaded or unreachable provider."""
-    return isinstance(result, FrameError) and result.error != DEADLINE_ERROR and bool(_TRANSIENT.search(result.error))
+    """A frame failure worth another try: a rate limit, a timeout, an overloaded or unreachable provider, or a
+    provider whose credentials are being refreshed."""
+    return isinstance(result, FrameError) and result.error != DEADLINE_ERROR and bool(
+        _TRANSIENT.search(result.error) or _AUTH.search(result.error))
+
+
+def is_auth_failure(result: Any) -> bool:
+    return isinstance(result, FrameError) and bool(_AUTH.search(result.error))
 
 
 def retry_after(error: str) -> float | None:
@@ -700,14 +713,15 @@ class Frames:
                 if not is_transient(result) or retries >= MAX_RETRIES:
                     break
                 hint = retry_after(result.error)
-                delay = min(MAX_RETRY_WAIT_S, hint if hint is not None
-                            else self.retry_base_s * (2 ** retries) * (0.5 + self.rng()))
+                base = AUTH_RETRY_S if is_auth_failure(result) and self.retry_base_s > 0 else self.retry_base_s
+                delay = min(MAX_RETRY_WAIT_S, hint if hint is not None else base * (2 ** retries) * (0.5 + self.rng()))
                 if cutoff is not None and self.clock() + delay + MIN_START_S >= cutoff:
                     break
                 retries += 1
                 await self.sleep(delay)
             self.timings.append({"phase": phase, "reviewer": label, "ms": int((self.clock() - began) * 1000),
-                                 "status": status, "retries": retries, "tokens": tokens})
+                                 "status": status, "retries": retries, "tokens": tokens,
+                                 **({"error": _text(result.error, 200)} if isinstance(result, FrameError) else {})})
             return result
 
 
@@ -903,20 +917,79 @@ async def recheck_earlier(rlm: Any, earlier: list[dict[str, Any]], since: list[F
 # --- Orchestration ---------------------------------------------------------------------------------------------
 
 
-def group_root_causes(confirmed: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], int]:
-    """One finding per root cause: confirmed findings that say the same thing in different places (the same
-    category and a similar claim) become the most serious of them, with the other places listed in `also_at`."""
+#: Findings this close (new-file lines) in one file and of one category are one finding.
+MERGE_WINDOW = 5
+#: Claims (or scenarios) this alike, by word overlap, say the same thing.
+IDENTICAL = 0.8
+
+
+def nearly_identical(a: str, b: str, threshold: float = IDENTICAL) -> bool:
+    """Two texts that say the same thing in nearly the same words (unlike `similar_claims`, which accepts half)."""
+    left, right = _words(a), _words(b)
+    if len(left) < 3 or len(right) < 3:
+        return False
+    return len(left & right) / min(len(left), len(right)) >= threshold
+
+
+def duplicate_record(dropped: dict[str, Any], into: dict[str, Any], stage: str) -> dict[str, Any]:
+    """What was merged into what, for `dropped.duplicateOf`."""
+    def brief(item: dict[str, Any]) -> dict[str, Any]:
+        return {"file": item["file"], "line": item["line"], "category": item.get("category"),
+                "claim": _text(item.get("claim"), 160), "source": item.get("source") or "fast"}
+    return {"dropped": brief(dropped), "into": brief(into), "stage": stage}
+
+
+def dedupe_fast(findings: list[dict[str, Any]], records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """The fast pass's findings, one per problem: findings in one file within `MERGE_WINDOW` lines of one category
+    (several reviewers reading the same slice) merge into the most serious, as do findings of one category whose
+    claims are nearly identical. Findings of different categories never merge."""
+    merged: list[dict[str, Any]] = []
+    for finding in sorted(findings, key=lambda item: (item["file"], item["line"], level_rank(item))):
+        twin = next((group for group in merged if group["category"] == finding["category"] and (
+            (group["file"] == finding["file"] and abs(group["line"] - finding["line"]) <= MERGE_WINDOW)
+            or nearly_identical(group["claim"], finding["claim"]))), None)
+        if twin is None:
+            merged.append(dict(finding, reviewers=list(finding["reviewers"])))
+            continue
+        reviewers = twin["reviewers"] + [key for key in finding["reviewers"] if key not in twin["reviewers"]]
+        if level_rank(finding) < level_rank(twin):
+            records.append(duplicate_record(twin, finding, "fast"))
+            kept = dict(finding, reviewers=reviewers)
+            twin.clear()
+            twin.update(kept)
+        else:
+            records.append(duplicate_record(finding, twin, "fast"))
+            twin["reviewers"] = reviewers
+        twin["confidence"] = max(twin["confidence"], finding["confidence"])
+    merged.sort(key=level_rank)
+    for number, finding in enumerate(merged, 1):
+        finding["id"] = number
+    return merged
+
+
+def group_root_causes(confirmed: list[dict[str, Any]],
+                      records: list[dict[str, Any]] | None = None) -> tuple[list[dict[str, Any]], int]:
+    """One finding per root cause: confirmed findings of one category that say the same thing in different places
+    (nearly identical claims, or scenarios that describe the same failing input) become the most serious of them,
+    with the other places listed in `also_at`."""
     kept: list[dict[str, Any]] = []
     merged = 0
     # The most serious wording leads and, at one level, the one with the stronger evidence.
     strength = lambda item: 0 if item.get("test_run") or item.get("host_confirmed") else 1 if item.get("beyond_diff") else 2  # noqa: E731
     for finding in sorted(confirmed, key=lambda item: (level_rank(item)[0], strength(item), level_rank(item)[1])):
-        twin = next((item for item in kept if item["category"] == finding["category"]
-                     and similar_claims(item["claim"], finding["claim"])), None)
+        twin = next((item for item in kept if item["category"] == finding["category"] and (
+            nearly_identical(item["claim"], finding["claim"])
+            # Both confirmed and about the same failing input: the scenarios in nearly the same words, and the
+            # claims alike (a scenario's phrasing alone, "returns X; it should return Y", recurs everywhere).
+            or (bool(item.get("scenario")) and bool(finding.get("scenario"))
+                and nearly_identical(item["scenario"], finding["scenario"], 0.9)
+                and similar_claims(item["claim"], finding["claim"])))), None)
         if twin is None:
             kept.append(finding)
             continue
         merged += 1
+        if records is not None:
+            records.append(duplicate_record(finding, twin, "root-cause"))
         place = {"file": finding["file"], "line": finding["line"]}
         if place not in twin.setdefault("also_at", []) and len(twin["also_at"]) < 8:
             twin["also_at"].append(place)
@@ -970,6 +1043,9 @@ def _public(finding: dict[str, Any], verification: str) -> dict[str, Any]:
         out["howVerified"] = "not confirmed: " + _text(finding.get("verification") or "the verifier could not decide", 160)
     finder_level = finding.get("finder_level") or out["level"]
     out["finderLevel"] = finder_level
+    if "verifier_level" in finding:
+        out["verifierLevel"] = finding["verifier_level"]
+        out["verifierScenarioHolds"] = finding["verifier_holds"]
     out["finderSeverity"] = LEVEL_TO_OLD[finder_level]
     # How strong the evidence is: a test the host ran, source quoted from outside the diff, or the diff alone.
     out["strength"] = ("test" if finding.get("test_run")
@@ -1233,19 +1309,20 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
                                   + (" ..." if len(where) > 8 else ""))
             if unattributed:
                 not_checked.append(f"{unattributed} finding(s) named no file of their slice and were dropped.")
-    merged = dedupe(raised)
-    duplicates = len(raised) - len(merged)
+    # Generic findings go before deduplication, so that one never absorbs a specific finding beside it.
     dropped_generic: list[str] = []
-    kept_fast = []
-    for finding in merged:
+    specific = []
+    for finding in raised:
         finding["source"] = "fast"
         finding.setdefault("level", to_level(finding["severity"]))
         reason = generic_reason(finding)
         if reason:
             dropped_generic.append(reason)
         else:
-            kept_fast.append(finding)
-    merged = kept_fast
+            specific.append(finding)
+    duplicate_records: list[dict[str, Any]] = []
+    merged = dedupe_fast(specific, duplicate_records)
+    duplicates = len(specific) - len(merged)
     refuted = 0
     find_ms = int((clock() - find_started) * 1000)
 
@@ -1367,7 +1444,7 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
                 not_checked.append(test_report["note"][0].upper() + test_report["note"][1:] + ".")
             assurance = deep.assurance(deep_out)
             before_merge = list(merged)
-            merged, superseded = deep.merge(merged, deep_out["findings"])
+            merged, superseded = deep.merge(merged, deep_out["findings"], duplicate_records)
             duplicates += superseded
             for number, finding in enumerate(merged, 1):
                 finding["id"] = number
@@ -1432,9 +1509,13 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
             also_raised.append({"file": finding["file"], "line": finding["line"], "severity": finding["level"],
                                 "claim": finding["claim"], "by": logins})
             continue
-        if any(item["file"] == finding["file"] and abs(item["line"] - finding["line"]) <= EARLIER_WINDOW
-               and similar_claims(item["claim"], finding["claim"]) for item in open_earlier):
+        earlier_twin = next((item for item in open_earlier if item["file"] == finding["file"]
+                             and abs(item["line"] - finding["line"]) <= EARLIER_WINDOW
+                             and similar_claims(item["claim"], finding["claim"])), None)
+        if earlier_twin is not None:
             duplicates += 1
+            duplicate_records.append(duplicate_record(finding, dict(earlier_twin, source="earlier review",
+                                                                    category=finding["category"]), "earlier"))
             continue
         if hybrid and isinstance(finding.get("verification"), dict):
             state = finding["verification"]["state"]
@@ -1596,8 +1677,15 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
         incomplete.append(f"{len(unverified)} finding(s) were not verified within the token budget")
     verify_ms = int((clock() - verify_started) * 1000) + recheck_ms
 
-    confirmed, merged_causes = group_root_causes(confirmed)
+    confirmed, merged_causes = group_root_causes(confirmed, duplicate_records)
     duplicates += merged_causes
+    # A review no model frame survived is a failed review, not an empty one: the daemon tries again later and
+    # the offline entry exits non-zero, instead of an approval or a comment that reviewed nothing.
+    statuses = [item["status"] for item in frames_runner.timings if item["phase"] in ("find", "deep")]
+    if statuses and all(status == "failed" for status in statuses):
+        first = next((item for item in frames_runner.timings if item.get("error")), None)
+        raise ReviewError("the model provider failed every frame of this review"
+                          + (f": {first['error']}" if first else ""))
     confirmed.sort(key=level_rank)
     uncertain.sort(key=level_rank)
     findings = [_public(item, "confirmed") for item in confirmed] + [_public(item, "uncertain") for item in uncertain]
@@ -1612,7 +1700,7 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
         "alsoRaised": also_raised,
         "earlier": earlier,
         "dropped": {"rejected": len(rejected), "duplicates": duplicates, "generic": len(dropped_generic),
-                    "refutedByTest": refuted},
+                    "refutedByTest": refuted, "duplicateOf": duplicate_records},
         "timing": {"totalMs": int((clock() - started) * 1000), "scopeMs": scope_ms, "findMs": find_ms,
                    "verifyMs": verify_ms, "deepMs": deep_ms, "programMs": program_ms, "frames": frames_runner.timings,
                    "investigators": investigators, "program": program_records},

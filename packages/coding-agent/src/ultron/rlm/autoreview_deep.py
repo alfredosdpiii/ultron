@@ -74,6 +74,7 @@ MAX_CITATIONS = 6
 CITATION_SLACK = 2
 CITED_WINDOW = 6
 DEDUPE_WINDOW = 3
+MERGE_WINDOW = 5
 LEVEL_ORDER = ("critical", "high", "medium", "low", "nit")
 LEVEL_TO_OLD = {"critical": "blocker", "high": "major", "medium": "minor", "low": "minor", "nit": "nit"}
 #: An investigator that is done in round 1 with fewer served lookups than this is sent back once.
@@ -729,33 +730,54 @@ def cited_windows(repo: Repo, finding: dict[str, Any]) -> str:
     return "\n\n".join(parts)
 
 
-def merge(fast: list[dict[str, Any]], deep: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], int]:
-    """Deep findings deduplicated across lenses, then against the fast pass: a deep finding with evidence from
-    outside the diff supersedes the fast one it extends (same file, nearby line, same category or a similar
-    claim); one whose evidence is all inside the diff adds nothing to a fast finding and gives way to it.
+def _nearly_identical(a: str, b: str) -> bool:
+    left = {word for word in re.findall(r"[a-z0-9_]+", a.lower()) if len(word) > 2}
+    right = {word for word in re.findall(r"[a-z0-9_]+", b.lower()) if len(word) > 2}
+    return len(left) >= 3 and len(right) >= 3 and len(left & right) / min(len(left), len(right)) >= 0.8
+
+
+def _record(records: list[dict[str, Any]] | None, dropped: dict[str, Any], into: dict[str, Any], stage: str) -> None:
+    if records is None:
+        return
+    brief = lambda item: {"file": item["file"], "line": item["line"], "category": item.get("category"),  # noqa: E731
+                          "claim": _text(item.get("claim"), 160), "source": item.get("source") or "fast"}
+    records.append({"dropped": brief(dropped), "into": brief(into), "stage": stage})
+
+
+def merge(fast: list[dict[str, Any]], deep: list[dict[str, Any]],
+          records: list[dict[str, Any]] | None = None) -> tuple[list[dict[str, Any]], int]:
+    """Deep findings deduplicated across investigators, then against the fast pass. Two findings are one when
+    they are of one category and either sit in one file within `MERGE_WINDOW` lines of each other and come from
+    different passes, or make nearly identical claims. Findings of different categories never merge. A deep
+    finding with evidence from outside the diff supersedes the fast one it extends and is never folded into it;
+    a deep finding whose evidence is all inside the diff adds nothing to a fast one and gives way to it.
     Returns (all, duplicates)."""
     def same(a: dict[str, Any], b: dict[str, Any]) -> bool:
-        # Nearby and saying the same thing; or nearby, of one category and from different passes (one
-        # investigator's two findings on neighbouring lines are two findings).
-        return (a["file"] == b["file"] and abs(a["line"] - b["line"]) <= DEDUPE_WINDOW
-                and (similar_claims(a["claim"], b["claim"])
-                     or (a["category"] == b["category"] and a.get("source") != b.get("source"))))
+        if a["category"] != b["category"]:
+            return False
+        if _nearly_identical(a["claim"], b["claim"]) and a["file"] == b["file"]:
+            return True
+        # One investigator's two findings on neighbouring lines are two findings.
+        return (a["file"] == b["file"] and abs(a["line"] - b["line"]) <= MERGE_WINDOW
+                and a.get("source") != b.get("source"))
 
     order = {level: index for index, level in enumerate(LEVEL_ORDER)}
     kept: list[dict[str, Any]] = []
     duplicates = 0
     for finding in sorted(deep, key=lambda item: (order[item["level"]], -len(item.get("citations") or []))):
-        twin = next((item for item in kept if same(item, finding) or similar_claims(item["claim"], finding["claim"])
-                     and item["file"] == finding["file"]), None)
+        twin = next((item for item in kept if same(item, finding)), None)
         if twin is None:
             kept.append(finding)
             continue
         duplicates += 1
+        _record(records, finding, twin, "deep")
         twin["reviewers"] += [name for name in finding["reviewers"] if name not in twin["reviewers"]]
     for finding in [item for item in kept if not item.get("beyond_diff")]:
-        if any(same(finding, other) for other in fast):
+        other = next((item for item in fast if same(finding, item)), None)
+        if other is not None:
             kept.remove(finding)
             duplicates += 1
+            _record(records, finding, other, "deep-into-fast")
     remaining = []
     for finding in fast:
         twin = next((item for item in kept if same(item, finding)), None)
@@ -763,6 +785,7 @@ def merge(fast: list[dict[str, Any]], deep: list[dict[str, Any]]) -> tuple[list[
             remaining.append(finding)
             continue
         duplicates += 1
+        _record(records, finding, twin, "fast-into-deep")
         twin["reviewers"] += [name for name in finding.get("reviewers") or [] if name not in twin["reviewers"]]
         if not twin.get("replacement") and finding.get("replacement") and twin["line"] == finding["line"]:
             twin["replacement"] = finding["replacement"]

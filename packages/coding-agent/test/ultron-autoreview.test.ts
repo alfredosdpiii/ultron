@@ -878,7 +878,7 @@ describe("the offline JSON says what the poster would do with each finding", () 
 		expect(json.findings[5]!.unclear).toBe(true);
 		expect(json.findings[6]!.unpinned).toMatchObject({ proof: "proven" });
 		expect(json.verdict).toBe("request_changes");
-		expect(json.dropped).toEqual({ rejected: 2, duplicates: 1, generic: 4, refutedByTest: 1 });
+		expect(json.dropped).toEqual({ rejected: 2, duplicates: 1, generic: 4, refutedByTest: 1, duplicateOf: [] });
 		expect(plan.body).toContain("1 unconfirmed");
 		// With the threshold at critical nothing blocks, and the unclear finding still does not count.
 		expect((offlineJson(result, 10, "critical", 3) as { verdict: string }).verdict).toBe("approve");

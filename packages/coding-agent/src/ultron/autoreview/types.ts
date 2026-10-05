@@ -140,6 +140,9 @@ export interface EngineFinding {
 	/** What the finder rated it. */
 	readonly finderLevel?: Level;
 	readonly finderSeverity?: Severity;
+	/** The verifier's own level (null when it gave none) and whether it found the scenario to hold. */
+	readonly verifierLevel?: Level | null;
+	readonly verifierScenarioHolds?: boolean | "unknown";
 	/** How strong the evidence is: a test the host ran, source quoted from outside the diff, or the diff alone. */
 	readonly strength?: "test" | "outside" | "diff";
 	/** A tests finding: the behaviour, the change no test would notice, the nearest test, and how a run settled it. */
@@ -194,6 +197,14 @@ export interface AlsoRaised {
 	readonly severity: string;
 	readonly claim: string;
 	readonly by: readonly string[];
+}
+
+export interface DuplicateSide {
+	readonly file: string;
+	readonly line: number;
+	readonly category?: string | null;
+	readonly claim: string;
+	readonly source: string;
 }
 
 export interface FrameTiming {
@@ -337,6 +348,12 @@ export interface EngineResult {
 		readonly generic?: number;
 		/** Tests findings whose named change an existing test did catch when the host ran it. */
 		readonly refutedByTest?: number;
+		/** What was merged into what, and at which stage. */
+		readonly duplicateOf?: ReadonlyArray<{
+			readonly dropped: DuplicateSide;
+			readonly into: DuplicateSide;
+			readonly stage: string;
+		}>;
 	};
 	readonly timing: {
 		readonly totalMs: number;
