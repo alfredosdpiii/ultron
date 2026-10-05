@@ -178,8 +178,11 @@ describe("ultron setup: signing in with a subscription", () => {
 		await vi.waitFor(() => expect(openBrowser).toHaveBeenCalledTimes(1));
 
 		// The wizard's login shows what to do when the browser cannot reach the callback page.
-		expect(screen(terminal).replace(/\s+/g, " ")).toContain(
-			"copy that page's full address from the address bar and paste it here.",
+		// It renders just after the browser opens: wait for it rather than read the screen once (flaky under load).
+		await vi.waitFor(() =>
+			expect(screen(terminal).replace(/\s+/g, " ")).toContain(
+				"copy that page's full address from the address bar and paste it here.",
+			),
 		);
 		// Enter on the empty paste prompt changes nothing; Esc leaves the login, and the wizard says so.
 		terminal.sendInput(ENTER);
