@@ -959,7 +959,7 @@ def investigator(lens, text, round):
 rlm = Rlm(investigator)
 result = asyncio.run(a.run(rlm, dict(SPEC, runTests=True, testRuns=4, testTimeoutSeconds=60)))
 tests_calls = [c for c in rlm.calls if c["lens"] == "tests"]
-emit({"result": result, "brief": tests_calls[0]["context"], "task": tests_calls[0]["task"], "round2": tests_calls[1]["text"],
+emit({"result": result, "brief": tests_calls[0]["text"], "task": tests_calls[0]["task"], "round2": tests_calls[1]["text"],
       "verifierSaw": next(c["text"] for c in rlm.calls if c["lens"] == "verify"),
       "leftovers": [os.path.exists(path) for path in exports], "executions": len(executed)})`);
 		const { result } = out;

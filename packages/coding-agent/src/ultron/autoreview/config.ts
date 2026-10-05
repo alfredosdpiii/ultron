@@ -124,6 +124,8 @@ export interface AutoreviewConfig {
 	readonly verifyBatch: number;
 	/** Frames in flight per model at most, by `provider/model`; unset models get DEFAULT_MODEL_CONCURRENCY. */
 	readonly modelConcurrency: Readonly<Record<string, number>>;
+	/** Experimental: send each frame's shared context as its system prompt (measured to lose discovery; off). */
+	readonly systemPrefix: boolean;
 	readonly blockAt: BlockLevel;
 	readonly maxComments: number;
 	/** Run the reviewed project's tests in the deep pass, where the repository is eligible and a sandbox exists. */
@@ -213,6 +215,7 @@ export function engineSettings(config: AutoreviewConfig): {
 	verifyCandidates: number;
 	verifyBatch: number;
 	modelConcurrency: Record<string, number>;
+	systemPrefix: boolean;
 	testRuns: number;
 	testTimeoutSeconds: number;
 	testImage?: string;
@@ -239,6 +242,7 @@ export function engineSettings(config: AutoreviewConfig): {
 		verifyCandidates: config.verifyCandidates,
 		verifyBatch: config.verifyBatch,
 		modelConcurrency: { ...config.modelConcurrency },
+		systemPrefix: config.systemPrefix,
 		testRuns: config.testRuns,
 		testTimeoutSeconds: config.testTimeoutSeconds,
 		...(config.testImage === undefined ? {} : { testImage: config.testImage }),
@@ -286,6 +290,7 @@ export function resolveConfig(settings: AutoreviewSettings, fallbacks: ModelFall
 			Math.max(1, settings.verifyCandidates ?? DEFAULT_VERIFY_CANDIDATES),
 		),
 		verifyBatch: Math.min(MAX_VERIFY_BATCH, Math.max(1, settings.verifyBatch ?? DEFAULT_VERIFY_BATCH)),
+		systemPrefix: settings.systemPrefix === true,
 		modelConcurrency: Object.fromEntries(
 			Object.entries(settings.modelConcurrency ?? {}).map(([name, limit]) => [
 				name,

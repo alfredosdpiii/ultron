@@ -78,6 +78,8 @@ export interface EngineSpec {
 	readonly verifyBatch?: number;
 	/** Frames in flight per model at most, by `provider/model`. */
 	readonly modelConcurrency?: Readonly<Record<string, number>>;
+	/** Experimental: the shared context as the frames' system prompt instead of their first views. */
+	readonly systemPrefix?: boolean;
 	readonly deepModel?: string;
 	readonly deepThinking?: string;
 	readonly deepRounds?: number;

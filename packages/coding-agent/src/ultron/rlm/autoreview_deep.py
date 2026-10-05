@@ -1133,7 +1133,7 @@ async def run_deep(frames: Any, files: list[FileDiff], read_file: Callable[[str]
                    generic: Callable[[dict[str, Any]], str | None] | None = None, intent: str = "",
                    prepared: dict[str, Any] | None = None, prove_leads: bool = True,
                    keep_session: bool = False, shapes: list[dict[str, str]] | None = None,
-                   shared_prefix: bool = True, leads_future: "asyncio.Future[list[dict[str, Any]]] | None" = None,
+                   shared_prefix: bool = False, leads_future: "asyncio.Future[list[dict[str, Any]]] | None" = None,
                    on_investigator: Callable[[str, list[dict[str, Any]]], Any] | None = None) -> dict[str, Any]:
     """The deep pass: map, (optionally) the tests the map tied to the change, investigators, evidence checks.
     Returns findings (unverified, except regressions the host observed itself), what was dropped, the

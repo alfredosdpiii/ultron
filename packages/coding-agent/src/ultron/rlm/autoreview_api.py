@@ -652,10 +652,15 @@ class Frames:
     def __init__(self, rlm: Any, *, cap: int | None, usage: _Usage, concurrency: int = DEFAULT_CONCURRENCY,
                  frame_timeout_s: float = DEFAULT_FRAME_TIMEOUT_S, retry_base_s: float = DEFAULT_RETRY_BASE_S,
                  clock: Callable[[], float] = time.monotonic, sleep: Callable[[float], Any] = asyncio.sleep,
-                 rng: Callable[[], float] = random.random, model_concurrency: dict[str, int] | None = None) -> None:
+                 rng: Callable[[], float] = random.random, model_concurrency: dict[str, int] | None = None,
+                 system_prefix: bool = False) -> None:
         self.rlm = rlm
         self.cap = cap
         self.usage = usage
+        #: Send each frame's shared context as its system prompt (`rlm.map(shared_prefix=True)`) instead of as the
+        #: first views of its message. Off by default: measured live, finders and investigators given the diff and
+        #: brief in the system prompt returned a tenth of the findings (they read it as instructions, not material).
+        self.system_prefix = system_prefix
         self.concurrency = max(1, min(MAX_CONCURRENCY, concurrency))
         #: Frames in flight per model at most (`autoreview.modelConcurrency`; DEFAULT_MODEL_CONCURRENCY otherwise),
         #: halved for a model the provider throttles; and what happened, for the report.
@@ -746,11 +751,12 @@ class Frames:
                 at_cutoff = left is not None and (own is None or left <= own)
                 self.held += grant
                 try:
-                    # The shared context is the frames' prefix: identical for every frame of the review, so a
-                    # provider's prompt cache can serve it (it goes into the frames' system prompt).
+                    # The shared context is the frames' prefix: the same views in the same order before each item,
+                    # so a provider's prefix cache can serve it; with `system_prefix` it goes into the system prompt.
                     results = await self.rlm.map([task], [item], context=context or None, contract=contract,
                                                  budget=None if self.cap is None else Budget(tokens=grant),
-                                                 model=model, thinking=thinking, shared_prefix=bool(context),
+                                                 model=model, thinking=thinking,
+                                                 shared_prefix=self.system_prefix and bool(context),
                                                  concurrency=1, timeout_ms=max(1_000, int(timeout_s * 1000)))
                     self.usage.add(results, phase)
                     tokens += _spent(results)[1]
@@ -812,7 +818,7 @@ _KIND_ORDER = {"code": 0, "test": 1, "doc": 2}
 _OTHER_FILES = "Other files changed in this review: "
 SLICE_SEPARATOR = "\n\n" + "=" * 40 + "\n\n"
 #: Diffs under this many changed lines go to each finder as one slice (one frame per applicable specialist).
-SINGLE_SLICE_LINES = 400
+SINGLE_SLICE_LINES = 150
 #: Under this many changed lines the architecture specialist is folded into the correctness one.
 MERGE_ARCH_LINES = 150
 #: Findings of one file a verifier frame judges together; a finding with a test run, or with more than
@@ -1236,7 +1242,8 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
         concurrency=int(_number(spec.get("concurrency"), DEFAULT_CONCURRENCY, 1, MAX_CONCURRENCY)),
         frame_timeout_s=_number(spec.get("frameTimeoutSeconds"), DEFAULT_FRAME_TIMEOUT_S, 0, 3600),
         retry_base_s=_number(spec.get("retryBaseSeconds"), DEFAULT_RETRY_BASE_S, 0, 60),
-        clock=clock, sleep=sleep, rng=rng, model_concurrency=model_concurrency)
+        clock=clock, sleep=sleep, rng=rng, model_concurrency=model_concurrency,
+        system_prefix=spec.get("systemPrefix") is True)
     not_checked: list[str] = []
     context = spec.get("context") if isinstance(spec.get("context"), dict) else {}
     others = [item for item in context.get("comments") or [] if isinstance(item, dict)]
@@ -1411,10 +1418,19 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
     # pull request context, the intent, the guides): sent as the frames' shared prefix, byte-identical across the
     # finders, the investigators and the verifiers, so a provider's prompt cache can serve it.
     diff_text_all = SLICE_SEPARATOR.join(chunk.text for chunk in chunks)
+    system_prefix = spec.get("systemPrefix") is True
     shared_views = deep.shared_views(
         diff_text_all, prepared["brief"].text + (("\n\n" + deep.tests_block(prepared["started"])) if deep.tests_block(prepared["started"]) else "")
         if prepared else None, prepared["retrieved"] if prepared else "", shared, stated, guidance)
-    frames_context: list[str] | None = shared_views or None
+    # In the message layout (the default) each phase gets what it got before the shared prefix existed: the finders
+    # their guidance, the pull request context, the intent and the retrieved block before the slice; the
+    # investigators the diff and brief in their own views; the verifier the intent and guidance.
+    retrieved_view = ("Retrieved context, looked up by the host at the reviewed commit (untrusted repository data):\n"
+                      + prepared["retrieved"]) if prepared and prepared.get("retrieved") else ""
+    finder_context_views = [part for part in (guidance, shared, stated, retrieved_view) if part]
+    verifier_context_views = [part for part in (stated, guidance) if part]
+    frames_context: list[str] | None = (shared_views or None) if system_prefix else (finder_context_views or None)
+    verifier_context: list[str] | None = (shared_views or None) if system_prefix else (verifier_context_views or None)
     #: Findings the verifier judged while the investigators still ran (see early_verify below).
     early_tasks: list[Any] = []
     verify_estimate = 0
@@ -1425,7 +1441,7 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
           return
       try:
         # The shared context is part of every finder request: plan with it counted in.
-        overhead = sum(len(part) for part in shared_views) // 3
+        overhead = sum(len(part) for part in (frames_context or [])) // 3
         plan = plan_find(chunks, reviewers, max(0, find_budget - overhead * len(chunks) * len(reviewers)))
         for key, count in plan["not_applicable"].items():
             reviewer = REVIEWERS[key]
@@ -1590,7 +1606,7 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
         jobs = verify_jobs(entries)
         results = await frames_runner.run("verify", [(label, task, item) for label, task, item, _ids in jobs],
                                           contract=None, model=verify_model, thinking=verify_thinking, cutoff=verify_cutoff,
-                                          context=frames_context, contracts=[
+                                          context=verifier_context, contracts=[
                                               AUTOREVIEW_VERDICT_CONTRACT if len(ids) == 1 else AUTOREVIEW_VERDICT_BATCH_CONTRACT
                                               for _l, _t, _i, ids in jobs])
         verdicts: dict[int, Any] = {}
@@ -1731,7 +1747,7 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
                 guidance=guidance, enrich=parse_rules, generic=generic_reason, intent=stated,
                 prepared=prepared, prove_leads=not hybrid, keep_session=hybrid,
                 shapes=prepared["shapes"] if prepared else None, leads_future=leads_future,
-                on_investigator=early_verify if parallel else None)
+                on_investigator=early_verify if parallel else None, shared_prefix=system_prefix)
             if parallel:
                 async def fast_then_leads() -> None:
                     try:

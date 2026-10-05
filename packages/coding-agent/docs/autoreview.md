@@ -151,6 +151,7 @@ reviewed.
 | `autoreview.deepRounds` | `3` | Lookup rounds one investigator may take (maximum 8). After the first, a round gets the new results in full and a one-line ledger of the earlier ones, which `recall` re-reads. |
 | `autoreview.verifyBatch` | `4` | Findings of one file one verifier frame judges together (maximum 8; `1` is one frame per finding). A finding with a test run, or with more than 6,000 characters of material, keeps its own frame. |
 | `autoreview.modelConcurrency` | `{}` | Frames in flight per model at most, by `provider/model` (default 8 each, maximum 16). A model the provider throttles (429, cooldown, `reset_seconds`) has its limit halved for the rest of the review and the reset time is honoured before the retry. |
+| `autoreview.systemPrefix` | `false` | Experimental: send the diff, brief, retrieved block, context, intent and guides as every frame's system prompt (cacheable on every provider path). Measured to lose most findings; see "Speed and cost". |
 | `autoreview.guides` | none | Private review guides: markdown files or directories. Never quoted or named in what is posted. |
 | `autoreview.budget` | none | Optional token cap of one review. Unset, no pass is refused for tokens. |
 | `autoreview.thinking` | `"low"` | Thinking level of the finder frames (`off`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`). |
@@ -599,18 +600,23 @@ comparison has run.
 
 ## Speed and cost: the shared prefix, slices, rounds, batches, retries and optional limits
 
-- **One prefix for every frame.** Every frame of a review (finder, investigator, verifier) starts with the same
-  material in the same order: the frame instructions, then the diff, the brief, the retrieved block, the pull
-  request context, the author's intent and the guides. The per-frame part (the specialist's slice, the
-  investigator's part and results, the verifier's finding) comes after it. The host sends that prefix as the
-  frames' system prompt (`rlm.map(..., shared_prefix=True)`), byte-identical across the review, so a provider's
-  prompt cache can serve it: the Anthropic API marks the system prompt cacheable (`cache_control`, via
-  `packages/ai`); the OpenAI API caches identical prefixes of 1,024 tokens or more by itself (a `prompt_cache_key`
-  is set); the Claude Code CLI (`claude -p`) passes it as `--system-prompt`, which Claude Code's own requests cache,
-  as long as it is under the CLI's argument limit (about 128 KiB; a longer prefix moves into the user message and
-  is not cached). Frames on different models or thinking levels keep separate caches.
-- **Slices.** A diff under 400 changed lines is one slice for every specialist (one frame each; under 150 lines the
-  architecture specialist rides with the correctness one); larger diffs are packed into slices of about 14,000
+- **One prefix for every frame.** The frames of one phase start with the same views in the same order before
+  their own part (the finders: the guides, the pull request context, the intent, the retrieved block, then the
+  slice; the investigators: the diff, the brief, the retrieved block, the context, the intent, the guides, then
+  their part and results; the verifier: the intent and the guides, then the finding). After the constant frame
+  system prompt that is a byte-identical token prefix, which providers with automatic prefix caching (the OpenAI
+  API and compatible proxies, 1,024 tokens or more; a `prompt_cache_key` is set) serve from cache. The Anthropic
+  API caches only up to an explicit breakpoint, which `packages/ai` places on the system prompt and the last
+  message, so a prefix inside a differing user message is not cached there; the Claude Code CLI (`claude -p`)
+  caches its system prompt the same way. `autoreview.systemPrefix: true` (experimental) instead sends the diff,
+  brief, retrieved block, context, intent and guides as every frame's system prompt (`rlm.map(...,
+  shared_prefix=True)`; the CLI gets it as `--system-prompt`, moved into the message past about 100 KB): the
+  prefix then reaches the cache on every path, but measured live on 30 pull requests the finders and the
+  investigators returned about a tenth of their findings (recall 47-49% to 28% with the same investigator model,
+  25% to 4% all on one cheap model): models read material in the system prompt as instructions, not as the code to
+  review. It stays off unless set.
+- **Slices.** A diff under 150 changed lines is one slice for every specialist (one frame each, with the
+  architecture specialist riding with the correctness one); larger diffs are packed into slices of about 14,000
   characters, a file never split further. The AI specialist runs only on slices that mention model or LLM code.
 - **Rounds.** Investigators take at most `autoreview.deepRounds` (3) rounds. After the first, a round gets the new
   results in full and a one-line ledger of the earlier ones (`r1.2: read src/x.py:1-40 (of 120 lines)`), which

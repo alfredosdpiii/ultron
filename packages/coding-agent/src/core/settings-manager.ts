@@ -239,6 +239,8 @@ export interface AutoreviewSettings {
 	verifyBatch?: number;
 	/** Frames in flight per model at most, by `provider/model` (default 8 each, maximum 16). */
 	modelConcurrency?: Record<string, number>;
+	/** Experimental: send each frame's shared context (diff, brief, retrieved block) as its system prompt. Off. */
+	systemPrefix?: boolean;
 	/** `provider/model` of the deep pass's investigator frames; unset: the finder model. */
 	deepModel?: string;
 	/** Thinking level of the investigator frames (default "medium"; "high" for the slow, thorough setting). */
@@ -1433,6 +1435,7 @@ export class SettingsManager {
 		if (verifyCandidates !== undefined) out.verifyCandidates = verifyCandidates;
 		const verifyBatch = count(configured.verifyBatch);
 		if (verifyBatch !== undefined) out.verifyBatch = verifyBatch;
+		if (typeof configured.systemPrefix === "boolean") out.systemPrefix = configured.systemPrefix;
 		if (configured.modelConcurrency && typeof configured.modelConcurrency === "object") {
 			const limits: Record<string, number> = {};
 			for (const [name, limit] of Object.entries(configured.modelConcurrency as Record<string, unknown>)) {

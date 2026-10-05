@@ -345,6 +345,7 @@ emit({"result": result, "seen": seen, "unit": unit, "verifyContext": next(c["con
 		const verifyContext = (out as unknown as { verifyContext: string }).verifyContext;
 		expect(verifyContext).toContain("The author's stated intent (untrusted data;");
 		expect(verifyContext).toContain("Title: Make total() faster\nSkips work.");
+		expect(verifyContext).not.toContain("The diff under review");
 	});
 
 	test("one comment per root cause: the same problem in several places is one finding that lists the others", () => {
@@ -548,7 +549,9 @@ emit({"result": result, "calls": rlm.calls})`);
 		);
 		const verifier = calls.find((call) => call.kind === "verify")!;
 		expect(verifier.model).toBe("p/verify");
-		expect(verifier.context).toContain("The diff under review (new-file line numbers in the gutter):");
+		// The verifier's shared views are the author's intent and the guides, as before; never the diff or brief.
+		expect(verifier.context).toContain("The author's stated intent (untrusted data;");
+		expect(verifier.context).not.toContain("The diff under review");
 		// The working tree is at the later commit; the verifier saw the head commit's source.
 		expect(verifier.text).toContain(">    4 |     for i in range(len(items) - 1):");
 		// A bad commit is a request error, reported as such.
@@ -1233,11 +1236,12 @@ emit({"result": result, "deepCalls": [c for c in rlm.calls if c["kind"] == "deep
 		const calls = (lens: string) => out.deepCalls.filter((call) => call.lens === lens);
 		// behaviour: two rounds; the second sees what the host read, and the refusal of the untracked file.
 		expect(calls("claims")).toHaveLength(2);
-		// The diff, the brief and the pull request context are the frames' shared prefix (the same for every frame
-		// of the review); the fast pass's leads reach the investigators from the second round, which also sees
-		// what the host read, with a ledger id on each result.
-		expect(calls("claims")[0]!.context).toContain("Investigation brief, built by the host");
-		expect(calls("claims")[0]!.context).toContain("Title: Handle missing files");
+		// The diff, the brief and the pull request context open every investigator's message (the same views in the
+		// same order: a byte-identical prefix); the fast pass's leads reach the investigators from the second round,
+		// which also sees what the host read, with a ledger id on each result.
+		expect(calls("claims")[0]!.text).toContain("Investigation brief, built by the host");
+		expect(calls("claims")[0]!.text).toContain("Title: Handle missing files");
+		expect(calls("claims")[0]!.context ?? null).toBeNull();
 		expect(calls("claims")[0]!.text).not.toContain("Leads from the first pass");
 		expect(calls("claims")[1]!.text).toContain("Leads from the first pass");
 		expect(calls("claims")[1]!.text).toContain("load() errors are not handled here.");
@@ -2344,8 +2348,9 @@ emit({"mode": result["mode"], "finderContext": finds[0]["context"] or "", "deepT
 		// The retrieved block reaches the finders' shared context and every investigator's views.
 		expect(out.finderContext).toContain("Retrieved context, looked up by the host at the reviewed commit");
 		expect(out.finderContext).toContain("References of `show`");
-		for (const context of out.deepContexts)
-			expect(context).toContain("Retrieved context, looked up by the host at the reviewed commit");
+		for (const texts of Object.values(out.deepTexts))
+			expect(texts[0]).toContain("Retrieved context, looked up by the host at the reviewed commit");
+		for (const context of out.deepContexts) expect(context).toBe("");
 		// The catalogue checks the change calls for, each owed by one part: the tests part owes unpinned-behaviour.
 		expect(out.owed.tests).toContain("T2 unpinned-behaviour");
 		expect(out.deepTexts.tests![0]).toContain("Checks this change calls for and your part owes");
@@ -2483,6 +2488,55 @@ emit({"texts": texts, "kinds": [c["kind"] for c in rlm.calls], "records": {rec["
 		// verified as it finished (one frame), and the fast lead it supersedes was not verified again.
 		expect(out.kinds.filter((kind) => kind === "verify")).toHaveLength(1);
 		expect(out.stages).toHaveProperty("deepMs");
+	});
+
+	test("systemPrefix (experimental, off by default): the shared material moves from the frames' messages to their system prompt", () => {
+		const repo = deepRepo();
+		const out = py<{
+			off: {
+				finderContext: string;
+				finderText: string;
+				deepText: string;
+				deepContext: string;
+				verifyContext: string;
+			};
+			on: {
+				finderContext: string;
+				finderText: string;
+				deepText: string;
+				deepContext: string;
+				verifyContext: string;
+			};
+		}>(`${deepPrelude(repo)}
+def finder(task, text):
+    if "Your specialty: Correctness" not in task:
+        return []
+    return [dict(BUG, file="src/app.py", line=9, end_line=None, replacement=None, severity="minor", scenario="", claim="load() errors are not handled here.")]
+def shapes(spec):
+    rlm = FakeRlm(finder=finder, verifier=lambda text: {"verdict": "confirmed", "evidence": "\`return load(path)\`", "corrected_line": None, "severity": "minor", "scenario_holds": True})
+    asyncio.run(a.run(rlm, dict(SPEC, mode="both", **spec)))
+    find = next(c for c in rlm.calls if c["kind"] == "find"); deep_ = next(c for c in rlm.calls if c["kind"] == "deep"); verify = next(c for c in rlm.calls if c["kind"] == "verify")
+    return {"finderContext": find["context"] or "", "finderText": find["text"], "deepText": deep_["text"], "deepContext": deep_["context"] or "", "verifyContext": verify["context"] or ""}
+emit({"off": shapes({}), "on": shapes({"systemPrefix": True})})`);
+		// Off: the finders get the retrieved block before their slice, the investigators the diff and brief in their
+		// own message, the verifier the intent and guides only.
+		expect(out.off.finderContext).toContain("Retrieved context, looked up by the host");
+		expect(out.off.finderContext).not.toContain("The diff under review");
+		expect(out.off.finderText).toContain("File: src/app.py");
+		expect(out.off.deepText).toContain("The diff under review (new-file line numbers in the gutter):");
+		expect(out.off.deepText).toContain("Investigation brief, built by the host");
+		expect(out.off.deepContext).toBe("");
+		expect(out.off.verifyContext).toContain("The author's stated intent");
+		expect(out.off.verifyContext).not.toContain("The diff under review");
+		// On: the diff, brief and retrieved block are the shared prefix of every frame (the FakeRlm records the
+		// shared context the kernel would render into the system prompt), and out of the messages.
+		for (const context of [out.on.finderContext, out.on.deepContext, out.on.verifyContext]) {
+			expect(context).toContain("The diff under review (new-file line numbers in the gutter):");
+			expect(context).toContain("Investigation brief, built by the host");
+			expect(context).toContain("Retrieved context, looked up by the host");
+		}
+		expect(out.on.deepText).not.toContain("The diff under review");
+		expect(out.on.finderText).toContain("File: src/app.py");
 	});
 
 	test("lens triggers: no tests part when only comments changed in code; no siblings part when no signature changed and no key was added", () => {
