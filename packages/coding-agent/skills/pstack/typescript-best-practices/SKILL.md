@@ -1,6 +1,6 @@
 ---
 name: typescript-best-practices
-description: "TypeScript best practices. Use when reading or editing any .ts or .tsx file (**/*.ts, **/*.tsx)."
+description: "TypeScript best practices for types, boundaries and module shape. Use when reading or editing any .ts or .tsx file (**/*.ts, **/*.tsx)."
 disable-model-invocation: true
 license: MIT (see ../LICENSE)
 metadata:

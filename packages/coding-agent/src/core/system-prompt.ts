@@ -4,7 +4,7 @@
 
 import { getSystemMessageText } from "@ultron/ai";
 import { getDocsPath, getExamplesPath, getReadmePath } from "../config.ts";
-import { formatSkillsForPrompt, type Skill } from "./skills.ts";
+import { bundledSkillsNote, formatSkillsForPrompt, type Skill } from "./skills.ts";
 
 export interface BuildSystemPromptOptions {
 	/** Custom system prompt (replaces the default prefix). */
@@ -175,7 +175,9 @@ export function buildSystemPromptSections(input: BuildSystemPromptOptions): Syst
 	// Ultron: the RLM REPL reads skill files with Python when it is the only file-capable tool.
 	const skillFileReadTool = (["read", "bash", "rlm"] as const).find((tool) => selectedTools.includes(tool));
 	if (skillFileReadTool && skills.length > 0) {
-		const skillsPrompt = formatSkillsForPrompt(skills, skillFileReadTool).trim();
+		const skillsPrompt = [formatSkillsForPrompt(skills, skillFileReadTool).trim(), bundledSkillsNote(skills)]
+			.filter(Boolean)
+			.join("\n\n");
 		if (skillsPrompt) promptSections.skills = skillsPrompt;
 	}
 	promptSections.cwd = cwd.replace(/\\/g, "/");

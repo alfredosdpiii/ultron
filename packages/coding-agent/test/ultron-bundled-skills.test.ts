@@ -13,6 +13,8 @@ import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { getBundledSkillsDir } from "../src/config.ts";
 import { DefaultResourceLoader } from "../src/core/resource-loader.ts";
+import { bundledSkillsNote } from "../src/core/skills.ts";
+import { buildSystemPrompt } from "../src/core/system-prompt.ts";
 
 const bundled = getBundledSkillsDir()!;
 const pstack = join(bundled, "pstack");
@@ -87,6 +89,30 @@ describe("bundled skills", () => {
 		expect((await load({ noSkills: true })).skills.some((skill) => skill.name === "rigor")).toBe(false);
 		process.env.ULTRON_BUNDLED_SKILLS = "off";
 		expect((await load()).skills.some((skill) => skill.name === "rigor")).toBe(false);
+	});
+
+	test("the system prompt indexes the bundled workflow skills in one line each, not the principles", async () => {
+		mkdirSync(join(root, "project"), { recursive: true });
+		const own = join(root, "agent", "skills", "swarm");
+		mkdirSync(own, { recursive: true });
+		writeFileSync(
+			join(own, "SKILL.md"),
+			"---\nname: swarm\ndescription: My own swarm skill for this test.\n---\n\nMine.\n",
+		);
+		const { skills } = await load();
+		const note = bundledSkillsNote(skills);
+		expect(note).toContain(`in ${pstack}:`);
+		expect(note).toMatch(/^- rigor: Rigorous engineering mode/m);
+		expect(note).toMatch(/^- how: /m);
+		expect(note).not.toMatch(/^- principle-/m);
+		// An overridden skill is the user's (in the regular skill list when visible), not the bundled one.
+		expect(note).not.toMatch(/^- swarm: /m);
+		for (const line of note.split("\n").slice(1)) expect(line.length, line).toBeLessThan(120);
+		expect(note.length).toBeLessThan(3500);
+		const prompt = buildSystemPrompt({ cwd: root, skills, selectedTools: ["rlm"] } as never);
+		expect(prompt).toContain(note);
+		process.env.ULTRON_BUNDLED_SKILLS = "off";
+		expect(bundledSkillsNote((await load()).skills)).toBe("");
 	});
 
 	test("every bundled skill names its source and license; the license ships beside them", () => {

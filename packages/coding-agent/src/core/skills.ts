@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "fs";
 import ignore from "ignore";
 import { basename, dirname, join, relative, resolve, sep } from "path";
-import { CONFIG_DIR_NAME, getAgentDir } from "../config.ts";
+import { CONFIG_DIR_NAME, getAgentDir, getBundledSkillsDir } from "../config.ts";
 import { parseFrontmatter } from "../utils/frontmatter.ts";
 import { canonicalizePath, resolvePath } from "../utils/paths.ts";
 import type { ResourceDiagnostic } from "./diagnostics.ts";
@@ -352,6 +352,36 @@ function loadSkillFromFile(
  * Skills with disableModelInvocation=true are excluded from the prompt
  * (they can only be invoked explicitly via /skill:name commands).
  */
+/** The first sentence of a skill description, at most `max` characters. */
+function shortPurpose(description: string, max = 80): string {
+	const sentence =
+		description
+			.replace(/\s+/g, " ")
+			.trim()
+			.split(/(?<=\.)\s/)[0] ?? "";
+	return sentence.length > max ? `${sentence.slice(0, max - 1).trimEnd()}…` : sentence;
+}
+
+/**
+ * An index of Ultron's bundled workflow skills (the pstack port) that are loaded and hidden from the skill list: one
+ * line each with its purpose and where it is, so the model can find them for a fraction of their full descriptions.
+ * The principle skills are left out (the workflow skills read them). Empty when none is loaded.
+ */
+export function bundledSkillsNote(skills: Skill[]): string {
+	const bundled = getBundledSkillsDir();
+	if (bundled === undefined) return "";
+	const dir = join(bundled, "pstack");
+	const listed = skills.filter(
+		(skill) =>
+			skill.disableModelInvocation && skill.filePath.startsWith(dir + sep) && !skill.name.startsWith("principle-"),
+	);
+	if (listed.length === 0) return "";
+	return [
+		`Bundled skills (ported from pstack) in ${dir}: read <name>/SKILL.md there when one fits the task; rigor for rigorous engineering work. README.md lists them; the principles they cite are principle-<name>/SKILL.md.`,
+		...listed.map((skill) => `- ${skill.name}: ${shortPurpose(skill.description)}`),
+	].join("\n");
+}
+
 export function formatSkillsForPrompt(skills: Skill[], fileReadTool: "read" | "bash" | "rlm" = "read"): string {
 	const visibleSkills = skills.filter((s) => !s.disableModelInvocation);
 

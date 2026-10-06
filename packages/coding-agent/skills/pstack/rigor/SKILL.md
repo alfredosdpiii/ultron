@@ -1,6 +1,6 @@
 ---
 name: rigor
-description: poteto's way of working for concise, detailed replies, deliberate subagents, unslopped prose, simple code and verified work. Routes a task to a playbook (bug fix, feature, refactoring, perf, investigation, babysit, shipping, orchestrate, ...) and follows it. Use for /skill:rigor <request> or a request to work in this style.
+description: "Rigorous engineering mode (poteto's way of working): routes a task to a playbook (bug fix, feature, refactoring, perf, investigation, babysit, shipping, orchestrate, ...) and follows it, with concise replies, deliberate subagents, simple code and verified work. Use for /skill:rigor <request> or a request to work in this style."
 disable-model-invocation: true
 license: MIT (see ../LICENSE)
 metadata:
