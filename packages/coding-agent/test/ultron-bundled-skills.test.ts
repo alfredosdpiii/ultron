@@ -1,5 +1,5 @@
 /**
- * Skills bundled with Ultron (packages/coding-agent/skills, the pstack port):
+ * Skills bundled with Ultron (packages/coding-agent/skills/<source>: the pstack port, HumanLayer's diagram-it):
  * - they load after the user's and project's skills, so a skill of the same name there wins;
  * - `ULTRON_BUNDLED_SKILLS=off` and `noSkills` leave them out;
  * - every bundled SKILL.md loads without diagnostics, names its source and license, and its references to other
@@ -32,7 +32,7 @@ function markdownFiles(dir: string): string[] {
 /** The skill a file belongs to: the nearest directory up from it that holds a SKILL.md (paths resolve from there). */
 function skillRoot(file: string): string {
 	let dir = dirname(file);
-	while (!existsSync(join(dir, "SKILL.md")) && dir !== pstack) dir = dirname(dir);
+	while (!existsSync(join(dir, "SKILL.md")) && dir !== bundled) dir = dirname(dir);
 	return dir;
 }
 
@@ -70,7 +70,7 @@ describe("bundled skills", () => {
 		mkdirSync(join(root, "project"), { recursive: true });
 		const all = await load();
 		const names = all.skills.map((skill) => skill.name);
-		expect(names).toEqual(expect.arrayContaining(["rigor", ...skillDirs]));
+		expect(names).toEqual(expect.arrayContaining(["rigor", "diagram-it", ...skillDirs]));
 		expect(all.diagnostics.filter((d) => d.path?.startsWith(bundled))).toEqual([]);
 
 		const own = join(root, "agent", "skills", "swarm");
@@ -101,12 +101,15 @@ describe("bundled skills", () => {
 		);
 		const { skills } = await load();
 		const note = bundledSkillsNote(skills);
-		expect(note).toContain(`in ${pstack}:`);
-		expect(note).toMatch(/^- rigor: Rigorous engineering mode/m);
-		expect(note).toMatch(/^- how: /m);
-		expect(note).not.toMatch(/^- principle-/m);
+		expect(note).toContain(`in ${bundled}:`);
+		expect(note).toMatch(/^- pstack\/rigor: Rigorous engineering mode/m);
+		expect(note).toMatch(/^- pstack\/how: /m);
+		expect(note).toMatch(/^- humanlayer\/diagram-it: Explain the current topic visually/m);
+		expect(note).not.toMatch(/principle-[a-z-]+:/);
+		for (const line of note.split("\n").slice(1))
+			expect(existsSync(join(bundled, line.slice(2, line.indexOf(":")), "SKILL.md")), line).toBe(true);
 		// An overridden skill is the user's (in the regular skill list when visible), not the bundled one.
-		expect(note).not.toMatch(/^- swarm: /m);
+		expect(note).not.toMatch(/^- pstack\/swarm: /m);
 		for (const line of note.split("\n").slice(1)) expect(line.length, line).toBeLessThan(120);
 		expect(note.length).toBeLessThan(3500);
 		const prompt = buildSystemPrompt({ cwd: root, skills, selectedTools: ["rlm"] } as never);
@@ -125,13 +128,18 @@ describe("bundled skills", () => {
 			expect(text, name).toContain("license: MIT");
 			expect(text, name).toContain("github.com/cursor/plugins/pstack");
 		}
+		// HumanLayer's diagram-it (from show-me), with its license.
+		expect(readFileSync(join(bundled, "humanlayer", "LICENSE"), "utf8")).toContain("HumanLayer");
+		const diagram = readFileSync(join(bundled, "humanlayer", "diagram-it", "SKILL.md"), "utf8");
+		expect(diagram).toMatch(/^---\nname: diagram-it\n/);
+		expect(diagram).toContain("github.com/humanlayer/skills/plugins/show-me");
 	});
 
 	test("cross-references resolve and no Cursor-only mechanics remain", () => {
 		const cursorOnly =
 			/\bTask tool\b|\bsubagent_type\b|\bAskQuestion\b|~\/\.cursor|\.mdc\b|\bpoteto-mode\b|\bpoteto-agent\b|\bsetup-pstack\b|\bpoteto-help\b|\bmake-bot-ui\b|\bcursor-team-kit\b|\/loop\b|\brun_in_background\b|\bTodoWrite\b|principle:[a-z]/;
-		for (const file of markdownFiles(pstack)) {
-			if (file.endsWith(`${join("pstack", "README.md")}`)) continue;
+		for (const file of markdownFiles(bundled)) {
+			if (file.endsWith("README.md") && !existsSync(join(dirname(file), "SKILL.md"))) continue;
 			const text = readFileSync(file, "utf8");
 			// The attribution line names the original skill (`source: .../poteto-mode`).
 			expect(cursorOnly.exec(text.replace(/^\s*source: .*$/gm, ""))?.[0], file).toBeUndefined();
@@ -147,7 +155,7 @@ describe("bundled skills", () => {
 
 	test("every Python block compiles with top-level await", () => {
 		const blocks: Array<{ file: string; code: string }> = [];
-		for (const file of markdownFiles(pstack))
+		for (const file of markdownFiles(bundled))
 			for (const match of readFileSync(file, "utf8").matchAll(/```python\n([\s\S]*?)```/g))
 				blocks.push({ file, code: match[1]! });
 		expect(blocks.length).toBeGreaterThan(0);

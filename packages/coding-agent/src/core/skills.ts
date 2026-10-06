@@ -363,22 +363,27 @@ function shortPurpose(description: string, max = 80): string {
 }
 
 /**
- * An index of Ultron's bundled workflow skills (the pstack port) that are loaded and hidden from the skill list: one
- * line each with its purpose and where it is, so the model can find them for a fraction of their full descriptions.
- * The principle skills are left out (the workflow skills read them). Empty when none is loaded.
+ * An index of Ultron's bundled skills (skills/<source>/<name>: the pstack port, HumanLayer's diagram-it) that are loaded
+ * and hidden from the skill list: one line each with its purpose and path, so the model can find them for a fraction
+ * of their full descriptions. pstack's principle skills are left out (the workflow skills read them). Empty when none
+ * is loaded.
  */
 export function bundledSkillsNote(skills: Skill[]): string {
 	const bundled = getBundledSkillsDir();
 	if (bundled === undefined) return "";
-	const dir = join(bundled, "pstack");
 	const listed = skills.filter(
 		(skill) =>
-			skill.disableModelInvocation && skill.filePath.startsWith(dir + sep) && !skill.name.startsWith("principle-"),
+			skill.disableModelInvocation &&
+			skill.filePath.startsWith(bundled + sep) &&
+			!skill.name.startsWith("principle-"),
 	);
 	if (listed.length === 0) return "";
 	return [
-		`Bundled skills (ported from pstack) in ${dir}: read <name>/SKILL.md there when one fits the task; rigor for rigorous engineering work. README.md lists them; the principles they cite are principle-<name>/SKILL.md.`,
-		...listed.map((skill) => `- ${skill.name}: ${shortPurpose(skill.description)}`),
+		`Bundled skills in ${bundled}: read <source>/<name>/SKILL.md there when one fits the task (rigor for rigorous engineering work, diagram-it to explain something visually). Each source's README.md credits it; the principles pstack's skills cite are pstack/principle-<name>/SKILL.md.`,
+		...listed.map(
+			(skill) =>
+				`- ${relative(bundled, dirname(skill.filePath)).split(sep).join("/")}: ${shortPurpose(skill.description)}`,
+		),
 	].join("\n");
 }
 
