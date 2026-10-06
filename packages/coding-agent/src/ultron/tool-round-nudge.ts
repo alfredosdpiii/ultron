@@ -11,15 +11,27 @@
  * `await rlm.collect(...)`, or end its turn and be woken by the completion events. When the last of that work
  * ends, the streak starts over: reconciling the results is a new phase, not more of the same research.
  */
+/** The brake's threshold when it is turned on (`ULTRON_TOOL_ROUNDS_NUDGE=on`); the nudges are off by default. */
 export const DEFAULT_TOOL_ROUNDS_NUDGE = 10;
 
 /** Consecutive tool rounds with subagents still running before the root is told to wait instead of checking. */
 export const DEFAULT_WAIT_ROUNDS = 3;
 
+/**
+ * ULTRON_TOOL_ROUNDS_NUDGE: off (0) unless set; `on` (or true, yes) is DEFAULT_TOOL_ROUNDS_NUDGE rounds, a number is
+ * that many. 0 also turns off the wait nudge, which rides on the brake.
+ */
 export function toolRoundsNudgeFromEnv(value: string | undefined): number {
-	if (value === undefined || value.trim() === "") return DEFAULT_TOOL_ROUNDS_NUDGE;
-	const parsed = Number(value);
-	return Number.isInteger(parsed) && parsed >= 0 ? parsed : DEFAULT_TOOL_ROUNDS_NUDGE;
+	return nudgeThreshold(value, DEFAULT_TOOL_ROUNDS_NUDGE);
+}
+
+/** A nudge threshold from its variable: unset or off is 0 (disabled), `on` is `enabled`, a whole number is itself. */
+function nudgeThreshold(value: string | undefined, enabled: number): number {
+	const raw = value?.trim().toLowerCase() ?? "";
+	if (raw === "" || ["off", "false", "no"].includes(raw)) return 0;
+	if (["on", "true", "yes"].includes(raw)) return enabled;
+	const parsed = Number(raw);
+	return Number.isInteger(parsed) && parsed >= 0 ? parsed : 0;
 }
 
 export function nudgeMessage(rounds: number, final: boolean): string {
@@ -117,11 +129,9 @@ export class ToolRoundNudger {
  */
 export const DEFAULT_SKILL_NUDGE = 8;
 
+/** ULTRON_SKILL_NUDGE: off unless set; `on` is DEFAULT_SKILL_NUDGE rounds, a number is that many. */
 export function skillNudgeFromEnv(value: string | undefined): number {
-	if (value === undefined || value.trim() === "") return DEFAULT_SKILL_NUDGE;
-	if (["off", "false", "no"].includes(value.trim().toLowerCase())) return 0;
-	const parsed = Number(value);
-	return Number.isInteger(parsed) && parsed >= 0 ? parsed : DEFAULT_SKILL_NUDGE;
+	return nudgeThreshold(value, DEFAULT_SKILL_NUDGE);
 }
 
 export function skillNudgeMessage(rounds: number): string {

@@ -8,7 +8,7 @@
  *
  * A lane mutes tags it has understood with `await hints.mute(tag)` (`hints.unmute`, `hints.muted()`); each tag
  * fires at most `maxPerTag` (3) times per lane in a session. Mutes and counts are the session value
- * `ultron.module/hints`. `ULTRON_HINTS=off` disables hints; `ULTRON_HINTS_MAX` changes the per-tag cap.
+ * `ultron.module/hints`. Hints are off unless `ULTRON_HINTS=on`; `ULTRON_HINTS_MAX` changes the per-tag cap.
  */
 import type { JsonValue } from "@ultron/chord";
 import { readVersioned } from "../format-version.ts";
@@ -67,9 +67,10 @@ const LOOP = /^\s*(?:while|for|async\s+for)\b/m;
 const STATUS_CHECK =
 	/\.running\b|\.status\b|\.done\(|\.result\(|\.inspect\(|rlm\.jobs\(|rlm\.job\(|list_subagents\(|agents\.tasks\(|agents\.status\(|background\.list\(/;
 
+/** Hints are off unless ULTRON_HINTS is on (or 1, true, yes). */
 export function hintsEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
 	const value = env.ULTRON_HINTS?.trim().toLowerCase();
-	return !value || !["off", "0", "false", "no"].includes(value);
+	return value !== undefined && ["on", "1", "true", "yes"].includes(value);
 }
 
 export function hintMaxPerTag(env: NodeJS.ProcessEnv = process.env): number {

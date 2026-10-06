@@ -4,7 +4,7 @@
  *   stuck-loop) adds one
  *   `[hint:<tag>]` line to the cell's result; at most one per cell, the most specific first;
  * - `hints.mute`/`unmute`/`muted` work per lane from the kernel and persist; each tag fires at most N times per lane;
- *   ULTRON_HINTS=off disables hints;
+ *   hints are off unless ULTRON_HINTS=on;
  * - `await read(path)` returns text up to ULTRON_READ_HANDLE_BYTES and a ContextHandle (with a note) above it.
  */
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
@@ -238,7 +238,9 @@ describe("situational hints", () => {
 		const off = make({ enabled: false, store: createMemoryModuleStore() });
 		expect(await cell(off, "x", [], { text: TRUNCATED })).toBe(undefined);
 		expect(hintsEnabled({ ULTRON_HINTS: "off" })).toBe(false);
-		expect(hintsEnabled({})).toBe(true);
+		// Off unless asked for.
+		expect(hintsEnabled({})).toBe(false);
+		expect(hintsEnabled({ ULTRON_HINTS: "on" })).toBe(true);
 		expect(hintMaxPerTag({ ULTRON_HINTS_MAX: "1" })).toBe(1);
 		expect(hintMaxPerTag({})).toBe(3);
 		expect(readHandleBytes({})).toBe(256 * 1024);

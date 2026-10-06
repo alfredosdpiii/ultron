@@ -4,10 +4,11 @@
  * BASH_SKILL_PROMPT, EDIT_SKILL_PROMPT and DELEGATION_PROMPT), adapted to Ultron's actual API.
  */
 
-/** Native Pi tools that the RLM REPL replaces by default (they stay registered for `--tools` and the opt-out). */
 import { CODE_SKILLS_PROMPT } from "../code-skills.ts";
 import { CONTEXT_PROMPT } from "../context-control.ts";
 import { AGENT_CLASS_PROMPT } from "./agent-class-prompt.ts";
+/** Native Pi tools that the RLM REPL replaces by default (they stay registered for `--tools` and the opt-out). */
+import { hintsEnabled } from "./hints.ts";
 import { INFERENCE_PROMPT } from "./inference.ts";
 
 export const NATIVE_FILE_TOOLS = ["read", "edit", "write", "bash"] as const;
@@ -66,8 +67,11 @@ const EDIT_SKILL_WITH_TOOL =
 const PROJECT_ENV = `- The kernel is the system Python without the project's packages: run all project code (tests, repros, builds, imports) through \`bash\` with the project's own interpreter and toolchain (\`.venv/bin/python -m pytest -q\`, \`npm test\`). Work on data files in the cell itself, not in a \`python - <<EOF\` heredoc through \`bash\`, and write the requested output in the cell that computes it.`;
 
 const RUNTIME = `## Runtime
-Each rlm call runs a cell in your lane's persistent kernel: program over files, shell and agents, keep data in variables and print only what the next step needs. Output over ~20 KB is cut in the middle (the marker names a file with all of it) and a large value is shown by reference; \`preview(x)\` gives a bounded view. APIs are pre-imported and async; check \`help(obj)\` before guessing. Act on a trailing \`[hint:<tag>]\` line (\`await hints.mute(tag)\` once understood).
+Each rlm call runs a cell in your lane's persistent kernel: program over files, shell and agents, keep data in variables and print only what the next step needs. Output over ~20 KB is cut in the middle (the marker names a file with all of it) and a large value is shown by reference; \`preview(x)\` gives a bounded view. APIs are pre-imported and async; check \`help(obj)\` before guessing.
 A turn ends when you reply without calling rlm; that reply is your answer. Never end a turn with a promise ("I'll check next"): do the work now. An exception ends the cell after what it printed: fix the cause, do not rerun: its writes and started agents may already have happened. Subagents, tasks and jobs survive a kernel restart, and so does \`state\` (a dict); re-create imports and functions.`;
+
+/** Said only when situational hints are on (ULTRON_HINTS=on). */
+const HINTS_LINE = "Act on a trailing `[hint:<tag>]` line (`await hints.mute(tag)` once understood).";
 
 /** How completion events reach the model (ULTRON_ASYNC_EVENTS, on by default). */
 const ASYNC_EVENTS = `Nothing needs polling: a job, tool call, subagent or task that ends while you are not waiting sends a \`<runtime_event kind=... id=... status=... fetch=...>\` message, which starts a new turn if yours ended. Start long work and do the rest meanwhile; never sleep, poll or loop waiting, and if only that result is left, await it (\`await job.result()\`). Run independent operations together with \`asyncio.gather\`.`;
@@ -177,6 +181,8 @@ export function rlmRuntimePrompt(
 		delivery?: EventDelivery;
 		/** Claude Code owns the root's conversation: leave out `ctx`, which edits a native lane's transcript. */
 		externalRoot?: boolean;
+		/** Situational hints end cell results (default: ULTRON_HINTS is on). */
+		hints?: boolean;
 		/** Extension tools callable from the REPL, and MCP servers behind the `mcp` gateway. */
 		extensionTools?: readonly ExtensionToolSummary[];
 		mcpServers?: readonly string[];
@@ -202,8 +208,12 @@ export function rlmRuntimePrompt(
 	});
 	const events =
 		delivery === "off" ? ASYNC_EVENTS_OFF : delivery === "next-call" ? ASYNC_EVENTS_NEXT_CALL : ASYNC_EVENTS;
+	const runtime =
+		(options.hints ?? hintsEnabled())
+			? RUNTIME.replace("before guessing.", `before guessing. ${HINTS_LINE}`)
+			: RUNTIME;
 	return [
-		`${RUNTIME}\n${events}`,
+		`${runtime}\n${events}`,
 		skills.join("\n"),
 		SEARCH_FIRST,
 		BOUNDED_INFERENCE,

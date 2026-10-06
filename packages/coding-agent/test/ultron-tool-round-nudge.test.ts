@@ -24,9 +24,12 @@ describe("tool round nudge", () => {
 		nudger.turnEnded("run", 1);
 		nudger.turnEnded("run", 1);
 		expect(steered).toHaveLength(2);
-		expect(toolRoundsNudgeFromEnv(undefined)).toBe(10);
+		// Off unless asked for; `on` is the default threshold.
+		expect(toolRoundsNudgeFromEnv(undefined)).toBe(0);
+		expect(toolRoundsNudgeFromEnv("on")).toBe(10);
+		expect(toolRoundsNudgeFromEnv("12")).toBe(12);
 		expect(toolRoundsNudgeFromEnv("0")).toBe(0);
-		expect(toolRoundsNudgeFromEnv("junk")).toBe(10);
+		expect(toolRoundsNudgeFromEnv("junk")).toBe(0);
 	});
 
 	test("with subagents running, busy rounds are steered to wait instead of checking on them", () => {
@@ -158,6 +161,8 @@ describe("tool round nudge", () => {
 				ULTRON_SERVER_DIR: tempServerDir("u-wait-nudge-"),
 				ULTRON_HINDSIGHT_URL: "off",
 				ULTRON_SKILL_NUDGE: "2",
+				// The nudges are off by default; this test is about the wait nudge.
+				ULTRON_TOOL_ROUNDS_NUDGE: "on",
 				PI_OFFLINE: "1",
 			},
 		});

@@ -93,11 +93,12 @@ describe("skill extraction nudge", () => {
 	});
 
 	test("is configured by ULTRON_SKILL_NUDGE and can be turned off", () => {
-		expect(skillNudgeFromEnv(undefined)).toBe(8);
+		expect(skillNudgeFromEnv(undefined)).toBe(0);
+		expect(skillNudgeFromEnv("on")).toBe(8);
 		expect(skillNudgeFromEnv("0")).toBe(0);
 		expect(skillNudgeFromEnv("off")).toBe(0);
 		expect(skillNudgeFromEnv("5")).toBe(5);
-		expect(skillNudgeFromEnv("junk")).toBe(8);
+		expect(skillNudgeFromEnv("junk")).toBe(0);
 		const steered: string[] = [];
 		const off = new SkillExtractionNudger(0, async (message) => steered.push(message));
 		for (let round = 0; round < 20; round += 1) off.turnEnded("run", 1, 0);

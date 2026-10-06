@@ -163,7 +163,8 @@ describe("asynchronous execution in the real CLI", () => {
 					};
 				return { text: "THE TESTS ARE RUNNING; I will report when they finish." };
 			},
-			{ ULTRON_BASH_YIELD_AFTER: "1" },
+			// Situational hints are off by default; this row checks the job-detached hint.
+			{ ULTRON_BASH_YIELD_AFTER: "1", ULTRON_HINTS: "on" },
 		);
 		try {
 			await flow.client.promptAndWait(DETACH, undefined, 60_000);
