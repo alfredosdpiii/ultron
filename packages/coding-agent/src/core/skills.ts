@@ -379,7 +379,7 @@ export function bundledSkillsNote(skills: Skill[]): string {
 	);
 	if (listed.length === 0) return "";
 	return [
-		`Bundled skills in ${bundled}: read <source>/<name>/SKILL.md there when one fits the task (rigor for rigorous engineering work, diagram-it to explain something visually). Each source's README.md credits it; the principles pstack's skills cite are pstack/principle-<name>/SKILL.md.`,
+		`Bundled skills in ${bundled} (<source>/<name>/SKILL.md). Read one only when the user asks for it or the task plainly calls for that workflow; ordinary coding needs none. The principles pstack's skills cite are pstack/principle-<name>/SKILL.md.`,
 		...listed.map(
 			(skill) =>
 				`- ${relative(bundled, dirname(skill.filePath)).split(sep).join("/")}: ${shortPurpose(skill.description)}`,

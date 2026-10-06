@@ -101,7 +101,10 @@ describe("bundled skills", () => {
 		);
 		const { skills } = await load();
 		const note = bundledSkillsNote(skills);
-		expect(note).toContain(`in ${bundled}:`);
+		expect(note).toContain(`Bundled skills in ${bundled} (`);
+		// Listing a skill is not a push to use it: only when asked for or plainly called for.
+		expect(note).toContain("Read one only when the user asks for it");
+		expect(note).not.toMatch(/start with rigor/);
 		expect(note).toMatch(/^- pstack\/rigor: Rigorous engineering mode/m);
 		expect(note).toMatch(/^- pstack\/how: /m);
 		expect(note).toMatch(/^- humanlayer\/diagram-it: Explain the current topic visually/m);
