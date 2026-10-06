@@ -77,6 +77,21 @@ export function claudeFlags(binary: string, env: NodeJS.ProcessEnv = process.env
 	return parseFlags(`${result.stdout ?? ""}\n${result.stderr ?? ""}`);
 }
 
+/**
+ * `--dangerously-skip-permissions` for the Claude Code processes Ultron starts (`ultron claude`, its subagents,
+ * `ultron --claude`): on by default. Left out with ULTRON_CLAUDE_SKIP_PERMISSIONS=off, and when running as root,
+ * where Claude Code refuses the flag unless IS_SANDBOX=1 says the process is sandboxed (a container).
+ */
+export function skipPermissionsArgs(
+	env: NodeJS.ProcessEnv = process.env,
+	uid: number | undefined = process.getuid?.(),
+): string[] {
+	const raw = env.ULTRON_CLAUDE_SKIP_PERMISSIONS?.trim().toLowerCase();
+	if (raw === "off" || raw === "0" || raw === "false" || raw === "no") return [];
+	if (uid === 0 && env.IS_SANDBOX !== "1") return [];
+	return ["--dangerously-skip-permissions"];
+}
+
 export function parseFlags(help: string): Set<string> {
 	const flags = new Set<string>();
 	for (const match of help.matchAll(/(?:^|[\s,])--([A-Za-z][A-Za-z0-9-]*)/g)) flags.add(match[1]!);

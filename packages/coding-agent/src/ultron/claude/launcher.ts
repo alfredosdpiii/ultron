@@ -10,7 +10,9 @@
  * - `--setting-sources ""`: the user's and project's Claude Code settings (their hooks, permissions, CLAUDE.md) are
  *   not loaded (`--keep-settings` loads them); the system prompt carries the context files (AGENTS.md, CLAUDE.md) and
  *   skills native Ultron loads for the directory instead (`resources.ts`; `--no-context-files`, `--no-skills`);
- * - `--settings <hooks>`: SessionStart, UserPromptSubmit and Stop hooks that call `ultron hook ...`.
+ * - `--settings <hooks>`: SessionStart, UserPromptSubmit and Stop hooks that call `ultron hook ...`;
+ * - `--dangerously-skip-permissions`: no permission prompts (ULTRON_CLAUDE_SKIP_PERMISSIONS=off keeps them; left out
+ *   as root, see `skipPermissionsArgs`).
  *
  * Other arguments go to `claude` unchanged (`-p`, `--model`, `--resume`, ...). The config files live in a private
  * temp directory removed when Claude Code exits. `--print-config` prints the command instead of running it, with
@@ -31,6 +33,7 @@ import {
 	DEFAULT_CLAUDE_MODEL,
 	REQUIRED_CLAUDE_FLAGS,
 	resolveClaudeBinary,
+	skipPermissionsArgs,
 } from "./claude-cli.ts";
 import { socketPathFor } from "./control-socket.ts";
 import { CLAUDE_RLM_TOOL, claudeSystemPrompt } from "./guide.ts";
@@ -208,6 +211,7 @@ export function buildClaudeLaunch(input: {
 		"--settings",
 		settingsPath ?? settings,
 		...(options.keepSettings ? [] : ["--setting-sources", ""]),
+		...(input.flags.has("dangerously-skip-permissions") ? skipPermissionsArgs(input.env) : []),
 		...(options.claudeArgs.some((arg) => arg === "--model" || arg.startsWith("--model="))
 			? []
 			: ["--model", input.env.ULTRON_CLAUDE_MODEL?.trim() || options.rootModel || DEFAULT_CLAUDE_MODEL]),

@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+### Changed
+
+- All nudges are off by default: the research-loop brake and the wait nudge (`ULTRON_TOOL_ROUNDS_NUDGE`), the skill-extraction nudge (`ULTRON_SKILL_NUDGE`), and the situational cell hints, stuck-loop and repeated-cell included (`ULTRON_HINTS`; the runtime guide mentions hints only when they are on). Set a variable to `on` (or, for the first two, a number of rounds) to turn that nudge back on.
+- `ultron claude`, its Claude Code subagents and `ultron --claude` start Claude Code with `--dangerously-skip-permissions` (`ULTRON_CLAUDE_SKIP_PERMISSIONS=off` keeps the prompts; left out as root unless `IS_SANDBOX=1`, since Claude Code refuses it there).
+
+### Added
+
+- Bundled `/skill:diagram-it`, ported from HumanLayer's [`show-me`](https://github.com/humanlayer/skills) skill (MIT): explains the current topic with a small view (call tree, file tree, box drawing, state flow, before/after diff, or one HTML page), terminal-first, built from the code in the REPL with every name checked. The system prompt's bundled-skills index now covers every bundled source.
+
 ## [0.87.29] - 2026-10-06
 
 ### Added

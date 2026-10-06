@@ -4,7 +4,8 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
-import { parseFlags } from "../src/ultron/claude/claude-cli.ts";
+import { childClaudeArgs } from "../src/ultron/claude/child.ts";
+import { parseFlags, skipPermissionsArgs } from "../src/ultron/claude/claude-cli.ts";
 import { buildClaudeLaunch, parseLauncherArgs } from "../src/ultron/claude/launcher.ts";
 
 /**
@@ -192,5 +193,43 @@ describe("ultron claude", () => {
 		expect(built.args).toContain("--system-prompt");
 		expect(built.env).toEqual({});
 		expect(Object.keys(built.files).sort()).toEqual(["/tmp/x/mcp.json", "/tmp/x/settings.json"]);
+	});
+
+	test("Claude Code runs without permission prompts by default, except as root or when turned off", () => {
+		expect(skipPermissionsArgs({}, 1000)).toEqual(["--dangerously-skip-permissions"]);
+		expect(skipPermissionsArgs({ ULTRON_CLAUDE_SKIP_PERMISSIONS: "off" }, 1000)).toEqual([]);
+		// Claude Code refuses the flag as root unless IS_SANDBOX=1.
+		expect(skipPermissionsArgs({}, 0)).toEqual([]);
+		expect(skipPermissionsArgs({ IS_SANDBOX: "1" }, 0)).toEqual(["--dangerously-skip-permissions"]);
+		const launch = (flags: string[]) =>
+			buildClaudeLaunch({
+				claude: "claude",
+				flags: new Set(["mcp-config", ...flags]),
+				self: { command: "node", args: ["cli.js"] },
+				options: {
+					printConfig: false,
+					keepMcp: false,
+					keepSettings: false,
+					watch: false,
+					hooks: true,
+					claudeArgs: [],
+				},
+				cwd: "/w",
+				dir: "/tmp/x",
+				socket: "/run/s.sock",
+				env: {},
+			}).args;
+		const expected = skipPermissionsArgs({});
+		expect(
+			launch(["dangerously-skip-permissions"]).filter((arg) => arg === "--dangerously-skip-permissions"),
+		).toEqual(expected);
+		// A claude without the flag is not given it.
+		expect(launch([])).not.toContain("--dangerously-skip-permissions");
+		// Subagents (`ultron claude`'s children) get it too.
+		expect(
+			childClaudeArgs({ model: "m", mcpConfig: "{}", systemPromptFile: "/p" }).filter(
+				(arg) => arg === "--dangerously-skip-permissions",
+			),
+		).toEqual(expected);
 	});
 });

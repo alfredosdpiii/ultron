@@ -22,6 +22,7 @@
  *
  * Only public CLI flags are used; credentials are never read: the CLI authenticates itself.
  */
+
 import { randomBytes, randomUUID } from "node:crypto";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -55,6 +56,7 @@ import type { AssistantMessageDiagnostic } from "@ultron/ai/utils/diagnostics";
 import { AssistantMessageEventStream } from "@ultron/ai/utils/event-stream";
 import { parseStreamingJson } from "@ultron/ai/utils/json-parse";
 import { getCurrentSystemPrompt, getCurrentTools } from "@ultron/ai/utils/transcript";
+import { skipPermissionsArgs } from "./claude-cli.ts";
 
 /** MCP server name of the bridge: tools appear to Claude Code as `mcp__ultron__<name>`. */
 export const BRIDGE_SERVER = "ultron";
@@ -619,6 +621,9 @@ export class ClaudeRootRunner {
 			"--setting-sources=",
 			...(capabilities.flags.has("--permission-prompts") ? ["--permission-prompts=none"] : []),
 			...(capabilities.flags.has("--disable-slash-commands") ? ["--disable-slash-commands"] : []),
+			...(capabilities.flags.has("--dangerously-skip-permissions")
+				? skipPermissionsArgs({ ...process.env, ...env })
+				: []),
 			`--settings=${JSON.stringify({ permissions: { allow: allowed }, ...(effort ? {} : { alwaysThinkingEnabled: false }) })}`,
 			`--model=${model.id}`,
 			`--system-prompt-file=${promptPath}`,

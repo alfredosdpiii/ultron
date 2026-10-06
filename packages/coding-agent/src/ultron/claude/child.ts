@@ -9,12 +9,14 @@
  *        ▲                                  │ tools: mcp__ultron__rlm only
  *        └──── control socket: child.finish ┴── ultron mcp --child (its own kernel, frames, children)
  */
+
 import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { NativeExternalChildResult, NativeExternalChildRun } from "../rlm/native-host.ts";
+import { skipPermissionsArgs } from "./claude-cli.ts";
 import { CLAUDE_RLM_TOOL, claudeSystemPrompt } from "./guide.ts";
 import type { ClaudePromptResources, ClaudeResourceFlags } from "./resources.ts";
 import type { SelfCommand } from "./self.ts";
@@ -80,6 +82,7 @@ export function childClaudeArgs(options: { model: string; mcpConfig: string; sys
 		"--setting-sources",
 		"",
 		"--disable-slash-commands",
+		...skipPermissionsArgs(),
 		"--system-prompt-file",
 		options.systemPromptFile,
 	];

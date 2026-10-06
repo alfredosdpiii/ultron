@@ -591,8 +591,10 @@ How it works: `ultron claude` checks `claude auth status` (it never reads Claude
 files) and starts `claude` with `--strict-mcp-config --mcp-config` pointing at `ultron mcp`, `--tools ""
 --allowedTools mcp__ultron__rlm` (no built-in tools, no permission prompts for the REPL), `--system-prompt-file`
 with Ultron's guide in place of Claude Code's default prompt, `--setting-sources ""` (your Claude Code settings,
-hooks and CLAUDE.md are not loaded; `--keep-settings` loads them, `--keep-mcp` keeps your MCP servers), and a
-temporary `--settings` file with three hooks. The configs live in a private temp dir removed on exit. `ultron mcp` is
+hooks and CLAUDE.md are not loaded; `--keep-settings` loads them, `--keep-mcp` keeps your MCP servers),
+`--dangerously-skip-permissions` (no permission prompts; `ULTRON_CLAUDE_SKIP_PERMISSIONS=off` keeps them, and it is
+left out when running as root unless `IS_SANDBOX=1`), and a temporary `--settings` file with three hooks. Its Claude
+Code subagents and `ultron --claude` run the same way. The configs live in a private temp dir removed on exit. `ultron mcp` is
 an MCP server that runs Ultron's own runtime, so you can also add it to any Claude Code setup yourself
 (`claude mcp add ultron -- ultron mcp`, then allow `mcp__ultron__rlm`).
 
@@ -709,6 +711,9 @@ Ultron combines ideas from several projects and papers:
 - **[pstack](https://github.com/cursor/plugins/tree/main/pstack)** by Lauren Tan ([poteto](https://x.com/poteto)):
   the engineering skills bundled with Ultron (`/skill:rigor` and the skills it runs), ported to the REPL. See
   [packages/coding-agent/skills/pstack](packages/coding-agent/skills/pstack/README.md).
+- **[HumanLayer](https://github.com/humanlayer/skills)**: the `show-me` skill, bundled as `/skill:diagram-it` with
+  terminal-first views drawn from the code. See
+  [packages/coding-agent/skills/humanlayer](packages/coding-agent/skills/humanlayer/README.md).
 
 [`supremeplan.md`](supremeplan.md) records how each one landed and what was measured.
 
@@ -735,5 +740,6 @@ Ultron is built on [Pi](https://github.com/badlogic/pi-mono) by Mario Zechner an
 MIT license (see [LICENSE](LICENSE)). It bundles [Loki](https://github.com/alfredosdpiii/loki) (MIT, its license in
 `packages/coding-agent/src/ultron/loki-engine/LICENSE`) and skills ported from
 [pstack](https://github.com/cursor/plugins/tree/main/pstack) by Lauren Tan (MIT, its license in
-`packages/coding-agent/skills/pstack/LICENSE`). Pi's documentation at [pi.dev](https://pi.dev) covers the interface,
+`packages/coding-agent/skills/pstack/LICENSE`) and HumanLayer's [`show-me`](https://github.com/humanlayer/skills) skill
+as `diagram-it` (MIT, its license in `packages/coding-agent/skills/humanlayer/LICENSE`). Pi's documentation at [pi.dev](https://pi.dev) covers the interface,
 providers, extensions and settings that Ultron shares.
