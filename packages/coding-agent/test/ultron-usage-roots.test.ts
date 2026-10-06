@@ -1,6 +1,6 @@
 import type { Context } from "@ultron/agent-core";
 import { afterEach, describe, expect, test } from "vitest";
-import { NativeUsageLedger, nativeUsageLimitsFromEnv } from "../src/ultron/usage.ts";
+import { DEFAULT_MAX_TOTAL_TOKENS, NativeUsageLedger, nativeUsageLimitsFromEnv } from "../src/ultron/usage.ts";
 import { aborted, deferred, hostFixture, journal, waitFor } from "./ultron-host-fixtures.ts";
 
 /**
@@ -229,21 +229,31 @@ describe("optional cost cap", () => {
 
 describe("usage limits from the environment", () => {
 	test("defaults, overrides, unlimited and invalid values", () => {
-		expect(nativeUsageLimitsFromEnv({})).toEqual({ maxAdmittedTasks: 24, maxWallMs: 30 * 60 * 1000 });
+		const tokens = { defaultMaxTotalTokens: DEFAULT_MAX_TOTAL_TOKENS };
+		expect(nativeUsageLimitsFromEnv({})).toEqual({ maxAdmittedTasks: 24, maxWallMs: 30 * 60 * 1000, ...tokens });
 		expect(
 			nativeUsageLimitsFromEnv({
 				ULTRON_MAX_WALL_MS: "90000",
 				ULTRON_MAX_ADMITTED_TASKS: "4",
 				ULTRON_MAX_COST_USD: "$1.50",
 			}),
-		).toEqual({ maxAdmittedTasks: 4, maxWallMs: 90_000, maxCostUsd: 1.5 });
-		expect(nativeUsageLimitsFromEnv({ ULTRON_MAX_WALL_MS: "none", ULTRON_MAX_ADMITTED_TASKS: "off" })).toEqual({});
+		).toEqual({ maxAdmittedTasks: 4, maxWallMs: 90_000, maxCostUsd: 1.5, ...tokens });
+		expect(nativeUsageLimitsFromEnv({ ULTRON_MAX_WALL_MS: "none", ULTRON_MAX_ADMITTED_TASKS: "off" })).toEqual(
+			tokens,
+		);
+		expect(
+			nativeUsageLimitsFromEnv({
+				ULTRON_MAX_WALL_MS: "none",
+				ULTRON_MAX_ADMITTED_TASKS: "off",
+				ULTRON_MAX_TOTAL_TOKENS: "off",
+			}),
+		).toEqual({});
 		expect(
 			nativeUsageLimitsFromEnv({
 				ULTRON_MAX_WALL_MS: "soon",
 				ULTRON_MAX_ADMITTED_TASKS: "-1",
 				ULTRON_MAX_COST_USD: "x",
 			}),
-		).toEqual({ maxAdmittedTasks: 24, maxWallMs: 30 * 60 * 1000 });
+		).toEqual({ maxAdmittedTasks: 24, maxWallMs: 30 * 60 * 1000, ...tokens });
 	});
 });

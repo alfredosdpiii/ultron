@@ -77,6 +77,7 @@ function createRequestOptions(
 		metadata: options.metadata,
 		cacheRetention: options.cacheRetention,
 		deferred: options.deferred,
+		...(options.toolChoice === undefined ? {} : { toolChoice: options.toolChoice }),
 		...(config.thinkingLevel === "off" ? {} : { reasoning: config.thinkingLevel }),
 		signal: context.abortSignal,
 		telemetryContext: getTelemetryContext(context),

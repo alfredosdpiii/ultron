@@ -12,6 +12,7 @@ import {
 	type AgentLane,
 	BACKGROUND_CONTEXT,
 	createBashTool,
+	createCustomMessage,
 	createEditTool,
 	createReadTool,
 	createWriteTool,
@@ -139,7 +140,7 @@ import {
 	ToolRoundNudger,
 	toolRoundsNudgeFromEnv,
 } from "../ultron/tool-round-nudge.ts";
-import { createSessionUsageLedger, nativeUsageLimitsFromEnv } from "../ultron/usage.ts";
+import { budgetLine, createSessionUsageLedger, nativeUsageLimitsFromEnv } from "../ultron/usage.ts";
 import { AUTOMATIC_KEEP_THRESHOLD, createWorkerServices } from "../ultron/worker-services.ts";
 import { getShellEnv } from "../utils/shell.ts";
 import { COORDINATOR_PROTOCOL_VERSION } from "./coordinator.ts";
@@ -184,6 +185,10 @@ export class RlmCellError extends Error {
 		this.masked = masked;
 	}
 }
+
+/** Said with the one request a lane gets after its root's turn or token limit is reached. */
+const FINAL_ANSWER_NOTE =
+	"Tools are off for your last reply: answer now with what you have, and say what remains unknown or unfinished.";
 
 /** Worker adapter around the shared, bounded Python protocol implementation. */
 /** One cell's tool result: its text, the images `view_image` attached, and how many secrets were masked in the text. */
@@ -375,6 +380,8 @@ export function createUltronRlmTool(
 		readonly now?: () => number;
 		/** Situational hints appended to cell results (see hints.ts). */
 		readonly hints?: CellHints;
+		/** The budget line for a lane's cell result (usage.ts `budgetLine`), or undefined. */
+		readonly budgetNote?: (lane: string, operationId: string) => Promise<string | undefined>;
 		/** The model a lane's tool results go to: `view_image` resizes for it and notes when it takes no images. */
 		readonly resolveModel?: (lane: string, context: Context) => Promise<Model<Api> | undefined>;
 		/** Pi's `images.autoResize` setting, read per cell. Default true. */
@@ -570,6 +577,7 @@ export function createUltronRlmTool(
 					fileHooks?.cellEnded(lane);
 				}
 			};
+			const budget = () => options.budgetNote?.(lane, invocation.operationId).catch(() => undefined);
 			const withFindings = (text: string): string => {
 				const findings = fileHooks?.takePending(lane);
 				return findings ? `${text}\n${findings}` : text;
@@ -582,7 +590,9 @@ export function createUltronRlmTool(
 					if (error instanceof Error) error.message = withFindings(error.message);
 					throw error;
 				}
-				return { content: output.images.content(withFindings(output.text || "(no result)")), details: {} };
+				const line = await budget();
+				const text = withFindings(output.text || "(no result)");
+				return { content: output.images.content(line ? `${text}\n${line}` : text), details: {} };
 			}
 			hints.beginCell(lane, params.code);
 			let output: UltronRlmCellOutput;
@@ -598,8 +608,9 @@ export function createUltronRlmTool(
 			}
 			const result = output.text;
 			const hint = await hints.endCell(lane, { text: result }).catch(() => undefined);
-			const text = withFindings(result || "(no result)");
-			return { content: output.images.content(hint ? `${text}\n${hint}` : text), details: {} };
+			const line = await budget();
+			const text = [withFindings(result || "(no result)"), hint, line].filter(Boolean).join("\n");
+			return { content: output.images.content(text), details: {} };
 		},
 	};
 }
@@ -1817,6 +1828,7 @@ export async function createUltronRuntime(
 			return workspace === undefined ? undefined : { cwd: workspace.cwd, root: workspace.root };
 		},
 	});
+	let cellBudgetNote: ((lane: string, operationId: string) => Promise<string | undefined>) | undefined;
 	const rlmTool = createUltronRlmTool(
 		options.metadata.cwd,
 		hostHandler,
@@ -1838,6 +1850,8 @@ export async function createUltronRuntime(
 			outputDir: join(getAgentDir(), "rlm-output", options.metadata.id),
 			snapshotKey: snapshotKey.key,
 			hints: cellHints,
+			// Set once the usage ledger exists (below).
+			budgetNote: (lane, operationId) => cellBudgetNote?.(lane, operationId) ?? Promise.resolve(undefined),
 			// The lane's current model (it can change mid-session); the harness exists by the time a cell runs.
 			// An external root's own model is not Ultron's to know (its images go to Claude Code as they are).
 			resolveModel: async (lane, context) =>
@@ -2130,10 +2144,16 @@ export async function createUltronRuntime(
 		traceStartup("worker.host");
 		// Budgets apply per root turn; the turn and token limits (rootBudget settings, ULTRON_MAX_TOTAL_*) count
 		// every model turn of a root and its descendants.
+		const usageLimits = nativeUsageLimitsFromEnv(process.env, settingsManager.getRootBudgetSettings());
 		const usage = createSessionUsageLedger(session, {
-			limits: nativeUsageLimitsFromEnv(process.env, settingsManager.getRootBudgetSettings()),
+			limits: usageLimits,
 			onRefused: () => sessionStats.usageLimitBlock(),
 		});
+		cellBudgetNote = async (lane, operationId) =>
+			budgetLine(
+				await usage.remaining(host?.usageRootForLane(lane, operationId)),
+				usageLimits.maxTotalTokens !== undefined,
+			);
 		// A session written by a newer Ultron fails here, naming the value and its format version, before any of
 		// it is loaded or rewritten.
 		await assertSessionFormatsReadable(session, BACKGROUND_CONTEXT);
@@ -2377,21 +2397,57 @@ export async function createUltronRuntime(
 			await record;
 			return undefined;
 		});
+		// At a turn or token limit a run still ends with an answer (Autolith, alexzhang13/rlm): the lane's run gets one
+		// last request with tool choice "none" and a note saying why; after it, every request is refused. A cost cap
+		// is money, so it allows nothing more. States per lane run: "pending" (a tool call was refused at the limit;
+		// the next request is the final one), "final" (the final request was granted).
+		const finalAnswers = new Map<string, "pending" | "final">();
+		const finalKey = (lane: string, runId: string) => `${lane}\0${runId}`;
+		const exhaustion = async (lane: string, runId: string) => {
+			await pendingTurnRecords.settled();
+			return usage.budgetExhaustion(host?.usageRootForLane(lane, runId));
+		};
 		const removeBudgetToolHook = harness.hooks.on("before_tool", async (event) => {
-			const reason = await usage.turnBudgetExhausted(host?.usageRootForLane(event.lane, event.runId));
-			if (reason === undefined) return undefined;
+			const exhausted = await exhaustion(event.lane, event.runId);
+			if (exhausted === undefined) return undefined;
 			sessionStats.usageLimitBlock();
-			return { block: { reason, terminate: true } };
+			const key = finalKey(event.lane, event.runId);
+			if (exhausted.kind !== "cost" && finalAnswers.get(key) !== "final") {
+				finalAnswers.set(key, "pending");
+				return { block: { reason: `${exhausted.reason} ${FINAL_ANSWER_NOTE}` } };
+			}
+			return { block: { reason: exhausted.reason, terminate: true } };
 		});
 		// Tool calls the harness rejects before `before_tool` (an unknown tool, invalid arguments) would otherwise
-		// loop past the limit, so a spent root's next model request is refused as well.
+		// loop past the limit, so a spent root's next model request is refused as well, after its one final request.
 		const removeBudgetRequestHook = harness.hooks.on("before_request", async (event) => {
 			if (event.step !== "assistant") return undefined;
-			await pendingTurnRecords.settled();
-			const reason = await usage.turnBudgetExhausted(host?.usageRootForLane(event.lane, event.runId));
-			if (reason === undefined) return undefined;
+			const exhausted = await exhaustion(event.lane, event.runId);
+			if (exhausted === undefined) return undefined;
+			const key = finalKey(event.lane, event.runId);
+			if (exhausted.kind !== "cost" && finalAnswers.get(key) !== "final") {
+				finalAnswers.set(key, "final");
+				return { streamOptions: { toolChoice: "none" } };
+			}
 			sessionStats.usageLimitBlock();
-			return { block: { reason } };
+			return { block: { reason: exhausted.reason } };
+		});
+		// The final request (granted just before, in before_request) carries a note saying why tools are off.
+		const removeBudgetContextHook = harness.hooks.on("transform_context", async (event) => {
+			if (finalAnswers.get(finalKey(event.lane, event.runId)) !== "final") return undefined;
+			const exhausted = await exhaustion(event.lane, event.runId);
+			if (exhausted === undefined) return undefined;
+			const note = createCustomMessage(
+				"ultron-budget",
+				`[Ultron] ${exhausted.reason} ${FINAL_ANSWER_NOTE}`,
+				false,
+				undefined,
+				Date.now(),
+			);
+			return { messages: [...event.messages, note] };
+		});
+		const removeFinalAnswerListener = harness.events.on("run_end", (event) => {
+			finalAnswers.delete(finalKey(event.lane, event.runId));
 		});
 		// Brake for open-ended research loops on the root agent (ULTRON_TOOL_ROUNDS_NUDGE, 0 disables). While
 		// subagents or tasks the root started are running it says to wait for them instead of checking on them.
@@ -2496,6 +2552,8 @@ export async function createUltronRuntime(
 				removeNudgeTurnListener();
 				removeBudgetTurnListener();
 				removeBudgetToolHook();
+				removeBudgetContextHook();
+				removeFinalAnswerListener();
 				removeBudgetRequestHook();
 				removeNudgeRunListener();
 				await legacyExtensions?.close();

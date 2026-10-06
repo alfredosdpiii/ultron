@@ -1,7 +1,8 @@
 /**
  * Per-root tree limits on the real CLI: every model response on every lane (the root's own, sub-agents, frames)
- * is charged, tokens and cost, to the root that admitted it, and a spent tree gets no further model request on
- * any lane. Frame spend counts once in the root's totals: a frame's own `Budget` is a nested cap on top.
+ * is charged, tokens and cost, to the root that admitted it. Once a tree's turn or token limit is spent, each lane
+ * still running gets one final request with tool choice "none" (so the run ends with an answer) and then nothing more;
+ * a spent cost cap allows nothing more at all. Frame spend counts once in the root's totals: a frame's own `Budget` is a nested cap on top.
  */
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -73,6 +74,9 @@ async function runFlow(
 	}
 }
 
+/** A request sent with tools turned off: a lane's one final request after its tree's limit. */
+const isFinal = (request: ScriptedRequest) => request.raw.includes('"tool_choice":"none"');
+
 /** Provider-reported tokens of one scripted request (input estimate plus 8 output tokens). */
 function reportedTokens(request: ScriptedRequest): number {
 	return Math.ceil(request.raw.length / 4) + 8;
@@ -103,19 +107,29 @@ describe("sub-agent spend counts against the root's limits", () => {
 			const events = await client.promptAndWait("ROOT: delegate", undefined, 120_000);
 			const child = provider.requests.filter(isChild);
 			const root = provider.requests.filter((request) => !isChild(request));
-			// Stopped by the tree's tokens: the child's requests alone pass the limit, and nothing more is sent.
-			const spent = provider.requests.reduce((sum, request) => sum + reportedTokens(request), 0);
-			expect(spent).toBeGreaterThanOrEqual(40_000);
-			expect(spent - reportedTokens(provider.requests.at(-1)!)).toBeLessThan(40_000);
+			// Stopped by the tree's tokens: up to the request that crossed the limit everything ran with tools; after
+			// it, only one final request per lane (the child's and the root's), each with tools off.
+			const totals = provider.requests.map((_, index) =>
+				provider.requests.slice(0, index + 1).reduce((sum, request) => sum + reportedTokens(request), 0),
+			);
+			const crossed = totals.findIndex((total) => total >= 40_000);
+			expect(crossed).toBeGreaterThan(0);
+			expect(provider.requests.slice(0, crossed + 1).some(isFinal)).toBe(false);
+			const after = provider.requests.slice(crossed + 1);
+			expect(after.map((request) => (isChild(request) ? "child" : "root"))).toEqual(["child", "root"]);
+			expect(after.every(isFinal)).toBe(true);
 			expect(child.length).toBeGreaterThan(2);
 			expect(child.length).toBeLessThan(20);
-			// The spawned task failed with the limit message.
+			// The child answered its final request with a tool call (this scripted model ignores tool choice), so its
+			// task failed with the limit message.
 			const results = toolResults(events);
 			expect(results).toContain("'status': 'failed'");
 			expect(results).toMatch(/'error': 'Usage token limit reached for root turn:[^:]+: \d+ of 40000 tokens used/);
-			// The root's own next request is refused too: it made only the one that spawned the child.
-			expect(root).toHaveLength(1);
-			expect(JSON.stringify(events)).toContain("Usage token limit reached for root turn:");
+			// The root's final request ends its run with an answer instead of an error.
+			expect(root).toHaveLength(2);
+			expect(isFinal(root[1]!)).toBe(true);
+			expect(root[1]!.raw).toContain("Tools are off for your last reply");
+			expect(await client.getLastAssistantText()).toBe("ROOT ANSWERED");
 		});
 	}, 180_000);
 
@@ -134,6 +148,8 @@ describe("sub-agent spend counts against the root's limits", () => {
 			expect(toolResults(events)).toMatch(
 				/'error': 'Usage cost cap reached for root turn:[^:]+: spent \$[\d.]+ of \$0\.02/,
 			);
+			// A cost cap is money: no final request either.
+			expect(provider.requests.some(isFinal)).toBe(false);
 			expect(provider.requests.filter((request) => !isChild(request))).toHaveLength(1);
 		});
 	}, 180_000);
@@ -141,9 +157,12 @@ describe("sub-agent spend counts against the root's limits", () => {
 	test("the turn limit counts the child's turns and blocks the root afterwards", async () => {
 		await runFlow(runawayChild, { ULTRON_MAX_TOTAL_TURNS: "5" }, async (client, provider) => {
 			const events = await client.promptAndWait("ROOT: delegate", undefined, 120_000);
-			expect(provider.requests).toHaveLength(5);
-			expect(provider.requests.filter(isChild)).toHaveLength(4);
+			// Five turns with tools (the root's spawn and four child rounds), then one final request per lane.
+			expect(provider.requests.map((r) => `${isChild(r) ? "C" : "R"}${isFinal(r) ? "*" : ""}`).join(" ")).toBe(
+				"R C C C C C* R*",
+			);
 			expect(toolResults(events)).toContain("'error': 'Usage turn limit reached for root turn:");
+			expect(await client.getLastAssistantText()).toBe("ROOT ANSWERED");
 		});
 	}, 180_000);
 

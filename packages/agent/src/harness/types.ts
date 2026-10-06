@@ -144,6 +144,8 @@ export interface AgentHarnessStreamOptions {
 	cacheRetention?: SimpleStreamOptions["cacheRetention"];
 	/** Ask a capable provider to continue generation asynchronously. */
 	deferred?: boolean | { window?: "15m" | "1h" | "24h" };
+	/** Provider-neutral tool selection: "none" keeps the tool definitions but asks for a reply without tool calls. */
+	toolChoice?: SimpleStreamOptions["toolChoice"];
 }
 
 /** Per-request stream option patch returned by provider hooks. */

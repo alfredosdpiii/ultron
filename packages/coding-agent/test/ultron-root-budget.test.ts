@@ -181,7 +181,7 @@ describe("per-root max_total_turns / max_total_tokens", () => {
 		gate.resolve();
 	});
 
-	test("the real CLI stops a root turn at ULTRON_MAX_TOTAL_TURNS with the limit error, and the next turn starts fresh", async () => {
+	test("the real CLI stops a root turn at ULTRON_MAX_TOTAL_TURNS after one final request, and the next turn starts fresh", async () => {
 		const root = mkdtempSync(join(tmpdir(), "ultron-root-budget-"));
 		const agentDir = join(root, "agent");
 		const projectDir = join(root, "project");
@@ -213,12 +213,21 @@ describe("per-root max_total_turns / max_total_tokens", () => {
 			// The scripted model calls `bash`, which is not a tool in REPL-only mode: the harness rejects those calls
 			// before `before_tool`, so this also proves the request-level check stops the loop.
 			const events = await client.promptAndWait("loop forever", undefined, 120_000);
-			expect(provider.requests.length).toBe(3);
+			// Three turns, then the one final request with tools off; this model answers it with another tool call,
+			// which is refused, so the turn still ends with the limit error.
+			expect(provider.requests.length).toBe(4);
+			expect(provider.requests.map((request) => request.raw.includes('"tool_choice":"none"'))).toEqual([
+				false,
+				false,
+				false,
+				true,
+			]);
 			const messages = JSON.stringify(events);
 			expect(messages).toContain("Usage turn limit reached for root turn:");
-			expect(messages).toContain("3 of 3 model turns used (max_total_turns");
+			// The final request counts too, so the refusal after it reports 4 of 3.
+			expect(messages).toMatch(/[34] of 3 model turns used \(max_total_turns/);
 			await client.promptAndWait("again", undefined, 120_000);
-			expect(provider.requests.length).toBe(6);
+			expect(provider.requests.length).toBe(8);
 		} finally {
 			await client.stop();
 			await provider.stop();

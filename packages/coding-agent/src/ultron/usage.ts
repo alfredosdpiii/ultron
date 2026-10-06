@@ -23,13 +23,45 @@ export type NativeUsageLimits = {
 	maxTotalTokens?: number;
 	/** nano-rlm's `max_total_turns`: model turns (responses) of one root, its descendants included. Unset means no limit. */
 	maxTotalTurns?: number;
+	/**
+	 * The token cap a root gets when `maxTotalTokens` is not set: the terminator for a runaway loop (verifiers' RLM
+	 * harness defaults to 10M too). Goal roots (`goal:`) are exempt from it; an explicit `maxTotalTokens` applies to
+	 * every root. Unset means none.
+	 */
+	defaultMaxTotalTokens?: number;
 };
+
+/** Which limit a spent root reached: a turn or token cap still allows one final answer, a cost cap does not. */
+export type NativeUsageExhaustion = { reason: string; kind: "turns" | "tokens" | "cost" };
+
+/** What a root has left under its turn and token caps (null: no cap), for the budget line on cell results. */
+export type NativeUsageRemaining = { turnsLeft: number | null; tokensLeft: number | null; tokenCap: number | null };
 
 /** The per-root policy knobs as settings (`rootBudget` in settings.json); the environment overrides them. */
 export type NativeRootBudgetSettings = { maxTotalTokens?: number; maxTotalTurns?: number };
 
 /** Worker defaults: 24 unfinished tasks and a 30-minute wall budget per root turn; no cost cap. */
 export const DEFAULT_NATIVE_USAGE_LIMITS = { maxAdmittedTasks: 24, maxWallMs: 30 * 60 * 1000 } as const;
+
+/**
+ * The budget line on a cell result (Autolith shows calls and tokens remaining in each result instead of steering):
+ * turns left when a turn cap is set; tokens left when the token cap was set explicitly, or once half of the default
+ * cap is used. Undefined when there is nothing to show.
+ */
+export function budgetLine(remaining: NativeUsageRemaining, explicitTokenCap: boolean): string | undefined {
+	const parts: string[] = [];
+	if (remaining.turnsLeft !== null) parts.push(`${remaining.turnsLeft} model turns`);
+	if (
+		remaining.tokensLeft !== null &&
+		remaining.tokenCap !== null &&
+		(explicitTokenCap || remaining.tokensLeft <= remaining.tokenCap / 2)
+	)
+		parts.push(`${remaining.tokensLeft.toLocaleString("en-US")} tokens`);
+	return parts.length === 0 ? undefined : `[budget left for this request: ${parts.join(", ")}]`;
+}
+
+/** Tokens a root turn's tree may use when no token cap is set (ULTRON_MAX_TOTAL_TOKENS=off removes it). */
+export const DEFAULT_MAX_TOTAL_TOKENS = 10_000_000;
 
 /**
  * Usage roots of session goals (`/goal`, goal.ts). A goal runs until it is done, blocked, stuck or stopped by the
@@ -42,7 +74,8 @@ export const GOAL_USAGE_ROOT_PREFIX = "goal:";
  * invalid value keeps the default; `none`, `off` or `unlimited` removes the wall or admission limit.
  * The cost cap is off unless set to a nonnegative number (an optional leading `$` is accepted).
  * `ULTRON_MAX_TOTAL_TOKENS` and `ULTRON_MAX_TOTAL_TURNS` (positive integers) override the `rootBudget` settings;
- * `none`, `off` or `unlimited` removes a limit the settings set. Both are off by default.
+ * `none`, `off` or `unlimited` removes a limit the settings set. Turns are uncapped by default; tokens get
+ * DEFAULT_MAX_TOTAL_TOKENS per root turn (goal roots exempt) unless set or turned off.
  */
 export function nativeUsageLimitsFromEnv(
 	env: Record<string, string | undefined> = process.env,
@@ -69,6 +102,8 @@ export function nativeUsageLimitsFromEnv(
 	const maxTotalTokens = integer(env.ULTRON_MAX_TOTAL_TOKENS, setting(settings.maxTotalTokens) ?? 0, 1);
 	const maxTotalTurns = integer(env.ULTRON_MAX_TOTAL_TURNS, setting(settings.maxTotalTurns) ?? 0, 1);
 	if (maxTotalTokens) limits.maxTotalTokens = maxTotalTokens;
+	// Without a token cap a root gets the default one, unless ULTRON_MAX_TOTAL_TOKENS turns limits off.
+	else if (maxTotalTokens === 0) limits.defaultMaxTotalTokens = DEFAULT_MAX_TOTAL_TOKENS;
 	if (maxTotalTurns) limits.maxTotalTurns = maxTotalTurns;
 	return limits;
 }
@@ -442,6 +477,8 @@ function normalizeLimits(limits: NativeUsageLimits | undefined): Required<Native
 	const maxCostUsd = limits?.maxCostUsd;
 	const maxTotalTokens = limits?.maxTotalTokens;
 	const maxTotalTurns = limits?.maxTotalTurns;
+	const defaultMaxTotalTokens = limits?.defaultMaxTotalTokens;
+	if (defaultMaxTotalTokens !== undefined) finiteInteger(defaultMaxTotalTokens, "defaultMaxTotalTokens", 1);
 	if (maxTotalTokens !== undefined) finiteInteger(maxTotalTokens, "maxTotalTokens", 1);
 	if (maxTotalTurns !== undefined) finiteInteger(maxTotalTurns, "maxTotalTurns", 1);
 	if (maxAdmittedTasks !== undefined) finiteInteger(maxAdmittedTasks, "maxAdmittedTasks", 0);
@@ -454,7 +491,14 @@ function normalizeLimits(limits: NativeUsageLimits | undefined): Required<Native
 		maxCostUsd: maxCostUsd ?? Number.POSITIVE_INFINITY,
 		maxTotalTokens: maxTotalTokens ?? Number.POSITIVE_INFINITY,
 		maxTotalTurns: maxTotalTurns ?? Number.POSITIVE_INFINITY,
+		defaultMaxTotalTokens: defaultMaxTotalTokens ?? Number.POSITIVE_INFINITY,
 	};
+}
+
+/** The token cap of `root`: the explicit one, else the default unless it is a goal root. */
+function tokenCap(root: StoredRoot, limits: Required<NativeUsageLimits>): number {
+	if (Number.isFinite(limits.maxTotalTokens)) return limits.maxTotalTokens;
+	return root.rootId.startsWith(GOAL_USAGE_ROOT_PREFIX) ? Number.POSITIVE_INFINITY : limits.defaultMaxTotalTokens;
 }
 
 function publicLimits(limits: Required<NativeUsageLimits>): NativeUsageStatus["limits"] {
@@ -472,7 +516,7 @@ function turnUsage(root: StoredRoot, limits: Required<NativeUsageLimits>): Nativ
 		turns: root.turns?.count ?? 0,
 		tokens: root.turns?.tokens ?? 0,
 		maxTotalTurns: Number.isFinite(limits.maxTotalTurns) ? limits.maxTotalTurns : null,
-		maxTotalTokens: Number.isFinite(limits.maxTotalTokens) ? limits.maxTotalTokens : null,
+		maxTotalTokens: Number.isFinite(tokenCap(root, limits)) ? tokenCap(root, limits) : null,
 	};
 }
 
@@ -480,20 +524,33 @@ function turnUsage(root: StoredRoot, limits: Required<NativeUsageLimits>): Nativ
  * The error text for a root whose tree has used up its turn, token or cost limit, or undefined. Every limit counts
  * the root's whole tree: its own lane and every lane it admitted (sub-agents, frames, typed agents, jobs).
  */
-function rootExhaustion(root: StoredRoot, limits: Required<NativeUsageLimits>): string | undefined {
+function rootExhaustion(root: StoredRoot, limits: Required<NativeUsageLimits>): NativeUsageExhaustion | undefined {
 	const count = root.turns?.count ?? 0;
 	const tokens = root.turns?.tokens ?? 0;
+	const cap = tokenCap(root, limits);
 	const advice = "No further model work is admitted for this root; answer with what you have.";
 	if (count >= limits.maxTotalTurns)
-		return `Usage turn limit reached for root ${root.rootId}: ${count} of ${limits.maxTotalTurns} model turns used (max_total_turns, ULTRON_MAX_TOTAL_TURNS). ${advice}`;
-	if (tokens >= limits.maxTotalTokens)
-		return `Usage token limit reached for root ${root.rootId}: ${tokens} of ${limits.maxTotalTokens} tokens used (max_total_tokens, ULTRON_MAX_TOTAL_TOKENS). ${advice}`;
+		return {
+			kind: "turns",
+			reason: `Usage turn limit reached for root ${root.rootId}: ${count} of ${limits.maxTotalTurns} model turns used (max_total_turns, ULTRON_MAX_TOTAL_TURNS). ${advice}`,
+		};
+	if (tokens >= cap)
+		return {
+			kind: "tokens",
+			reason: `Usage token limit reached for root ${root.rootId}: ${tokens} of ${cap} tokens used (max_total_tokens, ULTRON_MAX_TOTAL_TOKENS). ${advice}`,
+		};
 	if (Number.isFinite(limits.maxCostUsd)) {
 		const cost = spend(root, limits);
 		if (cost.unknownPricedCalls > 0)
-			return `Usage pricing unknown; cannot enforce cost cap of $${limits.maxCostUsd} for root ${root.rootId} (${cost.unknownPricedCalls} model call(s) reported no cost). ${advice}`;
+			return {
+				kind: "cost",
+				reason: `Usage pricing unknown; cannot enforce cost cap of $${limits.maxCostUsd} for root ${root.rootId} (${cost.unknownPricedCalls} model call(s) reported no cost). ${advice}`,
+			};
 		if (cost.spentUsd >= limits.maxCostUsd)
-			return `Usage cost cap reached for root ${root.rootId}: spent $${roundUsd(cost.spentUsd)} of $${limits.maxCostUsd} (ULTRON_MAX_COST_USD). ${advice}`;
+			return {
+				kind: "cost",
+				reason: `Usage cost cap reached for root ${root.rootId}: spent $${roundUsd(cost.spentUsd)} of $${limits.maxCostUsd} (ULTRON_MAX_COST_USD). ${advice}`,
+			};
 	}
 	return undefined;
 }
@@ -795,7 +852,7 @@ export class NativeUsageLedger implements NativeUsageLedgerLike {
 			)
 				throw this.refused(`Usage admitted-task limit exceeded for root ${rootId}`);
 			const modelWork = request.kind === "model" || (request.kind === "task" && request.modelBacked !== false);
-			const exhausted = modelWork ? rootExhaustion(root, this.limits) : undefined;
+			const exhausted = modelWork ? rootExhaustion(root, this.limits)?.reason : undefined;
 			if (exhausted) throw this.refused(exhausted);
 			const asked = request.deadlineAt ?? (request.timeoutMs === undefined ? null : now + request.timeoutMs);
 			// A child inherits whatever remains of the root's wall budget; a longer request is capped, not refused.
@@ -881,6 +938,7 @@ export class NativeUsageLedger implements NativeUsageLedgerLike {
 		return (
 			Number.isFinite(this.limits.maxTotalTurns) ||
 			Number.isFinite(this.limits.maxTotalTokens) ||
+			Number.isFinite(this.limits.defaultMaxTotalTokens) ||
 			Number.isFinite(this.limits.maxCostUsd)
 		);
 	}
@@ -916,10 +974,33 @@ export class NativeUsageLedger implements NativeUsageLedgerLike {
 	 * continue.
 	 */
 	turnBudgetExhausted(rootId: string | undefined): Promise<string | undefined> {
+		return this.budgetExhaustion(rootId).then((exhausted) => exhausted?.reason);
+	}
+
+	/** Which limit `rootId`'s tree reached, with its error text; undefined while work may continue. */
+	budgetExhaustion(rootId: string | undefined): Promise<NativeUsageExhaustion | undefined> {
 		if (!this.enforcesTree) return Promise.resolve(undefined);
 		return this.enqueue(async () => {
 			const root = this.document.roots[rootId ?? this.defaultRootId];
 			return root ? rootExhaustion(root, this.limits) : undefined;
+		});
+	}
+
+	/** What `rootId` has left under its turn and token caps (null where there is no cap). */
+	remaining(rootId: string | undefined): Promise<NativeUsageRemaining> {
+		return this.enqueue(async () => {
+			const id = rootId ?? this.defaultRootId;
+			const root = this.document.roots[id] ?? emptyRoot(id);
+			const cap = tokenCap(root, this.limits);
+			const turns = root.turns?.count ?? 0;
+			const tokens = root.turns?.tokens ?? 0;
+			return {
+				turnsLeft: Number.isFinite(this.limits.maxTotalTurns)
+					? Math.max(0, this.limits.maxTotalTurns - turns)
+					: null,
+				tokensLeft: Number.isFinite(cap) ? Math.max(0, cap - tokens) : null,
+				tokenCap: Number.isFinite(cap) ? cap : null,
+			};
 		});
 	}
 

@@ -104,6 +104,7 @@ describe("streamHarnessAssistant", () => {
 					metadata: { tenant: "one" },
 					cacheRetention: "long",
 					deferred: { window: "1h" },
+					toolChoice: "none",
 				},
 				transformContext: async (context) => {
 					order.push("transform_context");
@@ -181,6 +182,7 @@ describe("streamHarnessAssistant", () => {
 			metadata: { tenant: "one" },
 			cacheRetention: "long",
 			deferred: { window: "1h" },
+			toolChoice: "none",
 			reasoning: "high",
 			signal: controller.signal,
 			telemetryContext: NOOP_TELEMETRY_CONTEXT,

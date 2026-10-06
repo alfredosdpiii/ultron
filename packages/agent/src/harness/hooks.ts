@@ -456,6 +456,7 @@ export function applyStreamOptionsPatch(
 		"maxRetryDelayMs",
 		"cacheRetention",
 		"deferred",
+		"toolChoice",
 	] as const) {
 		if (!(key in patch)) continue;
 		const value = patch[key];
@@ -499,6 +500,7 @@ function createStreamOptionsPatch(
 		"maxRetryDelayMs",
 		"cacheRetention",
 		"deferred",
+		"toolChoice",
 	] as const) {
 		if (base[key] !== value[key]) Object.assign(patch, { [key]: value[key] });
 	}

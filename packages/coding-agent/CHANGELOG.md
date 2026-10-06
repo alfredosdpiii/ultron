@@ -4,6 +4,9 @@
 
 ### Changed
 
+- At a turn or token limit a run now ends with an answer: each lane still running gets one final request with tool choice "none" and a note saying why, then nothing more (a cost cap still stops at once). Before, the run ended with an error and no answer.
+- A root turn's tree gets a 10M-token cap by default (the same default as Prime Intellect's verifiers RLM harness), as the terminator for runaway loops; `ULTRON_MAX_TOTAL_TOKENS` sets another or `off` removes it, and `/goal` roots are exempt from the default.
+- Cell results end with a `[budget left for this request: ...]` line when a turn cap is set, a token cap was set explicitly, or half of the default token cap is used.
 - All nudges are off by default: the research-loop brake and the wait nudge (`ULTRON_TOOL_ROUNDS_NUDGE`), the skill-extraction nudge (`ULTRON_SKILL_NUDGE`), and the situational cell hints, stuck-loop and repeated-cell included (`ULTRON_HINTS`; the runtime guide mentions hints only when they are on). Set a variable to `on` (or, for the first two, a number of rounds) to turn that nudge back on.
 - `ultron claude`, its Claude Code subagents and `ultron --claude` start Claude Code with `--dangerously-skip-permissions` (`ULTRON_CLAUDE_SKIP_PERMISSIONS=off` keeps the prompts; left out as root unless `IS_SANDBOX=1`, since Claude Code refuses it there).
 

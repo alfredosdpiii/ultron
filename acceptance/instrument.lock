@@ -78,7 +78,7 @@
 		"packages/coding-agent/test/ultron-schedules.test.ts": "53a83836658238798f67f71ece291f2437859049f6ba0e02ec2c320fb30c065e",
 		"packages/coding-agent/test/ultron-shell-jobs.test.ts": "25151cdf1dca043f2df90cb0126e351d4fc701dec2c3756e437c32dfebd68cb8",
 		"packages/coding-agent/test/ultron-skills.test.ts": "557478db705d08814ec982571cbc70199676a6a4e5c5035ea0a0e3d5310acb28",
-		"packages/coding-agent/test/ultron-usage-deadline.test.ts": "5ed196acc010010db308878c2248761c5862daa03393992ff7b71eb4ba5e74a4",
+		"packages/coding-agent/test/ultron-usage-deadline.test.ts": "040dc595024b30c2b8cb7962afac29234099224cceff42810e97e9343aea6901",
 		"packages/coding-agent/test/ultron-worker-isolation.test.ts": "a57085e176d2aa21466ee85780715bd6f88e3b1bd3aa3d4b2f82e38bbbdf183e"
 	}
 }
