@@ -1,6 +1,6 @@
 {
 	"name": "@ultron/agent-core",
-	"version": "0.87.28",
+	"version": "0.87.29",
 	"description": "General-purpose agent with transport abstraction, state management, and attachment support",
 	"type": "module",
 	"main": "./dist/index.js",
@@ -59,9 +59,9 @@
 		"prepublishOnly": "npm run build"
 	},
 	"dependencies": {
-		"@ultron/chord": "^0.87.28",
-		"@ultron/ai": "^0.87.28",
-		"@ultron/telemetry": "^0.87.28",
+		"@ultron/chord": "^0.87.29",
+		"@ultron/ai": "^0.87.29",
+		"@ultron/telemetry": "^0.87.29",
 		"diff": "8.0.4",
 		"ignore": "7.0.8",
 		"typebox": "1.3.27",

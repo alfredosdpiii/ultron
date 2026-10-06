@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.87.29] - 2026-10-06
+
 ### Added
 
 - The system prompt indexes the bundled workflow skills: where they are and one line per skill (about 2.5 KB), so the model can find and read one when a task fits; principles and skills you override are left out.
