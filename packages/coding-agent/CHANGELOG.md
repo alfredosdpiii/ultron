@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.87.30] - 2026-10-07
+
 ### Changed
 
 - At a turn or token limit a run now ends with an answer: each lane still running gets one final request with tool choice "none" and a note saying why, then nothing more (a cost cap still stops at once). Before, the run ended with an error and no answer.
