@@ -134,10 +134,11 @@ afterEach(() => resetClaudeCodeCliState());
 afterAll(() => rmSync(root, { recursive: true, force: true }));
 
 describe("claude-code provider registration", () => {
-	it("exposes Opus 5.5 plus the opus, sonnet and haiku aliases as a built-in, key-less provider", async () => {
+	it("exposes Opus 5.5 and Haiku 5.5 plus the opus, sonnet and haiku aliases as a built-in, key-less provider", async () => {
 		expect(builtinProviders().map((provider) => provider.id)).toContain("claude-code");
 		expect(models.getModels("claude-code").map((model) => model.id)).toEqual([
 			"claude-opus-5-5",
+			"claude-haiku-5-5",
 			"opus",
 			"sonnet",
 			"haiku",
@@ -153,6 +154,7 @@ describe("claude-code provider registration", () => {
 		withCli.setProvider(claudeCodeProvider());
 		expect((await withCli.getAvailable("claude-code")).map((model) => model.id)).toEqual([
 			"claude-opus-5-5",
+			"claude-haiku-5-5",
 			"opus",
 			"sonnet",
 			"haiku",
