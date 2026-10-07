@@ -44,6 +44,32 @@ function plain(lines: readonly string[]): string {
 	return lines.join("\n").replace(/\u001b\[[0-9;]*m/g, "");
 }
 
+const alive = (pid: number): boolean => {
+	try {
+		process.kill(pid, 0);
+		return true;
+	} catch {
+		return false;
+	}
+};
+
+/** Waits up to `ms` for the processes to exit, then sends SIGKILL to any still running and waits briefly again. */
+async function waitForExit(pids: number[], ms = 10_000): Promise<void> {
+	let left = [...new Set(pids)].filter(alive);
+	const deadline = Date.now() + ms;
+	while (left.length > 0 && Date.now() < deadline) {
+		await new Promise((done) => setTimeout(done, 50));
+		left = left.filter(alive);
+	}
+	for (const pid of left) {
+		try {
+			process.kill(pid, "SIGKILL");
+		} catch {}
+	}
+	const killDeadline = Date.now() + 2_000;
+	while (left.some(alive) && Date.now() < killDeadline) await new Promise((done) => setTimeout(done, 50));
+}
+
 type Call = {
 	phase: string;
 	pid: number;
@@ -202,9 +228,11 @@ describe("ultron --claude: the root lane on Claude Code", () => {
 			if (value === undefined) delete process.env[name];
 			else process.env[name] = value;
 		}
-		// A Claude Code child or kernel may still be writing into it for a moment after the last test under load.
+		// A fake Claude Code process can outlive its lane by a moment under load and keep writing into the log dir,
+		// which made the removal fail with ENOTEMPTY. Every fake logs its pid, so wait for them to exit first.
+		await waitForExit(calls().map((call) => call.pid));
 		rmSync(work, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
-	});
+	}, 30_000);
 
 	const calls = (): Call[] => {
 		try {
