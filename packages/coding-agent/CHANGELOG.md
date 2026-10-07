@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.87.31] - 2026-10-08
+
 ### Added
 
 - Bundled QingYunA's [Answer me with HTML](https://github.com/QingYunA/answer-me-with-html) skill as `/skill:answer-me-with-html`: the model writes a short Markdown draft and the skill's own `am` CLI (vendored unmodified, Node.js 20+, no dependencies) renders one HTML page with panels, diagrams and tables, or an explainer video. Ported to the REPL; the CLI never checks for its own updates, and the browser opens only when a display is available.

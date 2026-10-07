@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.87.31] - 2026-10-08
+
 ### Added
 
 - Added Claude Haiku 5.5 to the built-in Anthropic catalog (1M context, 128K output, adaptive thinking with all five effort levels, per-message effort, mid-conversation system messages and tool changes, and its tiered pricing above 100K input tokens), to the OpenRouter, Vercel AI Gateway, OpenCode and OpenCode Go catalogs, to Bedrock's adaptive-thinking and prompt-caching checks, and as `claude-code/claude-haiku-5-5` for Claude Code runs.
