@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Added
+
+- Bundled QingYunA's [Answer me with HTML](https://github.com/QingYunA/answer-me-with-html) skill as `/skill:answer-me-with-html`: the model writes a short Markdown draft and the skill's own `am` CLI (vendored unmodified, Node.js 20+, no dependencies) renders one HTML page with panels, diagrams and tables, or an explainer video. Ported to the REPL; the CLI never checks for its own updates, and the browser opens only when a display is available.
+- Claude Haiku 5.5 is available as `claude-code/claude-haiku-5-5` for `ultron --claude`, `ultron claude` and Claude Code subagents.
+
 ## [0.87.30] - 2026-10-07
 
 ### Changed

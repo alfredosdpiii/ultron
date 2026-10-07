@@ -1,5 +1,6 @@
 /**
- * Skills bundled with Ultron (packages/coding-agent/skills/<source>: the pstack port, HumanLayer's diagram-it):
+ * Skills bundled with Ultron (packages/coding-agent/skills/<source>: the pstack port, HumanLayer's diagram-it,
+ * QingYunA's answer-me-with-html):
  * - they load after the user's and project's skills, so a skill of the same name there wins;
  * - `ULTRON_BUNDLED_SKILLS=off` and `noSkills` leave them out;
  * - every bundled SKILL.md loads without diagnostics, names its source and license, and its references to other
@@ -70,7 +71,7 @@ describe("bundled skills", () => {
 		mkdirSync(join(root, "project"), { recursive: true });
 		const all = await load();
 		const names = all.skills.map((skill) => skill.name);
-		expect(names).toEqual(expect.arrayContaining(["rigor", "diagram-it", ...skillDirs]));
+		expect(names).toEqual(expect.arrayContaining(["rigor", "diagram-it", "answer-me-with-html", ...skillDirs]));
 		expect(all.diagnostics.filter((d) => d.path?.startsWith(bundled))).toEqual([]);
 
 		const own = join(root, "agent", "skills", "swarm");
@@ -108,6 +109,7 @@ describe("bundled skills", () => {
 		expect(note).toMatch(/^- pstack\/rigor: Rigorous engineering mode/m);
 		expect(note).toMatch(/^- pstack\/how: /m);
 		expect(note).toMatch(/^- humanlayer\/diagram-it: Explain the current topic visually/m);
+		expect(note).toMatch(/^- qingyuna\/answer-me-with-html: Answer a hard question with one visual HTML page/m);
 		expect(note).not.toMatch(/principle-[a-z-]+:/);
 		for (const line of note.split("\n").slice(1))
 			expect(existsSync(join(bundled, line.slice(2, line.indexOf(":")), "SKILL.md")), line).toBe(true);
@@ -136,6 +138,28 @@ describe("bundled skills", () => {
 		const diagram = readFileSync(join(bundled, "humanlayer", "diagram-it", "SKILL.md"), "utf8");
 		expect(diagram).toMatch(/^---\nname: diagram-it\n/);
 		expect(diagram).toContain("github.com/humanlayer/skills/plugins/show-me");
+		// QingYunA's Answer me with HTML, with its license and its CLI.
+		expect(readFileSync(join(bundled, "qingyuna", "LICENSE"), "utf8")).toContain("Answer me with HTML contributors");
+		const answer = readFileSync(join(bundled, "qingyuna", "answer-me-with-html", "SKILL.md"), "utf8");
+		expect(answer).toMatch(/^---\nname: answer-me-with-html\n/);
+		expect(answer).toContain("github.com/QingYunA/answer-me-with-html");
+		expect(answer).toContain("AM_NO_UPDATE_CHECK=1");
+	});
+
+	test("the bundled answer-me-with-html CLI renders a draft to a page without fetching updates", () => {
+		const skillDir = join(bundled, "qingyuna", "answer-me-with-html");
+		const home = join(root, "am-home");
+		const draft = join(root, "draft.md");
+		writeFileSync(draft, "---\ntitle: Bundled check\n---\n## A Flow\n~~~flow\nA -> B: call\n~~~\n");
+		const run = spawnSync(process.execPath, [join(skillDir, "scripts", "am.mjs"), "render", draft, "--no-open"], {
+			encoding: "utf8",
+			env: { ...process.env, AM_HOME: home, AM_NO_UPDATE_CHECK: "1" },
+		});
+		expect(run.status, run.stderr).toBe(0);
+		expect(run.stdout).toMatch(/✓ .*\.html/);
+		expect(run.stdout).toContain("flow×1");
+		const state = JSON.parse(readFileSync(join(home, "state.json"), "utf8")) as { lastUpdateCheck?: number };
+		expect(state.lastUpdateCheck).toBeUndefined();
 	});
 
 	test("cross-references resolve and no Cursor-only mechanics remain", () => {
