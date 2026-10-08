@@ -48,6 +48,7 @@ export function kernelEnvironment(source: NodeJS.ProcessEnv): Record<string, str
  * - maxMemoryMb: RLIMIT_DATA (heap and private writable mappings) for the kernel and, inherited, for
  *   every process a cell spawns. Each process gets the limit; it is not an aggregate over the tree.
  *   RLIMIT_DATA rather than RLIMIT_AS, so runtimes that reserve large address ranges (V8, Go) still start.
+ *   Not on macOS, which counts the whole virtual map against RLIMIT_DATA and refuses a GiB-scale limit (#1).
  * - maxCpuSeconds: CPU time per cell, not per process: kernels are long-lived and would otherwise
  *   eventually die of a lifetime budget, and cells legitimately wait on subagents for hours without
  *   using CPU. Python raises RlmCpuLimitExceeded in the cell; a cell stuck in C code or swallowing the

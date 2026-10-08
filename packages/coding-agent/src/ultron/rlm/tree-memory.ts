@@ -19,7 +19,7 @@ import { readdirSync, readFileSync } from "node:fs";
  * kernel's process group, its descendant tree, and (for a scope) every process left in the scope.
  * - "off": no tree cap (non-Linux, or the cap is 0).
  *
- * Per-process RLIMIT_DATA stays in force in every mode.
+ * Per-process RLIMIT_DATA stays in force in every mode, except on macOS, which has no memory cap at all (#1).
  */
 export type TreeMemoryBackend = "cgroup" | "watchdog" | "off";
 

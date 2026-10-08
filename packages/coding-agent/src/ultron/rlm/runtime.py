@@ -922,13 +922,20 @@ def _apply_resource_limits() -> None:
             resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
         except (ValueError, OSError):
             pass
-    if _MAX_MEMORY_MB > 0 and hasattr(resource, "RLIMIT_DATA"):
+    # macOS checks RLIMIT_DATA against the whole virtual map, and every Apple Silicon process reserves ~400 GiB of
+    # address space before it allocates anything: a GiB-scale limit is refused with EINVAL, and one it would accept
+    # caps nothing (#1). There the kernel runs without a per-process memory limit.
+    if _MAX_MEMORY_MB > 0 and hasattr(resource, "RLIMIT_DATA") and sys.platform != "darwin":
         limit = _MAX_MEMORY_MB * 1024 * 1024
-        _soft, hard = resource.getrlimit(resource.RLIMIT_DATA)
-        if hard != resource.RLIM_INFINITY:
-            limit = min(limit, hard)
-        # The hard limit is lowered too, so cell code cannot raise it again for itself or its children.
-        resource.setrlimit(resource.RLIMIT_DATA, (limit, limit))
+        try:
+            _soft, hard = resource.getrlimit(resource.RLIMIT_DATA)
+            if hard != resource.RLIM_INFINITY:
+                limit = min(limit, hard)
+            # The hard limit is lowered too, so cell code cannot raise it again for itself or its children.
+            resource.setrlimit(resource.RLIMIT_DATA, (limit, limit))
+        except (ValueError, OSError):
+            # A platform that refuses the limit runs the kernel without it rather than failing to start.
+            pass
     if _MAX_CPU_SECONDS > 0 and hasattr(signal, "SIGXCPU"):
         signal.signal(signal.SIGXCPU, _on_cpu_limit)
         _arm_cpu_limit()

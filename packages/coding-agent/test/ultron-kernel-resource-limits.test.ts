@@ -1,3 +1,5 @@
+import { spawnSync } from "node:child_process";
+import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, test } from "vitest";
 import {
@@ -127,4 +129,54 @@ describe.skipIf(process.platform !== "linux")("RLM kernel resource limits", () =
 		// show up in desktop crash reporters) and has core dumps disabled.
 		expect(probe).toMatchObject({ status: "ok", result: `(${256 * MiB}, True, True, True, 0)` });
 	}, 30_000);
+});
+
+// #1: macOS checks RLIMIT_DATA against the whole virtual map (every Apple Silicon process reserves ~400 GiB), so it
+// refuses a 4 GiB limit with EINVAL, which CPython raises as ValueError, and the kernel died before its first cell.
+describe("RLM kernel memory limit on macOS (#1)", () => {
+	const python = process.env.ULTRON_PYTHON ?? "/usr/bin/python3";
+	/** Run runtime.py's startup limits with setrlimit(RLIMIT_DATA) refused as macOS refuses it, as `platform`. */
+	const startLimits = (platform: string) =>
+		spawnSync(
+			python,
+			[
+				"-W",
+				"ignore::SyntaxWarning",
+				"-c",
+				[
+					"import importlib.util, resource, sys",
+					`sys.path.insert(0, ${JSON.stringify(dirname(runtimePath))})`,
+					"tried = []",
+					"real = resource.setrlimit",
+					"def refuse(which, limits):",
+					"    tried.append(which)",
+					"    if which == resource.RLIMIT_DATA: raise ValueError('current limit exceeds maximum limit')",
+					"    real(which, limits)",
+					"resource.setrlimit = refuse",
+					`spec = importlib.util.spec_from_file_location('rlm_runtime', ${JSON.stringify(runtimePath)})`,
+					"runtime = importlib.util.module_from_spec(spec); sys.modules['rlm_runtime'] = runtime",
+					"spec.loader.exec_module(runtime)",
+					`sys.platform = ${JSON.stringify(platform)}`,
+					"runtime._apply_resource_limits()",
+					"print(resource.RLIMIT_DATA in tried)",
+				].join("\n"),
+			],
+			{
+				encoding: "utf8",
+				env: { ...process.env, ULTRON_RLM_MAX_MEMORY_MB: "4096", ULTRON_RLM_MAX_CPU_SECONDS: "0" },
+			},
+		);
+
+	test("macOS skips the per-process data limit instead of failing to start", () => {
+		const run = startLimits("darwin");
+		expect(run.stderr).not.toContain("ValueError");
+		expect(run.status, run.stderr).toBe(0);
+		expect(run.stdout.trim()).toBe("False");
+	});
+
+	test("a platform that refuses the limit starts without it rather than crashing", () => {
+		const run = startLimits("linux");
+		expect(run.status, run.stderr).toBe(0);
+		expect(run.stdout.trim()).toBe("True");
+	});
 });
