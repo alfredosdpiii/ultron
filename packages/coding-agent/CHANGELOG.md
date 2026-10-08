@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+### Breaking Changes
+
+- Jev is removed: automatic per-turn memory (the recall gate before a turn and the retention policy after it), triage, the REPL `jev` object (`jev.triage`, `jev.recall`), the `/jev` panel, its footer presence and transcript notes, the Alt+J and Alt+M keys, the `jev.decisions` inspection, and the setup wizard's Jev key step. `TYPESAFE_API_KEY`, `~/.ultron/agent/jev-api-key`, `ULTRON_AUTO_MEMORY`, `ULTRON_AUTO_MEMORY_SCOPE` and `ULTRON_HINDSIGHT_LEGACY_BANK` are no longer read.
+
+### Changed
+
+- Memory is Hindsight used on purpose from the REPL: `memory.prepare` always recalls, and every write (`memory.propose`, `memory.correct`) is kept unless it holds a secret or credential, which is refused before Hindsight sees it. Before, deliberate writes were dropped when Jev was not configured. The `explicit` argument of `memory.prepare` and `memory.propose` is gone.
+- Code skill proposals record `secretCheck` (`clean` or `sensitive`) instead of a Jev score; a proposal holding a secret is refused as before.
+- The session report's memory section shows the memory store's operations; `usage` totals no longer have `jevCalls`. Sessions and usage ledgers written with Jev still load.
+
 ## [0.87.33] - 2026-10-08
 
 ### Fixed
