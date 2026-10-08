@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.87.33] - 2026-10-08
+
 ### Fixed
 
 - The RLM kernel no longer fails to start on macOS with `ValueError: current limit exceeds maximum limit`: macOS counts a process's whole virtual address map against `RLIMIT_DATA` (every Apple Silicon process reserves about 400 GiB), so it refused the 4 GiB per-process limit. On macOS the kernel now runs without a per-process memory limit, and a platform that refuses the limit no longer stops the kernel from starting ([#1](https://github.com/alfredosdpiii/ultron/issues/1)).

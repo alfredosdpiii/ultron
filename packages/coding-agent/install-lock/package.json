@@ -1,10 +1,10 @@
 {
 	"name": "@bryandlp/ultron-coding-agent-install",
-	"version": "0.87.32",
+	"version": "0.87.33",
 	"private": true,
 	"description": "Lockfile root used by the Pi installer and updater.",
 	"dependencies": {
-		"@bryandlp/ultron-coding-agent": "0.87.32"
+		"@bryandlp/ultron-coding-agent": "0.87.33"
 	},
 	"overrides": {
 		"protobufjs": "7.6.6"
