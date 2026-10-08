@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from "fs";
 import ignore from "ignore";
 import { basename, dirname, join, relative, resolve, sep } from "path";
 import { CONFIG_DIR_NAME, getAgentDir, getBundledSkillsDir } from "../config.ts";
-import { parseFrontmatter } from "../utils/frontmatter.ts";
+import { parseFrontmatter, stripFrontmatter } from "../utils/frontmatter.ts";
 import { canonicalizePath, resolvePath } from "../utils/paths.ts";
 import type { ResourceDiagnostic } from "./diagnostics.ts";
 import { createSyntheticSourceInfo, type SourceInfo } from "./source-info.ts";
@@ -12,6 +12,9 @@ const MAX_NAME_LENGTH = 64;
 
 /** Max description length per spec */
 const MAX_DESCRIPTION_LENGTH = 1024;
+
+/** Most characters of always-on skill text (`alwaysSkills`) in one system prompt; a skill past it stays listed. */
+export const ALWAYS_SKILLS_MAX_CHARS = 16_000;
 
 const IGNORE_FILE_NAMES = [".gitignore", ".ignore", ".fdignore"];
 
@@ -78,6 +81,8 @@ export interface Skill {
 	baseDir: string;
 	sourceInfo: SourceInfo;
 	disableModelInvocation: boolean;
+	/** The skill's body (frontmatter removed) when the `alwaysSkills` setting puts it in every system prompt. */
+	alwaysOnContent?: string;
 }
 
 export interface LoadSkillsResult {
@@ -364,7 +369,7 @@ function shortPurpose(description: string, max = 80): string {
 
 /**
  * An index of Ultron's bundled skills (skills/<source>/<name>: the pstack port, HumanLayer's diagram-it, QingYunA's
- * answer-me-with-html) that are loaded
+ * answer-me-with-html, Kun Chen's no-mistakes) that are loaded
  * and hidden from the skill list: one line each with its purpose and path, so the model can find them for a fraction
  * of their full descriptions. pstack's principle skills are left out (the workflow skills read them). Empty when none
  * is loaded.
@@ -375,6 +380,7 @@ export function bundledSkillsNote(skills: Skill[]): string {
 	const listed = skills.filter(
 		(skill) =>
 			skill.disableModelInvocation &&
+			skill.alwaysOnContent === undefined &&
 			skill.filePath.startsWith(bundled + sep) &&
 			!skill.name.startsWith("principle-"),
 	);
@@ -388,8 +394,62 @@ export function bundledSkillsNote(skills: Skill[]): string {
 	].join("\n");
 }
 
+/**
+ * Marks the skills named by the `alwaysSkills` setting as always on: each gets its body read once, here, so every
+ * system prompt carries the same text (prompt-cache stable). Names are taken in order until the bodies would pass
+ * ALWAYS_SKILLS_MAX_CHARS; an unknown name, an unreadable file or a skill past the cap is a warning, and that skill
+ * stays an ordinary listed skill.
+ */
+export function applyAlwaysSkills(skills: Skill[], names: readonly string[]): ResourceDiagnostic[] {
+	const diagnostics: ResourceDiagnostic[] = [];
+	let used = 0;
+	for (const name of new Set(names)) {
+		const skill = skills.find((candidate) => candidate.name === name);
+		if (skill === undefined) {
+			diagnostics.push({ type: "warning", message: `alwaysSkills: no skill named "${name}" is loaded` });
+			continue;
+		}
+		let body: string;
+		try {
+			body = stripFrontmatter(readFileSync(skill.filePath, "utf-8")).trim();
+		} catch (error) {
+			const reason = error instanceof Error ? error.message : String(error);
+			diagnostics.push({
+				type: "warning",
+				message: `alwaysSkills: cannot read ${name}: ${reason}`,
+				path: skill.filePath,
+			});
+			continue;
+		}
+		if (used + body.length > ALWAYS_SKILLS_MAX_CHARS) {
+			diagnostics.push({
+				type: "warning",
+				message: `alwaysSkills: ${name} (${body.length} chars) would pass the ${ALWAYS_SKILLS_MAX_CHARS}-char limit for always-on skills; it stays a listed skill`,
+				path: skill.filePath,
+			});
+			continue;
+		}
+		used += body.length;
+		skill.alwaysOnContent = body;
+	}
+	return diagnostics;
+}
+
+/** The always-on skills' full text for the system prompt, or "" when none is set. */
+export function formatAlwaysSkillsForPrompt(skills: Skill[]): string {
+	const always = skills.filter((skill) => skill.alwaysOnContent !== undefined);
+	if (always.length === 0) return "";
+	return [
+		"Always-on skills: the user set these to apply to every task. Follow them without being asked; their text is below, so do not read their files.",
+		...always.map(
+			(skill) =>
+				`<skill name="${escapeXml(skill.name)}" location="${escapeXml(skill.filePath)}">\nReferences are relative to ${escapeXml(skill.baseDir)}.\n\n${skill.alwaysOnContent}\n</skill>`,
+		),
+	].join("\n\n");
+}
+
 export function formatSkillsForPrompt(skills: Skill[], fileReadTool: "read" | "bash" | "rlm" = "read"): string {
-	const visibleSkills = skills.filter((s) => !s.disableModelInvocation);
+	const visibleSkills = skills.filter((s) => !s.disableModelInvocation && s.alwaysOnContent === undefined);
 
 	if (visibleSkills.length === 0) {
 		return "";

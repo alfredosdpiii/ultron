@@ -308,6 +308,11 @@ export async function applyWorkerSetting(
 		case "rlmPaneAutoOpen":
 			settings.setRlmPaneAutoOpen(bool(key, value));
 			break;
+		case "engineering":
+			// The worker renders its system prompt again on the next request (session-worker currentSystemPrompt).
+			settings.setEngineering(bool(key, value));
+			applied = "live";
+			break;
 		case "defaultProjectTrust":
 			settings.setDefaultProjectTrust(
 				oneOf(key, value, ["ask", "always", "never"] as const satisfies readonly DefaultProjectTrust[]),

@@ -1929,6 +1929,8 @@ export async function createUltronRuntime(
 	const renderSystemPrompt = (extensionTools: readonly ExtensionToolInfo[]): string =>
 		buildSystemPrompt({
 			cwd: options.metadata.cwd,
+			// Engineering mode (`/engineering`) puts the always-on skills in the prompt.
+			engineering: settingsManager.getEngineering(),
 			// Only the tools the model can call, as Pi lists them: `--tools`/`--exclude-tools` drop their snippets too.
 			selectedTools: effectiveActiveToolNames,
 			// Pi's own tool snippets and guidelines, and the profile's SYSTEM.md, as Pi's session builds them.
@@ -1971,13 +1973,16 @@ export async function createUltronRuntime(
 		});
 	const loki = await lokiSetup;
 	if (loki.guard) fileHooks.add(loki.guard);
-	// Rendered again only when the extension tool list changes (the guide lists them), so the prompt-cache prefix
-	// stays stable.
+	// Rendered again only when the extension tool list or engineering mode changes (the guide lists the tools), so the
+	// prompt-cache prefix stays stable.
 	let promptCache: { key: string; text: string } | undefined;
 	const currentSystemPrompt = (): string => {
 		if (options.systemPrompt !== undefined) return options.systemPrompt;
 		const extensionTools = currentExtensionTools();
-		const key = JSON.stringify(extensionTools.map((tool) => [tool.name, tool.description]));
+		const key = JSON.stringify([
+			settingsManager.getEngineering(),
+			extensionTools.map((tool) => [tool.name, tool.description]),
+		]);
 		if (promptCache?.key !== key) promptCache = { key, text: renderSystemPrompt(extensionTools) };
 		return promptCache.text;
 	};

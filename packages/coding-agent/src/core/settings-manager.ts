@@ -139,6 +139,8 @@ export interface Settings {
 	prompts?: string[]; // Array of local prompt template paths or directories
 	themes?: string[]; // Array of local theme file paths or directories
 	enableSkillCommands?: boolean; // default: true - register skills as /skill:name commands
+	alwaysSkills?: string[]; // Skill names whose full text is in the system prompt while engineering mode is on
+	engineering?: boolean; // Engineering mode (/engineering): the alwaysSkills are in the system prompt. Default false
 	terminal?: TerminalSettings;
 	images?: ImageSettings;
 	enabledModels?: string[]; // Model patterns for cycling (same format as --models CLI flag)
@@ -1458,6 +1460,23 @@ export class SettingsManager {
 
 	getEnableSkillCommands(): boolean {
 		return this.settings.enableSkillCommands ?? true;
+	}
+
+	/** Engineering mode (`/engineering true|false`): whether the `alwaysSkills` are in the system prompt. */
+	getEngineering(): boolean {
+		return this.settings.engineering === true;
+	}
+
+	setEngineering(enabled: boolean): void {
+		this.globalSettings.engineering = enabled;
+		this.markModified("engineering");
+		this.save();
+	}
+
+	/** Skill names whose full text goes in the system prompt while engineering mode is on (`alwaysSkills`). */
+	getAlwaysSkills(): string[] {
+		const names = this.settings.alwaysSkills;
+		return Array.isArray(names) ? names.filter((name): name is string => typeof name === "string") : [];
 	}
 
 	setEnableSkillCommands(enabled: boolean): void {

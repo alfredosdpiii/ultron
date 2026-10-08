@@ -126,6 +126,11 @@ describe("SessionControl settings in the Session worker", () => {
 		expect(lane.setThinkingLevel).toHaveBeenCalledOnce();
 		// Presentation settings are saved for the client; restart-only ones say so.
 		expect(await control.setSetting("hideThinkingBlock", true, BACKGROUND_CONTEXT)).toEqual({ applied: "saved" });
+		// Engineering mode changes the system prompt the worker renders for the next request.
+		expect(await control.setSetting("engineering", true, BACKGROUND_CONTEXT)).toEqual({ applied: "live" });
+		await expect(control.setSetting("engineering", "yes", BACKGROUND_CONTEXT)).rejects.toThrow(
+			"engineering must be true or false",
+		);
 		expect(await control.setSetting("terminal.clearOnShrink", true, BACKGROUND_CONTEXT)).toEqual({
 			applied: "saved",
 		});
@@ -137,6 +142,7 @@ describe("SessionControl settings in the Session worker", () => {
 		expect(globalSettings(agentDir)).toMatchObject({
 			compaction: { enabled: false },
 			retry: { enabled: false },
+			engineering: true,
 			steeringMode: "one-at-a-time",
 			followUpMode: "one-at-a-time",
 			transport: "sse",

@@ -175,6 +175,8 @@ Resource paths in user settings resolve from the agent directory. Paths in proje
 | `prompts` | `string[]` | `[]` | Prompt-template files or directories. |
 | `themes` | `string[]` | `[]` | Theme files or directories. |
 | `enableSkillCommands` | boolean | `true` | Register skills as `/skill:name` commands. |
+| `alwaysSkills` | `string[]` | `[]` | Skill names whose full text is in the system prompt while engineering mode is on, so they apply to every task without being read or invoked (16,000 characters in all). See [Skills](skills.md). |
+| `engineering` | boolean | `false` | Engineering mode: puts the `alwaysSkills` in the system prompt. `/engineering true\|false` sets it. |
 
 Resource arrays support glob exclusions with `!pattern`, exact inclusion with `+path`, and exact exclusion with `-path`. Pi loads resources listed in both user-level and project settings.
 

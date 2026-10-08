@@ -4,7 +4,7 @@
 
 import { getSystemMessageText } from "@ultron/ai";
 import { getDocsPath, getExamplesPath, getReadmePath } from "../config.ts";
-import { bundledSkillsNote, formatSkillsForPrompt, type Skill } from "./skills.ts";
+import { bundledSkillsNote, formatAlwaysSkillsForPrompt, formatSkillsForPrompt, type Skill } from "./skills.ts";
 
 export interface BuildSystemPromptOptions {
 	/** Custom system prompt (replaces the default prefix). */
@@ -29,6 +29,8 @@ export interface BuildSystemPromptOptions {
 	contextFiles?: Array<{ path: string; content: string }>;
 	/** Pre-loaded skills. */
 	skills?: Skill[];
+	/** Engineering mode: the always-on skills' text goes in the prompt. Off, they are listed like any skill. */
+	engineering?: boolean;
 	/**
 	 * Ultron: false leaves out the pointers to Pi's own documentation and the note about other custom tools, for
 	 * Ultron's REPL-only mode, where they describe tools and docs the model does not have. Default true.
@@ -71,6 +73,7 @@ export function normalizeBuildSystemPromptOptions(input: BuildSystemPromptOption
 		cwd: input.cwd,
 		contextFiles: (input.contextFiles ?? []).map((file) => ({ ...file })),
 		skills: (input.skills ?? []).map((skill) => ({ ...skill })),
+		...(input.engineering === undefined ? {} : { engineering: input.engineering }),
 		...(input.includeHarnessDocs === undefined ? {} : { includeHarnessDocs: input.includeHarnessDocs }),
 	};
 }
@@ -136,9 +139,12 @@ export function buildSystemPromptSections(input: BuildSystemPromptOptions): Syst
 		sections: customSections,
 		cwd,
 		contextFiles,
-		skills,
+		skills: loadedSkills,
+		engineering = false,
 		includeHarnessDocs = true,
 	} = options;
+	// Outside engineering mode an always-on skill is an ordinary listed skill.
+	const skills = engineering ? loadedSkills : loadedSkills.map(({ alwaysOnContent: _, ...skill }) => skill);
 
 	for (const name of Object.keys(customSections)) {
 		if (!SYSTEM_PROMPT_SECTION_NAME.test(name) || name === "preamble") {
@@ -175,7 +181,11 @@ export function buildSystemPromptSections(input: BuildSystemPromptOptions): Syst
 	// Ultron: the RLM REPL reads skill files with Python when it is the only file-capable tool.
 	const skillFileReadTool = (["read", "bash", "rlm"] as const).find((tool) => selectedTools.includes(tool));
 	if (skillFileReadTool && skills.length > 0) {
-		const skillsPrompt = [formatSkillsForPrompt(skills, skillFileReadTool).trim(), bundledSkillsNote(skills)]
+		const skillsPrompt = [
+			formatAlwaysSkillsForPrompt(skills),
+			formatSkillsForPrompt(skills, skillFileReadTool).trim(),
+			bundledSkillsNote(skills),
+		]
 			.filter(Boolean)
 			.join("\n\n");
 		if (skillsPrompt) promptSections.skills = skillsPrompt;

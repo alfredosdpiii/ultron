@@ -125,6 +125,14 @@ export function piCommands(host: PiCommandHost): SlashCommandContribution[] {
 			run: (args) => void handleImport(host, args),
 		},
 		{
+			name: "engineering",
+			description: "Engineering mode: put the always-on skills (alwaysSkills) in the system prompt",
+			argumentHint: "[true|false]",
+			getArgumentCompletions: (prefix) =>
+				["true", "false"].filter((value) => value.startsWith(prefix)).map((value) => ({ value, label: value })),
+			run: (args) => void setEngineeringMode(host, args),
+		},
+		{
 			name: "trust",
 			description: "Save project trust decision for future sessions",
 			run: () => void showTrustSelector(host),
@@ -140,6 +148,33 @@ export function piCommands(host: PiCommandHost): SlashCommandContribution[] {
 			run: () => void writeDebugLog(host),
 		},
 	];
+}
+
+/**
+ * `/engineering [true|false]`: engineering mode puts the skills named in `alwaysSkills` in the system prompt, from the
+ * next request on (the worker renders the prompt again). Without an argument it reports the mode.
+ */
+export async function setEngineeringMode(host: PiCommandHost, args: string): Promise<void> {
+	const skills = host.settingsManager.getAlwaysSkills();
+	const named = skills.length > 0 ? skills.join(", ") : "none: set alwaysSkills in settings.json";
+	const arg = args.trim().toLowerCase();
+	if (arg === "") {
+		host.showStatus(
+			`Engineering mode is ${host.settingsManager.getEngineering() ? "on" : "off"} (always-on skills: ${named})`,
+		);
+		return;
+	}
+	const enabled = ["true", "on", "1"].includes(arg) ? true : ["false", "off", "0"].includes(arg) ? false : undefined;
+	if (enabled === undefined) {
+		host.showStatus("Usage: /engineering true|false");
+		return;
+	}
+	if ((await changeSetting(host, "engineering", enabled, { quiet: true })) === undefined) return;
+	host.showStatus(
+		enabled
+			? `Engineering mode on: always-on skills (${named}) are in the system prompt from the next message`
+			: "Engineering mode off: always-on skills are listed like other skills",
+	);
 }
 
 /** Spawn a program and collect its output; a missing program reports `error`. */

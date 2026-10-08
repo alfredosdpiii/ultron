@@ -18,6 +18,8 @@ import { workerProjectTrusted } from "../../experimental/services/worker-setting
 export interface ClaudePromptResources {
 	readonly contextFiles: ReadonlyArray<{ readonly path: string; readonly content: string }>;
 	readonly skills: readonly Skill[];
+	/** Engineering mode when the resources were loaded: the always-on skills' text goes in the prompt. */
+	readonly engineering?: boolean;
 }
 
 export interface ClaudeResourceFlags {
@@ -52,7 +54,11 @@ export async function loadClaudePromptResources(
 		...(flags.noSkills === true ? { noSkills: true } : {}),
 	});
 	await loader.reload();
-	return { contextFiles: loader.getAgentsFiles().agentsFiles, skills: loader.getSkills().skills };
+	return {
+		contextFiles: loader.getAgentsFiles().agentsFiles,
+		skills: loader.getSkills().skills,
+		engineering: settingsManager.getEngineering(),
+	};
 }
 
 /** The `<project_context>` and `<skills>` sections as native Ultron renders them for the REPL-only tool set. */
@@ -65,6 +71,7 @@ export function renderClaudePromptResources(resources: ClaudePromptResources): s
 		selectedTools: ["rlm"],
 		contextFiles: resources.contextFiles.map((file) => ({ ...file })),
 		skills: [...resources.skills],
+		engineering: resources.engineering === true,
 	});
 	return [sections.project_context, sections.skills].filter((section): section is string => section !== undefined);
 }

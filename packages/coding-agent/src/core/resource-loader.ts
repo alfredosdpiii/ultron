@@ -23,7 +23,7 @@ import type { PromptTemplate } from "./prompt-templates.ts";
 import { loadPromptTemplates } from "./prompt-templates.ts";
 import { SettingsManager } from "./settings-manager.ts";
 import type { Skill } from "./skills.ts";
-import { loadSkills } from "./skills.ts";
+import { applyAlwaysSkills, loadSkills } from "./skills.ts";
 import { createSourceInfo, type SourceInfo } from "./source-info.ts";
 import { resetTimings } from "./timings.ts";
 
@@ -709,6 +709,9 @@ export class DefaultResourceLoader implements ResourceLoader {
 					bundled.some((dir) => diagnostic.collision!.loserPath.startsWith(dir))
 				),
 		);
+		// Skills the user set always on (`alwaysSkills`) carry their text into every system prompt.
+		if (!this.noSkills)
+			this.skillDiagnostics.push(...applyAlwaysSkills(this.skills, this.settingsManager.getAlwaysSkills()));
 	}
 
 	private updatePromptsFromPaths(promptPaths: string[], metadataByPath?: Map<string, PathMetadata>): void {

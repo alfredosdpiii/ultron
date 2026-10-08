@@ -50,6 +50,14 @@ Arguments after `/skill:name` are appended to the loaded instructions as a user 
 /skill:pdf-tools extract report.pdf
 ```
 
+To have a skill apply to every task without reading it or invoking it, name it in the `alwaysSkills` [setting](settings.md) and turn on engineering mode with `/engineering true` (or `"engineering": true`):
+
+```json
+{ "alwaysSkills": ["ponytail"], "engineering": true }
+```
+
+While engineering mode is on, its full text (frontmatter removed) goes in the system prompt, `ultron claude` and Claude Code subagents included, and it leaves the list of skills to read when a task matches. `/engineering false` turns the mode off: the skill is listed like any other from the next message. `/engineering` alone shows the mode. The mode is saved, so it holds across sessions; a running `ultron claude` session and its Claude Code subagents read it when they start. Always-on skills share a 16,000-character limit; a skill past it, or a name with no loaded skill, is a load warning and the skill stays listed as usual. `--no-skills` turns them off.
+
 Set `disable-model-invocation: true` in frontmatter when a skill should be available only through its explicit command. The `enableSkillCommands` [setting](settings.md) controls whether skill commands appear in interactive command discovery; manually entered `/skill:name` commands still work.
 
 <a id="choose-where-it-loads"></a>
