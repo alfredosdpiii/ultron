@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.87.32] - 2026-10-08
+
 ### Added
 
 - Always-on skills and engineering mode: name skills in the `alwaysSkills` setting (`{ "alwaysSkills": ["ponytail"] }`) and turn on engineering mode with `/engineering true` (saved as `"engineering": true`). While it is on, their full text goes in the system prompt, native and `ultron claude` / Claude Code subagents alike, so they apply to every task without a read cell or `/skill:`; `/engineering false` lists them like other skills again from the next message. They leave the read-when-it-matches list; 16,000 characters in all, with a load warning for an unknown name or a skill past the limit.
