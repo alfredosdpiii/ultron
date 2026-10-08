@@ -418,7 +418,7 @@ describe("ultron mcp end to end", () => {
 		expect(live.usage.lanes.root.responses).toBe(0);
 		expect(live.usage.lanes.frames).toMatchObject({ responses: 1, totalTokens: 12 });
 		expect(live.usage.lanes.frames.cost.reportedUsd).toBeGreaterThan(0);
-		expect(Object.keys(live.unrecorded).sort()).toEqual(["memory.jev", "root.models"]);
+		expect(Object.keys(live.unrecorded).sort()).toEqual(["memory.operations", "root.models"]);
 		// The counters reach the session file shortly after a change, so `ultron usage` reads the same offline.
 		const remembered = JSON.parse(
 			readFileSync(join(work, "agent", "claude-code", "sessions", "e2e-session.json"), "utf8"),

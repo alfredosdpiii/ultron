@@ -3,7 +3,9 @@ import type { Context, JsonValue } from "@ultron/chord";
 import { BACKGROUND_CONTEXT } from "@ultron/chord/context";
 import { readVersioned } from "./format-version.ts";
 
-export type NativeUsageKind = "task" | "model" | "jev";
+export type NativeUsageKind = "task" | "model";
+/** Kinds a stored ledger may hold: sessions from before Jev was removed also have `jev` calls, which still count as calls. */
+const STORED_KINDS: readonly string[] = ["task", "model", "jev"];
 export type NativeUsageCallStatus = "succeeded" | "failed" | "cancelled" | "unknown";
 
 export type NativeUsageLimits = {
@@ -157,7 +159,6 @@ export type NativeUsageTotals = {
 	calls: number;
 	taskCalls: number;
 	modelCalls: number;
-	jevCalls: number;
 	wallMs: number;
 	inputTokens: number | null;
 	outputTokens: number | null;
@@ -365,8 +366,7 @@ function validateReservation(valueToCheck: unknown): asserts valueToCheck is Sto
 	const item = object(valueToCheck);
 	if (typeof item.id !== "string" || !item.id) throw new Error("Invalid usage ledger reservation");
 	if (typeof item.rootId !== "string" || !item.rootId) throw new Error("Invalid usage ledger reservation");
-	if (!(["task", "model", "jev"] as string[]).includes(String(item.kind)))
-		throw new Error("Invalid usage ledger reservation kind");
+	if (!STORED_KINDS.includes(String(item.kind))) throw new Error("Invalid usage ledger reservation kind");
 	if (item.taskId !== undefined && (typeof item.taskId !== "string" || !item.taskId))
 		throw new Error("Invalid usage ledger task ID");
 	if (item.parentTaskId !== undefined && (typeof item.parentTaskId !== "string" || !item.parentTaskId))
@@ -385,8 +385,7 @@ function validateCall(valueToCheck: unknown): asserts valueToCheck is StoredCall
 	if (typeof item.id !== "string" || !item.id || typeof item.reservationId !== "string" || !item.reservationId)
 		throw new Error("Invalid usage ledger call");
 	if (typeof item.rootId !== "string" || !item.rootId) throw new Error("Invalid usage ledger call root ID");
-	if (!(["task", "model", "jev"] as string[]).includes(String(item.kind)))
-		throw new Error("Invalid usage ledger call kind");
+	if (!STORED_KINDS.includes(String(item.kind))) throw new Error("Invalid usage ledger call kind");
 	if (item.requestKey !== undefined && (typeof item.requestKey !== "string" || !item.requestKey))
 		throw new Error("Invalid usage ledger call request key");
 	if (item.budgetId !== undefined && (typeof item.budgetId !== "string" || !item.budgetId))
@@ -403,7 +402,7 @@ function validateCall(valueToCheck: unknown): asserts valueToCheck is StoredCall
 
 function validateTotals(valueToCheck: unknown): void {
 	const item = object(valueToCheck);
-	for (const name of ["calls", "taskCalls", "modelCalls", "jevCalls", "unknownCalls"])
+	for (const name of ["calls", "taskCalls", "modelCalls", "unknownCalls"])
 		finiteInteger(item[name], `history ${name}`);
 	if (finiteNumber(item.wallMs, "history wallMs") < 0) throw new Error("Invalid usage ledger history wallMs");
 	for (const name of ["inputTokens", "outputTokens", "totalTokens", "cost"]) {
@@ -420,7 +419,7 @@ function validateHistory(valueToCheck: unknown): void {
 	optionalFiniteNumber(item.lastSettledAt, "history lastSettledAt");
 	validateTotals(item.usage);
 	const byKind = object(item.byKind);
-	for (const kind of ["task", "model", "jev"]) validateTotals(byKind[kind]);
+	for (const kind of ["task", "model"]) validateTotals(byKind[kind]);
 	finiteNumber(item.spentUsd, "history spentUsd");
 	finiteInteger(item.unknownPricedCalls, "history unknownPricedCalls");
 	const admissions = object(item.taskAdmissions);
@@ -629,7 +628,6 @@ function totals(calls: readonly StoredCall[]): NativeUsageTotals {
 		calls: calls.length,
 		taskCalls: count("task"),
 		modelCalls: count("model"),
-		jevCalls: count("jev"),
 		wallMs: calls.reduce((total, call) => total + call.usage.wallMs, 0),
 		inputTokens: sumKnown(calls.map((call) => call.usage.inputTokens)),
 		outputTokens: sumKnown(calls.map((call) => call.usage.outputTokens)),
@@ -655,7 +653,6 @@ function mergeTotals(target: NativeUsageTotals, source: NativeUsageTotals): Nati
 		calls: target.calls + source.calls,
 		taskCalls: target.taskCalls + source.taskCalls,
 		modelCalls: target.modelCalls + source.modelCalls,
-		jevCalls: target.jevCalls + source.jevCalls,
 		wallMs: target.wallMs + source.wallMs,
 		inputTokens: known(target.inputTokens, source.inputTokens),
 		outputTokens: known(target.outputTokens, source.outputTokens),
@@ -671,7 +668,7 @@ function emptyHistory(): NativeUsageHistory {
 		firstStartedAt: null,
 		lastSettledAt: null,
 		usage: emptyTotals(),
-		byKind: { task: emptyTotals(), model: emptyTotals(), jev: emptyTotals() },
+		byKind: { task: emptyTotals(), model: emptyTotals() },
 		spentUsd: 0,
 		unknownPricedCalls: 0,
 		taskAdmissions: { succeeded: 0, failed: 0, cancelled: 0, unknown: 0 },
@@ -689,7 +686,7 @@ function foldRoot(history: NativeUsageHistory, root: StoredRoot): void {
 	for (const call of root.calls)
 		history.lastSettledAt = Math.max(history.lastSettledAt ?? call.settledAt, call.settledAt);
 	history.usage = mergeTotals(history.usage, totals(root.calls));
-	for (const kind of ["task", "model", "jev"] as const)
+	for (const kind of ["task", "model"] as const)
 		history.byKind[kind] = mergeTotals(history.byKind[kind], totals(root.calls.filter((call) => call.kind === kind)));
 	const cost = spend(root);
 	history.spentUsd += cost.spentUsd;
@@ -825,7 +822,7 @@ export class NativeUsageLedger implements NativeUsageLedgerLike {
 			if (!rootId.trim() || rootId.includes("\0"))
 				throw new Error("Usage rootId must be a nonempty string without NUL");
 			if (this.document.roots[rootId]?.imported) throw new Error(`Usage root ${rootId} is an imported history root`);
-			if (!(["task", "model", "jev"] as string[]).includes(request.kind)) throw new Error("Invalid usage kind");
+			if (!(["task", "model"] as string[]).includes(request.kind)) throw new Error("Invalid usage kind");
 			if (request.requestKey !== undefined && !request.requestKey.trim())
 				throw new Error("Usage requestKey is empty");
 			if (request.budgetId !== undefined && !request.budgetId.trim()) throw new Error("Usage budgetId is empty");

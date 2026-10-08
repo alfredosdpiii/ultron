@@ -206,7 +206,6 @@ export const INSPECTION_REQUESTS: readonly string[] = [
 	"grants.list",
 	"rlm.pool",
 	"rlm.frames",
-	"jev.decisions",
 	"ctx.state",
 	"async.pending",
 	"usage.report",

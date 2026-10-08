@@ -251,7 +251,7 @@ ultron usage --last 10       # one line per recent session, across folders
 ultron usage --json          # the same report as JSON (schema ultron.session-report/1)
 ```
 
-`ultron usage` prints what a session did: turns and wall time, RLM cells and the REPL APIs they named, depth (frames, sub-agents with verdict checks and worktree merges, workflows, typed-agent tasks, background jobs) with a one-line verdict such as `root only` or `depth 2: 6 sub-agents (2 nested)`, tokens and cost per lane kind (root, frames, sub-agents) and per model, guardrail outcomes, and Jev decisions. `/usage` shows the same report for the running session.
+`ultron usage` prints what a session did: turns and wall time, RLM cells and the REPL APIs they named, depth (frames, sub-agents with verdict checks and worktree merges, workflows, typed-agent tasks, background jobs) with a one-line verdict such as `root only` or `depth 2: 6 sub-agents (2 nested)`, tokens and cost per lane kind (root, frames, sub-agents) and per model, guardrail outcomes, and memory operations. `/usage` shows the same report for the running session.
 
 It reads session files only: no model call, no server, and nothing is written, so it is safe on a session that is running. It reports `ultron`, `ultron --claude`, and `ultron claude` sessions. A value the session did not keep is printed as `not recorded` (`n/r` in the table, `null` in JSON with the reason under `unrecorded`), and a cost nobody reported as `unknown`; neither is printed as zero. A cost marked `(sub)` is the notional figure of a subscription login, not a charge.
 

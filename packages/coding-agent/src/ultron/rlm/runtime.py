@@ -326,22 +326,6 @@ class BackgroundNamespace:
         return await self._bridge.request("background.result", {"id": job_id})
 
 
-class JevNamespace:
-    def __init__(self, bridge: HostBridge) -> None:
-        self._bridge = bridge
-
-    async def triage(self, prompt: str) -> dict[str, Any]:
-        if not isinstance(prompt, str) or not prompt.strip():
-            raise ValueError("jev.triage prompt must be non-empty")
-        result = await self._bridge.request("jev.triage", {"prompt": prompt})
-        return result if isinstance(result, dict) else {"result": result}
-
-    async def recall(self, prompt: str) -> dict[str, Any]:
-        if not isinstance(prompt, str) or not prompt.strip():
-            raise ValueError("jev.recall prompt must be non-empty")
-        result = await self._bridge.request("jev.recall", {"prompt": prompt})
-        return result if isinstance(result, dict) else {"result": result}
-
 # A command's full output is read back from the host's spill file up to this size.
 _BASH_MAX_OUTPUT_BYTES = 64 * 1024 * 1024
 
@@ -975,7 +959,6 @@ class RuntimeState:
         self.namespace.update({"re": re, "json": json, "os": os, "Path": Path})
         self.namespace["rlm"] = RLMNamespace(self.bridge)
         self.namespace["agent_message"] = AgentMessages(self.bridge)
-        self.namespace["jev"] = JevNamespace(self.bridge)
         self.namespace["background"] = BackgroundNamespace(self.bridge)
         self.namespace["bash"] = bash
         self.namespace["edit"] = edit

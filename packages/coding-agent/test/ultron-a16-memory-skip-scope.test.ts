@@ -1,6 +1,5 @@
 import type { Context, JsonValue } from "@ultron/chord";
 import { describe, expect, test } from "vitest";
-import { NativeJevClient } from "../src/ultron/jev.ts";
 import { MemoryError, type MemoryScope } from "../src/ultron/memory.ts";
 import { createWorkerServices } from "../src/ultron/worker-services.ts";
 import { durableStore, FakeHindsight, type GateLog, gate, open, scopes } from "./ultron-fake-hindsight.ts";
@@ -19,20 +18,8 @@ function session() {
 	};
 }
 
-/** A Jev System One endpoint that scores memory as not useful (below the 0.65 recall threshold). */
-function lowRecallJev(requests: string[]) {
-	return new NativeJevClient({
-		apiKey: "test-key",
-		baseUrl: "http://jev.test",
-		fetch: async (_input, init) => {
-			requests.push(String(init?.body));
-			return new Response(JSON.stringify({ answers: { retrieve: { noul: 0.2 } } }), { status: 200 });
-		},
-	});
-}
-
 describe("A16 memory skip causes no retrieval; scopes survive consolidation", () => {
-	test("a Jev skip decision sends no request of any kind to Hindsight, for every scope and entry point", async () => {
+	test("a skip decision sends no request of any kind to Hindsight, for every scope; a secret is refused before any request", async () => {
 		const hindsight = new FakeHindsight();
 		const log: GateLog = [];
 		const memory = open(hindsight, durableStore(), gate(false, log));
@@ -46,39 +33,34 @@ describe("A16 memory skip causes no retrieval; scopes survive consolidation", ()
 		// API capture: zero recall calls, and no other Hindsight endpoint was touched either.
 		expect(hindsight.captured).toEqual([]);
 
-		// The production binding: Jev's real memoryGate scores low, so the worker service never reaches Hindsight.
-		const jevRequests: string[] = [];
+		// The production binding: the worker keeps every write except one holding a secret, which is refused before
+		// Hindsight sees anything: a proposal, and a correction of a stored memory.
 		const worker = createWorkerServices({
 			session: session() as never,
 			sessionId: "s1",
 			cwd: "/work/app",
-			jev: lowRecallJev(jevRequests),
 			backend: hindsight.backend(),
 		});
-		const viaWorker = (await worker.handle(
-			"memory.prepare",
-			{ query: "explain closures", taskId: "task-worker" },
-			context,
-		)) as { operation: { state: string; gate: unknown }; results: unknown[] };
-		expect(viaWorker.operation).toMatchObject({ state: "skipped", gate: { retrieve: false, probability: 0.2 } });
-		const viaJevRecall = (await worker.handle("jev.recall", { prompt: "explain closures" }, context)) as {
-			results: unknown[];
-		};
-		expect(viaJevRecall.results).toEqual([]);
-		expect(jevRequests).toHaveLength(2);
-		expect(hindsight.captured).toEqual([]);
-
-		// No Jev configured is also a skip, never a retrieval.
-		const noJev = createWorkerServices({
-			session: session() as never,
-			sessionId: "s1",
-			cwd: "/work/app",
-			backend: hindsight.backend(),
-		});
+		const secret = "the deploy token is ghp_abcdefghijklmnopqrstuvwx";
 		await expect(
-			noJev.handle("memory.prepare", { query: "anything", taskId: "task-nojev" }, context),
-		).resolves.toMatchObject({ operation: { state: "skipped" } });
+			worker.handle("memory.propose", { text: secret, evidence: [{ ref: "task:1" }] }, context),
+		).resolves.toMatchObject({ state: "sensitive" });
 		expect(hindsight.captured).toEqual([]);
+		const stored = (await worker.handle(
+			"memory.propose",
+			{ text: "tests live in test/", evidence: [{ ref: "task:2" }] },
+			context,
+		)) as { memoryId: string };
+		// Accepted is not stored: a correction waits until the receipt confirms retention.
+		await expect(worker.handle("memory.get", { id: stored.memoryId }, context)).resolves.toMatchObject({
+			state: "stored",
+		});
+		const written = hindsight.captured.length;
+		expect(written).toBeGreaterThan(0);
+		await expect(
+			worker.handle("memory.correct", { id: stored.memoryId, text: secret, evidence: [{ ref: "user:3" }] }, context),
+		).resolves.toMatchObject({ state: "sensitive" });
+		expect(hindsight.captured).toHaveLength(written);
 	});
 
 	test("scope tags are pinned through retain, correction and Hindsight consolidation; a cross-scope merge is refused", async () => {

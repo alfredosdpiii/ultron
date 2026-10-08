@@ -110,7 +110,7 @@ afterEach(async () => {
 	for (const host of hosts.splice(0)) await host.close().catch(() => {});
 });
 
-function build(state: Stores, jevCalls: string[] = []) {
+function build(state: Stores) {
 	const host = new NativeRlmHost(fakeHarness() as never, {} as never, {
 		store: state.tasks.open(),
 		definitionStore: state.definitions.open(),
@@ -119,13 +119,6 @@ function build(state: Stores, jevCalls: string[] = []) {
 			if (definition.id === "check-pass") return { passed: true };
 			if (definition.id === "check-fail") return { passed: false };
 			return input;
-		},
-		services: {
-			handle: async (type, payload) => {
-				jevCalls.push(type);
-				if (payload.prompt === "down") throw new Error("Jev unavailable");
-				return { available: true, route: "direct" };
-			},
 		},
 		modules: [
 			createProgressModule({ store: state.progress.open() }),
@@ -171,8 +164,7 @@ function records(state: Stores) {
 describe("A24 costs, task transitions, and inspection agree on one record", () => {
 	test("reconstructs a mixed run from the journal, ledger, progress and schedule records and matches agents.status", async () => {
 		const state = stores();
-		const jevCalls: string[] = [];
-		const call = build(state, jevCalls);
+		const call = build(state);
 		await call("agents.register", { definition: check("check-pass") });
 		await call("agents.register", { definition: check("check-fail") });
 
@@ -226,9 +218,6 @@ describe("A24 costs, task transitions, and inspection agree on one record", () =
 		await call("schedules.create", { definition: "identity@1", input: { tick: true }, every_ms: 60_000 });
 		const tick = await call<{ fired: unknown[] }>("schedules.tick");
 		expect(tick.fired).toHaveLength(1);
-		expect(await call("jev.triage", { prompt: "route" })).toMatchObject({ available: true });
-		await expect(call("jev.triage", { prompt: "down" })).rejects.toThrow("Jev unavailable");
-		expect(jevCalls).toEqual(["jev.triage", "jev.triage"]);
 
 		const status = await call("agents.status");
 		const reconciliation = records(state);
@@ -252,7 +241,7 @@ describe("A24 costs, task transitions, and inspection agree on one record", () =
 		expect(byId.get(hanging.id)).toMatchObject({ state: "cancelled", admission: "cancelled" });
 		expect(byId.get(decision.claim.verifier_task_id)).toMatchObject({ resultStatus: "succeeded" });
 
-		// Sum of per-task usage plus unattributed Jev calls equals the ledger's own totals.
+		// Sum of per-task usage plus unattributed calls equals the ledger's own totals.
 		const ledger = (status as { usage: { usage: Record<string, number | null> } }).usage.usage;
 		const sum = (field: "calls" | "taskCalls" | "modelCalls" | "wallMs") =>
 			reconciliation.tasks.reduce((total, task) => total + task.usage[field], 0) +
@@ -261,8 +250,8 @@ describe("A24 costs, task transitions, and inspection agree on one record", () =
 		expect(sum("taskCalls")).toBe(ledger.taskCalls);
 		expect(sum("modelCalls")).toBe(ledger.modelCalls);
 		expect(sum("wallMs")).toBeCloseTo(ledger.wallMs as number, 6);
-		expect(reconciliation.unattributed).toMatchObject({ calls: 2, jevCalls: 2 });
-		expect(ledger).toMatchObject({ taskCalls: 9, modelCalls: 4, jevCalls: 2, calls: 15, cost: null });
+		expect(reconciliation.unattributed).toMatchObject({ calls: 0 });
+		expect(ledger).toMatchObject({ taskCalls: 9, modelCalls: 4, calls: 13, cost: null });
 
 		// Timeline: every task is admitted before it settles, and receipts/decisions/verification appear.
 		for (const task of reconciliation.tasks) {
@@ -273,14 +262,7 @@ describe("A24 costs, task transitions, and inspection agree on one record", () =
 			expect(settled!.at).toBeGreaterThanOrEqual(admitted!.at);
 		}
 		const kinds = reconciliation.timeline.map((event) => event.kind);
-		for (const kind of [
-			"model.call",
-			"jev.call",
-			"progress.receipt",
-			"progress.decision",
-			"goal.verification",
-			"schedule.fired",
-		])
+		for (const kind of ["model.call", "progress.receipt", "progress.decision", "goal.verification", "schedule.fired"])
 			expect(kinds).toContain(kind);
 		expect(reconciliation.timeline.find((event) => event.kind === "progress.decision")?.detail).toBe(
 			"finished/verified",

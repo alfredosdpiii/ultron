@@ -15,29 +15,16 @@ export type MemoryScopeTags = Partial<Record<MemoryScope, string[]>>;
 export type MemoryEvidence = { ref: string; sha256?: string };
 /**
  * Provenance of a claim. A proposal defaults to an unconfirmed assistant hypothesis and a
- * correction to a user statement; neither becomes verified because Jev voted keep.
+ * correction to a user statement; neither becomes verified because the gate kept it.
  */
 export type MemoryEvidenceClass = "hypothesis" | "user_statement" | "tool_evidence" | "verified";
 export type MemoryGateDecision =
 	| { retrieve: boolean; probability?: number }
 	| { action: "keep" | "skip" | "sensitive"; confidence?: number };
-/**
- * `explicit` marks a deliberate call from agent code (not an automatic per-turn recall or retain):
- * the gate should then skip relevance judgement but still refuse sensitive writes.
- */
 export type MemoryGateRequest =
-	| { action: "recall"; query: string; scope: MemoryScope; taskId: string; explicit?: boolean }
-	| {
-			action: "retain";
-			text: string;
-			evidence: MemoryEvidence[];
-			scope: MemoryScope;
-			explicit?: boolean;
-			/** The exchange an automatic retention came from, so the gate judges the request and the answer. */
-			source?: MemoryRetainSource;
-	  };
-export type MemoryRetainSource = { prompt: string; response: string };
-/** Bind this required callback to Jev's recall and retention policy decisions. */
+	| { action: "recall"; query: string; scope: MemoryScope; taskId: string }
+	| { action: "retain"; text: string; evidence: MemoryEvidence[]; scope: MemoryScope };
+/** Decides whether a recall runs and whether a write is kept, skipped or refused as sensitive. */
 export type MemoryGate = (request: MemoryGateRequest, signal?: AbortSignal) => Promise<MemoryGateDecision>;
 export type MemoryRecallRequest = {
 	query: string;
@@ -674,8 +661,7 @@ export class NativeMemoryService {
 			scope = "session",
 			taskId,
 			refresh = false,
-			explicit = false,
-		}: { query: string; scope?: MemoryScope; taskId: string; refresh?: boolean; explicit?: boolean },
+		}: { query: string; scope?: MemoryScope; taskId: string; refresh?: boolean },
 		signal?: AbortSignal,
 	): Promise<MemoryPrepared> {
 		requireText(query);
@@ -695,10 +681,7 @@ export class NativeMemoryService {
 		const prepared = await this.attempt(id, signal, async () => {
 			// Resolved inside the attempt so an unconfigured scope is a recorded denial.
 			const tags = this.tags(scope);
-			const decision = gateDecision(
-				await this.gate({ action: "recall", query, scope, taskId, ...(explicit ? { explicit } : {}) }, signal),
-				true,
-			);
+			const decision = gateDecision(await this.gate({ action: "recall", query, scope, taskId }, signal), true);
 			checkAbort(signal);
 			await this.update(id, { gate: decision });
 			if (!("retrieve" in decision)) throw new MemoryError("INVALID_GATE");
@@ -794,15 +777,11 @@ export class NativeMemoryService {
 			evidence,
 			scope = "session",
 			evidenceClass,
-			explicit = false,
-			source,
 		}: {
 			text: string;
 			evidence: MemoryEvidence[];
 			scope?: MemoryScope;
 			evidenceClass?: MemoryEvidenceClass;
-			explicit?: boolean;
-			source?: MemoryRetainSource;
 		},
 		signal?: AbortSignal,
 	): Promise<MemoryOperation> {
@@ -812,7 +791,7 @@ export class NativeMemoryService {
 		const claim = evidenceClassOf(evidenceClass, "hypothesis");
 		const tags = this.tags(scope);
 		await this.load();
-		return this.retain("propose", undefined, text, refs, claim, scope, tags, signal, explicit, source);
+		return this.retain("propose", undefined, text, refs, claim, scope, tags, signal);
 	}
 	async correct(
 		memoryId: string,
@@ -842,8 +821,6 @@ export class NativeMemoryService {
 		scope: MemoryScope,
 		tags: string[],
 		signal?: AbortSignal,
-		explicit = false,
-		source?: MemoryRetainSource,
 	): Promise<MemoryOperation> {
 		const previous = memoryId ? this.currentClaim(memoryId) : undefined;
 		const id = await this.start(kind, {
@@ -857,17 +834,7 @@ export class NativeMemoryService {
 		return this.attempt(id, signal, async () => {
 			if (memoryId) this.editable(memoryId);
 			const decision = gateDecision(
-				await this.gate(
-					{
-						action: "retain",
-						text,
-						evidence: structuredClone(evidence),
-						scope,
-						...(explicit ? { explicit } : {}),
-						...(source ? { source: { prompt: source.prompt, response: source.response } } : {}),
-					},
-					signal,
-				),
+				await this.gate({ action: "retain", text, evidence: structuredClone(evidence), scope }, signal),
 				false,
 			);
 			checkAbort(signal);

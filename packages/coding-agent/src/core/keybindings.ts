@@ -24,8 +24,6 @@ export interface AppKeybindings {
 	"app.tools.expand": true;
 	"app.thinking.toggle": true;
 	"app.rlm.toggle": true;
-	"app.jev.toggle": true;
-	"app.jev.notes.toggle": true;
 	"app.rlm.focus": true;
 	"app.rlm.graph.up": true;
 	"app.rlm.graph.down": true;
@@ -146,14 +144,6 @@ export const KEYBINDINGS = {
 	"app.rlm.toggle": {
 		defaultKeys: "ctrl+r",
 		description: "Toggle the live RLM panel (native TUI)",
-	},
-	"app.jev.toggle": {
-		defaultKeys: "alt+j",
-		description: "Toggle the Jev decisions panel (native TUI)",
-	},
-	"app.jev.notes.toggle": {
-		defaultKeys: "alt+m",
-		description: "Expand or fold Jev's memory notes in the transcript (native TUI)",
 	},
 	"app.rlm.focus": {
 		defaultKeys: "alt+g",

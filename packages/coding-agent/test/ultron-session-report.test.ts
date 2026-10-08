@@ -84,14 +84,10 @@ describe("a native session that only used the root", () => {
 			usageLimitBlocks: 1,
 			countersSince: null,
 		});
-		expect(report.memory.jev).toEqual({
-			decisions: 5,
-			capped: false,
-			triage: 1,
-			recall: { total: 2, retrieved: 1, skipped: 1, failed: 0 },
-			retain: { total: 2, kept: 1, skipped: 1, sensitive: 0, failed: 0 },
+		// Jev decisions an older session stored are ignored; the memory section is the store's own operations.
+		expect(report.memory).toEqual({
+			operations: { "prepare.recalled": 1, "prepare.skipped": 1, "propose.stored": 1 },
 		});
-		expect(report.memory.operations).toEqual({ "prepare.recalled": 1, "prepare.skipped": 1, "propose.stored": 1 });
 		expect(report.unrecorded).toEqual({});
 	});
 
@@ -129,7 +125,6 @@ describe("a native session that only used the root", () => {
 			"  Limits   1 usage-limit block",
 			"",
 			"Memory",
-			"  Jev      5 decisions: recall 2 (1 retrieved, 1 skipped) · retain 2 (1 kept, 1 skipped) · triage 1",
 			"  Store    prepare.recalled 1 · prepare.skipped 1 · propose.stored 1",
 		]);
 	});
@@ -187,7 +182,7 @@ describe("frames only", () => {
 			"depth.workflows",
 			"guardrails.guards",
 			"guardrails.usageLimitBlocks",
-			"memory.jev",
+			"memory.operations",
 		]);
 		// Still read from the transcript.
 		expect(report.cells?.total).toMatchObject({ count: 1, apis: { "rlm.map": 1 } });
@@ -407,7 +402,7 @@ describe("ultron claude", () => {
 			nudges: { toolRounds: 0, wait: 1, skill: 0 },
 			usageLimitBlocks: 0,
 		});
-		expect(Object.keys(report.unrecorded).sort()).toEqual(["memory.jev", "root.models"]);
+		expect(Object.keys(report.unrecorded).sort()).toEqual(["memory.operations", "root.models"]);
 		const text = renderSessionReport(report, TEXT).join("\n");
 		expect(text).toContain("Turns      3 turns, 1m35s wall");
 		expect(text).toContain("Cells      7 cells, 1 failed  (runtime count)");
@@ -538,7 +533,7 @@ describe("session files that are not reportable", () => {
 			countersSince: null,
 		});
 		expect(report.depth.workflows).toEqual({ runs: 0 });
-		expect(Object.keys(report.unrecorded)).toEqual(["memory.jev"]);
+		expect(Object.keys(report.unrecorded)).toEqual(["memory.operations"]);
 		expect(sessionIsEmpty(await readSessionLog(rootOnlySession().write(sessionsRoot())))).toBe(false);
 	});
 });

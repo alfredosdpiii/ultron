@@ -4,13 +4,12 @@
  * session and `ultron usage` for any session file, with no model call and no server.
  *
  * Everything comes from what the session already keeps (see session-log.ts): the task journal (`ultron.tasks`),
- * frame traces (`ultron.rlm.frames`), the usage ledger (`ultron.usage`), lane models (`pi.lane.config`), Jev
- * decisions, hint counts, the run records of each lane, the entries' provider-reported usage, and the runtime
+ * frame traces (`ultron.rlm.frames`), the usage ledger (`ultron.usage`), lane models (`pi.lane.config`), memory
+ * operations, hint counts, the run records of each lane, the entries' provider-reported usage, and the runtime
  * counters of session-stats.ts. A number the session did not keep is `null` and named in `unrecorded`; it is never
  * reported as zero.
  */
 
-import { JEV_DECISION_CAPACITY } from "./jev-decisions.ts";
 import { type LogEntry, type LogUsage, logUsage, logValue, logValues, type SessionLog } from "./session-log.ts";
 import {
 	CELL_APIS,
@@ -183,15 +182,6 @@ export type SessionReport = {
 		countersSince: number | null;
 	};
 	memory: {
-		/** Jev decisions by kind; null when the session recorded none. */
-		jev: {
-			decisions: number;
-			/** The log keeps the newest decisions only; true when it is full. */
-			capped: boolean;
-			triage: number;
-			recall: { total: number; retrieved: number; skipped: number; failed: number };
-			retain: { total: number; kept: number; skipped: number; sensitive: number; failed: number };
-		} | null;
 		/** Memory operations by kind and state (`prepare.skipped`, `retain.completed`). */
 		operations: Record<string, number> | null;
 	};
@@ -821,33 +811,6 @@ export function buildSessionReport(log: SessionLog, live: LiveReportExtras = {})
 	}
 
 	// Memory.
-	const decisions = list(record(logValue(log, "ultron.jev.decisions", "root"))?.decisions).map(record);
-	let jev: SessionReport["memory"]["jev"] = null;
-	if (decisions.length > 0) {
-		jev = {
-			decisions: decisions.length,
-			capped: decisions.length >= JEV_DECISION_CAPACITY,
-			triage: 0,
-			recall: { total: 0, retrieved: 0, skipped: 0, failed: 0 },
-			retain: { total: 0, kept: 0, skipped: 0, sensitive: 0, failed: 0 },
-		};
-		for (const decision of decisions) {
-			const failed = decision?.status !== "ok";
-			if (decision?.kind === "triage") jev.triage += 1;
-			else if (decision?.kind === "recall") {
-				jev.recall.total += 1;
-				if (failed) jev.recall.failed += 1;
-				else if (decision.retrieve === true) jev.recall.retrieved += 1;
-				else jev.recall.skipped += 1;
-			} else if (decision?.kind === "retain") {
-				jev.retain.total += 1;
-				if (failed) jev.retain.failed += 1;
-				else if (decision.action === "keep") jev.retain.kept += 1;
-				else if (decision.action === "sensitive") jev.retain.sensitive += 1;
-				else jev.retain.skipped += 1;
-			}
-		}
-	} else unrecorded["memory.jev"] = "no decision recorded: Jev not configured, or never asked";
 	const memoryOperations = list(record(logValue(log, "ultron.memory.state", "root"))?.operations).map(record);
 	let operations: Record<string, number> | null = null;
 	if (memoryOperations.length > 0) {
@@ -856,7 +819,7 @@ export function buildSessionReport(log: SessionLog, live: LiveReportExtras = {})
 			const key = `${String(operation?.kind ?? "unknown")}.${String(operation?.state ?? "unknown")}`;
 			operations[key] = (operations[key] ?? 0) + 1;
 		}
-	}
+	} else unrecorded["memory.operations"] = "no memory operation recorded: Hindsight not configured, or memory unused";
 
 	if (external)
 		unrecorded["root.models"] =
@@ -938,7 +901,7 @@ export function buildSessionReport(log: SessionLog, live: LiveReportExtras = {})
 			usageLimitBlocks: stats === undefined ? null : stats.usageLimitBlocks,
 			countersSince: stats !== undefined && !statsCoverSession ? stats.since : null,
 		},
-		memory: { jev, operations },
+		memory: { operations },
 		unrecorded,
 	};
 }

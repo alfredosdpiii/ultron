@@ -1,5 +1,5 @@
 /**
- * `ultron setup`: a guided first configuration in six steps (environment, provider and model, Jev, Hindsight, Loki
+ * `ultron setup`: a guided first configuration in five steps (environment, provider and model, Hindsight, Loki
  * guardrails, summary). Every step can be skipped with Esc and the wizard can be run again; nothing is overwritten without
  * asking, and secrets are read masked and never printed. The questions go through `SetupUi`, so the flow is the
  * same in the terminal (`tui.ts`) and in tests.
@@ -28,15 +28,12 @@ import {
 	hindsightManualInstructions,
 	hindsightPort,
 	isLocalUrl,
-	jevKeyPath,
-	jevKeySource,
 	listEndpointModels,
 	mergeCustomEndpoint,
 	type ProbeCommand,
 	parseModelIds,
 	probeHindsight,
 	readTextFile,
-	saveJevKey,
 	validateBaseUrl,
 	validateProviderId,
 	waitForHindsight,
@@ -106,8 +103,6 @@ export interface SetupDeps {
 	createRuntime(): Promise<ModelRuntime>;
 	/** One tiny live request. */
 	testModel(runtime: ModelRuntime, model: Model<Api>): Promise<ModelTestResult>;
-	/** One cheap Jev request with this key. */
-	checkJevKey(key: string): Promise<{ ok: boolean; error?: string }>;
 	/** Run docker with extra environment (for the API key); resolves with its exit status and output. */
 	runDocker(args: readonly string[], env: Record<string, string>): Promise<{ ok: boolean; output: string }>;
 	/** How long to wait for a new Hindsight container to answer. */
@@ -129,7 +124,7 @@ export interface SetupResult {
 	readonly modelReady: boolean;
 }
 
-const STEPS = 6;
+const STEPS = 5;
 
 function stepTitle(index: number, title: string): string {
 	return `Step ${index}/${STEPS}: ${title}`;
@@ -161,7 +156,6 @@ export async function runSetupWizard(ui: SetupUi, deps: SetupDeps): Promise<Setu
 		const model = await providerStep(ui, deps);
 		lines.push(model.line);
 		modelReady = model.ready;
-		lines.push(await jevStep(ui, deps));
 		lines.push(await hindsightStep(ui, deps));
 		lines.push(await lokiStep(ui, deps));
 		completed = true;
@@ -471,71 +465,18 @@ async function testAndReport(ui: SetupUi, deps: SetupDeps, runtime: ModelRuntime
 }
 
 // ---------------------------------------------------------------------------------------------------------------
-// 3. Jev
-// ---------------------------------------------------------------------------------------------------------------
-
-async function jevStep(ui: SetupUi, deps: SetupDeps): Promise<SetupSummaryLine> {
-	const step = "Jev";
-	ui.heading(stepTitle(3, "Jev API key"));
-	ui.note(
-		"Jev gates automatic memory: it decides when a turn should recall memories and which turns are worth keeping.",
-		"info",
-	);
-	const source = jevKeySource(deps.agentDir, deps.env);
-	if (source === "env") ui.note("A key is set in TYPESAFE_API_KEY; it takes precedence over a saved key.", "info");
-	else if (source === "file") ui.note(`A key is saved in ${jevKeyPath(deps.agentDir)}.`, "info");
-	const action = await ui.select<"paste" | "keep" | "skip">("Jev API key", [
-		...(source ? [{ label: "Keep the current key", value: "keep" as const }] : []),
-		{ label: source === "file" ? "Replace the saved key" : "Paste a key", value: "paste" },
-		{ label: "Skip (automatic memory stays off)", value: "skip" },
-	]);
-	if (action === undefined || action === "skip")
-		return {
-			step,
-			status: "skipped",
-			detail: source
-				? `kept the key from ${source === "env" ? "TYPESAFE_API_KEY" : "the key file"}`
-				: "not configured",
-		};
-	if (action === "keep")
-		return { step, status: "unchanged", detail: source === "env" ? "TYPESAFE_API_KEY" : jevKeyPath(deps.agentDir) };
-	const key = await ui.input("Jev API key", {
-		secret: true,
-		validate: (value) =>
-			value.trim() === ""
-				? "Paste the key, or press Esc to skip"
-				: /\s/.test(value.trim())
-					? "The key must not contain spaces"
-					: undefined,
-	});
-	if (key === undefined) return { step, status: "skipped", detail: "not changed" };
-	const path = saveJevKey(deps.agentDir, key);
-	ui.note(`✓ Saved to ${path} (readable only by you).`, "success");
-	if (source === "env") ui.note("TYPESAFE_API_KEY is set in this shell and still wins over the saved key.", "warning");
-	if (await confirm(ui, "Check the key now?", "Yes, one small request to Jev", "No")) {
-		const check = await ui.busy("Checking the Jev key…", () => deps.checkJevKey(key.trim()));
-		if (check.ok) ui.note("✓ Jev accepted the key.", "success");
-		else {
-			ui.note(
-				`✗ Jev did not accept the request: ${check.error ?? "unknown error"}. The key is saved; run setup again to replace it.`,
-				"error",
-			);
-			return { step, status: "failed", detail: `saved to ${path}, check failed` };
-		}
-	}
-	return { step, status: "configured", detail: `saved to ${path}` };
-}
-
-// ---------------------------------------------------------------------------------------------------------------
-// 4. Hindsight
+// 3. Hindsight
 // ---------------------------------------------------------------------------------------------------------------
 
 type HindsightAction = "docker" | "start" | "url" | "manual" | "off" | "skip" | "keep";
 
 async function hindsightStep(ui: SetupUi, deps: SetupDeps): Promise<SetupSummaryLine> {
 	const step = "Hindsight";
-	ui.heading(stepTitle(4, "Hindsight memory server"));
-	ui.note("Hindsight stores the memories Jev decides to keep and returns them when Jev asks to recall.", "info");
+	ui.heading(stepTitle(3, "Hindsight memory server"));
+	ui.note(
+		"Hindsight stores what the model keeps on purpose (memory.propose) and returns it when the model asks (memory.prepare).",
+		"info",
+	);
 	const effective = effectiveHindsightUrl(deps.env, deps.settings.getHindsightUrl());
 	if (effective.source === "env")
 		ui.note(
@@ -712,7 +653,7 @@ async function installWithDocker(ui: SetupUi, deps: SetupDeps, url: string): Pro
 }
 
 // ---------------------------------------------------------------------------------------------------------------
-// 5. Loki guardrails
+// 4. Loki guardrails
 // ---------------------------------------------------------------------------------------------------------------
 
 type LokiAction = "keep" | "autoInit" | "autoCommit" | "advise" | "enforce" | "off" | "on";
@@ -729,7 +670,7 @@ function describeLoki(settings: LokiSettings): string {
 
 async function lokiStep(ui: SetupUi, deps: SetupDeps): Promise<SetupSummaryLine> {
 	const step = "Loki";
-	ui.heading(stepTitle(5, "Loki guardrails"));
+	ui.heading(stepTitle(4, "Loki guardrails"));
 	ui.note(
 		"Loki checks every file the agent writes with deterministic rules and real analyzers: edit() and write() are checked before the file changes, other writes after the cell.",
 		"info",
@@ -795,16 +736,16 @@ async function lokiStep(ui: SetupUi, deps: SetupDeps): Promise<SetupSummaryLine>
 }
 
 // ---------------------------------------------------------------------------------------------------------------
-// 6. Summary
+// 5. Summary
 // ---------------------------------------------------------------------------------------------------------------
 
 function summaryStep(ui: SetupUi, deps: SetupDeps, lines: readonly SetupSummaryLine[], completed: boolean): void {
-	ui.heading(stepTitle(6, "Summary"));
+	ui.heading(stepTitle(5, "Summary"));
 	for (const line of lines) {
 		const tone: Tone = line.status === "configured" ? "success" : line.status === "failed" ? "error" : "dim";
 		ui.note(`${line.step}: ${line.status} — ${line.detail}`, tone);
 	}
 	if (!completed) ui.note("Not all steps ran.", "warning");
-	ui.note(`Configuration lives in ${deps.agentDir} (settings.json, auth.json, models.json, jev-api-key).`, "info");
+	ui.note(`Configuration lives in ${deps.agentDir} (settings.json, auth.json, models.json).`, "info");
 	ui.note("Run `ultron setup` again at any time to change it; start working with `ultron`.", "info");
 }

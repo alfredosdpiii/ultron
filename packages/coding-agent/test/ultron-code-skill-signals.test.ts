@@ -1,33 +1,8 @@
 import { describe, expect, test } from "vitest";
-import { containsCodeSecret, NativeJevClient } from "../src/ultron/jev.ts";
-import { JevDecisionLog, recordingJevClient } from "../src/ultron/jev-decisions.ts";
+import { containsCodeSecret } from "../src/ultron/sensitive.ts";
 import { SkillExtractionNudger, skillNudgeFromEnv } from "../src/ultron/tool-round-nudge.ts";
 
-function client(fetch: typeof globalThis.fetch): NativeJevClient {
-	return new NativeJevClient({ apiKey: "test-key", baseUrl: "https://jev.example.test", fetch });
-}
-
-describe("Jev skill policy", () => {
-	test("asks Jev with the skill, and refuses secrets without calling it", async () => {
-		const bodies: Array<Record<string, unknown>> = [];
-		const jev = client(async (_url, init) => {
-			bodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
-			return new Response(JSON.stringify({ answers: { action: { choice: "keep", confidence: 0.7 } } }), {
-				status: 200,
-			});
-		});
-		expect(await jev.skillPolicy("slug", "blog slugs", "def slugify(text):\n    return text")).toEqual({
-			action: "keep",
-			confidence: 0.7,
-		});
-		expect(bodies[0]).toMatchObject({ state: { skill_name: "slug", evidence: "blog slugs" } });
-		expect(await jev.skillPolicy("deploy", "x", 'TOKEN = "ghp_abcdefghijklmnopqrstuvwx"')).toEqual({
-			action: "sensitive",
-			confidence: 1,
-		});
-		expect(bodies).toHaveLength(1);
-	});
-
+describe("code skill secret check", () => {
 	test("code secrets are narrower than memory patterns", () => {
 		for (const benign of [
 			"skill_version_number = 3",
@@ -43,30 +18,6 @@ describe("Jev skill policy", () => {
 			"-----BEGIN RSA PRIVATE KEY-----",
 		])
 			expect(containsCodeSecret(secret)).toBe(true);
-	});
-
-	test("skill decisions are recorded as retention decisions without their input", async () => {
-		let stored: unknown;
-		const log = new JevDecisionLog({
-			read: async () => stored as never,
-			write: async (value) => {
-				stored = value;
-			},
-		});
-		const wrapped = recordingJevClient(
-			{
-				triage: async () => ({}) as never,
-				memoryGate: async () => ({}) as never,
-				memoryPolicy: async () => ({}) as never,
-				memoryRecall: async () => ({}) as never,
-				skillPolicy: async () => ({ action: "skip", confidence: 0.6 }),
-			},
-			log,
-		);
-		await wrapped.skillPolicy?.("slug", "evidence", "source");
-		const [decision] = await log.list();
-		expect(decision).toMatchObject({ kind: "retain", status: "ok", action: "skip", confidence: 0.6 });
-		expect(JSON.stringify(decision)).not.toContain("source");
 	});
 });
 

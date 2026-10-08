@@ -87,7 +87,6 @@ const KEPT_NAMESPACES = new Set([
 	"ultron.tasks",
 	"ultron.usage",
 	"ultron.rlm.frames",
-	"ultron.jev.decisions",
 	"ultron.memory.state",
 	"ultron.module",
 	"ultron.claude-code.lanes",

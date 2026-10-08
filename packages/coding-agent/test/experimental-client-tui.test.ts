@@ -133,47 +133,7 @@ function inspectFixture(request: string): JsonValue {
 	if (request === "instances.list") return [{ task_id: "ultron-task-aaaa1111", state: "open", invocations: [] }];
 	if (request === "rlm.pool") return { live: 2, maxLive: 16, lanes: [], evictions: 0 };
 	if (request === "progress.assess") return { classification: "progressing", receipts: ["r1"] };
-	if (request === "jev.decisions") {
-		return {
-			available: { jev: true, hindsight: false },
-			capacity: 200,
-			thresholds: { recall: 0.65, keep: 0.65 },
-			decisions: [
-				{
-					id: "jev-1",
-					at: Date.now() - 2000,
-					kind: "triage",
-					status: "ok",
-					durationMs: 40,
-					inputSha256: "abcdef012345",
-					inputChars: 5,
-					route: "powerful",
-					routeConfidence: 0.8,
-					complexity: 1,
-					urgency: "normal",
-					category: "debugging",
-				},
-				{
-					id: "jev-2",
-					at: Date.now() - 1500,
-					kind: "recall",
-					status: "ok",
-					retrieve: true,
-					probability: 0.83,
-					ref: "auto:run-1",
-				},
-				{
-					id: "jev-3",
-					at: Date.now() - 1000,
-					kind: "retain",
-					status: "ok",
-					action: "keep",
-					confidence: 0.91,
-					ref: "auto:run-1",
-				},
-			],
-		};
-	}
+
 	return null;
 }
 
@@ -813,26 +773,17 @@ describe("experimental client TUI", () => {
 				expect(component.render(80).join("\n")).not.toContain("Working...");
 				expect(component.render(80).join("\n")).not.toContain("Operation run-1 completed");
 
-				// Jev's notes sit next to the turn: what it recalled and why, and after the answer, that it kept it.
+				// Memory an older session recalled automatically shows muted, like other injected context.
 				await vi.waitFor(() => {
 					const chat = plain(component.render(100));
-					expect(chat).toContain("⌁ jev recalled 2 memories · p 0.83 ≥ 0.65 · project · “Bryan prefers tabs over");
-					expect(chat).toContain("⌁ jev kept this turn · keep 0.91 ≥ 0.65");
-					expect(chat).not.toContain("Untrusted Hindsight memory");
-				});
-				// alt+m unfolds every recalled memory under the note.
-				component.handleInput("\u001bm");
-				await vi.waitFor(() => {
-					const chat = plain(component.render(100));
+					expect(chat).toContain("[ultron-memory]");
 					expect(chat).toContain("1. [user statement] Bryan prefers tabs over spaces in TypeScript");
-					expect(chat).toContain("2. The ultron repo lints with biome");
 				});
-				component.handleInput("\u001bm");
 
 				// The one-line RLM summary shows in the footer while the panel is hidden and a task runs.
 				await vi.waitFor(() =>
 					expect(plain(component.render(80))).toMatch(
-						/◆ rlm . turn · 3 tasks \(1 active\) · 1 failed · alt\+g graph │ [✦⌁] jev: kept \(0\.91\)/,
+						/◆ rlm . turn · 3 tasks \(1 active\) · 1 failed · alt\+g graph$/m,
 					),
 				);
 				expect(inspect).toHaveBeenCalledWith("agents.status", { graph: true }, expect.anything());
@@ -897,24 +848,6 @@ describe("experimental client TUI", () => {
 				});
 				component.handleInput("\u001b");
 				await vi.waitFor(() => expect(plain(component.render(80))).not.toContain("RLM graph"));
-
-				// Jev: a presence in the footer, the /jev view with timeline, needles, pipeline and what it knows.
-				await vi.waitFor(() => expect(plain(component.render(80))).toMatch(/[✦⌁] jev: kept \(0\.91\)/));
-				component.handleInput("/jev");
-				component.handleInput("\u001b");
-				component.handleInput("\r");
-				await vi.waitFor(() => {
-					const panel = plain(component.render(100));
-					expect(panel).toContain("● jev  ○ hindsight off  1 recalled · 0 skipped · 1 kept · 0 refused");
-					expect(panel).toContain("turns T R✓K✓");
-					expect(panel).toMatch(/recall +━+┃━+●─* 0\.83 ≥ 0\.65 → recalled/);
-					expect(panel).toMatch(/keep +━+┃━+●─* 0\.91 ≥ 0\.65 → kept/);
-					expect(panel).toContain("gate 0.83≥0.65 ✓ ─▶ recalled 2 ─▶ answer ─▶ keep 0.91≥0.65 stored");
-					expect(panel).toContain("knows 2 memories recalled this session (project)");
-					expect(panel).toContain("• Bryan prefers tabs over spaces in TypeScript [user statement]");
-				});
-				component.handleInput("\u001bj");
-				await vi.waitFor(() => expect(plain(component.render(80))).not.toContain("knows 2 memories"));
 
 				component.handleInput("/reload");
 				component.handleInput("\u001b");
@@ -2726,7 +2659,6 @@ describe("experimental client TUI: render cost", () => {
 	test("an idle poll that returns the same data does not redraw; a changed answer does", async () => {
 		// Only the poll timers are fake, so the harness's own promises and timeouts run as usual.
 		vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
-		const at = Date.now() - 20 * 60_000;
 		let tasks: JsonValue[] = [];
 		const stable = (request: string): JsonValue => {
 			if (request === "agents.status") {
@@ -2736,14 +2668,6 @@ describe("experimental client TUI: render cost", () => {
 					usage: { admittedTasks: 0, usage: { cost: null }, reservations: [] },
 					limits: {},
 					controls: {},
-				};
-			}
-			if (request === "jev.decisions") {
-				return {
-					available: { jev: true, hindsight: false },
-					capacity: 200,
-					thresholds: { recall: 0.65, keep: 0.65 },
-					decisions: [{ id: "jev-1", at, kind: "recall", status: "ok", retrieve: true, probability: 0.8 }],
 				};
 			}
 			return inspectFixture(request);

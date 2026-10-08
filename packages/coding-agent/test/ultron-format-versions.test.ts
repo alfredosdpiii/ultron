@@ -10,7 +10,6 @@ import {
 } from "../src/ultron/format-version.ts";
 import { createGrantModule } from "../src/ultron/grants.ts";
 import { createInstanceModule } from "../src/ultron/instances.ts";
-import { JevDecisionLog } from "../src/ultron/jev-decisions.ts";
 import { NativeLocalServices } from "../src/ultron/local-services.ts";
 import { NativeMemoryService } from "../src/ultron/memory.ts";
 import { createProgressModule } from "../src/ultron/progress.ts";
@@ -96,11 +95,6 @@ const cases: StoreCase[] = [
 				backend: memoryBackend,
 				gate: async () => ({ retrieve: false }),
 			}).list(),
-	},
-	{
-		namespace: "ultron.jev.decisions/root",
-		legacy: { decisions: [] },
-		open: (backing) => new JevDecisionLog(backing).list(),
 	},
 	{
 		namespace: "ultron.module/family",

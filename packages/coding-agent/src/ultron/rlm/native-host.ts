@@ -2788,32 +2788,10 @@ export class NativeRlmHost {
 			type.startsWith("memory.") ||
 			type.startsWith("refinements.") ||
 			type.startsWith("artifacts.") ||
-			type.startsWith("experiments.") ||
-			type.startsWith("jev.")
+			type.startsWith("experiments.")
 		) {
 			if (!this.services) throw new Error("Ultron local services are not connected to this session worker");
-			const reservation = type.startsWith("jev.")
-				? await (() => {
-						const rootId = this.admissionRoot(parentId);
-						return this.usage?.reserve({
-							kind: "jev",
-							...(rootId === undefined ? {} : { rootId }),
-							requestKey: `jev:${randomUUID()}`,
-							signal: context.abortSignal,
-						});
-					})()
-				: undefined;
-			try {
-				const result = await this.services.handle(type, payload, context);
-				if (reservation) await this.usage?.settle(reservation, { status: "succeeded" });
-				return result;
-			} catch (error) {
-				if (reservation)
-					await this.usage?.settle(reservation, {
-						status: context.abortSignal?.aborted ? "cancelled" : "failed",
-					});
-				throw error;
-			}
+			return this.services.handle(type, payload, context);
 		}
 		if (type === "workflows.run") {
 			const nodes = this.workflow(payload);

@@ -347,14 +347,8 @@ export function renderSessionReport(report: SessionReport, options: ReportTextOp
 	// Memory.
 	lines.push("");
 	lines.push(style.bold("Memory"));
-	const { jev } = report.memory;
-	if (jev === null) row("  Jev", missing("memory.jev"));
+	if (report.memory.operations === null) row("  Store", missing("memory.operations"));
 	else
-		row(
-			"  Jev",
-			`${plural(jev.decisions, "decision")}${jev.capped ? " (the newest; older ones were dropped)" : ""}: recall ${jev.recall.total} (${jev.recall.retrieved} retrieved, ${jev.recall.skipped} skipped${jev.recall.failed > 0 ? `, ${jev.recall.failed} failed` : ""}) · retain ${jev.retain.total} (${jev.retain.kept} kept, ${jev.retain.skipped} skipped${jev.retain.sensitive > 0 ? `, ${jev.retain.sensitive} sensitive` : ""}${jev.retain.failed > 0 ? `, ${jev.retain.failed} failed` : ""})${jev.triage > 0 ? ` · triage ${jev.triage}` : ""}`,
-		);
-	if (report.memory.operations !== null)
 		row(
 			"  Store",
 			Object.entries(report.memory.operations)

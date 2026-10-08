@@ -1,6 +1,6 @@
 /**
- * The pure parts of `ultron setup`: environment checks, the models.json entry for a custom endpoint, the Jev key
- * file, the Hindsight Docker command and health probe, and when an interactive start should offer setup.
+ * The pure parts of `ultron setup`: environment checks, the models.json entry for a custom endpoint, the Hindsight
+ * Docker command and health probe, and when an interactive start should offer setup.
  * Nothing here draws to the terminal; `wizard.ts` asks the questions and `tui.ts` draws them.
  */
 
@@ -208,31 +208,6 @@ export function writePrivateFile(path: string, content: string): void {
 	// The mode above is masked by the umask and ignored for an existing file; set it explicitly.
 	chmodSync(temporary, 0o600);
 	renameSync(temporary, path);
-}
-
-export const JEV_KEY_FILE = "jev-api-key";
-
-export function jevKeyPath(agentDir: string): string {
-	return join(agentDir, JEV_KEY_FILE);
-}
-
-/** Where Jev's key comes from today: the environment wins over the file, as in `createNativeJevClient`. */
-export function jevKeySource(agentDir: string, env: NodeJS.ProcessEnv): "env" | "file" | undefined {
-	if (env.TYPESAFE_API_KEY?.trim()) return "env";
-	try {
-		return readFileSync(jevKeyPath(agentDir), "utf8").trim() ? "file" : undefined;
-	} catch {
-		return undefined;
-	}
-}
-
-export function saveJevKey(agentDir: string, key: string): string {
-	const trimmed = key.trim();
-	if (!trimmed) throw new Error("The Jev API key is empty");
-	if (/\s/.test(trimmed)) throw new Error("The Jev API key must not contain spaces or line breaks");
-	const path = jevKeyPath(agentDir);
-	writePrivateFile(path, `${trimmed}\n`);
-	return path;
 }
 
 // ---------------------------------------------------------------------------------------------------------------

@@ -308,10 +308,10 @@ describe("an external root (Claude Code) reports its steers and refused cells", 
 		expect(second.content[0]).toMatchObject({
 			text: expect.stringContaining("You have used 2 rounds of tool calls"),
 		});
-		await root.endTurn("done");
+		await root.endTurn();
 		const waiting = externalRoot(stats, { running: 2 });
 		for (const code of ["c", "d", "e"]) await waiting.runCell(code);
-		await waiting.endTurn("done");
+		await waiting.endTurn();
 		expect(await stats.snapshot()).toMatchObject({
 			nudges: { toolRounds: 1, wait: 1, skill: 0 },
 			usageLimitBlocks: 0,

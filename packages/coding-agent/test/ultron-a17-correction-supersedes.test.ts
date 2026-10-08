@@ -26,7 +26,7 @@ describe("A17 correction supersedes stale claims; hypotheses remain distinguisha
 			scope: "project",
 			evidenceClass: "tool_evidence",
 		});
-		// Jev voted keep, but a guess stays an unconfirmed hypothesis.
+		// The gate kept it, but a guess stays an unconfirmed hypothesis.
 		expect(guess).toMatchObject({ evidenceClass: "hypothesis", gate: { action: "keep" } });
 		expect(observed).toMatchObject({ evidenceClass: "tool_evidence" });
 		await first.get(guess.memoryId!);

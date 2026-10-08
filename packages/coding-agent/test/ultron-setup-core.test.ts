@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Input } from "@ultron/tui";
@@ -10,13 +10,10 @@ import {
 	hindsightDockerArgs,
 	hindsightManualInstructions,
 	hindsightPort,
-	jevKeyPath,
-	jevKeySource,
 	listEndpointModels,
 	mergeCustomEndpoint,
 	parseModelIds,
 	probeHindsight,
-	saveJevKey,
 	shouldOfferSetup,
 	validateBaseUrl,
 	validateProviderId,
@@ -35,10 +32,6 @@ function tempDir(): string {
 afterEach(() => {
 	for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
 });
-
-function mode(path: string): number {
-	return statSync(path).mode & 0o777;
-}
 
 describe("custom endpoint in models.json", () => {
 	const endpoint = {
@@ -117,43 +110,6 @@ describe("custom endpoint in models.json", () => {
 		expect(await listEndpointModels("http://proxy/v1/", "k", fetcher as typeof fetch)).toEqual(["a", "b"]);
 		const failing = vi.fn(async () => new Response("no", { status: 404 }));
 		expect(await listEndpointModels("http://proxy/v1", undefined, failing as typeof fetch)).toBeUndefined();
-	});
-});
-
-describe("secret files", () => {
-	it("writes the Jev key with mode 0600, replacing an existing file", () => {
-		const dir = join(tempDir(), "agent");
-		const path = saveJevKey(dir, "  jev-key-1 \n");
-		expect(path).toBe(jevKeyPath(dir));
-		expect(readFileSync(path, "utf8")).toBe("jev-key-1\n");
-		expect(mode(path)).toBe(0o600);
-		expect(mode(dir)).toBe(0o700);
-		writeFileSync(path, "old", { mode: 0o644 });
-		saveJevKey(dir, "jev-key-2");
-		expect(readFileSync(path, "utf8")).toBe("jev-key-2\n");
-		expect(mode(path)).toBe(0o600);
-	});
-
-	it("rejects empty or multi-line keys", () => {
-		const dir = tempDir();
-		expect(() => saveJevKey(dir, "   ")).toThrow(/empty/);
-		expect(() => saveJevKey(dir, "a b")).toThrow(/spaces/);
-	});
-
-	it("reports where Jev's key comes from, the environment first", () => {
-		const dir = tempDir();
-		expect(jevKeySource(dir, {})).toBeUndefined();
-		saveJevKey(dir, "k");
-		expect(jevKeySource(dir, {})).toBe("file");
-		expect(jevKeySource(dir, { TYPESAFE_API_KEY: "env" })).toBe("env");
-	});
-
-	it("is the file the native Jev client reads", async () => {
-		const dir = tempDir();
-		saveJevKey(dir, "jev-from-setup");
-		const { createNativeJevClient } = await import("../src/ultron/jev.ts");
-		vi.stubEnv("TYPESAFE_API_KEY", "");
-		expect(createNativeJevClient({ keyFile: jevKeyPath(dir) })).toBeDefined();
 	});
 });
 

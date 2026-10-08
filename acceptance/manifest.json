@@ -334,7 +334,7 @@
         {
           "file": "packages/coding-agent/test/ultron-a16-memory-skip-scope.test.ts",
           "tests": [
-            "a Jev skip decision sends no request of any kind to Hindsight, for every scope and entry point",
+            "a skip decision sends no request of any kind to Hindsight, for every scope; a secret is refused before any request",
             "scope tags are pinned through retain, correction and Hindsight consolidation; a cross-scope merge is refused"
           ]
         },
@@ -666,7 +666,7 @@
         {
           "file": "packages/coding-agent/test/ultron-a34-optional-service-outage.test.ts",
           "tests": [
-            "combined Jev, Hindsight, refinement, module, and workflow outage in one real RLM kernel run"
+            "combined Hindsight, refinement, module, and workflow outage in one real RLM kernel run"
           ]
         }
       ],
@@ -1050,7 +1050,7 @@
             "the test runs in a fresh isolated kernel without host capabilities",
             "a passing skill is importable in every kernel, listed with its docstring, and survives worker restart",
             "rollback follows refinement semantics and never leaves a stale import",
-            "Jev scores proposals: sensitive ones are refused, an outage never blocks",
+            "a proposal holding a secret is refused before anything is written; a clean one proceeds",
             "policy skills store any plan function with a test, filterable by task family"
           ]
         }

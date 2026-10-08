@@ -174,11 +174,11 @@ describe("A33 experiment history includes all attempts and variants do not conta
 		const meter = new Map<string, number>(); // independent provider-side accounting
 		const ledger = new NativeLocalServices(documents());
 		const attempts = [
-			{ variant: "baseline", outcome: "incomplete", usage: { root: 1200, descendants: 0, jev: 40, memory: 0 } },
-			{ variant: "baseline", outcome: "failed", usage: { root: 3400, descendants: 900, jev: 40, memory: 0 } },
-			{ variant: "baseline", outcome: "passed", usage: { root: 2800, descendants: 700, jev: 40, memory: 0 } },
-			{ variant: "memory", outcome: "failed", usage: { root: 2600, descendants: 300, jev: 80, memory: 120 } },
-			{ variant: "memory", outcome: "passed", usage: { root: 2100, descendants: 250, jev: 80, memory: 120 } },
+			{ variant: "baseline", outcome: "incomplete", usage: { root: 1200, descendants: 0, frames: 40, memory: 0 } },
+			{ variant: "baseline", outcome: "failed", usage: { root: 3400, descendants: 900, frames: 40, memory: 0 } },
+			{ variant: "baseline", outcome: "passed", usage: { root: 2800, descendants: 700, frames: 40, memory: 0 } },
+			{ variant: "memory", outcome: "failed", usage: { root: 2600, descendants: 300, frames: 80, memory: 120 } },
+			{ variant: "memory", outcome: "passed", usage: { root: 2100, descendants: 250, frames: 80, memory: 120 } },
 		] as const;
 		for (const attempt of attempts) {
 			const total = Object.values(attempt.usage).reduce((sum: number, value) => sum + value, 0);
@@ -193,7 +193,7 @@ describe("A33 experiment history includes all attempts and variants do not conta
 		await expect(
 			ledger.handle(
 				"experiments.record",
-				{ run: { variant: "memory", fixtureHash, outcome: "failed", usage: { root: 10, jev: 5, total: 12 } } },
+				{ run: { variant: "memory", fixtureHash, outcome: "failed", usage: { root: 10, frames: 5, total: 12 } } },
 				context,
 			),
 		).rejects.toThrow("does not reconcile");

@@ -15,8 +15,8 @@ import { type Context, isJsonValue, type JsonValue } from "@ultron/chord";
 import { BACKGROUND_CONTEXT, withAbortSignal } from "@ultron/chord/context";
 import lockfile from "proper-lockfile";
 import { getAgentDir, getRlmRuntimePath } from "../config.ts";
-import { containsCodeSecret, type NativeJevClient } from "./jev.ts";
 import { RlmKernel } from "./rlm/kernel.ts";
+import { containsCodeSecret } from "./sensitive.ts";
 
 /**
  * Procedural memory as tested code (supreme plan, Phase 4).
@@ -45,11 +45,8 @@ export type CodeSkillTestReport = {
 	doc: string | null;
 	functions: CodeSkillFunction[];
 };
-/** Jev's retention judgement of a proposal: relevance (keep/skip with confidence) and sensitivity. */
-export type CodeSkillJevScore =
-	| { status: "ok"; action: "keep" | "skip" | "sensitive"; confidence: number }
-	| { status: "deterministic"; action: "sensitive"; reason: string }
-	| { status: "unavailable" | "error"; reason: string };
+/** The secret check of a proposal's name, source, test and evidence; a sensitive proposal is never written. */
+export type CodeSkillSecretCheck = { status: "clean" } | { status: "sensitive"; reason: string };
 
 export type CodeSkillVersion = {
 	version: number;
@@ -61,7 +58,7 @@ export type CodeSkillVersion = {
 	evidence: JsonValue;
 	/** Version this one superseded on activation; restored by its rollback. */
 	previous: number | null;
-	jev: CodeSkillJevScore;
+	secretCheck: CodeSkillSecretCheck;
 	test: CodeSkillTestReport | null;
 	history: { state: CodeSkillState; at: string; cause: string }[];
 };
@@ -77,7 +74,7 @@ export type CodeSkillProposal = {
 	import?: string;
 	reason?: string;
 	test: CodeSkillTestReport | null;
-	jev: CodeSkillJevScore;
+	secretCheck: CodeSkillSecretCheck;
 };
 
 export type ActiveCodeSkill = {
@@ -99,8 +96,6 @@ export interface CodeSkillTestKernel {
 export type CodeSkillOptions = {
 	/** Where skills live; defaults to {@link codeSkillsDir}. */
 	dir?: string;
-	/** Jev scores relevance and sensitivity; absent or failing Jev never blocks a proposal. */
-	jev?: Partial<Pick<NativeJevClient, "skillPolicy">>;
 	/** Fresh kernel per test run. Defaults to a plain RLM kernel that refuses every host request. */
 	createTestKernel?: (cwd: string, env: Record<string, string>) => CodeSkillTestKernel;
 	/** Wall budget for one test run (ULTRON_CODE_SKILL_TEST_TIMEOUT_MS, default 120 s). */
@@ -300,14 +295,12 @@ function parseReport(text: string): CodeSkillTestReport {
 
 export class CodeSkills {
 	readonly dir: string;
-	private readonly jev?: Partial<Pick<NativeJevClient, "skillPolicy">>;
 	private readonly createTestKernel: (cwd: string, env: Record<string, string>) => CodeSkillTestKernel;
 	private readonly testTimeoutMs: number;
 	private readonly now: () => number;
 
 	constructor(options: CodeSkillOptions = {}) {
 		this.dir = options.dir ?? codeSkillsDir();
-		this.jev = options.jev;
 		this.createTestKernel = options.createTestKernel ?? defaultTestKernel;
 		const configured = Number(process.env.ULTRON_CODE_SKILL_TEST_TIMEOUT_MS);
 		this.testTimeoutMs =
@@ -351,37 +344,11 @@ export class CodeSkills {
 		}
 	}
 
-	private async score(
-		name: string,
-		source: string,
-		testSource: string,
-		evidence: JsonValue,
-		signal?: AbortSignal,
-	): Promise<CodeSkillJevScore> {
+	private secretCheck(name: string, source: string, testSource: string, evidence: JsonValue): CodeSkillSecretCheck {
 		const evidenceText = typeof evidence === "string" ? evidence : JSON.stringify(evidence);
-		if (containsCodeSecret(`${name}\n${source}\n${testSource}\n${evidenceText}`))
-			return {
-				status: "deterministic",
-				action: "sensitive",
-				reason: "the proposal contains a secret or credential",
-			};
-		if (!this.jev?.skillPolicy) return { status: "unavailable", reason: "Jev is not configured" };
-		try {
-			const policy = await this.jev.skillPolicy(
-				name,
-				evidenceText.slice(0, 2000),
-				`${source.slice(0, 6000)}\n\n# test\n${testSource.slice(0, 2000)}`,
-				signal,
-			);
-			return { status: "ok", action: policy.action, confidence: policy.confidence };
-		} catch (error) {
-			// An outage never blocks a deliberate proposal; the deterministic secret check above still ran.
-			const message = error instanceof Error ? error.message : String(error);
-			return {
-				status: /UNAVAILABLE|ABORTED/.test(message) ? "unavailable" : "error",
-				reason: message.slice(0, 200),
-			};
-		}
+		return containsCodeSecret(`${name}\n${source}\n${testSource}\n${evidenceText}`)
+			? { status: "sensitive", reason: "the proposal contains a secret or credential" }
+			: { status: "clean" };
 	}
 
 	private async runTest(
@@ -443,17 +410,17 @@ export class CodeSkills {
 		const base = this.base(name);
 		if (existsSync(join(base, "SKILL.md")) && !existsSync(join(base, ".history.json")))
 			throw new Error(`${name} is an instruction skill (SKILL.md without code history); choose another name`);
-		const jev = await this.score(name, source, testSource, evidence, context.abortSignal);
-		if ("action" in jev && jev.action === "sensitive")
+		const secretCheck = this.secretCheck(name, source, testSource, evidence);
+		if (secretCheck.status === "sensitive")
 			return {
 				status: "refused",
 				name,
 				kind,
 				version: null,
 				previous: null,
-				reason: "Jev judged the proposal sensitive; nothing was written",
+				reason: `${secretCheck.reason}; nothing was written`,
 				test: null,
-				jev,
+				secretCheck,
 			};
 		const at = () => new Date(this.now()).toISOString();
 		const cause = randomUUID();
@@ -471,7 +438,7 @@ export class CodeSkills {
 				sha256: { skill: sha256(source), test: sha256(testSource) },
 				evidence,
 				previous: null,
-				jev,
+				secretCheck,
 				test: null,
 				history: [{ state: "proposed", at: at(), cause }],
 			};
@@ -517,7 +484,7 @@ export class CodeSkills {
 				previous,
 				...(report.passed ? { import: `from code_skills import ${name}` } : {}),
 				test: report,
-				jev,
+				secretCheck,
 			} satisfies CodeSkillProposal;
 		});
 	}

@@ -162,8 +162,6 @@ On native Windows, `app.suspend` has no default because Windows terminals do not
 |--------|---------|-------------|
 | `app.tools.expand` | `ctrl+o` | Collapse or expand tool output |
 | `app.rlm.toggle` | `ctrl+r` | Show or hide the live RLM panel (native TUI; same as `/rlm`) |
-| `app.jev.toggle` | `alt+j` | Show or hide the Jev panel (native TUI; same as `/jev`) |
-| `app.jev.notes.toggle` | `alt+m` | Expand or fold Jev's memory notes in the transcript (native TUI) |
 | `app.rlm.focus` | `alt+g` | Open the full-screen RLM graph (native TUI; same as `/rlm focus`) |
 | `app.rlm.graph.up` | `up`, `k` | RLM graph: select the previous node |
 | `app.rlm.graph.down` | `down`, `j` | RLM graph: select the next node |

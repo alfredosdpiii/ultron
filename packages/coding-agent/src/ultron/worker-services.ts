@@ -1,16 +1,19 @@
+import { createHash } from "node:crypto";
 import { homedir } from "node:os";
 import { type Session, value } from "@ultron/agent-core";
 import type { Context, JsonValue } from "@ultron/chord";
 import { BACKGROUND_CONTEXT } from "@ultron/chord/context";
 import Type from "typebox";
 import { Check } from "typebox/value";
-import { type NativeJevClient, projectIdentity } from "./jev.ts";
 import { NativeLocalServices, type RefinementBranch } from "./local-services.ts";
 import { createHindsightBackend, type MemoryBackend, NativeMemoryService } from "./memory.ts";
 import { validateRefinementContent } from "./refinement-validation.ts";
+import { containsSensitiveMemory } from "./sensitive.ts";
 
-/** Minimum Jev confidence for an automatic (non-explicit) retention to be kept. */
-export const AUTOMATIC_KEEP_THRESHOLD = 0.65;
+/** A stable, non-reversible id for a directory, used in Hindsight scope tags. */
+function projectIdentity(path: string): string {
+	return createHash("sha256").update(path).digest("hex").slice(0, 16);
+}
 
 type SessionValues = Pick<Session, "getValue" | "setValue" | "scanValues">;
 const evidence = Type.Array(
@@ -35,12 +38,11 @@ const prepare = Type.Object(
 		taskId: Type.String({ minLength: 1 }),
 		scope,
 		refresh: Type.Optional(Type.Boolean()),
-		explicit: Type.Optional(Type.Boolean()),
 	},
 	{ additionalProperties: false },
 );
 const propose = Type.Object(
-	{ text: Type.String({ minLength: 1 }), evidence, scope, evidenceClass, explicit: Type.Optional(Type.Boolean()) },
+	{ text: Type.String({ minLength: 1 }), evidence, scope, evidenceClass },
 	{ additionalProperties: false },
 );
 const correct = Type.Object(
@@ -50,12 +52,11 @@ const correct = Type.Object(
 const id = Type.Object({ id: Type.String({ minLength: 1 }) }, { additionalProperties: false });
 const why = Type.Object({ taskId: Type.String({ minLength: 1 }) }, { additionalProperties: false });
 
-/** Shared dispatch for Python and worker consumers. A missing judge never permits retention. */
+/** Shared dispatch for Python and worker consumers. */
 export function createWorkerServices(options: {
 	session: SessionValues;
 	sessionId: string;
 	cwd: string;
-	jev?: Pick<NativeJevClient, "triage" | "memoryGate" | "memoryPolicy">;
 	hindsightUrl?: string;
 	bankId?: string;
 	backend?: MemoryBackend;
@@ -64,7 +65,7 @@ export function createWorkerServices(options: {
 		run(name: string, args: string): Promise<unknown>;
 	};
 }) {
-	const { session, jev } = options;
+	const { session } = options;
 	const backend =
 		options.backend ??
 		(options.hindsightUrl
@@ -87,22 +88,11 @@ export function createWorkerServices(options: {
 					read: async () => (await session.getValue(memoryAddress, BACKGROUND_CONTEXT))?.value,
 					write: (next) => session.setValue(memoryAddress, next, BACKGROUND_CONTEXT),
 				},
-				gate: async (request, signal) => {
-					// Deliberate recall by agent code needs no relevance judgement, even without Jev.
-					if (request.action === "recall" && request.explicit) return { retrieve: true, probability: 1 };
-					if (!jev) return request.action === "recall" ? { retrieve: false } : { action: "skip" };
-					if (request.action === "recall") return jev.memoryGate(request.query, signal);
-					const policy = await jev.memoryPolicy(
-						request.source?.prompt ?? request.text,
-						request.source?.response ?? "",
-						signal,
-					);
-					// A deliberate write is kept unless Jev judges it sensitive.
-					if (request.explicit) return policy.action === "skip" ? { ...policy, action: "keep" } : policy;
-					// Automatic writes follow Jev fully, and a keep needs the same confidence the Pi Jev extension used.
-					return policy.action === "keep" && policy.confidence < AUTOMATIC_KEEP_THRESHOLD
-						? { ...policy, action: "skip" }
-						: policy;
+				// Memory is used on purpose (nothing recalls or retains on its own), so every recall runs and every write
+				// (a proposal or a correction) is kept unless it holds a secret.
+				gate: async (request) => {
+					if (request.action === "recall") return { retrieve: true, probability: 1 };
+					return { action: containsSensitiveMemory(request.text) ? "sensitive" : "keep", confidence: 1 };
 				},
 			})
 		: undefined;
@@ -119,7 +109,7 @@ export function createWorkerServices(options: {
 		{ validate: validateRefinementContent },
 	);
 	return {
-		/** The memory service, when Hindsight is configured; automatic per-turn memory drives it directly. */
+		/** The memory service, when Hindsight is configured. */
 		memory,
 		async handle(
 			type: string,
@@ -133,16 +123,6 @@ export function createWorkerServices(options: {
 				if (!options.extensionCommands || typeof payload.name !== "string" || typeof payload.args !== "string")
 					throw new Error("Extension command service is unavailable");
 				return options.extensionCommands.run(payload.name, payload.args);
-			}
-			if (type === "jev.triage" || type === "jev.recall") {
-				if (typeof payload.prompt !== "string" || !payload.prompt.trim())
-					throw new Error("Jev prompt must be nonempty");
-				if (!jev) return { available: false, reason: "Jev is not configured" };
-				if (type === "jev.triage")
-					return { available: true, ...(await jev.triage(payload.prompt, context.abortSignal)) };
-				if (!memory) return { available: false, reason: "Hindsight is not configured" };
-				const recalled = await memory.prepare({ query: payload.prompt, taskId: "jev.recall" }, context.abortSignal);
-				return { available: true, gate: recalled.operation.gate, ...recalled };
 			}
 			if (!type.startsWith("memory.")) return local.handle(type, payload, context, branch);
 			if (!memory) throw new Error("Hindsight is not configured. Set ULTRON_HINDSIGHT_URL.");

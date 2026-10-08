@@ -5,7 +5,6 @@ import { afterEach, describe, expect, test } from "vitest";
 import { getRlmRuntimePath } from "../src/config.ts";
 import { loadSkillsFromDir } from "../src/core/skills.ts";
 import { CODE_SKILLS_PROMPT, CodeSkills, codeSkillsToolSection } from "../src/ultron/code-skills.ts";
-import type { JevMemoryPolicy } from "../src/ultron/jev.ts";
 import { createMemoryModuleStore, type NativeHostApi, ROOT_CALLER } from "../src/ultron/rlm/host-module.ts";
 import { RlmKernel } from "../src/ultron/rlm/kernel.ts";
 import { rlmRuntimePrompt } from "../src/ultron/rlm/prompt.ts";
@@ -64,12 +63,10 @@ async function run(target: RlmKernel, code: string): Promise<string> {
 	return [result.stdout, result.result === "None" ? "" : result.result].filter(Boolean).join("\n").trim();
 }
 
-const noJev = { skillPolicy: async (): Promise<JevMemoryPolicy> => ({ action: "keep", confidence: 0.9 }) };
-
 describe("A53: code skills are tested before activation, versioned, and roll back", () => {
 	test("a proposed skill whose test fails is never importable", async () => {
 		const dir = skillsDir();
-		const skills = new CodeSkills({ dir, jev: noJev });
+		const skills = new CodeSkills({ dir });
 		const rejected = await skills.propose("code", {
 			name: "slug",
 			source: BROKEN,
@@ -144,8 +141,8 @@ describe("A53: code skills are tested before activation, versioned, and roll bac
 			{ name: "test_no_host", ok: true },
 		]);
 		expect(probe.status).toBe("active");
-		// Jev is not configured: the proposal is not blocked, and the missing judgement is recorded.
-		expect(probe.jev).toEqual({ status: "unavailable", reason: "Jev is not configured" });
+		// The proposal holds no secret, and the check that cleared it is recorded.
+		expect(probe.secretCheck).toEqual({ status: "clean" });
 	}, 60_000);
 
 	test("a passing skill is importable in every kernel, listed with its docstring, and survives worker restart", async () => {
@@ -154,7 +151,7 @@ describe("A53: code skills are tested before activation, versioned, and roll bac
 		const module = createSkillModule({
 			store,
 			loadSkills: async () => [],
-			code: new CodeSkills({ dir, jev: noJev }),
+			code: new CodeSkills({ dir }),
 		});
 		const host = { callerTaskId: () => null } as unknown as NativeHostApi;
 		const request = (type: string, payload: Record<string, unknown>) =>
@@ -257,62 +254,37 @@ describe("A53: code skills are tested before activation, versioned, and roll bac
 		expect(await run(kernel(dir), "from code_skills import slug")).toMatch(/^ERROR ImportError/);
 	}, 90_000);
 
-	test("Jev scores proposals: sensitive ones are refused, an outage never blocks", async () => {
+	test("a proposal holding a secret is refused before anything is written; a clean one proceeds", async () => {
 		const dir = skillsDir();
-		const decisions: string[] = [];
-		const skills = (policy: () => Promise<JevMemoryPolicy>) =>
-			new CodeSkills({
-				dir,
-				jev: {
-					skillPolicy: async (name) => {
-						decisions.push(name);
-						return policy();
-					},
-				},
-			});
-		const kept = await skills(async () => ({ action: "keep", confidence: 0.8 })).propose("code", {
+		const skills = new CodeSkills({ dir });
+		const clean = await skills.propose("code", {
 			name: "slug",
 			source: SLUG_V1,
 			test_source: SLUG_TEST_V1,
 			evidence: "slugs for the blog",
 		});
-		expect(kept.jev).toEqual({ status: "ok", action: "keep", confidence: 0.8 });
-		expect(decisions).toEqual(["slug"]);
-		// A low-relevance judgement is recorded but a deliberate proposal still proceeds, as for memory.
-		const skipped = await skills(async () => ({ action: "skip", confidence: 0.9 })).propose("code", {
-			name: "slug",
-			source: SLUG_V2,
-			test_source: SLUG_TEST_V2,
-			evidence: "one-off",
-		});
-		expect(skipped).toMatchObject({ status: "active", jev: { action: "skip" } });
-		const outage = await skills(async () => {
-			throw new Error("Jev UNAVAILABLE");
-		}).propose("code", {
-			name: "other",
-			source: SLUG_V1,
-			test_source: "from code_skills import other\ndef test_x():\n    assert other.slugify('A b') == 'a-b'\n",
-			evidence: "outage",
-		});
-		expect(outage.jev).toEqual({ status: "unavailable", reason: "Jev UNAVAILABLE" });
-		expect(outage.status).toBe("active");
-		const sensitive = await skills(async () => ({ action: "sensitive", confidence: 0.95 })).propose("code", {
-			name: "leaky",
-			source: SLUG_V1,
-			test_source: SLUG_TEST_V1,
-			evidence: "customer records",
-		});
-		expect(sensitive).toMatchObject({ status: "refused", version: null, test: null });
-		expect(existsSync(join(dir, "leaky", ".versions"))).toBe(false);
-		// Secrets are refused deterministically even when Jev is down or absent.
-		const secret = await new CodeSkills({ dir }).propose("code", {
-			name: "deploy",
-			source: `API_KEY = "sk-abcdefghijklmnop1234"\ndef deploy():\n    return API_KEY\n`,
-			test_source: "def test_x():\n    pass\n",
-			evidence: "deploys",
-		});
-		expect(secret).toMatchObject({ status: "refused", jev: { status: "deterministic", action: "sensitive" } });
-		expect(existsSync(join(dir, "deploy", ".versions"))).toBe(false);
+		expect(clean).toMatchObject({ status: "active", secretCheck: { status: "clean" } });
+		// A key in the source, the test or the evidence refuses the proposal; no version directory is created.
+		for (const [name, source, testSource, evidence] of [
+			[
+				"deploy",
+				`API_KEY = "sk-abcdefghijklmnop1234"\ndef deploy():\n    return API_KEY\n`,
+				"def test_x():\n    pass\n",
+				"deploys",
+			],
+			["fetcher", SLUG_V1, 'TOKEN = "ghp_abcdefghijklmnopqrstuvwx"\ndef test_x():\n    pass\n', "fetches"],
+			["notes", SLUG_V1, SLUG_TEST_V1, `the key is ${"AKIA"}ABCDEFGHIJKLMNOP`],
+		] as const) {
+			const refused = await skills.propose("code", { name, source, test_source: testSource, evidence });
+			expect(refused).toMatchObject({
+				status: "refused",
+				version: null,
+				test: null,
+				secretCheck: { status: "sensitive" },
+			});
+			expect(refused.reason).toContain("secret or credential");
+			expect(existsSync(join(dir, name, ".versions"))).toBe(false);
+		}
 	}, 90_000);
 
 	test("policy skills store any plan function with a test, filterable by task family", async () => {

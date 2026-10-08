@@ -9,15 +9,13 @@
  *   UserPromptSubmit hook (`beginTurn`) or by the first cell of a turn, and closed by the Stop hook (`endTurn`);
  * - completion events for root-owned work cannot start a run: they wait in an inbox and lead the next cell result,
  *   or go out with the next user prompt's hook context;
- * - the research-loop brake and the wait nudge, which steer a native run, are appended to the next cell result;
- * - automatic memory (Jev gate, Hindsight recall and retention) runs from the hooks instead of harness hooks.
+ * - the research-loop brake and the wait nudge, which steer a native run, are appended to the next cell result.
  */
 import { randomUUID } from "node:crypto";
 import type { AgentHarnessToolInvocation } from "@ultron/agent-core";
 import type { Context } from "@ultron/chord";
 import { BACKGROUND_CONTEXT, withAbortSignal } from "@ultron/chord/context";
 import { type RuntimeEvent, runtimeEventText } from "../async-events.ts";
-import type { AutoMemory } from "../auto-memory.ts";
 import { SkillExtractionNudger, ToolRoundNudger } from "../tool-round-nudge.ts";
 
 /** Operation ids of cells run for an external root start with this; the rlm tool maps them to the root lane. */
@@ -43,7 +41,6 @@ export interface ExternalRootDeps {
 	usage: { turnBudgetExhausted(rootId: string | undefined): Promise<string | undefined> };
 	hints: { runEnded(lane: string): void };
 	fileHooks: { beginTurn(): void };
-	autoMemory?: AutoMemory;
 	/** Loki's one-time setup note, and its short policy note. */
 	lokiNotice: Promise<string | undefined>;
 	lokiContext?: string;
@@ -139,28 +136,21 @@ export class ExternalRootController {
 
 	/**
 	 * A user turn starts (UserPromptSubmit): open a root turn and return the context to add to the prompt, namely
-	 * recalled memory and events that arrived since the last cell. Never throws.
+	 * Loki's notice and events that arrived since the last cell. Never throws.
 	 */
-	async beginTurn(prompt: string | undefined): Promise<string | undefined> {
-		if (this.#turn !== undefined) await this.endTurn(undefined, "aborted");
-		const turn = this.#openTurn();
+	async beginTurn(): Promise<string | undefined> {
+		if (this.#turn !== undefined) await this.endTurn();
+		this.#openTurn();
 		const parts: string[] = [];
 		const notice = await this.#lokiNotice().catch(() => undefined);
 		if (notice) parts.push(notice);
-		if (prompt?.trim() && this.#deps.autoMemory) {
-			const message = await this.#deps.autoMemory
-				.beforeRun(turn, [{ role: "user", content: prompt, timestamp: Date.now() }])
-				.catch(() => undefined);
-			if (message && typeof message.content === "string" && message.content.trim())
-				parts.push(`<ultron_memory>\n${message.content}\n</ultron_memory>`);
-		}
 		const events = this.takeEvents();
 		if (events) parts.push(`Runtime events since your last rlm call:\n${events}`);
 		return parts.length === 0 ? undefined : parts.join("\n\n");
 	}
 
-	/** The turn ended (Stop): retention of the exchange, budget window, stuck-loop count. Never throws. */
-	async endTurn(answer: string | undefined, status: "completed" | "aborted" = "completed"): Promise<void> {
+	/** The turn ended (Stop): budget window, stuck-loop count. Never throws. */
+	async endTurn(): Promise<void> {
 		const turn = this.#turn;
 		if (turn === undefined) return;
 		this.#turn = undefined;
@@ -168,10 +158,6 @@ export class ExternalRootController {
 		this.#deps.hints.runEnded("main");
 		this.#nudger.runEnded(turn);
 		this.#skillNudger.runEnded(turn);
-		if (this.#deps.autoMemory) {
-			if (answer?.trim()) this.#deps.autoMemory.turnEnded(turn, answer);
-			void this.#deps.autoMemory.runEnded(turn, status);
-		}
 	}
 
 	#openTurn(): string {

@@ -97,7 +97,6 @@ async def attempt(name, pending):
     except Exception as error:
         outcomes[name] = {"ok": False, "error": str(error)[:300]}
 
-await attempt("jev", jev.triage("route this task"))
 await attempt("memory_recall", memory.prepare("prior fixes", task_id="a34-root"))
 await attempt("memory_propose", memory.propose("lesson", [{"ref": "task:a34"}]))
 await attempt("refinements", refinements.list())
@@ -137,15 +136,10 @@ print(json.dumps({
 `;
 
 describe("A34 optional-service failure preserves RLM operation without bypassing checks or replaying effects", () => {
-	test("combined Jev, Hindsight, refinement, module, and workflow outage in one real RLM kernel run", async () => {
+	test("combined Hindsight, refinement, module, and workflow outage in one real RLM kernel run", async () => {
 		const effects: string[] = [];
 		const backendCalls: string[] = [];
-		const jevCalls: string[] = [];
 		const prompts: string[] = [];
-		const down = (name: string) => async () => {
-			jevCalls.push(name);
-			throw new Error("Jev unavailable: connect ECONNREFUSED 127.0.0.1:7777");
-		};
 		const hindsightDown = (name: string) => async () => {
 			backendCalls.push(name);
 			throw new Error("Hindsight unavailable");
@@ -179,7 +173,6 @@ describe("A34 optional-service failure preserves RLM operation without bypassing
 					session: sessionValues() as never,
 					sessionId: "a34",
 					cwd: process.cwd(),
-					jev: { triage: down("triage"), memoryGate: down("memoryGate"), memoryPolicy: down("memoryPolicy") },
 					backend,
 				}),
 				refinements: async () => {
@@ -219,17 +212,13 @@ describe("A34 optional-service failure preserves RLM operation without bypassing
 			expect(report.answer).toBe(Number(expected % 1000003n));
 
 			// Each optional service fails closed and visibly; none is silently treated as success.
-			expect(report.outcomes.jev).toMatchObject({ ok: false });
-			expect(report.outcomes.jev.error).toContain("Jev unavailable");
 			expect(report.outcomes.memory_recall).toMatchObject({ ok: false });
 			expect(report.outcomes.memory_propose).toMatchObject({ ok: false });
 			expect(report.outcomes.refinements).toMatchObject({ ok: false });
 			expect(report.outcomes.refinements.error).toContain("refinement store unavailable");
 			expect(report.outcomes.skills).toMatchObject({ ok: false, error: expect.stringContaining("skill module") });
-			// An explicit recall from agent code skips Jev's relevance gate, reaches the down backend, and fails
-			// visibly; a write still needs Jev's policy, so nothing was retained behind the outage.
-			expect(backendCalls).toEqual(["recall"]);
-			expect(jevCalls).toEqual(["triage", "memoryPolicy"]);
+			// The recall and the write both reach the down backend and fail visibly; neither counts as success.
+			expect(backendCalls).toEqual(["recall", "retain"]);
 
 			// The workflow records its failure and skip; the explicit rerun does not repeat the keyed effect.
 			for (const run of [report.first_run, report.second_run]) {
@@ -273,12 +262,9 @@ describe("A34 optional-service failure preserves RLM operation without bypassing
 		)) as { effect: { status: string } };
 		expect(rerun.effect).toMatchObject({ status: "succeeded" });
 		expect(effects).toHaveLength(1);
-		// Jev outage calls are accounted as failed calls, not dropped.
 		const status = (await restarted.handle("agents.status", {}, BACKGROUND_CONTEXT)) as {
-			usage: { usage: { jevCalls: number } };
 			tasks: Array<{ definition: string; state: string }>;
 		};
-		expect(status.usage.usage.jevCalls).toBe(1);
 		expect(status.tasks.filter((task) => task.definition === "external-effect@1")).toHaveLength(1);
 		await restarted.close();
 	});

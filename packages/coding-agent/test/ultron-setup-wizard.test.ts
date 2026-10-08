@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -120,7 +120,6 @@ function deps(agentDir: string, settings: SettingsManager, overrides: Partial<Se
 		settings,
 		createRuntime: () => createProfileRuntime(agentDir),
 		testModel: async () => ({ ok: true, reply: "ok", ms: 420 }),
-		checkJevKey: async () => ({ ok: true }),
 		runDocker: async () => ({ ok: true, output: "" }),
 		hindsightWaitMs: 50,
 		...overrides,
@@ -138,20 +137,16 @@ const CUSTOM_ENDPOINT: Step[] = [
 ];
 
 describe("ultron setup wizard", () => {
-	it("configures a custom endpoint, the default model, Jev and shows Hindsight's manual install", async () => {
+	it("configures a custom endpoint and the default model, and shows Hindsight's manual install", async () => {
 		const { agentDir, settings } = profile();
 		const testModel = vi.fn<SetupDeps["testModel"]>(async () => ({ ok: true, reply: "ok", ms: 420 }));
-		const checkJevKey = vi.fn<SetupDeps["checkJevKey"]>(async () => ({ ok: true }));
 		const ui = new ScriptedUi([
 			...CUSTOM_ENDPOINT,
-			{ select: /Jev API key/, pick: /Paste a key/ },
-			{ input: /Jev API key/, text: "jev-secret-key" },
-			{ select: /Check the key/, pick: /^Yes/ },
 			{ select: /Set up Hindsight/, pick: /manual install/ },
 			{ select: /Check again/, pick: /Continue without/ },
 			{ select: /^Loki guardrails$/, pick: /^Keep/ },
 		]);
-		const result = await runSetupWizard(ui, deps(agentDir, settings, { testModel, checkJevKey }));
+		const result = await runSetupWizard(ui, deps(agentDir, settings, { testModel }));
 		expect(ui.remaining).toBe(0);
 		expect(result.completed).toBe(true);
 		expect(result.modelReady).toBe(true);
@@ -170,23 +165,20 @@ describe("ultron setup wizard", () => {
 		expect(saved).toMatchObject({ defaultProvider: "proxy", defaultModel: "m2" });
 		expect(testModel).toHaveBeenCalledTimes(1);
 		expect(testModel.mock.calls[0]?.[1]).toMatchObject({ provider: "proxy", id: "m2" });
-		// Jev's key where jev.ts reads it.
-		expect(readFileSync(join(agentDir, "jev-api-key"), "utf8")).toBe("jev-secret-key\n");
-		expect(statSync(join(agentDir, "jev-api-key")).mode & 0o777).toBe(0o600);
-		expect(checkJevKey).toHaveBeenCalledWith("jev-secret-key");
 
 		const text = ui.transcript.join("\n");
 		expect(text).toContain("The endpoint lists 2 models: m1, m2");
 		expect(text).toContain("✓ Live test passed");
 		expect(text).toContain("pip install hindsight-api");
-		expect(text).toContain("# Step 5/6: Loki guardrails");
-		expect(text).toContain("# Step 6/6: Summary");
+		expect(text).toContain("# Step 3/5: Hindsight memory server");
+		expect(text).toContain("# Step 4/5: Loki guardrails");
+		expect(text).toContain("# Step 5/5: Summary");
+		expect(text).not.toContain("Jev");
 		// Secrets were read masked and never shown.
-		expect(ui.secrets).toEqual(["sk-proxy-secret", "jev-secret-key"]);
+		expect(ui.secrets).toEqual(["sk-proxy-secret"]);
 		for (const secret of ui.secrets) expect(text).not.toContain(secret);
 		expect(result.lines.map((line) => [line.step, line.status])).toEqual([
 			["Provider and model", "configured"],
-			["Jev", "configured"],
 			["Hindsight", "skipped"],
 			["Loki", "unchanged"],
 		]);
@@ -198,7 +190,6 @@ describe("ultron setup wizard", () => {
 		await runSetupWizard(
 			new ScriptedUi([
 				...CUSTOM_ENDPOINT,
-				{ select: /Jev API key/, pick: "esc" },
 				{ select: /Set up Hindsight/, pick: "esc" },
 				{ select: /^Loki guardrails$/, pick: "esc" },
 			]),
@@ -214,7 +205,6 @@ describe("ultron setup wizard", () => {
 			{ select: /already has a provider named "proxy"/, pick: /Choose another name/ },
 			{ input: /short name/, text: "esc" },
 			{ select: /reach a model/, pick: /^Keep proxy\/m2$/ },
-			{ select: /Jev API key/, pick: /^Skip/ },
 			{ select: /Set up Hindsight/, pick: /^Skip$/ },
 			{ select: /^Loki guardrails$/, pick: /^Keep/ },
 		]);
@@ -222,7 +212,6 @@ describe("ultron setup wizard", () => {
 		expect(ui.remaining).toBe(0);
 		expect(readFileSync(join(agentDir, "models.json"), "utf8")).toBe(before);
 		expect(result.lines[0]).toMatchObject({ status: "unchanged", detail: "proxy/m2" });
-		expect(existsSync(join(agentDir, "jev-api-key"))).toBe(false);
 	});
 
 	it("reports a failed live test with the provider's error and lets the user pick another model", async () => {
@@ -240,7 +229,7 @@ describe("ultron setup wizard", () => {
 		const result = await runSetupWizard(ui, deps(agentDir, settings, { testModel }));
 		expect(ui.transcript.join("\n")).toContain("✗ Live test failed after 0.1s: 401 invalid api key");
 		expect(JSON.parse(readFileSync(join(agentDir, "settings.json"), "utf8"))).toMatchObject({ defaultModel: "m1" });
-		// Ctrl+C at the Jev step ends the wizard and keeps what was saved.
+		// Ctrl+C at the next step ends the wizard and keeps what was saved.
 		expect(result.completed).toBe(false);
 		expect(ui.transcript.join("\n")).toContain("Setup stopped");
 	});
@@ -257,7 +246,6 @@ describe("ultron setup wizard", () => {
 		});
 		const ui = new ScriptedUi([
 			{ select: /reach a model/, pick: /Skip/ },
-			{ select: /Jev API key/, pick: "esc" },
 			{ select: /Set up Hindsight/, pick: /Install it with Docker/ },
 			{ select: /LLM provider for Hindsight/, pick: /^Anthropic$/ },
 			{ input: /API key for Anthropic/, text: "sk-ant-hindsight" },
@@ -281,7 +269,7 @@ describe("ultron setup wizard", () => {
 		expect(args.join(" ")).not.toContain("sk-ant-hindsight");
 		expect(env).toEqual({ HINDSIGHT_API_LLM_API_KEY: "sk-ant-hindsight" });
 		expect(ui.transcript.join("\n")).not.toContain("sk-ant-hindsight");
-		expect(result.lines[2]).toMatchObject({ step: "Hindsight", status: "configured" });
+		expect(result.lines[1]).toMatchObject({ step: "Hindsight", status: "configured" });
 	});
 
 	it("detects a running Hindsight, and saves a custom URL as a setting", async () => {
@@ -289,7 +277,6 @@ describe("ultron setup wizard", () => {
 		const fetcher = fakeFetch({ "mem.local:9000/health": () => new Response("{}") });
 		const ui = new ScriptedUi([
 			{ select: /reach a model/, pick: /Skip/ },
-			{ select: /Jev API key/, pick: "esc" },
 			{ select: /Set up Hindsight/, pick: /set its URL/ },
 			{ input: /Hindsight URL/, text: "http://mem.local:9000/" },
 			{ select: /^Loki guardrails$/, pick: /^Keep/ },
@@ -299,25 +286,23 @@ describe("ultron setup wizard", () => {
 		expect(JSON.parse(readFileSync(join(agentDir, "settings.json"), "utf8")).hindsightUrl).toBe(
 			"http://mem.local:9000",
 		);
-		expect(result.lines[2]).toMatchObject({ status: "configured", detail: "http://mem.local:9000" });
+		expect(result.lines[1]).toMatchObject({ status: "configured", detail: "http://mem.local:9000" });
 
 		// Next run: found at the saved URL.
 		const again = new ScriptedUi([
 			{ select: /reach a model/, pick: /Skip/ },
-			{ select: /Jev API key/, pick: "esc" },
 			{ select: /^Hindsight$/, pick: /Use it/ },
 			{ select: /^Loki guardrails$/, pick: /^Keep/ },
 		]);
 		const second = await runSetupWizard(again, deps(agentDir, settings, { fetch: fetcher }));
 		expect(again.transcript.join("\n")).toContain("✓ Hindsight is running at http://mem.local:9000.");
-		expect(second.lines[2]).toMatchObject({ status: "unchanged" });
+		expect(second.lines[1]).toMatchObject({ status: "unchanged" });
 	});
 
 	it("shows Loki's version and missing analyzers, and saves its toggles as global settings", async () => {
 		const { agentDir, settings } = profile();
 		const ui = new ScriptedUi([
 			{ select: /reach a model/, pick: /Skip/ },
-			{ select: /Jev API key/, pick: "esc" },
 			{ select: /Set up Hindsight/, pick: /^Skip$/ },
 			{ select: /^Loki guardrails$/, pick: /^Turn auto-commit off$/ },
 			{ select: /^Loki guardrails$/, pick: /^Advise only/ },

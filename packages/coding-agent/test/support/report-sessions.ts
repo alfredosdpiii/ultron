@@ -1,6 +1,9 @@
 import { FIXTURE_START, fixtureStats, SessionFixture } from "./session-fixture.ts";
 
-/** A native session that never delegated: two root turns, three cells, a steer, a masked secret, Jev decisions. */
+/**
+ * A native session that never delegated: two root turns, three cells, a steer, a masked secret, and Jev decisions
+ * from before Jev was removed (the report ignores them).
+ */
 export function rootOnlySession(): SessionFixture {
 	const session = new SessionFixture("aaaaaaaa-0001-7000-8000-000000000001", "/home/dev/app");
 	session.laneModel("main", "priced", "model-a");

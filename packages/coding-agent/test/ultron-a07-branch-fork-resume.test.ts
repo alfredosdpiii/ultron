@@ -115,11 +115,6 @@ async function environment() {
 			session: session as Session,
 			sessionId: id,
 			cwd: root,
-			jev: {
-				triage: async () => ({}) as never,
-				memoryGate: async () => ({ retrieve: true }) as never,
-				memoryPolicy: async () => ({ action: "keep" }) as never,
-			},
 			backend: memory.backendFor(id),
 		});
 		const host = new NativeRlmHost(echoHarness(prompts) as never, {} as never, {

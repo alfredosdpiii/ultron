@@ -21,7 +21,7 @@ Root RLM
         |
 Typed agents and optional workflows
         |
-Jev decisions, Hindsight memory, versioned refinements
+Hindsight memory, versioned refinements
 ```
 
 The first fork commit changes product identity and config paths only. Runtime changes land in separate commits with focused tests. The installed `pi` and `prime-agent` commands are not changed by this repository. Ultron does not read `~/.pi/agent` after the one-time copy. Do not run Ultron and stock Pi against the same live session.

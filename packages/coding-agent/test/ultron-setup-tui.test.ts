@@ -62,7 +62,6 @@ describe("ultron setup in a terminal", () => {
 			settings,
 			createRuntime: () => createProfileRuntime(agentDir),
 			testModel,
-			checkJevKey: async () => ({ ok: true }),
 			runDocker: async () => ({ ok: false, output: "unexpected" }),
 			hindsightWaitMs: 10,
 		};
@@ -95,17 +94,8 @@ describe("ultron setup in a terminal", () => {
 		await waitFor(terminal, "Default model (1 from custom)");
 		terminal.sendInput(ENTER);
 
-		await waitFor(terminal, "Step 3/6: Jev API key");
-		expect(screen(terminal)).toContain("✓ Live test passed in 0.3s");
-		terminal.sendInput(ENTER); // Paste a key
-		await waitFor(terminal, "Input is hidden");
-		type(terminal, "jev-tui-key");
-		terminal.sendInput(ENTER);
-		await waitFor(terminal, "Check the key now?");
-		terminal.sendInput(DOWN);
-		terminal.sendInput(ENTER); // No
-
 		await waitFor(terminal, "Set up Hindsight");
+		expect(screen(terminal)).toContain("✓ Live test passed in 0.3s");
 		expect(screen(terminal)).toContain("Hindsight is not reachable at http://localhost:8888 (connect ECONNREFUSED");
 		terminal.sendInput(CTRL_C);
 		const result = await run;
@@ -113,12 +103,10 @@ describe("ultron setup in a terminal", () => {
 
 		expect(result.completed).toBe(false);
 		expect(screen(terminal)).toContain("Setup stopped");
-		for (const secret of ["sk-tui-secret", "jev-tui-key"]) expect(screen(terminal)).not.toContain(secret);
+		expect(screen(terminal)).not.toContain("sk-tui-secret");
 		expect(JSON.parse(readFileSync(join(agentDir, "models.json"), "utf8")).providers.custom.apiKey).toBe(
 			"sk-tui-secret",
 		);
-		expect(readFileSync(join(agentDir, "jev-api-key"), "utf8")).toBe("jev-tui-key\n");
-		expect(statSync(join(agentDir, "jev-api-key")).mode & 0o777).toBe(0o600);
 		expect(JSON.parse(readFileSync(join(agentDir, "settings.json"), "utf8"))).toMatchObject({
 			defaultProvider: "custom",
 			defaultModel: "m1",
@@ -161,7 +149,6 @@ describe("ultron setup: signing in with a subscription", () => {
 			settings,
 			createRuntime: () => createProfileRuntime(agentDir),
 			testModel,
-			checkJevKey: async () => ({ ok: true }),
 			runDocker: async () => ({ ok: false, output: "unexpected" }),
 			hindsightWaitMs: 10,
 		};
@@ -220,7 +207,7 @@ describe("ultron setup: signing in with a subscription", () => {
 		expect(screen(terminal)).not.toContain("sk-or-setup-key");
 
 		terminal.sendInput(ENTER); // the first model
-		await waitFor(terminal, "Step 3/6: Jev API key", 10_000);
+		await waitFor(terminal, "Step 3/5: Hindsight memory server", 10_000);
 		expect(screen(terminal)).toContain("✓ Live test passed in 0.3s");
 		expect(testModel.mock.calls[0]?.[1].provider).toBe("openrouter");
 		terminal.sendInput(CTRL_C);

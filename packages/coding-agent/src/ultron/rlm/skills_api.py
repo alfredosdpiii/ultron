@@ -80,7 +80,7 @@ class Skills:
         return await self._bridge.request('skills.code_list', payload)
 
     async def code_history(self, name):
-        """Every version of a code skill with its state, test outcome, and Jev score."""
+        """Every version of a code skill with its state, test outcome, and secret check."""
         return await self._bridge.request('skills.code_history', {'name': name})
 
 

@@ -13,7 +13,6 @@ import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, test } from "vitest";
-import { containsCodeSecret } from "../src/ultron/jev.ts";
 import { defaultSecretDetector, maskCellOutput } from "../src/ultron/rlm/output-secrets.ts";
 import {
 	loadSecretPatterns,
@@ -22,6 +21,7 @@ import {
 	SecretDetector,
 	shannonEntropy,
 } from "../src/ultron/secrets.ts";
+import { containsCodeSecret } from "../src/ultron/sensitive.ts";
 
 /** The interpreter the kernel uses (kernel.ts): a `python3` on PATH can be a version-manager shim that fails under test.sh's isolated HOME. */
 const PYTHON =

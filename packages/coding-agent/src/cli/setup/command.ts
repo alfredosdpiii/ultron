@@ -11,7 +11,6 @@ import chalk from "chalk";
 import { APP_NAME, getAgentDir, getBundledLokiPath } from "../../config.ts";
 import { ModelRuntime } from "../../core/model-runtime.ts";
 import { SettingsManager } from "../../core/settings-manager.ts";
-import { NativeJevClient } from "../../ultron/jev.ts";
 import type { Args } from "../args.ts";
 import { bundledLokiVersion, probeCommand, shouldOfferSetup } from "./core.ts";
 import type { ModelTestResult, SetupDeps, SetupResult } from "./wizard.ts";
@@ -69,16 +68,6 @@ export function createSetupDeps(
 		settings,
 		createRuntime: () => createProfileRuntime(agentDir),
 		testModel,
-		checkJevKey: async (key) => {
-			try {
-				await new NativeJevClient({ apiKey: key, baseUrl: env.TYPESAFE_BASE_URL, timeoutMs: 15_000 }).memoryRecall(
-					"ultron setup: checking the key",
-				);
-				return { ok: true };
-			} catch (error) {
-				return { ok: false, error: error instanceof Error ? error.message : String(error) };
-			}
-		},
 		runDocker: (args, extraEnv) =>
 			new Promise((resolve) => {
 				let output = "";
@@ -134,8 +123,8 @@ function printSetupHelp(): void {
   ${APP_NAME} setup
 
 A guided setup: checks Node.js and python3, sets up a provider (subscription login, API key or a custom
-OpenAI-compatible endpoint) and the default model with a live test, saves a Jev API key and finds or installs
-the Hindsight memory server. Every step can be skipped; run it again at any time.
+OpenAI-compatible endpoint) and the default model with a live test, and finds or installs the Hindsight memory
+server. Every step can be skipped; run it again at any time.
 
 Files are written to ${getAgentDir()} (secrets with mode 0600).`);
 }
@@ -156,7 +145,7 @@ export async function runSetupCommand(args: readonly string[]): Promise<boolean>
 		console.error(
 			chalk.red(`${APP_NAME} setup is interactive and needs a terminal.`) +
 				`\nWithout one, configure ${getAgentDir()} directly: provider keys in environment variables (e.g. ANTHROPIC_API_KEY),` +
-				` custom endpoints in models.json, the Jev key in jev-api-key, and ULTRON_HINDSIGHT_URL.`,
+				` custom endpoints in models.json, and ULTRON_HINDSIGHT_URL.`,
 		);
 		process.exitCode = 1;
 		return true;

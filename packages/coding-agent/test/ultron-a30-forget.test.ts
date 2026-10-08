@@ -101,11 +101,6 @@ function services(session: ReturnType<typeof sessionValues>, backend: MemoryBack
 		sessionId: "a30",
 		cwd,
 		backend,
-		jev: {
-			triage: async () => ({}) as never,
-			memoryGate: async () => ({ retrieve: true }),
-			memoryPolicy: async () => ({ action: "keep" }),
-		} as never,
 	});
 	return (type: string, payload: Record<string, unknown> = {}) => worker.handle(type, payload, context);
 }

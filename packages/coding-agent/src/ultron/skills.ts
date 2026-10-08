@@ -78,7 +78,7 @@ type CodeRecord = {
 	status: CodeSkillProposal["status"] | "rolled_back" | "failed";
 	caller_task_id: string | null;
 	active?: number | null;
-	jev?: JsonValue;
+	secretCheck?: JsonValue;
 	test?: { passed: boolean; tests: number; failed: string[]; error?: string };
 	error?: string;
 };
@@ -460,7 +460,7 @@ class SkillModule implements NativeHostModule {
 					...base,
 					version: result.version,
 					status: result.status,
-					jev: result.jev as unknown as JsonValue,
+					secretCheck: result.secretCheck as unknown as JsonValue,
 					...(result.test
 						? {
 								test: {

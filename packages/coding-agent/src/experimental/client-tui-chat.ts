@@ -15,7 +15,6 @@ import {
 import { ToolExecutionComponent, type ToolRenderers } from "../modes/interactive/components/tool-execution.ts";
 import { UserMessageComponent } from "../modes/interactive/components/user-message.ts";
 import { theme } from "../modes/interactive/theme/theme.ts";
-import { type JevNoteSource, JevTurnNotes, parseMemoryMessage } from "./jev-annotations.ts";
 import { rlmToolRenderers } from "./rlm-tool-renderer.ts";
 
 export interface ChatViewOptions {
@@ -23,8 +22,6 @@ export interface ChatViewOptions {
 	readonly hideThinkingBlock?: boolean;
 	/** Pi's tool output expansion (Ctrl+O toggles it). */
 	readonly toolsExpanded?: boolean;
-	/** Jev's notes: set when the TUI can show what Jev recalled and kept per turn. */
-	readonly jev?: JevNoteSource;
 }
 
 interface Expandable extends Component {
@@ -70,15 +67,12 @@ export class ExperimentalChatView {
 	#toolsExpanded: boolean;
 	/** Components that follow the tool expansion toggle (tool calls, `!` output), in transcript order. */
 	#expandables: Expandable[] = [];
-	readonly #jev: JevNoteSource | undefined;
-	#turn: { notes: JevTurnNotes; closed: boolean; answered: boolean } | undefined;
 
 	constructor(ui: TUI, cwd: string, options: ChatViewOptions = {}) {
 		this.#ui = ui;
 		this.#cwd = cwd;
 		this.#hideThinkingBlock = options.hideThinkingBlock ?? false;
 		this.#toolsExpanded = options.toolsExpanded ?? false;
-		this.#jev = options.jev;
 	}
 
 	get toolsExpanded(): boolean {
@@ -141,8 +135,6 @@ export class ExperimentalChatView {
 		}
 		this.#syncQueues(snapshot.queues);
 		this.#setWorking(snapshot.operation);
-		// A settled turn gets its retention note after the answer.
-		if (snapshot.operation === null && this.#turn?.answered) this.#closeTurn();
 		// Not the transcript: every component in it redraws itself when its own content changes (streaming text,
 		// tool results, appended entries), and invalidating all of them re-wrapped the whole Session on every
 		// streamed token. Theme and expansion changes invalidate it explicitly.
@@ -161,7 +153,6 @@ export class ExperimentalChatView {
 		this.#expandables = [];
 		this.#renderedEntryIds = [];
 		this.#streaming = undefined;
-		this.#turn = undefined;
 		this.apply(snapshot);
 	}
 
@@ -198,7 +189,6 @@ export class ExperimentalChatView {
 			this.#expandables = [];
 			this.#renderedEntryIds = [];
 			this.#streaming = undefined;
-			this.#turn = undefined;
 		}
 		for (const entry of transcript.slice(this.#renderedEntryIds.length)) {
 			this.#addEntry(entry);
@@ -221,25 +211,16 @@ export class ExperimentalChatView {
 			this.#addText(theme.fg("muted", `[${entry.customType}]`));
 			return;
 		}
-		this.#addMessage(entry.message, entry.timestamp);
+		this.#addMessage(entry.message);
 	}
 
-	#addMessage(message: AgentMessage, timestamp?: number): void {
+	#addMessage(message: AgentMessage): void {
 		if (message.role === "user") {
-			this.#closeTurn();
 			this.transcript.addChild(new Spacer(1));
 			this.transcript.addChild(new UserMessageComponent(userMessageText(message)));
-			if (this.#jev !== undefined) {
-				const at = timestamp ?? message.timestamp ?? Date.now();
-				if (this.#turn !== undefined) this.#turn.notes.nextAt = at;
-				const notes = new JevTurnNotes(this.#jev, at);
-				this.#turn = { notes, closed: false, answered: false };
-				this.transcript.addChild(notes.recall);
-			}
 			return;
 		}
 		if (message.role === "assistant") {
-			if (this.#turn !== undefined) this.#turn.answered = true;
 			const component = this.#streaming ?? new AssistantMessageComponent(undefined, this.#hideThinkingBlock);
 			if (!this.#streaming) this.transcript.addChild(component);
 			this.#streaming = undefined;
@@ -252,12 +233,6 @@ export class ExperimentalChatView {
 		if (message.role === "toolResult") this.#tool(message.toolName, message.toolCallId).updateResult(message);
 		if (message.role === "bashExecution") {
 			this.#addBashExecution(message);
-			return;
-		}
-		// Automatic memory joins the turn's Jev note (collapsed to one line, expandable).
-		const memory = this.#jev === undefined ? undefined : parseMemoryMessage(message);
-		if (memory !== undefined && this.#turn !== undefined && this.#turn.notes.memory === undefined) {
-			this.#turn.notes.memory = memory;
 			return;
 		}
 		// Other injected context is shown muted, so what reached the model is visible.
@@ -302,14 +277,6 @@ export class ExperimentalChatView {
 		this.#tools.set(toolCallId, component);
 		this.#expandables.push(component);
 		return component;
-	}
-
-	/** Append the current turn's retention note once, after its answer. */
-	#closeTurn(): void {
-		const turn = this.#turn;
-		if (turn === undefined || turn.closed) return;
-		turn.closed = true;
-		this.transcript.addChild(turn.notes.retention);
 	}
 
 	/** A user `!` command recorded in the Session, drawn as Pi draws it. */

@@ -12,7 +12,6 @@ export type ReconciledUsage = {
 	calls: number;
 	taskCalls: number;
 	modelCalls: number;
-	jevCalls: number;
 	wallMs: number;
 	inputTokens: number | null;
 	outputTokens: number | null;
@@ -47,7 +46,6 @@ export type TimelineEvent = {
 		| "task.admitted"
 		| "task.settled"
 		| "model.call"
-		| "jev.call"
 		| "usage.unattributed"
 		| "progress.receipt"
 		| "progress.decision"
@@ -59,7 +57,7 @@ export type TimelineEvent = {
 
 export type Reconciliation = {
 	tasks: ReconciledTask[];
-	/** Calls that belong to no journal task: Jev calls and admissions that never created a task. */
+	/** Calls that belong to no journal task: admissions that never created a task, and other calls in older ledgers. */
 	unattributed: ReconciledUsage;
 	/** Historical usage written by an import (e.g. a Pi session's reported usage); it has no journal tasks. */
 	imported: ReconciledUsage;
@@ -118,7 +116,6 @@ function emptyUsage(): ReconciledUsage {
 		calls: 0,
 		taskCalls: 0,
 		modelCalls: 0,
-		jevCalls: 0,
 		wallMs: 0,
 		inputTokens: 0,
 		outputTokens: 0,
@@ -133,7 +130,6 @@ function add(total: ReconciledUsage, call: Json): void {
 	total.calls += 1;
 	if (call.kind === "task") total.taskCalls += 1;
 	if (call.kind === "model") total.modelCalls += 1;
-	if (call.kind === "jev") total.jevCalls += 1;
 	total.wallMs += num(usage.wallMs) ?? 0;
 	let unknown = false;
 	for (const field of ["inputTokens", "outputTokens", "totalTokens", "cost"] as const) {
@@ -149,7 +145,6 @@ function merge(target: ReconciledUsage, source: ReconciledUsage): void {
 	target.calls += source.calls;
 	target.taskCalls += source.taskCalls;
 	target.modelCalls += source.modelCalls;
-	target.jevCalls += source.jevCalls;
 	target.wallMs += source.wallMs;
 	target.unknownCalls += source.unknownCalls;
 	for (const field of ["inputTokens", "outputTokens", "totalTokens", "cost"] as const)
@@ -250,8 +245,14 @@ export function reconcileRecords(input: ReconcileInput): Reconciliation {
 			timeline.push({ at: settledAt, kind: "model.call", taskId: task.id, detail: status });
 			continue;
 		}
+		// Another kind of call, in a ledger from before Jev was removed: counted, with no task.
 		add(unattributed, call);
-		timeline.push({ at: settledAt, kind: "jev.call", taskId: null, detail: status });
+		timeline.push({
+			at: settledAt,
+			kind: "usage.unattributed",
+			taskId: null,
+			detail: `${String(call.kind)} call (${status})`,
+		});
 	}
 
 	const activeByKey = new Map<string, Json[]>();
@@ -389,7 +390,7 @@ export function reconcileRecords(input: ReconcileInput): Reconciliation {
 
 function historyUsage(stored: Json): ReconciledUsage {
 	const usage = emptyUsage();
-	for (const field of ["calls", "taskCalls", "modelCalls", "jevCalls", "wallMs", "unknownCalls"] as const)
+	for (const field of ["calls", "taskCalls", "modelCalls", "wallMs", "unknownCalls"] as const)
 		usage[field] = num(stored[field]) ?? 0;
 	for (const field of ["inputTokens", "outputTokens", "totalTokens", "cost"] as const)
 		usage[field] = num(stored[field]);

@@ -279,7 +279,7 @@ function markdownNotice(title: string, markdown: string): Component {
 	};
 }
 
-/** Pi's `/hotkeys` table, with the native TUI's own keys (RLM and Jev panels, history search). */
+/** Pi's `/hotkeys` table, with the native TUI's own keys (RLM panel, history search). */
 export function hotkeysMarkdown(): string {
 	const k = keyDisplayText;
 	return `
@@ -327,10 +327,8 @@ export function hotkeysMarkdown(): string {
 | \`${k("app.message.dequeue")}\` | Restore queued messages |
 | \`${k("app.clipboard.pasteImage")}\` | Paste image or text from clipboard |
 | \`${k("app.rlm.toggle")}\` | Toggle the live RLM panel |
-| \`${k("app.jev.toggle")}\` | Toggle the Jev decisions panel |
 | \`${k("app.rlm.focus")}\` | Open the full-screen RLM graph |
 | \`${k("app.rlm.pane")}\` | Open the RLM pane beside the chat, or move the focus between it and the chat |
-| \`${k("app.jev.notes.toggle")}\` | Expand or fold Jev's memory notes |
 | \`/\` | Slash commands |
 | \`/usage\` | What this session did: depth (frames, sub-agents), cells, tokens and cost, guardrails |
 | \`!\` | Run bash command |
@@ -437,7 +435,6 @@ export class StartupHeader implements Component {
 					keyHint("app.clipboard.pasteImage", "to paste image (with text fallback)"),
 					keyHint("app.rlm.toggle", "for the RLM panel"),
 					keyHint("app.rlm.pane", "for the RLM pane"),
-					keyHint("app.jev.toggle", "for the Jev panel"),
 				].join("\n")
 			: [
 					keyHint("app.interrupt", "interrupt"),

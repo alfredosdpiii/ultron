@@ -254,13 +254,13 @@ describe("the external root", () => {
 		const { root, events } = controller();
 		expect(await root.sessionContext()).toBe("LOKI policy\n\nLoki created .loki/ and committed it.");
 		root.sink([event]);
-		const context = await root.beginTurn("fix the bug");
+		const context = await root.beginTurn();
 		expect(context).toContain("Runtime events since your last rlm call");
 		// The setup note was already shown with the session context.
 		expect(context).not.toContain("committed it");
 		expect(root.turn).toBeDefined();
 		const turn = root.turn!;
-		await root.endTurn("fixed");
+		await root.endTurn();
 		expect(root.turn).toBeUndefined();
 		expect(events).toEqual([`begin ${turn}`, "files", `end ${turn}`, "hints main"]);
 	});

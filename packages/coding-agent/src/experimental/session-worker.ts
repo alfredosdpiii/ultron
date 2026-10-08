@@ -70,13 +70,6 @@ import {
 	maxEventRunsFromEnv,
 	type RuntimeEvent,
 } from "../ultron/async-events.ts";
-import {
-	AutoMemory,
-	autoMemoryModeFromEnv,
-	autoMemoryScopeFromEnv,
-	createLegacyRecall,
-	legacyBankFromEnv,
-} from "../ultron/auto-memory.ts";
 import { DEFAULT_CLAUDE_MODEL } from "../ultron/claude/claude-cli.ts";
 import { EXTERNAL_ROOT_OPERATION, ExternalRootController } from "../ultron/claude/external-root.ts";
 import { claudeRootRequested, installClaudeCodeLanes } from "../ultron/claude/worker-root.ts";
@@ -90,8 +83,6 @@ import { GOAL_REQUEST, GoalDriver } from "../ultron/goal.ts";
 import { createGrantModule } from "../ultron/grants.ts";
 import { installImageBudget } from "../ultron/image-budget.ts";
 import { createInstanceModule } from "../ultron/instances.ts";
-import { createNativeJevClient, JEV_RECALL_THRESHOLD } from "../ultron/jev.ts";
-import { JEV_DECISION_CAPACITY, JevDecisionLog, recordingJevClient } from "../ultron/jev-decisions.ts";
 import type { RefinementBranch } from "../ultron/local-services.ts";
 import { lokiLog, lokiMode, setupLoki } from "../ultron/loki.ts";
 import { createPredictAdapter } from "../ultron/predict-adapter.ts";
@@ -141,7 +132,7 @@ import {
 	toolRoundsNudgeFromEnv,
 } from "../ultron/tool-round-nudge.ts";
 import { budgetLine, createSessionUsageLedger, nativeUsageLimitsFromEnv } from "../ultron/usage.ts";
-import { AUTOMATIC_KEEP_THRESHOLD, createWorkerServices } from "../ultron/worker-services.ts";
+import { createWorkerServices } from "../ultron/worker-services.ts";
 import { getShellEnv } from "../utils/shell.ts";
 import { COORDINATOR_PROTOCOL_VERSION } from "./coordinator.ts";
 import { LegacyExtensionAdapter } from "./legacy-extension-adapter.ts";
@@ -1738,23 +1729,6 @@ export async function createUltronRuntime(
 						throw new Error(`Session worker received invalid thinking level: ${options.thinking}`);
 					})();
 	const registry = new ModelRegistry(modelRuntime);
-	// Every Jev decision (triage, recall gate, retention policy) is recorded without its input for `jev.decisions`.
-	const jevDecisionAddress = value<JsonValue>("ultron.jev.decisions", "root");
-	const jevDecisions = new JevDecisionLog({
-		read: async () => (await session.getValue(jevDecisionAddress, TODO_CONTEXT))?.value,
-		write: (document) => session.setValue(jevDecisionAddress, document, TODO_CONTEXT),
-	});
-	const nativeJev = createNativeJevClient();
-	const jev = nativeJev === undefined ? undefined : recordingJevClient(nativeJev, jevDecisions);
-	const recordJevUnavailable = (kind: "triage" | "recall", prompt: unknown): void => {
-		void jevDecisions.record(String(prompt ?? ""), {
-			at: jevDecisions.now(),
-			kind,
-			status: "unavailable",
-			durationMs: 0,
-			reason: "Jev is not configured",
-		});
-	};
 	let host: NativeRlmHost | undefined;
 	let rlmHarness: AgentHarnessInstance<{ env: NodeExecutionEnv }> | undefined;
 	let holdActivity: (() => () => void) | undefined;
@@ -1779,20 +1753,6 @@ export async function createUltronRuntime(
 		}
 		if (type === "rlm.find_models")
 			return registry.getAvailable().map((model) => ({ provider: model.provider, id: model.id, name: model.name }));
-		if (type === "jev.triage") {
-			if (!jev) {
-				recordJevUnavailable("triage", payload.prompt);
-				return { available: false, reason: "Jev is not configured" };
-			}
-			return { available: true, ...(await jev.triage(String(payload.prompt ?? ""), signal)) };
-		}
-		if (type === "jev.recall") {
-			if (!jev) {
-				recordJevUnavailable("recall", payload.prompt);
-				return { available: false, gate: { retrieve: false, probability: 0 }, results: [] };
-			}
-			return { available: true, gate: await jev.memoryRecall(String(payload.prompt ?? ""), signal), results: [] };
-		}
 		if (!host) throw new Error("Ultron RLM host is not initialized");
 		return host.handle(type, payload, signal ? withAbortSignal(signal, TODO_CONTEXT) : TODO_CONTEXT, caller);
 	};
@@ -2090,7 +2050,6 @@ export async function createUltronRuntime(
 			session,
 			sessionId: options.metadata.id,
 			cwd: options.metadata.cwd,
-			jev: jev ?? undefined,
 			hindsightUrl: hindsightUrl(process.env.ULTRON_HINDSIGHT_URL, settingsManager.getHindsightUrl()),
 			bankId: process.env.ULTRON_HINDSIGHT_BANK || "ultron",
 			extensionCommands: {
@@ -2304,7 +2263,6 @@ export async function createUltronRuntime(
 					store: createSessionModuleStore(session, "skills"),
 					// Tested Python skills: each proposal's test runs in a fresh kernel with no host capabilities.
 					code: new CodeSkills({
-						...(jev ? { jev } : {}),
 						createTestKernel: (cwd, env) =>
 							new UltronRlmKernel(
 								cwd,
@@ -2364,24 +2322,6 @@ export async function createUltronRuntime(
 		const removeStatsListener = harness.events.on("run_start", (event) => {
 			if (event.lane === "main") sessionStats.touch();
 		});
-		// Automatic per-turn memory for the root lane (ULTRON_AUTO_MEMORY=off|recall|on, default on). It needs
-		// both Hindsight and Jev: without Jev nothing could pass the gate, so it stays out of the way.
-		const autoMemoryMode = autoMemoryModeFromEnv(process.env.ULTRON_AUTO_MEMORY);
-		const autoMemory =
-			autoMemoryMode !== "off" && nativeServices.memory && jev
-				? new AutoMemory({
-						mode: autoMemoryMode,
-						scope: autoMemoryScopeFromEnv(process.env.ULTRON_AUTO_MEMORY_SCOPE),
-						memory: nativeServices.memory,
-						sessionId: options.metadata.id,
-						holdActivity: () => holdActivity?.() ?? (() => {}),
-						...legacyRecallOption(
-							hindsightUrl(process.env.ULTRON_HINDSIGHT_URL, settingsManager.getHindsightUrl()),
-						),
-					})
-				: undefined;
-		// An external root's memory runs from its hooks (ExternalRootController), not from runs of the root lane.
-		const removeAutoMemory = external === undefined ? (autoMemory?.install(harness) ?? (() => {})) : () => {};
 		// Per-root turn, token and cost limits: every model response on any lane (the root's own, sub-agents, frames,
 		// typed agents, background jobs) is charged, tokens and cost, to the root that admitted its lane. Once a
 		// root's tree is spent its tool calls are refused with the limit error, its runs stop, and no lane of the tree
@@ -2517,7 +2457,6 @@ export async function createUltronRuntime(
 						fileHooks,
 						onNudge: (message) => sessionStats.nudge(message),
 						onUsageLimit: () => sessionStats.usageLimitBlock(),
-						...(autoMemory === undefined ? {} : { autoMemory }),
 						lokiNotice: loki.notice,
 						...(loki.context === undefined ? {} : { lokiContext: loki.context }),
 						toolRoundsNudge: toolRoundsNudgeFromEnv(process.env.ULTRON_TOOL_ROUNDS_NUDGE),
@@ -2552,8 +2491,6 @@ export async function createUltronRuntime(
 				await goals.close();
 				removeWorktreePrompt();
 				removeInferenceHooks();
-				removeAutoMemory();
-				await autoMemory?.settle();
 				removeNudgeTurnListener();
 				removeBudgetTurnListener();
 				removeBudgetToolHook();
@@ -2606,19 +2543,6 @@ export async function createUltronRuntime(
 					return {
 						pending: counts.jobs + counts.tools + counts.tasks + counts.events + counts.running > 0,
 						...counts,
-					};
-				}
-				if (request === "jev.decisions") {
-					return {
-						available: {
-							jev: nativeJev !== undefined,
-							hindsight:
-								hindsightUrl(process.env.ULTRON_HINDSIGHT_URL, settingsManager.getHindsightUrl()) !== undefined,
-						},
-						capacity: JEV_DECISION_CAPACITY,
-						// The gates' cut-offs, so a view can show a score against the line it had to clear.
-						thresholds: { recall: JEV_RECALL_THRESHOLD, keep: AUTOMATIC_KEEP_THRESHOLD },
-						decisions: await jevDecisions.list(),
 					};
 				}
 				if (!host) throw new Error("Ultron RLM host is not initialized");
@@ -2694,12 +2618,6 @@ function installLokiNotice(
 	return () => {
 		for (const remove of removers) remove();
 	};
-}
-
-/** Read-only recall from the Pi extension's Hindsight bank, when Hindsight and that bank are configured. */
-function legacyRecallOption(url: string | undefined): { legacyRecall?: ReturnType<typeof createLegacyRecall> } {
-	const bank = legacyBankFromEnv(process.env.ULTRON_HINDSIGHT_LEGACY_BANK);
-	return url && bank ? { legacyRecall: createLegacyRecall(url, bank) } : {};
 }
 
 /** The completion event of a shell job the model is not already waiting on; undefined when none is due. */
@@ -2815,7 +2733,7 @@ function pendingSet(): { track(promise: Promise<unknown>): void; settled(): Prom
 }
 
 /**
- * Hindsight memory is on by default against a local server, as in the Pi Jev extension.
+ * Hindsight memory is on by default against a local server.
  * ULTRON_HINDSIGHT_URL overrides the address, then the `hindsightUrl` setting (written by `ultron setup`);
  * "off" (or "none"/"0"/"false") disables memory.
  */

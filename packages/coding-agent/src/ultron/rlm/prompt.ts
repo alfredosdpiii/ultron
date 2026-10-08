@@ -35,7 +35,7 @@ export function defaultBuiltinToolNames(env: NodeJS.ProcessEnv = process.env): s
  */
 export const RLM_TOOL_DESCRIPTION = [
 	"Run a Python cell in your persistent REPL: variables, imports and functions persist across calls, top-level `await` works, and the last expression's value is shown with anything printed (kept as `_`).",
-	"Pre-imported: `bash`, `read`, `edit`, `write`, `view_image`, `rlm`, `agents`, `workflows`, `background`, `tools`, `mcp`, `ctx`, `skills`, `memory`, `hints`, `agent`, `Budget`, `state`, `jev`, `preview`, `asyncio`; `help(obj)` shows any API's docs.",
+	"Pre-imported: `bash`, `read`, `edit`, `write`, `view_image`, `rlm`, `agents`, `workflows`, `background`, `tools`, `mcp`, `ctx`, `skills`, `memory`, `hints`, `agent`, `Budget`, `state`, `preview`, `asyncio`; `help(obj)` shows any API's docs.",
 ].join("\n");
 
 export const RLM_TOOL_SNIPPET = "Python REPL for files, shell (`bash`), edits (`edit`), data and subagents";
@@ -115,7 +115,7 @@ const CONTEXT = `## Other APIs\n${CONTEXT_PROMPT}\n${CODE_SKILLS_PROMPT}\n${AGEN
 const CONTEXT_WITHOUT_CTX = `## Other APIs\n${CODE_SKILLS_PROMPT}\n${AGENT_CLASS_PROMPT}`;
 
 const MEMORY =
-	"- `memory.prepare(query)` recalls long-term memory, `memory.propose(text, evidence)` keeps a fact; `jev.triage(prompt)` rates a request.";
+	"- `memory.prepare(query)` recalls long-term memory, `memory.propose(text, evidence)` keeps a fact; neither runs on its own.";
 
 /** An extension tool as the runtime guide lists it. */
 export interface ExtensionToolSummary {

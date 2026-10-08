@@ -33,7 +33,7 @@ budgets. What differs is whose interface you see and which model drives the root
 | Root model | any provider: API key, subscription login, or a custom OpenAI-compatible endpoint | Claude Code on your login, `claude-opus-5-5` by default | Claude Code on your login, `claude-opus-5-5` by default |
 | Who manages the context | Ultron (`ctx.*`, compaction, results that collapse to one line) | Claude Code | Claude Code |
 | A finished job or sub-agent wakes the model | yes | yes | no: the event arrives with the next `rlm` result or your next message |
-| Ultron's panels and commands (`/review`, `/settings`, `/jev`) | yes | yes | no (`ultron watch` shows the RLM view) |
+| Ultron's panels and commands (`/review`, `/settings`, `/rlm`) | yes | yes | no (`ultron watch` shows the RLM view) |
 | Use it when | you use a non-Claude model, or want every Ultron feature | you want Claude on your Pro or Max plan in Ultron's UI | you prefer Claude Code's own UI and keybindings |
 
 The [Claude Code](#claude-code) section has the details of both Claude modes, and of using Claude Code only for
@@ -144,11 +144,12 @@ touched.
   tree when either is missing. Submodules are not initialized in a worktree, and Git LFS files are checked out only
   if git-lfs is installed.
 
-### 5. Memory with judgement
+### 5. Memory on purpose
 
-Automatic memory through Hindsight is gated by Jev: before each turn
-it decides whether memory is needed at all, and after each turn whether it is worth keeping. A low score means no
-lookup, so unrelated memories never leak into answers.
+Long-term memory lives in Hindsight and the model uses it from the REPL: `memory.prepare(query)` recalls,
+`memory.propose(text, evidence)` keeps a fact, `memory.correct` and `memory.forget` fix it. Nothing recalls or keeps
+on its own, so unrelated memories never leak into answers, and a write that holds a secret or credential is refused
+before it reaches Hindsight.
 
 ### 6. You can see it think
 
@@ -160,12 +161,10 @@ lookup, so unrelated memories never leak into answers.
   text, time, turns and tool calls. It opens by itself, without taking the focus, when a turn spawns children, runs a
   workflow or fans out an `rlm.map` (once per turn; close it with q and it stays closed until the next one; turn it off
   with the `rlmPaneAutoOpen` setting or `ULTRON_RLM_PANE_AUTO=off`). While nodes run, a wave summary sits above the input.
-- **Jev's presence**: a footer indicator that pulses when Jev decides, one-line notes in the transcript showing what
-  memory was used and whether the turn was kept, and a `/jev` view with a decision timeline and threshold gauges.
 - **The session report** (`/usage`, `ultron usage`) answers "did this session use depth, or only the root?" without
   a script over the session file: turns and wall time, cells and the REPL APIs they named, frames and sub-agents
   (by model, with verdict checks, worktree branches and merges), tokens and cost per lane kind and per model, what the
-  guardrails did (Loki, masked secrets, hints, steers, refused work) and Jev's decisions. `/usage` reports the
+  guardrails did (Loki, masked secrets, hints, steers, refused work) and the memory store's operations. `/usage` reports the
   running session; `ultron usage [session-id|path]` reads any session file offline (no model call, no server, nothing
   written), `--last N` prints one line per recent session, and `--json` is the same report for scripts
   (`ultron.session-report/1`). It works for `ultron`, `ultron --claude` and `ultron claude` sessions; a number a
@@ -210,7 +209,7 @@ lookup, so unrelated memories never leak into answers.
     Limits   0 usage-limit blocks
 
   Memory
-    Jev      not recorded (no decision recorded: Jev not configured, or never asked)
+    Store    not recorded (no memory operation recorded: Hindsight not configured, or memory unused)
 
   $ ultron usage --last 3
   LAST ACTIVE       ID             CWD    MODE           MODEL           TURNS  CELLS  FRAMES  SUBS    TOKENS  COST                           DEPTH
@@ -377,7 +376,7 @@ The Claude modes also need the [Claude Code](https://claude.com/claude-code) CLI
 
 ```bash
 npm install -g ultron-agent     # the package is ultron-agent; the command is ultron
-ultron setup                    # guided setup: provider and model, Jev key, Hindsight memory, Loki
+ultron setup                    # guided setup: provider and model, Hindsight memory, Loki
 ```
 
 `ultron update` updates an existing install: it asks the npm registry for the latest `ultron-agent` and installs
@@ -406,12 +405,11 @@ can be run again at any time.
 2. **Provider and model**: sign in with a subscription or save an API key (Pi's `/login`), or add a custom
    OpenAI-compatible endpoint to `models.json`; pick the default model and thinking level; then one tiny live
    request shows whether it works, with the provider's error if not.
-3. **Jev API key**: saved to `~/.ultron/agent/jev-api-key`, optionally checked with one small request.
-4. **Hindsight**: finds a running server, starts it with Docker (`ghcr.io/vectorize-io/hindsight`, asking for the
+3. **Hindsight**: finds a running server, starts it with Docker (`ghcr.io/vectorize-io/hindsight`, asking for the
    LLM key Hindsight itself needs), saves a different URL, or shows the manual install.
-5. **Loki guardrails**: shows the bundled Loki version and which analyzers it would use are missing (with install
+4. **Loki guardrails**: shows the bundled Loki version and which analyzers it would use are missing (with install
    hints), and turns auto-install, auto-commit and advise-only mode on or off.
-6. **Summary** of what changed and where it lives.
+5. **Summary** of what changed and where it lives.
 
 ## Quick start
 
@@ -450,7 +448,7 @@ host networking is enabled). The login has not failed at that point:
   or an OpenAI-compatible proxy on the host such as CLIProxyAPI, added as a custom endpoint in `ultron setup`.
 
 Useful keys: Up/Down and Alt+R for prompt history, Ctrl+R for the RLM panel, Alt+W for the RLM pane, Alt+G for the full-screen graph,
-Alt+J for Jev, Ctrl+O to expand cells and help. `/hotkeys` lists them all, and `/usage` reports what the session did.
+Ctrl+O to expand cells and help. `/hotkeys` lists them all, and `/usage` reports what the session did.
 
 ### Running several sessions
 
@@ -529,7 +527,7 @@ sub-agents. Under `ultron --claude`, frames and sub-agents follow the session mo
 
 ### Ultron's UI with Claude Code underneath: `ultron --claude`
 
-`ultron --claude` is Ultron as usual (its TUI, runtime, RLM pane, Jev, Loki, budgets and session files) with the
+`ultron --claude` is Ultron as usual (its TUI, runtime, RLM pane, Loki, budgets and session files) with the
 root agent's model calls made by Claude Code.
 
 ```bash
@@ -557,7 +555,7 @@ the cell on the root kernel exactly as in a native turn, and the result goes bac
 RLM pane and its waves, Esc to interrupt (the `claude` process group is stopped; the next turn resumes), typing
 while a turn runs (the message goes to Claude Code's input queue and reaches the model with the next tool result),
 wake-ups (a job, subagent or task that finishes while the root is idle starts a new resumed turn with its
-`<runtime_event>`), Jev recall and retention, Loki, per-root turn, token and cost limits (Claude Code's reported
+`<runtime_event>`), Loki, per-root turn, token and cost limits (Claude Code's reported
 usage and cost are charged per response), `/review`, `/settings`, sessions, `/tree` and forks. Subagents
 (`rlm.spawn`) inherit the root's model, so each one is its own Claude Code session on its own Ultron lane and kernel;
 frames without tools use the plain `claude-code` provider.
@@ -615,8 +613,7 @@ tasks, `state` and ledger.
   verdicts, kernels and Loki stats) in a second terminal, or in a tmux split with `--watch`.
 - Nothing can wake Claude Code between turns. A job, subagent or task that ends while it is not waiting is reported
   at the top of the next `rlm` result, or with your next message (UserPromptSubmit hook); the guide says so.
-- Hooks: SessionStart adds Loki's note; UserPromptSubmit runs Jev's recall gate and Hindsight recall (when both are
-  configured) and delivers waiting events; Stop lets Jev keep or skip the exchange and closes the turn's budget.
+- Hooks: SessionStart adds Loki's note; UserPromptSubmit delivers waiting events; Stop closes the turn's budget.
 - Frames run on `claude-code/claude-opus-5-5` (single completions through `claude -p`) when that provider is
   available, else on your default Ultron model; `--frame-model` changes it. Subagents are Claude Code processes by
   default (`claude -p` with their own `ultron mcp --child` server and kernel, reporting their verdict to the parent's
@@ -651,8 +648,6 @@ at most four run at once (`ULTRON_CLAUDE_CODE_CONCURRENCY`). Details:
 - **Hindsight** memory is used at `http://localhost:8888` when it is running. `ultron setup` can install it with
   Docker or save another address as the `hindsightUrl` setting; `ULTRON_HINDSIGHT_URL` overrides both, and `off`
   disables memory. Without it, memory calls fail quietly and turns are unaffected.
-- **Jev** gates memory and needs a key, from `ultron setup` (`~/.ultron/agent/jev-api-key`) or `TYPESAFE_API_KEY`.
-  Without it, automatic memory stays off.
 
 ## Loki guardrails
 

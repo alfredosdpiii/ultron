@@ -72,7 +72,6 @@ const SINGLE_VALUES: ReadonlyArray<{ namespace: string; key: string; field: stri
 	{ namespace: "ultron.definitions", key: "root", field: "version" },
 	{ namespace: "ultron.usage", key: "root", field: "version" },
 	{ namespace: "ultron.memory.state", key: "root", field: "version" },
-	{ namespace: "ultron.jev.decisions", key: "root", field: "version" },
 	{ namespace: "ultron.local", key: "ultron.refinements", field: "formatVersion" },
 	{ namespace: "ultron.local", key: "ultron.experiments", field: "formatVersion" },
 	{ namespace: "ultron.local", key: "ultron.artifact-refs", field: "formatVersion" },

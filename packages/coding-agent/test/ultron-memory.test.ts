@@ -88,7 +88,7 @@ function expectMemoryError(code: string) {
 }
 
 describe("NativeMemoryService", () => {
-	test("requires Jev and concrete scope tags, and a skipped recall does not call the backend", async () => {
+	test("requires a gate and concrete scope tags, and a skipped recall does not call the backend", async () => {
 		const value = fixture(async () => ({ retrieve: false }));
 		await expect(value.service.prepare({ query: "math", scope: "session", taskId: "task-1" })).resolves.toMatchObject(
 			{

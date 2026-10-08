@@ -74,9 +74,8 @@ coordinator, session worker), and the worker's module load is on the critical pa
 
 The remaining per-turn cost is the durable task journal: a one-tool task commits about 20 journal batches
 (assistant frames, operation state, tool arguments and outputs, usage). These are the commit-before-publish
-guarantees and stay as they are. With Hindsight off (as in the eval) no Jev or memory call is made
-automatically. Jev runs only when agent code calls `jev.*` or memory, so there is no per-turn Jev or memory-gating
-latency.
+guarantees and stay as they are. Memory is never called automatically: Hindsight is reached only when agent code
+calls `memory.*`, so there is no per-turn memory latency.
 
 ### RLM kernel: 65 ms on the first call
 

@@ -80,7 +80,7 @@ describe("A28 retrieval explanation/query/scope match the executed search; rewri
 			store: durableStore(),
 			backend: hindsight.backend(),
 			gate: async () => {
-				throw new Error("jev down: https://secret.example/?key=abc");
+				throw new Error("gate down: https://secret.example/?key=abc");
 			},
 		});
 		const error = await failing.prepare({ query: "q", taskId: "task-1" }).catch((cause: unknown) => cause);

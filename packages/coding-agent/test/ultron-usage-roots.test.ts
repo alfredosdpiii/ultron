@@ -1,4 +1,5 @@
 import type { Context } from "@ultron/agent-core";
+import type { JsonValue } from "@ultron/chord";
 import { afterEach, describe, expect, test } from "vitest";
 import { DEFAULT_MAX_TOTAL_TOKENS, NativeUsageLedger, nativeUsageLimitsFromEnv } from "../src/ultron/usage.ts";
 import { aborted, deferred, hostFixture, journal, waitFor } from "./ultron-host-fixtures.ts";
@@ -161,6 +162,51 @@ describe("per-turn wall budget", () => {
 	});
 });
 
+describe("ledgers saved before Jev was removed", () => {
+	test("a stored Jev call and the old jevCalls totals still load, and the call still counts", async () => {
+		let saved: JsonValue | undefined;
+		const store = {
+			read: async () => saved,
+			write: async (document: JsonValue) => {
+				saved = structuredClone(document);
+			},
+		};
+		const ledger = new NativeUsageLedger(store);
+		const reservation = await ledger.reserve({ kind: "model", rootId: "turn:x", requestKey: "m1" });
+		await ledger.settle(reservation, {
+			status: "succeeded",
+			usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2, cost: 0 },
+		});
+		// Rewrite the document as an older Ultron stored it: the call is a Jev call, and totals carry jevCalls.
+		const legacy = (value: unknown): void => {
+			if (Array.isArray(value)) {
+				for (const item of value) legacy(item);
+				return;
+			}
+			if (value === null || typeof value !== "object") return;
+			const record = value as Record<string, unknown>;
+			if (record.kind === "model") record.kind = "jev";
+			if ("modelCalls" in record) record.jevCalls = 0;
+			if (record.byKind !== undefined && typeof record.byKind === "object")
+				(record.byKind as Record<string, unknown>).jev = structuredClone(
+					(record.byKind as Record<string, unknown>).model,
+				);
+			for (const child of Object.values(record)) legacy(child);
+		};
+		legacy(saved);
+		expect(JSON.stringify(saved)).toContain('"kind":"jev"');
+		const reopened = new NativeUsageLedger(store);
+		const status = await reopened.status("turn:x");
+		expect(status.usage).toMatchObject({ calls: 1, modelCalls: 0, taskCalls: 0 });
+		expect(status.usage).not.toHaveProperty("jevCalls");
+		// The ledger keeps working: new work is admitted and counted alongside the old call.
+		await reopened.settle(await reopened.reserve({ kind: "task", rootId: "turn:x", requestKey: "t1" }), {
+			status: "succeeded",
+		});
+		expect((await reopened.status("turn:x")).usage).toMatchObject({ calls: 2, taskCalls: 1 });
+	});
+});
+
 describe("optional cost cap", () => {
 	async function settleModel(ledger: NativeUsageLedger, key: string, cost: number | null) {
 		const reservation = await ledger.reserve({ kind: "model", rootId: "turn:x", requestKey: key });
@@ -185,7 +231,6 @@ describe("optional cost cap", () => {
 		await expect(
 			ledger.reserve({ kind: "task", rootId: "turn:x", requestKey: "d1", modelBacked: false }),
 		).resolves.toBeDefined();
-		await expect(ledger.reserve({ kind: "jev", rootId: "turn:x", requestKey: "j1" })).resolves.toBeDefined();
 		// The cap is per root: a new turn starts with nothing spent.
 		await expect(ledger.reserve({ kind: "task", rootId: "turn:y", requestKey: "t3" })).resolves.toBeDefined();
 		const status = await ledger.status("turn:x");

@@ -178,7 +178,6 @@ const READ_ONLY_INSPECTIONS = new Set([
 	"agents.status",
 	"instances.list",
 	"rlm.pool",
-	"jev.decisions",
 	"ctx.state",
 	"rlm.frames",
 	"progress.assess",
@@ -444,7 +443,7 @@ export async function runMcpServer(argv: readonly string[]): Promise<void> {
 				return value.inspect(inspect, payload, BACKGROUND_CONTEXT);
 			}
 			case "hook":
-				return handleHook(String(request.event ?? ""), request.input);
+				return handleHook(String(request.event ?? ""));
 			case "child.finish": {
 				const lane = typeof request.token === "string" ? childTokens.get(request.token) : undefined;
 				if (lane === undefined) throw new Error("rlm.finish: unknown subagent");
@@ -460,8 +459,7 @@ export async function runMcpServer(argv: readonly string[]): Promise<void> {
 	};
 
 	/** Claude Code hook events: the hook command forwards its input here and prints what this returns. */
-	const handleHook = async (event: string, input: unknown): Promise<Record<string, unknown>> => {
-		const data = typeof input === "object" && input !== null ? (input as Record<string, unknown>) : {};
+	const handleHook = async (event: string): Promise<Record<string, unknown>> => {
 		const root = (await runtime()).externalRoot;
 		if (!root) return {};
 		if (event === "session-start") {
@@ -471,13 +469,13 @@ export async function runMcpServer(argv: readonly string[]): Promise<void> {
 				: { hookSpecificOutput: { hookEventName: "SessionStart", additionalContext: context } };
 		}
 		if (event === "user-prompt") {
-			const context = await root.beginTurn(typeof data.prompt === "string" ? data.prompt : undefined);
+			const context = await root.beginTurn();
 			return context === undefined
 				? {}
 				: { hookSpecificOutput: { hookEventName: "UserPromptSubmit", additionalContext: context } };
 		}
 		if (event === "stop") {
-			await root.endTurn(typeof data.last_assistant_message === "string" ? data.last_assistant_message : undefined);
+			await root.endTurn();
 			return {};
 		}
 		throw new Error(`unknown hook event: ${event}`);

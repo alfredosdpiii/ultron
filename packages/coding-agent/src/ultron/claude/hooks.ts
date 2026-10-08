@@ -2,13 +2,12 @@
  * `ultron hook <event>`: Claude Code hook commands for an `ultron mcp` session. Claude Code runs them with the hook
  * input as JSON on stdin; each forwards it to its session's server over the control socket and prints the hook
  * output the server returns (JSON on stdout, exit 0). Failures are quiet: the hook prints nothing and exits 0, so a
- * missing server, Jev or Hindsight never blocks a prompt.
+ * missing server never blocks a prompt.
  *
  * - `session-start` (SessionStart): Loki's policy note and its one-time setup note as `additionalContext`.
- * - `user-prompt` (UserPromptSubmit): opens the root turn; Jev's recall gate and Hindsight recall (when both are
- *   configured) and runtime events that arrived since the last rlm call, as `additionalContext`.
- * - `stop` (Stop): closes the root turn; Jev's retention policy keeps or skips the exchange; budgets and the
- *   stuck-loop count start over.
+ * - `user-prompt` (UserPromptSubmit): opens the root turn; runtime events that arrived since the last rlm call, as
+ *   `additionalContext`.
+ * - `stop` (Stop): closes the root turn; budgets and the stuck-loop count start over.
  */
 import { connectControl, findServer } from "./control-socket.ts";
 
