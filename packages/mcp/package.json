@@ -1,6 +1,6 @@
 {
 	"name": "@ultron/mcp",
-	"version": "0.87.33",
+	"version": "0.87.34",
 	"description": "Standalone Model Context Protocol client for Ultron and other applications",
 	"type": "module",
 	"main": "./dist/index.js",

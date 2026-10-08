@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.87.34] - 2026-10-09
+
 ### Breaking Changes
 
 - Jev is removed: automatic per-turn memory (the recall gate before a turn and the retention policy after it), triage, the REPL `jev` object (`jev.triage`, `jev.recall`), the `/jev` panel, its footer presence and transcript notes, the Alt+J and Alt+M keys, the `jev.decisions` inspection, and the setup wizard's Jev key step. `TYPESAFE_API_KEY`, `~/.ultron/agent/jev-api-key`, `ULTRON_AUTO_MEMORY`, `ULTRON_AUTO_MEMORY_SCOPE` and `ULTRON_HINDSIGHT_LEGACY_BANK` are no longer read.
