@@ -369,7 +369,7 @@ function shortPurpose(description: string, max = 80): string {
 
 /**
  * An index of Ultron's bundled skills (skills/<source>/<name>: the pstack port, HumanLayer's diagram-it, QingYunA's
- * answer-me-with-html, Kun Chen's no-mistakes) that are loaded
+ * answer-me-with-html) that are loaded
  * and hidden from the skill list: one line each with its purpose and path, so the model can find them for a fraction
  * of their full descriptions. pstack's principle skills are left out (the workflow skills read them). Empty when none
  * is loaded.

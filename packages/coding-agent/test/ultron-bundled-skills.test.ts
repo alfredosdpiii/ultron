@@ -1,6 +1,6 @@
 /**
  * Skills bundled with Ultron (packages/coding-agent/skills/<source>: the pstack port, HumanLayer's diagram-it,
- * QingYunA's answer-me-with-html, Kun Chen's no-mistakes):
+ * QingYunA's answer-me-with-html):
  * - they load after the user's and project's skills, so a skill of the same name there wins;
  * - `ULTRON_BUNDLED_SKILLS=off` and `noSkills` leave them out;
  * - every bundled SKILL.md loads without diagnostics, names its source and license, and its references to other
@@ -71,9 +71,7 @@ describe("bundled skills", () => {
 		mkdirSync(join(root, "project"), { recursive: true });
 		const all = await load();
 		const names = all.skills.map((skill) => skill.name);
-		expect(names).toEqual(
-			expect.arrayContaining(["rigor", "diagram-it", "answer-me-with-html", "no-mistakes", ...skillDirs]),
-		);
+		expect(names).toEqual(expect.arrayContaining(["rigor", "diagram-it", "answer-me-with-html", ...skillDirs]));
 		expect(all.diagnostics.filter((d) => d.path?.startsWith(bundled))).toEqual([]);
 
 		const own = join(root, "agent", "skills", "swarm");
@@ -112,7 +110,6 @@ describe("bundled skills", () => {
 		expect(note).toMatch(/^- pstack\/how: /m);
 		expect(note).toMatch(/^- humanlayer\/diagram-it: Explain the current topic visually/m);
 		expect(note).toMatch(/^- qingyuna\/answer-me-with-html: Answer a hard question with one visual HTML page/m);
-		expect(note).toMatch(/^- kunchenguid\/no-mistakes: Validate committed changes through the no-mistakes pipeline/m);
 		expect(note).not.toMatch(/principle-[a-z-]+:/);
 		for (const line of note.split("\n").slice(1))
 			expect(existsSync(join(bundled, line.slice(2, line.indexOf(":")), "SKILL.md")), line).toBe(true);
@@ -147,11 +144,6 @@ describe("bundled skills", () => {
 		expect(answer).toMatch(/^---\nname: answer-me-with-html\n/);
 		expect(answer).toContain("github.com/QingYunA/answer-me-with-html");
 		expect(answer).toContain("AM_NO_UPDATE_CHECK=1");
-		// Kun Chen's no-mistakes, with its license.
-		expect(readFileSync(join(bundled, "kunchenguid", "LICENSE"), "utf8")).toContain("Kun Chen");
-		const noMistakes = readFileSync(join(bundled, "kunchenguid", "no-mistakes", "SKILL.md"), "utf8");
-		expect(noMistakes).toMatch(/^---\nname: no-mistakes\n/);
-		expect(noMistakes).toContain("github.com/kunchenguid/no-mistakes");
 	});
 
 	test("the bundled answer-me-with-html CLI renders a draft to a page without fetching updates", () => {

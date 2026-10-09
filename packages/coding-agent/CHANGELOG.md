@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Removed
+
+- The bundled `/skill:no-mistakes` (Kun Chen's [no-mistakes](https://github.com/kunchenguid/no-mistakes)) is gone. Its pipeline re-runs review, tests and documentation with its own agents (about 20 minutes per run), restarts from zero on any failure, and holds the branch so nothing can be pushed by hand meanwhile; shipping from the REPL is a plain push and PR again.
+
 ## [0.87.35] - 2026-10-09
 
 ### Changed
