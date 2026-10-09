@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Autoreview's prepared test environments find dependency files below the repository root: every `requirements*.txt`, `pyproject.toml` and `setup.py` up to four levels down (`backend/`, `services/api/`, ...) is installed into the one environment and hashed into its key. A root `pyproject.toml` that names only the tooling (no build system) used to be the only thing tried, and its failed editable install left the tests without dependencies.
+
 ### Changed
 
 - Autoreview skips pull requests a bot opened (Dependabot, Renovate: GitHub's `Bot` user type or a `[bot]` login) unless the account is @mentioned on them; `autoreview.skipBots: false` reviews them as before.

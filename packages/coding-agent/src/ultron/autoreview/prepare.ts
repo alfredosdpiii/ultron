@@ -18,6 +18,7 @@
 import { createHash } from "node:crypto";
 import {
 	copyFileSync,
+	type Dirent,
 	existsSync,
 	mkdirSync,
 	readdirSync,
@@ -83,6 +84,24 @@ const MANIFESTS = {
 	tools: ["mise.toml", ".mise.toml", ".tool-versions", ".python-version", ".nvmrc", ".node-version"],
 } as const;
 
+/** Directories the walk for nested requirements files and pyprojects does not enter (hidden ones neither). */
+const NOT_A_SERVICE_DIR = new Set([
+	"node_modules",
+	"venv",
+	"dist",
+	"build",
+	"vendor",
+	"docs",
+	"mockups",
+	"requirements",
+	"site-packages",
+	"__pycache__",
+	"target",
+	"coverage",
+]);
+/** How many directory levels below the root the walk goes. */
+const NESTED_DEPTH = 4;
+
 function read(path: string): string | undefined {
 	try {
 		return readFileSync(path, "utf8");
@@ -100,8 +119,33 @@ export function detectEcosystems(repoDir: string): { python: string[]; node: str
 				.filter((name) => name.endsWith(".txt"))
 				.map((name) => join("requirements", name))
 		: [];
+	// Services kept below the root (backend/, services/api/, ...) with their own requirements files or pyprojects: a
+	// root pyproject that only names the tooling is not where the dependencies are. Bounded walk, build and vendor
+	// directories left out; everything found is installed into the one environment and hashed into its key.
+	const nested: string[] = [];
+	const walk = (dir: string, depth: number): void => {
+		let entries: Dirent[];
+		try {
+			entries = readdirSync(join(repoDir, dir), { withFileTypes: true });
+		} catch {
+			return;
+		}
+		for (const entry of entries) {
+			const relative = dir === "" ? entry.name : join(dir, entry.name);
+			if (entry.isDirectory()) {
+				if (depth < NESTED_DEPTH && !entry.name.startsWith(".") && !NOT_A_SERVICE_DIR.has(entry.name))
+					walk(relative, depth + 1);
+			} else if (
+				dir !== "" &&
+				(/^requirements.*\.txt$/.test(entry.name) || entry.name === "pyproject.toml" || entry.name === "setup.py")
+			)
+				nested.push(relative);
+		}
+	};
+	walk("", 0);
+	nested.sort();
 	return {
-		python: [...present([...MANIFESTS.python, ...MANIFESTS.pythonLocks]), ...extra].filter(
+		python: [...present([...MANIFESTS.python, ...MANIFESTS.pythonLocks]), ...extra, ...nested].filter(
 			(item, index, all) => all.indexOf(item) === index,
 		),
 		node: present([...MANIFESTS.node, ...MANIFESTS.nodeLocks]),
@@ -386,6 +430,24 @@ export async function prepareEnvironment(repoDir: string, options: PrepareOption
 						if (spec === repoDir)
 							failures.push(
 								`uv pip install -e . failed: ${(result.stderr || result.stdout).trim().slice(0, 300)}`,
+							);
+					}
+				}
+				// Sub-projects (a pyproject or setup.py below the root): installed into the same environment, editable.
+				for (const manifest of found.python.filter(
+					(name) => name.includes("/") && /(^|\/)(pyproject\.toml|setup\.py)$/.test(name),
+				)) {
+					const project = join(repoDir, dirname(manifest));
+					for (const spec of [`${project}[dev,test]`, `${project}[dev]`, `${project}[test]`, project]) {
+						const result = await pip(["-e", spec]);
+						if (result.code === 0) {
+							prepared.push(`python: uv pip install -e ${dirname(manifest)}${spec.slice(project.length)}`);
+							ok = true;
+							break;
+						}
+						if (spec === project)
+							failures.push(
+								`uv pip install -e ${dirname(manifest)} failed: ${(result.stderr || result.stdout).trim().slice(0, 300)}`,
 							);
 					}
 				}

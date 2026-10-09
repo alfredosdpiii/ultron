@@ -521,7 +521,11 @@ into a cache the sandbox binds read-only; nothing is ever installed during a rev
   the hash covering the manifests, lockfiles, toolchain files and the explicit Python version.
 - Python projects: `uv venv` (with the resolved interpreter), then `uv sync --frozen --all-extras` for a `uv.lock`,
   `uv pip install -e .[dev,test]` (falling back to fewer extras) for a `pyproject.toml` or `setup.py` (uv reads PEP
-  621 and poetry metadata), and `uv pip install -r` for every requirements file.
+  621 and poetry metadata), and `uv pip install -r` for every requirements file. Services below the root count too:
+  every `requirements*.txt`, `pyproject.toml` and `setup.py` up to four levels down (`backend/`, `services/api/`,
+  ...; `node_modules`, hidden, build and vendor directories are not entered) is installed into the same environment
+  and hashed into its key, so a root `pyproject.toml` that only names the tooling does not leave the tests without
+  their dependencies.
 - Node projects: `npm ci --ignore-scripts` (pnpm or yarn by lockfile) from a copy of the manifest and lockfile; a
   project without a lockfile is not prepared.
 - Toolchains with mise (`autoreview.mise`, default on when a mise binary exists; or the binary's path): the versions

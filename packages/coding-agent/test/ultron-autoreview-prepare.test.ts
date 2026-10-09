@@ -105,11 +105,33 @@ describe("prepared environments: detection and toolchain requests", () => {
 		writeFileSync(join(repo, "uv.lock"), "version = 1\n");
 		mkdirSync(join(repo, "requirements"));
 		writeFileSync(join(repo, "requirements/dev.txt"), "pytest\n");
+		// Services below the root with their own requirements or pyproject, at any depth up to four; node_modules,
+		// hidden and build directories are not looked in.
+		mkdirSync(join(repo, "backend"));
+		writeFileSync(join(repo, "backend/requirements.txt"), "fastapi\n");
+		mkdirSync(join(repo, "services", "api", "deps"), { recursive: true });
+		writeFileSync(join(repo, "services/api/pyproject.toml"), '[project]\nname = "api"\n');
+		writeFileSync(join(repo, "services/api/deps/requirements-dev.txt"), "pytest\n");
+		mkdirSync(join(repo, "a", "b", "c", "d", "e"), { recursive: true });
+		writeFileSync(join(repo, "a/b/c/d/e/requirements.txt"), "too deep\n");
+		mkdirSync(join(repo, "frontend", "dist"), { recursive: true });
+		writeFileSync(join(repo, "frontend/dist/requirements.txt"), "nope\n");
+		mkdirSync(join(repo, "node_modules", "pkg"), { recursive: true });
+		writeFileSync(join(repo, "node_modules/pkg/requirements.txt"), "nope\n");
+		mkdirSync(join(repo, ".tox"));
+		writeFileSync(join(repo, ".tox/requirements.txt"), "nope\n");
 		writeFileSync(join(repo, "package.json"), JSON.stringify({ name: "web", engines: { node: ">=20" } }));
 		writeFileSync(join(repo, "pnpm-lock.yaml"), "lockfileVersion: 9\n");
 		writeFileSync(join(repo, ".nvmrc"), "v22.13\n");
 		expect(detectEcosystems(repo)).toEqual({
-			python: ["pyproject.toml", "uv.lock", "requirements/dev.txt"],
+			python: [
+				"pyproject.toml",
+				"uv.lock",
+				"requirements/dev.txt",
+				"backend/requirements.txt",
+				"services/api/deps/requirements-dev.txt",
+				"services/api/pyproject.toml",
+			],
 			node: ["package.json", "pnpm-lock.yaml"],
 			tools: [".nvmrc"],
 		});
