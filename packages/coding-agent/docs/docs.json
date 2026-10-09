@@ -52,6 +52,10 @@
               "path": "mcp.md"
             },
             {
+              "title": "Review Pull Requests Automatically",
+              "path": "autoreview.md"
+            },
+            {
               "title": "Configure Your Terminal",
               "path": "terminal-setup.md"
             },
