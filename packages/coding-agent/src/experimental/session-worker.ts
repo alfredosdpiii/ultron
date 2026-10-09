@@ -77,7 +77,13 @@ import { clockContextEnabled, installClockContext } from "../ultron/clock-contex
 import { CodeSkills, codeSkillsDir, codeSkillsToolSection } from "../ultron/code-skills.ts";
 import { CONTEXT_EDIT_EVENT, CONTEXT_ENTRY_PROJECTORS, ContextControl } from "../ultron/context-control.ts";
 import { createFamilyModule } from "../ultron/family.ts";
-import { BEFORE_WRITE_REQUEST, FileHooks, type GuardStats, type ProposedWrite } from "../ultron/file-hooks.ts";
+import {
+	BEFORE_WRITE_REQUEST,
+	FileHooks,
+	type GuardStats,
+	type ProposedWrite,
+	SHELL_REQUESTS,
+} from "../ultron/file-hooks.ts";
 import { assertSessionFormatsReadable } from "../ultron/format-version.ts";
 import { GOAL_REQUEST, GoalDriver } from "../ultron/goal.ts";
 import { createGrantModule } from "../ultron/grants.ts";
@@ -412,15 +418,22 @@ export function createUltronRlmTool(
 		const checked: KernelHostHandler =
 			fileHooks === undefined
 				? handler
-				: async (type, payload, signal) =>
-						type === BEFORE_WRITE_REQUEST
-							? {
-									results: await fileHooks.beforeWrite(proposedWrites(payload), {
-										lane,
-										...(signal ? { signal } : {}),
-									}),
-								}
-							: handler(type, payload, signal);
+				: async (type, payload, signal) => {
+						if (type === BEFORE_WRITE_REQUEST)
+							return {
+								results: await fileHooks.beforeWrite(proposedWrites(payload), {
+									lane,
+									...(signal ? { signal } : {}),
+								}),
+							};
+						const command = (payload as { command?: unknown } | null | undefined)?.command;
+						if (SHELL_REQUESTS.has(type) && typeof command === "string") {
+							// A shell write into source would skip the before-write check: the guards see it first.
+							const verdict = await fileHooks.beforeShell(command, { lane, ...(signal ? { signal } : {}) });
+							if (verdict.blocked) throw new Error(`bash command was not run: ${verdict.reason}`);
+						}
+						return handler(type, payload, signal);
+					};
 		if (stats === undefined) return checked;
 		return (type, payload, signal) => {
 			stats.hostCall(type);

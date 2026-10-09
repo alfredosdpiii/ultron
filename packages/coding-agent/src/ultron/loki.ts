@@ -468,6 +468,11 @@ export interface LokiGuardOptions {
 	readonly jsonReports?: boolean;
 	/** The project's interpreter (findProjectPython), passed to the engine as LOKI_PYTHON. */
 	readonly projectPython?: string;
+	/**
+	 * The bundled engine, for a check the repository's older `.loki/loki.py` does not have (`shell-writes`); the
+	 * repository's policy still decides, as `--root` points at it.
+	 */
+	readonly fallbackEngine?: string;
 	readonly env?: NodeJS.ProcessEnv;
 }
 
@@ -578,6 +583,31 @@ export class LokiGuard implements FileWriteGuard {
 		if (fresh.length === 0) return undefined;
 		const reasons = fresh.map((line) => line.replace(/^NOT CHECKED\s*/, ""));
 		return `not checked in this session (said once): ${reasons.join("; ")}`;
+	}
+
+	/** A shell command that may write files: Loki refuses one that writes source or configuration past `beforeWrite`. */
+	async beforeShell(command: string, context: FileHookContext): Promise<BeforeWriteVerdict> {
+		const root = this.#root(context);
+		const run = (engine: string) =>
+			runProcess(this.options.python, [engine, "--root", root, "shell-writes", "--harness", "ultron"], {
+				cwd: root,
+				timeoutMs: this.timeoutMs + 1_000,
+				signal: context.signal,
+				input: JSON.stringify({ command, cwd: context.cwd }),
+				...this.#env(),
+			});
+		const unknown = (text: string) => /invalid choice: 'shell-writes'/.test(text);
+		let result = await run(this.options.engine);
+		// A repository engine from before `shell-writes` does not know the command: ask the bundled one, else let it run.
+		if (!result.error && result.status !== 0 && unknown(result.stderr) && this.options.fallbackEngine !== undefined)
+			result = await run(this.options.fallbackEngine);
+		if (result.error) throw new Error(result.error);
+		if (result.status === 0) return {};
+		const reason = result.stderr.trim() || `the checker failed (exit status ${result.status})`;
+		if (unknown(reason)) return {};
+		if (this.options.mode === "advise")
+			return { message: `would refuse this command (advise-only mode):\n${reason}` };
+		return { block: true, reason };
 	}
 
 	async afterCellChanges(changes: CellChanges, context: FileHookContext): Promise<AfterCellReport | undefined> {
@@ -766,6 +796,9 @@ export async function setupLoki(options: LokiSetupOptions): Promise<LokiSetup> {
 		previewHost,
 		postWrite: repository !== undefined,
 		jsonReports,
+		...(engine === repositoryEngine && options.bundledEngine !== undefined
+			? { fallbackEngine: options.bundledEngine }
+			: {}),
 		...(projectPython === undefined ? {} : { projectPython }),
 	});
 	options.record?.({

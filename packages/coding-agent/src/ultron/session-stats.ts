@@ -235,7 +235,7 @@ export interface SessionStatsOptions {
 /** One guard outcome (file-hooks.ts `GuardRecord`, the fields counted here). */
 export type GuardOutcome = {
 	readonly guard: string;
-	readonly phase: "before_write" | "after_cell";
+	readonly phase: "before_write" | "before_shell" | "after_cell";
 	readonly outcome: "allowed" | "blocked" | "unchecked" | "clean" | "advisory" | "findings";
 	readonly ms: number;
 };
@@ -348,7 +348,8 @@ export class SessionStatsRecorder {
 			};
 			const guard = document.guards[record.guard]!;
 			guard.ms += count(record.ms);
-			if (record.phase === "before_write") {
+			// A shell command checked before it runs counts as a before-write check: it is one.
+			if (record.phase === "before_write" || record.phase === "before_shell") {
 				guard.checks += 1;
 				if (record.outcome === "blocked") guard.blocked += 1;
 				if (record.outcome === "unchecked") guard.unchecked += 1;

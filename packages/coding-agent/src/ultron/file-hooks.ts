@@ -14,6 +14,11 @@
  *    before, and what they report reaches the model with the lane's next cell result. A guard says whether its
  *    report holds findings to fix, only advisory lines, or nothing to act on (`AfterCellReport`).
  *
+ * 3. Before a shell command (blocking). `bash()` and `bash(..., yield_after=...)` commands that may write a file
+ *    (`mayWriteFiles`: a redirect, `tee`, `sed -i`, `perl -i`, `cp`/`mv`/`install`, `dd of=`) go to every guard's
+ *    `beforeShell` before they run, so a shell write into source cannot skip the before-write check (1). A guard
+ *    that blocks makes the host refuse the command with its reason; one that times out or fails lets it run.
+ *
  * The module knows nothing about any particular guard; Loki (loki.ts) and Pi extensions (the `before_file_write`
  * and `after_cell_changes` events) register through the same interface.
  */
@@ -78,6 +83,8 @@ export interface FileWriteGuard {
 	/** False when `afterCellChanges` would do nothing now, so no workspace snapshots are taken for it. */
 	watchesCells?(): boolean;
 	beforeWrite?(write: ProposedWrite, context: FileHookContext): Promise<BeforeWriteVerdict | undefined>;
+	/** A shell command that may write files (see `mayWriteFiles`), before it runs in `context.cwd`. */
+	beforeShell?(command: string, context: FileHookContext): Promise<BeforeWriteVerdict | undefined>;
 	/** A string is a report of findings; an `AfterCellReport` says which kind of report it is. */
 	afterCellChanges?(changes: CellChanges, context: FileHookContext): Promise<string | AfterCellReport | undefined>;
 }
@@ -106,6 +113,25 @@ export interface GuardStats {
 }
 
 export const DEFAULT_BEFORE_WRITE_TIMEOUT_MS = 5_000;
+
+/** Host requests that run a shell command (the kernel's `bash()`: blocking, as a job, or waited on then detached). */
+export const SHELL_REQUESTS: ReadonlySet<string> = new Set(["bash", "shell.bash", "shell.run"]);
+
+/**
+ * Whether a shell command may write a file, cheaply and generously: guards see only these commands, so most commands
+ * (tests, searches, builds piped to `tail`) run without a guard call. Redirects to `/dev/null` and fd duplications
+ * (`2>&1`) do not count.
+ */
+export function mayWriteFiles(command: string): boolean {
+	const text = command.replace(/\d*>>?\s*\/dev\/null\b/g, " ").replace(/\d*>&\d+/g, " ");
+	return (
+		/(^|[^<>-])>{1,2}\|?(?!&)/.test(text) ||
+		/(^|[\s;&|(])(tee|cp|mv|install)\s/.test(text) ||
+		/(^|[\s;&|(])sed\s+(?:[^|;&]*\s)?(-i|--in-place)/.test(text) ||
+		/(^|[\s;&|(])perl\s+(?:[^|;&]*\s)?-[a-zA-Z]*i/.test(text) ||
+		/(^|[\s;&|(])dd\s[^|;&]*\bof=/.test(text)
+	);
+}
 const DEFAULT_AFTER_CELL_TIMEOUT_MS = 120_000;
 /** Findings delivered with one cell result are capped; the rest are summarized. */
 const MAX_PENDING_CHARS = 6_000;
@@ -128,7 +154,7 @@ export interface FileHooksOptions {
 
 export interface GuardRecord {
 	readonly guard: string;
-	readonly phase: "before_write" | "after_cell";
+	readonly phase: "before_write" | "before_shell" | "after_cell";
 	readonly outcome: "allowed" | "blocked" | "unchecked" | "clean" | "advisory" | "findings";
 	readonly ms: number;
 	readonly paths: readonly string[];
@@ -325,6 +351,62 @@ export class FileHooks {
 				return { blocked: false, notes };
 			}),
 		);
+	}
+
+	/**
+	 * Check a shell command before it runs: commands `mayWriteFiles` passes over, or with no shell guard, are allowed at
+	 * once. A guard that does not answer in time or fails lets the command run, with a note.
+	 */
+	async beforeShell(command: string, options: { lane: string; signal?: AbortSignal }): Promise<BeforeWriteResult> {
+		const guards = this.#guards.filter((guard) => guard.beforeShell !== undefined && this.#enabled(guard));
+		if (guards.length === 0 || !mayWriteFiles(command)) return { blocked: false, notes: [] };
+		const where = this.#where(options.lane);
+		const display = command.length > 80 ? `${command.slice(0, 77)}...` : command;
+		const outcomes = await Promise.all(
+			guards.map(async (guard) => {
+				const timeoutMs = guard.timeoutMs ?? DEFAULT_BEFORE_WRITE_TIMEOUT_MS;
+				const started = this.#now();
+				const result = await this.#timed(timeoutMs, options.signal, (signal) =>
+					guard.beforeShell!(command, {
+						lane: options.lane,
+						cwd: where.cwd,
+						...(where.root === undefined ? {} : { root: where.root }),
+						signal,
+					}),
+				);
+				const ms = this.#now() - started;
+				this.#charge(guard, ms);
+				const stats = this.#stats.get(guard);
+				if (stats) stats.checks += 1;
+				let outcome: GuardRecord["outcome"] = "allowed";
+				let note: string | undefined;
+				let reason: string | undefined;
+				if (result.timedOut || result.error !== undefined) {
+					outcome = "unchecked";
+					if (stats) stats.unchecked += 1;
+					note = `[${guard.name}] ${guard.name} did not check this shell command (${result.timedOut ? "no answer in time" : errorText(result.error)}); it ran unchecked.`;
+				} else if (result.value && "block" in result.value && result.value.block) {
+					outcome = "blocked";
+					if (stats) stats.blocked += 1;
+					reason = `[${guard.name}] ${result.value.reason}`;
+				} else if (result.value && "message" in result.value && result.value.message) {
+					note = `[${guard.name}] ${result.value.message}`;
+				}
+				this.#onRecord?.({
+					guard: guard.name,
+					phase: "before_shell",
+					outcome,
+					ms,
+					paths: [display],
+					lane: options.lane,
+					...(reason === undefined ? {} : { detail: reason }),
+				});
+				return { reason, note };
+			}),
+		);
+		const reasons = outcomes.map((outcome) => outcome.reason).filter((reason) => reason !== undefined);
+		const notes = outcomes.map((outcome) => outcome.note).filter((note) => note !== undefined);
+		return reasons.length > 0 ? { blocked: true, reason: reasons.join("\n"), notes } : { blocked: false, notes };
 	}
 
 	/** A cell is starting (on `lane`): make sure a baseline snapshot of its directory exists to compare its end with. */

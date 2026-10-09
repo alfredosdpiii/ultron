@@ -5,7 +5,9 @@
  *   `<loki>` system-prompt section;
  * - an `edit()` that would add a hardcoded credential is refused before the write (the cell raises ValueError with
  *   Loki's finding) and the file is unchanged; the clean edit lands;
- * - a credential written through `bash` is reported with the next cell's result.
+ * - a `bash` command that writes source (a credential into leaked.py) is refused before it runs and the file never
+ *   exists; a shell write into notes is allowed;
+ * - a credential written past both checks (`Path.write_text`) is reported with the next cell's result.
  *
  * Fake credentials are built from parts inside the kernel, so neither this file nor the transcript holds a whole one.
  */
@@ -51,6 +53,8 @@ const CELLS: Record<string, string[]> = {
 	],
 	"write through bash": [
 		`key = "-".join(${KEY_PARTS})\nawait bash(f"""printf 'TOKEN = "%s"\\\\n' '{key}' > leaked.py""")\nprint("written")`,
+		`print(await bash("echo hello > notes.md && cat notes.md"))`,
+		`from pathlib import Path\nPath("leaked.py").write_text(f'TOKEN = "{key}"\\n')\nprint("written past the checks")`,
 		"await asyncio.sleep(4)\nprint('later')",
 	],
 };
@@ -127,7 +131,7 @@ describe.skipIf(!ready)("Loki in a real session", () => {
 		rmSync(root, { recursive: true, force: true });
 	});
 
-	test("sets up and commits .loki/, blocks a secret edit before the write, and reports a bash write after", async () => {
+	test("sets up and commits .loki/, blocks a secret edit and a shell write before they land, reports one past both", async () => {
 		await client!.start();
 		await client!.promptAndWait("add the key to settings.py", undefined, 120_000);
 
@@ -155,6 +159,10 @@ describe.skipIf(!ready)("Loki in a real session", () => {
 		);
 
 		await client!.promptAndWait("write through bash", undefined, 120_000);
+		// The shell write into source was refused before it ran; the one into notes ran.
+		const refused = provider.requests.find((request) => request.lastToolResult?.includes("was not run"));
+		expect(refused?.lastToolResult).toContain("bash command was not run: [Loki] loki: `redirect` into leaked.py");
+		expect(readFileSync(join(projectDir, "notes.md"), "utf8")).toBe("hello\n");
 		const later = (await client!.getLastAssistantText()) ?? "";
 		expect(later).toContain("later");
 		expect(later).toContain("[Loki] 1 new finding from this cell's changes; fix these:");
@@ -169,7 +177,7 @@ describe.skipIf(!ready)("Loki in a real session", () => {
 		const loki = (response.data as SessionReport).guardrails.guards?.Loki;
 		expect(loki).toBeDefined();
 		expect(loki!.checks).toBeGreaterThanOrEqual(2);
-		expect(loki!.blocked).toBe(1);
+		expect(loki!.blocked).toBe(2);
 		expect(loki!.afterChecks).toBeGreaterThanOrEqual(1);
 		expect(loki!.afterFindings).toBeGreaterThanOrEqual(1);
 		expect(loki!.ms).toBeGreaterThan(0);

@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Loki now checks shell writes before they run: a `bash()` command that would write a source or configuration file in the project (a redirect, a here-document, `tee`, `sed -i`, `perl -i`, `cp`/`mv`/`install`, `dd of=`) is refused with "bash command was not run" and Loki's reason, so writes no longer skip the before-write check by going through the shell. Notes and data (`.md`, `.txt`, `.log`, `.patch`, ...), Git-ignored output, `/dev/null` and paths outside the project are allowed, and commands that write no file never reach Loki. The bundled engine (Loki `f5ecc8e`) adds `shell-writes`; a repository's older `.loki/loki.py` falls back to it for this check.
+
 ## [0.87.34] - 2026-10-09
 
 ### Breaking Changes

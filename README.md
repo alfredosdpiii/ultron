@@ -658,7 +658,12 @@ findings). It is bundled and on by default:
 - `edit()` and `write()` are checked before the file changes; a finding raises `ValueError` and nothing is written.
   A check that takes longer than 5 s (`ULTRON_LOKI_TIMEOUT_MS`) lets the write through with a visible "Loki did not
   check this write" note.
-- Files a cell changes any other way (`bash('sed -i ...')`, `Path.write_text`) are checked after the cell, in the
+- A `bash()` command that would write a source or configuration file in the project (a redirect, a here-document,
+  `tee`, `sed -i`, `perl -i`, `cp`/`mv`/`install`, `dd of=`) is refused before it runs, with "bash command was not
+  run" and Loki's reason, so a shell write cannot skip the check above; use `edit()`/`write()` instead. Writes into
+  notes and data (`.md`, `.txt`, `.log`, `.patch`, ...), Git-ignored output, `/dev/null` and paths outside the project
+  run as before, and commands that write no file never reach Loki.
+- Files a cell changes any other way (`Path.write_text`, a program or build step) are checked after the cell, in the
   background; findings arrive with the next cell result. Only what the cell introduced is reported, in three kinds
   that are never mixed: new findings ("fix these"), advisory lines such as a function grown complex (an FYI, no
   change required), and checks that could not run (a missing analyzer, said once per session). Existing code in an
