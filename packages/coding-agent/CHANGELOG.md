@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- The task journal persisted in a session (`ultron.tasks`) keeps every unfinished task and the newest 100 finished ones; it was rewritten whole on every transition, so a session with hundreds of frames (an automated review) grew its session file quadratically, to 700 MB for one review. The journal in memory stays complete for the session.
 - Autoreview's prepared test environments find dependency files below the repository root: every `requirements*.txt`, `pyproject.toml` and `setup.py` up to four levels down (`backend/`, `services/api/`, ...) is installed into the one environment and hashed into its key. A root `pyproject.toml` that names only the tooling (no build system) used to be the only thing tried, and its failed editable install left the tests without dependencies.
 
 ### Changed

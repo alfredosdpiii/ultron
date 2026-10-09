@@ -1,6 +1,12 @@
 import { isJsonValue, type JsonValue } from "@ultron/chord";
 import { describe, expect, test } from "vitest";
-import { type NativeHostStore, NativeTaskJournal, taskFingerprint } from "../src/ultron/rlm/task-store.ts";
+import {
+	MAX_PERSISTED_FINISHED_TASKS,
+	type NativeHostStore,
+	NativeTaskJournal,
+	persistedTasks,
+	taskFingerprint,
+} from "../src/ultron/rlm/task-store.ts";
 
 const fingerprint = "a".repeat(64);
 const interruptedResult = {
@@ -74,6 +80,38 @@ describe("taskFingerprint", () => {
 });
 
 describe("NativeTaskJournal", () => {
+	test("the persisted document keeps every unfinished task and only the newest finished ones; memory keeps them all", async () => {
+		const writes: Array<{ tasks: Array<{ id: string; state: string }> }> = [];
+		const backend: NativeHostStore = {
+			read: async () => undefined,
+			write: async (document) => void writes.push(document as never),
+		};
+		const journal = new NativeTaskJournal(backend);
+		const total = MAX_PERSISTED_FINISHED_TASKS + 30;
+		const ids: string[] = [];
+		for (let n = 0; n < total; n += 1) {
+			const { task } = await journal.admit("identity@1", fingerprint, `request-${n}`);
+			ids.push(task.id);
+			await journal.transition(task.id, "running");
+			// The last one stays running: it must be persisted whatever its age.
+			if (n < total - 1)
+				await journal.transition(task.id, "completed", { status: "succeeded", verification: "unverified" });
+		}
+		const last = writes.at(-1)!.tasks;
+		expect(last).toHaveLength(MAX_PERSISTED_FINISHED_TASKS + 1);
+		expect(last.filter((task) => task.state === "completed")).toHaveLength(MAX_PERSISTED_FINISHED_TASKS);
+		expect(last.at(-1)).toMatchObject({ id: ids[total - 1], state: "running" });
+		// The oldest finished ones are the dropped ones; the journal itself still lists every task.
+		expect(last.map((task) => task.id)).toEqual(ids.slice(total - 1 - MAX_PERSISTED_FINISHED_TASKS));
+		expect(await journal.list()).toHaveLength(total);
+		// Below the bound nothing is dropped, and the helper is a pure function of the records.
+		const few = [
+			{ id: "a", key: "a", fingerprint, definition: "identity@1", state: "completed" as const },
+			{ id: "b", key: "b", fingerprint, definition: "identity@1", state: "running" as const },
+		];
+		expect(persistedTasks(few)).toEqual(few);
+	});
+
 	test("shares one concurrent load across ready, reads, and writes", async () => {
 		let readCount = 0;
 		const readGate = deferred<JsonValue | undefined>();

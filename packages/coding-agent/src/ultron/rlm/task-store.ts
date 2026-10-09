@@ -169,6 +169,22 @@ export function taskFingerprint(request: JsonValue): string {
 }
 
 /** Serialized, commit-before-publish state. Failed writes poison the owner; reopening never replays effects. */
+/**
+ * Finished tasks kept in the persisted journal: the newest ones. Every transition rewrites the whole document, so
+ * a session with hundreds of frames (an automated review) grew its session file quadratically (700 MB for one
+ * review). The journal in memory stays complete for the session; after a restart, older finished tasks are gone.
+ */
+export const MAX_PERSISTED_FINISHED_TASKS = 100;
+
+/** The document to persist: every unfinished task, and the newest finished ones up to the bound. */
+export function persistedTasks(records: readonly NativeTask[]): NativeTask[] {
+	const finished = records.filter((task) => isTerminalState(task.state));
+	const excess = finished.length - MAX_PERSISTED_FINISHED_TASKS;
+	if (excess <= 0) return [...records];
+	const dropped = new Set(finished.slice(0, excess).map((task) => task.id));
+	return records.filter((task) => !dropped.has(task.id));
+}
+
 export class NativeTaskJournal {
 	private readonly store: NativeHostStore;
 	private records: NativeTask[] = [];
@@ -220,7 +236,7 @@ export class NativeTaskJournal {
 
 	private async write(next: NativeTask[]): Promise<void> {
 		try {
-			await this.store.write(structuredClone({ version: 1, tasks: next }) as JsonValue);
+			await this.store.write(structuredClone({ version: 1, tasks: persistedTasks(next) }) as JsonValue);
 		} catch {
 			this.broken = true;
 			throw new Error(DURABILITY_ERROR);
