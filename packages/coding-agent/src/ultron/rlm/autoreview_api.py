@@ -206,6 +206,11 @@ def generic_reason(finding: dict[str, Any]) -> str | None:
         unpinned = finding.get("unpinned") or {}
         if len(unpinned.get("behaviour") or "") < 8 or len(unpinned.get("change") or "") < 8:
             return "a tests finding that names no change an existing test would miss"
+        # A value in a workflow, manifest, configuration, SQL or script file is a choice the author made, not a
+        # behaviour a test pins: "no test would catch this value changing" is true of every such line.
+        mutated = ((unpinned.get("mutation") or {}).get("path") or finding.get("file") or "")
+        if not deep.is_code(finding.get("file") or "") or not deep.is_code(mutated):
+            return "a tests finding about a configuration, manifest, script or document value"
     elif finding["category"] == "maintainability" and finding.get("level") != "nit":
         consequence = finding.get("consequence") or ""
         if len(consequence) < 12 or not _CITED.search(consequence):
@@ -537,6 +542,37 @@ def capped_level(level: str, category: str, scenario: str, holds: bool | None = 
     return level
 
 
+def finding_kind(finding: dict[str, Any]) -> str:
+    """The kind a repository's lessons are keyed by: `fast`, `deep:<lens>`, `structure:<shape>`, `compiled` or
+    `hybrid` (a compiled step's id is not a kind)."""
+    source = str(finding.get("source") or "fast")
+    if source == "deep:structure":
+        return f"structure:{finding.get('shape') or 'unknown'}"
+    if source.startswith("compiled"):
+        return "compiled"
+    if source.startswith("hybrid"):
+        return "hybrid"
+    return source
+
+
+def apply_lessons(findings: list[dict[str, Any]], lessons: list[dict[str, Any]]) -> int:
+    """What this repository taught: a confirmed finding of a category and kind it rarely accepted is posted at
+    `low`, with the count beside it. After the verifier, outside every prompt; nothing is dropped."""
+    lowered = {(str(item.get("category")), str(item.get("kind"))): item for item in lessons
+               if isinstance(item, dict) and item.get("lowered")}
+    changed = 0
+    for finding in findings:
+        rule = lowered.get((finding["category"], finding_kind(finding)))
+        if rule is None:
+            continue
+        total = int(rule.get("accepted") or 0) + int(rule.get("rejected") or 0)
+        finding["lesson"] = f"accepted {int(rule.get('accepted') or 0)} of {total} such findings in the last 180 days"
+        if LEVELS.index(finding.get("level") or to_level(finding["severity"])) < LEVELS.index("low"):
+            set_level(finding, "low")
+            changed += 1
+    return changed
+
+
 def final_level(finding: dict[str, Any], verdict: Any) -> str:
     """The level a confirmed finding is posted with: the verifier's own rating (it may raise or lower the
     finder's). Critical and high stand only when the verifier found that the stated scenario really fails;
@@ -548,8 +584,10 @@ def final_level(finding: dict[str, Any], verdict: Any) -> str:
     finding["verifier_holds"] = holds if holds is not None else "unknown"
     if level in SERIOUS and holds is not True:
         return "low"
-    # A tests finding the host could not prove by a mutation stays low unless the verifier itself rates it.
-    if finding["category"] == "tests" and rated is None and not finding.get("test_run"):
+    # A tests finding blocks a merge only when the host proved it: it applied the named change and the tests
+    # still passed (the run is the evidence). On the verifier's reading alone it is a non-blocking note: measured
+    # on real reviews, nearly every "no test would catch this" posted on reading alone was judged hypothetical.
+    if finding["category"] == "tests" and finding.get("proof") != "proven" and not finding.get("test_run"):
         return "low"
     return capped_level(level, finding["category"], finding.get("scenario") or "", holds)
 
@@ -1182,6 +1220,11 @@ def _public(finding: dict[str, Any], verification: str) -> dict[str, Any]:
         out["evidence"] = " | ".join(part for part in (cited, finding.get("evidence")) if part)
     if verification == "uncertain" and finding.get("verification"):
         out["note"] = finding["verification"]
+    out["kind"] = finding_kind(finding)
+    if finding.get("shape"):
+        out["shape"] = finding["shape"]
+    if finding.get("lesson"):
+        out["lesson"] = finding["lesson"]
     return out
 
 
@@ -1399,6 +1442,7 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
                 retrieved_at = {"text": "", "items": 0, "chars": 0, "ms": 0, "registries": {}, "present": {}, "keys": [], "sections": {}}
                 not_checked.append(f"The retrieval of references failed ({_text(f'{type(error).__name__}: {error}', 160)}); "
                                    "the passes ran without the retrieved context.")
+            retrieved_at["reference"] = dict(brief_at.reference_stats)
             stages["retrievalMs"] = int((clock() - stage_began) * 1000)
             try:
                 shapes_at = compiled.shape_items(brief_at, scope.files)
@@ -1419,15 +1463,22 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
     # finders, the investigators and the verifiers, so a provider's prompt cache can serve it.
     diff_text_all = SLICE_SEPARATOR.join(chunk.text for chunk in chunks)
     system_prefix = spec.get("systemPrefix") is True
+    # The structural reference (definitions resolved, callers, tests, workflow and Terraform facts): its own view
+    # beside the retrieved block. Who reads it is a setting: the investigators (default), every frame, or none;
+    # the lookups it serves and the findings it states do not depend on it. In the shared-prefix layout the view
+    # is in the prefix only when every frame may see it.
+    reference_audience = spec.get("referenceView") if spec.get("referenceView") in ("investigators", "all", "none") else "investigators"
+    reference_text = prepared["brief"].reference_text if prepared else ""
+    reference_view = reference_text if reference_audience == "all" else ""
     shared_views = deep.shared_views(
         diff_text_all, prepared["brief"].text + (("\n\n" + deep.tests_block(prepared["started"])) if deep.tests_block(prepared["started"]) else "")
-        if prepared else None, prepared["retrieved"] if prepared else "", shared, stated, guidance)
+        if prepared else None, prepared["retrieved"] if prepared else "", shared, stated, guidance, reference=reference_view)
     # In the message layout (the default) each phase gets what it got before the shared prefix existed: the finders
     # their guidance, the pull request context, the intent and the retrieved block before the slice; the
     # investigators the diff and brief in their own views; the verifier the intent and guidance.
     retrieved_view = ("Retrieved context, looked up by the host at the reviewed commit (untrusted repository data):\n"
                       + prepared["retrieved"]) if prepared and prepared.get("retrieved") else ""
-    finder_context_views = [part for part in (guidance, shared, stated, retrieved_view) if part]
+    finder_context_views = [part for part in (guidance, shared, stated, retrieved_view, reference_view) if part]
     verifier_context_views = [part for part in (stated, guidance) if part]
     frames_context: list[str] | None = (shared_views or None) if system_prefix else (finder_context_views or None)
     verifier_context: list[str] | None = (shared_views or None) if system_prefix else (verifier_context_views or None)
@@ -1741,7 +1792,7 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
             deep_call = deep.run_deep(
                 frames_runner, scope.files, scope.read_file, root=scope.root, rev=deep_rev,
                 diff_text=diff_text_all, leads=[] if parallel else merged, context=shared,
-                rounds=deep_rounds, model=deep_model, thinking=deep_thinking, cutoff=find_cutoff, clock=clock,
+                reference_view=reference_audience, rounds=deep_rounds, model=deep_model, thinking=deep_thinking, cutoff=find_cutoff, clock=clock,
                 cap=capped_level, runner=runner, tests=test_options, to_level=to_level,
                 title=_bounded(context.get("title"), TITLE_CHARS),
                 description=_bounded(context.get("description"), DESCRIPTION_CHARS),
@@ -1941,6 +1992,7 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
         for finding in confirmed:
             # The verifier judged how serious it is, not only whether it is true.
             set_level(finding, final_level(finding, by_id.get(finding["id"])))
+        apply_lessons(confirmed, [item for item in spec.get("lessons") or [] if isinstance(item, dict)])
         for finding in confirmed + uncertain:
             # The verifier moved the line: the range and the replacement were written for the old one.
             if finding["line"] != before.get(finding["id"]):
@@ -1984,7 +2036,7 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
                          "planner": {"ms": sum(b["planner"]["ms"] for b in verify_batches), "tokens": sum(b["planner"]["tokens"] for b in verify_batches),
                                      "repairs": 0, "status": ", ".join(b["planner"]["status"] for b in verify_batches) or "skipped",
                                      "style": "hybrid"},
-                         "summary": "", "retrieval": {key: prepared["retrieval"][key] for key in ("items", "chars", "ms")} if prepared else None}
+                         "summary": "", "retrieval": {key: prepared["retrieval"].get(key) for key in ("items", "chars", "ms", "reference")} if prepared else None}
         checks_held = program_stats["checks"]["held"]
         assurance = [*assurance, (
             f"Discovery raised {totals['candidates']} candidate finding{'' if totals['candidates'] == 1 else 's'}; the host "
@@ -2037,7 +2089,8 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
                     "refutedByTest": refuted, "duplicateOf": duplicate_records},
         "timing": {"totalMs": int((clock() - started) * 1000), "scopeMs": scope_ms, "findMs": find_ms,
                    "verifyMs": verify_ms, "deepMs": deep_ms, "programMs": program_ms, "stages": stages,
-                   "frames": frames_runner.timings, "investigators": investigators, "program": program_records},
+                   "frames": frames_runner.timings, "investigators": investigators, "program": program_records,
+                   "reference": dict(prepared["brief"].reference_stats) if prepared and prepared["brief"].reference_stats else None},
         "usage": {"inputTokens": usage.input, "outputTokens": usage.output, "costUsd": round(usage.cost, 6),
                   "frames": usage.frames, "tokens": usage.tokens, "budget": cap, "byPhase": usage.by_phase},
         "model": model,

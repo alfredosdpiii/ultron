@@ -58,6 +58,8 @@ export interface FakePull {
 	/** Review thread id by the id of its first comment, and which threads are resolved. */
 	threads: Map<number, string>;
 	resolved: Set<string>;
+	/** Thumbs up and down on a comment, by comment id. */
+	reactions: Map<number, { up: number; down: number }>;
 }
 
 export interface RecordedCall {
@@ -155,6 +157,7 @@ export class FakeHub {
 			ancestors: [],
 			threads: new Map(),
 			resolved: new Set(),
+			reactions: new Map(),
 			...partial,
 		};
 		this.pulls.set(`${pull.owner}/${pull.repo}#${pull.number}`, pull);
@@ -317,11 +320,25 @@ export class FakeHub {
 				return this.#respond(200, { data: { resolveReviewThread: { thread: { id, isResolved: true } } } });
 			}
 			const pull = this.pulls.get(`${variables.owner}/${variables.repo}#${variables.number}`);
-			const nodes = [...(pull?.threads ?? [])].map(([commentId, id]) => ({
-				id,
-				isResolved: pull!.resolved.has(id),
-				comments: { nodes: [{ databaseId: commentId }] },
-			}));
+			const nodes = [...(pull?.threads ?? [])].map(([commentId, id]) => {
+				const reactions = pull!.reactions.get(commentId) ?? { up: 0, down: 0 };
+				return {
+					id,
+					isResolved: pull!.resolved.has(id),
+					comments: {
+						totalCount: 1,
+						nodes: [
+							{
+								databaseId: commentId,
+								reactionGroups: [
+									{ content: "THUMBS_UP", reactors: { totalCount: reactions.up } },
+									{ content: "THUMBS_DOWN", reactors: { totalCount: reactions.down } },
+								],
+							},
+						],
+					},
+				};
+			});
 			return this.#respond(200, {
 				data: {
 					repository: {

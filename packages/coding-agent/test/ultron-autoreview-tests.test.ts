@@ -1074,8 +1074,8 @@ emit({"result": result, "verifierSaw": [c["text"] for c in rlm.calls if c["lens"
 		// The mutant that breaks show() is caught by test_show: the finding is refuted and gone.
 		expect(byClaim["Nothing fails when show() stops upper-casing."]).toBeUndefined();
 		expect(out.result.dropped.refutedByTest).toBe(1);
-		// No one-line mutation: it stands on the verifier's reading, with no run behind it.
-		expect(byClaim["The signature of show() is not pinned."]).toMatchObject({ level: "medium", strength: "diff" });
+		// No one-line mutation: it stands on the verifier's reading, with no run behind it: a non-blocking note.
+		expect(byClaim["The signature of show() is not pinned."]).toMatchObject({ level: "low", strength: "diff" });
 		expect(out.result.tests.runs.map((run) => [run.kind, run.status])).toEqual([
 			["automatic", "passed"],
 			["mutation", "passed"],

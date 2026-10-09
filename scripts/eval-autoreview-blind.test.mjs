@@ -9,14 +9,14 @@ import { collect, evaluateCandidate, githubClient, parseResponse, RateLimitStop,
 import {
 	caseId,
 	classifyPrompt,
-	DROP,
 	diffShape,
+	DROP,
 	extraCandidates,
 	extraPrompt,
 	hunksNear,
 	isReviewablePath,
-	JUDGE_SYSTEM,
 	jsonObjects,
+	JUDGE_SYSTEM,
 	matchable,
 	matchCandidates,
 	matchPrompt,
@@ -26,6 +26,7 @@ import {
 	pickSample,
 	priorReviews,
 	referenceVerdict,
+	regressions,
 	renderMarkdown,
 	renderRedacted,
 	repoCap,
@@ -712,6 +713,19 @@ test("reports: the full one lists what was missed, the redacted one carries numb
 	assert.match(redacted, /1\/3 \(33%\) in 1 cases \| 1\/1 \(100%\) in 1 cases \|/);
 	assert.match(redacted, /\| p\/m \| 10\.0 \| 30\.0 \| 30\.0 \| 1,000 \/ 100 \| 2,000 \/ 200 \| \$1\.00 \| \$2\.00 \| 1 \| 0 \|/);
 	for (const secret of ["fixture-org", "SECRET", "ONE-LINE", "src/", "claim ", "c-0000", "fx", "ultron autoreview review"]) assert.ok(!redacted.includes(secret), secret);
+});
+
+test("regressions names an arm whose recall, precision or verdict agreement fell more than the tolerance below the baseline", () => {
+	const arm = (recall, precision, agreement) => ({ substantive: { recall }, precision, verdict: { agreement } });
+	const baseline = { "p/m": arm(0.3, 0.6, 0.7) };
+	assert.deepEqual(regressions({ "p/m": arm(0.3, 0.6, 0.7), "p/new": arm(0, 0, 0) }, baseline), []);
+	assert.deepEqual(regressions({ "p/m": arm(0.21, 0.51, 0.61) }, baseline), []);
+	assert.deepEqual(regressions({ "p/m": arm(0.1, 0.4, 0.5) }, baseline), [
+		"p/m: recall (same issue) down 20 points (30% -> 10%)",
+		"p/m: precision down 20 points (60% -> 40%)",
+		"p/m: verdict agreement down 20 points (70% -> 50%)",
+	]);
+	assert.deepEqual(regressions({ "p/m": arm(null, 0.6, 0.7) }, baseline), []);
 });
 
 test("reviewerArgv: an arm's thinking levels reach Ultron's reviewer", () => {

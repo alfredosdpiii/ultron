@@ -2,6 +2,21 @@
 
 ## [Unreleased]
 
+### Added
+
+- Autoreview builds a structural reference of the change before any model runs (`rlm/autoreview_reference.py`, standard library only): the changed files, their importers, the modules they import, their tests and sibling Terraform files are indexed (Python by `ast`, TypeScript and JavaScript by a scanner) with every definition's signature before and after the change, call sites resolved through imports, literal families and where else each is listed, workflows (a YAML reader) and Terraform blocks. The brief lists a changed symbol's resolved call sites instead of word matches; a rendering of the reference with ids is a view of every finder and investigator; investigators get four new lookups served from it (`symbol`, `callers`, `callees`, `tests_of`, falling back to the text search for a name it does not know); `--json` reports `timing.reference`.
+- Autoreview states what holds structurally as findings of its own (`deep:structure`), verified like any other: a workflow granting `id-token: write` with no OIDC step, one lacking the `permissions` block its siblings set, a `pull_request_target` checkout of the pull request head with no same-repository guard, a `run:` step interpolating a user-controlled `${{ }}` expression; a removed Terraform resource still referenced, a new resource lacking the `prevent_destroy` rule its siblings set; a registry listed elsewhere the change did not extend.
+- Claude Haiku 5.5 (`anthropic/`, `claude-code/`, `opencode/`, `opencode-go/claude-haiku-5-5`) has autoreview thinking defaults of `high` for every stage.
+- Autoreview learns from the fate of its findings, per repository: on a re-review and at close, each earlier finding is settled by what GitHub shows (fixed or thumbs-up: accepted; a thread a human resolved without a fix, a thumbs-down, or still open at merge: rejected). Fates go into the reviewer's ledger (`state.json`) and, when memory is on, into Hindsight (bank `ultron-autoreview`, tagged per repository). With at least five fates of one category and kind in 180 days and fewer than half accepted, matching confirmed findings are posted at `low` with the count beside them, after the verifier and outside every prompt; nothing is suppressed. `autoreview.learn: false` turns it off. Inline comments now say when the reviewer proved a finding by a test run or stated it from the files' structure; `--json` findings carry `kind`, `shape` and `lesson`.
+- A workflow that grants `id-token: write` to another repository's reusable workflow is a structural finding (with the mutable ref named), not assumed to need it.
+- `autoreview.referenceView` (`investigators`, the default; `all`; `none`): who sees the structural reference's rendering as a view. The finders read the diff and the retrieved block as before; the reference's lookups and structural findings do not depend on it. Measured on a small model, and reported by SWE-PRBench for every model it tested, more context in a finder's prompt lowers what it finds.
+- `evals/autoreview/run.mjs` and `blind/run.mjs` take `--baseline <result.json>`: an arm both have whose caught rate or recall, precision or false-alarm rate, or verdict accuracy moves more than 10 points the wrong way exits 3 after the result is written.
+
+### Changed
+
+- Autoreview's recommended model is Claude Haiku 5.5 through Claude Code (`claude-code/claude-haiku-5-5`, the Claude subscription, no API key) when the `claude` CLI is installed, else `cliproxyapi/gpt-6-luna` when the catalog has it; both at `high` thinking for every stage. Measured on the benchmarks, Haiku caught more injected bugs with no false alarms and matched the human reviewer twice as often, at about 4x the cost per review.
+- Autoreview tests findings ("no test pins X") that no run proved are posted at `low` and never block; only one a mutation run proved keeps the verifier's level. A "no test pins it" finding about a value in a workflow, manifest, configuration, SQL, script or document file is dropped. On the private review set, 17 of the recommended model's 21 wrong findings were of these two kinds.
+
 ## [0.87.35] - 2026-10-09
 
 ### Changed

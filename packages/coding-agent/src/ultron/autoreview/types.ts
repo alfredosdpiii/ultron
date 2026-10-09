@@ -72,6 +72,14 @@ export interface EngineSpec {
 	readonly verifyThinking?: string;
 	/** `fast`, `deep`, `both`, `compiled` or `hybrid`; all but `fast` need `repoDir` or `workDir`. */
 	readonly mode?: "fast" | "deep" | "both" | "compiled" | "hybrid";
+	/** What this repository taught the reviewer: a lowered rule posts matching confirmed findings at `low`. */
+	readonly lessons?: ReadonlyArray<{
+		readonly category: string;
+		readonly kind: string;
+		readonly accepted: number;
+		readonly rejected: number;
+		readonly lowered: boolean;
+	}>;
 	/** `hybrid` mode: candidates verified per review at most. */
 	readonly verifyCandidates?: number;
 	/** Findings of one file a verifier frame judges together. */
@@ -85,6 +93,8 @@ export interface EngineSpec {
 	readonly deepModel?: string;
 	readonly deepThinking?: string;
 	readonly deepRounds?: number;
+	/** Who sees the structural reference's rendering: `investigators` (default), `all` frames, or `none`. */
+	readonly referenceView?: "investigators" | "all" | "none";
 	/** `compiled` mode: the planner frame's model and thinking, and the small model the program's questions go to. */
 	readonly planModel?: string;
 	readonly planThinking?: string;
@@ -177,6 +187,12 @@ export interface EngineFinding {
 	readonly replacement?: string;
 	/** Which pass raised it: `fast`, `deep:<lens>`, or `compiled:<step id>`. */
 	readonly source?: string;
+	/** The kind the lessons are keyed by: `fast`, `deep:<lens>`, `structure:<shape>`, `compiled` or `hybrid`. */
+	readonly kind?: string;
+	/** A structural finding's shape (`idtoken`, `permissions`, `tf-removed-ref`, ...). */
+	readonly shape?: string;
+	/** The repository's history lowered it: "accepted 1 of 7 such findings in the last 180 days". */
+	readonly lesson?: string;
 	/** `hybrid` mode: the host check that confirmed it (`check:<step id>`). */
 	readonly verifiedBy?: string;
 	/** A deep finding's citations, each quote checked by the host at its line of the reviewed commit. */
@@ -379,6 +395,8 @@ export interface EngineResult {
 		readonly frames?: readonly FrameTiming[];
 		/** The deep pass's investigators: lookup rounds, requests served, time and tokens. */
 		readonly investigators?: readonly InvestigatorTiming[];
+		/** The structural reference the map built: files read, symbols, calls, families, workflows, terraform, ms. */
+		readonly reference?: Readonly<Record<string, number>> | null;
 		/** The compiled mode's steps, in the order they finished. */
 		readonly program?: readonly ProgramStep[];
 	};

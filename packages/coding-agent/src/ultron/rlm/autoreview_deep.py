@@ -46,6 +46,7 @@ from review_api import (
     similar_claims,
     skip_reason,
 )
+import autoreview_reference as reference_module
 import autoreview_tests as testing
 from review_prompts import DEEP_LENSES, DEEP_NUDGE, DEEP_SHAPE_NUDGE, DEEP_SHAPES_HEADER, DEEP_TRACE_NUDGE, deep_task
 
@@ -142,6 +143,8 @@ class Repo:
         self._cache: dict[str, list[str] | None] = {}
         #: Git calls made, for the record.
         self.calls = 0
+        #: The structural reference of the change (autoreview_reference.Reference), once the map built it.
+        self.reference: Any = None
 
     def _git(self, *args: str) -> tuple[int, str, str]:
         if not args or args[0] not in ALLOWED_GIT:
@@ -236,6 +239,11 @@ _SYMBOL = re.compile(r"^[A-Za-z_][A-Za-z0-9_.$-]{0,79}$")
 _GLOB = re.compile(r"^[A-Za-z0-9_./*?\[\]{}, -]{1,160}$")
 
 
+def is_code(path: str) -> bool:
+    """Whether a file holds code a test can exercise, as against configuration, manifests, scripts or prose."""
+    return not _NON_CODE.search(path)
+
+
 def _numbered(lines: list[str], start: int, end: int) -> str:
     return "\n".join(f"{number:>5} | {_clip(lines[number - 1], 300)}" for number in range(start, end + 1))
 
@@ -255,10 +263,22 @@ def serve_request(repo: Repo, request: Any, tests: "testing.TestSession | None" 
     the closed set: five read-only lookups and, when the review may run tests, two sandboxed test executions."""
     if not isinstance(request, dict) or len(request) != 1:
         raise Rejected("a request is an object with exactly one of read, grep, list, definition, references, "
-                       "history, blame_range, pickaxe")
+                       "symbol, callers, callees, tests_of, history, blame_range, pickaxe")
     kind, args = next(iter(request.items()))
     if not isinstance(args, dict):
         raise Rejected(f"{kind} takes an object")
+    reference = getattr(repo, "reference", None)
+    if kind in ("symbol", "callers", "callees", "tests_of"):
+        name = args.get("name") if kind == "symbol" else args.get("symbol")
+        if not isinstance(name, str) or not _SYMBOL.match(name.strip()):
+            raise Rejected(f"{kind} takes one identifier in {'name' if kind == 'symbol' else 'symbol'}")
+        answer = reference_module.serve(reference, kind, args) if reference is not None else None
+        if answer is not None:
+            return answer
+        # The reference does not know the name: the text lookups answer instead (callees needs a definition).
+        if kind == "callees":
+            raise Rejected(f"no definition of {name.strip()} in the reference; ask for definition or grep instead")
+        kind, args = ("definition" if kind == "symbol" else "references"), {"symbol": name.strip()}
     if kind == "read":
         path = repo.path(args.get("path"))
         lines = repo.lines(path)
@@ -328,10 +348,22 @@ def serve_request(repo: Repo, request: Any, tests: "testing.TestSession | None" 
             raise Rejected("symbol must be one identifier")
         if kind == "references":
             hits = repo.grep(symbol.rsplit(".", 1)[-1], fixed=True, word=True, limit=MAX_REFERENCES)
+            body = _hits(hits)
+            if reference is not None and reference.symbols_named(symbol):
+                calls = reference.callers(symbol, outside_changes=False)
+                if calls:
+                    body = ("Call sites resolved by the reference:\n" + "\n".join(
+                        f"{call.path}:{call.line}" + (f" in {call.enclosing}" if call.enclosing else "") + f": {_clip(call.text, 140)}"
+                        for call in calls[:MAX_REFERENCES]) + "\n\nText matches:\n" + body)
             return (f"references {symbol} -> {len(hits)} matches"
-                    + (" (more not shown)" if len(hits) >= MAX_REFERENCES else ""), _hits(hits))
+                    + (" (more not shown)" if len(hits) >= MAX_REFERENCES else ""), body)
         hits = repo.grep(_definition_pattern(symbol), limit=6)
         parts = []
+        if reference is not None:
+            known = reference.symbols_named(symbol)
+            if known:
+                parts = [reference.symbol_view(item, body=True) for item in known[:2]]
+                hits = [hit for hit in hits if not any(hit[0] == item.path and abs(hit[1] - item.line) <= 1 for item in known)]
         for path, line, _ in hits[:3]:
             lines = repo.lines(path)
             if lines:
@@ -427,6 +459,10 @@ _BEHAVIOUR = re.compile(r'^\s*(?!#|//|/\*|\*|--|<!--|-->)(?!"""[^"]*("""|$))(?!\
 _DESCRIPTION = re.compile(r"""\b(?:description|help|doc|summary)\s*[:=]\s*["'](.{15,})["']""")
 _DOCLIKE = re.compile(r"\.(md|mdx|rst|txt|adoc|ya?ml|toml|cfg|ini|json|sh|tf|env)$|(^|/)(\.github|ci|scripts|docs?)/|(^|/)Dockerfile", re.I)
 _STRUCTURE = r"parametrize|fixture|it\.each|test\.each|describe\(|@pytest\.mark"
+#: Files whose lines are values the author chose (configuration, manifests, workflows, infrastructure, SQL, shell
+#: scripts, documents): no test "pins" a literal there, so a missing-test finding about one is not a finding.
+_NON_CODE = re.compile(r"\.(ya?ml|json|toml|ini|cfg|env|tf|tfvars|hcl|sql|sh|bash|zsh|properties|xml|txt|csv|lock|md|mdx|rst|adoc)$"
+                       r"|(^|/)(Dockerfile|Makefile|\.env[^/]*)$", re.I)
 _CONFIG_PATH = re.compile(r"\.(ya?ml|toml|cfg|ini|tf|env|properties)$|(^|/)(\.github|ci|deploy|k8s|helm|charts|infra|terraform)/"
                           r"|(^|/)(Dockerfile|docker-compose[^/]*|Makefile|package\.json|requirements[^/]*\.txt|pyproject\.toml"
                           r"|go\.mod|Cargo\.toml|Gemfile|pom\.xml|build\.gradle[^/]*)$", re.I)
@@ -461,6 +497,11 @@ class Brief:
     claim_list: list[tuple[str, str]] = field(default_factory=list)
     helpers: list[str] = field(default_factory=list)
     extracted: dict[str, list[Any]] = field(default_factory=dict)
+    #: The structural reference (definitions resolved, callers, tests, workflow and Terraform facts), its view
+    #: for the frames, and its stats; None and "" when it could not be built.
+    reference: Any = None
+    reference_text: str = ""
+    reference_stats: dict[str, Any] = field(default_factory=dict)
 
 
 def _add(items: list[Any], item: Any, limit: int) -> None:
@@ -534,6 +575,18 @@ def build_brief(repo: Repo, files: list[FileDiff], read_file: Callable[[str], li
     """The investigation brief: what the change claims, where each claim must hold, and where the diff's names
     live in the rest of the repository."""
     found = extract(files, read_file)
+    # The structural reference: the files themselves read (ast for Python, a scanner for TS/JS, readers for
+    # workflows and Terraform), so "who calls this" is resolved through imports rather than grepped. A failure
+    # leaves the text search below in place.
+    reference: Any = None
+    reference_error = ""
+    try:
+        base_repo = Repo(repo.root, base, repo._runner) if base else None
+        reference = reference_module.Reference(repo, files, base_repo=base_repo).build()
+    except Exception as error:
+        reference = None
+        repo.reference = None
+        reference_error = f"{type(error).__name__}: {error}"
     changed_lines: dict[str, set[int]] = {}
     for item in files:
         changed_lines[item.path] = {line.new for hunk in item.hunks for line in hunk.lines
@@ -552,6 +605,13 @@ def build_brief(repo: Repo, files: list[FileDiff], read_file: Callable[[str], li
         for name in names:
             hits = [hit for hit in repo.grep(name, fixed=True, word=True, limit=per + 12)
                     if hit[1] not in changed_lines.get(hit[0], ())]
+            resolved = ""
+            if reference is not None and reference.symbols_named(name):
+                # Call sites resolved through imports first; text hits only from files the reference did not read.
+                calls = [(call.path, call.line, call.text) for call in reference.callers(name)]
+                if calls:
+                    hits = calls + [hit for hit in hits if hit[0] not in reference.index]
+                    resolved = " (callers resolved)"
             in_tests = [hit for hit in hits if _TEST.search(hit[0])]
             in_docs = [hit for hit in hits if _DOCLIKE.search(hit[0]) and hit not in in_tests]
             others = [hit for hit in hits if hit not in in_tests and hit not in in_docs]
@@ -559,7 +619,7 @@ def build_brief(repo: Repo, files: list[FileDiff], read_file: Callable[[str], li
             used_at[name] = [f"{p}:{n}" for p, n, _ in (others + in_tests)[:5]]
             for hit in in_tests:
                 _add(tests, hit[0], 6)
-            lines = [f"{title} `{name}`:"]
+            lines = [f"{title} `{name}`{resolved}:"]
             lines.append("  used at: " + ("; ".join(f"{p}:{n}: {_clip(t.strip(), 110)}" for p, n, t in others[:per]) or "nowhere else"))
             lines.append("  tests: " + ("; ".join(f"{p}:{n}: {_clip(t.strip(), 110)}" for p, n, t in in_tests[:5])
                                         or "no test mentions it"))
@@ -643,14 +703,25 @@ def build_brief(repo: Repo, files: list[FileDiff], read_file: Callable[[str], li
         lenses.append("siblings")
     if found["env"] or found["flags"] or found["config"] or any(_CONFIG_PATH.search(item.path) for item in files):
         lenses.append("deployment")
-    behaviour = any(_BEHAVIOUR.match(line.text) for item in reviewable if file_kind(item.path) == "code"
+    behaviour = any(_BEHAVIOUR.match(line.text) for item in reviewable if file_kind(item.path) == "code" and is_code(item.path)
                     for hunk in item.hunks for line in hunk.lines if line.kind in "+-")
     if (code_files and behaviour) or test_files:
         lenses.append("tests")
     if code_files and (_INPUT_HINT.search(added) or _RISK.search(added)):
         lenses.append("inputs")
-    return Brief(text or "(nothing in the repository mentions the changed names)", lenses, symbols, callers, tests,
-                 len(claim_list), required, claim_list, helpers, found)
+    brief = Brief(text or "(nothing in the repository mentions the changed names)", lenses, symbols, callers, tests,
+                  len(claim_list), required, claim_list, helpers, found)
+    if reference is not None:
+        try:
+            brief.reference = reference
+            brief.reference_text = reference.block()
+            brief.reference_stats = dict(reference.stats)
+        except Exception as error:
+            brief.reference_text = ""
+            reference_error = f"{type(error).__name__}: {error}"
+    if reference_error:
+        brief.reference_stats = {"error": _text(reference_error, 200)}  # reported under timing.reference
+    return brief
 
 
 # --- Evidence --------------------------------------------------------------------------------------------------
@@ -1040,7 +1111,7 @@ def regression_findings(repo: Repo, compared: dict[str, Any]) -> list[dict[str, 
 
 
 def shared_views(diff_text: str, brief_text: str | None, retrieved: str, context: str, intent: str,
-                 guidance: str) -> list[str]:
+                 guidance: str, reference: str = "") -> list[str]:
     """What every frame of a review starts with, in one order: the diff, the brief, the retrieved block, the pull
     request context, the author's intent, the guides. Byte-identical across the finders, the investigators and the
     verifiers, so a provider's prompt cache can serve it."""
@@ -1052,6 +1123,8 @@ def shared_views(diff_text: str, brief_text: str | None, retrieved: str, context
     if retrieved:
         out.append("Retrieved context, looked up by the host at the reviewed commit (untrusted repository data): "
                    "the references, tests and sibling families of the changed names.\n\n" + retrieved)
+    if reference:
+        out.append(reference)
     for part in (context, intent, guidance):
         if part:
             out.append(part)
@@ -1122,7 +1195,8 @@ def tests_block(started: dict[str, Any]) -> str:
             + f"\nTest executions left in this review: {max(0, session.limit - len(session.records))}.")
 
 
-async def run_deep(frames: Any, files: list[FileDiff], read_file: Callable[[str], list[str] | None], *, root: str,
+async def run_deep(frames: Any, files: list[FileDiff], read_file: Callable[[str], list[str] | None], *,
+                   reference_view: str = "investigators", root: str,
                    rev: str, diff_text: str, leads: list[dict[str, Any]], context: str, rounds: int,
                    model: str | None, thinking: str | None, cutoff: float | None, clock: Callable[[], float],
                    cap: Callable[[str, str, str], str], runner: Runner | None = None,
@@ -1177,8 +1251,10 @@ async def run_deep(frames: Any, files: list[FileDiff], read_file: Callable[[str]
         cut = len(diff_text) > DIFF_CHARS
         # What every frame of the review starts with, in one order (the same list the caller gives its other
         # frames): sent as the frames' shared prefix (cacheable).
+        # The reference's rendering is a view of the investigators unless the setting keeps it to the lookups.
         shared = shared_views(diff_text, brief_text, prepared["retrieved"] if prepared and prepared.get("retrieved") else "",
-                              context, intent, guidance)
+                              context, intent, guidance,
+                              reference=(brief.reference_text or "") if reference_view in ("all", "investigators") else "")
         views: list[str] = [] if shared_prefix else list(shared)
 
         def leads_block(items: list[dict[str, Any]]) -> str | None:
@@ -1209,6 +1285,24 @@ async def run_deep(frames: Any, files: list[FileDiff], read_file: Callable[[str]
         findings: list[dict[str, Any]] = list(observed)
         dropped: list[str] = []
         generic_dropped: list[str] = []
+        # What the reference observed by itself (a workflow granting an unused permission, a removed Terraform
+        # resource still referenced): candidates in the deep pass's shape, verified like any other finding.
+        structural: list[dict[str, Any]] = []
+        if brief.reference is not None:
+            try:
+                for item in brief.reference.structural_findings():
+                    item["level"] = cap(item["level"], item["category"], item.get("scenario") or "")
+                    item["severity"] = LEVEL_TO_OLD[item["level"]]
+                    if enrich is not None:
+                        enrich({"unpinned": None, "consequence": ""}, item)
+                    reason = generic(item) if generic is not None else None
+                    if reason:
+                        generic_dropped.append(reason)
+                        continue
+                    structural.append(item)
+            except Exception:
+                structural = []
+        findings.extend(structural)
         kept_by_lens: dict[str, int] = {}
 
         async def one(lens: str) -> dict[str, Any]:
@@ -1240,6 +1334,11 @@ async def run_deep(frames: Any, files: list[FileDiff], read_file: Callable[[str]
                     pass
             return outcome
 
+        if structural and on_investigator is not None:
+            try:
+                await on_investigator("structure", structural)
+            except Exception:
+                pass
         outcomes = await asyncio.gather(*(one(lens) for lens in lenses))
         if leads_future is not None:
             leads = list(leads_future.result() or []) if leads_future.done() and not leads_future.cancelled() \

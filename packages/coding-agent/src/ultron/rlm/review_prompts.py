@@ -193,7 +193,9 @@ FINDING_RULES = """- unpinned: required for a finding about tests, else null. {"
   the default, drop the member, return the old value); "closest_test": {"path", "line"} of the existing test
   nearest to it, read first, or null; "mutation": {"path", "line", "replacement"} when that change is a
   one-line replacement, else null}. "Add coverage", "assert more" or an untested edge case without such a named
-  change is not a finding: leave it out.
+  change is not a finding: leave it out. A value in a workflow, manifest, configuration, SQL, script or document
+  file (a literal the author chose: a name, a URL, a version, a setting) is not a behaviour a test pins: never
+  report a missing test for it.
 - consequence: required for an architecture or maintainability finding, else "". The problem that exists now,
   with file:line of each side: two copies that already disagree, a caller that breaks, a contract a named consumer
   relies on. "Could drift", "kept in sync by hand", pin or naming consistency, or coupling without a consumer that
@@ -305,6 +307,9 @@ Reply with one JSON object:
   {{"list": {{"dir": "..."}}}}   the entries of a directory
   {{"definition": {{"symbol": "..."}}}}   where a name is defined, with the lines after it
   {{"references": {{"symbol": "..."}}}}   where a name is used
+  {{"symbol": {{"name": "..."}}}}, {{"callers": {{"symbol": "..."}}}}, {{"callees": {{"symbol": "..."}}}}, {{"tests_of": {{"symbol": "..."}}}}
+    from the host's reference (definitions resolved through imports): a definition with its signature before and
+    after the change, class, callers, tests and body; the call sites that reach it; the calls it makes; its tests
   {{"history": {{"path": "...", "n": 10}}}}   the recent commits that touched a file
   {{"blame_range": {{"path": "...", "start": 10, "end": 20}}}}   the commits that last changed those lines
   {{"pickaxe": {{"string": "...", "n": 5}}}}   the commits that added or removed a string

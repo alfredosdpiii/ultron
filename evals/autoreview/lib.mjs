@@ -601,6 +601,33 @@ const count = (records, test) => records.filter(test).length;
  * Per arm, over all its records (every trial of every case). A record is `{ arm, case, kind, trial, status,
  * wallMs, score?, review? }`; only records with `status: "ok"` are scored, the others are counted as `errors`.
  */
+/**
+ * The ways `summary` is worse than `baseline` (both `summarize()` outputs) by more than `tolerance` on an arm both
+ * have: the caught rate of buggy cases down, the false-alarm rate of clean cases up, verdict accuracy down. An arm
+ * only one side has, or a side with no scored run of a kind, is not compared. Empty: no regression.
+ */
+export function regressions(summary, baseline, tolerance = 0.1) {
+	const out = [];
+	const rateOf = (part, field) => (part.runs > 0 ? part[field] / part.runs : null);
+	for (const arm of Object.keys(summary)) {
+		const now = summary[arm];
+		const then = baseline?.[arm];
+		if (!now || !then) continue;
+		const checks = [
+			["caught rate (buggy)", rateOf(then.buggy, "caught"), rateOf(now.buggy, "caught"), "down"],
+			["false-alarm rate (clean)", rateOf(then.clean, "falseAlarms"), rateOf(now.clean, "falseAlarms"), "up"],
+			["verdict accuracy", then.verdictAccuracy, now.verdictAccuracy, "down"],
+		];
+		for (const [name, before, after, direction] of checks) {
+			if (typeof before !== "number" || typeof after !== "number") continue;
+			const delta = direction === "down" ? before - after : after - before;
+			if (delta > tolerance + 1e-9)
+				out.push(`${arm}: ${name} ${direction} ${(100 * delta).toFixed(0)} points (${(100 * before).toFixed(0)}% -> ${(100 * after).toFixed(0)}%)`);
+		}
+	}
+	return out;
+}
+
 export function summarize(records, arms) {
 	const out = {};
 	for (const arm of arms) {

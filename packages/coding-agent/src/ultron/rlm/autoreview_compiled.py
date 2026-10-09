@@ -385,10 +385,13 @@ def shape_items(brief: Any, files: list[FileDiff]) -> list[dict[str, str]]:
     removed = "\n".join(line.text for item in reviewable for hunk in item.hunks for line in hunk.lines if line.kind == "-")
     paths = [item.path for item in files]
     triggered: dict[str, str] = {}
-    if extracted.get("fields") or extracted.get("constants") or re.search(r"^\s*['\"][\w.-]+['\"],?\s*$", added, re.M):
-        triggered["registry-member"] = ", ".join(f"`{name}`" for name in (extracted.get("fields") or extracted.get("constants") or [])[:4]) or "a new list member"
-    if code:
-        triggered["unpinned-behaviour"] = ", ".join(item.path for item in code[:3])
+    family_facts = [fact for fact in (getattr(getattr(brief, "reference", None), "facts", lambda: [])() or []) if fact.get("kind") == "family"]
+    if extracted.get("fields") or extracted.get("constants") or family_facts or re.search(r"^\s*['\"][\w.-]+['\"],?\s*$", added, re.M):
+        triggered["registry-member"] = ", ".join(f"`{name}`" for name in (extracted.get("fields") or extracted.get("constants") or [])[:4]) \
+            or "; ".join(fact["id"] for fact in family_facts[:3]) or "a new list member"
+    real_code = [item for item in code if deep.is_code(item.path)]
+    if real_code:
+        triggered["unpinned-behaviour"] = ", ".join(item.path for item in real_code[:3])
     if tests:
         triggered["test-asserts-behaviour"] = ", ".join(item.path for item in tests[:3])
     if extracted.get("env") or extracted.get("flags") or extracted.get("config"):
@@ -2271,8 +2274,13 @@ def retrieve(repo: deep.Repo, brief: Any, files: list[FileDiff], *, clock: Calla
     def outside(hits: list[tuple[str, int, str]]) -> list[tuple[str, int, str]]:
         return [hit for hit in hits if hit[1] not in changed_lines.get(hit[0], ())]
 
+    reference = getattr(repo, "reference", None)
     for name in list(getattr(brief, "symbols", []) or [])[:8]:
         hits = outside(repo.grep(name, fixed=True, word=True, limit=60))
+        if reference is not None and reference.symbols_named(name):
+            calls = [(call.path, call.line, call.text) for call in reference.callers(name)]
+            if calls:
+                hits = calls + [hit for hit in hits if hit[0] not in reference.index]
         if not hits:
             sections.append((0, f"References of `{name}` outside the changed lines: none."))
             by_name[name] = sections[-1][1]

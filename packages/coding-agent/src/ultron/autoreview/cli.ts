@@ -11,7 +11,9 @@
  */
 import { existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
+import { resolveClaudeCli } from "@ultron/ai/api/claude-code-cli";
 import { APP_NAME, getAgentDir, getRlmRuntimePath } from "../../config.ts";
+import { DEFAULT_HINDSIGHT_URL } from "../../core/defaults.ts";
 import { ModelConfig } from "../../core/model-config.ts";
 import { FRAME_THINKING_LEVELS, type FrameThinkingLevel, SettingsManager } from "../../core/settings-manager.ts";
 import { selfCommand } from "../claude/self.ts";
@@ -24,7 +26,7 @@ import {
 	MIN_BUDGET_TOKENS,
 	PLAN_STYLES,
 	type PlanStyle,
-	RECOMMENDED_MODEL,
+	RECOMMENDED_MODELS,
 	REVIEW_MODES,
 	type ReviewMode,
 	resolveConfig,
@@ -32,6 +34,7 @@ import {
 import { createLogger, Daemon } from "./daemon.ts";
 import { RuntimeReviewEngine } from "./engine.ts";
 import { parsePullTarget, pullKey } from "./github.ts";
+import { HindsightLessons, hindsightUrlFrom } from "./lessons.ts";
 import { expandPath, findCheckout } from "./local.ts";
 import { decideVerdict, planReview, rankFindings } from "./plan.ts";
 import { cachedEnvironment, describeToolchain, prepareEnvironment } from "./prepare.ts";
@@ -134,7 +137,7 @@ Options:
                                autoreview.deadlineSeconds, none)
 
 Settings (global settings.json): autoreview.accounts, pollSeconds, concurrency, model, verifyModel, budget, dryRun,
-frameConcurrency, modelConcurrency, mode, deepModel, deepThinking, deepRounds, verifyBatch, planModel, planThinking, askModel, askThinking, planStyle, planCells, verifyCandidates, prepareEnvs, mise, blockAt, maxComments, runTests, testOwners, testRuns, testTimeoutSeconds, testEnv, testImage, checkoutRoots, guides, thinking, verifyThinking, deadlineSeconds, frameTimeoutSeconds, ack, ackLines, ackArt, signature.
+frameConcurrency, modelConcurrency, mode, deepModel, deepThinking, deepRounds, referenceView, verifyBatch, planModel, planThinking, askModel, askThinking, planStyle, planCells, verifyCandidates, prepareEnvs, mise, blockAt, maxComments, runTests, testOwners, testRuns, testTimeoutSeconds, testEnv, testImage, checkoutRoots, guides, thinking, verifyThinking, deadlineSeconds, frameTimeoutSeconds, ack, ackLines, ackArt, signature.
 See docs/autoreview.md.`;
 
 interface Parsed {
@@ -300,7 +303,7 @@ export function describeModels(config: AutoreviewConfig): string[] {
 	const stage = (name: string, model: string | undefined, thinking: string): string =>
 		`  ${name}: ${model ?? finder} (thinking ${thinking})`;
 	return [
-		`Models${config.model === RECOMMENDED_MODEL ? " (the recommended set; it thinks high at every stage)" : ""}:`,
+		`Models${config.model !== undefined && RECOMMENDED_MODELS.includes(config.model) ? " (the recommended set; it thinks high at every stage)" : ""}:`,
 		stage("finders", config.model, config.thinking),
 		stage("investigators", config.deepModel, config.deepThinking),
 		stage("verifier", config.verifyModel, config.verifyThinking),
@@ -387,6 +390,7 @@ export function offlineJson(
 			...(result.timing.stages === undefined ? {} : { stages: { ...result.timing.stages } }),
 			frames: [...(result.timing.frames ?? [])],
 			investigators: [...(result.timing.investigators ?? [])],
+			...(result.timing.reference ? { reference: { ...result.timing.reference } } : {}),
 		},
 		usage: {
 			inputTokens: result.usage.inputTokens,
@@ -461,6 +465,16 @@ export async function runAutoreviewCommand(
 	const catalog = await ModelConfig.load(join(agentDir, "models.json")).catch(() => undefined);
 	const hasModel = (ref: string): boolean => {
 		const slash = ref.indexOf("/");
+		// Claude Code's models are served by the `claude` CLI, not listed in the catalog: available when the provider
+		// would find it (ULTRON_CLAUDE_CODE_BIN, else `claude` on PATH).
+		if (ref.startsWith("claude-code/")) {
+			try {
+				resolveClaudeCli(env);
+				return true;
+			} catch {
+				return false;
+			}
+		}
 		if (slash <= 0 || catalog === undefined) return false;
 		const models = catalog.getProvider(ref.slice(0, slash))?.models ?? [];
 		return models.some((model) => model.id === ref.slice(slash + 1));
@@ -777,7 +791,12 @@ export async function runAutoreviewCommand(
 
 			const tokens = new TokenStore(runner);
 			const checkouts = new CheckoutManager(runner, paths.cache);
-			const deps = { runner, tokens, engine, store, checkouts, config, paths, log };
+			// Fates are retained in Hindsight when memory is on (the same server the REPL's memory uses).
+			const hindsight = config.learn
+				? hindsightUrlFrom(env.ULTRON_HINDSIGHT_URL, settings.getHindsightUrl(), DEFAULT_HINDSIGHT_URL)
+				: undefined;
+			const lessons = hindsight === undefined ? undefined : new HindsightLessons({ baseUrl: hindsight });
+			const deps = { runner, tokens, engine, store, checkouts, config, paths, log, ...(lessons ? { lessons } : {}) };
 			if (parsed.command === "review") {
 				if (parsed.target === undefined)
 					throw new UsageError("review needs a pull request (owner/repo#N or its URL) or --repo-dir");

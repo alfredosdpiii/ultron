@@ -11,6 +11,7 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import lockfile from "proper-lockfile";
+import type { Fate } from "./lessons.ts";
 
 export interface PostedFinding {
 	/** Stable within the pull request: `<short sha>-<n>`. */
@@ -21,6 +22,9 @@ export interface PostedFinding {
 	readonly severity: string;
 	readonly claim: string;
 	readonly claimHash: string;
+	/** The finding's category and the kind of pass that raised it (`fast`, `deep:<lens>`, `structure:<shape>`). */
+	readonly category?: string;
+	readonly kind?: string;
 	/** The commit the finding was posted on. */
 	readonly sha: string;
 	/** The inline comment, when the finding was posted inline. */
@@ -88,6 +92,8 @@ export interface AutoreviewState {
 	recent: ReviewRecord[];
 	/** The daemon's queue as last written, for `ultron autoreview status`. */
 	queue?: string[];
+	/** Per `host/owner/repo`: the fates of findings posted there (see lessons.ts). */
+	lessons?: Record<string, Fate[]>;
 	daemon?: { pid: number; startedAt: string; engineStartMs?: number };
 }
 
@@ -124,6 +130,10 @@ function normalize(value: unknown): AutoreviewState {
 	if (Array.isArray(raw.recent)) state.recent = raw.recent;
 	if (Array.isArray(raw.queue)) state.queue = raw.queue;
 	if (typeof raw.daemon === "object" && raw.daemon !== null) state.daemon = raw.daemon;
+	if (typeof raw.lessons === "object" && raw.lessons !== null) {
+		state.lessons = {};
+		for (const [repo, fates] of Object.entries(raw.lessons)) if (Array.isArray(fates)) state.lessons[repo] = fates;
+	}
 	return state;
 }
 

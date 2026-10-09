@@ -631,6 +631,30 @@ function recallPart(records) {
  * Per arm over its records. A record is `{ arm, case, status, wallMs, firstOnCommit, review?, score? }`; records
  * with `status: "ok"` count as reviews, and those of them with a `score` (the judge ran) are scored.
  */
+/**
+ * The ways `summary` is worse than `baseline` (both `summarize()` outputs) by more than `tolerance` on an arm both
+ * have: recall of the substantive reference comments down, precision down, verdict agreement down. Empty: none.
+ */
+export function regressions(summary, baseline, tolerance = 0.1) {
+	const out = [];
+	for (const arm of Object.keys(summary)) {
+		const now = summary[arm];
+		const then = baseline?.[arm];
+		if (!now || !then) continue;
+		const checks = [
+			["recall (same issue)", then.substantive?.recall, now.substantive?.recall],
+			["precision", then.precision, now.precision],
+			["verdict agreement", then.verdict?.agreement, now.verdict?.agreement],
+		];
+		for (const [name, before, after] of checks) {
+			if (typeof before !== "number" || typeof after !== "number") continue;
+			if (before - after > tolerance + 1e-9)
+				out.push(`${arm}: ${name} down ${(100 * (before - after)).toFixed(0)} points (${(100 * before).toFixed(0)}% -> ${(100 * after).toFixed(0)}%)`);
+		}
+	}
+	return out;
+}
+
 export function summarize(records, arms) {
 	const out = {};
 	for (const arm of arms) {

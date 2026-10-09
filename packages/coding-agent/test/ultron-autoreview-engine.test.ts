@@ -307,7 +307,8 @@ emit({"result": result, "seen": seen, "unit": unit, "verifyContext": next(c["con
 			"verifier lowers": ["high", "low"],
 			"verifier raises": ["low", "high"],
 			"a real gap": ["medium", "medium"],
-			"missing tests": ["medium", "medium"],
+			// Missing tests block only when the host proved it by a run; on the verifier's reading alone: low.
+			"missing tests": ["medium", "low"],
 			"design opinion": ["medium", "medium"],
 			"design failure": ["medium", "high"],
 			holds: ["high", "critical"],
@@ -325,14 +326,14 @@ emit({"result": result, "seen": seen, "unit": unit, "verifyContext": next(c["con
 			"no scenario": ["high", "medium", "minor", "confirmed"],
 			"does not hold": ["critical", "low", "minor", "confirmed"],
 			"verifier raises": ["low", "high", "major", "confirmed"],
-			"missing tests": ["high", "medium", "minor", "confirmed"],
+			"missing tests": ["high", "low", "minor", "confirmed"],
 		});
 		expect(
 			out.result.findings.find((finding) => String(finding.claim).includes("verifier raises"))!.scenario,
 		).toContain("it should return 3");
 		expect(out.result.findings.find((finding) => String(finding.claim).includes("no scenario"))!.scenario).toBe("");
 		// Most serious first, by final level.
-		expect(out.result.findings.map((finding) => finding.level)).toEqual(["high", "medium", "medium", "low"]);
+		expect(out.result.findings.map((finding) => finding.level)).toEqual(["high", "medium", "low", "low"]);
 		// The verifier sees the scenario and the finder's own level as data; the stated intent (bounded) is in the
 		// shared prefix every frame of the review starts with. The four findings of one file share one frame,
 		// each with its own material.
@@ -498,6 +499,7 @@ emit({"result": result, "calls": rlm.calls})`);
 				reviewers: ["bugs"],
 				evidence: "`for i in range(len(items) - 1):` stops early.",
 				source: "fast",
+				kind: "fast",
 				howVerified: "a verifier confirmed it against the source of calc.py",
 			},
 		]);
@@ -521,6 +523,7 @@ emit({"result": result, "calls": rlm.calls})`);
 			"investigators",
 			"program",
 			"programMs",
+			"reference",
 			"scopeMs",
 			"stages",
 			"totalMs",
@@ -1279,10 +1282,10 @@ emit({"result": result, "deepCalls": [c for c in rlm.calls if c["kind"] == "deep
 			["src/app.py", 10, "deep:claims", "major"],
 			["tests/test_app.py", 5, "deep:tests", "minor"],
 		]);
-		// On the five-level scale: a proven failure is high; missing coverage stops at medium, which still blocks.
+		// On the five-level scale: a proven failure is high; missing coverage that no run proved is a low, non-blocking note.
 		expect(out.result.findings.map((finding) => [finding.level, finding.strength])).toEqual([
 			["high", "outside"],
-			["medium", "outside"],
+			["low", "outside"],
 		]);
 		const sentinel = out.result.findings[0]!;
 		expect(sentinel.reviewers).toEqual(["deep:claims", "bugs"]);
@@ -1509,7 +1512,7 @@ emit({"reasons": reasons, "result": result, "verified": verified})`);
 		expect(out.result.findings).toHaveLength(1);
 		expect(out.result.findings[0]).toMatchObject({
 			claim: "Nothing fails if total() skips the last item again.",
-			level: "medium",
+			level: "low",
 			unpinned: {
 				behaviour: "total() adds every price (calc.py:4)",
 				change: "use range(len(items) - 1) again",
@@ -1769,7 +1772,8 @@ emit({
 			expect(task).toContain('{"history": {"path": "...", "n": 10}}');
 			expect(task).toContain('{"pickaxe": {"string": "...", "n": 5}}');
 			expect(task).toContain("Look things up before you conclude.");
-			expect(task.length).toBeLessThan(5_800);
+			// The reference's four lookups (symbol, callers, callees, tests_of) cost about 330 characters a round.
+			expect(task.length).toBeLessThan(6_400);
 		}
 		expect(out.claims).toContain("For each claim, find where it has to be true");
 		expect(out.claims).toContain("necessary, not sufficient");
@@ -2258,7 +2262,8 @@ describe("ultron autoreview review --repo-dir: the offline JSON contract, with a
 				"1 quoted line checked at the reviewed commit (calc.py:12); a verifier confirmed it against the source of calc.py",
 		});
 		expect(json.assurance).toMatch(
-			/^Beyond the diff, `total` was followed to 2 other uses \(no test file mentions them\)/,
+			// One resolved call site (average); the word grep counted the definition line too.
+			/^Beyond the diff, `total` was followed to 1 other use \(no test file mentions them\)/,
 		);
 		expect(json.assurance).toContain("nothing executed.");
 		expect(json.assurance).toContain("average() guards count == 0 before dividing (calc.py).");

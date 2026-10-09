@@ -35,6 +35,7 @@ import {
 	parseClassification,
 	parseExtra,
 	parseMatch,
+	regressions,
 	renderMarkdown,
 	renderRedacted,
 	reviewKey,
@@ -44,7 +45,7 @@ import {
 	summarize,
 } from "./lib.mjs";
 
-const VALUE_FLAGS = ["set", "ultron", "models", "verify-model", "judge-model", "judge-thinking", "concurrency", "limit-minutes", "run-id", "only", "reviewer-cmd"];
+const VALUE_FLAGS = ["set", "ultron", "models", "verify-model", "judge-model", "judge-thinking", "concurrency", "limit-minutes", "run-id", "only", "reviewer-cmd", "baseline"];
 const SWITCH_FLAGS = ["plan", "redacted"];
 /** A judge reply that is not the asked JSON object is asked for again, this many times in all. */
 const JUDGE_ATTEMPTS = 3;
@@ -387,6 +388,16 @@ async function main() {
 	writeFileSync(join(runDir, "report.redacted.md"), renderRedacted(clean), { mode: 0o600 });
 	console.log(renderRedacted(clean));
 	log(`wrote report.json, report.md and report.redacted.md under the set directory, runs/${runId}`);
+	// A gate: against an earlier run's report.json, a drop of more than 10 points on an arm both have exits 3.
+	if (flags.baseline !== undefined) {
+		const baseline = JSON.parse(readFileSync(flags.baseline, "utf8"));
+		const worse = regressions(result.summary, baseline.summary);
+		if (worse.length > 0) {
+			console.error(`Regressions against the baseline:\n${worse.map((line) => `  ${line}`).join("\n")}`);
+			process.exit(3);
+		}
+		log("no regression against the baseline");
+	}
 }
 
 main().catch((error) => {

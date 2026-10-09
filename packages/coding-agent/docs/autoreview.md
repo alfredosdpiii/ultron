@@ -151,7 +151,7 @@ reviewed.
 | `autoreview.deepRounds` | `4` | Lookup rounds one investigator may take (maximum 8). After the first, a round gets the new results in full and a one-line ledger of the earlier ones, which `recall` re-reads. Half the investigators use the fourth round and those find the most (1.7 findings against 1.4 for three rounds). |
 | `autoreview.overlap` | `false` | Run the fast pass beside the investigators' first round and verify each investigator's findings as it finishes (about 20 s faster); the fast findings then reach the investigators at round 2 instead of being their round-1 leads. |
 | `autoreview.verifyBatch` | `4` | Findings of one file one verifier frame judges together (maximum 8; `1` is one frame per finding). A finding with a test run, or with more than 6,000 characters of material, keeps its own frame. |
-| `autoreview.modelConcurrency` | `{}` | Frames in flight per model at most, by `provider/model` (default 8 each, 16 for the recommended model, maximum 16). A model the provider throttles (429, cooldown, `reset_seconds`) has its limit halved for the rest of the review and the reset time is honoured before the retry. |
+| `autoreview.modelConcurrency` | `{}` | Frames in flight per model at most, by `provider/model` (default 8 each, 16 for `cliproxyapi/gpt-6-luna`, maximum 16). A model the provider throttles (429, cooldown, `reset_seconds`) has its limit halved for the rest of the review and the reset time is honoured before the retry. |
 | `autoreview.systemPrefix` | `false` | Experimental: send the diff, brief, retrieved block, context, intent and guides as every frame's system prompt (cacheable on every provider path). Measured to lose most findings; see "Speed and cost". |
 | `autoreview.guides` | none | Private review guides: markdown files or directories. Never quoted or named in what is posted. |
 | `autoreview.budget` | none | Optional token cap of one review. Unset, no pass is refused for tokens. |
@@ -165,6 +165,8 @@ reviewed.
 | `autoreview.ackLines` | 17 built-in lines | The lines one is picked from. |
 | `autoreview.ackArt` | `"logo"` | Art appended to the acknowledgement in a fenced code block: `"logo"` (Ultron's half-size logo), `"none"` or `false` (no art), or any other text, used verbatim. |
 | `autoreview.signature` | `true` | End the summary with `Automated review by Ultron`. |
+| `autoreview.referenceView` | `"investigators"` | Who sees the structural reference's rendering as a view: `investigators`, `all` frames, or `none` (lookups and structural findings stay). |
+| `autoreview.learn` | `true` | Learn from what becomes of posted findings, per repository (see [Learning from the fate of findings](#learning-from-the-fate-of-findings)); retained in Hindsight when memory is on. |
 
 ```json
 {
@@ -198,6 +200,30 @@ branch only. The deep pass looks for these.
    finders and to the investigators alike. The map also runs the project's tests tied to the change (when tests may
    run) and lists the catalogue checks the change calls for (`T1`..: a new registry member, a new environment
    variable, a changed error path, ...), each owed by one investigator.
+
+   The map also builds a **structural reference** of the change (`rlm/autoreview_reference.py`, no model, no
+   dependency beyond the standard library): the changed files, the files that import them, the modules they
+   import, their tests and the sibling Terraform files are indexed (Python by `ast`, TypeScript and JavaScript by
+   a scanner), with every definition's qualified name, signature before and after the change, class, decorators
+   and exports; every call site resolved through the imports to the definition it reaches (a bare name shared by
+   two modules no longer counts as a use of both); the literal families (lists of strings, enum-like registries)
+   and where else each is listed; and the workflows (a YAML reader) and Terraform blocks the change touches. The
+   uses the brief lists for a changed symbol are its resolved call sites; a text search only covers files the
+   reference did not index. A bounded rendering of the reference, with ids (`[D1]` definitions, `[F1]` family
+   drift, `[W1]` workflow facts, `[T1]` Terraform facts), is a view of the investigator frames
+   (`autoreview.referenceView`: `investigators`, the default; `all` gives it to the finders too; `none` keeps it
+   to the lookups and the structural findings). The finders read the diff and the retrieved block as before:
+   measured, more context in a finder's prompt lowers what it finds (SWE-PRBench reports the same for every
+   model it tested).
+
+   From the reference the host also states what holds structurally, as findings of its own (`deep:structure`):
+   a workflow that grants `id-token: write` with no step that uses an OIDC token, one that lacks a `permissions`
+   block its siblings all set, one that checks out the pull request head under `pull_request_target` with no
+   same-repository guard, a `run:` step that interpolates a user-controlled `${{ }}` expression; a removed
+   Terraform resource that another block still references, a new resource lacking the `prevent_destroy` lifecycle
+   rule its siblings set; a registry listed elsewhere that the change did not extend. They cite file and line like
+   any deep finding and go through the verifier like any other: the host asserts the shape, the verifier judges
+   whether it matters here.
 2. **Investigators.** The method is claim-driven. One frame per part gets the diff, the brief, the retrieved block,
    the checks its part owes, and the fast pass's findings as leads; parts that do not apply to the change are skipped:
    - `claims`: for each claim, find where it must be true (the path that failed, every other reader and writer)
@@ -212,7 +238,10 @@ branch only. The deep pass looks for these.
      path it takes.
 
    Each answers with findings and with requests: `read` (lines of a file), `grep`, `list` (a directory),
-   `definition` and `references` (of a name), and three history lookups: `history` (the commits that touched a
+   `definition` and `references` (of a name), four lookups served from the reference (`symbol`: a definition with
+   its signature before and after the change, class, callers, tests and body; `callers`: the call sites that reach
+   it, resolved; `callees`: the calls it makes; `tests_of`: the tests that call it; a name the reference does not
+   know falls back to the text search), and three history lookups: `history` (the commits that touched a
    file), `blame_range` (those that last changed a line range) and `pickaxe` (those that added or removed a
    string). The host checks each request (a tracked file of the reviewed commit, no path outside the repository,
    bounded lines, hits and bytes per round), answers it, and asks the frame again, for at most
@@ -238,8 +267,9 @@ comments; they are named in the body with their file and line.
 The lookups are read-only by construction: the frames have no tools, and the host runs only `git grep`, `git show`,
 `git ls-tree` and `git log` on the checkout. (Running the project's tests is a separate, sandboxed step: see below.) If there is no checkout, or the deep pass fails, the fast review is posted as before.
 
-With `--json`, findings carry `source` (`fast` or `deep:<part>`), `evidence` and `howVerified`; the object has
-`assurance`, `mode`, and `timing.investigators` (rounds, lookups, time and tokens per investigator).
+With `--json`, findings carry `source` (`fast`, `deep:<part>` or `deep:structure`), `evidence` and `howVerified`;
+the object has `assurance`, `mode`, `timing.investigators` (rounds, lookups, time and tokens per investigator) and
+`timing.reference` (files, symbols, calls, families, workflows and Terraform blocks indexed, and the time it took).
 
 ## The hybrid mode: discovery by the passes, verification by checks (experimental)
 
@@ -511,6 +541,32 @@ an environment.
 | `autoreview.prepareEnvs` | `true` | Prepare a repository's test environment (uv virtualenv, npm ci, mise toolchains) before its first review and when its lockfile changes; with the network, never during a review. |
 | `autoreview.mise` | on when mise exists | Resolve and install toolchains with mise during prepare (`true`, `false`, or the binary's path). |
 
+## Learning from the fate of findings
+
+Every finding the reviewer posts has a fate, and the reviewer reads it back. On a re-review and when the pull
+request closes, each earlier finding is settled by what GitHub shows, never by a model: fixed in a later commit,
+or a thumbs-up on the comment, is *accepted*; a thread a human resolved without a fix, a thumbs-down, or a finding
+still open when the pull request merged is *rejected*; a reply alone settles nothing, and a thread the reviewer
+resolved itself (a fixed finding) is never a dismissal. The fates go into the reviewer's own ledger
+(`state.json`, per `host/owner/repo`, the last 400) and, when memory is on (`hindsightUrl`, `ULTRON_HINDSIGHT_URL`),
+into Hindsight too: one document per fate and one per rule, in the `ultron-autoreview` bank, tagged
+`ultron:autoreview:project:<repository id>`, so a session can ask what a repository's reviewers accepted.
+
+A rule needs a sample: in the last 180 days, at least five findings of one category from one kind of pass
+(`fast`, `deep:<lens>`, `structure:<shape>`, `compiled`, `hybrid`) in that repository, fewer than half of them
+accepted. A confirmed finding matching such a rule is still posted, at `low` (a note that never blocks), with
+the count beside it ("Posted as a note: this repository accepted 1 of 7 such findings in the last 180 days"),
+and the summary says how many were lowered. Nothing is suppressed by memory alone, and the rule applies after
+the verifier, outside every prompt: what a repository has rejected never steers what the finders look for.
+
+Each inline comment also says how sure the reviewer is when that is more than the verifier's reading: "Proven by
+a test run the reviewer made" (a mutation the host ran against the tests) or "Stated by the reviewer from the
+files' structure; the verifier agreed it matters here" (a structural finding). Set `autoreview.learn` to `false`
+to post without learning; the ledger and the comments' wording stay as they are.
+
+With `--json`, every finding carries `kind` (the key the rules use), a structural finding its `shape`, and a
+lowered finding its `lesson`.
+
 ## Precision rules
 
 Three kinds of finding are held to a stricter shape, because they are where automated reviews are most often wrong.
@@ -521,7 +577,11 @@ Three kinds of finding are held to a stricter shape, because they are where auto
   untested edge case without such a named change is dropped. When the change is a one-line replacement and tests
   can run, the host runs it itself: if the suite still passes, the finding is proven and the run is its evidence;
   if a test fails, an existing test does catch it and the finding is dropped; if the tests cannot run, the finding
-  stands on the verifier's reading of the nearest test, which it is shown.
+  stands on the verifier's reading of the nearest test, which it is shown, and is posted at `low`: a note that
+  never blocks a merge. Only a tests finding a run proved (the mutated code passed the suite) keeps the verifier's
+  level and can block. A value in a workflow, manifest, configuration, SQL, script or document file is not a
+  behaviour a test pins: a "no test pins it" finding about one is dropped. (Measured on the private set, 17 of the
+  21 wrong findings the recommended model posted were tests findings of these two kinds.)
 - **Maintainability findings need a problem that exists now**, with its place: two copies that already disagree, a
   caller that breaks, a contract a named consumer relies on. "Could drift", "kept in sync by hand", consistency of
   pins or names, and coupling without a failing consumer are dropped (a nit is only counted).
@@ -593,13 +653,20 @@ reads `minor`.) The older names are still accepted wherever a level is read.
 
 ## Recommended models
 
-When the catalog has `cliproxyapi/gpt-6-luna`, every stage runs on it unless a setting names another model, at
-`high` thinking for every stage (finders, investigators, verifier, and the compiled mode's planner and small
-model), with 16 frames in flight for it (`autoreview.modelConcurrency`; it has never throttled). The thinking
-defaults are a per-model table (`THINKING_DEFAULTS` in `config.ts`, generic fallback under `*`); `ultron autoreview
-doctor` and `install` print the model and thinking resolved for each stage.
+Unless a setting names a model, every stage runs on the first recommended model that is available: Claude Haiku
+5.5 through Claude Code (`claude-code/claude-haiku-5-5`, when the `claude` CLI is installed: it uses the Claude
+subscription, no API key), else `cliproxyapi/gpt-6-luna` when the catalog has it. Both think `high` at every
+stage (finders, investigators, verifier, and the compiled mode's planner and small model); luna gets 16 frames in
+flight (`autoreview.modelConcurrency`; it has never throttled), Haiku the default 8 `claude -p` processes. The
+thinking defaults are a per-model table (`THINKING_DEFAULTS` in `config.ts`, generic fallback under `*`; Haiku 5.5
+is in it under `anthropic/`, `claude-code/`, `opencode/` and `opencode-go/` too); `ultron autoreview doctor` and
+`install` print the model and thinking resolved for each stage.
 
-Measured on a private set of 30 real reviewed pull requests, against their human reviews: all stages on this model
+Measured (2026-10-09, `acceptance/quality/2026-10-09-autoreview-reference-and-lessons.md`): on SWE-bench reversed
+fixes Haiku through Claude Code caught 3 of 10 injected bugs with 0 of 9 false alarms against luna's 5 of 15 with
+3 of 14, at $0.08 against $0.014 a review; on the private set it matched the human reviewer's points 29% of the
+time (71% counting partial matches) at 67% precision against luna's 14% (21%) at 65%, at about 4x luna's cost.
+Earlier luna measurements on the same private set: all stages on luna
 at `high` found 21% of the human reviewer's points (plus 5% partially), 6 of his 18 serious ones, agreed with his
 verdict in 72% of the reviews, posted 2.8 findings per pull request of which 64% were right, and raised 55 valid
 points he had not, for $0.039 a review at a median of about 190 s. The same finders and verifier with a stronger
@@ -683,7 +750,7 @@ systemctl --user enable --now ultron-autoreview.service
 
 | Path | Contents |
 |---|---|
-| `~/.ultron/agent/autoreview/state.json` | Per account and pull request: last reviewed and acknowledged commits, attempts, posted findings with their comment and thread ids; recent reviews. |
+| `~/.ultron/agent/autoreview/state.json` | Per account and pull request: last reviewed and acknowledged commits, attempts, posted findings with their comment and thread ids; recent reviews; per repository, the fates of posted findings (`lessons`). |
 | `~/.ultron/agent/autoreview/logs/` | One log file per day (removed after 14 days). |
 | `~/.ultron/agent/autoreview/dry-run/` | Would-be reviews (`--dry-run`; removed after 14 days). |
 | `~/.ultron/agent/autoreview/sessions/` | Frame traces of the engine (kept seven days). |

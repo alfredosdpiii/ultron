@@ -9,6 +9,7 @@
  *                                 [--verify-model provider/model] [--budget tokens] [--trials 1] [--concurrency 2]
  *                                 [--ultron <path to cli>] [--reviewer-cmd "<command template>"]
  *                                 [--judge-model provider/model] [--limit-minutes 20] [--noise 2] [--only id,id]
+ *                                 [--baseline acceptance/quality/<earlier>.json]
  *                                 [--run-id id] [--out <dir>]
  *
  * `--plan` lists the cases and arms and runs nothing. `--build-only` builds the case repositories and stops.
@@ -30,6 +31,7 @@ import {
 	judgePrompt,
 	parseJudgeReply,
 	parseReview,
+	regressions,
 	renderMarkdown,
 	repoCounts,
 	resultStem,
@@ -63,6 +65,7 @@ const VALUE_FLAGS = [
 	"limit-minutes",
 	"noise",
 	"only",
+	"baseline",
 ];
 const SWITCH_FLAGS = ["plan", "build-only"];
 
@@ -368,6 +371,16 @@ async function main() {
 	writeFileSync(join(runDir, "result.json"), `${JSON.stringify(result, null, 2)}\n`);
 	console.log(renderMarkdown(clean).split("\n## Cases")[0]);
 	log(`wrote ${join(outDir, `${stem}.json`)} and .md`);
+	// A gate: against an earlier result file, a drop of more than 10 points on an arm both have exits 3.
+	if (flags.baseline !== undefined) {
+		const baseline = JSON.parse(readFileSync(resolve(flags.baseline), "utf8"));
+		const worse = regressions(result.summary, baseline.summary);
+		if (worse.length > 0) {
+			console.error(`Regressions against ${withoutHome(resolve(flags.baseline), homedir())}:\n${worse.map((line) => `  ${line}`).join("\n")}`);
+			process.exit(3);
+		}
+		log(`no regression against ${withoutHome(resolve(flags.baseline), homedir())}`);
+	}
 }
 
 main().catch((error) => {

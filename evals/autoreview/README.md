@@ -125,7 +125,9 @@ the reviewer's default model), `--verify-model`, `--budget <tokens>`, `--trials 
 (default 2), `--reviewer-cmd`, `--ultron <path>` (a `.js`/`.mjs`/`.ts` path runs through Node, anything else is
 executed; default `ultron` on `PATH`), `--judge-model <provider/model>`, `--limit-minutes` (default 20),
 `--noise N` (extra hunks per buggy case, default 2), `--only <case or task ids>`, `--run-id`, `--out <dir>`
-(default `acceptance/quality`), `--plan`, `--build-only`. Unknown flags exit 2 before anything starts.
+(default `acceptance/quality`), `--baseline <result.json>` (a gate: an arm both have whose caught rate or verdict
+accuracy fell, or whose false-alarm rate rose, by more than 10 points exits 3 after the result is written),
+`--plan`, `--build-only`. Unknown flags exit 2 before anything starts.
 
 With `--run-id`, rerunning the same command continues the run: a review that already has a scored record is not
 run again (errors and timeouts are), and a missing judgement is added without reviewing again.
@@ -296,6 +298,8 @@ node evals/autoreview/blind/run.mjs --set <name> --ultron packages/coding-agent/
   --judge-model <provider/model> --judge-thinking high --run-id first
 
 node evals/autoreview/blind/run.mjs --set <name> --run-id first --redacted    # the shareable summary
+# a gate: against an earlier run's report.json, recall, precision or verdict agreement down more than 10 points exits 3
+node evals/autoreview/blind/run.mjs --set <name> ... --run-id second --baseline <set dir>/runs/first/report.json
 ```
 
 `collect.mjs` flags: `--account`, `--reviewer`, `--since`, `--set` (all required), `--cases N` (30), `--seed`,

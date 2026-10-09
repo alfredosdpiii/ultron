@@ -25,6 +25,7 @@ import {
 	autoreviewPaths,
 	DEFAULT_ACK_LINES,
 	engineSettings,
+	RECOMMENDED_HAIKU,
 	RECOMMENDED_MODEL,
 	resolveAckArt,
 	resolveConfig,
@@ -35,6 +36,7 @@ import {
 } from "../src/ultron/autoreview/config.ts";
 import { blockedPulls, createLogger, Daemon, pruneOld } from "../src/ultron/autoreview/daemon.ts";
 import { GitHub, parseApiOutput, parsePullTarget, RateLimitError } from "../src/ultron/autoreview/github.ts";
+import type { Fate, Lesson, LessonMemory } from "../src/ultron/autoreview/lessons.ts";
 import {
 	expandPath,
 	findCheckout,
@@ -81,7 +83,9 @@ const OLD = "c".repeat(40);
 const NEW = "d".repeat(40);
 const REF = { host: "github.com", owner: "o", repo: "r", number: 1 };
 
-function setup(options: { settings?: Parameters<typeof resolveConfig>[0]; engine?: FakeEngine } = {}) {
+function setup(
+	options: { settings?: Parameters<typeof resolveConfig>[0]; engine?: FakeEngine; lessons?: LessonMemory } = {},
+) {
 	const dir = mkdtempSync(join(tmpdir(), "ultron-autoreview-"));
 	dirs.push(dir);
 	const hub = new FakeHub();
@@ -100,6 +104,7 @@ function setup(options: { settings?: Parameters<typeof resolveConfig>[0]; engine
 		log: (line) => logs.push(line),
 		now: () => hub.now(),
 		random: () => 0,
+		...(options.lessons === undefined ? {} : { lessons: options.lessons }),
 	};
 	const account = { login: BOT, host: "github.com" };
 	const candidate = (reasons: string[] = ["review_requested"]): Candidate => ({
@@ -1617,6 +1622,130 @@ describe("re-review", () => {
 		expect(engine.specs[2]!.earlier!.map((item) => item.id)).toEqual(["ccccccc-2"]);
 	});
 
+	test("what became of earlier findings is learned: fixed is accepted; a thread a human resolved, a thumbs-down, and an open finding at merge are rejected; retained in memory; off with learn: false", async () => {
+		const retained: Array<{ repo: string; fates: Fate[]; lessons: Lesson[] }> = [];
+		const memory: LessonMemory = {
+			retain: async (repo, fates, lessons) => {
+				retained.push({ repo, fates: [...fates], lessons: [...lessons] });
+			},
+		};
+		const first = engineResult({
+			findings: [
+				{ ...MAJOR, kind: "fast" },
+				{ ...MAJOR, line: 5, claim: "price may be missing", replacement: undefined, kind: "fast" },
+				{
+					...MAJOR,
+					line: 6,
+					claim: "the sum is unrounded",
+					replacement: undefined,
+					category: "tests",
+					kind: "deep:tests",
+				},
+			],
+		});
+		const earlier = (id: string, line: number, claim: string, status: "fixed" | "still_present") => ({
+			id,
+			file: "calc.py",
+			line,
+			claim,
+			severity: "major",
+			status,
+			evidence: "",
+		});
+		const second = engineResult({
+			earlier: [
+				earlier("ccccccc-1", 4, MAJOR.claim, "fixed"),
+				earlier("ccccccc-2", 5, "price may be missing", "still_present"),
+				earlier("ccccccc-3", 6, "the sum is unrounded", "still_present"),
+			],
+		});
+		const context = setup({ engine: new FakeEngine(first, second, engineResult()), lessons: memory });
+		const pull = context.hub.addPull({ ...REF, headSha: OLD, requestedReviewers: [BOT] });
+		await reviewPull(context.deps, context.candidate());
+		const { hub, deps, candidate } = context;
+		const [, second_, third] = pull.reviewComments.filter((comment) => comment.user === BOT);
+		// A human resolved the second finding's thread without a fix, and gave the third a thumbs-down.
+		pull.resolved.add(pull.threads.get(second_!.id)!);
+		pull.reactions.set(third!.id, { up: 0, down: 1 });
+		pull.headSha = NEW;
+		pull.ancestors = [OLD];
+		pull.diffs[`${OLD}..${NEW}`] = incremental;
+		hub.now = () => Date.parse("2026-10-04T11:00:00Z");
+		posted(await reviewPull(deps, candidate(["requested_changes"])));
+		const ledger = () => deps.store.read().lessons?.["github.com/o/r"] ?? [];
+		expect(ledger().map((fate) => [fate.id, fate.category, fate.kind, fate.fate, fate.how])).toEqual([
+			["ccccccc-1", "correctness", "fast", "accepted", "fixed in a later commit"],
+			["ccccccc-2", "correctness", "fast", "rejected", "the thread was resolved without a fix"],
+			["ccccccc-3", "tests", "deep:tests", "rejected", "thumbs down on the comment"],
+		]);
+		expect(ledger()[0]).toMatchObject({
+			pull: "github.com/o/r#1",
+			file: "calc.py",
+			line: 4,
+			level: "high",
+			at: "2026-10-04T11:00:00.000Z",
+		});
+		expect(retained).toHaveLength(1);
+		expect(retained[0]).toMatchObject({ repo: "github.com/o/r", lessons: [] });
+		expect(retained[0]!.fates.map((fate) => fate.id)).toEqual(["ccccccc-1", "ccccccc-2", "ccccccc-3"]);
+		expect(
+			context.logs.some((line) => line.includes("learned the fate of 3 findings (1 accepted, 2 rejected)")),
+		).toBe(true);
+		// No rule yet (three fates): the next review's spec carries none.
+		expect(context.engine.specs[1]!.lessons).toBeUndefined();
+
+		// The pull request merges with the second and third findings still open: the fates are read once more at
+		// close (a human's resolution and a reaction outrank "merged with the finding open"), and retained again.
+		pull.state = "closed";
+		pull.merged = true;
+		hub.now = () => Date.parse("2026-10-04T12:00:00Z");
+		expect((await reviewPull(deps, candidate(["requested_changes"]))).kind).toBe("skipped");
+		expect(ledger().map((fate) => [fate.id, fate.fate, fate.how, fate.at])).toEqual([
+			["ccccccc-1", "accepted", "fixed in a later commit", "2026-10-04T12:00:00.000Z"],
+			["ccccccc-2", "rejected", "the thread was resolved without a fix", "2026-10-04T12:00:00.000Z"],
+			["ccccccc-3", "rejected", "thumbs down on the comment", "2026-10-04T12:00:00.000Z"],
+		]);
+		expect(retained).toHaveLength(2);
+		expect(deps.store.read().pulls[pullStateKey(candidate().account, REF)]!.closed).toBe(true);
+		// Closed again: nothing is learned twice.
+		expect((await reviewPull(deps, candidate(["requested_changes"]))).kind).toBe("skipped");
+		expect(retained).toHaveLength(2);
+	});
+
+	test("a repository's rule reaches the engine, and learning can be turned off", async () => {
+		const now = "2026-10-04T10:00:00.000Z";
+		const fate = (n: number): Fate => ({
+			id: `aaaaaaa-${n}`,
+			pull: `github.com/o/r#${n + 10}`,
+			file: "calc.py",
+			line: 1,
+			category: "tests",
+			kind: "deep:tests",
+			level: "medium",
+			claim: `c${n}`,
+			fate: n === 1 ? "accepted" : "rejected",
+			how: "test",
+			at: now,
+		});
+		const context = setup({ engine: new FakeEngine(engineResult()) });
+		await context.deps.store.update((state) => {
+			state.lessons = { "github.com/o/r": [1, 2, 3, 4, 5, 6].map(fate) };
+		});
+		context.hub.addPull({ ...REF, headSha: OLD, requestedReviewers: [BOT] });
+		await reviewPull(context.deps, context.candidate());
+		expect(context.engine.specs[0]!.lessons).toEqual([
+			{ category: "tests", kind: "deep:tests", accepted: 1, rejected: 5, lowered: true },
+		]);
+
+		const off = setup({ engine: new FakeEngine(engineResult()), settings: { learn: false } });
+		await off.deps.store.update((state) => {
+			state.lessons = { "github.com/o/r": [1, 2, 3, 4, 5, 6].map(fate) };
+		});
+		off.hub.addPull({ ...REF, headSha: OLD, requestedReviewers: [BOT] });
+		await reviewPull(off.deps, off.candidate());
+		expect(off.engine.specs[0]!.lessons).toBeUndefined();
+	});
+
 	test("a force-push (the old commit is no longer an ancestor) reviews the whole pull request diff again", async () => {
 		const { hub, deps, candidate, engine, pull } = await reviewedOnce(
 			new FakeEngine(engineResult({ findings: [MAJOR] }), engineResult()),
@@ -2113,6 +2242,17 @@ describe("the command", () => {
 	});
 
 	test("the recommended model: leads the chain when the catalog has it, thinks high at every stage, 16 frames in flight; other models keep the generic thinking defaults", () => {
+		// Haiku 5.5 through Claude Code leads when the CLI is installed; else gpt-6-luna when the catalog has it.
+		const both = resolveConfig({}, { hasModel: (ref) => ref === RECOMMENDED_HAIKU || ref === RECOMMENDED_MODEL });
+		expect(both).toMatchObject({
+			model: RECOMMENDED_HAIKU,
+			verifyModel: RECOMMENDED_HAIKU,
+			deepModel: RECOMMENDED_HAIKU,
+			thinking: "high",
+			verifyThinking: "high",
+			deepThinking: "high",
+		});
+		expect(both.modelConcurrency[RECOMMENDED_HAIKU]).toBeUndefined();
 		const has = (ref: string) => ref === RECOMMENDED_MODEL;
 		const luna = resolveConfig({}, { hasModel: has, reviewModel: "other/model" });
 		expect(luna).toMatchObject({

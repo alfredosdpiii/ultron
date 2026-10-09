@@ -19,6 +19,7 @@ import {
 	RateLimitError,
 	type Review,
 } from "./github.ts";
+import { type Fate, fatesOf, type LessonMemory, lessonsFor, mergeFates } from "./lessons.ts";
 import { expandPath, findCheckout, withoutGuideMentions } from "./local.ts";
 import { planReview, type ReviewPlan, withoutInline } from "./plan.ts";
 import { prepareEnvironment } from "./prepare.ts";
@@ -39,6 +40,44 @@ export interface ReviewerDeps {
 	readonly now?: () => number;
 	/** A number in [0, 1): picks the acknowledgement line. */
 	readonly random?: () => number;
+	/** Where fates and rules are also retained (Hindsight); absent: the state's ledger alone. */
+	readonly lessons?: LessonMemory;
+}
+
+/** `host/owner/repo`: the key of a repository's ledger of fates. */
+export function repoKey(ref: PullRef): string {
+	return `${ref.host}/${ref.owner}/${ref.repo}`.toLowerCase();
+}
+
+/**
+ * Record what became of posted findings: into the state's ledger (the rules are computed from it) and, when
+ * configured, into Hindsight. Never fails a review: an error is logged.
+ */
+async function learn(deps: ReviewerDeps, ref: PullRef, fates: readonly Fate[], name: string): Promise<void> {
+	if (fates.length === 0 || !deps.config.learn) return;
+	const repo = repoKey(ref);
+	const nowIso = new Date((deps.now ?? Date.now)()).toISOString();
+	const lessons = await deps.store.update((state) => {
+		state.lessons ??= {};
+		state.lessons[repo] = mergeFates(state.lessons[repo] ?? [], fates);
+		return lessonsFor(state.lessons[repo], nowIso);
+	});
+	const accepted = fates.filter((fate) => fate.fate === "accepted").length;
+	deps.log(
+		`${name}: learned the fate of ${fates.length} finding${fates.length === 1 ? "" : "s"} (${accepted} accepted, ${fates.length - accepted} rejected)` +
+			(lessons.some((lesson) => lesson.lowered)
+				? `; lowered: ${lessons
+						.filter((lesson) => lesson.lowered)
+						.map((lesson) => `${lesson.category}/${lesson.kind}`)
+						.join(", ")}`
+				: ""),
+	);
+	if (deps.lessons === undefined) return;
+	try {
+		await deps.lessons.retain(repo, fates, lessons);
+	} catch (error) {
+		deps.log(`${name}: the fates were not retained in memory: ${(error as Error).message}`);
+	}
 }
 
 export interface Candidate {
@@ -297,11 +336,27 @@ export async function preparePull(
 		});
 	}
 	if (!decision.review) {
-		// Nothing more to watch for once the pull request is closed.
-		if (pull.state !== "open" && saved.lastVerdict !== undefined)
+		// Nothing more to watch for once the pull request is closed: what was still open then is its findings' fate.
+		if (pull.state !== "open" && saved.lastVerdict !== undefined) {
+			if (!saved.closed && deps.config.learn && saved.findings.some((finding) => finding.status === "open")) {
+				try {
+					const threads = pull.merged ? await github.reviewThreads(ref) : undefined;
+					const fates = fatesOf({
+						pull: pullKey(ref),
+						now: new Date(now()).toISOString(),
+						findings: saved.findings,
+						...(threads === undefined ? {} : { threads }),
+						merged: pull.merged,
+					});
+					await learn(deps, ref, fates, `${pullKey(ref)} as ${account.login}`);
+				} catch (error) {
+					deps.log(`${pullKey(ref)}: the fates at close were not read: ${(error as Error).message}`);
+				}
+			}
 			await deps.store.updatePull(key, (state) => {
 				state.closed = true;
 			});
+		}
 		return { kind: "skipped", reason: decision.reason };
 	}
 
@@ -416,6 +471,9 @@ export async function runReview(deps: ReviewerDeps, prepared: Prepared): Promise
 		const ci = await github.checkSummary(ref, head);
 
 		const earlier = saved.findings.filter((finding) => finding.status === "open");
+		const lessons = deps.config.learn
+			? lessonsFor(deps.store.read().lessons?.[repoKey(ref)] ?? [], new Date(now()).toISOString())
+			: [];
 		let sinceSha: string | undefined;
 		let fullDiff: string;
 		let reviewDiff: string;
@@ -492,6 +550,7 @@ export async function runReview(deps: ReviewerDeps, prepared: Prepared): Promise
 				...(ci === undefined ? {} : { ci }),
 				comments: others,
 			},
+			...(lessons.length === 0 ? {} : { lessons }),
 			...(earlier.length === 0
 				? {}
 				: {
@@ -544,6 +603,8 @@ export async function runReview(deps: ReviewerDeps, prepared: Prepared): Promise
 				severity: levelOf(finding),
 				claim: finding.claim,
 				claimHash: claimHash(finding.claim),
+				category: finding.category,
+				...(finding.kind === undefined ? {} : { kind: finding.kind }),
 				sha: head,
 				status: "open",
 			};
@@ -624,6 +685,29 @@ export async function runReview(deps: ReviewerDeps, prepared: Prepared): Promise
 					}
 				} catch (error) {
 					deps.log(`${name}: the posted review could not be read back: ${(error as Error).message}`);
+				}
+			}
+			// What the re-review settled about earlier findings: fixed ones were accepted; a thread a human resolved
+			// without a fix, or a thumbs-down, rejected one. Read before our own resolutions below.
+			if (deps.config.learn && earlier.length > 0) {
+				try {
+					const threads = await github.reviewThreads(ref);
+					const statuses = new Map(result.earlier.map((status) => [status.id, status.status]));
+					const fates = fatesOf({
+						pull: pullKey(ref),
+						now: new Date(now()).toISOString(),
+						findings: earlier,
+						statuses,
+						threads,
+						resolvedByUs: new Set(
+							saved.findings
+								.filter((finding) => finding.status === "fixed" && finding.threadId)
+								.map((finding) => finding.threadId!),
+						),
+					});
+					await learn(deps, ref, fates, name);
+				} catch (error) {
+					deps.log(`${name}: the fates of earlier findings were not read: ${(error as Error).message}`);
 				}
 			}
 			// Resolve our own threads whose finding is fixed, by the thread id stored when the comment was posted.

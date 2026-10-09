@@ -618,9 +618,10 @@ emit({"result": result, "asks": [c for c in rlm.calls if c["kind"] == "ask"],
 			"all held.",
 		]);
 		// Findings: the one that rests on an ask went to the verifier; the ask's answer and quote were in its views.
+		// A tests finding no run proved is a non-blocking note (low), whatever the verifier rates it.
 		expect(
 			result.findings.map((finding) => [finding.source, finding.verification, finding.level, finding.strength]),
-		).toEqual([["compiled:f_no_test", "confirmed", "medium", "diff"]]);
+		).toEqual([["compiled:f_no_test", "confirmed", "low", "diff"]]);
 		expect(result.program.findings).toEqual({
 			deterministic: 0,
 			asked: 1,
@@ -1222,7 +1223,7 @@ emit({"result": result, "kinds": rlm.kinds(), "cellPrompts": [c["text"] for c in
 		expect(records.s4!.output).toBe("holds");
 		expect(String(records.s5!.output)).toMatch(/^finding emitted: /);
 		expect(result.findings.map((finding) => [finding.source, finding.verification, finding.level])).toEqual([
-			["compiled:s5", "confirmed", "medium"],
+			["compiled:s5", "confirmed", "low"],
 		]);
 		expect(result.program.coverage).toEqual({ items: 5, covered: 3, uncovered: ["T1", "T3"] });
 		expect(result.program).toMatchObject({

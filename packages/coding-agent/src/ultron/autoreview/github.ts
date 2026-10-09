@@ -39,6 +39,14 @@ export interface PullRef {
 	readonly number: number;
 }
 
+export interface ReviewThread {
+	readonly id: string;
+	readonly resolved: boolean;
+	readonly thumbsUp: number;
+	readonly thumbsDown: number;
+	readonly replies: number;
+}
+
 export function pullKey(ref: PullRef): string {
 	return `${ref.host}/${ref.owner}/${ref.repo}#${ref.number}`;
 }
@@ -459,21 +467,34 @@ export class GitHub {
 		return (body.data ?? {}) as Json;
 	}
 
-	/** Review thread id by the database id of the thread's first comment. */
-	async reviewThreads(ref: PullRef): Promise<Map<number, { id: string; resolved: boolean }>> {
-		const out = new Map<number, { id: string; resolved: boolean }>();
+	/** Review thread by the database id of its first comment: id, resolved, the reactions on that comment, replies. */
+	async reviewThreads(ref: PullRef): Promise<Map<number, ReviewThread>> {
+		const out = new Map<number, ReviewThread>();
 		let after: string | null = null;
 		for (let page = 0; page < 10; page += 1) {
 			const data = await this.graphql(
-				"query($owner:String!,$repo:String!,$number:Int!,$after:String){repository(owner:$owner,name:$repo){pullRequest(number:$number){reviewThreads(first:100,after:$after){pageInfo{hasNextPage endCursor}nodes{id isResolved comments(first:1){nodes{databaseId}}}}}}}",
+				"query($owner:String!,$repo:String!,$number:Int!,$after:String){repository(owner:$owner,name:$repo){pullRequest(number:$number){reviewThreads(first:100,after:$after){pageInfo{hasNextPage endCursor}nodes{id isResolved comments(first:1){totalCount nodes{databaseId reactionGroups{content reactors{totalCount}}}}}}}}}",
 				{ owner: ref.owner, repo: ref.repo, number: ref.number, after },
 			);
 			const threads = (((data.repository as Json | undefined)?.pullRequest as Json | undefined)?.reviewThreads ??
 				{}) as Json;
 			for (const node of Array.isArray(threads.nodes) ? (threads.nodes as Json[]) : []) {
-				const first = ((node.comments as Json | undefined)?.nodes as Json[] | undefined)?.[0];
-				if (typeof first?.databaseId === "number" && typeof node.id === "string")
-					out.set(first.databaseId, { id: node.id, resolved: node.isResolved === true });
+				const comments = (node.comments ?? {}) as Json;
+				const first = (comments.nodes as Json[] | undefined)?.[0];
+				if (typeof first?.databaseId !== "number" || typeof node.id !== "string") continue;
+				const reactions = (content: string): number => {
+					const groups = Array.isArray(first.reactionGroups) ? (first.reactionGroups as Json[]) : [];
+					const group = groups.find((item) => item.content === content);
+					const count = ((group?.reactors as Json | undefined)?.totalCount ?? 0) as number;
+					return typeof count === "number" ? count : 0;
+				};
+				out.set(first.databaseId, {
+					id: node.id,
+					resolved: node.isResolved === true,
+					thumbsUp: reactions("THUMBS_UP"),
+					thumbsDown: reactions("THUMBS_DOWN"),
+					replies: typeof comments.totalCount === "number" ? Math.max(0, comments.totalCount - 1) : 0,
+				});
 			}
 			const pageInfo = (threads.pageInfo ?? {}) as Json;
 			if (pageInfo.hasNextPage !== true || typeof pageInfo.endCursor !== "string") break;

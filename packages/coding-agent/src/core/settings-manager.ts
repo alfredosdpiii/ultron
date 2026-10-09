@@ -266,6 +266,8 @@ export interface AutoreviewSettings {
 	planCells?: number;
 	/** Lookup rounds one investigator may take (default 4, maximum 8). */
 	deepRounds?: number;
+	/** Who sees the structural reference as a view: `investigators` (default), `all` frames, or `none`. */
+	referenceView?: "investigators" | "all" | "none";
 	/** A confirmed finding at this level or above makes the review request changes (default "medium"). */
 	blockAt?: "critical" | "high" | "medium" | "low" | "nit";
 	/** Inline comments posted per review at most (default 5); the rest are counted in the body. */
@@ -320,6 +322,8 @@ export interface AutoreviewSettings {
 	ackArt?: string | false;
 	/** End the review summary with "Automated review by Ultron" (default true). */
 	signature?: boolean;
+	/** Learn from what happens to posted findings, per repository, and retain it in Hindsight (default true). */
+	learn?: boolean;
 }
 
 /**
@@ -1466,6 +1470,12 @@ export class SettingsManager {
 		if (planCells !== undefined) out.planCells = planCells;
 		const deepRounds = count(configured.deepRounds);
 		if (deepRounds !== undefined) out.deepRounds = deepRounds;
+		if (
+			configured.referenceView === "investigators" ||
+			configured.referenceView === "all" ||
+			configured.referenceView === "none"
+		)
+			out.referenceView = configured.referenceView;
 		const blockAt = (["critical", "high", "medium", "low", "nit"] as const).find(
 			(level) => level === configured.blockAt,
 		);
@@ -1507,6 +1517,8 @@ export class SettingsManager {
 		else if (typeof configured.ackArt === "string" && configured.ackArt.trim() !== "") out.ackArt = configured.ackArt;
 		const signature = flag(configured.signature);
 		if (signature !== undefined) out.signature = signature;
+		const learn = flag(configured.learn);
+		if (learn !== undefined) out.learn = learn;
 		return out;
 	}
 

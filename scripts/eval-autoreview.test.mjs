@@ -22,6 +22,7 @@ import {
 	parseReview,
 	patchStats,
 	percentile,
+	regressions,
 	renderMarkdown,
 	resultStem,
 	reviewerArgv,
@@ -370,6 +371,26 @@ const reviewOf = (verdict, findings) => {
 };
 const BUGGY = { kind: "buggy", truth: EXPECTED_BUGGY_TRUTH };
 const CLEAN = { kind: "clean", truth: [] };
+
+test("regressions names an arm that got worse than the baseline by more than the tolerance, on caught rate, false alarms or verdicts", () => {
+	const arm = (caught, falseAlarms, verdictAccuracy) => ({
+		buggy: { runs: 10, caught },
+		clean: { runs: 10, falseAlarms },
+		verdictAccuracy,
+	});
+	const baseline = { "p/m": arm(6, 1, 0.8), "p/other": arm(5, 0, 0.7) };
+	assert.deepEqual(regressions({ "p/m": arm(6, 1, 0.8) }, baseline), []);
+	// Within tolerance: nothing. Beyond it: each measure named with the points lost.
+	assert.deepEqual(regressions({ "p/m": arm(5, 2, 0.72) }, baseline), []);
+	assert.deepEqual(regressions({ "p/m": arm(4, 3, 0.65), "p/new": arm(0, 5, 0) }, baseline), [
+		"p/m: caught rate (buggy) down 20 points (60% -> 40%)",
+		"p/m: false-alarm rate (clean) up 20 points (10% -> 30%)",
+		"p/m: verdict accuracy down 15 points (80% -> 65%)",
+	]);
+	// No scored runs of a kind: that measure is not compared.
+	assert.deepEqual(regressions({ "p/m": { buggy: { runs: 0, caught: 0 }, clean: { runs: 10, falseAlarms: 1 }, verdictAccuracy: 0.8 } }, baseline), []);
+	assert.deepEqual(regressions({ "p/m": arm(0, 0, 0) }, undefined), []);
+});
 
 test("parseReview validates and normalises the reviewer's JSON", () => {
 	assert.deepEqual(parseReview(""), { ok: false, error: "no JSON object on stdout" });

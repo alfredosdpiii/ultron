@@ -117,7 +117,18 @@ export function commentText(finding: EngineFinding): string {
 	// The scenario is the evidence when there is one; else the reason.
 	const evidence = finding.scenario?.trim() ? finding.scenario : finding.why;
 	const middle = room >= 40 && evidence ? sentence(short(evidence, room)) : "";
-	return [head, middle, fix].filter(Boolean).join(" ");
+	return [head, middle, fix, certainty(finding)].filter(Boolean).join(" ");
+}
+
+/** How sure the review is, said in the comment when it is more than the verifier's reading: a run the host made,
+ * or a fact the host read from the files' structure; and when the repository's history lowered it. */
+export function certainty(finding: EngineFinding): string {
+	const parts: string[] = [];
+	if (finding.strength === "test") parts.push("Proven by a test run the reviewer made.");
+	else if (finding.source === "deep:structure")
+		parts.push("Stated by the reviewer from the files' structure; the verifier agreed it matters here.");
+	if (finding.lesson) parts.push(`Posted as a note: this repository ${finding.lesson}.`);
+	return parts.join(" ");
 }
 
 /** The inline comment of one finding, or undefined when its line cannot be placed on the diff. */
@@ -332,6 +343,11 @@ export function planReview(result: EngineResult, options: PlanOptions): ReviewPl
 		);
 	if (uncertain > 0) rest.push(`${uncertain} unconfirmed`);
 	if (rest.length > 0) notes.push(`Not posted: ${rest.join(" and ")}.`);
+	const lowered = result.findings.filter((finding) => finding.lesson).length;
+	if (lowered > 0)
+		notes.push(
+			`${lowered} finding${lowered === 1 ? " is" : "s are"} notes because this repository rarely accepted their kind.`,
+		);
 	if (result.alsoRaised.length > 0) {
 		const by = [...new Set(result.alsoRaised.flatMap((item) => item.by))].slice(0, 4);
 		notes.push(

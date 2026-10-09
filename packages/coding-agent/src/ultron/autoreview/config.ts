@@ -56,6 +56,14 @@ export const MAX_MODEL_CONCURRENCY = 16;
  * (see "Recommended models" in docs/autoreview.md).
  */
 export const RECOMMENDED_MODEL = "cliproxyapi/gpt-6-luna";
+/** Claude Haiku 5.5 through Claude Code (`claude -p`): the first choice when the `claude` CLI is installed. */
+export const RECOMMENDED_HAIKU = "claude-code/claude-haiku-5-5";
+/**
+ * The recommended models, first available wins: Haiku 5.5 through Claude Code (measured: more bugs caught and
+ * fewer wrong findings than gpt-6-luna on this benchmark, at a subscription instead of a key), else gpt-6-luna
+ * when the catalog has it.
+ */
+export const RECOMMENDED_MODELS: readonly string[] = [RECOMMENDED_HAIKU, RECOMMENDED_MODEL];
 /** Frames in flight for the recommended model unless `autoreview.modelConcurrency` says otherwise (it never throttled). */
 export const RECOMMENDED_MODEL_CONCURRENCY = 16;
 
@@ -73,6 +81,14 @@ export interface StageThinking {
  * of real reviewed pull requests: the recommended model below `high` finds almost nothing (about 0.1 finder
  * findings per review at `low`), so it thinks `high` at every stage; other models keep the general defaults.
  */
+/** Claude Haiku 5.5 under the providers Ultron reaches it through. */
+export const HAIKU_MODELS: readonly string[] = [
+	"anthropic/claude-haiku-5-5",
+	"claude-code/claude-haiku-5-5",
+	"opencode/claude-haiku-5-5",
+	"opencode-go/claude-haiku-5-5",
+];
+
 export const THINKING_DEFAULTS: Readonly<Record<string, StageThinking>> = {
 	"*": {
 		finders: DEFAULT_THINKING,
@@ -82,6 +98,14 @@ export const THINKING_DEFAULTS: Readonly<Record<string, StageThinking>> = {
 		asks: DEFAULT_ASK_THINKING,
 	},
 	[RECOMMENDED_MODEL]: { finders: "high", verifier: "high", investigators: "high", planner: "high", asks: "high" },
+	// Claude Haiku 5.5: fast and cheap enough to think at the top level in every stage; its weakness is depth, not
+	// cost, so the review buys depth with thinking rather than saving on it.
+	...Object.fromEntries(
+		HAIKU_MODELS.map((model) => [
+			model,
+			{ finders: "high", verifier: "high", investigators: "high", planner: "high", asks: "high" },
+		]),
+	),
 };
 
 /** The default thinking level of a stage for the model that runs it (undefined model: the generic default). */
@@ -93,6 +117,13 @@ export const MAX_TEST_RUNS = 30;
 /** A safety limit, on by default: one test execution may not run longer. */
 export const DEFAULT_TEST_TIMEOUT_SECONDS = 300;
 export const MAX_DEEP_ROUNDS = 8;
+export type ReferenceView = "investigators" | "all" | "none";
+/**
+ * The reference's rendering goes to the investigators only: a finder reads the diff and the retrieved block as
+ * before. Measured (SWE-PRBench, and this benchmark on a small model), more context in the finder prompt lowers
+ * what it finds; the reference's lookups and structural findings do not depend on this setting.
+ */
+export const DEFAULT_REFERENCE_VIEW: ReferenceView = "investigators";
 /** 0: no deadline, the review waits for every frame. With one, what was found by then is verified and posted. */
 export const DEFAULT_DEADLINE_SECONDS = 0;
 export const MIN_DEADLINE_SECONDS = 30;
@@ -142,6 +173,8 @@ export interface AutoreviewConfig {
 	readonly deepModel?: string;
 	readonly deepThinking: FrameThinkingLevel;
 	readonly deepRounds: number;
+	/** Who sees the structural reference's rendering as a view: the investigators (default), every frame, or none. */
+	readonly referenceView: ReferenceView;
 	/** `compiled` mode: the planner frame's model (undefined: the finder model) and thinking level. */
 	readonly planModel?: string;
 	readonly planThinking: FrameThinkingLevel;
@@ -188,6 +221,8 @@ export interface AutoreviewConfig {
 	/** Art appended to the acknowledgement in a fenced block (Ultron's logo by default); empty: none. */
 	readonly ackArt: string;
 	readonly signature: boolean;
+	/** Learn from the fate of posted findings (fixed, dismissed, reacted to, passed over at merge); default true. */
+	readonly learn: boolean;
 }
 
 /** What the model settings say besides `autoreview.*`: the fallbacks of `autoreview.model`. */
@@ -196,19 +231,19 @@ export interface ModelFallbacks {
 	readonly rlm?: RlmModelSettings;
 	readonly defaultProvider?: string;
 	readonly defaultModel?: string;
-	/** Whether the user's catalog has a `provider/model`; given, RECOMMENDED_MODEL leads the chain when it does. */
+	/** Whether a `provider/model` can be used (the catalog has it; for `claude-code/*`, the CLI is installed); given, the first recommended model it has leads the chain. */
 	readonly hasModel?: (ref: string) => boolean;
 }
 
 /**
- * The finder model: `autoreview.model`, then the recommended model when the catalog has it, then `review.model`,
- * then `rlm.frameModel`, then the default model. Undefined when none of them is set (the engine then resolves the
- * profile's default itself).
+ * The finder model: `autoreview.model`, then the first recommended model that is available (Haiku 5.5 through
+ * Claude Code, else gpt-6-luna), then `review.model`, then `rlm.frameModel`, then the default model. Undefined
+ * when none of them is set (the engine then resolves the profile's default itself).
  */
 export function resolveModel(settings: AutoreviewSettings, fallbacks: ModelFallbacks): string | undefined {
 	return (
 		settings.model ??
-		(fallbacks.hasModel?.(RECOMMENDED_MODEL) ? RECOMMENDED_MODEL : undefined) ??
+		RECOMMENDED_MODELS.find((ref) => fallbacks.hasModel?.(ref) === true) ??
 		fallbacks.reviewModel ??
 		fallbacks.rlm?.frameModel ??
 		(fallbacks.defaultProvider && fallbacks.defaultModel
@@ -240,6 +275,7 @@ export function engineSettings(config: AutoreviewConfig): {
 	deepModel?: string;
 	deepThinking: FrameThinkingLevel;
 	deepRounds: number;
+	referenceView: ReferenceView;
 	planModel?: string;
 	planThinking: FrameThinkingLevel;
 	askModel?: string;
@@ -268,6 +304,7 @@ export function engineSettings(config: AutoreviewConfig): {
 		...(config.deepModel === undefined ? {} : { deepModel: config.deepModel }),
 		deepThinking: config.deepThinking,
 		deepRounds: config.deepRounds,
+		referenceView: config.referenceView,
 		...(config.planModel === undefined ? {} : { planModel: config.planModel }),
 		planThinking: config.planThinking,
 		...(config.askModel === undefined ? {} : { askModel: config.askModel }),
@@ -326,6 +363,7 @@ export function resolveConfig(settings: AutoreviewSettings, fallbacks: ModelFall
 		...(deepModel === undefined ? {} : { deepModel }),
 		deepThinking: settings.deepThinking ?? thinkingDefault("investigators", deepModel),
 		deepRounds: Math.min(MAX_DEEP_ROUNDS, Math.max(1, settings.deepRounds ?? DEFAULT_DEEP_ROUNDS)),
+		referenceView: settings.referenceView ?? DEFAULT_REFERENCE_VIEW,
 		...(planModel === undefined ? {} : { planModel }),
 		planThinking: settings.planThinking ?? thinkingDefault("planner", planModel),
 		...(askModel === undefined ? {} : { askModel }),
@@ -365,6 +403,7 @@ export function resolveConfig(settings: AutoreviewSettings, fallbacks: ModelFall
 		ackLines: settings.ackLines ?? DEFAULT_ACK_LINES,
 		ackArt: resolveAckArt(settings.ackArt),
 		signature: settings.signature ?? true,
+		learn: settings.learn ?? true,
 	};
 }
 
