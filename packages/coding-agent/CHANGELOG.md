@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.87.38] - 2026-10-10
+
 ### Fixed
 
 - The task journal persisted in a session (`ultron.tasks`) keeps every unfinished task and the newest 100 finished ones; it was rewritten whole on every transition, so a session with hundreds of frames (an automated review) grew its session file quadratically, to 700 MB for one review. The journal in memory stays complete for the session.
