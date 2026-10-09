@@ -1731,15 +1731,20 @@ export class SettingsManager {
 		this.save();
 	}
 
-	/** Ultron: change some `autoreview.*` settings (`/autoreview on|off` and its account picker); `undefined` removes a key. Global only. */
+	/**
+	 * Ultron: change some `autoreview.*` settings (`/autoreview on|off`, its account picker, the `/settings` switches);
+	 * `undefined` removes a key. Global only. Each key is marked on its own, so the save merges it into the file's
+	 * current `autoreview` object: a worker whose copy predates another process's write (the picker in one session,
+	 * a switch in another) no longer overwrites that write with its stale object.
+	 */
 	setAutoreviewSettings(patch: { [K in keyof AutoreviewSettings]?: AutoreviewSettings[K] | undefined }): void {
 		const current = isMergeableObject(this.globalSettings.autoreview) ? { ...this.globalSettings.autoreview } : {};
 		for (const [key, value] of Object.entries(patch)) {
 			if (value === undefined) delete current[key];
 			else current[key] = value;
+			this.markModified("autoreview", key);
 		}
 		this.globalSettings.autoreview = current;
-		this.markModified("autoreview");
 		this.save();
 	}
 

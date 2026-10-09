@@ -560,6 +560,35 @@ describe("SettingsManager", () => {
 		});
 	});
 
+	describe("autoreview settings written by several processes", () => {
+		it("a stale worker's patch of one key keeps the keys another process wrote (Ultron: the account picker and the /settings switch)", async () => {
+			const settingsPath = join(agentDir, "settings.json");
+			writeFileSync(settingsPath, JSON.stringify({ autoreview: { model: "p/m" } }));
+			// Two workers load the file; the first writes the picker's choice, the second (still holding the old
+			// object) flips one switch. Both writes must survive.
+			const picker = SettingsManager.create(projectDir, agentDir);
+			const stale = SettingsManager.create(projectDir, agentDir);
+			picker.setAutoreviewSettings({ enabled: true, accounts: ["github.com/me"] });
+			await picker.flush();
+			stale.setAutoreviewSettings({ ack: false });
+			await stale.flush();
+			expect(JSON.parse(readFileSync(settingsPath, "utf-8")).autoreview).toEqual({
+				model: "p/m",
+				enabled: true,
+				accounts: ["github.com/me"],
+				ack: false,
+			});
+			// A key set to undefined is removed, the rest stays.
+			picker.setAutoreviewSettings({ accounts: undefined });
+			await picker.flush();
+			expect(JSON.parse(readFileSync(settingsPath, "utf-8")).autoreview).toEqual({
+				model: "p/m",
+				enabled: true,
+				ack: false,
+			});
+		});
+	});
+
 	describe("shellCommandPrefix", () => {
 		it("should load shellCommandPrefix from settings", () => {
 			const settingsPath = join(agentDir, "settings.json");
