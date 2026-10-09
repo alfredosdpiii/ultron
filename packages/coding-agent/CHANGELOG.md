@@ -17,6 +17,10 @@
 - Autoreview's recommended model is Claude Haiku 5.5 through Claude Code (`claude-code/claude-haiku-5-5`, the Claude subscription, no API key) when the `claude` CLI is installed, else `cliproxyapi/gpt-6-luna` when the catalog has it; both at `high` thinking for every stage. Measured on the benchmarks, Haiku caught more injected bugs with no false alarms and matched the human reviewer twice as often, at about 4x the cost per review.
 - Autoreview tests findings ("no test pins X") that no run proved are posted at `low` and never block; only one a mutation run proved keeps the verifier's level. A "no test pins it" finding about a value in a workflow, manifest, configuration, SQL, script or document file is dropped. On the private review set, 17 of the recommended model's 21 wrong findings were of these two kinds.
 
+### Removed
+
+- The bundled `/skill:no-mistakes` (Kun Chen's [no-mistakes](https://github.com/kunchenguid/no-mistakes)) is gone. Its pipeline re-runs review, tests and documentation with its own agents (about 20 minutes per run), restarts from zero on any failure, and holds the branch so nothing can be pushed by hand meanwhile; shipping from the REPL is a plain push and PR again.
+
 ## [0.87.35] - 2026-10-09
 
 ### Changed
