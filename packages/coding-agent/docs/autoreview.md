@@ -69,6 +69,7 @@ It is skipped when:
 - new commits arrived after an approval or a comment-only review and nothing asks for another look: one review ends
   the account's part;
 - it is a draft, unless the account is explicitly @mentioned;
+- a bot opened it (Dependabot, Renovate), unless the account is @mentioned (`autoreview.skipBots: false` reviews them too);
 - it is closed or merged, unless it was freshly mentioned (it then gets a comment-only review and no
   acknowledgement).
 
@@ -176,6 +177,7 @@ reviewed.
 | `autoreview.ackArt` | `"logo"` | Art appended to the acknowledgement in a fenced code block: `"logo"` (Ultron's half-size logo), `"none"` or `false` (no art), or any other text, used verbatim. |
 | `autoreview.signature` | `true` | End the summary with `Automated review by Ultron`. |
 | `autoreview.referenceView` | `"investigators"` | Who sees the structural reference's rendering as a view: `investigators`, `all` frames, or `none` (lookups and structural findings stay). |
+| `autoreview.skipBots` | `true` | Skip pull requests a bot opened (Dependabot, Renovate: GitHub's `Bot` user type or a `[bot]` login) unless the account is @mentioned on them. |
 | `autoreview.learn` | `true` | Learn from what becomes of posted findings, per repository (see [Learning from the fate of findings](#learning-from-the-fate-of-findings)); retained in Hindsight when memory is on. |
 
 ```json

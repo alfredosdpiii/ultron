@@ -248,7 +248,7 @@ export class FakeHub {
 			state: pull.state,
 			merged: pull.merged,
 			draft: pull.draft,
-			user: { login: pull.author },
+			user: { login: pull.author, type: pull.author.endsWith("[bot]") ? "Bot" : "User" },
 			head: { sha: pull.headSha },
 			base: { sha: pull.baseSha, ref: pull.baseRef },
 			html_url: `https://github.com/${pull.owner}/${pull.repo}/pull/${pull.number}`,

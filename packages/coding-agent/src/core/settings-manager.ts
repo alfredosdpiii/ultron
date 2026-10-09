@@ -326,6 +326,8 @@ export interface AutoreviewSettings {
 	signature?: boolean;
 	/** Learn from what happens to posted findings, per repository, and retain it in Hindsight (default true). */
 	learn?: boolean;
+	/** Skip pull requests a bot opened (Dependabot, Renovate, any `[bot]` login) unless the account is @mentioned (default true). */
+	skipBots?: boolean;
 }
 
 /**
@@ -1523,6 +1525,8 @@ export class SettingsManager {
 		if (signature !== undefined) out.signature = signature;
 		const learn = flag(configured.learn);
 		if (learn !== undefined) out.learn = learn;
+		const skipBots = flag(configured.skipBots);
+		if (skipBots !== undefined) out.skipBots = skipBots;
 		return out;
 	}
 

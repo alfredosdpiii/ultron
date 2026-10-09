@@ -59,6 +59,8 @@ export interface PullRequest {
 	readonly merged: boolean;
 	readonly draft: boolean;
 	readonly author: string;
+	/** A GitHub App (Dependabot, Renovate, ...): `user.type` is `Bot`, or the login ends in `[bot]`. */
+	readonly authorIsBot: boolean;
 	readonly headSha: string;
 	readonly baseSha: string;
 	readonly baseRef: string;
@@ -296,6 +298,7 @@ export class GitHub {
 			merged: item.merged === true || typeof item.merged_at === "string",
 			draft: item.draft === true,
 			author: login(item.user),
+			authorIsBot: (item.user as Json | null | undefined)?.type === "Bot" || /\[bot\]$/i.test(login(item.user)),
 			headSha: text(head.sha),
 			baseSha: text(base.sha),
 			baseRef: text(base.ref),

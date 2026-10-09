@@ -223,6 +223,8 @@ export interface AutoreviewConfig {
 	readonly signature: boolean;
 	/** Learn from the fate of posted findings (fixed, dismissed, reacted to, passed over at merge); default true. */
 	readonly learn: boolean;
+	/** Skip a bot's pull requests (Dependabot, Renovate) unless the account is @mentioned; default true. */
+	readonly skipBots: boolean;
 }
 
 /** What the model settings say besides `autoreview.*`: the fallbacks of `autoreview.model`. */
@@ -404,6 +406,7 @@ export function resolveConfig(settings: AutoreviewSettings, fallbacks: ModelFall
 		ackArt: resolveAckArt(settings.ackArt),
 		signature: settings.signature ?? true,
 		learn: settings.learn ?? true,
+		skipBots: settings.skipBots ?? true,
 	};
 }
 

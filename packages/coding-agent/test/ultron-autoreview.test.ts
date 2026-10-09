@@ -231,6 +231,7 @@ describe("mentions and the decision to review", () => {
 			merged: false,
 			draft: false,
 			author: "alice",
+			authorIsBot: false,
 			headSha: HEAD,
 			baseSha: "",
 			baseRef: "main",
@@ -264,6 +265,7 @@ describe("mentions and the decision to review", () => {
 			merged: false,
 			draft: false,
 			author: "alice",
+			authorIsBot: false,
 			headSha: HEAD,
 			baseSha: "",
 			baseRef: "main",
@@ -328,6 +330,24 @@ describe("mentions and the decision to review", () => {
 		expect(await decide({ ...moved, requested: false, lastRequestedChanges: true })).toMatchObject({
 			review: true,
 			reason: "new commits since ccccccc, after this account requested changes",
+		});
+		// A bot's pull request (autoreview.skipBots): not on a review request, only when mentioned; off, as any other.
+		const bot = { ...base, author: "dependabot[bot]", authorIsBot: true };
+		expect(await decide({ pull: bot, requested: true, skipBots: true, requestedAt: never })).toMatchObject({
+			review: false,
+			reason: "the author dependabot[bot] is a bot (autoreview.skipBots)",
+		});
+		expect(
+			await decide({
+				pull: bot,
+				requested: true,
+				skipBots: true,
+				mentionAt: "2026-10-02T00:00:00Z",
+				requestedAt: never,
+			}),
+		).toMatchObject({ review: true, reason: "review requested" });
+		expect(await decide({ pull: bot, requested: true, skipBots: false, requestedAt: never })).toMatchObject({
+			review: true,
 		});
 		// A draft: not on a review request, only when mentioned.
 		const draft = { ...base, draft: true };
@@ -1932,6 +1952,19 @@ describe("discovery and the daemon", () => {
 			io: { stdout: (text) => void status.push(text), stderr: () => {} },
 		});
 		expect(status.join("")).toContain("tag to ack 4.0 s, ack to review 50 s, pickup to post");
+	});
+
+	test("a bot's pull request is skipped by default (autoreview.skipBots) and reviewed with the setting off", async () => {
+		const skipped = setup();
+		skipped.hub.addPull({ ...REF, headSha: OLD, author: "dependabot[bot]", requestedReviewers: [BOT] });
+		expect(await reviewPull(skipped.deps, skipped.candidate())).toEqual({
+			kind: "skipped",
+			reason: "the author dependabot[bot] is a bot (autoreview.skipBots)",
+		});
+		expect(skipped.engine.specs).toEqual([]);
+		const reviewed = setup({ settings: { skipBots: false } });
+		reviewed.hub.addPull({ ...REF, headSha: OLD, author: "dependabot[bot]", requestedReviewers: [BOT] });
+		expect(posted(await reviewPull(reviewed.deps, reviewed.candidate())).kind).toBe("posted");
 	});
 
 	test("with autoreview.enabled false (/autoreview off), once and run poll nothing and say why; review of one pull request still works", async () => {

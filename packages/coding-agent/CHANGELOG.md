@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Autoreview skips pull requests a bot opened (Dependabot, Renovate: GitHub's `Bot` user type or a `[bot]` login) unless the account is @mentioned on them; `autoreview.skipBots: false` reviews them as before.
+
 ## [0.87.37] - 2026-10-09
 
 ### Added

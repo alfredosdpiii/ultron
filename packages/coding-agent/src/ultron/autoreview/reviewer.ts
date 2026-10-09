@@ -154,6 +154,8 @@ export interface DecisionInput {
 	readonly mentionAt?: string;
 	/** A review by this account is requested now: directly, or through a requested team it belongs to. */
 	readonly requested: boolean;
+	/** `autoreview.skipBots`: a bot's pull request (Dependabot, Renovate) is reviewed only when the account is @mentioned. */
+	readonly skipBots?: boolean;
 	/** When the review was last requested; asked only when the head was already reviewed. */
 	readonly requestedAt: () => Promise<string | undefined>;
 }
@@ -172,6 +174,8 @@ export async function decide(input: DecisionInput): Promise<Decision> {
 			? { review: true, reason: `mentioned on a ${pull.merged ? "merged" : "closed"} pull request` }
 			: { review: false, reason: `the pull request is ${pull.merged ? "merged" : "closed"}` };
 	if (pull.draft && !newMention) return { review: false, reason: "the pull request is a draft" };
+	if (input.skipBots && pull.authorIsBot && !newMention)
+		return { review: false, reason: `the author ${pull.author} is a bot (autoreview.skipBots)` };
 	if (lastSha === undefined) {
 		if (input.requested) return { review: true, reason: "review requested" };
 		if (newMention) return { review: true, reason: "mentioned" };
@@ -332,6 +336,7 @@ export async function preparePull(
 			lastRequestedChanges,
 			...(mentionAt === undefined ? {} : { mentionAt }),
 			requested,
+			skipBots: deps.config.skipBots,
 			requestedAt: () => github.lastReviewRequestAt(ref),
 		});
 	}
