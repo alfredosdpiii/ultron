@@ -1934,6 +1934,28 @@ describe("discovery and the daemon", () => {
 		expect(status.join("")).toContain("tag to ack 4.0 s, ack to review 50 s, pickup to post");
 	});
 
+	test("with autoreview.enabled false (/autoreview off), once and run poll nothing and say why; review of one pull request still works", async () => {
+		const context = setup();
+		const { hub } = context;
+		hub.addPull({ ...REF, headSha: OLD, requestedReviewers: [BOT] });
+		hub.notifications = [{ reason: "review_requested", owner: "o", repo: "r", number: 1 }];
+		const agentDir = join(context.dir, "agent");
+		mkdirSync(agentDir, { recursive: true });
+		writeFileSync(join(agentDir, "settings.json"), JSON.stringify({ autoreview: { enabled: false } }));
+		const errors: string[] = [];
+		const code = await runAutoreviewCommand(["once", "--json"], {
+			agentDir,
+			cwd: context.dir,
+			runner: hub.runner,
+			engine: () => context.engine,
+			io: { stdout: () => {}, stderr: (text) => void errors.push(text) },
+		});
+		expect(code).toBe(0);
+		expect(errors.join("")).toContain("autoreview is off (autoreview.enabled: false");
+		expect(context.engine.specs).toEqual([]);
+		expect(hub.api(/^GET notifications/)).toEqual([]);
+	});
+
 	test("pull requests this account blocks are looked at on search cycles; old dry-run files and logs are pruned", async () => {
 		const context = setup({ engine: new FakeEngine(engineResult({ findings: [MAJOR] }), engineResult()) });
 		const { hub } = context;

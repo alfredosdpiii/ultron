@@ -313,6 +313,23 @@ export async function applyWorkerSetting(
 			settings.setEngineering(bool(key, value));
 			applied = "live";
 			break;
+		case "autoreview": {
+			// A patch of `autoreview.*` (`/autoreview on|off` and its account picker): `enabled` and `accounts`, where
+			// null removes the key. The reviewer (`ultron autoreview run`, its service) reads settings.json itself.
+			const patch = record(key, value);
+			const next: { enabled?: boolean | undefined; accounts?: string[] | undefined } = {};
+			for (const [name, item] of Object.entries(patch)) {
+				if (name === "enabled") next.enabled = item === null ? undefined : bool(`${key}.${name}`, item);
+				else if (name === "accounts") {
+					if (item !== null && !(Array.isArray(item) && item.every((entry) => typeof entry === "string")))
+						throw new Error(`${key}.${name} must be an array of strings or null`);
+					next.accounts = item === null ? undefined : (item as string[]);
+				} else throw new Error(`${key}.${name} cannot be set this way`);
+			}
+			settings.setAutoreviewSettings(next);
+			applied = "live";
+			break;
+		}
 		case "defaultProjectTrust":
 			settings.setDefaultProjectTrust(
 				oneOf(key, value, ["ask", "always", "never"] as const satisfies readonly DefaultProjectTrust[]),

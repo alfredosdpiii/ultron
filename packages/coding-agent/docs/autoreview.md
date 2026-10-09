@@ -14,6 +14,11 @@ directly: no root model turn, only the pipeline's own frames.
 
 ## Quick start
 
+In the TUI: `gh auth login` once, then `/autoreview on`. It asks which account to review as when `gh` has
+several, saves the choice, and writes and starts the user service (systemd or launchd), so pull requests that
+request or mention that account get reviewed from then on. `/autoreview off` stops and removes the service;
+`/autoreview` alone shows the status. From a shell:
+
 ```bash
 gh auth login                      # once per account; every logged-in account is used
 ultron autoreview once --dry-run   # one poll; write the would-be reviews instead of posting
@@ -131,7 +136,8 @@ reviewed.
 
 | Setting | Default | Description |
 |---|---|---|
-| `autoreview.accounts` | every logged-in account | Logins (or `host/login`) to review as. |
+| `autoreview.enabled` | `true` | `false` (what `/autoreview off` saves) makes `run` and `once` review nothing; `review` of one pull request still works. |
+| `autoreview.accounts` | every logged-in account | Logins (or `host/login`) to review as (`/autoreview on` picks one when several are logged in). |
 | `autoreview.pollSeconds` | `45` | Seconds between polls (minimum 20). |
 | `autoreview.concurrency` | `3` | Pull requests reviewed at once (maximum 8). |
 | `autoreview.model` | unset: `review.model`, then `rlm.frameModel`, then the default model | `provider/model` of the finder frames. |
@@ -737,7 +743,8 @@ systemctl --user daemon-reload
 systemctl --user enable --now ultron-autoreview.service
 ```
 
-`ultron autoreview uninstall` removes the file and prints how to stop the service.
+`ultron autoreview uninstall` removes the file and prints how to stop the service. In the TUI, `/autoreview on`
+writes the file and runs those commands for you, and `/autoreview off` stops the service and removes the file.
 
 ## How to stop it
 

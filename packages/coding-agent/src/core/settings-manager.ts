@@ -209,6 +209,8 @@ export interface ReviewSettings {
  * under review must not be able to change how it is reviewed. Defaults are in ultron/autoreview/config.ts.
  */
 export interface AutoreviewSettings {
+	/** `/autoreview on|off`: `false` makes `ultron autoreview run` and `once` refuse to review (default: on). */
+	enabled?: boolean;
 	/** Logins to review as; unset, every account `gh auth status` lists. */
 	accounts?: string[];
 	/** Seconds between discovery polls (default 45, minimum 20). */
@@ -1408,6 +1410,8 @@ export class SettingsManager {
 			typeof value === "number" && Number.isFinite(value) && value > 0 ? Math.floor(value) : undefined;
 		const flag = (value: unknown): boolean | undefined => (typeof value === "boolean" ? value : undefined);
 		const out: AutoreviewSettings = {};
+		const enabled = flag(configured.enabled);
+		if (enabled !== undefined) out.enabled = enabled;
 		const accounts = strings(configured.accounts);
 		if (accounts !== undefined) out.accounts = accounts;
 		const pollSeconds = count(configured.pollSeconds);
@@ -1720,6 +1724,18 @@ export class SettingsManager {
 	setEngineering(enabled: boolean): void {
 		this.globalSettings.engineering = enabled;
 		this.markModified("engineering");
+		this.save();
+	}
+
+	/** Ultron: change some `autoreview.*` settings (`/autoreview on|off` and its account picker); `undefined` removes a key. Global only. */
+	setAutoreviewSettings(patch: { [K in keyof AutoreviewSettings]?: AutoreviewSettings[K] | undefined }): void {
+		const current = isMergeableObject(this.globalSettings.autoreview) ? { ...this.globalSettings.autoreview } : {};
+		for (const [key, value] of Object.entries(patch)) {
+			if (value === undefined) delete current[key];
+			else current[key] = value;
+		}
+		this.globalSettings.autoreview = current;
+		this.markModified("autoreview");
 		this.save();
 	}
 

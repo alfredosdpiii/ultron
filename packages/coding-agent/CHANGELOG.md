@@ -4,6 +4,12 @@
 
 ### Added
 
+- `/autoreview on|off` in the TUI: `on` lists the `gh` accounts, asks which one to review as when there are several (saved as `autoreview.accounts`), saves `autoreview.enabled` and writes and starts the user service (systemd or launchd); `off` saves the setting, stops the service and removes its file; `/autoreview` alone shows the status. With `autoreview.enabled: false`, `ultron autoreview run` and `once` review nothing.
+
+## [0.87.36] - 2026-10-09
+
+### Added
+
 - Autoreview builds a structural reference of the change before any model runs (`rlm/autoreview_reference.py`, standard library only): the changed files, their importers, the modules they import, their tests and sibling Terraform files are indexed (Python by `ast`, TypeScript and JavaScript by a scanner) with every definition's signature before and after the change, call sites resolved through imports, literal families and where else each is listed, workflows (a YAML reader) and Terraform blocks. The brief lists a changed symbol's resolved call sites instead of word matches; a rendering of the reference with ids is a view of every finder and investigator; investigators get four new lookups served from it (`symbol`, `callers`, `callees`, `tests_of`, falling back to the text search for a name it does not know); `--json` reports `timing.reference`.
 - Autoreview states what holds structurally as findings of its own (`deep:structure`), verified like any other: a workflow granting `id-token: write` with no OIDC step, one lacking the `permissions` block its siblings set, a `pull_request_target` checkout of the pull request head with no same-repository guard, a `run:` step interpolating a user-controlled `${{ }}` expression; a removed Terraform resource still referenced, a new resource lacking the `prevent_destroy` rule its siblings set; a registry listed elsewhere the change did not extend.
 - Claude Haiku 5.5 (`anthropic/`, `claude-code/`, `opencode/`, `opencode-go/claude-haiku-5-5`) has autoreview thinking defaults of `high` for every stage.

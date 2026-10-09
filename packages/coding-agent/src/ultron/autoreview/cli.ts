@@ -706,6 +706,15 @@ export async function runAutoreviewCommand(
 			}
 			case "run":
 			case "once":
+				// `/autoreview off` (autoreview.enabled: false): the loop and a one-off poll do nothing, so a service left
+				// installed cannot review; `review` of one pull request still works.
+				if (saved.enabled === false) {
+					io.stderr(
+						`autoreview is off (autoreview.enabled: false; /autoreview on or ${APP_NAME} autoreview is not needed for one review)\n`,
+					);
+					return 0;
+				}
+				break;
 			case "review":
 				break;
 			default:
