@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.87.37] - 2026-10-09
+
 ### Added
 
 - `/settings` lists `ultron autoreview`'s switches: Autoreview (`autoreview.enabled`), Autoreview acknowledgement (`autoreview.ack`) and Autoreview acknowledgement art (`autoreview.ackArt`: logo or none), written through the worker like the other settings.
