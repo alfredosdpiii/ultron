@@ -4,6 +4,7 @@
 
 ### Added
 
+- `/settings` lists `ultron autoreview`'s switches: Autoreview (`autoreview.enabled`), Autoreview acknowledgement (`autoreview.ack`) and Autoreview acknowledgement art (`autoreview.ackArt`: logo or none), written through the worker like the other settings.
 - `/autoreview on|off` in the TUI: `on` lists the `gh` accounts, asks which one to review as when there are several (saved as `autoreview.accounts`), saves `autoreview.enabled` and writes and starts the user service (systemd or launchd); `off` saves the setting, stops the service and removes its file; `/autoreview` alone shows the status. With `autoreview.enabled: false`, `ultron autoreview run` and `once` review nothing.
 
 ## [0.87.36] - 2026-10-09

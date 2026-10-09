@@ -2074,6 +2074,17 @@ describe("experimental client TUI: Pi's settings, auth, session and diagnostic c
 			component.handleInput("\u001b");
 			await vi.waitFor(() => expect(plain(component.render(120))).not.toContain("RLM pane auto-open"));
 
+			// ultron autoreview's three entries: reviews on/off, the acknowledgement comment and its art, written as
+			// `autoreview.*` keys the worker patches into the autoreview object.
+			runCommand(component, "/settings");
+			await vi.waitFor(() => expect(plain(component.render(120))).toContain("Auto-compact"));
+			type(component, "autoreview ack");
+			expect(plain(component.render(120))).toContain("Autoreview acknowledgement");
+			component.handleInput("\r");
+			await vi.waitFor(() => expect(setSetting).toHaveBeenCalledWith("autoreview.ack", false, expect.anything()));
+			component.handleInput("\u001b");
+			await vi.waitFor(() => expect(plain(component.render(120))).not.toContain("Autoreview acknowledgement"));
+
 			// /settings → Models: each row shows its value and source; the frame model is picked from the Session's
 			// models (no typing a model id) and written through SessionControl; the worker applies it to the next frame.
 			runCommand(component, "/settings");

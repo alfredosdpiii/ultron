@@ -83,6 +83,10 @@ export interface SettingsConfig {
 	quietStartup: boolean;
 	/** Ultron's native TUI only: open the RLM pane when RLM work starts (listed when the callback is set). */
 	rlmPaneAutoOpen?: boolean;
+	/** `ultron autoreview` (listed when the callbacks are set): reviews on, the acknowledgement comment, its art. */
+	autoreviewEnabled?: boolean;
+	autoreviewAck?: boolean;
+	autoreviewAckArt?: "logo" | "none" | "custom";
 	defaultProjectTrust: DefaultProjectTrust;
 	clearOnShrink: boolean;
 	showTerminalProgress: boolean;
@@ -130,6 +134,9 @@ export interface SettingsCallbacks {
 	onAutocompleteMaxVisibleChange: (maxVisible: number) => void;
 	onQuietStartupChange: (enabled: boolean) => void;
 	onRlmPaneAutoOpenChange?: (enabled: boolean) => void;
+	onAutoreviewEnabledChange?: (enabled: boolean) => void;
+	onAutoreviewAckChange?: (enabled: boolean) => void;
+	onAutoreviewAckArtChange?: (art: "logo" | "none") => void;
 	onDefaultProjectTrustChange: (defaultProjectTrust: DefaultProjectTrust) => void;
 	onClearOnShrinkChange: (enabled: boolean) => void;
 	onShowTerminalProgressChange: (enabled: boolean) => void;
@@ -565,6 +572,41 @@ export class SettingsSelectorComponent extends Container {
 							values: ["true", "false"],
 						},
 					]),
+			...(callbacks.onAutoreviewEnabledChange === undefined
+				? []
+				: [
+						{
+							id: "autoreview-enabled",
+							label: "Autoreview",
+							description:
+								"Automatic pull-request reviews as your gh account (ultron autoreview run and its service; /autoreview on starts the service)",
+							currentValue: config.autoreviewEnabled === false ? "false" : "true",
+							values: ["true", "false"],
+						},
+					]),
+			...(callbacks.onAutoreviewAckChange === undefined
+				? []
+				: [
+						{
+							id: "autoreview-ack",
+							label: "Autoreview acknowledgement",
+							description: "Post a short comment (an Ultron line) when a review starts",
+							currentValue: config.autoreviewAck === false ? "false" : "true",
+							values: ["true", "false"],
+						},
+					]),
+			...(callbacks.onAutoreviewAckArtChange === undefined
+				? []
+				: [
+						{
+							id: "autoreview-ack-art",
+							label: "Autoreview acknowledgement art",
+							description:
+								"Ultron's logo under the acknowledgement line, or none (custom text is set in settings.json)",
+							currentValue: config.autoreviewAckArt ?? "logo",
+							values: config.autoreviewAckArt === "custom" ? ["custom", "logo", "none"] : ["logo", "none"],
+						},
+					]),
 			{
 				id: "install-telemetry",
 				label: "Install telemetry",
@@ -932,6 +974,15 @@ export class SettingsSelectorComponent extends Container {
 						break;
 					case "rlm-pane-auto-open":
 						callbacks.onRlmPaneAutoOpenChange?.(newValue === "true");
+						break;
+					case "autoreview-enabled":
+						callbacks.onAutoreviewEnabledChange?.(newValue === "true");
+						break;
+					case "autoreview-ack":
+						callbacks.onAutoreviewAckChange?.(newValue === "true");
+						break;
+					case "autoreview-ack-art":
+						if (newValue === "logo" || newValue === "none") callbacks.onAutoreviewAckArtChange?.(newValue);
 						break;
 					case "install-telemetry":
 						callbacks.onEnableInstallTelemetryChange(newValue === "true");

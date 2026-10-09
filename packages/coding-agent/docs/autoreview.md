@@ -131,6 +131,10 @@ threads whose finding is fixed are resolved (by the thread id stored when the co
 
 ## Settings
 
+In the TUI, `/settings` has three of them: **Autoreview** (`autoreview.enabled`), **Autoreview acknowledgement**
+(`autoreview.ack`) and **Autoreview acknowledgement art** (`autoreview.ackArt`: logo or none). `/autoreview on|off`
+starts and stops the service. Everything else is set in `~/.ultron/agent/settings.json`:
+
 Global settings only (`~/.ultron/agent/settings.json`), so a repository under review cannot change how it is
 reviewed.
 

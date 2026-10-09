@@ -72,6 +72,22 @@ export function workerProjectTrusted(cwd: string, agentDir: string): boolean {
 	return bootstrap.getDefaultProjectTrust() !== "never";
 }
 
+/** The `/settings` entries of `ultron autoreview`: reviews on, the acknowledgement comment, its art. */
+function autoreviewValues(settings: SettingsManager): Record<string, JsonValue> {
+	const saved = settings.getAutoreviewSettings();
+	const art =
+		saved.ackArt === undefined || saved.ackArt === "logo"
+			? "logo"
+			: saved.ackArt === false || saved.ackArt === "none"
+				? "none"
+				: "custom";
+	return {
+		"autoreview.enabled": saved.enabled !== false,
+		"autoreview.ack": saved.ack !== false,
+		"autoreview.ackArt": art,
+	};
+}
+
 export async function readWorkerSettings(target: WorkerSettingsTarget, context: Context): Promise<WorkerSettingsRead> {
 	const { harness, settingsManager: settings } = target;
 	const [compaction, retry, steeringMode, followUpMode] = await Promise.all([
@@ -105,6 +121,7 @@ export async function readWorkerSettings(target: WorkerSettingsTarget, context: 
 		enableInstallTelemetry: settings.getEnableInstallTelemetry(),
 		quietStartup: settings.getQuietStartup(),
 		rlmPaneAutoOpen: settings.getRlmPaneAutoOpen(),
+		...autoreviewValues(settings),
 		defaultProjectTrust: settings.getDefaultProjectTrust(),
 		doubleEscapeAction: settings.getDoubleEscapeAction(),
 		treeFilterMode: settings.getTreeFilterMode(),
@@ -313,6 +330,20 @@ export async function applyWorkerSetting(
 			settings.setEngineering(bool(key, value));
 			applied = "live";
 			break;
+		case "autoreview.enabled":
+			settings.setAutoreviewSettings({ enabled: bool(key, value) });
+			applied = "live";
+			break;
+		case "autoreview.ack":
+			settings.setAutoreviewSettings({ ack: bool(key, value) });
+			applied = "live";
+			break;
+		case "autoreview.ackArt": {
+			const art = oneOf(key, value, ["logo", "none"] as const);
+			settings.setAutoreviewSettings({ ackArt: art === "none" ? false : "logo" });
+			applied = "live";
+			break;
+		}
 		case "autoreview": {
 			// A patch of `autoreview.*` (`/autoreview on|off` and its account picker): `enabled` and `accounts`, where
 			// null removes the key. The reviewer (`ultron autoreview run`, its service) reads settings.json itself.
