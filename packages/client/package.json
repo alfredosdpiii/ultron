@@ -1,6 +1,6 @@
 {
 	"name": "@ultron/client",
-	"version": "0.87.38",
+	"version": "0.87.39",
 	"description": "Transport-neutral client for remote pi sessions over framed CBOR bytes",
 	"type": "module",
 	"main": "./dist/index.js",
@@ -47,8 +47,8 @@
 		"node": ">=22.19.0"
 	},
 	"dependencies": {
-		"@ultron/chord": "^0.87.38",
-		"@ultron/protocol": "^0.87.38"
+		"@ultron/chord": "^0.87.39",
+		"@ultron/protocol": "^0.87.39"
 	},
 	"devDependencies": {
 		"shx": "0.4.0",

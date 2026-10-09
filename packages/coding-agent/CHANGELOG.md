@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.87.39] - 2026-10-10
+
 ### Fixed
 
 - `autoreview.*` settings written from one process (the `/autoreview on` account picker) survived a later write from another whose copy was older (a `/settings` switch in a second session): each patched key is now merged into the file's current `autoreview` object instead of the stale object replacing it. The clobber dropped `autoreview.accounts`, so the service reviewed as every logged-in account.
