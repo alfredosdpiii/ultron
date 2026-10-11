@@ -1,0 +1,36 @@
+[package]
+name = "daemon"
+version = "0.1.0"
+description = "Ultron's local session daemon: coordinator, server generations, session worker supervision and the session worker process"
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+agent = { path = "../agent" }
+ai = { path = "../ai" }
+base64 = "=0.23.1"
+chord-delta = { path = "../chord-delta" }
+client = { path = "../client" }
+config = { path = "../config" }
+getrandom = "=0.4.3"
+harness = { path = "../harness" }
+host = { path = "../host" }
+inference = { path = "../inference" }
+kernel = { path = "../kernel" }
+loki = { path = "../loki" }
+protocol = { path = "../protocol" }
+resources = { path = "../resources" }
+rustix = { version = "=1.1.5", features = ["process", "std"] }
+serde_json = { version = "=1.0.151", features = ["float_roundtrip", "preserve_order"] }
+session-core = { path = "../session-core" }
+session-file = { path = "../session-file" }
+session-journal = { path = "../session-journal" }
+sha2 = "=0.10.9"
+tokio = { version = "=1.53.2", features = ["rt", "time"] }
+
+[dev-dependencies]
+tempfile = "=3.27.0"
+
+[lints]
+workspace = true

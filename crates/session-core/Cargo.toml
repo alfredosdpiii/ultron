@@ -1,0 +1,33 @@
+[package]
+name = "session-core"
+version = "0.1.0"
+description = "One session's runtime, shared by every mode through the session worker: the rlm lane (model, provider, system prompt, the single rlm tool), the composition root of its host stack, the format-4 run journal, session naming, Pi read views, and the session actor"
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+agent = { path = "../agent" }
+ai = { path = "../ai" }
+compaction = { path = "../compaction" }
+config = { path = "../config" }
+delegation = { path = "../delegation" }
+extensions = { path = "../extensions" }
+hindsight = { path = "../hindsight" }
+host = { path = "../host" }
+inference = { path = "../inference" }
+kernel = { path = "../kernel" }
+kernel-apis = { path = "../kernel-apis" }
+loki = { path = "../loki" }
+resources = { path = "../resources" }
+sandbox = { path = "../sandbox" }
+session-file = { path = "../session-file" }
+session-journal = { path = "../session-journal" }
+serde_json = { version = "=1.0.151", features = ["preserve_order"] }
+tokio = { version = "=1.53.2", features = ["rt", "time"] }
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+tempfile = "=3.27.0"

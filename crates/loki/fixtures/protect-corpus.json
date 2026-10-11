@@ -1,0 +1,1637 @@
+{
+	"engine": "packages/coding-agent/src/ultron/loki-engine/loki.py",
+	"tokens": {
+		"AWS": [
+			"AKIA",
+			"Q7XRJ2M4PL3ZWNVB"
+		],
+		"AWS2": [
+			"ASIA",
+			"J4K8M2N6P1Q9R3S7"
+		],
+		"GH": [
+			"ghp_",
+			"a8Kd93LmQz7Xw2Pv5Rt1Yb6Nc4Hj0Ge9Fs3D"
+		],
+		"PEM": [
+			"-----BEGIN RSA PRIV",
+			"ATE KEY-----"
+		],
+		"SLACK": [
+			"xoxb-",
+			"8273645190-Zq7Wm2Kx9Lp4Rt6Vn"
+		],
+		"STRIPE": [
+			"sk_live_",
+			"4eC39HqLyjWDarjtT1zdp7dc"
+		],
+		"NPM": [
+			"npm_",
+			"Ab3dE5gH7jK9mN1pQ3sT5vW7yZ9bC1dF3hJ5"
+		],
+		"GOOGLE": [
+			"AIza",
+			"SyD3k9Lm2Qp7Xr4Tv8Wz1Bc5Nf6Hj0Gk2Ms"
+		],
+		"MODEL": [
+			"sk-ant-",
+			"api03-Xk9mQ2vL7pR4tW8zB1nC5fH3jD6gK0sY2uE4"
+		],
+		"FAKE": [
+			"AKIA",
+			"EXAMPLEXAMPLEXAMPL"
+		],
+		"LOW": [
+			"AKIA",
+			"AAAAAAAAAAAAAAAA"
+		],
+		"MID": [
+			"AKIA",
+			"ABABABABCDCDCDCD"
+		]
+	},
+	"cases": [
+		{
+			"name": "plain-file-passes",
+			"files": {
+				"a.txt": "x"
+			},
+			"args": [
+				"protect",
+				"--file",
+				"a.txt"
+			],
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "new-file-passes",
+			"args": [
+				"protect",
+				"--file",
+				"src/new.txt"
+			],
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "loki-dir-protected",
+			"args": [
+				"protect",
+				"--file",
+				".loki/loki.json"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: protected file: .loki/loki.json (set LOKI_ALLOW_PROTECTED=1 to override)\n"
+			}
+		},
+		{
+			"name": "nested-credo-protected",
+			"args": [
+				"protect",
+				"--file",
+				"apps/web/.credo.exs"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: protected file: apps/web/.credo.exs (set LOKI_ALLOW_PROTECTED=1 to override)\n"
+			}
+		},
+		{
+			"name": "workflow-loki-protected",
+			"args": [
+				"protect",
+				"--file",
+				"./.github/workflows/loki.yml"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: protected file: .github/workflows/loki.yml (set LOKI_ALLOW_PROTECTED=1 to override)\n"
+			}
+		},
+		{
+			"name": "dotdot-normalized-protected",
+			"args": [
+				"protect",
+				"--file",
+				"src/../.ruff.toml"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: protected file: .ruff.toml (set LOKI_ALLOW_PROTECTED=1 to override)\n"
+			}
+		},
+		{
+			"name": "outside-root",
+			"args": [
+				"protect",
+				"--file",
+				"../elsewhere.txt"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: outside project root: ../elsewhere.txt\n"
+			}
+		},
+		{
+			"name": "absolute-outside-root",
+			"args": [
+				"protect",
+				"--file",
+				"/etc/hostname"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: outside project root: /etc/hostname\n"
+			}
+		},
+		{
+			"name": "directory-target",
+			"files": {
+				"src/a.txt": ""
+			},
+			"args": [
+				"protect",
+				"--file",
+				"src"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: directory target is not a file: src\n"
+			}
+		},
+		{
+			"name": "symlink-into-protected",
+			"files": {
+				"link": {
+					"symlink": ".loki/x"
+				}
+			},
+			"args": [
+				"protect",
+				"--file",
+				"link"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: protected file: link (set LOKI_ALLOW_PROTECTED=1 to override)\n"
+			}
+		},
+		{
+			"name": "protected-extra-glob",
+			"files": {
+				".loki/loki.json": "{\"protected_extra\":[\"docs/*.md\"]}"
+			},
+			"args": [
+				"protect",
+				"--file",
+				"docs/sub/a.md"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: protected file: docs/sub/a.md (set LOKI_ALLOW_PROTECTED=1 to override)\n"
+			}
+		},
+		{
+			"name": "protected-extra-subtree",
+			"files": {
+				".loki/loki.json": "{\"protected_extra\":[\"vendor/**\"]}"
+			},
+			"args": [
+				"protect",
+				"--file",
+				"vendor"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: protected file: vendor (set LOKI_ALLOW_PROTECTED=1 to override)\n"
+			}
+		},
+		{
+			"name": "protected-extra-charset",
+			"files": {
+				".loki/loki.json": "{\"protected_extra\":[\"[!a]*.lock\"]}"
+			},
+			"args": [
+				"protect",
+				"--file",
+				"b.lock"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: protected file: b.lock (set LOKI_ALLOW_PROTECTED=1 to override)\n"
+			}
+		},
+		{
+			"name": "protected-extra-charset-miss",
+			"files": {
+				".loki/loki.json": "{\"protected_extra\":[\"[!a]*.lock\"]}"
+			},
+			"args": [
+				"protect",
+				"--file",
+				"a.lock"
+			],
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "allow-protected-env",
+			"env": {
+				"LOKI_ALLOW_PROTECTED": "1"
+			},
+			"args": [
+				"protect",
+				"--file",
+				".ruff.toml"
+			],
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "multiple-files-first-protected",
+			"args": [
+				"protect",
+				"--file",
+				".ruff.toml",
+				"--file",
+				"buf.yaml",
+				"--file",
+				".ruff.toml"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: protected file: .ruff.toml (set LOKI_ALLOW_PROTECTED=1 to override)\nloki: protected file: buf.yaml (set LOKI_ALLOW_PROTECTED=1 to override)\n"
+			}
+		},
+		{
+			"name": "json-blocked",
+			"args": [
+				"protect",
+				"--file",
+				".loki/x",
+				"--format",
+				"json"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "{\"loki\": \"0.1.4\", \"command\": \"protect\", \"status\": \"blocked\", \"blocking\": [{\"text\": \"loki: protected file: .loki/x (set LOKI_ALLOW_PROTECTED=1 to override)\", \"path\": \"loki\", \"rule\": \"protected file\"}], \"advisory\": [], \"not_checked\": []}\n",
+				"stderr": "loki: protected file: .loki/x (set LOKI_ALLOW_PROTECTED=1 to override)\n"
+			}
+		},
+		{
+			"name": "json-passed",
+			"args": [
+				"protect",
+				"--file",
+				"a.txt",
+				"--format",
+				"json"
+			],
+			"expected": {
+				"status": 0,
+				"stdout": "{\"loki\": \"0.1.4\", \"command\": \"protect\", \"status\": \"passed\", \"blocking\": [], \"advisory\": [], \"not_checked\": []}\n",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "json-root-flag-after-command",
+			"args": [
+				"protect",
+				"--format=json",
+				"--file=a.txt"
+			],
+			"rootAfter": true,
+			"expected": {
+				"status": 0,
+				"stdout": "{\"loki\": \"0.1.4\", \"command\": \"protect\", \"status\": \"passed\", \"blocking\": [], \"advisory\": [], \"not_checked\": []}\n",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "empty-path",
+			"args": [
+				"protect",
+				"--file",
+				""
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: invalid hook input: path must be a nonempty string without NUL\n"
+			}
+		},
+		{
+			"name": "empty-path-json",
+			"args": [
+				"protect",
+				"--file",
+				"",
+				"--format",
+				"json"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "{\"loki\": \"0.1.4\", \"command\": \"protect\", \"status\": \"error\", \"blocking\": [], \"advisory\": [], \"not_checked\": [], \"error\": \"invalid hook input: path must be a nonempty string without NUL\"}\n",
+				"stderr": "loki: invalid hook input: path must be a nonempty string without NUL\n"
+			}
+		},
+		{
+			"name": "template-config-valid",
+			"files": {
+				".loki/loki.json": "{\"approved_dependencies\":null,\"rule_packs\":[\"core\",\"python\",\"typescript\",\"phoenix\",\"shell\"],\"elixir_security\":{\"sobelow\":{\"block\":\"high\",\"warn\":\"medium\"}},\"shell_commands\":[],\"commands\":{\"contract\":[],\"property\":[],\"differential\":[],\"mutation\":[]}}"
+			},
+			"args": [
+				"protect",
+				"--file",
+				"a.txt"
+			],
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "config-not-object",
+			"files": {
+				".loki/loki.json": "[1]"
+			},
+			"args": [
+				"protect",
+				"--file",
+				"a.txt"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: invalid hook input: loki config must be a JSON object\n"
+			}
+		},
+		{
+			"name": "config-unknown-key",
+			"files": {
+				".loki/loki.json": "{\"zeta\":1,\"alpha\":2}"
+			},
+			"args": [
+				"protect",
+				"--file",
+				"a.txt"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: invalid hook input: loki: unknown configuration key: alpha\n"
+			}
+		},
+		{
+			"name": "config-protected-extra-empty",
+			"files": {
+				".loki/loki.json": "{\"protected_extra\":[\"\"]}"
+			},
+			"args": [
+				"protect",
+				"--file",
+				"a.txt"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: invalid hook input: protected_extra must be a list of nonempty strings\n"
+			}
+		},
+		{
+			"name": "config-rule-pack-unknown",
+			"files": {
+				".loki/loki.json": "{\"rule_packs\":[\"core\",\"java\"]}"
+			},
+			"args": [
+				"protect",
+				"--file",
+				"a.txt"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: invalid hook input: loki: rule_packs must contain known rule-pack names\n"
+			}
+		},
+		{
+			"name": "config-elixir-security-option",
+			"files": {
+				".loki/loki.json": "{\"elixir_security\":{\"credo\":{}}}"
+			},
+			"args": [
+				"protect",
+				"--file",
+				"a.txt"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: invalid hook input: loki: unknown elixir_security option\n"
+			}
+		},
+		{
+			"name": "config-sobelow-not-object",
+			"files": {
+				".loki/loki.json": "{\"elixir_security\":{\"sobelow\":[]}}"
+			},
+			"args": [
+				"protect",
+				"--file",
+				"a.txt"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: invalid hook input: loki: elixir_security.sobelow must be an object\n"
+			}
+		},
+		{
+			"name": "config-sobelow-option",
+			"files": {
+				".loki/loki.json": "{\"elixir_security\":{\"sobelow\":{\"fail\":\"x\"}}}"
+			},
+			"args": [
+				"protect",
+				"--file",
+				"a.txt"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: invalid hook input: loki: unknown Sobelow option\n"
+			}
+		},
+		{
+			"name": "config-sobelow-level",
+			"files": {
+				".loki/loki.json": "{\"elixir_security\":{\"sobelow\":{\"block\":\"max\"}}}"
+			},
+			"args": [
+				"protect",
+				"--file",
+				"a.txt"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: invalid hook input: loki: Sobelow levels must be none, low, medium or high\n"
+			}
+		},
+		{
+			"name": "config-sobelow-order",
+			"files": {
+				".loki/loki.json": "{\"elixir_security\":{\"sobelow\":{\"block\":\"low\",\"warn\":\"high\"}}}"
+			},
+			"args": [
+				"protect",
+				"--file",
+				"a.txt"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: invalid hook input: loki: Sobelow warn level cannot be stricter than block level\n"
+			}
+		},
+		{
+			"name": "config-sobelow-none-ok",
+			"files": {
+				".loki/loki.json": "{\"elixir_security\":{\"sobelow\":{\"block\":\"none\",\"warn\":\"high\"}}}"
+			},
+			"args": [
+				"protect",
+				"--file",
+				"a.txt"
+			],
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "config-shell-not-list",
+			"files": {
+				".loki/loki.json": "{\"shell_commands\":{}}"
+			},
+			"args": [
+				"protect",
+				"--file",
+				"a.txt"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: invalid hook input: shell_commands must be a list of at most 64 permissions\n"
+			}
+		},
+		{
+			"name": "config-shell-keys",
+			"files": {
+				".loki/loki.json": "{\"shell_commands\":[{\"command\":\"make\"}]}"
+			},
+			"args": [
+				"protect",
+				"--file",
+				"a.txt"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: invalid hook input: shell permissions require command, cwd and inputs\n"
+			}
+		},
+		{
+			"name": "config-shell-git",
+			"files": {
+				".loki/loki.json": "{\"shell_commands\":[{\"command\":\"git status\",\"cwd\":\".\",\"inputs\":[\"a.txt\"]}]}"
+			},
+			"args": [
+				"protect",
+				"--file",
+				"a.txt"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: invalid hook input: shell permissions cannot override Git restrictions\n"
+			}
+		},
+		{
+			"name": "config-shell-syntax",
+			"files": {
+				".loki/loki.json": "{\"shell_commands\":[{\"command\":\"make > out\",\"cwd\":\".\",\"inputs\":[\"a.txt\"]}]}"
+			},
+			"args": [
+				"protect",
+				"--file",
+				"a.txt"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: invalid hook input: loki: shell syntax unsupported: redirects, substitutions and compound commands or expansions require review\n"
+			}
+		},
+		{
+			"name": "config-shell-empty",
+			"files": {
+				".loki/loki.json": "{\"shell_commands\":[{\"command\":\"   \",\"cwd\":\".\",\"inputs\":[\"a.txt\"]}]}"
+			},
+			"args": [
+				"protect",
+				"--file",
+				"a.txt"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: invalid hook input: shell command must be a nonempty string\n"
+			}
+		},
+		{
+			"name": "config-shell-quote",
+			"files": {
+				".loki/loki.json": "{\"shell_commands\":[{\"command\":\"make 'x\",\"cwd\":\".\",\"inputs\":[\"a.txt\"]}]}"
+			},
+			"args": [
+				"protect",
+				"--file",
+				"a.txt"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: invalid hook input: No closing quotation\n"
+			}
+		},
+		{
+			"name": "config-shell-path-exe",
+			"files": {
+				".loki/loki.json": "{\"shell_commands\":[{\"command\":\"./run\",\"cwd\":\".\",\"inputs\":[\"a.txt\"]}]}"
+			},
+			"args": [
+				"protect",
+				"--file",
+				"a.txt"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: invalid hook input: shell command requires a plain executable name\n"
+			}
+		},
+		{
+			"name": "config-shell-assign",
+			"files": {
+				".loki/loki.json": "{\"shell_commands\":[{\"command\":\"A=1 make\",\"cwd\":\".\",\"inputs\":[\"a.txt\"]}]}"
+			},
+			"args": [
+				"protect",
+				"--file",
+				"a.txt"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: invalid hook input: shell command requires a plain executable name\n"
+			}
+		},
+		{
+			"name": "config-shell-inputs-empty",
+			"files": {
+				".loki/loki.json": "{\"shell_commands\":[{\"command\":\"make\",\"cwd\":\".\",\"inputs\":[]}]}"
+			},
+			"args": [
+				"protect",
+				"--file",
+				"a.txt"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: invalid hook input: shell permission inputs must list 1 to 64 files\n"
+			}
+		},
+		{
+			"name": "config-shell-path-dotdot",
+			"files": {
+				".loki/loki.json": "{\"shell_commands\":[{\"command\":\"make\",\"cwd\":\"a/../b\",\"inputs\":[\"a.txt\"]}]}"
+			},
+			"args": [
+				"protect",
+				"--file",
+				"a.txt"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: invalid hook input: shell permission paths must be canonical and relative\n"
+			}
+		},
+		{
+			"name": "config-shell-path-dot-prefix",
+			"files": {
+				".loki/loki.json": "{\"shell_commands\":[{\"command\":\"make\",\"cwd\":\"./a\",\"inputs\":[\"a.txt\"]}]}"
+			},
+			"args": [
+				"protect",
+				"--file",
+				"a.txt"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: invalid hook input: shell permission paths must be canonical and relative\n"
+			}
+		},
+		{
+			"name": "config-shell-path-absolute",
+			"files": {
+				".loki/loki.json": "{\"shell_commands\":[{\"command\":\"make\",\"cwd\":\"/tmp\",\"inputs\":[\"a.txt\"]}]}"
+			},
+			"args": [
+				"protect",
+				"--file",
+				"a.txt"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: invalid hook input: shell permission paths must be canonical and relative\n"
+			}
+		},
+		{
+			"name": "config-shell-input-dot",
+			"files": {
+				".loki/loki.json": "{\"shell_commands\":[{\"command\":\"make\",\"cwd\":\".\",\"inputs\":[\".\"]}]}"
+			},
+			"args": [
+				"protect",
+				"--file",
+				"a.txt"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: invalid hook input: shell permission inputs must be files\n"
+			}
+		},
+		{
+			"name": "config-shell-duplicate",
+			"files": {
+				".loki/loki.json": "{\"shell_commands\":[{\"command\":\"make\",\"cwd\":\".\",\"inputs\":[\"a.txt\"]},{\"command\":\"make\",\"cwd\":\".\",\"inputs\":[\"b\"]}]}"
+			},
+			"args": [
+				"protect",
+				"--file",
+				"a.txt"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: invalid hook input: duplicate shell permission\n"
+			}
+		},
+		{
+			"name": "config-shell-valid",
+			"files": {
+				".loki/loki.json": "{\"shell_commands\":[{\"command\":\"make \\\"check all\\\"\",\"cwd\":\"src/app\",\"inputs\":[\"src/app/Makefile\"]}]}"
+			},
+			"args": [
+				"protect",
+				"--file",
+				"a.txt"
+			],
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "config-slop-shape",
+			"files": {
+				".loki/loki.json": "{\"slop\":{\"size\":1}}"
+			},
+			"args": [
+				"protect",
+				"--file",
+				"a.txt"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: invalid hook input: slop must be an object with block, max_index, max_index_increase\n"
+			}
+		},
+		{
+			"name": "config-slop-block",
+			"files": {
+				".loki/loki.json": "{\"slop\":{\"block\":1}}"
+			},
+			"args": [
+				"protect",
+				"--file",
+				"a.txt"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: invalid hook input: slop.block must be a boolean\n"
+			}
+		},
+		{
+			"name": "config-slop-range",
+			"files": {
+				".loki/loki.json": "{\"slop\":{\"max_index\":101}}"
+			},
+			"args": [
+				"protect",
+				"--file",
+				"a.txt"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: invalid hook input: slop.max_index must be an integer from 0 to 100\n"
+			}
+		},
+		{
+			"name": "config-slop-float",
+			"files": {
+				".loki/loki.json": "{\"slop\":{\"max_index_increase\":5.5}}"
+			},
+			"args": [
+				"protect",
+				"--file",
+				"a.txt"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: invalid hook input: slop.max_index_increase must be an integer from 0 to 100\n"
+			}
+		},
+		{
+			"name": "config-slop-bool",
+			"files": {
+				".loki/loki.json": "{\"slop\":{\"max_index\":true}}"
+			},
+			"args": [
+				"protect",
+				"--file",
+				"a.txt"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: invalid hook input: slop.max_index must be an integer from 0 to 100\n"
+			}
+		},
+		{
+			"name": "config-typescript-check",
+			"files": {
+				".loki/loki.json": "{\"typescript_check\":\"yes\"}"
+			},
+			"args": [
+				"protect",
+				"--file",
+				"a.txt"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: invalid hook input: typescript_check must be a boolean\n"
+			}
+		},
+		{
+			"name": "config-approved-deps",
+			"files": {
+				".loki/loki.json": "{\"approved_dependencies\":[\"ok\",\"\"]}"
+			},
+			"args": [
+				"protect",
+				"--file",
+				"a.txt"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: invalid hook input: loki: approved_dependencies must be a list of nonempty strings\n"
+			}
+		},
+		{
+			"name": "config-private-packages",
+			"files": {
+				".loki/loki.json": "{\"private_packages\":\"x\"}"
+			},
+			"args": [
+				"protect",
+				"--file",
+				"a.txt"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: invalid hook input: loki: private_packages must be a list of nonempty strings\n"
+			}
+		},
+		{
+			"name": "config-languages-unknown",
+			"files": {
+				".loki/loki.json": "{\"languages\":{\"java\":true}}"
+			},
+			"args": [
+				"protect",
+				"--file",
+				"a.txt"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: invalid hook input: loki: languages must map known language names to booleans\n"
+			}
+		},
+		{
+			"name": "config-languages-value",
+			"files": {
+				".loki/loki.json": "{\"languages\":{\"python\":1}}"
+			},
+			"args": [
+				"protect",
+				"--file",
+				"a.txt"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: invalid hook input: loki: languages must map known language names to booleans\n"
+			}
+		},
+		{
+			"name": "config-commands-object",
+			"files": {
+				".loki/loki.json": "{\"commands\":[]}"
+			},
+			"args": [
+				"protect",
+				"--file",
+				"a.txt"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: invalid hook input: loki: commands must be a JSON object\n"
+			}
+		},
+		{
+			"name": "config-commands-group",
+			"files": {
+				".loki/loki.json": "{\"commands\":{\"lint\":[]}}"
+			},
+			"args": [
+				"protect",
+				"--file",
+				"a.txt"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: invalid hook input: loki: unknown command group: lint\n"
+			}
+		},
+		{
+			"name": "config-commands-shape",
+			"files": {
+				".loki/loki.json": "{\"commands\":{\"mutation\":[[\"mutmut\",\"\"]]}}"
+			},
+			"args": [
+				"protect",
+				"--file",
+				"a.txt"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: invalid hook input: loki: commands.mutation must be a list of non-empty string arrays\n"
+			}
+		},
+		{
+			"name": "config-error-json",
+			"files": {
+				".loki/loki.json": "{\"zeta\":1}"
+			},
+			"args": [
+				"protect",
+				"--file",
+				"a.txt",
+				"--format",
+				"json"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "{\"loki\": \"0.1.4\", \"command\": \"protect\", \"status\": \"error\", \"blocking\": [], \"advisory\": [], \"not_checked\": [], \"error\": \"invalid hook input: loki: unknown configuration key: zeta\"}\n",
+				"stderr": "loki: invalid hook input: loki: unknown configuration key: zeta\n"
+			}
+		},
+		{
+			"name": "preview-secret-new-file",
+			"args": [
+				"protect",
+				"--file",
+				"notes.txt",
+				"--preview",
+				"ultron"
+			],
+			"stdin": "{\"tool_name\":\"write\",\"tool_input\":{\"path\":\"x\",\"content\":\"key = '@@AWS@@'\\n\"}}",
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "notes.txt:1: loki/secret: hardcoded credential (AWS access key); load it from the environment or a secret store and rotate the exposed value\n"
+			}
+		},
+		{
+			"name": "preview-secret-json",
+			"args": [
+				"protect",
+				"--file",
+				"notes.txt",
+				"--preview",
+				"ultron",
+				"--format",
+				"json"
+			],
+			"stdin": "{\"tool_name\":\"write\",\"tool_input\":{\"path\":\"x\",\"content\":\"a\\nkey = '@@AWS@@'\\n\"}}",
+			"expected": {
+				"status": 2,
+				"stdout": "{\"loki\": \"0.1.4\", \"command\": \"protect\", \"status\": \"blocked\", \"blocking\": [{\"text\": \"notes.txt:2: loki/secret: hardcoded credential (AWS access key); load it from the environment or a secret store and rotate the exposed value\", \"path\": \"notes.txt\", \"line\": 2, \"rule\": \"loki/secret\"}], \"advisory\": [], \"not_checked\": []}\n",
+				"stderr": "notes.txt:2: loki/secret: hardcoded credential (AWS access key); load it from the environment or a secret store and rotate the exposed value\n"
+			}
+		},
+		{
+			"name": "preview-secret-existing-not-new",
+			"files": {
+				"notes.txt": "key = '@@AWS@@'\n"
+			},
+			"args": [
+				"protect",
+				"--file",
+				"notes.txt",
+				"--preview",
+				"ultron"
+			],
+			"stdin": "{\"tool_name\":\"write\",\"tool_input\":{\"path\":\"x\",\"content\":\"head\\nkey = '@@AWS@@'\\n\"}}",
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "preview-secret-duplicated",
+			"files": {
+				"notes.txt": "key = '@@AWS@@'\n"
+			},
+			"args": [
+				"protect",
+				"--file",
+				"notes.txt",
+				"--preview",
+				"ultron"
+			],
+			"stdin": "{\"tool_name\":\"write\",\"tool_input\":{\"path\":\"x\",\"content\":\"key = '@@AWS@@'\\nkey = '@@AWS@@'\\nkey = '@@AWS@@'\\n\"}}",
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "notes.txt:1: loki/secret: hardcoded credential (AWS access key); load it from the environment or a secret store and rotate the exposed value\nnotes.txt:1: loki/secret: hardcoded credential (AWS access key); load it from the environment or a secret store and rotate the exposed value\n"
+			}
+		},
+		{
+			"name": "preview-secret-kinds",
+			"args": [
+				"protect",
+				"--file",
+				"all.cfg",
+				"--preview",
+				"ultron"
+			],
+			"stdin": "{\"tool_name\":\"write\",\"tool_input\":{\"path\":\"x\",\"content\":\"@@AWS2@@\\n@@GH@@\\n@@PEM@@\\n@@SLACK@@\\n@@STRIPE@@\\n@@NPM@@\\n@@GOOGLE@@\\n@@MODEL@@\\n\"}}",
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "all.cfg:1: loki/secret: hardcoded credential (AWS access key); load it from the environment or a secret store and rotate the exposed value\nall.cfg:2: loki/secret: hardcoded credential (GitHub token); load it from the environment or a secret store and rotate the exposed value\nall.cfg:3: loki/secret: hardcoded credential (private key); load it from the environment or a secret store and rotate the exposed value\nall.cfg:4: loki/secret: hardcoded credential (Slack token); load it from the environment or a secret store and rotate the exposed value\nall.cfg:5: loki/secret: hardcoded credential (Stripe live key); load it from the environment or a secret store and rotate the exposed value\nall.cfg:6: loki/secret: hardcoded credential (npm token); load it from the environment or a secret store and rotate the exposed value\nall.cfg:7: loki/secret: hardcoded credential (Google API key); load it from the environment or a secret store and rotate the exposed value\nall.cfg:8: loki/secret: hardcoded credential (model provider API key); load it from the environment or a secret store and rotate the exposed value\n"
+			}
+		},
+		{
+			"name": "preview-secret-placeholder-and-low-entropy",
+			"args": [
+				"protect",
+				"--file",
+				"a.env",
+				"--preview",
+				"ultron"
+			],
+			"stdin": "{\"tool_name\":\"write\",\"tool_input\":{\"path\":\"x\",\"content\":\"A=@@FAKE@@\\nB=@@LOW@@\\n\"}}",
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "preview-secret-entropy-between-2-and-3",
+			"args": [
+				"protect",
+				"--file",
+				"m.env",
+				"--preview",
+				"ultron"
+			],
+			"stdin": "{\"tool_name\":\"write\",\"tool_input\":{\"path\":\"x\",\"content\":\"M=@@MID@@\\n\"}}",
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "preview-secret-strip-unit-separator",
+			"files": {
+				"s.txt": "k @@AWS@@\u001f\n"
+			},
+			"args": [
+				"protect",
+				"--file",
+				"s.txt",
+				"--preview",
+				"ultron"
+			],
+			"stdin": "{\"tool_name\":\"write\",\"tool_input\":{\"path\":\"x\",\"content\":\"k @@AWS@@\\n\"}}",
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "config-sobelow-equal-levels",
+			"files": {
+				".loki/loki.json": "{\"elixir_security\":{\"sobelow\":{\"block\":\"medium\",\"warn\":\"medium\"}}}"
+			},
+			"args": [
+				"protect",
+				"--file",
+				"a.txt"
+			],
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "preview-secret-unicode-crlf",
+			"args": [
+				"protect",
+				"--file",
+				"u.md",
+				"--preview",
+				"ultron"
+			],
+			"stdin": "{\"tool_name\":\"write\",\"tool_input\":{\"path\":\"x\",\"content\":\"héllo wörld ✓\\r\\nsecond third @@GH@@\\r\\n\"}}",
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "u.md:2: loki/secret: hardcoded credential (GitHub token); load it from the environment or a secret store and rotate the exposed value\n"
+			}
+		},
+		{
+			"name": "preview-conflict-markers",
+			"args": [
+				"protect",
+				"--file",
+				"m.txt",
+				"--preview",
+				"ultron"
+			],
+			"stdin": "{\"tool_name\":\"write\",\"tool_input\":{\"path\":\"x\",\"content\":\"<<<<<<< ours\\na\\n=======\\nb\\n>>>>>>> theirs\\n\"}}",
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "m.txt:1: loki/conflict-marker: unresolved merge conflict marker\nm.txt:5: loki/conflict-marker: unresolved merge conflict marker\n"
+			}
+		},
+		{
+			"name": "preview-conflict-half",
+			"args": [
+				"protect",
+				"--file",
+				"m.txt",
+				"--preview",
+				"ultron"
+			],
+			"stdin": "{\"tool_name\":\"write\",\"tool_input\":{\"path\":\"x\",\"content\":\"<<<<<<< ours\\na\\n\"}}",
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "preview-workflow-injection",
+			"args": [
+				"protect",
+				"--file",
+				".github/workflows/ci.yml",
+				"--preview",
+				"ultron"
+			],
+			"stdin": "{\"tool_name\":\"write\",\"tool_input\":{\"path\":\"x\",\"content\":\"name: ci\\non: pull_request\\njobs:\\n  build:\\n    steps:\\n      - run: echo ${{ github.head_ref }}\\n      - name: multi\\n        run: |\\n          echo \\\"${{ github.event.pull_request.title }}\\\"\\n          echo ${{ github.sha }}\\n        env:\\n          BODY: ${{ github.event.issue.body }}\\n      - run: echo ok\\n        with: ${{ github.event.comment.body }}\\n\"}}",
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": ".github/workflows/ci.yml:6: loki/actions-injection: script injection: untrusted GitHub event field interpolated into a run step; pass it through env and quote it\n.github/workflows/ci.yml:9: loki/actions-injection: script injection: untrusted GitHub event field interpolated into a run step; pass it through env and quote it\n"
+			}
+		},
+		{
+			"name": "preview-action-injection",
+			"args": [
+				"protect",
+				"--file",
+				".github/actions/setup/action.yaml",
+				"--preview",
+				"ultron"
+			],
+			"stdin": "{\"tool_name\":\"write\",\"tool_input\":{\"path\":\"x\",\"content\":\"runs:\\n  steps:\\n    - run: echo ${{ github.event.release.name }}\\n\"}}",
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": ".github/actions/setup/action.yaml:3: loki/actions-injection: script injection: untrusted GitHub event field interpolated into a run step; pass it through env and quote it\n"
+			}
+		},
+		{
+			"name": "preview-workflow-path-only",
+			"args": [
+				"protect",
+				"--file",
+				"docs/ci.yml",
+				"--preview",
+				"ultron"
+			],
+			"stdin": "{\"tool_name\":\"write\",\"tool_input\":{\"path\":\"x\",\"content\":\"name: ci\\non: pull_request\\njobs:\\n  build:\\n    steps:\\n      - run: echo ${{ github.head_ref }}\\n      - name: multi\\n        run: |\\n          echo \\\"${{ github.event.pull_request.title }}\\\"\\n          echo ${{ github.sha }}\\n        env:\\n          BODY: ${{ github.event.issue.body }}\\n      - run: echo ok\\n        with: ${{ github.event.comment.body }}\\n\"}}",
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "preview-omp-write",
+			"args": [
+				"protect",
+				"--file",
+				"o.txt",
+				"--preview",
+				"omp"
+			],
+			"stdin": "{\"tool_name\":\"write\",\"tool_input\":{\"path\":\"x\",\"content\":\"@@STRIPE@@\\n\"}}",
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "o.txt:1: loki/secret: hardcoded credential (Stripe live key); load it from the environment or a secret store and rotate the exposed value\n"
+			}
+		},
+		{
+			"name": "preview-pi-edit",
+			"files": {
+				"e.txt": "a\nTOKEN\nb\n"
+			},
+			"args": [
+				"protect",
+				"--file",
+				"e.txt",
+				"--preview",
+				"pi"
+			],
+			"stdin": "{\"tool_name\":\"edit\",\"tool_input\":{\"path\":\"x\",\"oldText\":\"TOKEN\",\"newText\":\"@@NPM@@\"}}",
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "e.txt:2: loki/secret: hardcoded credential (npm token); load it from the environment or a secret store and rotate the exposed value\n"
+			}
+		},
+		{
+			"name": "preview-pi-edit-ambiguous",
+			"files": {
+				"e.txt": "T\nT\n"
+			},
+			"args": [
+				"protect",
+				"--file",
+				"e.txt",
+				"--preview",
+				"pi"
+			],
+			"stdin": "{\"tool_name\":\"edit\",\"tool_input\":{\"path\":\"x\",\"oldText\":\"T\",\"newText\":\"@@NPM@@\"}}",
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "preview-pi-edit-all",
+			"files": {
+				"e.txt": "T\nT\n"
+			},
+			"args": [
+				"protect",
+				"--file",
+				"e.txt",
+				"--preview",
+				"pi"
+			],
+			"stdin": "{\"tool_name\":\"edit\",\"tool_input\":{\"path\":\"x\",\"oldText\":\"T\",\"newText\":\"@@NPM@@\",\"replace_all\":true}}",
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "e.txt:1: loki/secret: hardcoded credential (npm token); load it from the environment or a secret store and rotate the exposed value\ne.txt:1: loki/secret: hardcoded credential (npm token); load it from the environment or a secret store and rotate the exposed value\n"
+			}
+		},
+		{
+			"name": "preview-pi-edit-mode",
+			"files": {
+				"e.txt": "T\n"
+			},
+			"args": [
+				"protect",
+				"--file",
+				"e.txt",
+				"--preview",
+				"pi"
+			],
+			"stdin": "{\"tool_name\":\"edit\",\"tool_input\":{\"path\":\"x\",\"oldText\":\"T\",\"newText\":\"x\",\"replace_all\":\"yes\"}}",
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "preview-pi-edit-missing-file",
+			"args": [
+				"protect",
+				"--file",
+				"e.txt",
+				"--preview",
+				"pi"
+			],
+			"stdin": "{\"tool_name\":\"edit\",\"tool_input\":{\"path\":\"x\",\"oldText\":\"T\",\"newText\":\"x\"}}",
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "preview-pi-edit-missing-file-js",
+			"args": [
+				"protect",
+				"--file",
+				"e.js",
+				"--preview",
+				"pi"
+			],
+			"stdin": "{\"tool_name\":\"edit\",\"tool_input\":{\"path\":\"x\",\"oldText\":\"T\",\"newText\":\"x\"}}",
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": "NOT CHECKED pre-write content: edit preview requires an existing file\n"
+			}
+		},
+		{
+			"name": "preview-unknown-tool-txt",
+			"args": [
+				"protect",
+				"--file",
+				"a.txt",
+				"--preview",
+				"ultron"
+			],
+			"stdin": "{\"tool_name\":\"edit\",\"tool_input\":{}}",
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "preview-unknown-tool-ts",
+			"args": [
+				"protect",
+				"--file",
+				"a.ts",
+				"--preview",
+				"ultron"
+			],
+			"stdin": "{\"tool_name\":\"edit\",\"tool_input\":{}}",
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": "NOT CHECKED pre-write content: host operation has no exact content preview\n"
+			}
+		},
+		{
+			"name": "preview-unknown-tool-ts-strict",
+			"env": {
+				"LOKI_STRICT": "1"
+			},
+			"args": [
+				"protect",
+				"--file",
+				"a.ts",
+				"--preview",
+				"ultron"
+			],
+			"stdin": "{\"tool_name\":\"edit\",\"tool_input\":{}}",
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "NOT CHECKED pre-write content: host operation has no exact content preview\n"
+			}
+		},
+		{
+			"name": "preview-unknown-tool-ts-json",
+			"args": [
+				"protect",
+				"--file",
+				"a.ts",
+				"--preview",
+				"ultron",
+				"--format",
+				"json"
+			],
+			"stdin": "{\"tool_name\":\"edit\",\"tool_input\":{}}",
+			"expected": {
+				"status": 0,
+				"stdout": "{\"loki\": \"0.1.4\", \"command\": \"protect\", \"status\": \"passed\", \"blocking\": [], \"advisory\": [], \"not_checked\": [\"NOT CHECKED pre-write content: host operation has no exact content preview\"]}\n",
+				"stderr": "NOT CHECKED pre-write content: host operation has no exact content preview\n"
+			}
+		},
+		{
+			"name": "preview-bad-envelope-txt",
+			"args": [
+				"protect",
+				"--file",
+				"a.txt",
+				"--preview",
+				"ultron"
+			],
+			"stdin": "{\"tool_name\":\"write\"}",
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "preview-bad-envelope-mjs",
+			"args": [
+				"protect",
+				"--file",
+				"a.mjs",
+				"--preview",
+				"ultron"
+			],
+			"stdin": "[]",
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": "NOT CHECKED pre-write content: invalid preview envelope\n"
+			}
+		},
+		{
+			"name": "preview-content-not-text-tsx",
+			"args": [
+				"protect",
+				"--file",
+				"a.tsx",
+				"--preview",
+				"ultron"
+			],
+			"stdin": "{\"tool_name\":\"write\",\"tool_input\":{\"content\":1}}",
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": "NOT CHECKED pre-write content: preview content must be text\n"
+			}
+		},
+		{
+			"name": "preview-path-only-write",
+			"args": [
+				"protect",
+				"--file",
+				"a.txt",
+				"--preview",
+				"ultron"
+			],
+			"stdin": "{\"tool_name\":\"write\",\"tool_input\":{\"path\":\"a.txt\"}}",
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "preview-symlinked-path",
+			"files": {
+				"real.txt": "",
+				"link.txt": {
+					"symlink": "real.txt"
+				}
+			},
+			"args": [
+				"protect",
+				"--file",
+				"link.txt",
+				"--preview",
+				"ultron"
+			],
+			"stdin": "{\"tool_name\":\"write\",\"tool_input\":{\"path\":\"x\",\"content\":\"@@AWS@@\"}}",
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "preview-protected-skips-preview",
+			"args": [
+				"protect",
+				"--file",
+				".ruff.toml",
+				"--preview",
+				"ultron"
+			],
+			"stdin": "{\"tool_name\":\"write\",\"tool_input\":{\"path\":\"x\",\"content\":\"@@AWS@@\"}}",
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: protected file: .ruff.toml (set LOKI_ALLOW_PROTECTED=1 to override)\n"
+			}
+		},
+		{
+			"name": "context-default",
+			"args": [
+				"context"
+			],
+			"expected": {
+				"status": 0,
+				"stdout": "{\"hookSpecificOutput\": {\"hookEventName\": \"SessionStart\", \"additionalContext\": \"LOKI POLICY GUIDANCE. This describes configured policy, not proof that hooks or analyzers are active. NOT CHECKED means coverage is unavailable.\\nWhen a rule reports a violation, fix it and retry. Do not weaken the checker, policy, tests or hooks.\\nUse verified file tools. Do not route writes through shell commands to bypass checks.\\nProtected policy, hook, workflow and quality files require independent review.\\nPython edits must introduce no new Ruff findings and preserve meaningful tests.\\nTypeScript edits must pass Oxlint and enabled project-wide type checks, including consumers.\\nPhoenix/Elixir hooks check formatting, net-new Credo and source-security Sobelow findings. Compilation and HEEx component checks require the project tier; they do not run on every write.\\nSobelow high confidence findings block; medium findings warn. Lower levels remain visible.\\nUse Ecto parameterization, supervised processes, validated changesets and assigns-based authorization.\\nShell redirects, substitutions, compound commands and destructive Git operations require review when the optional shell guard is installed. Selecting this guidance pack does not install that guard.\"}}\n",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "context-ultron",
+			"args": [
+				"context",
+				"--host",
+				"ultron",
+				"--event",
+				"UserPromptSubmit"
+			],
+			"expected": {
+				"status": 0,
+				"stdout": "{\"hookSpecificOutput\": {\"hookEventName\": \"UserPromptSubmit\", \"additionalContext\": \"LOKI guardrails: edit() and write() are checked before the file changes. Change source and configuration with edit()/write(): a bash() command that writes them (redirect, tee, sed -i, cp/mv) is refused. Other writes (Path.write_text, programs) are checked after the cell. A blocked write raises ValueError with the finding: fix the cause and retry. Never weaken Loki, its policy (.loki/), tests or hooks. Checks: secrets, security rules, protected files; Ruff (Python); Oxlint and type checks (TS/JS); Credo and Sobelow (Elixir).\"}, \"loki\": {\"version\": \"0.1.4\", \"formats\": [\"text\", \"json\"]}}\n",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "context-ultron-no-packs",
+			"files": {
+				".loki/loki.json": "{\"rule_packs\":[\"shell\"]}"
+			},
+			"args": [
+				"context",
+				"--host",
+				"ultron"
+			],
+			"expected": {
+				"status": 0,
+				"stdout": "{\"hookSpecificOutput\": {\"hookEventName\": \"SessionStart\", \"additionalContext\": \"LOKI guardrails: edit() and write() are checked before the file changes. Change source and configuration with edit()/write(): a bash() command that writes them (redirect, tee, sed -i, cp/mv) is refused. Other writes (Path.write_text, programs) are checked after the cell. A blocked write raises ValueError with the finding: fix the cause and retry. Never weaken Loki, its policy (.loki/), tests or hooks.\"}, \"loki\": {\"version\": \"0.1.4\", \"formats\": [\"text\", \"json\"]}}\n",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "context-phoenix-none",
+			"files": {
+				".loki/loki.json": "{\"rule_packs\":[\"core\",\"phoenix\"],\"elixir_security\":{\"sobelow\":{\"block\":\"none\",\"warn\":\"none\"}}}"
+			},
+			"args": [
+				"context"
+			],
+			"expected": {
+				"status": 0,
+				"stdout": "{\"hookSpecificOutput\": {\"hookEventName\": \"SessionStart\", \"additionalContext\": \"LOKI POLICY GUIDANCE. This describes configured policy, not proof that hooks or analyzers are active. NOT CHECKED means coverage is unavailable.\\nWhen a rule reports a violation, fix it and retry. Do not weaken the checker, policy, tests or hooks.\\nUse verified file tools. Do not route writes through shell commands to bypass checks.\\nProtected policy, hook, workflow and quality files require independent review.\\nPhoenix/Elixir hooks check formatting, net-new Credo and source-security Sobelow findings. Compilation and HEEx component checks require the project tier; they do not run on every write.\\nSobelow blocking is disabled; warnings are disabled. Lower levels remain visible as info.\\nUse Ecto parameterization, supervised processes, validated changesets and assigns-based authorization.\"}}\n",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "context-phoenix-levels",
+			"files": {
+				".loki/loki.json": "{\"rule_packs\":[\"phoenix\",\"phoenix\"],\"elixir_security\":{\"sobelow\":{\"block\":\"medium\",\"warn\":\"low\"}}}"
+			},
+			"args": [
+				"context"
+			],
+			"expected": {
+				"status": 0,
+				"stdout": "{\"hookSpecificOutput\": {\"hookEventName\": \"SessionStart\", \"additionalContext\": \"LOKI POLICY GUIDANCE. This describes configured policy, not proof that hooks or analyzers are active. NOT CHECKED means coverage is unavailable.\\nWhen a rule reports a violation, fix it and retry. Do not weaken the checker, policy, tests or hooks.\\nUse verified file tools. Do not route writes through shell commands to bypass checks.\\nPhoenix/Elixir hooks check formatting, net-new Credo and source-security Sobelow findings. Compilation and HEEx component checks require the project tier; they do not run on every write.\\nSobelow medium confidence findings block; low findings warn. Lower levels remain visible.\\nUse Ecto parameterization, supervised processes, validated changesets and assigns-based authorization.\"}}\n",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "context-invalid-config",
+			"files": {
+				".loki/loki.json": "{\"rule_packs\":\"core\"}"
+			},
+			"args": [
+				"context"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: context unavailable: loki: rule_packs must contain known rule-pack names\n"
+			}
+		}
+	]
+}

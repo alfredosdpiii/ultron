@@ -1,0 +1,787 @@
+{
+	"area": "schedules",
+	"scenarios": [
+		{
+			"name": "create, tick, skip, max_runs, pause, delete",
+			"cells": [
+				{
+					"code": "import json as _json\nprint(_json.dumps(await schedules.list(), sort_keys=True))",
+					"status": "ok",
+					"stdout": "[]\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nprint(_json.dumps(await schedules.create(\"report@1\", {\"q\": 1}, 1000, max_runs=3, model=\"openai/gpt-x\"), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"created_at\": 1760000000000, \"definition\": \"report@1\", \"every_ms\": 1000, \"failures\": 0, \"goal_id\": null, \"id\": \"schedule-<uuid>\", \"input\": {\"q\": 1}, \"last_failure\": null, \"last_fired_at\": null, \"last_skipped\": 0, \"last_slot\": null, \"last_task_id\": null, \"max_runs\": 3, \"model\": \"openai/gpt-x\", \"owner\": null, \"pending_slot\": null, \"runs\": 0, \"skipped_total\": 0, \"start_at\": 1760000000000, \"state\": \"active\"}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nprint(_json.dumps(await schedules.tick(), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"failed\": [], \"fired\": [{\"schedule_id\": \"schedule-<uuid>\", \"skipped\": 0, \"slot\": 0, \"task_id\": \"task-1\"}]}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nprint(_json.dumps(await schedules.tick(), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"failed\": [], \"fired\": []}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nawait rlm.host_request('test.clock', {'ms': 999})\nprint(_json.dumps(await schedules.tick(), sort_keys=True))\nawait rlm.host_request('test.clock', {'ms': 1})\nprint(_json.dumps(await schedules.tick(), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"failed\": [], \"fired\": []}\n{\"failed\": [], \"fired\": [{\"schedule_id\": \"schedule-<uuid>\", \"skipped\": 0, \"slot\": 1, \"task_id\": \"task-2\"}]}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nawait rlm.host_request('test.clock', {'ms': 3500})\nprint(_json.dumps(await schedules.tick(), sort_keys=True))\nawait rlm.host_request('test.clock', {'ms': 5000})\nprint(_json.dumps(await schedules.tick(), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"failed\": [], \"fired\": [{\"schedule_id\": \"schedule-<uuid>\", \"skipped\": 2, \"slot\": 4, \"task_id\": \"task-3\"}]}\n{\"failed\": [], \"fired\": []}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\ns = await schedules.create('daily@2', [], 500, start_at=1760000020000)\nprint(_json.dumps(await schedules.tick(), sort_keys=True))\nprint(_json.dumps(await schedules.pause(s['id']), sort_keys=True))\nawait rlm.host_request('test.clock', {'ms': 30000})\nprint(_json.dumps(await schedules.tick(), sort_keys=True))\nprint(_json.dumps(await schedules.resume(s['id']), sort_keys=True))\nprint(_json.dumps(await schedules.tick(), sort_keys=True))\nprint(_json.dumps(await schedules.delete(s['id']), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"failed\": [], \"fired\": []}\n{\"created_at\": 1760000009500, \"definition\": \"daily@2\", \"every_ms\": 500, \"failures\": 0, \"goal_id\": null, \"id\": \"schedule-<uuid>\", \"input\": [], \"last_failure\": null, \"last_fired_at\": null, \"last_skipped\": 0, \"last_slot\": null, \"last_task_id\": null, \"max_runs\": null, \"model\": null, \"owner\": null, \"pending_slot\": null, \"runs\": 0, \"skipped_total\": 0, \"start_at\": 1760000020000, \"state\": \"paused\"}\n{\"failed\": [], \"fired\": []}\n{\"created_at\": 1760000009500, \"definition\": \"daily@2\", \"every_ms\": 500, \"failures\": 0, \"goal_id\": null, \"id\": \"schedule-<uuid>\", \"input\": [], \"last_failure\": null, \"last_fired_at\": null, \"last_skipped\": 0, \"last_slot\": null, \"last_task_id\": null, \"max_runs\": null, \"model\": null, \"owner\": null, \"pending_slot\": null, \"runs\": 0, \"skipped_total\": 0, \"start_at\": 1760000020000, \"state\": \"active\"}\n{\"failed\": [], \"fired\": [{\"schedule_id\": \"schedule-<uuid>\", \"skipped\": 39, \"slot\": 39, \"task_id\": \"task-4\"}]}\n{\"deleted\": true}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\ndone = [s for s in await schedules.list() if s['state'] == 'completed'][0]\ntry:\n    r = await schedules.pause(done['id'])\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await schedules.resume(done['id'])\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await schedules.delete('nope')\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await schedules.pause('')\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await schedules.create('Bad', {}, 1000)\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await schedules.create('a@1', {}, 0)\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await schedules.create('a@1', {}, 1.5)\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await schedules.create('a@1', {}, 366 * 24 * 3600 * 1000 + 1)\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await schedules.create('a@1', None, 1000)\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await schedules.create('a@1', {}, 1000, start_at=-1)\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await schedules.create('a@1', {}, 1000, max_runs=0)\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await schedules.create('a@1', {}, 1000, model='gpt')\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await schedules.create('a@1', {}, 1000, model='a/ b')\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await schedules.create('a@1', {}, 1000, goal_id='goal-x')\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await rlm.host_request('schedules.create', {'definition': 'a@1', 'input': 1, 'every_ms': 5, 'owner': 'x'})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await rlm.host_request('schedules.list', {'x': 1})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await rlm.host_request('schedules.tick', {'x': 1})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await rlm.host_request('schedules.nope', {})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await rlm.host_request('goals.nope', {})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)",
+					"status": "ok",
+					"stdout": "RuntimeError Schedule is completed\nRuntimeError Schedule is completed\nRuntimeError Unknown schedule\nRuntimeError id must be a nonempty string\nRuntimeError definition must be id@version\nRuntimeError every_ms must be an integer between 1 and 31622400000\nRuntimeError every_ms must be an integer between 1 and 31622400000\nRuntimeError every_ms must be an integer between 1 and 31622400000\nRuntimeError input must be JSON\nRuntimeError start_at must be an integer between 0 and 9007199254740991\nRuntimeError max_runs must be an integer between 1 and 9007199254740991\nRuntimeError model must be provider/model\nRuntimeError model must be provider/model\nRuntimeError Unknown goal\nRuntimeError Unknown payload field: owner\nRuntimeError Unknown payload field: x\nRuntimeError Unknown payload field: x\nRuntimeError Unknown schedule request: schedules.nope\nRuntimeError Unknown schedule request: goals.nope\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nprint(_json.dumps(await schedules.list(), sort_keys=True))",
+					"status": "ok",
+					"stdout": "[{\"created_at\": 1760000000000, \"definition\": \"report@1\", \"every_ms\": 1000, \"failures\": 0, \"goal_id\": null, \"id\": \"schedule-<uuid>\", \"input\": {\"q\": 1}, \"last_failure\": null, \"last_fired_at\": 1760000004500, \"last_skipped\": 2, \"last_slot\": 4, \"last_task_id\": \"task-3\", \"max_runs\": 3, \"model\": \"openai/gpt-x\", \"owner\": null, \"pending_slot\": null, \"runs\": 3, \"skipped_total\": 2, \"start_at\": 1760000000000, \"state\": \"completed\"}]\n",
+					"result": "",
+					"error": null
+				}
+			],
+			"state": {
+				"document": {
+					"version": 1,
+					"schedules": [
+						{
+							"id": "schedule-<uuid>",
+							"definition": "report@1",
+							"input": {
+								"q": 1
+							},
+							"every_ms": 1000,
+							"start_at": 1760000000000,
+							"max_runs": 3,
+							"goal_id": null,
+							"model": "openai/gpt-x",
+							"owner": null,
+							"state": "completed",
+							"created_at": 1760000000000,
+							"runs": 3,
+							"last_slot": 4,
+							"pending_slot": null,
+							"last_task_id": "task-3",
+							"last_fired_at": 1760000004500,
+							"last_skipped": 2,
+							"skipped_total": 2,
+							"last_failure": null,
+							"failures": 0
+						}
+					],
+					"goals": []
+				},
+				"log": [
+					[
+						"spawn",
+						{
+							"definition": "report@1",
+							"input": {
+								"q": 1
+							},
+							"key": "schedule:schedule-<uuid>:0",
+							"model": "openai/gpt-x"
+						},
+						null
+					],
+					[
+						"spawn",
+						{
+							"definition": "report@1",
+							"input": {
+								"q": 1
+							},
+							"key": "schedule:schedule-<uuid>:1",
+							"model": "openai/gpt-x"
+						},
+						null
+					],
+					[
+						"spawn",
+						{
+							"definition": "report@1",
+							"input": {
+								"q": 1
+							},
+							"key": "schedule:schedule-<uuid>:4",
+							"model": "openai/gpt-x"
+						},
+						null
+					],
+					[
+						"spawn",
+						{
+							"definition": "daily@2",
+							"input": [],
+							"key": "schedule:schedule-<uuid>:39"
+						},
+						null
+					]
+				]
+			}
+		},
+		{
+			"name": "goals: verify, caps, attach, pause",
+			"cells": [
+				{
+					"code": "import json as _json\nprint(_json.dumps(await goals.create(\"Ship it\", [\"pass-check@1\", \"false-check@1\"]), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"created_at\": 1760000000000, \"id\": \"goal-<uuid>\", \"max_tasks\": null, \"owner\": null, \"required_checks\": [\"pass-check@1\", \"false-check@1\"], \"state\": \"active\", \"task_ids\": [], \"title\": \"Ship it\", \"verification\": null, \"verify_rounds\": 0}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\ng = (await goals.list())[0]\nprint(_json.dumps(await goals.verify(g['id']), sort_keys=True))\nprint(_json.dumps(await goals.verify(g['id'], input={'round': 2}), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"created_at\": 1760000000000, \"id\": \"goal-<uuid>\", \"max_tasks\": null, \"owner\": null, \"required_checks\": [\"pass-check@1\", \"false-check@1\"], \"state\": \"active\", \"task_ids\": [\"task-1\", \"task-2\"], \"title\": \"Ship it\", \"verification\": {\"at\": 1760000000000, \"checks\": [{\"definition\": \"pass-check@1\", \"passed\": true, \"status\": \"succeeded\", \"task_id\": \"task-1\"}, {\"definition\": \"false-check@1\", \"passed\": false, \"reason\": \"false-check@1 reported passed=false\", \"status\": \"succeeded\", \"task_id\": \"task-2\"}], \"reasons\": [\"false-check@1 reported passed=false\"], \"round\": 1, \"status\": \"unachieved\"}, \"verify_rounds\": 1}\n{\"created_at\": 1760000000000, \"id\": \"goal-<uuid>\", \"max_tasks\": null, \"owner\": null, \"required_checks\": [\"pass-check@1\", \"false-check@1\"], \"state\": \"active\", \"task_ids\": [\"task-1\", \"task-2\", \"task-3\", \"task-4\"], \"title\": \"Ship it\", \"verification\": {\"at\": 1760000000000, \"checks\": [{\"definition\": \"pass-check@1\", \"passed\": true, \"status\": \"succeeded\", \"task_id\": \"task-3\"}, {\"definition\": \"false-check@1\", \"passed\": false, \"reason\": \"false-check@1 reported passed=false\", \"status\": \"succeeded\", \"task_id\": \"task-4\"}], \"reasons\": [\"false-check@1 reported passed=false\"], \"round\": 2, \"status\": \"unachieved\"}, \"verify_rounds\": 2}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\ng = await goals.create('Pass', ['pass-check@1'], max_tasks=3)\ns = await schedules.create('work@1', {'n': 1}, 1000, goal_id=g['id'])\nprint(_json.dumps(await schedules.tick(), sort_keys=True))\nprint(_json.dumps(await goals.pause(g['id']), sort_keys=True))\nawait rlm.host_request('test.clock', {'ms': 1000})\nprint(_json.dumps(await schedules.tick(), sort_keys=True))\ntry:\n    r = await goals.verify(g['id'])\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\nprint(_json.dumps(await goals.resume(g['id']), sort_keys=True))\nprint(_json.dumps(await schedules.tick(), sort_keys=True))\nprint(_json.dumps(await goals.verify(g['id']), sort_keys=True))\ntry:\n    r = await goals.verify(g['id'])\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await goals.pause(g['id'])\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await schedules.create('work@1', {}, 1000, goal_id=g['id'])\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\nawait rlm.host_request('test.clock', {'ms': 1000})\nprint(_json.dumps(await schedules.tick(), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"failed\": [], \"fired\": [{\"schedule_id\": \"schedule-<uuid>\", \"skipped\": 0, \"slot\": 0, \"task_id\": \"task-5\"}]}\n{\"created_at\": 1760000000000, \"id\": \"goal-<uuid>\", \"max_tasks\": 3, \"owner\": null, \"required_checks\": [\"pass-check@1\"], \"state\": \"paused\", \"task_ids\": [\"task-5\"], \"title\": \"Pass\", \"verification\": null, \"verify_rounds\": 0}\n{\"failed\": [], \"fired\": []}\nRuntimeError Goal is paused\n{\"created_at\": 1760000000000, \"id\": \"goal-<uuid>\", \"max_tasks\": 3, \"owner\": null, \"required_checks\": [\"pass-check@1\"], \"state\": \"active\", \"task_ids\": [\"task-5\"], \"title\": \"Pass\", \"verification\": null, \"verify_rounds\": 0}\n{\"failed\": [], \"fired\": [{\"schedule_id\": \"schedule-<uuid>\", \"skipped\": 0, \"slot\": 1, \"task_id\": \"task-6\"}]}\n{\"created_at\": 1760000000000, \"id\": \"goal-<uuid>\", \"max_tasks\": 3, \"owner\": null, \"required_checks\": [\"pass-check@1\"], \"state\": \"achieved\", \"task_ids\": [\"task-5\", \"task-6\", \"task-7\"], \"title\": \"Pass\", \"verification\": {\"at\": 1760000001000, \"checks\": [{\"definition\": \"pass-check@1\", \"passed\": true, \"status\": \"succeeded\", \"task_id\": \"task-7\"}], \"reasons\": [], \"round\": 1, \"status\": \"achieved\"}, \"verify_rounds\": 1}\nRuntimeError Goal is already achieved\nRuntimeError Goal is already achieved\nRuntimeError Cannot attach a schedule to an achieved goal\n{\"failed\": [], \"fired\": []}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\ng = await goals.create('Capped', ['pass-check@1', 'pass-check@2'], max_tasks=1)\ntry:\n    r = await goals.verify(g['id'])\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ns = await schedules.create('work@1', {}, 100, goal_id=g['id'])\nprint(_json.dumps(await schedules.tick(), sort_keys=True))\nawait rlm.host_request('test.clock', {'ms': 100})\nprint(_json.dumps(await schedules.tick(), sort_keys=True))\ntry:\n    r = await goals.attach(g['id'], 'task-1')\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await goals.attach(g['id'], 'nope')\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await goals.attach('goal-nope', 'task-1')\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\nawait schedules.delete(s['id'])",
+					"status": "ok",
+					"stdout": "RuntimeError Goal task limit reached: verification needs 2 tasks, 1 remain\n{\"failed\": [], \"fired\": [{\"schedule_id\": \"schedule-<uuid>\", \"skipped\": 0, \"slot\": 0, \"task_id\": \"task-8\"}]}\n{\"failed\": [{\"error\": \"Goal task limit reached (1)\", \"schedule_id\": \"schedule-<uuid>\", \"slot\": 1}], \"fired\": []}\nRuntimeError Goal task limit reached (1)\nRuntimeError Unknown Ultron task\nRuntimeError Unknown goal\n",
+					"result": "{'deleted': True}",
+					"error": null
+				},
+				{
+					"code": "import json as _json\ng = await goals.create('Mixed', ['vague-check@1', 'crash-check@1', 'refused-check@1', 'lost-check@1'])\nprint(_json.dumps(await goals.verify(g['id']), sort_keys=True))\ne = await goals.create('Empty', [])\nprint(_json.dumps(await goals.verify(e['id']), sort_keys=True))\na = await goals.create('Attach', [], max_tasks=0)\ntry:\n    r = await goals.attach(a['id'], 'task-1')\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\nb = await goals.create('Attach2', [])\nprint(_json.dumps(await goals.attach(b['id'], 'task-1'), sort_keys=True))\nprint(_json.dumps(await goals.attach(b['id'], 'task-1'), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"created_at\": 1760000002100, \"id\": \"goal-<uuid>\", \"max_tasks\": null, \"owner\": null, \"required_checks\": [\"vague-check@1\", \"crash-check@1\", \"refused-check@1\", \"lost-check@1\"], \"state\": \"active\", \"task_ids\": [\"task-9\", \"task-10\", \"task-11\"], \"title\": \"Mixed\", \"verification\": {\"at\": 1760000002100, \"checks\": [{\"definition\": \"vague-check@1\", \"passed\": false, \"reason\": \"vague-check@1 did not report a boolean passed value\", \"status\": \"succeeded\", \"task_id\": \"task-9\"}, {\"definition\": \"crash-check@1\", \"passed\": false, \"reason\": \"crash-check@1 failed: check crashed\", \"status\": \"failed\", \"task_id\": \"task-10\"}, {\"definition\": \"refused-check@1\", \"passed\": false, \"reason\": \"refused-check@1: Usage budget exhausted\", \"status\": \"missing\", \"task_id\": null}, {\"definition\": \"lost-check@1\", \"passed\": false, \"reason\": \"lost-check@1: result unavailable\", \"status\": \"missing\", \"task_id\": \"task-11\"}], \"reasons\": [\"vague-check@1 did not report a boolean passed value\", \"crash-check@1 failed: check crashed\", \"refused-check@1: Usage budget exhausted\", \"lost-check@1: result unavailable\"], \"round\": 1, \"status\": \"unachieved\"}, \"verify_rounds\": 1}\n{\"created_at\": 1760000002100, \"id\": \"goal-<uuid>\", \"max_tasks\": null, \"owner\": null, \"required_checks\": [], \"state\": \"active\", \"task_ids\": [], \"title\": \"Empty\", \"verification\": {\"at\": 1760000002100, \"checks\": [], \"reasons\": [\"Goal has no required checks\"], \"round\": 1, \"status\": \"unverified\"}, \"verify_rounds\": 1}\nRuntimeError Goal task limit reached (0)\n{\"created_at\": 1760000002100, \"id\": \"goal-<uuid>\", \"max_tasks\": null, \"owner\": null, \"required_checks\": [], \"state\": \"active\", \"task_ids\": [\"task-1\"], \"title\": \"Attach2\", \"verification\": null, \"verify_rounds\": 0}\n{\"created_at\": 1760000002100, \"id\": \"goal-<uuid>\", \"max_tasks\": null, \"owner\": null, \"required_checks\": [], \"state\": \"active\", \"task_ids\": [\"task-1\"], \"title\": \"Attach2\", \"verification\": null, \"verify_rounds\": 0}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\ntry:\n    r = await goals.create('', [])\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await goals.create('t', 'x')\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await goals.create('t', ['bad'])\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await goals.create('t', ['a@1', 'a@1'])\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await goals.create('t', [], max_tasks=-1)\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await goals.get('nope')\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await goals.get('')\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await goals.verify('nope')\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await rlm.host_request('goals.verify', {'id': 'x', 'extra': 1})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await rlm.host_request('goals.get', {'id': 'x', 'extra': 1})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await rlm.host_request('goals.list', {'x': 1})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)",
+					"status": "ok",
+					"stdout": "RuntimeError title must be a nonempty string\nRuntimeError required_checks entry must be id@version\nRuntimeError required_checks entry must be id@version\nRuntimeError required_checks must not repeat\nRuntimeError max_tasks must be an integer between 0 and 9007199254740991\nRuntimeError Unknown goal\nRuntimeError id must be a nonempty string\nRuntimeError Unknown goal\nRuntimeError Unknown payload field: extra\nRuntimeError Unknown payload field: extra\nRuntimeError Unknown payload field: x\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nprint(_json.dumps(await goals.list(), sort_keys=True))",
+					"status": "ok",
+					"stdout": "[{\"created_at\": 1760000000000, \"id\": \"goal-<uuid>\", \"max_tasks\": null, \"owner\": null, \"required_checks\": [\"pass-check@1\", \"false-check@1\"], \"state\": \"active\", \"task_ids\": [\"task-1\", \"task-2\", \"task-3\", \"task-4\"], \"title\": \"Ship it\", \"verification\": {\"at\": 1760000000000, \"checks\": [{\"definition\": \"pass-check@1\", \"passed\": true, \"status\": \"succeeded\", \"task_id\": \"task-3\"}, {\"definition\": \"false-check@1\", \"passed\": false, \"reason\": \"false-check@1 reported passed=false\", \"status\": \"succeeded\", \"task_id\": \"task-4\"}], \"reasons\": [\"false-check@1 reported passed=false\"], \"round\": 2, \"status\": \"unachieved\"}, \"verify_rounds\": 2}, {\"created_at\": 1760000000000, \"id\": \"goal-<uuid>\", \"max_tasks\": 3, \"owner\": null, \"required_checks\": [\"pass-check@1\"], \"state\": \"achieved\", \"task_ids\": [\"task-5\", \"task-6\", \"task-7\"], \"title\": \"Pass\", \"verification\": {\"at\": 1760000001000, \"checks\": [{\"definition\": \"pass-check@1\", \"passed\": true, \"status\": \"succeeded\", \"task_id\": \"task-7\"}], \"reasons\": [], \"round\": 1, \"status\": \"achieved\"}, \"verify_rounds\": 1}, {\"created_at\": 1760000002000, \"id\": \"goal-<uuid>\", \"max_tasks\": 1, \"owner\": null, \"required_checks\": [\"pass-check@1\", \"pass-check@2\"], \"state\": \"active\", \"task_ids\": [\"task-8\"], \"title\": \"Capped\", \"verification\": null, \"verify_rounds\": 0}, {\"created_at\": 1760000002100, \"id\": \"goal-<uuid>\", \"max_tasks\": null, \"owner\": null, \"required_checks\": [\"vague-check@1\", \"crash-check@1\", \"refused-check@1\", \"lost-check@1\"], \"state\": \"active\", \"task_ids\": [\"task-9\", \"task-10\", \"task-11\"], \"title\": \"Mixed\", \"verification\": {\"at\": 1760000002100, \"checks\": [{\"definition\": \"vague-check@1\", \"passed\": false, \"reason\": \"vague-check@1 did not report a boolean passed value\", \"status\": \"succeeded\", \"task_id\": \"task-9\"}, {\"definition\": \"crash-check@1\", \"passed\": false, \"reason\": \"crash-check@1 failed: check crashed\", \"status\": \"failed\", \"task_id\": \"task-10\"}, {\"definition\": \"refused-check@1\", \"passed\": false, \"reason\": \"refused-check@1: Usage budget exhausted\", \"status\": \"missing\", \"task_id\": null}, {\"definition\": \"lost-check@1\", \"passed\": false, \"reason\": \"lost-check@1: result unavailable\", \"status\": \"missing\", \"task_id\": \"task-11\"}], \"reasons\": [\"vague-check@1 did not report a boolean passed value\", \"crash-check@1 failed: check crashed\", \"refused-check@1: Usage budget exhausted\", \"lost-check@1: result unavailable\"], \"round\": 1, \"status\": \"unachieved\"}, \"verify_rounds\": 1}, {\"created_at\": 1760000002100, \"id\": \"goal-<uuid>\", \"max_tasks\": null, \"owner\": null, \"required_checks\": [], \"state\": \"active\", \"task_ids\": [], \"title\": \"Empty\", \"verification\": {\"at\": 1760000002100, \"checks\": [], \"reasons\": [\"Goal has no required checks\"], \"round\": 1, \"status\": \"unverified\"}, \"verify_rounds\": 1}, {\"created_at\": 1760000002100, \"id\": \"goal-<uuid>\", \"max_tasks\": 0, \"owner\": null, \"required_checks\": [], \"state\": \"active\", \"task_ids\": [], \"title\": \"Attach\", \"verification\": null, \"verify_rounds\": 0}, {\"created_at\": 1760000002100, \"id\": \"goal-<uuid>\", \"max_tasks\": null, \"owner\": null, \"required_checks\": [], \"state\": \"active\", \"task_ids\": [\"task-1\"], \"title\": \"Attach2\", \"verification\": null, \"verify_rounds\": 0}]\n",
+					"result": "",
+					"error": null
+				}
+			],
+			"state": {
+				"document": {
+					"version": 1,
+					"schedules": [
+						{
+							"id": "schedule-<uuid>",
+							"definition": "work@1",
+							"input": {
+								"n": 1
+							},
+							"every_ms": 1000,
+							"start_at": 1760000000000,
+							"max_runs": null,
+							"goal_id": "goal-<uuid>",
+							"model": null,
+							"owner": null,
+							"state": "active",
+							"created_at": 1760000000000,
+							"runs": 2,
+							"last_slot": 1,
+							"pending_slot": null,
+							"last_task_id": "task-6",
+							"last_fired_at": 1760000001000,
+							"last_skipped": 0,
+							"skipped_total": 0,
+							"last_failure": null,
+							"failures": 0
+						}
+					],
+					"goals": [
+						{
+							"id": "goal-<uuid>",
+							"title": "Ship it",
+							"required_checks": [
+								"pass-check@1",
+								"false-check@1"
+							],
+							"max_tasks": null,
+							"owner": null,
+							"state": "active",
+							"created_at": 1760000000000,
+							"task_ids": [
+								"task-1",
+								"task-2",
+								"task-3",
+								"task-4"
+							],
+							"verify_rounds": 2,
+							"verification": {
+								"round": 2,
+								"status": "unachieved",
+								"at": 1760000000000,
+								"checks": [
+									{
+										"definition": "pass-check@1",
+										"task_id": "task-3",
+										"status": "succeeded",
+										"passed": true
+									},
+									{
+										"definition": "false-check@1",
+										"task_id": "task-4",
+										"status": "succeeded",
+										"passed": false,
+										"reason": "false-check@1 reported passed=false"
+									}
+								],
+								"reasons": [
+									"false-check@1 reported passed=false"
+								]
+							}
+						},
+						{
+							"id": "goal-<uuid>",
+							"title": "Pass",
+							"required_checks": [
+								"pass-check@1"
+							],
+							"max_tasks": 3,
+							"owner": null,
+							"state": "achieved",
+							"created_at": 1760000000000,
+							"task_ids": [
+								"task-5",
+								"task-6",
+								"task-7"
+							],
+							"verify_rounds": 1,
+							"verification": {
+								"round": 1,
+								"status": "achieved",
+								"at": 1760000001000,
+								"checks": [
+									{
+										"definition": "pass-check@1",
+										"task_id": "task-7",
+										"status": "succeeded",
+										"passed": true
+									}
+								],
+								"reasons": []
+							}
+						},
+						{
+							"id": "goal-<uuid>",
+							"title": "Capped",
+							"required_checks": [
+								"pass-check@1",
+								"pass-check@2"
+							],
+							"max_tasks": 1,
+							"owner": null,
+							"state": "active",
+							"created_at": 1760000002000,
+							"task_ids": [
+								"task-8"
+							],
+							"verify_rounds": 0,
+							"verification": null
+						},
+						{
+							"id": "goal-<uuid>",
+							"title": "Mixed",
+							"required_checks": [
+								"vague-check@1",
+								"crash-check@1",
+								"refused-check@1",
+								"lost-check@1"
+							],
+							"max_tasks": null,
+							"owner": null,
+							"state": "active",
+							"created_at": 1760000002100,
+							"task_ids": [
+								"task-9",
+								"task-10",
+								"task-11"
+							],
+							"verify_rounds": 1,
+							"verification": {
+								"round": 1,
+								"status": "unachieved",
+								"at": 1760000002100,
+								"checks": [
+									{
+										"definition": "vague-check@1",
+										"task_id": "task-9",
+										"status": "succeeded",
+										"passed": false,
+										"reason": "vague-check@1 did not report a boolean passed value"
+									},
+									{
+										"definition": "crash-check@1",
+										"task_id": "task-10",
+										"status": "failed",
+										"passed": false,
+										"reason": "crash-check@1 failed: check crashed"
+									},
+									{
+										"definition": "refused-check@1",
+										"task_id": null,
+										"status": "missing",
+										"passed": false,
+										"reason": "refused-check@1: Usage budget exhausted"
+									},
+									{
+										"definition": "lost-check@1",
+										"task_id": "task-11",
+										"status": "missing",
+										"passed": false,
+										"reason": "lost-check@1: result unavailable"
+									}
+								],
+								"reasons": [
+									"vague-check@1 did not report a boolean passed value",
+									"crash-check@1 failed: check crashed",
+									"refused-check@1: Usage budget exhausted",
+									"lost-check@1: result unavailable"
+								]
+							}
+						},
+						{
+							"id": "goal-<uuid>",
+							"title": "Empty",
+							"required_checks": [],
+							"max_tasks": null,
+							"owner": null,
+							"state": "active",
+							"created_at": 1760000002100,
+							"task_ids": [],
+							"verify_rounds": 1,
+							"verification": {
+								"round": 1,
+								"status": "unverified",
+								"at": 1760000002100,
+								"checks": [],
+								"reasons": [
+									"Goal has no required checks"
+								]
+							}
+						},
+						{
+							"id": "goal-<uuid>",
+							"title": "Attach",
+							"required_checks": [],
+							"max_tasks": 0,
+							"owner": null,
+							"state": "active",
+							"created_at": 1760000002100,
+							"task_ids": [],
+							"verify_rounds": 0,
+							"verification": null
+						},
+						{
+							"id": "goal-<uuid>",
+							"title": "Attach2",
+							"required_checks": [],
+							"max_tasks": null,
+							"owner": null,
+							"state": "active",
+							"created_at": 1760000002100,
+							"task_ids": [
+								"task-1"
+							],
+							"verify_rounds": 0,
+							"verification": null
+						}
+					]
+				},
+				"log": [
+					[
+						"spawn",
+						{
+							"definition": "pass-check@1",
+							"input": {
+								"goal_id": "goal-<uuid>",
+								"title": "Ship it"
+							},
+							"key": "goal:goal-<uuid>:verify:1:0"
+						},
+						null
+					],
+					[
+						"spawn",
+						{
+							"definition": "false-check@1",
+							"input": {
+								"goal_id": "goal-<uuid>",
+								"title": "Ship it"
+							},
+							"key": "goal:goal-<uuid>:verify:1:1"
+						},
+						null
+					],
+					[
+						"result",
+						"task-1"
+					],
+					[
+						"result",
+						"task-2"
+					],
+					[
+						"spawn",
+						{
+							"definition": "pass-check@1",
+							"input": {
+								"round": 2
+							},
+							"key": "goal:goal-<uuid>:verify:2:0"
+						},
+						null
+					],
+					[
+						"spawn",
+						{
+							"definition": "false-check@1",
+							"input": {
+								"round": 2
+							},
+							"key": "goal:goal-<uuid>:verify:2:1"
+						},
+						null
+					],
+					[
+						"result",
+						"task-3"
+					],
+					[
+						"result",
+						"task-4"
+					],
+					[
+						"spawn",
+						{
+							"definition": "work@1",
+							"input": {
+								"n": 1
+							},
+							"key": "schedule:schedule-<uuid>:0"
+						},
+						null
+					],
+					[
+						"spawn",
+						{
+							"definition": "work@1",
+							"input": {
+								"n": 1
+							},
+							"key": "schedule:schedule-<uuid>:1"
+						},
+						null
+					],
+					[
+						"spawn",
+						{
+							"definition": "pass-check@1",
+							"input": {
+								"goal_id": "goal-<uuid>",
+								"title": "Pass"
+							},
+							"key": "goal:goal-<uuid>:verify:1:0"
+						},
+						null
+					],
+					[
+						"result",
+						"task-7"
+					],
+					[
+						"spawn",
+						{
+							"definition": "work@1",
+							"input": {},
+							"key": "schedule:schedule-<uuid>:0"
+						},
+						null
+					],
+					[
+						"tasks"
+					],
+					[
+						"tasks"
+					],
+					[
+						"spawn",
+						{
+							"definition": "vague-check@1",
+							"input": {
+								"goal_id": "goal-<uuid>",
+								"title": "Mixed"
+							},
+							"key": "goal:goal-<uuid>:verify:1:0"
+						},
+						null
+					],
+					[
+						"spawn",
+						{
+							"definition": "crash-check@1",
+							"input": {
+								"goal_id": "goal-<uuid>",
+								"title": "Mixed"
+							},
+							"key": "goal:goal-<uuid>:verify:1:1"
+						},
+						null
+					],
+					[
+						"spawn",
+						{
+							"definition": "refused-check@1",
+							"input": {
+								"goal_id": "goal-<uuid>",
+								"title": "Mixed"
+							},
+							"key": "goal:goal-<uuid>:verify:1:2"
+						},
+						null
+					],
+					[
+						"spawn",
+						{
+							"definition": "lost-check@1",
+							"input": {
+								"goal_id": "goal-<uuid>",
+								"title": "Mixed"
+							},
+							"key": "goal:goal-<uuid>:verify:1:3"
+						},
+						null
+					],
+					[
+						"result",
+						"task-9"
+					],
+					[
+						"result",
+						"task-10"
+					],
+					[
+						"result",
+						"task-11"
+					],
+					[
+						"tasks"
+					],
+					[
+						"tasks"
+					],
+					[
+						"tasks"
+					]
+				]
+			}
+		}
+	],
+	"restart": {
+		"preloaded": {
+			"document": {
+				"schedules": [
+					{
+						"id": "schedule-a",
+						"definition": "work@1",
+						"input": {
+							"n": 1
+						},
+						"every_ms": 1000,
+						"start_at": 1759999995000,
+						"max_runs": null,
+						"goal_id": "goal-a",
+						"model": null,
+						"owner": null,
+						"state": "active",
+						"created_at": 1759999995000,
+						"runs": 2,
+						"last_slot": 4,
+						"pending_slot": 4,
+						"last_task_id": "task-1",
+						"last_fired_at": 1759999998000,
+						"last_skipped": 1,
+						"skipped_total": 1,
+						"last_failure": null,
+						"failures": 0
+					}
+				],
+				"goals": [
+					{
+						"id": "goal-a",
+						"title": "Recover",
+						"required_checks": [
+							"pass-check@1"
+						],
+						"max_tasks": null,
+						"owner": null,
+						"state": "active",
+						"created_at": 1759999995000,
+						"task_ids": [
+							"task-1"
+						],
+						"verify_rounds": 1,
+						"verification": null
+					}
+				]
+			},
+			"tasks": [
+				{
+					"id": "task-1",
+					"key": "schedule:schedule-a:2",
+					"definition": "work@1",
+					"state": "succeeded"
+				},
+				{
+					"id": "task-2",
+					"key": "goal:goal-a:verify:1:0",
+					"definition": "pass-check@1",
+					"state": "succeeded"
+				},
+				{
+					"id": "task-3",
+					"key": "schedule:schedule-a:4",
+					"definition": "work@1",
+					"state": "succeeded"
+				}
+			]
+		},
+		"scenarios": [
+			{
+				"name": "restart: pending slot resumes, goal links reconcile",
+				"cells": [
+					{
+						"code": "import json as _json\nprint(_json.dumps(await schedules.tick(), sort_keys=True))",
+						"status": "ok",
+						"stdout": "{\"failed\": [], \"fired\": [{\"schedule_id\": \"schedule-a\", \"skipped\": 1, \"slot\": 4, \"task_id\": \"task-3\"}]}\n",
+						"result": "",
+						"error": null
+					},
+					{
+						"code": "import json as _json\nprint(_json.dumps(await goals.list(), sort_keys=True))",
+						"status": "ok",
+						"stdout": "[{\"created_at\": 1759999995000, \"id\": \"goal-a\", \"max_tasks\": null, \"owner\": null, \"required_checks\": [\"pass-check@1\"], \"state\": \"active\", \"task_ids\": [\"task-1\", \"task-2\", \"task-3\"], \"title\": \"Recover\", \"verification\": null, \"verify_rounds\": 1}]\n",
+						"result": "",
+						"error": null
+					},
+					{
+						"code": "import json as _json\nprint(_json.dumps(await schedules.list(), sort_keys=True))",
+						"status": "ok",
+						"stdout": "[{\"created_at\": 1759999995000, \"definition\": \"work@1\", \"every_ms\": 1000, \"failures\": 0, \"goal_id\": \"goal-a\", \"id\": \"schedule-a\", \"input\": {\"n\": 1}, \"last_failure\": null, \"last_fired_at\": 1760000000000, \"last_skipped\": 1, \"last_slot\": 4, \"last_task_id\": \"task-3\", \"max_runs\": null, \"model\": null, \"owner\": null, \"pending_slot\": null, \"runs\": 3, \"skipped_total\": 1, \"start_at\": 1759999995000, \"state\": \"active\"}]\n",
+						"result": "",
+						"error": null
+					}
+				],
+				"state": {
+					"document": {
+						"schedules": [
+							{
+								"id": "schedule-a",
+								"definition": "work@1",
+								"input": {
+									"n": 1
+								},
+								"every_ms": 1000,
+								"start_at": 1759999995000,
+								"max_runs": null,
+								"goal_id": "goal-a",
+								"model": null,
+								"owner": null,
+								"state": "active",
+								"created_at": 1759999995000,
+								"runs": 3,
+								"last_slot": 4,
+								"pending_slot": null,
+								"last_task_id": "task-3",
+								"last_fired_at": 1760000000000,
+								"last_skipped": 1,
+								"skipped_total": 1,
+								"last_failure": null,
+								"failures": 0
+							}
+						],
+						"goals": [
+							{
+								"id": "goal-a",
+								"title": "Recover",
+								"required_checks": [
+									"pass-check@1"
+								],
+								"max_tasks": null,
+								"owner": null,
+								"state": "active",
+								"created_at": 1759999995000,
+								"task_ids": [
+									"task-1",
+									"task-2",
+									"task-3"
+								],
+								"verify_rounds": 1,
+								"verification": null
+							}
+						],
+						"version": 1
+					},
+					"log": [
+						[
+							"tasks"
+						],
+						[
+							"spawn",
+							{
+								"definition": "work@1",
+								"input": {
+									"n": 1
+								},
+								"key": "schedule:schedule-a:4"
+							},
+							null
+						]
+					]
+				}
+			}
+		]
+	}
+}

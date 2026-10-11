@@ -1,0 +1,10 @@
+[package]
+name = "inventory"
+version = "0.1.0"
+description = "Feature inventory of the TypeScript packages the Rust rewrite must match (inventory.tsv) and its staleness test"
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true

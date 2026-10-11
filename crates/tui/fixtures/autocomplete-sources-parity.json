@@ -1,0 +1,1350 @@
+{
+ "source": "oh-my-pi prompt/emoji-autocomplete.ts, prompt/github-ref-autocomplete.ts",
+ "emoji": [
+  {
+   "input": ":",
+   "result": null,
+   "applied": null
+  },
+  {
+   "input": "note:",
+   "result": null,
+   "applied": null
+  },
+  {
+   "input": ":joy",
+   "result": {
+    "items": [
+     {
+      "value": "😂",
+      "label": "😂  :joy:"
+     },
+     {
+      "value": "😹",
+      "label": "😹  :joy_cat:"
+     },
+     {
+      "value": "🕹",
+      "label": "🕹  :joystick:"
+     }
+    ],
+    "prefix": ":joy"
+   },
+   "applied": {
+    "lines": [
+     "😂|after"
+    ],
+    "cursorCol": 4
+   }
+  },
+  {
+   "input": "hi :sm",
+   "result": {
+    "items": [
+     {
+      "value": "🛩",
+      "label": "🛩  :small_airplane:"
+     },
+     {
+      "value": "🔹",
+      "label": "🔹  :small_blue_diamond:"
+     },
+     {
+      "value": "🔸",
+      "label": "🔸  :small_orange_diamond:"
+     },
+     {
+      "value": "🔺",
+      "label": "🔺  :small_red_triangle:"
+     },
+     {
+      "value": "🔻",
+      "label": "🔻  :small_red_triangle_down:"
+     },
+     {
+      "value": "🤦",
+      "label": "🤦  :smh:"
+     },
+     {
+      "value": "😄",
+      "label": "😄  :smile:"
+     },
+     {
+      "value": "😸",
+      "label": "😸  :smile_cat:"
+     },
+     {
+      "value": "😃",
+      "label": "😃  :smiley:"
+     },
+     {
+      "value": "😺",
+      "label": "😺  :smiley_cat:"
+     },
+     {
+      "value": "🥰",
+      "label": "🥰  :smiling_face_with_three_hearts:"
+     },
+     {
+      "value": "😈",
+      "label": "😈  :smiling_imp:"
+     }
+    ],
+    "prefix": ":sm"
+   },
+   "applied": {
+    "lines": [
+     "hi 🛩|after"
+    ],
+    "cursorCol": 7
+   }
+  },
+  {
+   "input": "http://example",
+   "result": null,
+   "applied": null
+  },
+  {
+   "input": "foo:bar",
+   "result": null,
+   "applied": null
+  },
+  {
+   "input": ":zzzzzz",
+   "result": null,
+   "applied": null
+  },
+  {
+   "input": ":jor",
+   "result": null,
+   "applied": null
+  },
+  {
+   "input": ":s",
+   "result": {
+    "items": [
+     {
+      "value": "🈂️",
+      "label": "🈂️  :sa:"
+     },
+     {
+      "value": "🧷",
+      "label": "🧷  :safety_pin:"
+     },
+     {
+      "value": "♐",
+      "label": "♐  :sagittarius:"
+     },
+     {
+      "value": "⛵",
+      "label": "⛵  :sailboat:"
+     },
+     {
+      "value": "🍶",
+      "label": "🍶  :sake:"
+     },
+     {
+      "value": "🧂",
+      "label": "🧂  :salt:"
+     },
+     {
+      "value": "👡",
+      "label": "👡  :sandal:"
+     },
+     {
+      "value": "🥪",
+      "label": "🥪  :sandwich:"
+     },
+     {
+      "value": "🎅",
+      "label": "🎅  :santa:"
+     },
+     {
+      "value": "📡",
+      "label": "📡  :satellite:"
+     },
+     {
+      "value": "🦕",
+      "label": "🦕  :sauropod:"
+     },
+     {
+      "value": "🎷",
+      "label": "🎷  :saxophone:"
+     }
+    ],
+    "prefix": ":s"
+   },
+   "applied": {
+    "lines": [
+     "🈂️|after"
+    ],
+    "cursorCol": 7
+   }
+  },
+  {
+   "input": ":D",
+   "result": {
+    "items": [
+     {
+      "value": "😃",
+      "label": "😃  :D"
+     },
+     {
+      "value": "🗡",
+      "label": "🗡  :dagger:"
+     },
+     {
+      "value": "💃",
+      "label": "💃  :dancer:"
+     },
+     {
+      "value": "👯‍♂️",
+      "label": "👯‍♂️  :dancing_men:"
+     },
+     {
+      "value": "👯",
+      "label": "👯  :dancing_women:"
+     },
+     {
+      "value": "🍡",
+      "label": "🍡  :dango:"
+     },
+     {
+      "value": "🕶",
+      "label": "🕶  :dark_sunglasses:"
+     },
+     {
+      "value": "🎯",
+      "label": "🎯  :dart:"
+     },
+     {
+      "value": "💨",
+      "label": "💨  :dash:"
+     },
+     {
+      "value": "📅",
+      "label": "📅  :date:"
+     },
+     {
+      "value": "💭",
+      "label": "💭  :daydream:"
+     },
+     {
+      "value": "💀",
+      "label": "💀  :dead:"
+     }
+    ],
+    "prefix": ":D"
+   },
+   "applied": {
+    "lines": [
+     "😃|after"
+    ],
+    "cursorCol": 4
+   }
+  },
+  {
+   "input": ":-",
+   "result": {
+    "items": [
+     {
+      "value": "🙂",
+      "label": "🙂  :-)"
+     },
+     {
+      "value": "🙁",
+      "label": "🙁  :-("
+     },
+     {
+      "value": "😃",
+      "label": "😃  :-D"
+     },
+     {
+      "value": "😛",
+      "label": "😛  :-P"
+     },
+     {
+      "value": "😛",
+      "label": "😛  :-p"
+     },
+     {
+      "value": "😮",
+      "label": "😮  :-O"
+     },
+     {
+      "value": "😮",
+      "label": "😮  :-o"
+     },
+     {
+      "value": "😐",
+      "label": "😐  :-|"
+     },
+     {
+      "value": "😕",
+      "label": "😕  :-/"
+     },
+     {
+      "value": "😕",
+      "label": "😕  :-\\"
+     },
+     {
+      "value": "😘",
+      "label": "😘  :-*"
+     },
+     {
+      "value": "👎",
+      "label": "👎  :-1:"
+     }
+    ],
+    "prefix": ":-"
+   },
+   "applied": {
+    "lines": [
+     "🙂|after"
+    ],
+    "cursorCol": 4
+   }
+  },
+  {
+   "input": ":p",
+   "result": {
+    "items": [
+     {
+      "value": "😛",
+      "label": "😛  :P"
+     },
+     {
+      "value": "😛",
+      "label": "😛  :p"
+     },
+     {
+      "value": "📦",
+      "label": "📦  :package:"
+     },
+     {
+      "value": "📄",
+      "label": "📄  :page_facing_up:"
+     },
+     {
+      "value": "📃",
+      "label": "📃  :page_with_curl:"
+     },
+     {
+      "value": "📟",
+      "label": "📟  :pager:"
+     },
+     {
+      "value": "🖌",
+      "label": "🖌  :paintbrush:"
+     },
+     {
+      "value": "🌴",
+      "label": "🌴  :palm_tree:"
+     },
+     {
+      "value": "🤲",
+      "label": "🤲  :palms_up:"
+     },
+     {
+      "value": "🥞",
+      "label": "🥞  :pancakes:"
+     },
+     {
+      "value": "🐼",
+      "label": "🐼  :panda_face:"
+     },
+     {
+      "value": "📎",
+      "label": "📎  :paperclip:"
+     }
+    ],
+    "prefix": ":p"
+   },
+   "applied": {
+    "lines": [
+     "😛|after"
+    ],
+    "cursorCol": 4
+   }
+  },
+  {
+   "input": ":3",
+   "result": {
+    "items": [
+     {
+      "value": "😺",
+      "label": "😺  :3"
+     },
+     {
+      "value": "🥉",
+      "label": "🥉  :3rd_place_medal:"
+     }
+    ],
+    "prefix": ":3"
+   },
+   "applied": {
+    "lines": [
+     "😺|after"
+    ],
+    "cursorCol": 4
+   }
+  },
+  {
+   "input": "(:tad",
+   "result": {
+    "items": [
+     {
+      "value": "🎉",
+      "label": "🎉  :tada:"
+     }
+    ],
+    "prefix": ":tad"
+   },
+   "applied": {
+    "lines": [
+     "(🎉|after"
+    ],
+    "cursorCol": 5
+   }
+  },
+  {
+   "input": "[:+",
+   "result": {
+    "items": [
+     {
+      "value": "👍",
+      "label": "👍  :+1:"
+     }
+    ],
+    "prefix": ":+"
+   },
+   "applied": {
+    "lines": [
+     "[👍|after"
+    ],
+    "cursorCol": 5
+   }
+  },
+  {
+   "input": "{:-1",
+   "result": {
+    "items": [
+     {
+      "value": "👎",
+      "label": "👎  :-1:"
+     }
+    ],
+    "prefix": ":-1"
+   },
+   "applied": {
+    "lines": [
+     "{👎|after"
+    ],
+    "cursorCol": 5
+   }
+  },
+  {
+   "input": "> :thumbs",
+   "result": {
+    "items": [
+     {
+      "value": "👎",
+      "label": "👎  :thumbsdown:"
+     },
+     {
+      "value": "👍",
+      "label": "👍  :thumbsup:"
+     }
+    ],
+    "prefix": ":thumbs"
+   },
+   "applied": {
+    "lines": [
+     "> 👎|after"
+    ],
+    "cursorCol": 6
+   }
+  },
+  {
+   "input": "\t:fire",
+   "result": {
+    "items": [
+     {
+      "value": "🔥",
+      "label": "🔥  :fire:"
+     },
+     {
+      "value": "🚒",
+      "label": "🚒  :fire_engine:"
+     },
+     {
+      "value": "🧯",
+      "label": "🧯  :fire_extinguisher:"
+     },
+     {
+      "value": "🧨",
+      "label": "🧨  :firecracker:"
+     },
+     {
+      "value": "🎆",
+      "label": "🎆  :fireworks:"
+     }
+    ],
+    "prefix": ":fire"
+   },
+   "applied": {
+    "lines": [
+     "\t🔥|after"
+    ],
+    "cursorCol": 5
+   }
+  },
+  {
+   "input": "x\n:ro",
+   "result": {
+    "items": [
+     {
+      "value": "🤖",
+      "label": "🤖  :robot:"
+     },
+     {
+      "value": "🚀",
+      "label": "🚀  :rocket:"
+     },
+     {
+      "value": "🤘",
+      "label": "🤘  :rockon:"
+     },
+     {
+      "value": "🤣",
+      "label": "🤣  :rofl:"
+     },
+     {
+      "value": "🙄",
+      "label": "🙄  :roll_eyes:"
+     },
+     {
+      "value": "🎢",
+      "label": "🎢  :roller_coaster:"
+     },
+     {
+      "value": "🐓",
+      "label": "🐓  :rooster:"
+     },
+     {
+      "value": "🌹",
+      "label": "🌹  :rose:"
+     },
+     {
+      "value": "🏵",
+      "label": "🏵  :rosette:"
+     },
+     {
+      "value": "🚨",
+      "label": "🚨  :rotating_light:"
+     },
+     {
+      "value": "📍",
+      "label": "📍  :round_pushpin:"
+     },
+     {
+      "value": "🚣",
+      "label": "🚣  :rowing_man:"
+     }
+    ],
+    "prefix": ":ro"
+   },
+   "applied": {
+    "lines": [
+     "x\n🤖|after"
+    ],
+    "cursorCol": 6
+   }
+  },
+  {
+   "input": ":ROCKET",
+   "result": {
+    "items": [
+     {
+      "value": "🚀",
+      "label": "🚀  :rocket:"
+     }
+    ],
+    "prefix": ":ROCKET"
+   },
+   "applied": {
+    "lines": [
+     "🚀|after"
+    ],
+    "cursorCol": 4
+   }
+  },
+  {
+   "input": ":1",
+   "result": {
+    "items": [
+     {
+      "value": "💯",
+      "label": "💯  :100:"
+     },
+     {
+      "value": "🔢",
+      "label": "🔢  :1234:"
+     },
+     {
+      "value": "🥇",
+      "label": "🥇  :1st_place_medal:"
+     }
+    ],
+    "prefix": ":1"
+   },
+   "applied": {
+    "lines": [
+     "💯|after"
+    ],
+    "cursorCol": 4
+   }
+  },
+  {
+   "input": ":o",
+   "result": {
+    "items": [
+     {
+      "value": "😮",
+      "label": "😮  :O"
+     },
+     {
+      "value": "😮",
+      "label": "😮  :o"
+     },
+     {
+      "value": "⭕",
+      "label": "⭕  :o:"
+     },
+     {
+      "value": "🅾️",
+      "label": "🅾️  :o2:"
+     },
+     {
+      "value": "🌊",
+      "label": "🌊  :ocean:"
+     },
+     {
+      "value": "🐙",
+      "label": "🐙  :octopus:"
+     },
+     {
+      "value": "🍢",
+      "label": "🍢  :oden:"
+     },
+     {
+      "value": "🏢",
+      "label": "🏢  :office:"
+     },
+     {
+      "value": "🛢",
+      "label": "🛢  :oil_drum:"
+     },
+     {
+      "value": "🆗",
+      "label": "🆗  :ok:"
+     },
+     {
+      "value": "👌",
+      "label": "👌  :ok_hand:"
+     },
+     {
+      "value": "🙆‍♂️",
+      "label": "🙆‍♂️  :ok_man:"
+     }
+    ],
+    "prefix": ":o"
+   },
+   "applied": {
+    "lines": [
+     "😮|after"
+    ],
+    "cursorCol": 4
+   }
+  },
+  {
+   "input": ":'",
+   "result": null,
+   "applied": null
+  },
+  {
+   "input": "é :heart",
+   "result": {
+    "items": [
+     {
+      "value": "❤️",
+      "label": "❤️  :heart:"
+     },
+     {
+      "value": "💟",
+      "label": "💟  :heart_decoration:"
+     },
+     {
+      "value": "😍",
+      "label": "😍  :heart_eyes:"
+     },
+     {
+      "value": "😻",
+      "label": "😻  :heart_eyes_cat:"
+     },
+     {
+      "value": "💓",
+      "label": "💓  :heartbeat:"
+     },
+     {
+      "value": "💗",
+      "label": "💗  :heartpulse:"
+     },
+     {
+      "value": "♥️",
+      "label": "♥️  :hearts:"
+     }
+    ],
+    "prefix": ":heart"
+   },
+   "applied": {
+    "lines": [
+     "é ❤️|after"
+    ],
+    "cursorCol": 9
+   }
+  },
+  {
+   "input": ":a",
+   "result": {
+    "items": [
+     {
+      "value": "🅰️",
+      "label": "🅰️  :a:"
+     },
+     {
+      "value": "🆎",
+      "label": "🆎  :ab:"
+     },
+     {
+      "value": "🧮",
+      "label": "🧮  :abacus:"
+     },
+     {
+      "value": "🔤",
+      "label": "🔤  :abc:"
+     },
+     {
+      "value": "🔡",
+      "label": "🔡  :abcd:"
+     },
+     {
+      "value": "🉑",
+      "label": "🉑  :accept:"
+     },
+     {
+      "value": "🧑",
+      "label": "🧑  :adult:"
+     },
+     {
+      "value": "🚡",
+      "label": "🚡  :aerial_tramway:"
+     },
+     {
+      "value": "🚶",
+      "label": "🚶  :afk:"
+     },
+     {
+      "value": "👍",
+      "label": "👍  :agree:"
+     },
+     {
+      "value": "✈️",
+      "label": "✈️  :airplane:"
+     },
+     {
+      "value": "⏰",
+      "label": "⏰  :alarm_clock:"
+     }
+    ],
+    "prefix": ":a"
+   },
+   "applied": {
+    "lines": [
+     "🅰️|after"
+    ],
+    "cursorCol": 7
+   }
+  },
+  {
+   "input": ":b",
+   "result": {
+    "items": [
+     {
+      "value": "🅱️",
+      "label": "🅱️  :b:"
+     },
+     {
+      "value": "👶",
+      "label": "👶  :baby:"
+     },
+     {
+      "value": "🍼",
+      "label": "🍼  :baby_bottle:"
+     },
+     {
+      "value": "🐤",
+      "label": "🐤  :baby_chick:"
+     },
+     {
+      "value": "🚼",
+      "label": "🚼  :baby_symbol:"
+     },
+     {
+      "value": "🔙",
+      "label": "🔙  :back:"
+     },
+     {
+      "value": "🥓",
+      "label": "🥓  :bacon:"
+     },
+     {
+      "value": "🦡",
+      "label": "🦡  :badger:"
+     },
+     {
+      "value": "🏸",
+      "label": "🏸  :badminton:"
+     },
+     {
+      "value": "😍",
+      "label": "😍  :bae:"
+     },
+     {
+      "value": "🥯",
+      "label": "🥯  :bagel:"
+     },
+     {
+      "value": "🛄",
+      "label": "🛄  :baggage_claim:"
+     }
+    ],
+    "prefix": ":b"
+   },
+   "applied": {
+    "lines": [
+     "🅱️|after"
+    ],
+    "cursorCol": 7
+   }
+  }
+ ],
+ "inline": [
+  {
+   "input": ":joy",
+   "result": null
+  },
+  {
+   "input": "hello",
+   "result": null
+  },
+  {
+   "input": ":joy:",
+   "result": {
+    "replaceLen": 5,
+    "insert": "😂"
+   }
+  },
+  {
+   "input": "hi :tada:",
+   "result": {
+    "replaceLen": 6,
+    "insert": "🎉"
+   }
+  },
+  {
+   "input": ":notrealemoji:",
+   "result": null
+  },
+  {
+   "input": "foo:joy:",
+   "result": null
+  },
+  {
+   "input": ":jordan:",
+   "result": null
+  },
+  {
+   "input": "::",
+   "result": null
+  },
+  {
+   "input": ":JOY:",
+   "result": {
+    "replaceLen": 5,
+    "insert": "😂"
+   }
+  },
+  {
+   "input": "(:+1:",
+   "result": {
+    "replaceLen": 4,
+    "insert": "👍"
+   }
+  },
+  {
+   "input": ":) ",
+   "result": {
+    "replaceLen": 3,
+    "insert": "🙂 "
+   }
+  },
+  {
+   "input": "x :-) ",
+   "result": {
+    "replaceLen": 4,
+    "insert": "🙂 "
+   }
+  },
+  {
+   "input": "a;) ",
+   "result": null
+  },
+  {
+   "input": "url:) ",
+   "result": null
+  },
+  {
+   "input": ":D\t",
+   "result": {
+    "replaceLen": 3,
+    "insert": "😃\t"
+   }
+  },
+  {
+   "input": "<3 ",
+   "result": {
+    "replaceLen": 3,
+    "insert": "❤️ "
+   }
+  },
+  {
+   "input": "</3 ",
+   "result": {
+    "replaceLen": 4,
+    "insert": "💔 "
+   }
+  },
+  {
+   "input": ":-\\ ",
+   "result": {
+    "replaceLen": 4,
+    "insert": "😕 "
+   }
+  },
+  {
+   "input": "B) ",
+   "result": {
+    "replaceLen": 3,
+    "insert": "😎 "
+   }
+  },
+  {
+   "input": ":) x",
+   "result": null
+  },
+  {
+   "input": ":'( ",
+   "result": {
+    "replaceLen": 4,
+    "insert": "😢 "
+   }
+  },
+  {
+   "input": "o.O\n",
+   "result": {
+    "replaceLen": 4,
+    "insert": "😳\n"
+   }
+  },
+  {
+   "input": ":",
+   "result": null
+  },
+  {
+   "input": "",
+   "result": null
+  }
+ ],
+ "expand": [
+  {
+   "input": "hi :)",
+   "output": "hi 🙂"
+  },
+  {
+   "input": "x :-) y",
+   "output": "x 🙂 y"
+  },
+  {
+   "input": "a:)",
+   "output": "a:)"
+  },
+  {
+   "input": ":) :( :D",
+   "output": "🙂 🙁 😃"
+  },
+  {
+   "input": "no emoticons",
+   "output": "no emoticons"
+  },
+  {
+   "input": "<3",
+   "output": "❤️"
+  },
+  {
+   "input": "end ;)",
+   "output": "end 😉"
+  },
+  {
+   "input": ":-) :)",
+   "output": "🙂 🙂"
+  },
+  {
+   "input": "(:) [;)",
+   "output": "(🙂 [😉"
+  },
+  {
+   "input": "x",
+   "output": "x"
+  },
+  {
+   "input": "8) B)",
+   "output": "😎 😎"
+  },
+  {
+   "input": ":)x",
+   "output": ":)x"
+  }
+ ],
+ "github": [
+  {
+   "input": "#3164",
+   "context": {
+    "prefix": "#3164",
+    "qualifier": null,
+    "number": "3164"
+   },
+   "suggestions": {
+    "items": [
+     {
+      "value": "pr://3164",
+      "label": "PR #3164",
+      "description": "GitHub pull request"
+     },
+     {
+      "value": "issue://3164",
+      "label": "Issue #3164",
+      "description": "GitHub issue"
+     }
+    ],
+    "prefix": "#3164"
+   }
+  },
+  {
+   "input": "see #12",
+   "context": {
+    "prefix": "#12",
+    "qualifier": null,
+    "number": "12"
+   },
+   "suggestions": {
+    "items": [
+     {
+      "value": "pr://12",
+      "label": "PR #12",
+      "description": "GitHub pull request"
+     },
+     {
+      "value": "issue://12",
+      "label": "Issue #12",
+      "description": "GitHub issue"
+     }
+    ],
+    "prefix": "#12"
+   }
+  },
+  {
+   "input": "pr #3164",
+   "context": {
+    "prefix": "pr #3164",
+    "qualifier": "pr",
+    "number": "3164"
+   },
+   "suggestions": {
+    "items": [
+     {
+      "value": "pr://3164",
+      "label": "PR #3164",
+      "description": "GitHub pull request"
+     }
+    ],
+    "prefix": "pr #3164"
+   }
+  },
+  {
+   "input": "PULL #7",
+   "context": {
+    "prefix": "PULL #7",
+    "qualifier": "pr",
+    "number": "7"
+   },
+   "suggestions": {
+    "items": [
+     {
+      "value": "pr://7",
+      "label": "PR #7",
+      "description": "GitHub pull request"
+     }
+    ],
+    "prefix": "PULL #7"
+   }
+  },
+  {
+   "input": "issue #42",
+   "context": {
+    "prefix": "issue #42",
+    "qualifier": "issue",
+    "number": "42"
+   },
+   "suggestions": {
+    "items": [
+     {
+      "value": "issue://42",
+      "label": "Issue #42",
+      "description": "GitHub issue"
+     }
+    ],
+    "prefix": "issue #42"
+   }
+  },
+  {
+   "input": "Issue\t#9",
+   "context": {
+    "prefix": "Issue\t#9",
+    "qualifier": "issue",
+    "number": "9"
+   },
+   "suggestions": {
+    "items": [
+     {
+      "value": "issue://9",
+      "label": "Issue #9",
+      "description": "GitHub issue"
+     }
+    ],
+    "prefix": "Issue\t#9"
+   }
+  },
+  {
+   "input": "foo#12",
+   "context": null,
+   "suggestions": null
+  },
+  {
+   "input": "C#12",
+   "context": null,
+   "suggestions": null
+  },
+  {
+   "input": "owner/repo#5",
+   "context": null,
+   "suggestions": null
+  },
+  {
+   "input": "#0",
+   "context": null,
+   "suggestions": null
+  },
+  {
+   "input": "#012",
+   "context": null,
+   "suggestions": null
+  },
+  {
+   "input": "(#5",
+   "context": {
+    "prefix": "#5",
+    "qualifier": null,
+    "number": "5"
+   },
+   "suggestions": {
+    "items": [
+     {
+      "value": "pr://5",
+      "label": "PR #5",
+      "description": "GitHub pull request"
+     },
+     {
+      "value": "issue://5",
+      "label": "Issue #5",
+      "description": "GitHub issue"
+     }
+    ],
+    "prefix": "#5"
+   }
+  },
+  {
+   "input": "\"#6",
+   "context": {
+    "prefix": "#6",
+    "qualifier": null,
+    "number": "6"
+   },
+   "suggestions": {
+    "items": [
+     {
+      "value": "pr://6",
+      "label": "PR #6",
+      "description": "GitHub pull request"
+     },
+     {
+      "value": "issue://6",
+      "label": "Issue #6",
+      "description": "GitHub issue"
+     }
+    ],
+    "prefix": "#6"
+   }
+  },
+  {
+   "input": "<#7",
+   "context": {
+    "prefix": "#7",
+    "qualifier": null,
+    "number": "7"
+   },
+   "suggestions": {
+    "items": [
+     {
+      "value": "pr://7",
+      "label": "PR #7",
+      "description": "GitHub pull request"
+     },
+     {
+      "value": "issue://7",
+      "label": "Issue #7",
+      "description": "GitHub issue"
+     }
+    ],
+    "prefix": "#7"
+   }
+  },
+  {
+   "input": "=#8",
+   "context": {
+    "prefix": "#8",
+    "qualifier": null,
+    "number": "8"
+   },
+   "suggestions": {
+    "items": [
+     {
+      "value": "pr://8",
+      "label": "PR #8",
+      "description": "GitHub pull request"
+     },
+     {
+      "value": "issue://8",
+      "label": "Issue #8",
+      "description": "GitHub issue"
+     }
+    ],
+    "prefix": "#8"
+   }
+  },
+  {
+   "input": "`#9",
+   "context": {
+    "prefix": "#9",
+    "qualifier": null,
+    "number": "9"
+   },
+   "suggestions": {
+    "items": [
+     {
+      "value": "pr://9",
+      "label": "PR #9",
+      "description": "GitHub pull request"
+     },
+     {
+      "value": "issue://9",
+      "label": "Issue #9",
+      "description": "GitHub issue"
+     }
+    ],
+    "prefix": "#9"
+   }
+  },
+  {
+   "input": "issues #3",
+   "context": {
+    "prefix": "#3",
+    "qualifier": null,
+    "number": "3"
+   },
+   "suggestions": {
+    "items": [
+     {
+      "value": "pr://3",
+      "label": "PR #3",
+      "description": "GitHub pull request"
+     },
+     {
+      "value": "issue://3",
+      "label": "Issue #3",
+      "description": "GitHub issue"
+     }
+    ],
+    "prefix": "#3"
+   }
+  },
+  {
+   "input": "pr#3",
+   "context": null,
+   "suggestions": null
+  },
+  {
+   "input": "#",
+   "context": null,
+   "suggestions": null
+  },
+  {
+   "input": "text #12a",
+   "context": null,
+   "suggestions": null
+  },
+  {
+   "input": "line\n#4",
+   "context": {
+    "prefix": "#4",
+    "qualifier": null,
+    "number": "4"
+   },
+   "suggestions": {
+    "items": [
+     {
+      "value": "pr://4",
+      "label": "PR #4",
+      "description": "GitHub pull request"
+     },
+     {
+      "value": "issue://4",
+      "label": "Issue #4",
+      "description": "GitHub issue"
+     }
+    ],
+    "prefix": "#4"
+   }
+  }
+ ]
+}

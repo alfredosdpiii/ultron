@@ -1,0 +1,10844 @@
+{
+	"cases": [
+		{
+			"input": "\\alpha",
+			"inline": "α",
+			"display": "α"
+		},
+		{
+			"input": "x \\alpha y",
+			"inline": "x α y",
+			"display": "x α y"
+		},
+		{
+			"input": "\\alpha{ab}",
+			"inline": "αab",
+			"display": "αab"
+		},
+		{
+			"input": "\\alpha_{i=1}^{n} x",
+			"inline": "αᵢ₌₁ⁿ x",
+			"display": "αᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\alpha x",
+			"inline": "α x",
+			"display": "α x"
+		},
+		{
+			"input": "\\beta",
+			"inline": "β",
+			"display": "β"
+		},
+		{
+			"input": "x \\beta y",
+			"inline": "x β y",
+			"display": "x β y"
+		},
+		{
+			"input": "\\beta{ab}",
+			"inline": "βab",
+			"display": "βab"
+		},
+		{
+			"input": "\\beta_{i=1}^{n} x",
+			"inline": "βᵢ₌₁ⁿ x",
+			"display": "βᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\beta x",
+			"inline": "β x",
+			"display": "β x"
+		},
+		{
+			"input": "\\gamma",
+			"inline": "γ",
+			"display": "γ"
+		},
+		{
+			"input": "x \\gamma y",
+			"inline": "x γ y",
+			"display": "x γ y"
+		},
+		{
+			"input": "\\gamma{ab}",
+			"inline": "γab",
+			"display": "γab"
+		},
+		{
+			"input": "\\gamma_{i=1}^{n} x",
+			"inline": "γᵢ₌₁ⁿ x",
+			"display": "γᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\gamma x",
+			"inline": "γ x",
+			"display": "γ x"
+		},
+		{
+			"input": "\\delta",
+			"inline": "δ",
+			"display": "δ"
+		},
+		{
+			"input": "x \\delta y",
+			"inline": "x δ y",
+			"display": "x δ y"
+		},
+		{
+			"input": "\\delta{ab}",
+			"inline": "δab",
+			"display": "δab"
+		},
+		{
+			"input": "\\delta_{i=1}^{n} x",
+			"inline": "δᵢ₌₁ⁿ x",
+			"display": "δᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\delta x",
+			"inline": "δ x",
+			"display": "δ x"
+		},
+		{
+			"input": "\\epsilon",
+			"inline": "ϵ",
+			"display": "ϵ"
+		},
+		{
+			"input": "x \\epsilon y",
+			"inline": "x ϵ y",
+			"display": "x ϵ y"
+		},
+		{
+			"input": "\\epsilon{ab}",
+			"inline": "ϵab",
+			"display": "ϵab"
+		},
+		{
+			"input": "\\epsilon_{i=1}^{n} x",
+			"inline": "ϵᵢ₌₁ⁿ x",
+			"display": "ϵᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\epsilon x",
+			"inline": "ϵ x",
+			"display": "ϵ x"
+		},
+		{
+			"input": "\\varepsilon",
+			"inline": "ε",
+			"display": "ε"
+		},
+		{
+			"input": "x \\varepsilon y",
+			"inline": "x ε y",
+			"display": "x ε y"
+		},
+		{
+			"input": "\\varepsilon{ab}",
+			"inline": "εab",
+			"display": "εab"
+		},
+		{
+			"input": "\\varepsilon_{i=1}^{n} x",
+			"inline": "εᵢ₌₁ⁿ x",
+			"display": "εᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\varepsilon x",
+			"inline": "ε x",
+			"display": "ε x"
+		},
+		{
+			"input": "\\zeta",
+			"inline": "ζ",
+			"display": "ζ"
+		},
+		{
+			"input": "x \\zeta y",
+			"inline": "x ζ y",
+			"display": "x ζ y"
+		},
+		{
+			"input": "\\zeta{ab}",
+			"inline": "ζab",
+			"display": "ζab"
+		},
+		{
+			"input": "\\zeta_{i=1}^{n} x",
+			"inline": "ζᵢ₌₁ⁿ x",
+			"display": "ζᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\zeta x",
+			"inline": "ζ x",
+			"display": "ζ x"
+		},
+		{
+			"input": "\\eta",
+			"inline": "η",
+			"display": "η"
+		},
+		{
+			"input": "x \\eta y",
+			"inline": "x η y",
+			"display": "x η y"
+		},
+		{
+			"input": "\\eta{ab}",
+			"inline": "ηab",
+			"display": "ηab"
+		},
+		{
+			"input": "\\eta_{i=1}^{n} x",
+			"inline": "ηᵢ₌₁ⁿ x",
+			"display": "ηᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\eta x",
+			"inline": "η x",
+			"display": "η x"
+		},
+		{
+			"input": "\\theta",
+			"inline": "θ",
+			"display": "θ"
+		},
+		{
+			"input": "x \\theta y",
+			"inline": "x θ y",
+			"display": "x θ y"
+		},
+		{
+			"input": "\\theta{ab}",
+			"inline": "θab",
+			"display": "θab"
+		},
+		{
+			"input": "\\theta_{i=1}^{n} x",
+			"inline": "θᵢ₌₁ⁿ x",
+			"display": "θᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\theta x",
+			"inline": "θ x",
+			"display": "θ x"
+		},
+		{
+			"input": "\\vartheta",
+			"inline": "ϑ",
+			"display": "ϑ"
+		},
+		{
+			"input": "x \\vartheta y",
+			"inline": "x ϑ y",
+			"display": "x ϑ y"
+		},
+		{
+			"input": "\\vartheta{ab}",
+			"inline": "ϑab",
+			"display": "ϑab"
+		},
+		{
+			"input": "\\vartheta_{i=1}^{n} x",
+			"inline": "ϑᵢ₌₁ⁿ x",
+			"display": "ϑᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\vartheta x",
+			"inline": "ϑ x",
+			"display": "ϑ x"
+		},
+		{
+			"input": "\\iota",
+			"inline": "ι",
+			"display": "ι"
+		},
+		{
+			"input": "x \\iota y",
+			"inline": "x ι y",
+			"display": "x ι y"
+		},
+		{
+			"input": "\\iota{ab}",
+			"inline": "ιab",
+			"display": "ιab"
+		},
+		{
+			"input": "\\iota_{i=1}^{n} x",
+			"inline": "ιᵢ₌₁ⁿ x",
+			"display": "ιᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\iota x",
+			"inline": "ι x",
+			"display": "ι x"
+		},
+		{
+			"input": "\\kappa",
+			"inline": "κ",
+			"display": "κ"
+		},
+		{
+			"input": "x \\kappa y",
+			"inline": "x κ y",
+			"display": "x κ y"
+		},
+		{
+			"input": "\\kappa{ab}",
+			"inline": "κab",
+			"display": "κab"
+		},
+		{
+			"input": "\\kappa_{i=1}^{n} x",
+			"inline": "κᵢ₌₁ⁿ x",
+			"display": "κᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\kappa x",
+			"inline": "κ x",
+			"display": "κ x"
+		},
+		{
+			"input": "\\varkappa",
+			"inline": "ϰ",
+			"display": "ϰ"
+		},
+		{
+			"input": "x \\varkappa y",
+			"inline": "x ϰ y",
+			"display": "x ϰ y"
+		},
+		{
+			"input": "\\varkappa{ab}",
+			"inline": "ϰab",
+			"display": "ϰab"
+		},
+		{
+			"input": "\\varkappa_{i=1}^{n} x",
+			"inline": "ϰᵢ₌₁ⁿ x",
+			"display": "ϰᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\varkappa x",
+			"inline": "ϰ x",
+			"display": "ϰ x"
+		},
+		{
+			"input": "\\lambda",
+			"inline": "λ",
+			"display": "λ"
+		},
+		{
+			"input": "x \\lambda y",
+			"inline": "x λ y",
+			"display": "x λ y"
+		},
+		{
+			"input": "\\lambda{ab}",
+			"inline": "λab",
+			"display": "λab"
+		},
+		{
+			"input": "\\lambda_{i=1}^{n} x",
+			"inline": "λᵢ₌₁ⁿ x",
+			"display": "λᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\lambda x",
+			"inline": "λ x",
+			"display": "λ x"
+		},
+		{
+			"input": "\\mu",
+			"inline": "μ",
+			"display": "μ"
+		},
+		{
+			"input": "x \\mu y",
+			"inline": "x μ y",
+			"display": "x μ y"
+		},
+		{
+			"input": "\\mu{ab}",
+			"inline": "μab",
+			"display": "μab"
+		},
+		{
+			"input": "\\mu_{i=1}^{n} x",
+			"inline": "μᵢ₌₁ⁿ x",
+			"display": "μᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\mu x",
+			"inline": "μ x",
+			"display": "μ x"
+		},
+		{
+			"input": "\\nu",
+			"inline": "ν",
+			"display": "ν"
+		},
+		{
+			"input": "x \\nu y",
+			"inline": "x ν y",
+			"display": "x ν y"
+		},
+		{
+			"input": "\\nu{ab}",
+			"inline": "νab",
+			"display": "νab"
+		},
+		{
+			"input": "\\nu_{i=1}^{n} x",
+			"inline": "νᵢ₌₁ⁿ x",
+			"display": "νᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\nu x",
+			"inline": "ν x",
+			"display": "ν x"
+		},
+		{
+			"input": "\\xi",
+			"inline": "ξ",
+			"display": "ξ"
+		},
+		{
+			"input": "x \\xi y",
+			"inline": "x ξ y",
+			"display": "x ξ y"
+		},
+		{
+			"input": "\\xi{ab}",
+			"inline": "ξab",
+			"display": "ξab"
+		},
+		{
+			"input": "\\xi_{i=1}^{n} x",
+			"inline": "ξᵢ₌₁ⁿ x",
+			"display": "ξᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\xi x",
+			"inline": "ξ x",
+			"display": "ξ x"
+		},
+		{
+			"input": "\\pi",
+			"inline": "π",
+			"display": "π"
+		},
+		{
+			"input": "x \\pi y",
+			"inline": "x π y",
+			"display": "x π y"
+		},
+		{
+			"input": "\\pi{ab}",
+			"inline": "πab",
+			"display": "πab"
+		},
+		{
+			"input": "\\pi_{i=1}^{n} x",
+			"inline": "πᵢ₌₁ⁿ x",
+			"display": "πᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\pi x",
+			"inline": "π x",
+			"display": "π x"
+		},
+		{
+			"input": "\\varpi",
+			"inline": "ϖ",
+			"display": "ϖ"
+		},
+		{
+			"input": "x \\varpi y",
+			"inline": "x ϖ y",
+			"display": "x ϖ y"
+		},
+		{
+			"input": "\\varpi{ab}",
+			"inline": "ϖab",
+			"display": "ϖab"
+		},
+		{
+			"input": "\\varpi_{i=1}^{n} x",
+			"inline": "ϖᵢ₌₁ⁿ x",
+			"display": "ϖᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\varpi x",
+			"inline": "ϖ x",
+			"display": "ϖ x"
+		},
+		{
+			"input": "\\rho",
+			"inline": "ρ",
+			"display": "ρ"
+		},
+		{
+			"input": "x \\rho y",
+			"inline": "x ρ y",
+			"display": "x ρ y"
+		},
+		{
+			"input": "\\rho{ab}",
+			"inline": "ρab",
+			"display": "ρab"
+		},
+		{
+			"input": "\\rho_{i=1}^{n} x",
+			"inline": "ρᵢ₌₁ⁿ x",
+			"display": "ρᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\rho x",
+			"inline": "ρ x",
+			"display": "ρ x"
+		},
+		{
+			"input": "\\varrho",
+			"inline": "ϱ",
+			"display": "ϱ"
+		},
+		{
+			"input": "x \\varrho y",
+			"inline": "x ϱ y",
+			"display": "x ϱ y"
+		},
+		{
+			"input": "\\varrho{ab}",
+			"inline": "ϱab",
+			"display": "ϱab"
+		},
+		{
+			"input": "\\varrho_{i=1}^{n} x",
+			"inline": "ϱᵢ₌₁ⁿ x",
+			"display": "ϱᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\varrho x",
+			"inline": "ϱ x",
+			"display": "ϱ x"
+		},
+		{
+			"input": "\\sigma",
+			"inline": "σ",
+			"display": "σ"
+		},
+		{
+			"input": "x \\sigma y",
+			"inline": "x σ y",
+			"display": "x σ y"
+		},
+		{
+			"input": "\\sigma{ab}",
+			"inline": "σab",
+			"display": "σab"
+		},
+		{
+			"input": "\\sigma_{i=1}^{n} x",
+			"inline": "σᵢ₌₁ⁿ x",
+			"display": "σᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\sigma x",
+			"inline": "σ x",
+			"display": "σ x"
+		},
+		{
+			"input": "\\varsigma",
+			"inline": "ς",
+			"display": "ς"
+		},
+		{
+			"input": "x \\varsigma y",
+			"inline": "x ς y",
+			"display": "x ς y"
+		},
+		{
+			"input": "\\varsigma{ab}",
+			"inline": "ςab",
+			"display": "ςab"
+		},
+		{
+			"input": "\\varsigma_{i=1}^{n} x",
+			"inline": "ςᵢ₌₁ⁿ x",
+			"display": "ςᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\varsigma x",
+			"inline": "ς x",
+			"display": "ς x"
+		},
+		{
+			"input": "\\tau",
+			"inline": "τ",
+			"display": "τ"
+		},
+		{
+			"input": "x \\tau y",
+			"inline": "x τ y",
+			"display": "x τ y"
+		},
+		{
+			"input": "\\tau{ab}",
+			"inline": "τab",
+			"display": "τab"
+		},
+		{
+			"input": "\\tau_{i=1}^{n} x",
+			"inline": "τᵢ₌₁ⁿ x",
+			"display": "τᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\tau x",
+			"inline": "τ x",
+			"display": "τ x"
+		},
+		{
+			"input": "\\upsilon",
+			"inline": "υ",
+			"display": "υ"
+		},
+		{
+			"input": "x \\upsilon y",
+			"inline": "x υ y",
+			"display": "x υ y"
+		},
+		{
+			"input": "\\upsilon{ab}",
+			"inline": "υab",
+			"display": "υab"
+		},
+		{
+			"input": "\\upsilon_{i=1}^{n} x",
+			"inline": "υᵢ₌₁ⁿ x",
+			"display": "υᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\upsilon x",
+			"inline": "υ x",
+			"display": "υ x"
+		},
+		{
+			"input": "\\phi",
+			"inline": "ϕ",
+			"display": "ϕ"
+		},
+		{
+			"input": "x \\phi y",
+			"inline": "x ϕ y",
+			"display": "x ϕ y"
+		},
+		{
+			"input": "\\phi{ab}",
+			"inline": "ϕab",
+			"display": "ϕab"
+		},
+		{
+			"input": "\\phi_{i=1}^{n} x",
+			"inline": "ϕᵢ₌₁ⁿ x",
+			"display": "ϕᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\phi x",
+			"inline": "ϕ x",
+			"display": "ϕ x"
+		},
+		{
+			"input": "\\varphi",
+			"inline": "φ",
+			"display": "φ"
+		},
+		{
+			"input": "x \\varphi y",
+			"inline": "x φ y",
+			"display": "x φ y"
+		},
+		{
+			"input": "\\varphi{ab}",
+			"inline": "φab",
+			"display": "φab"
+		},
+		{
+			"input": "\\varphi_{i=1}^{n} x",
+			"inline": "φᵢ₌₁ⁿ x",
+			"display": "φᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\varphi x",
+			"inline": "φ x",
+			"display": "φ x"
+		},
+		{
+			"input": "\\chi",
+			"inline": "χ",
+			"display": "χ"
+		},
+		{
+			"input": "x \\chi y",
+			"inline": "x χ y",
+			"display": "x χ y"
+		},
+		{
+			"input": "\\chi{ab}",
+			"inline": "χab",
+			"display": "χab"
+		},
+		{
+			"input": "\\chi_{i=1}^{n} x",
+			"inline": "χᵢ₌₁ⁿ x",
+			"display": "χᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\chi x",
+			"inline": "χ x",
+			"display": "χ x"
+		},
+		{
+			"input": "\\psi",
+			"inline": "ψ",
+			"display": "ψ"
+		},
+		{
+			"input": "x \\psi y",
+			"inline": "x ψ y",
+			"display": "x ψ y"
+		},
+		{
+			"input": "\\psi{ab}",
+			"inline": "ψab",
+			"display": "ψab"
+		},
+		{
+			"input": "\\psi_{i=1}^{n} x",
+			"inline": "ψᵢ₌₁ⁿ x",
+			"display": "ψᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\psi x",
+			"inline": "ψ x",
+			"display": "ψ x"
+		},
+		{
+			"input": "\\omega",
+			"inline": "ω",
+			"display": "ω"
+		},
+		{
+			"input": "x \\omega y",
+			"inline": "x ω y",
+			"display": "x ω y"
+		},
+		{
+			"input": "\\omega{ab}",
+			"inline": "ωab",
+			"display": "ωab"
+		},
+		{
+			"input": "\\omega_{i=1}^{n} x",
+			"inline": "ωᵢ₌₁ⁿ x",
+			"display": "ωᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\omega x",
+			"inline": "ω x",
+			"display": "ω x"
+		},
+		{
+			"input": "\\Gamma",
+			"inline": "Γ",
+			"display": "Γ"
+		},
+		{
+			"input": "x \\Gamma y",
+			"inline": "x Γ y",
+			"display": "x Γ y"
+		},
+		{
+			"input": "\\Gamma{ab}",
+			"inline": "Γab",
+			"display": "Γab"
+		},
+		{
+			"input": "\\Gamma_{i=1}^{n} x",
+			"inline": "Γᵢ₌₁ⁿ x",
+			"display": "Γᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\Gamma x",
+			"inline": "Γ x",
+			"display": "Γ x"
+		},
+		{
+			"input": "\\Delta",
+			"inline": "Δ",
+			"display": "Δ"
+		},
+		{
+			"input": "x \\Delta y",
+			"inline": "x Δ y",
+			"display": "x Δ y"
+		},
+		{
+			"input": "\\Delta{ab}",
+			"inline": "Δab",
+			"display": "Δab"
+		},
+		{
+			"input": "\\Delta_{i=1}^{n} x",
+			"inline": "Δᵢ₌₁ⁿ x",
+			"display": "Δᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\Delta x",
+			"inline": "Δ x",
+			"display": "Δ x"
+		},
+		{
+			"input": "\\Theta",
+			"inline": "Θ",
+			"display": "Θ"
+		},
+		{
+			"input": "x \\Theta y",
+			"inline": "x Θ y",
+			"display": "x Θ y"
+		},
+		{
+			"input": "\\Theta{ab}",
+			"inline": "Θab",
+			"display": "Θab"
+		},
+		{
+			"input": "\\Theta_{i=1}^{n} x",
+			"inline": "Θᵢ₌₁ⁿ x",
+			"display": "Θᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\Theta x",
+			"inline": "Θ x",
+			"display": "Θ x"
+		},
+		{
+			"input": "\\Lambda",
+			"inline": "Λ",
+			"display": "Λ"
+		},
+		{
+			"input": "x \\Lambda y",
+			"inline": "x Λ y",
+			"display": "x Λ y"
+		},
+		{
+			"input": "\\Lambda{ab}",
+			"inline": "Λab",
+			"display": "Λab"
+		},
+		{
+			"input": "\\Lambda_{i=1}^{n} x",
+			"inline": "Λᵢ₌₁ⁿ x",
+			"display": "Λᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\Lambda x",
+			"inline": "Λ x",
+			"display": "Λ x"
+		},
+		{
+			"input": "\\Xi",
+			"inline": "Ξ",
+			"display": "Ξ"
+		},
+		{
+			"input": "x \\Xi y",
+			"inline": "x Ξ y",
+			"display": "x Ξ y"
+		},
+		{
+			"input": "\\Xi{ab}",
+			"inline": "Ξab",
+			"display": "Ξab"
+		},
+		{
+			"input": "\\Xi_{i=1}^{n} x",
+			"inline": "Ξᵢ₌₁ⁿ x",
+			"display": "Ξᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\Xi x",
+			"inline": "Ξ x",
+			"display": "Ξ x"
+		},
+		{
+			"input": "\\Pi",
+			"inline": "Π",
+			"display": "Π"
+		},
+		{
+			"input": "x \\Pi y",
+			"inline": "x Π y",
+			"display": "x Π y"
+		},
+		{
+			"input": "\\Pi{ab}",
+			"inline": "Πab",
+			"display": "Πab"
+		},
+		{
+			"input": "\\Pi_{i=1}^{n} x",
+			"inline": "Πᵢ₌₁ⁿ x",
+			"display": "Πᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\Pi x",
+			"inline": "Π x",
+			"display": "Π x"
+		},
+		{
+			"input": "\\Sigma",
+			"inline": "Σ",
+			"display": "Σ"
+		},
+		{
+			"input": "x \\Sigma y",
+			"inline": "x Σ y",
+			"display": "x Σ y"
+		},
+		{
+			"input": "\\Sigma{ab}",
+			"inline": "Σab",
+			"display": "Σab"
+		},
+		{
+			"input": "\\Sigma_{i=1}^{n} x",
+			"inline": "Σᵢ₌₁ⁿ x",
+			"display": "Σᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\Sigma x",
+			"inline": "Σ x",
+			"display": "Σ x"
+		},
+		{
+			"input": "\\Upsilon",
+			"inline": "Υ",
+			"display": "Υ"
+		},
+		{
+			"input": "x \\Upsilon y",
+			"inline": "x Υ y",
+			"display": "x Υ y"
+		},
+		{
+			"input": "\\Upsilon{ab}",
+			"inline": "Υab",
+			"display": "Υab"
+		},
+		{
+			"input": "\\Upsilon_{i=1}^{n} x",
+			"inline": "Υᵢ₌₁ⁿ x",
+			"display": "Υᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\Upsilon x",
+			"inline": "Υ x",
+			"display": "Υ x"
+		},
+		{
+			"input": "\\Phi",
+			"inline": "Φ",
+			"display": "Φ"
+		},
+		{
+			"input": "x \\Phi y",
+			"inline": "x Φ y",
+			"display": "x Φ y"
+		},
+		{
+			"input": "\\Phi{ab}",
+			"inline": "Φab",
+			"display": "Φab"
+		},
+		{
+			"input": "\\Phi_{i=1}^{n} x",
+			"inline": "Φᵢ₌₁ⁿ x",
+			"display": "Φᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\Phi x",
+			"inline": "Φ x",
+			"display": "Φ x"
+		},
+		{
+			"input": "\\Psi",
+			"inline": "Ψ",
+			"display": "Ψ"
+		},
+		{
+			"input": "x \\Psi y",
+			"inline": "x Ψ y",
+			"display": "x Ψ y"
+		},
+		{
+			"input": "\\Psi{ab}",
+			"inline": "Ψab",
+			"display": "Ψab"
+		},
+		{
+			"input": "\\Psi_{i=1}^{n} x",
+			"inline": "Ψᵢ₌₁ⁿ x",
+			"display": "Ψᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\Psi x",
+			"inline": "Ψ x",
+			"display": "Ψ x"
+		},
+		{
+			"input": "\\Omega",
+			"inline": "Ω",
+			"display": "Ω"
+		},
+		{
+			"input": "x \\Omega y",
+			"inline": "x Ω y",
+			"display": "x Ω y"
+		},
+		{
+			"input": "\\Omega{ab}",
+			"inline": "Ωab",
+			"display": "Ωab"
+		},
+		{
+			"input": "\\Omega_{i=1}^{n} x",
+			"inline": "Ωᵢ₌₁ⁿ x",
+			"display": "Ωᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\Omega x",
+			"inline": "Ω x",
+			"display": "Ω x"
+		},
+		{
+			"input": "\\pm",
+			"inline": "±",
+			"display": "±"
+		},
+		{
+			"input": "x \\pm y",
+			"inline": "x ± y",
+			"display": "x ± y"
+		},
+		{
+			"input": "\\pm{ab}",
+			"inline": "±ab",
+			"display": "±ab"
+		},
+		{
+			"input": "\\pm_{i=1}^{n} x",
+			"inline": "±ᵢ₌₁ⁿ x",
+			"display": "±ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\pm x",
+			"inline": "± x",
+			"display": "± x"
+		},
+		{
+			"input": "\\mp",
+			"inline": "∓",
+			"display": "∓"
+		},
+		{
+			"input": "x \\mp y",
+			"inline": "x ∓ y",
+			"display": "x ∓ y"
+		},
+		{
+			"input": "\\mp{ab}",
+			"inline": "∓ab",
+			"display": "∓ab"
+		},
+		{
+			"input": "\\mp_{i=1}^{n} x",
+			"inline": "∓ᵢ₌₁ⁿ x",
+			"display": "∓ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\mp x",
+			"inline": "∓ x",
+			"display": "∓ x"
+		},
+		{
+			"input": "\\times",
+			"inline": "×",
+			"display": "×"
+		},
+		{
+			"input": "x \\times y",
+			"inline": "x × y",
+			"display": "x × y"
+		},
+		{
+			"input": "\\times{ab}",
+			"inline": "× ab",
+			"display": "× ab"
+		},
+		{
+			"input": "\\times_{i=1}^{n} x",
+			"inline": "×ᵢ₌₁ⁿ x",
+			"display": "×ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\times x",
+			"inline": "× x",
+			"display": "× x"
+		},
+		{
+			"input": "\\div",
+			"inline": "÷",
+			"display": "÷"
+		},
+		{
+			"input": "x \\div y",
+			"inline": "x ÷ y",
+			"display": "x ÷ y"
+		},
+		{
+			"input": "\\div{ab}",
+			"inline": "÷ab",
+			"display": "÷ab"
+		},
+		{
+			"input": "\\div_{i=1}^{n} x",
+			"inline": "÷ᵢ₌₁ⁿ x",
+			"display": "÷ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\div x",
+			"inline": "÷ x",
+			"display": "÷ x"
+		},
+		{
+			"input": "\\cdot",
+			"inline": "·",
+			"display": "·"
+		},
+		{
+			"input": "x \\cdot y",
+			"inline": "x · y",
+			"display": "x · y"
+		},
+		{
+			"input": "\\cdot{ab}",
+			"inline": "· ab",
+			"display": "· ab"
+		},
+		{
+			"input": "\\cdot_{i=1}^{n} x",
+			"inline": "·ᵢ₌₁ⁿ x",
+			"display": "·ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\cdot x",
+			"inline": "· x",
+			"display": "· x"
+		},
+		{
+			"input": "\\ast",
+			"inline": "∗",
+			"display": "∗"
+		},
+		{
+			"input": "x \\ast y",
+			"inline": "x ∗ y",
+			"display": "x ∗ y"
+		},
+		{
+			"input": "\\ast{ab}",
+			"inline": "∗ab",
+			"display": "∗ab"
+		},
+		{
+			"input": "\\ast_{i=1}^{n} x",
+			"inline": "∗ᵢ₌₁ⁿ x",
+			"display": "∗ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\ast x",
+			"inline": "∗ x",
+			"display": "∗ x"
+		},
+		{
+			"input": "\\star",
+			"inline": "⋆",
+			"display": "⋆"
+		},
+		{
+			"input": "x \\star y",
+			"inline": "x ⋆ y",
+			"display": "x ⋆ y"
+		},
+		{
+			"input": "\\star{ab}",
+			"inline": "⋆ab",
+			"display": "⋆ab"
+		},
+		{
+			"input": "\\star_{i=1}^{n} x",
+			"inline": "⋆ᵢ₌₁ⁿ x",
+			"display": "⋆ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\star x",
+			"inline": "⋆ x",
+			"display": "⋆ x"
+		},
+		{
+			"input": "\\circ",
+			"inline": "∘",
+			"display": "∘"
+		},
+		{
+			"input": "x \\circ y",
+			"inline": "x ∘ y",
+			"display": "x ∘ y"
+		},
+		{
+			"input": "\\circ{ab}",
+			"inline": "∘ab",
+			"display": "∘ab"
+		},
+		{
+			"input": "\\circ_{i=1}^{n} x",
+			"inline": "∘ᵢ₌₁ⁿ x",
+			"display": "∘ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\circ x",
+			"inline": "∘ x",
+			"display": "∘ x"
+		},
+		{
+			"input": "\\bullet",
+			"inline": "•",
+			"display": "•"
+		},
+		{
+			"input": "x \\bullet y",
+			"inline": "x • y",
+			"display": "x • y"
+		},
+		{
+			"input": "\\bullet{ab}",
+			"inline": "•ab",
+			"display": "•ab"
+		},
+		{
+			"input": "\\bullet_{i=1}^{n} x",
+			"inline": "•ᵢ₌₁ⁿ x",
+			"display": "•ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\bullet x",
+			"inline": "• x",
+			"display": "• x"
+		},
+		{
+			"input": "\\oplus",
+			"inline": "⊕",
+			"display": "⊕"
+		},
+		{
+			"input": "x \\oplus y",
+			"inline": "x ⊕ y",
+			"display": "x ⊕ y"
+		},
+		{
+			"input": "\\oplus{ab}",
+			"inline": "⊕ab",
+			"display": "⊕ab"
+		},
+		{
+			"input": "\\oplus_{i=1}^{n} x",
+			"inline": "⊕ᵢ₌₁ⁿ x",
+			"display": "⊕ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\oplus x",
+			"inline": "⊕ x",
+			"display": "⊕ x"
+		},
+		{
+			"input": "\\ominus",
+			"inline": "⊖",
+			"display": "⊖"
+		},
+		{
+			"input": "x \\ominus y",
+			"inline": "x ⊖ y",
+			"display": "x ⊖ y"
+		},
+		{
+			"input": "\\ominus{ab}",
+			"inline": "⊖ab",
+			"display": "⊖ab"
+		},
+		{
+			"input": "\\ominus_{i=1}^{n} x",
+			"inline": "⊖ᵢ₌₁ⁿ x",
+			"display": "⊖ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\ominus x",
+			"inline": "⊖ x",
+			"display": "⊖ x"
+		},
+		{
+			"input": "\\otimes",
+			"inline": "⊗",
+			"display": "⊗"
+		},
+		{
+			"input": "x \\otimes y",
+			"inline": "x ⊗ y",
+			"display": "x ⊗ y"
+		},
+		{
+			"input": "\\otimes{ab}",
+			"inline": "⊗ab",
+			"display": "⊗ab"
+		},
+		{
+			"input": "\\otimes_{i=1}^{n} x",
+			"inline": "⊗ᵢ₌₁ⁿ x",
+			"display": "⊗ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\otimes x",
+			"inline": "⊗ x",
+			"display": "⊗ x"
+		},
+		{
+			"input": "\\oslash",
+			"inline": "⊘",
+			"display": "⊘"
+		},
+		{
+			"input": "x \\oslash y",
+			"inline": "x ⊘ y",
+			"display": "x ⊘ y"
+		},
+		{
+			"input": "\\oslash{ab}",
+			"inline": "⊘ab",
+			"display": "⊘ab"
+		},
+		{
+			"input": "\\oslash_{i=1}^{n} x",
+			"inline": "⊘ᵢ₌₁ⁿ x",
+			"display": "⊘ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\oslash x",
+			"inline": "⊘ x",
+			"display": "⊘ x"
+		},
+		{
+			"input": "\\odot",
+			"inline": "⊙",
+			"display": "⊙"
+		},
+		{
+			"input": "x \\odot y",
+			"inline": "x ⊙ y",
+			"display": "x ⊙ y"
+		},
+		{
+			"input": "\\odot{ab}",
+			"inline": "⊙ab",
+			"display": "⊙ab"
+		},
+		{
+			"input": "\\odot_{i=1}^{n} x",
+			"inline": "⊙ᵢ₌₁ⁿ x",
+			"display": "⊙ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\odot x",
+			"inline": "⊙ x",
+			"display": "⊙ x"
+		},
+		{
+			"input": "\\bigcirc",
+			"inline": "○",
+			"display": "○"
+		},
+		{
+			"input": "x \\bigcirc y",
+			"inline": "x ○ y",
+			"display": "x ○ y"
+		},
+		{
+			"input": "\\bigcirc{ab}",
+			"inline": "○ab",
+			"display": "○ab"
+		},
+		{
+			"input": "\\bigcirc_{i=1}^{n} x",
+			"inline": "○ᵢ₌₁ⁿ x",
+			"display": "○ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\bigcirc x",
+			"inline": "○ x",
+			"display": "○ x"
+		},
+		{
+			"input": "\\dagger",
+			"inline": "†",
+			"display": "†"
+		},
+		{
+			"input": "x \\dagger y",
+			"inline": "x † y",
+			"display": "x † y"
+		},
+		{
+			"input": "\\dagger{ab}",
+			"inline": "†ab",
+			"display": "†ab"
+		},
+		{
+			"input": "\\dagger_{i=1}^{n} x",
+			"inline": "†ᵢ₌₁ⁿ x",
+			"display": "†ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\dagger x",
+			"inline": "† x",
+			"display": "† x"
+		},
+		{
+			"input": "\\ddagger",
+			"inline": "‡",
+			"display": "‡"
+		},
+		{
+			"input": "x \\ddagger y",
+			"inline": "x ‡ y",
+			"display": "x ‡ y"
+		},
+		{
+			"input": "\\ddagger{ab}",
+			"inline": "‡ab",
+			"display": "‡ab"
+		},
+		{
+			"input": "\\ddagger_{i=1}^{n} x",
+			"inline": "‡ᵢ₌₁ⁿ x",
+			"display": "‡ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\ddagger x",
+			"inline": "‡ x",
+			"display": "‡ x"
+		},
+		{
+			"input": "\\amalg",
+			"inline": "⨿",
+			"display": "⨿"
+		},
+		{
+			"input": "x \\amalg y",
+			"inline": "x ⨿ y",
+			"display": "x ⨿ y"
+		},
+		{
+			"input": "\\amalg{ab}",
+			"inline": "⨿ab",
+			"display": "⨿ab"
+		},
+		{
+			"input": "\\amalg_{i=1}^{n} x",
+			"inline": "⨿ᵢ₌₁ⁿ x",
+			"display": "⨿ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\amalg x",
+			"inline": "⨿ x",
+			"display": "⨿ x"
+		},
+		{
+			"input": "\\uplus",
+			"inline": "⊎",
+			"display": "⊎"
+		},
+		{
+			"input": "x \\uplus y",
+			"inline": "x ⊎ y",
+			"display": "x ⊎ y"
+		},
+		{
+			"input": "\\uplus{ab}",
+			"inline": "⊎ab",
+			"display": "⊎ab"
+		},
+		{
+			"input": "\\uplus_{i=1}^{n} x",
+			"inline": "⊎ᵢ₌₁ⁿ x",
+			"display": "⊎ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\uplus x",
+			"inline": "⊎ x",
+			"display": "⊎ x"
+		},
+		{
+			"input": "\\sqcap",
+			"inline": "⊓",
+			"display": "⊓"
+		},
+		{
+			"input": "x \\sqcap y",
+			"inline": "x ⊓ y",
+			"display": "x ⊓ y"
+		},
+		{
+			"input": "\\sqcap{ab}",
+			"inline": "⊓ab",
+			"display": "⊓ab"
+		},
+		{
+			"input": "\\sqcap_{i=1}^{n} x",
+			"inline": "⊓ᵢ₌₁ⁿ x",
+			"display": "⊓ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\sqcap x",
+			"inline": "⊓ x",
+			"display": "⊓ x"
+		},
+		{
+			"input": "\\sqcup",
+			"inline": "⊔",
+			"display": "⊔"
+		},
+		{
+			"input": "x \\sqcup y",
+			"inline": "x ⊔ y",
+			"display": "x ⊔ y"
+		},
+		{
+			"input": "\\sqcup{ab}",
+			"inline": "⊔ab",
+			"display": "⊔ab"
+		},
+		{
+			"input": "\\sqcup_{i=1}^{n} x",
+			"inline": "⊔ᵢ₌₁ⁿ x",
+			"display": "⊔ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\sqcup x",
+			"inline": "⊔ x",
+			"display": "⊔ x"
+		},
+		{
+			"input": "\\bowtie",
+			"inline": "⋈",
+			"display": "⋈"
+		},
+		{
+			"input": "x \\bowtie y",
+			"inline": "x ⋈ y",
+			"display": "x ⋈ y"
+		},
+		{
+			"input": "\\bowtie{ab}",
+			"inline": "⋈ ab",
+			"display": "⋈ ab"
+		},
+		{
+			"input": "\\bowtie_{i=1}^{n} x",
+			"inline": "⋈ᵢ₌₁ⁿ x",
+			"display": "⋈ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\bowtie x",
+			"inline": "⋈ x",
+			"display": "⋈ x"
+		},
+		{
+			"input": "\\Join",
+			"inline": "⋈",
+			"display": "⋈"
+		},
+		{
+			"input": "x \\Join y",
+			"inline": "x ⋈ y",
+			"display": "x ⋈ y"
+		},
+		{
+			"input": "\\Join{ab}",
+			"inline": "⋈ ab",
+			"display": "⋈ ab"
+		},
+		{
+			"input": "\\Join_{i=1}^{n} x",
+			"inline": "⋈ᵢ₌₁ⁿ x",
+			"display": "⋈ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\Join x",
+			"inline": "⋈ x",
+			"display": "⋈ x"
+		},
+		{
+			"input": "\\ltimes",
+			"inline": "⋉",
+			"display": "⋉"
+		},
+		{
+			"input": "x \\ltimes y",
+			"inline": "x ⋉ y",
+			"display": "x ⋉ y"
+		},
+		{
+			"input": "\\ltimes{ab}",
+			"inline": "⋉ ab",
+			"display": "⋉ ab"
+		},
+		{
+			"input": "\\ltimes_{i=1}^{n} x",
+			"inline": "⋉ᵢ₌₁ⁿ x",
+			"display": "⋉ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\ltimes x",
+			"inline": "⋉ x",
+			"display": "⋉ x"
+		},
+		{
+			"input": "\\rtimes",
+			"inline": "⋊",
+			"display": "⋊"
+		},
+		{
+			"input": "x \\rtimes y",
+			"inline": "x ⋊ y",
+			"display": "x ⋊ y"
+		},
+		{
+			"input": "\\rtimes{ab}",
+			"inline": "⋊ ab",
+			"display": "⋊ ab"
+		},
+		{
+			"input": "\\rtimes_{i=1}^{n} x",
+			"inline": "⋊ᵢ₌₁ⁿ x",
+			"display": "⋊ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\rtimes x",
+			"inline": "⋊ x",
+			"display": "⋊ x"
+		},
+		{
+			"input": "\\leftouterjoin",
+			"inline": "⟕",
+			"display": "⟕"
+		},
+		{
+			"input": "x \\leftouterjoin y",
+			"inline": "x ⟕ y",
+			"display": "x ⟕ y"
+		},
+		{
+			"input": "\\leftouterjoin{ab}",
+			"inline": "⟕ ab",
+			"display": "⟕ ab"
+		},
+		{
+			"input": "\\leftouterjoin_{i=1}^{n} x",
+			"inline": "⟕ᵢ₌₁ⁿ x",
+			"display": "⟕ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\leftouterjoin x",
+			"inline": "⟕ x",
+			"display": "⟕ x"
+		},
+		{
+			"input": "\\rightouterjoin",
+			"inline": "⟖",
+			"display": "⟖"
+		},
+		{
+			"input": "x \\rightouterjoin y",
+			"inline": "x ⟖ y",
+			"display": "x ⟖ y"
+		},
+		{
+			"input": "\\rightouterjoin{ab}",
+			"inline": "⟖ ab",
+			"display": "⟖ ab"
+		},
+		{
+			"input": "\\rightouterjoin_{i=1}^{n} x",
+			"inline": "⟖ᵢ₌₁ⁿ x",
+			"display": "⟖ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\rightouterjoin x",
+			"inline": "⟖ x",
+			"display": "⟖ x"
+		},
+		{
+			"input": "\\fullouterjoin",
+			"inline": "⟗",
+			"display": "⟗"
+		},
+		{
+			"input": "x \\fullouterjoin y",
+			"inline": "x ⟗ y",
+			"display": "x ⟗ y"
+		},
+		{
+			"input": "\\fullouterjoin{ab}",
+			"inline": "⟗ ab",
+			"display": "⟗ ab"
+		},
+		{
+			"input": "\\fullouterjoin_{i=1}^{n} x",
+			"inline": "⟗ᵢ₌₁ⁿ x",
+			"display": "⟗ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\fullouterjoin x",
+			"inline": "⟗ x",
+			"display": "⟗ x"
+		},
+		{
+			"input": "\\triangleleft",
+			"inline": "◁",
+			"display": "◁"
+		},
+		{
+			"input": "x \\triangleleft y",
+			"inline": "x ◁ y",
+			"display": "x ◁ y"
+		},
+		{
+			"input": "\\triangleleft{ab}",
+			"inline": "◁ ab",
+			"display": "◁ ab"
+		},
+		{
+			"input": "\\triangleleft_{i=1}^{n} x",
+			"inline": "◁ᵢ₌₁ⁿ x",
+			"display": "◁ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\triangleleft x",
+			"inline": "◁ x",
+			"display": "◁ x"
+		},
+		{
+			"input": "\\triangleright",
+			"inline": "▷",
+			"display": "▷"
+		},
+		{
+			"input": "x \\triangleright y",
+			"inline": "x ▷ y",
+			"display": "x ▷ y"
+		},
+		{
+			"input": "\\triangleright{ab}",
+			"inline": "▷ ab",
+			"display": "▷ ab"
+		},
+		{
+			"input": "\\triangleright_{i=1}^{n} x",
+			"inline": "▷ᵢ₌₁ⁿ x",
+			"display": "▷ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\triangleright x",
+			"inline": "▷ x",
+			"display": "▷ x"
+		},
+		{
+			"input": "\\wr",
+			"inline": "≀",
+			"display": "≀"
+		},
+		{
+			"input": "x \\wr y",
+			"inline": "x ≀ y",
+			"display": "x ≀ y"
+		},
+		{
+			"input": "\\wr{ab}",
+			"inline": "≀ab",
+			"display": "≀ab"
+		},
+		{
+			"input": "\\wr_{i=1}^{n} x",
+			"inline": "≀ᵢ₌₁ⁿ x",
+			"display": "≀ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\wr x",
+			"inline": "≀ x",
+			"display": "≀ x"
+		},
+		{
+			"input": "\\cap",
+			"inline": "∩",
+			"display": "∩"
+		},
+		{
+			"input": "x \\cap y",
+			"inline": "x ∩ y",
+			"display": "x ∩ y"
+		},
+		{
+			"input": "\\cap{ab}",
+			"inline": "∩ab",
+			"display": "∩ab"
+		},
+		{
+			"input": "\\cap_{i=1}^{n} x",
+			"inline": "∩ᵢ₌₁ⁿ x",
+			"display": "∩ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\cap x",
+			"inline": "∩ x",
+			"display": "∩ x"
+		},
+		{
+			"input": "\\cup",
+			"inline": "∪",
+			"display": "∪"
+		},
+		{
+			"input": "x \\cup y",
+			"inline": "x ∪ y",
+			"display": "x ∪ y"
+		},
+		{
+			"input": "\\cup{ab}",
+			"inline": "∪ab",
+			"display": "∪ab"
+		},
+		{
+			"input": "\\cup_{i=1}^{n} x",
+			"inline": "∪ᵢ₌₁ⁿ x",
+			"display": "∪ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\cup x",
+			"inline": "∪ x",
+			"display": "∪ x"
+		},
+		{
+			"input": "\\bigcap",
+			"inline": "⋂",
+			"display": "⋂"
+		},
+		{
+			"input": "x \\bigcap y",
+			"inline": "x ⋂ y",
+			"display": "x ⋂ y"
+		},
+		{
+			"input": "\\bigcap{ab}",
+			"inline": "⋂ab",
+			"display": "⋂ab"
+		},
+		{
+			"input": "\\bigcap_{i=1}^{n} x",
+			"inline": "⋂ᵢ₌₁ⁿ x",
+			"display": " n\n ⋂  x\ni=1"
+		},
+		{
+			"input": "\\bigcap x",
+			"inline": "⋂ x",
+			"display": "⋂ x"
+		},
+		{
+			"input": "\\bigcup",
+			"inline": "⋃",
+			"display": "⋃"
+		},
+		{
+			"input": "x \\bigcup y",
+			"inline": "x ⋃ y",
+			"display": "x ⋃ y"
+		},
+		{
+			"input": "\\bigcup{ab}",
+			"inline": "⋃ab",
+			"display": "⋃ab"
+		},
+		{
+			"input": "\\bigcup_{i=1}^{n} x",
+			"inline": "⋃ᵢ₌₁ⁿ x",
+			"display": " n\n ⋃  x\ni=1"
+		},
+		{
+			"input": "\\bigcup x",
+			"inline": "⋃ x",
+			"display": "⋃ x"
+		},
+		{
+			"input": "\\bigwedge",
+			"inline": "⋀",
+			"display": "⋀"
+		},
+		{
+			"input": "x \\bigwedge y",
+			"inline": "x ⋀ y",
+			"display": "x ⋀ y"
+		},
+		{
+			"input": "\\bigwedge{ab}",
+			"inline": "⋀ab",
+			"display": "⋀ab"
+		},
+		{
+			"input": "\\bigwedge_{i=1}^{n} x",
+			"inline": "⋀ᵢ₌₁ⁿ x",
+			"display": " n\n ⋀  x\ni=1"
+		},
+		{
+			"input": "\\bigwedge x",
+			"inline": "⋀ x",
+			"display": "⋀ x"
+		},
+		{
+			"input": "\\bigvee",
+			"inline": "⋁",
+			"display": "⋁"
+		},
+		{
+			"input": "x \\bigvee y",
+			"inline": "x ⋁ y",
+			"display": "x ⋁ y"
+		},
+		{
+			"input": "\\bigvee{ab}",
+			"inline": "⋁ab",
+			"display": "⋁ab"
+		},
+		{
+			"input": "\\bigvee_{i=1}^{n} x",
+			"inline": "⋁ᵢ₌₁ⁿ x",
+			"display": " n\n ⋁  x\ni=1"
+		},
+		{
+			"input": "\\bigvee x",
+			"inline": "⋁ x",
+			"display": "⋁ x"
+		},
+		{
+			"input": "\\bigsqcup",
+			"inline": "⨆",
+			"display": "⨆"
+		},
+		{
+			"input": "x \\bigsqcup y",
+			"inline": "x ⨆ y",
+			"display": "x ⨆ y"
+		},
+		{
+			"input": "\\bigsqcup{ab}",
+			"inline": "⨆ab",
+			"display": "⨆ab"
+		},
+		{
+			"input": "\\bigsqcup_{i=1}^{n} x",
+			"inline": "⨆ᵢ₌₁ⁿ x",
+			"display": " n\n ⨆  x\ni=1"
+		},
+		{
+			"input": "\\bigsqcup x",
+			"inline": "⨆ x",
+			"display": "⨆ x"
+		},
+		{
+			"input": "\\biguplus",
+			"inline": "⨄",
+			"display": "⨄"
+		},
+		{
+			"input": "x \\biguplus y",
+			"inline": "x ⨄ y",
+			"display": "x ⨄ y"
+		},
+		{
+			"input": "\\biguplus{ab}",
+			"inline": "⨄ab",
+			"display": "⨄ab"
+		},
+		{
+			"input": "\\biguplus_{i=1}^{n} x",
+			"inline": "⨄ᵢ₌₁ⁿ x",
+			"display": " n\n ⨄  x\ni=1"
+		},
+		{
+			"input": "\\biguplus x",
+			"inline": "⨄ x",
+			"display": "⨄ x"
+		},
+		{
+			"input": "\\bigoplus",
+			"inline": "⨁",
+			"display": "⨁"
+		},
+		{
+			"input": "x \\bigoplus y",
+			"inline": "x ⨁ y",
+			"display": "x ⨁ y"
+		},
+		{
+			"input": "\\bigoplus{ab}",
+			"inline": "⨁ab",
+			"display": "⨁ab"
+		},
+		{
+			"input": "\\bigoplus_{i=1}^{n} x",
+			"inline": "⨁ᵢ₌₁ⁿ x",
+			"display": " n\n ⨁  x\ni=1"
+		},
+		{
+			"input": "\\bigoplus x",
+			"inline": "⨁ x",
+			"display": "⨁ x"
+		},
+		{
+			"input": "\\bigotimes",
+			"inline": "⨂",
+			"display": "⨂"
+		},
+		{
+			"input": "x \\bigotimes y",
+			"inline": "x ⨂ y",
+			"display": "x ⨂ y"
+		},
+		{
+			"input": "\\bigotimes{ab}",
+			"inline": "⨂ab",
+			"display": "⨂ab"
+		},
+		{
+			"input": "\\bigotimes_{i=1}^{n} x",
+			"inline": "⨂ᵢ₌₁ⁿ x",
+			"display": " n\n ⨂  x\ni=1"
+		},
+		{
+			"input": "\\bigotimes x",
+			"inline": "⨂ x",
+			"display": "⨂ x"
+		},
+		{
+			"input": "\\bigodot",
+			"inline": "⨀",
+			"display": "⨀"
+		},
+		{
+			"input": "x \\bigodot y",
+			"inline": "x ⨀ y",
+			"display": "x ⨀ y"
+		},
+		{
+			"input": "\\bigodot{ab}",
+			"inline": "⨀ab",
+			"display": "⨀ab"
+		},
+		{
+			"input": "\\bigodot_{i=1}^{n} x",
+			"inline": "⨀ᵢ₌₁ⁿ x",
+			"display": " n\n ⨀  x\ni=1"
+		},
+		{
+			"input": "\\bigodot x",
+			"inline": "⨀ x",
+			"display": "⨀ x"
+		},
+		{
+			"input": "\\setminus",
+			"inline": "∖",
+			"display": "∖"
+		},
+		{
+			"input": "x \\setminus y",
+			"inline": "x ∖ y",
+			"display": "x ∖ y"
+		},
+		{
+			"input": "\\setminus{ab}",
+			"inline": "∖ab",
+			"display": "∖ab"
+		},
+		{
+			"input": "\\setminus_{i=1}^{n} x",
+			"inline": "∖ᵢ₌₁ⁿ x",
+			"display": "∖ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\setminus x",
+			"inline": "∖ x",
+			"display": "∖ x"
+		},
+		{
+			"input": "\\in",
+			"inline": "∈",
+			"display": "∈"
+		},
+		{
+			"input": "x \\in y",
+			"inline": "x ∈ y",
+			"display": "x ∈ y"
+		},
+		{
+			"input": "\\in{ab}",
+			"inline": "∈ ab",
+			"display": "∈ ab"
+		},
+		{
+			"input": "\\in_{i=1}^{n} x",
+			"inline": "∈ᵢ₌₁ⁿ x",
+			"display": "∈ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\in x",
+			"inline": "∈ x",
+			"display": "∈ x"
+		},
+		{
+			"input": "\\notin",
+			"inline": "∉",
+			"display": "∉"
+		},
+		{
+			"input": "x \\notin y",
+			"inline": "x ∉ y",
+			"display": "x ∉ y"
+		},
+		{
+			"input": "\\notin{ab}",
+			"inline": "∉ ab",
+			"display": "∉ ab"
+		},
+		{
+			"input": "\\notin_{i=1}^{n} x",
+			"inline": "∉ᵢ₌₁ⁿ x",
+			"display": "∉ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\notin x",
+			"inline": "∉ x",
+			"display": "∉ x"
+		},
+		{
+			"input": "\\ni",
+			"inline": "∋",
+			"display": "∋"
+		},
+		{
+			"input": "x \\ni y",
+			"inline": "x ∋ y",
+			"display": "x ∋ y"
+		},
+		{
+			"input": "\\ni{ab}",
+			"inline": "∋ ab",
+			"display": "∋ ab"
+		},
+		{
+			"input": "\\ni_{i=1}^{n} x",
+			"inline": "∋ᵢ₌₁ⁿ x",
+			"display": "∋ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\ni x",
+			"inline": "∋ x",
+			"display": "∋ x"
+		},
+		{
+			"input": "\\subset",
+			"inline": "⊂",
+			"display": "⊂"
+		},
+		{
+			"input": "x \\subset y",
+			"inline": "x ⊂ y",
+			"display": "x ⊂ y"
+		},
+		{
+			"input": "\\subset{ab}",
+			"inline": "⊂ ab",
+			"display": "⊂ ab"
+		},
+		{
+			"input": "\\subset_{i=1}^{n} x",
+			"inline": "⊂ᵢ₌₁ⁿ x",
+			"display": "⊂ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\subset x",
+			"inline": "⊂ x",
+			"display": "⊂ x"
+		},
+		{
+			"input": "\\supset",
+			"inline": "⊃",
+			"display": "⊃"
+		},
+		{
+			"input": "x \\supset y",
+			"inline": "x ⊃ y",
+			"display": "x ⊃ y"
+		},
+		{
+			"input": "\\supset{ab}",
+			"inline": "⊃ ab",
+			"display": "⊃ ab"
+		},
+		{
+			"input": "\\supset_{i=1}^{n} x",
+			"inline": "⊃ᵢ₌₁ⁿ x",
+			"display": "⊃ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\supset x",
+			"inline": "⊃ x",
+			"display": "⊃ x"
+		},
+		{
+			"input": "\\subseteq",
+			"inline": "⊆",
+			"display": "⊆"
+		},
+		{
+			"input": "x \\subseteq y",
+			"inline": "x ⊆ y",
+			"display": "x ⊆ y"
+		},
+		{
+			"input": "\\subseteq{ab}",
+			"inline": "⊆ ab",
+			"display": "⊆ ab"
+		},
+		{
+			"input": "\\subseteq_{i=1}^{n} x",
+			"inline": "⊆ᵢ₌₁ⁿ x",
+			"display": "⊆ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\subseteq x",
+			"inline": "⊆ x",
+			"display": "⊆ x"
+		},
+		{
+			"input": "\\supseteq",
+			"inline": "⊇",
+			"display": "⊇"
+		},
+		{
+			"input": "x \\supseteq y",
+			"inline": "x ⊇ y",
+			"display": "x ⊇ y"
+		},
+		{
+			"input": "\\supseteq{ab}",
+			"inline": "⊇ ab",
+			"display": "⊇ ab"
+		},
+		{
+			"input": "\\supseteq_{i=1}^{n} x",
+			"inline": "⊇ᵢ₌₁ⁿ x",
+			"display": "⊇ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\supseteq x",
+			"inline": "⊇ x",
+			"display": "⊇ x"
+		},
+		{
+			"input": "\\sqsubset",
+			"inline": "⊏",
+			"display": "⊏"
+		},
+		{
+			"input": "x \\sqsubset y",
+			"inline": "x ⊏ y",
+			"display": "x ⊏ y"
+		},
+		{
+			"input": "\\sqsubset{ab}",
+			"inline": "⊏ ab",
+			"display": "⊏ ab"
+		},
+		{
+			"input": "\\sqsubset_{i=1}^{n} x",
+			"inline": "⊏ᵢ₌₁ⁿ x",
+			"display": "⊏ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\sqsubset x",
+			"inline": "⊏ x",
+			"display": "⊏ x"
+		},
+		{
+			"input": "\\sqsupset",
+			"inline": "⊐",
+			"display": "⊐"
+		},
+		{
+			"input": "x \\sqsupset y",
+			"inline": "x ⊐ y",
+			"display": "x ⊐ y"
+		},
+		{
+			"input": "\\sqsupset{ab}",
+			"inline": "⊐ ab",
+			"display": "⊐ ab"
+		},
+		{
+			"input": "\\sqsupset_{i=1}^{n} x",
+			"inline": "⊐ᵢ₌₁ⁿ x",
+			"display": "⊐ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\sqsupset x",
+			"inline": "⊐ x",
+			"display": "⊐ x"
+		},
+		{
+			"input": "\\sqsubseteq",
+			"inline": "⊑",
+			"display": "⊑"
+		},
+		{
+			"input": "x \\sqsubseteq y",
+			"inline": "x ⊑ y",
+			"display": "x ⊑ y"
+		},
+		{
+			"input": "\\sqsubseteq{ab}",
+			"inline": "⊑ ab",
+			"display": "⊑ ab"
+		},
+		{
+			"input": "\\sqsubseteq_{i=1}^{n} x",
+			"inline": "⊑ᵢ₌₁ⁿ x",
+			"display": "⊑ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\sqsubseteq x",
+			"inline": "⊑ x",
+			"display": "⊑ x"
+		},
+		{
+			"input": "\\sqsupseteq",
+			"inline": "⊒",
+			"display": "⊒"
+		},
+		{
+			"input": "x \\sqsupseteq y",
+			"inline": "x ⊒ y",
+			"display": "x ⊒ y"
+		},
+		{
+			"input": "\\sqsupseteq{ab}",
+			"inline": "⊒ ab",
+			"display": "⊒ ab"
+		},
+		{
+			"input": "\\sqsupseteq_{i=1}^{n} x",
+			"inline": "⊒ᵢ₌₁ⁿ x",
+			"display": "⊒ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\sqsupseteq x",
+			"inline": "⊒ x",
+			"display": "⊒ x"
+		},
+		{
+			"input": "\\prec",
+			"inline": "≺",
+			"display": "≺"
+		},
+		{
+			"input": "x \\prec y",
+			"inline": "x ≺ y",
+			"display": "x ≺ y"
+		},
+		{
+			"input": "\\prec{ab}",
+			"inline": "≺ ab",
+			"display": "≺ ab"
+		},
+		{
+			"input": "\\prec_{i=1}^{n} x",
+			"inline": "≺ᵢ₌₁ⁿ x",
+			"display": "≺ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\prec x",
+			"inline": "≺ x",
+			"display": "≺ x"
+		},
+		{
+			"input": "\\preceq",
+			"inline": "≼",
+			"display": "≼"
+		},
+		{
+			"input": "x \\preceq y",
+			"inline": "x ≼ y",
+			"display": "x ≼ y"
+		},
+		{
+			"input": "\\preceq{ab}",
+			"inline": "≼ ab",
+			"display": "≼ ab"
+		},
+		{
+			"input": "\\preceq_{i=1}^{n} x",
+			"inline": "≼ᵢ₌₁ⁿ x",
+			"display": "≼ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\preceq x",
+			"inline": "≼ x",
+			"display": "≼ x"
+		},
+		{
+			"input": "\\succ",
+			"inline": "≻",
+			"display": "≻"
+		},
+		{
+			"input": "x \\succ y",
+			"inline": "x ≻ y",
+			"display": "x ≻ y"
+		},
+		{
+			"input": "\\succ{ab}",
+			"inline": "≻ ab",
+			"display": "≻ ab"
+		},
+		{
+			"input": "\\succ_{i=1}^{n} x",
+			"inline": "≻ᵢ₌₁ⁿ x",
+			"display": "≻ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\succ x",
+			"inline": "≻ x",
+			"display": "≻ x"
+		},
+		{
+			"input": "\\succeq",
+			"inline": "≽",
+			"display": "≽"
+		},
+		{
+			"input": "x \\succeq y",
+			"inline": "x ≽ y",
+			"display": "x ≽ y"
+		},
+		{
+			"input": "\\succeq{ab}",
+			"inline": "≽ ab",
+			"display": "≽ ab"
+		},
+		{
+			"input": "\\succeq_{i=1}^{n} x",
+			"inline": "≽ᵢ₌₁ⁿ x",
+			"display": "≽ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\succeq x",
+			"inline": "≽ x",
+			"display": "≽ x"
+		},
+		{
+			"input": "\\ll",
+			"inline": "≪",
+			"display": "≪"
+		},
+		{
+			"input": "x \\ll y",
+			"inline": "x ≪ y",
+			"display": "x ≪ y"
+		},
+		{
+			"input": "\\ll{ab}",
+			"inline": "≪ ab",
+			"display": "≪ ab"
+		},
+		{
+			"input": "\\ll_{i=1}^{n} x",
+			"inline": "≪ᵢ₌₁ⁿ x",
+			"display": "≪ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\ll x",
+			"inline": "≪ x",
+			"display": "≪ x"
+		},
+		{
+			"input": "\\gg",
+			"inline": "≫",
+			"display": "≫"
+		},
+		{
+			"input": "x \\gg y",
+			"inline": "x ≫ y",
+			"display": "x ≫ y"
+		},
+		{
+			"input": "\\gg{ab}",
+			"inline": "≫ ab",
+			"display": "≫ ab"
+		},
+		{
+			"input": "\\gg_{i=1}^{n} x",
+			"inline": "≫ᵢ₌₁ⁿ x",
+			"display": "≫ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\gg x",
+			"inline": "≫ x",
+			"display": "≫ x"
+		},
+		{
+			"input": "\\le",
+			"inline": "≤",
+			"display": "≤"
+		},
+		{
+			"input": "x \\le y",
+			"inline": "x ≤ y",
+			"display": "x ≤ y"
+		},
+		{
+			"input": "\\le{ab}",
+			"inline": "≤ ab",
+			"display": "≤ ab"
+		},
+		{
+			"input": "\\le_{i=1}^{n} x",
+			"inline": "≤ᵢ₌₁ⁿ x",
+			"display": "≤ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\le x",
+			"inline": "≤ x",
+			"display": "≤ x"
+		},
+		{
+			"input": "\\leq",
+			"inline": "≤",
+			"display": "≤"
+		},
+		{
+			"input": "x \\leq y",
+			"inline": "x ≤ y",
+			"display": "x ≤ y"
+		},
+		{
+			"input": "\\leq{ab}",
+			"inline": "≤ ab",
+			"display": "≤ ab"
+		},
+		{
+			"input": "\\leq_{i=1}^{n} x",
+			"inline": "≤ᵢ₌₁ⁿ x",
+			"display": "≤ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\leq x",
+			"inline": "≤ x",
+			"display": "≤ x"
+		},
+		{
+			"input": "\\leqslant",
+			"inline": "≤",
+			"display": "≤"
+		},
+		{
+			"input": "x \\leqslant y",
+			"inline": "x ≤ y",
+			"display": "x ≤ y"
+		},
+		{
+			"input": "\\leqslant{ab}",
+			"inline": "≤ ab",
+			"display": "≤ ab"
+		},
+		{
+			"input": "\\leqslant_{i=1}^{n} x",
+			"inline": "≤ᵢ₌₁ⁿ x",
+			"display": "≤ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\leqslant x",
+			"inline": "≤ x",
+			"display": "≤ x"
+		},
+		{
+			"input": "\\ge",
+			"inline": "≥",
+			"display": "≥"
+		},
+		{
+			"input": "x \\ge y",
+			"inline": "x ≥ y",
+			"display": "x ≥ y"
+		},
+		{
+			"input": "\\ge{ab}",
+			"inline": "≥ ab",
+			"display": "≥ ab"
+		},
+		{
+			"input": "\\ge_{i=1}^{n} x",
+			"inline": "≥ᵢ₌₁ⁿ x",
+			"display": "≥ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\ge x",
+			"inline": "≥ x",
+			"display": "≥ x"
+		},
+		{
+			"input": "\\geq",
+			"inline": "≥",
+			"display": "≥"
+		},
+		{
+			"input": "x \\geq y",
+			"inline": "x ≥ y",
+			"display": "x ≥ y"
+		},
+		{
+			"input": "\\geq{ab}",
+			"inline": "≥ ab",
+			"display": "≥ ab"
+		},
+		{
+			"input": "\\geq_{i=1}^{n} x",
+			"inline": "≥ᵢ₌₁ⁿ x",
+			"display": "≥ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\geq x",
+			"inline": "≥ x",
+			"display": "≥ x"
+		},
+		{
+			"input": "\\geqslant",
+			"inline": "≥",
+			"display": "≥"
+		},
+		{
+			"input": "x \\geqslant y",
+			"inline": "x ≥ y",
+			"display": "x ≥ y"
+		},
+		{
+			"input": "\\geqslant{ab}",
+			"inline": "≥ ab",
+			"display": "≥ ab"
+		},
+		{
+			"input": "\\geqslant_{i=1}^{n} x",
+			"inline": "≥ᵢ₌₁ⁿ x",
+			"display": "≥ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\geqslant x",
+			"inline": "≥ x",
+			"display": "≥ x"
+		},
+		{
+			"input": "\\ne",
+			"inline": "≠",
+			"display": "≠"
+		},
+		{
+			"input": "x \\ne y",
+			"inline": "x ≠ y",
+			"display": "x ≠ y"
+		},
+		{
+			"input": "\\ne{ab}",
+			"inline": "≠ ab",
+			"display": "≠ ab"
+		},
+		{
+			"input": "\\ne_{i=1}^{n} x",
+			"inline": "≠ᵢ₌₁ⁿ x",
+			"display": "≠ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\ne x",
+			"inline": "≠ x",
+			"display": "≠ x"
+		},
+		{
+			"input": "\\neq",
+			"inline": "≠",
+			"display": "≠"
+		},
+		{
+			"input": "x \\neq y",
+			"inline": "x ≠ y",
+			"display": "x ≠ y"
+		},
+		{
+			"input": "\\neq{ab}",
+			"inline": "≠ ab",
+			"display": "≠ ab"
+		},
+		{
+			"input": "\\neq_{i=1}^{n} x",
+			"inline": "≠ᵢ₌₁ⁿ x",
+			"display": "≠ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\neq x",
+			"inline": "≠ x",
+			"display": "≠ x"
+		},
+		{
+			"input": "\\equiv",
+			"inline": "≡",
+			"display": "≡"
+		},
+		{
+			"input": "x \\equiv y",
+			"inline": "x ≡ y",
+			"display": "x ≡ y"
+		},
+		{
+			"input": "\\equiv{ab}",
+			"inline": "≡ ab",
+			"display": "≡ ab"
+		},
+		{
+			"input": "\\equiv_{i=1}^{n} x",
+			"inline": "≡ᵢ₌₁ⁿ x",
+			"display": "≡ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\equiv x",
+			"inline": "≡ x",
+			"display": "≡ x"
+		},
+		{
+			"input": "\\approx",
+			"inline": "≈",
+			"display": "≈"
+		},
+		{
+			"input": "x \\approx y",
+			"inline": "x ≈ y",
+			"display": "x ≈ y"
+		},
+		{
+			"input": "\\approx{ab}",
+			"inline": "≈ ab",
+			"display": "≈ ab"
+		},
+		{
+			"input": "\\approx_{i=1}^{n} x",
+			"inline": "≈ᵢ₌₁ⁿ x",
+			"display": "≈ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\approx x",
+			"inline": "≈ x",
+			"display": "≈ x"
+		},
+		{
+			"input": "\\sim",
+			"inline": "∼",
+			"display": "∼"
+		},
+		{
+			"input": "x \\sim y",
+			"inline": "x ∼ y",
+			"display": "x ∼ y"
+		},
+		{
+			"input": "\\sim{ab}",
+			"inline": "∼ ab",
+			"display": "∼ ab"
+		},
+		{
+			"input": "\\sim_{i=1}^{n} x",
+			"inline": "∼ᵢ₌₁ⁿ x",
+			"display": "∼ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\sim x",
+			"inline": "∼ x",
+			"display": "∼ x"
+		},
+		{
+			"input": "\\simeq",
+			"inline": "≃",
+			"display": "≃"
+		},
+		{
+			"input": "x \\simeq y",
+			"inline": "x ≃ y",
+			"display": "x ≃ y"
+		},
+		{
+			"input": "\\simeq{ab}",
+			"inline": "≃ ab",
+			"display": "≃ ab"
+		},
+		{
+			"input": "\\simeq_{i=1}^{n} x",
+			"inline": "≃ᵢ₌₁ⁿ x",
+			"display": "≃ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\simeq x",
+			"inline": "≃ x",
+			"display": "≃ x"
+		},
+		{
+			"input": "\\cong",
+			"inline": "≅",
+			"display": "≅"
+		},
+		{
+			"input": "x \\cong y",
+			"inline": "x ≅ y",
+			"display": "x ≅ y"
+		},
+		{
+			"input": "\\cong{ab}",
+			"inline": "≅ ab",
+			"display": "≅ ab"
+		},
+		{
+			"input": "\\cong_{i=1}^{n} x",
+			"inline": "≅ᵢ₌₁ⁿ x",
+			"display": "≅ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\cong x",
+			"inline": "≅ x",
+			"display": "≅ x"
+		},
+		{
+			"input": "\\asymp",
+			"inline": "≍",
+			"display": "≍"
+		},
+		{
+			"input": "x \\asymp y",
+			"inline": "x ≍ y",
+			"display": "x ≍ y"
+		},
+		{
+			"input": "\\asymp{ab}",
+			"inline": "≍ ab",
+			"display": "≍ ab"
+		},
+		{
+			"input": "\\asymp_{i=1}^{n} x",
+			"inline": "≍ᵢ₌₁ⁿ x",
+			"display": "≍ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\asymp x",
+			"inline": "≍ x",
+			"display": "≍ x"
+		},
+		{
+			"input": "\\doteq",
+			"inline": "≐",
+			"display": "≐"
+		},
+		{
+			"input": "x \\doteq y",
+			"inline": "x ≐ y",
+			"display": "x ≐ y"
+		},
+		{
+			"input": "\\doteq{ab}",
+			"inline": "≐ ab",
+			"display": "≐ ab"
+		},
+		{
+			"input": "\\doteq_{i=1}^{n} x",
+			"inline": "≐ᵢ₌₁ⁿ x",
+			"display": "≐ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\doteq x",
+			"inline": "≐ x",
+			"display": "≐ x"
+		},
+		{
+			"input": "\\propto",
+			"inline": "∝",
+			"display": "∝"
+		},
+		{
+			"input": "x \\propto y",
+			"inline": "x ∝ y",
+			"display": "x ∝ y"
+		},
+		{
+			"input": "\\propto{ab}",
+			"inline": "∝ ab",
+			"display": "∝ ab"
+		},
+		{
+			"input": "\\propto_{i=1}^{n} x",
+			"inline": "∝ᵢ₌₁ⁿ x",
+			"display": "∝ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\propto x",
+			"inline": "∝ x",
+			"display": "∝ x"
+		},
+		{
+			"input": "\\parallel",
+			"inline": "∥",
+			"display": "∥"
+		},
+		{
+			"input": "x \\parallel y",
+			"inline": "x ∥ y",
+			"display": "x ∥ y"
+		},
+		{
+			"input": "\\parallel{ab}",
+			"inline": "∥ ab",
+			"display": "∥ ab"
+		},
+		{
+			"input": "\\parallel_{i=1}^{n} x",
+			"inline": "∥ᵢ₌₁ⁿ x",
+			"display": "∥ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\parallel x",
+			"inline": "∥ x",
+			"display": "∥ x"
+		},
+		{
+			"input": "\\perp",
+			"inline": "⊥",
+			"display": "⊥"
+		},
+		{
+			"input": "x \\perp y",
+			"inline": "x ⊥ y",
+			"display": "x ⊥ y"
+		},
+		{
+			"input": "\\perp{ab}",
+			"inline": "⊥ ab",
+			"display": "⊥ ab"
+		},
+		{
+			"input": "\\perp_{i=1}^{n} x",
+			"inline": "⊥ᵢ₌₁ⁿ x",
+			"display": "⊥ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\perp x",
+			"inline": "⊥ x",
+			"display": "⊥ x"
+		},
+		{
+			"input": "\\mid",
+			"inline": "∣",
+			"display": "∣"
+		},
+		{
+			"input": "x \\mid y",
+			"inline": "x ∣ y",
+			"display": "x ∣ y"
+		},
+		{
+			"input": "\\mid{ab}",
+			"inline": "∣ ab",
+			"display": "∣ ab"
+		},
+		{
+			"input": "\\mid_{i=1}^{n} x",
+			"inline": "∣ᵢ₌₁ⁿ x",
+			"display": "∣ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\mid x",
+			"inline": "∣ x",
+			"display": "∣ x"
+		},
+		{
+			"input": "\\vdash",
+			"inline": "⊢",
+			"display": "⊢"
+		},
+		{
+			"input": "x \\vdash y",
+			"inline": "x ⊢ y",
+			"display": "x ⊢ y"
+		},
+		{
+			"input": "\\vdash{ab}",
+			"inline": "⊢ ab",
+			"display": "⊢ ab"
+		},
+		{
+			"input": "\\vdash_{i=1}^{n} x",
+			"inline": "⊢ᵢ₌₁ⁿ x",
+			"display": "⊢ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\vdash x",
+			"inline": "⊢ x",
+			"display": "⊢ x"
+		},
+		{
+			"input": "\\dashv",
+			"inline": "⊣",
+			"display": "⊣"
+		},
+		{
+			"input": "x \\dashv y",
+			"inline": "x ⊣ y",
+			"display": "x ⊣ y"
+		},
+		{
+			"input": "\\dashv{ab}",
+			"inline": "⊣ ab",
+			"display": "⊣ ab"
+		},
+		{
+			"input": "\\dashv_{i=1}^{n} x",
+			"inline": "⊣ᵢ₌₁ⁿ x",
+			"display": "⊣ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\dashv x",
+			"inline": "⊣ x",
+			"display": "⊣ x"
+		},
+		{
+			"input": "\\models",
+			"inline": "⊨",
+			"display": "⊨"
+		},
+		{
+			"input": "x \\models y",
+			"inline": "x ⊨ y",
+			"display": "x ⊨ y"
+		},
+		{
+			"input": "\\models{ab}",
+			"inline": "⊨ ab",
+			"display": "⊨ ab"
+		},
+		{
+			"input": "\\models_{i=1}^{n} x",
+			"inline": "⊨ᵢ₌₁ⁿ x",
+			"display": "⊨ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\models x",
+			"inline": "⊨ x",
+			"display": "⊨ x"
+		},
+		{
+			"input": "\\Vdash",
+			"inline": "⊩",
+			"display": "⊩"
+		},
+		{
+			"input": "x \\Vdash y",
+			"inline": "x ⊩ y",
+			"display": "x ⊩ y"
+		},
+		{
+			"input": "\\Vdash{ab}",
+			"inline": "⊩ ab",
+			"display": "⊩ ab"
+		},
+		{
+			"input": "\\Vdash_{i=1}^{n} x",
+			"inline": "⊩ᵢ₌₁ⁿ x",
+			"display": "⊩ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\Vdash x",
+			"inline": "⊩ x",
+			"display": "⊩ x"
+		},
+		{
+			"input": "\\Vvdash",
+			"inline": "⊪",
+			"display": "⊪"
+		},
+		{
+			"input": "x \\Vvdash y",
+			"inline": "x ⊪ y",
+			"display": "x ⊪ y"
+		},
+		{
+			"input": "\\Vvdash{ab}",
+			"inline": "⊪ ab",
+			"display": "⊪ ab"
+		},
+		{
+			"input": "\\Vvdash_{i=1}^{n} x",
+			"inline": "⊪ᵢ₌₁ⁿ x",
+			"display": "⊪ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\Vvdash x",
+			"inline": "⊪ x",
+			"display": "⊪ x"
+		},
+		{
+			"input": "\\nvdash",
+			"inline": "⊬",
+			"display": "⊬"
+		},
+		{
+			"input": "x \\nvdash y",
+			"inline": "x ⊬ y",
+			"display": "x ⊬ y"
+		},
+		{
+			"input": "\\nvdash{ab}",
+			"inline": "⊬ ab",
+			"display": "⊬ ab"
+		},
+		{
+			"input": "\\nvdash_{i=1}^{n} x",
+			"inline": "⊬ᵢ₌₁ⁿ x",
+			"display": "⊬ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\nvdash x",
+			"inline": "⊬ x",
+			"display": "⊬ x"
+		},
+		{
+			"input": "\\nvDash",
+			"inline": "⊭",
+			"display": "⊭"
+		},
+		{
+			"input": "x \\nvDash y",
+			"inline": "x ⊭ y",
+			"display": "x ⊭ y"
+		},
+		{
+			"input": "\\nvDash{ab}",
+			"inline": "⊭ ab",
+			"display": "⊭ ab"
+		},
+		{
+			"input": "\\nvDash_{i=1}^{n} x",
+			"inline": "⊭ᵢ₌₁ⁿ x",
+			"display": "⊭ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\nvDash x",
+			"inline": "⊭ x",
+			"display": "⊭ x"
+		},
+		{
+			"input": "\\forall",
+			"inline": "∀",
+			"display": "∀"
+		},
+		{
+			"input": "x \\forall y",
+			"inline": "x ∀ y",
+			"display": "x ∀ y"
+		},
+		{
+			"input": "\\forall{ab}",
+			"inline": "∀ab",
+			"display": "∀ab"
+		},
+		{
+			"input": "\\forall_{i=1}^{n} x",
+			"inline": "∀ᵢ₌₁ⁿ x",
+			"display": "∀ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\forall x",
+			"inline": "∀ x",
+			"display": "∀ x"
+		},
+		{
+			"input": "\\exists",
+			"inline": "∃",
+			"display": "∃"
+		},
+		{
+			"input": "x \\exists y",
+			"inline": "x ∃ y",
+			"display": "x ∃ y"
+		},
+		{
+			"input": "\\exists{ab}",
+			"inline": "∃ab",
+			"display": "∃ab"
+		},
+		{
+			"input": "\\exists_{i=1}^{n} x",
+			"inline": "∃ᵢ₌₁ⁿ x",
+			"display": "∃ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\exists x",
+			"inline": "∃ x",
+			"display": "∃ x"
+		},
+		{
+			"input": "\\nexists",
+			"inline": "∄",
+			"display": "∄"
+		},
+		{
+			"input": "x \\nexists y",
+			"inline": "x ∄ y",
+			"display": "x ∄ y"
+		},
+		{
+			"input": "\\nexists{ab}",
+			"inline": "∄ab",
+			"display": "∄ab"
+		},
+		{
+			"input": "\\nexists_{i=1}^{n} x",
+			"inline": "∄ᵢ₌₁ⁿ x",
+			"display": "∄ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\nexists x",
+			"inline": "∄ x",
+			"display": "∄ x"
+		},
+		{
+			"input": "\\neg",
+			"inline": "¬",
+			"display": "¬"
+		},
+		{
+			"input": "x \\neg y",
+			"inline": "x ¬ y",
+			"display": "x ¬ y"
+		},
+		{
+			"input": "\\neg{ab}",
+			"inline": "¬ab",
+			"display": "¬ab"
+		},
+		{
+			"input": "\\neg_{i=1}^{n} x",
+			"inline": "¬ᵢ₌₁ⁿ x",
+			"display": "¬ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\neg x",
+			"inline": "¬ x",
+			"display": "¬ x"
+		},
+		{
+			"input": "\\land",
+			"inline": "∧",
+			"display": "∧"
+		},
+		{
+			"input": "x \\land y",
+			"inline": "x ∧ y",
+			"display": "x ∧ y"
+		},
+		{
+			"input": "\\land{ab}",
+			"inline": "∧ab",
+			"display": "∧ab"
+		},
+		{
+			"input": "\\land_{i=1}^{n} x",
+			"inline": "∧ᵢ₌₁ⁿ x",
+			"display": "∧ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\land x",
+			"inline": "∧ x",
+			"display": "∧ x"
+		},
+		{
+			"input": "\\wedge",
+			"inline": "∧",
+			"display": "∧"
+		},
+		{
+			"input": "x \\wedge y",
+			"inline": "x ∧ y",
+			"display": "x ∧ y"
+		},
+		{
+			"input": "\\wedge{ab}",
+			"inline": "∧ab",
+			"display": "∧ab"
+		},
+		{
+			"input": "\\wedge_{i=1}^{n} x",
+			"inline": "∧ᵢ₌₁ⁿ x",
+			"display": "∧ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\wedge x",
+			"inline": "∧ x",
+			"display": "∧ x"
+		},
+		{
+			"input": "\\lor",
+			"inline": "∨",
+			"display": "∨"
+		},
+		{
+			"input": "x \\lor y",
+			"inline": "x ∨ y",
+			"display": "x ∨ y"
+		},
+		{
+			"input": "\\lor{ab}",
+			"inline": "∨ab",
+			"display": "∨ab"
+		},
+		{
+			"input": "\\lor_{i=1}^{n} x",
+			"inline": "∨ᵢ₌₁ⁿ x",
+			"display": "∨ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\lor x",
+			"inline": "∨ x",
+			"display": "∨ x"
+		},
+		{
+			"input": "\\vee",
+			"inline": "∨",
+			"display": "∨"
+		},
+		{
+			"input": "x \\vee y",
+			"inline": "x ∨ y",
+			"display": "x ∨ y"
+		},
+		{
+			"input": "\\vee{ab}",
+			"inline": "∨ab",
+			"display": "∨ab"
+		},
+		{
+			"input": "\\vee_{i=1}^{n} x",
+			"inline": "∨ᵢ₌₁ⁿ x",
+			"display": "∨ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\vee x",
+			"inline": "∨ x",
+			"display": "∨ x"
+		},
+		{
+			"input": "\\to",
+			"inline": "→",
+			"display": "→"
+		},
+		{
+			"input": "x \\to y",
+			"inline": "x → y",
+			"display": "x → y"
+		},
+		{
+			"input": "\\to{ab}",
+			"inline": "→ ab",
+			"display": "→ ab"
+		},
+		{
+			"input": "\\to_{i=1}^{n} x",
+			"inline": "→ᵢ₌₁ⁿ x",
+			"display": "→ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\to x",
+			"inline": "→ x",
+			"display": "→ x"
+		},
+		{
+			"input": "\\rightarrow",
+			"inline": "→",
+			"display": "→"
+		},
+		{
+			"input": "x \\rightarrow y",
+			"inline": "x → y",
+			"display": "x → y"
+		},
+		{
+			"input": "\\rightarrow{ab}",
+			"inline": "→ ab",
+			"display": "→ ab"
+		},
+		{
+			"input": "\\rightarrow_{i=1}^{n} x",
+			"inline": "→ᵢ₌₁ⁿ x",
+			"display": "→ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\rightarrow x",
+			"inline": "→ x",
+			"display": "→ x"
+		},
+		{
+			"input": "\\longrightarrow",
+			"inline": "→",
+			"display": "→"
+		},
+		{
+			"input": "x \\longrightarrow y",
+			"inline": "x → y",
+			"display": "x → y"
+		},
+		{
+			"input": "\\longrightarrow{ab}",
+			"inline": "→ ab",
+			"display": "→ ab"
+		},
+		{
+			"input": "\\longrightarrow_{i=1}^{n} x",
+			"inline": "→ᵢ₌₁ⁿ x",
+			"display": "→ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\longrightarrow x",
+			"inline": "→ x",
+			"display": "→ x"
+		},
+		{
+			"input": "\\leftarrow",
+			"inline": "←",
+			"display": "←"
+		},
+		{
+			"input": "x \\leftarrow y",
+			"inline": "x ← y",
+			"display": "x ← y"
+		},
+		{
+			"input": "\\leftarrow{ab}",
+			"inline": "← ab",
+			"display": "← ab"
+		},
+		{
+			"input": "\\leftarrow_{i=1}^{n} x",
+			"inline": "←ᵢ₌₁ⁿ x",
+			"display": "←ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\leftarrow x",
+			"inline": "← x",
+			"display": "← x"
+		},
+		{
+			"input": "\\longleftarrow",
+			"inline": "←",
+			"display": "←"
+		},
+		{
+			"input": "x \\longleftarrow y",
+			"inline": "x ← y",
+			"display": "x ← y"
+		},
+		{
+			"input": "\\longleftarrow{ab}",
+			"inline": "← ab",
+			"display": "← ab"
+		},
+		{
+			"input": "\\longleftarrow_{i=1}^{n} x",
+			"inline": "←ᵢ₌₁ⁿ x",
+			"display": "←ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\longleftarrow x",
+			"inline": "← x",
+			"display": "← x"
+		},
+		{
+			"input": "\\gets",
+			"inline": "←",
+			"display": "←"
+		},
+		{
+			"input": "x \\gets y",
+			"inline": "x ← y",
+			"display": "x ← y"
+		},
+		{
+			"input": "\\gets{ab}",
+			"inline": "← ab",
+			"display": "← ab"
+		},
+		{
+			"input": "\\gets_{i=1}^{n} x",
+			"inline": "←ᵢ₌₁ⁿ x",
+			"display": "←ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\gets x",
+			"inline": "← x",
+			"display": "← x"
+		},
+		{
+			"input": "\\leftrightarrow",
+			"inline": "↔",
+			"display": "↔"
+		},
+		{
+			"input": "x \\leftrightarrow y",
+			"inline": "x ↔ y",
+			"display": "x ↔ y"
+		},
+		{
+			"input": "\\leftrightarrow{ab}",
+			"inline": "↔ ab",
+			"display": "↔ ab"
+		},
+		{
+			"input": "\\leftrightarrow_{i=1}^{n} x",
+			"inline": "↔ᵢ₌₁ⁿ x",
+			"display": "↔ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\leftrightarrow x",
+			"inline": "↔ x",
+			"display": "↔ x"
+		},
+		{
+			"input": "\\longleftrightarrow",
+			"inline": "↔",
+			"display": "↔"
+		},
+		{
+			"input": "x \\longleftrightarrow y",
+			"inline": "x ↔ y",
+			"display": "x ↔ y"
+		},
+		{
+			"input": "\\longleftrightarrow{ab}",
+			"inline": "↔ ab",
+			"display": "↔ ab"
+		},
+		{
+			"input": "\\longleftrightarrow_{i=1}^{n} x",
+			"inline": "↔ᵢ₌₁ⁿ x",
+			"display": "↔ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\longleftrightarrow x",
+			"inline": "↔ x",
+			"display": "↔ x"
+		},
+		{
+			"input": "\\hookleftarrow",
+			"inline": "↩",
+			"display": "↩"
+		},
+		{
+			"input": "x \\hookleftarrow y",
+			"inline": "x ↩ y",
+			"display": "x ↩ y"
+		},
+		{
+			"input": "\\hookleftarrow{ab}",
+			"inline": "↩ ab",
+			"display": "↩ ab"
+		},
+		{
+			"input": "\\hookleftarrow_{i=1}^{n} x",
+			"inline": "↩ᵢ₌₁ⁿ x",
+			"display": "↩ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\hookleftarrow x",
+			"inline": "↩ x",
+			"display": "↩ x"
+		},
+		{
+			"input": "\\hookrightarrow",
+			"inline": "↪",
+			"display": "↪"
+		},
+		{
+			"input": "x \\hookrightarrow y",
+			"inline": "x ↪ y",
+			"display": "x ↪ y"
+		},
+		{
+			"input": "\\hookrightarrow{ab}",
+			"inline": "↪ ab",
+			"display": "↪ ab"
+		},
+		{
+			"input": "\\hookrightarrow_{i=1}^{n} x",
+			"inline": "↪ᵢ₌₁ⁿ x",
+			"display": "↪ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\hookrightarrow x",
+			"inline": "↪ x",
+			"display": "↪ x"
+		},
+		{
+			"input": "\\twoheadleftarrow",
+			"inline": "↞",
+			"display": "↞"
+		},
+		{
+			"input": "x \\twoheadleftarrow y",
+			"inline": "x ↞ y",
+			"display": "x ↞ y"
+		},
+		{
+			"input": "\\twoheadleftarrow{ab}",
+			"inline": "↞ ab",
+			"display": "↞ ab"
+		},
+		{
+			"input": "\\twoheadleftarrow_{i=1}^{n} x",
+			"inline": "↞ᵢ₌₁ⁿ x",
+			"display": "↞ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\twoheadleftarrow x",
+			"inline": "↞ x",
+			"display": "↞ x"
+		},
+		{
+			"input": "\\twoheadrightarrow",
+			"inline": "↠",
+			"display": "↠"
+		},
+		{
+			"input": "x \\twoheadrightarrow y",
+			"inline": "x ↠ y",
+			"display": "x ↠ y"
+		},
+		{
+			"input": "\\twoheadrightarrow{ab}",
+			"inline": "↠ ab",
+			"display": "↠ ab"
+		},
+		{
+			"input": "\\twoheadrightarrow_{i=1}^{n} x",
+			"inline": "↠ᵢ₌₁ⁿ x",
+			"display": "↠ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\twoheadrightarrow x",
+			"inline": "↠ x",
+			"display": "↠ x"
+		},
+		{
+			"input": "\\leftharpoonup",
+			"inline": "↼",
+			"display": "↼"
+		},
+		{
+			"input": "x \\leftharpoonup y",
+			"inline": "x ↼ y",
+			"display": "x ↼ y"
+		},
+		{
+			"input": "\\leftharpoonup{ab}",
+			"inline": "↼ ab",
+			"display": "↼ ab"
+		},
+		{
+			"input": "\\leftharpoonup_{i=1}^{n} x",
+			"inline": "↼ᵢ₌₁ⁿ x",
+			"display": "↼ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\leftharpoonup x",
+			"inline": "↼ x",
+			"display": "↼ x"
+		},
+		{
+			"input": "\\leftharpoondown",
+			"inline": "↽",
+			"display": "↽"
+		},
+		{
+			"input": "x \\leftharpoondown y",
+			"inline": "x ↽ y",
+			"display": "x ↽ y"
+		},
+		{
+			"input": "\\leftharpoondown{ab}",
+			"inline": "↽ ab",
+			"display": "↽ ab"
+		},
+		{
+			"input": "\\leftharpoondown_{i=1}^{n} x",
+			"inline": "↽ᵢ₌₁ⁿ x",
+			"display": "↽ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\leftharpoondown x",
+			"inline": "↽ x",
+			"display": "↽ x"
+		},
+		{
+			"input": "\\rightharpoonup",
+			"inline": "⇀",
+			"display": "⇀"
+		},
+		{
+			"input": "x \\rightharpoonup y",
+			"inline": "x ⇀ y",
+			"display": "x ⇀ y"
+		},
+		{
+			"input": "\\rightharpoonup{ab}",
+			"inline": "⇀ ab",
+			"display": "⇀ ab"
+		},
+		{
+			"input": "\\rightharpoonup_{i=1}^{n} x",
+			"inline": "⇀ᵢ₌₁ⁿ x",
+			"display": "⇀ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\rightharpoonup x",
+			"inline": "⇀ x",
+			"display": "⇀ x"
+		},
+		{
+			"input": "\\rightharpoondown",
+			"inline": "⇁",
+			"display": "⇁"
+		},
+		{
+			"input": "x \\rightharpoondown y",
+			"inline": "x ⇁ y",
+			"display": "x ⇁ y"
+		},
+		{
+			"input": "\\rightharpoondown{ab}",
+			"inline": "⇁ ab",
+			"display": "⇁ ab"
+		},
+		{
+			"input": "\\rightharpoondown_{i=1}^{n} x",
+			"inline": "⇁ᵢ₌₁ⁿ x",
+			"display": "⇁ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\rightharpoondown x",
+			"inline": "⇁ x",
+			"display": "⇁ x"
+		},
+		{
+			"input": "\\rightleftharpoons",
+			"inline": "⇌",
+			"display": "⇌"
+		},
+		{
+			"input": "x \\rightleftharpoons y",
+			"inline": "x ⇌ y",
+			"display": "x ⇌ y"
+		},
+		{
+			"input": "\\rightleftharpoons{ab}",
+			"inline": "⇌ ab",
+			"display": "⇌ ab"
+		},
+		{
+			"input": "\\rightleftharpoons_{i=1}^{n} x",
+			"inline": "⇌ᵢ₌₁ⁿ x",
+			"display": "⇌ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\rightleftharpoons x",
+			"inline": "⇌ x",
+			"display": "⇌ x"
+		},
+		{
+			"input": "\\leftrightharpoons",
+			"inline": "⇋",
+			"display": "⇋"
+		},
+		{
+			"input": "x \\leftrightharpoons y",
+			"inline": "x ⇋ y",
+			"display": "x ⇋ y"
+		},
+		{
+			"input": "\\leftrightharpoons{ab}",
+			"inline": "⇋ ab",
+			"display": "⇋ ab"
+		},
+		{
+			"input": "\\leftrightharpoons_{i=1}^{n} x",
+			"inline": "⇋ᵢ₌₁ⁿ x",
+			"display": "⇋ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\leftrightharpoons x",
+			"inline": "⇋ x",
+			"display": "⇋ x"
+		},
+		{
+			"input": "\\nearrow",
+			"inline": "↗",
+			"display": "↗"
+		},
+		{
+			"input": "x \\nearrow y",
+			"inline": "x ↗ y",
+			"display": "x ↗ y"
+		},
+		{
+			"input": "\\nearrow{ab}",
+			"inline": "↗ ab",
+			"display": "↗ ab"
+		},
+		{
+			"input": "\\nearrow_{i=1}^{n} x",
+			"inline": "↗ᵢ₌₁ⁿ x",
+			"display": "↗ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\nearrow x",
+			"inline": "↗ x",
+			"display": "↗ x"
+		},
+		{
+			"input": "\\searrow",
+			"inline": "↘",
+			"display": "↘"
+		},
+		{
+			"input": "x \\searrow y",
+			"inline": "x ↘ y",
+			"display": "x ↘ y"
+		},
+		{
+			"input": "\\searrow{ab}",
+			"inline": "↘ ab",
+			"display": "↘ ab"
+		},
+		{
+			"input": "\\searrow_{i=1}^{n} x",
+			"inline": "↘ᵢ₌₁ⁿ x",
+			"display": "↘ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\searrow x",
+			"inline": "↘ x",
+			"display": "↘ x"
+		},
+		{
+			"input": "\\swarrow",
+			"inline": "↙",
+			"display": "↙"
+		},
+		{
+			"input": "x \\swarrow y",
+			"inline": "x ↙ y",
+			"display": "x ↙ y"
+		},
+		{
+			"input": "\\swarrow{ab}",
+			"inline": "↙ ab",
+			"display": "↙ ab"
+		},
+		{
+			"input": "\\swarrow_{i=1}^{n} x",
+			"inline": "↙ᵢ₌₁ⁿ x",
+			"display": "↙ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\swarrow x",
+			"inline": "↙ x",
+			"display": "↙ x"
+		},
+		{
+			"input": "\\nwarrow",
+			"inline": "↖",
+			"display": "↖"
+		},
+		{
+			"input": "x \\nwarrow y",
+			"inline": "x ↖ y",
+			"display": "x ↖ y"
+		},
+		{
+			"input": "\\nwarrow{ab}",
+			"inline": "↖ ab",
+			"display": "↖ ab"
+		},
+		{
+			"input": "\\nwarrow_{i=1}^{n} x",
+			"inline": "↖ᵢ₌₁ⁿ x",
+			"display": "↖ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\nwarrow x",
+			"inline": "↖ x",
+			"display": "↖ x"
+		},
+		{
+			"input": "\\rightsquigarrow",
+			"inline": "⇝",
+			"display": "⇝"
+		},
+		{
+			"input": "x \\rightsquigarrow y",
+			"inline": "x ⇝ y",
+			"display": "x ⇝ y"
+		},
+		{
+			"input": "\\rightsquigarrow{ab}",
+			"inline": "⇝ ab",
+			"display": "⇝ ab"
+		},
+		{
+			"input": "\\rightsquigarrow_{i=1}^{n} x",
+			"inline": "⇝ᵢ₌₁ⁿ x",
+			"display": "⇝ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\rightsquigarrow x",
+			"inline": "⇝ x",
+			"display": "⇝ x"
+		},
+		{
+			"input": "\\leadsto",
+			"inline": "⇝",
+			"display": "⇝"
+		},
+		{
+			"input": "x \\leadsto y",
+			"inline": "x ⇝ y",
+			"display": "x ⇝ y"
+		},
+		{
+			"input": "\\leadsto{ab}",
+			"inline": "⇝ ab",
+			"display": "⇝ ab"
+		},
+		{
+			"input": "\\leadsto_{i=1}^{n} x",
+			"inline": "⇝ᵢ₌₁ⁿ x",
+			"display": "⇝ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\leadsto x",
+			"inline": "⇝ x",
+			"display": "⇝ x"
+		},
+		{
+			"input": "\\Rightarrow",
+			"inline": "⇒",
+			"display": "⇒"
+		},
+		{
+			"input": "x \\Rightarrow y",
+			"inline": "x ⇒ y",
+			"display": "x ⇒ y"
+		},
+		{
+			"input": "\\Rightarrow{ab}",
+			"inline": "⇒ ab",
+			"display": "⇒ ab"
+		},
+		{
+			"input": "\\Rightarrow_{i=1}^{n} x",
+			"inline": "⇒ᵢ₌₁ⁿ x",
+			"display": "⇒ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\Rightarrow x",
+			"inline": "⇒ x",
+			"display": "⇒ x"
+		},
+		{
+			"input": "\\Longrightarrow",
+			"inline": "⇒",
+			"display": "⇒"
+		},
+		{
+			"input": "x \\Longrightarrow y",
+			"inline": "x ⇒ y",
+			"display": "x ⇒ y"
+		},
+		{
+			"input": "\\Longrightarrow{ab}",
+			"inline": "⇒ ab",
+			"display": "⇒ ab"
+		},
+		{
+			"input": "\\Longrightarrow_{i=1}^{n} x",
+			"inline": "⇒ᵢ₌₁ⁿ x",
+			"display": "⇒ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\Longrightarrow x",
+			"inline": "⇒ x",
+			"display": "⇒ x"
+		},
+		{
+			"input": "\\Leftarrow",
+			"inline": "⇐",
+			"display": "⇐"
+		},
+		{
+			"input": "x \\Leftarrow y",
+			"inline": "x ⇐ y",
+			"display": "x ⇐ y"
+		},
+		{
+			"input": "\\Leftarrow{ab}",
+			"inline": "⇐ ab",
+			"display": "⇐ ab"
+		},
+		{
+			"input": "\\Leftarrow_{i=1}^{n} x",
+			"inline": "⇐ᵢ₌₁ⁿ x",
+			"display": "⇐ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\Leftarrow x",
+			"inline": "⇐ x",
+			"display": "⇐ x"
+		},
+		{
+			"input": "\\Longleftarrow",
+			"inline": "⇐",
+			"display": "⇐"
+		},
+		{
+			"input": "x \\Longleftarrow y",
+			"inline": "x ⇐ y",
+			"display": "x ⇐ y"
+		},
+		{
+			"input": "\\Longleftarrow{ab}",
+			"inline": "⇐ ab",
+			"display": "⇐ ab"
+		},
+		{
+			"input": "\\Longleftarrow_{i=1}^{n} x",
+			"inline": "⇐ᵢ₌₁ⁿ x",
+			"display": "⇐ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\Longleftarrow x",
+			"inline": "⇐ x",
+			"display": "⇐ x"
+		},
+		{
+			"input": "\\Leftrightarrow",
+			"inline": "⇔",
+			"display": "⇔"
+		},
+		{
+			"input": "x \\Leftrightarrow y",
+			"inline": "x ⇔ y",
+			"display": "x ⇔ y"
+		},
+		{
+			"input": "\\Leftrightarrow{ab}",
+			"inline": "⇔ ab",
+			"display": "⇔ ab"
+		},
+		{
+			"input": "\\Leftrightarrow_{i=1}^{n} x",
+			"inline": "⇔ᵢ₌₁ⁿ x",
+			"display": "⇔ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\Leftrightarrow x",
+			"inline": "⇔ x",
+			"display": "⇔ x"
+		},
+		{
+			"input": "\\Longleftrightarrow",
+			"inline": "⇔",
+			"display": "⇔"
+		},
+		{
+			"input": "x \\Longleftrightarrow y",
+			"inline": "x ⇔ y",
+			"display": "x ⇔ y"
+		},
+		{
+			"input": "\\Longleftrightarrow{ab}",
+			"inline": "⇔ ab",
+			"display": "⇔ ab"
+		},
+		{
+			"input": "\\Longleftrightarrow_{i=1}^{n} x",
+			"inline": "⇔ᵢ₌₁ⁿ x",
+			"display": "⇔ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\Longleftrightarrow x",
+			"inline": "⇔ x",
+			"display": "⇔ x"
+		},
+		{
+			"input": "\\implies",
+			"inline": "⇒",
+			"display": "⇒"
+		},
+		{
+			"input": "x \\implies y",
+			"inline": "x ⇒ y",
+			"display": "x ⇒ y"
+		},
+		{
+			"input": "\\implies{ab}",
+			"inline": "⇒ ab",
+			"display": "⇒ ab"
+		},
+		{
+			"input": "\\implies_{i=1}^{n} x",
+			"inline": "⇒ᵢ₌₁ⁿ x",
+			"display": "⇒ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\implies x",
+			"inline": "⇒ x",
+			"display": "⇒ x"
+		},
+		{
+			"input": "\\iff",
+			"inline": "⇔",
+			"display": "⇔"
+		},
+		{
+			"input": "x \\iff y",
+			"inline": "x ⇔ y",
+			"display": "x ⇔ y"
+		},
+		{
+			"input": "\\iff{ab}",
+			"inline": "⇔ ab",
+			"display": "⇔ ab"
+		},
+		{
+			"input": "\\iff_{i=1}^{n} x",
+			"inline": "⇔ᵢ₌₁ⁿ x",
+			"display": "⇔ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\iff x",
+			"inline": "⇔ x",
+			"display": "⇔ x"
+		},
+		{
+			"input": "\\mapsto",
+			"inline": "↦",
+			"display": "↦"
+		},
+		{
+			"input": "x \\mapsto y",
+			"inline": "x ↦ y",
+			"display": "x ↦ y"
+		},
+		{
+			"input": "\\mapsto{ab}",
+			"inline": "↦ ab",
+			"display": "↦ ab"
+		},
+		{
+			"input": "\\mapsto_{i=1}^{n} x",
+			"inline": "↦ᵢ₌₁ⁿ x",
+			"display": "↦ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\mapsto x",
+			"inline": "↦ x",
+			"display": "↦ x"
+		},
+		{
+			"input": "\\longmapsto",
+			"inline": "↦",
+			"display": "↦"
+		},
+		{
+			"input": "x \\longmapsto y",
+			"inline": "x ↦ y",
+			"display": "x ↦ y"
+		},
+		{
+			"input": "\\longmapsto{ab}",
+			"inline": "↦ ab",
+			"display": "↦ ab"
+		},
+		{
+			"input": "\\longmapsto_{i=1}^{n} x",
+			"inline": "↦ᵢ₌₁ⁿ x",
+			"display": "↦ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\longmapsto x",
+			"inline": "↦ x",
+			"display": "↦ x"
+		},
+		{
+			"input": "\\uparrow",
+			"inline": "↑",
+			"display": "↑"
+		},
+		{
+			"input": "x \\uparrow y",
+			"inline": "x ↑ y",
+			"display": "x ↑ y"
+		},
+		{
+			"input": "\\uparrow{ab}",
+			"inline": "↑ ab",
+			"display": "↑ ab"
+		},
+		{
+			"input": "\\uparrow_{i=1}^{n} x",
+			"inline": "↑ᵢ₌₁ⁿ x",
+			"display": "↑ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\uparrow x",
+			"inline": "↑ x",
+			"display": "↑ x"
+		},
+		{
+			"input": "\\downarrow",
+			"inline": "↓",
+			"display": "↓"
+		},
+		{
+			"input": "x \\downarrow y",
+			"inline": "x ↓ y",
+			"display": "x ↓ y"
+		},
+		{
+			"input": "\\downarrow{ab}",
+			"inline": "↓ ab",
+			"display": "↓ ab"
+		},
+		{
+			"input": "\\downarrow_{i=1}^{n} x",
+			"inline": "↓ᵢ₌₁ⁿ x",
+			"display": "↓ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\downarrow x",
+			"inline": "↓ x",
+			"display": "↓ x"
+		},
+		{
+			"input": "\\partial",
+			"inline": "∂",
+			"display": "∂"
+		},
+		{
+			"input": "x \\partial y",
+			"inline": "x ∂ y",
+			"display": "x ∂ y"
+		},
+		{
+			"input": "\\partial{ab}",
+			"inline": "∂ab",
+			"display": "∂ab"
+		},
+		{
+			"input": "\\partial_{i=1}^{n} x",
+			"inline": "∂ᵢ₌₁ⁿ x",
+			"display": "∂ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\partial x",
+			"inline": "∂ x",
+			"display": "∂ x"
+		},
+		{
+			"input": "\\nabla",
+			"inline": "∇",
+			"display": "∇"
+		},
+		{
+			"input": "x \\nabla y",
+			"inline": "x ∇ y",
+			"display": "x ∇ y"
+		},
+		{
+			"input": "\\nabla{ab}",
+			"inline": "∇ab",
+			"display": "∇ab"
+		},
+		{
+			"input": "\\nabla_{i=1}^{n} x",
+			"inline": "∇ᵢ₌₁ⁿ x",
+			"display": "∇ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\nabla x",
+			"inline": "∇ x",
+			"display": "∇ x"
+		},
+		{
+			"input": "\\int",
+			"inline": "∫",
+			"display": "∫"
+		},
+		{
+			"input": "x \\int y",
+			"inline": "x ∫ y",
+			"display": "x ∫ y"
+		},
+		{
+			"input": "\\int{ab}",
+			"inline": "∫ab",
+			"display": "∫ab"
+		},
+		{
+			"input": "\\int_{i=1}^{n} x",
+			"inline": "∫ᵢ₌₁ⁿ x",
+			"display": " n\n ∫  x\ni=1"
+		},
+		{
+			"input": "\\int x",
+			"inline": "∫ x",
+			"display": "∫ x"
+		},
+		{
+			"input": "\\iint",
+			"inline": "∬",
+			"display": "∬"
+		},
+		{
+			"input": "x \\iint y",
+			"inline": "x ∬ y",
+			"display": "x ∬ y"
+		},
+		{
+			"input": "\\iint{ab}",
+			"inline": "∬ab",
+			"display": "∬ab"
+		},
+		{
+			"input": "\\iint_{i=1}^{n} x",
+			"inline": "∬ᵢ₌₁ⁿ x",
+			"display": " n\n ∬  x\ni=1"
+		},
+		{
+			"input": "\\iint x",
+			"inline": "∬ x",
+			"display": "∬ x"
+		},
+		{
+			"input": "\\iiint",
+			"inline": "∭",
+			"display": "∭"
+		},
+		{
+			"input": "x \\iiint y",
+			"inline": "x ∭ y",
+			"display": "x ∭ y"
+		},
+		{
+			"input": "\\iiint{ab}",
+			"inline": "∭ab",
+			"display": "∭ab"
+		},
+		{
+			"input": "\\iiint_{i=1}^{n} x",
+			"inline": "∭ᵢ₌₁ⁿ x",
+			"display": " n\n ∭  x\ni=1"
+		},
+		{
+			"input": "\\iiint x",
+			"inline": "∭ x",
+			"display": "∭ x"
+		},
+		{
+			"input": "\\oint",
+			"inline": "∮",
+			"display": "∮"
+		},
+		{
+			"input": "x \\oint y",
+			"inline": "x ∮ y",
+			"display": "x ∮ y"
+		},
+		{
+			"input": "\\oint{ab}",
+			"inline": "∮ab",
+			"display": "∮ab"
+		},
+		{
+			"input": "\\oint_{i=1}^{n} x",
+			"inline": "∮ᵢ₌₁ⁿ x",
+			"display": " n\n ∮  x\ni=1"
+		},
+		{
+			"input": "\\oint x",
+			"inline": "∮ x",
+			"display": "∮ x"
+		},
+		{
+			"input": "\\sum",
+			"inline": "∑",
+			"display": "∑"
+		},
+		{
+			"input": "x \\sum y",
+			"inline": "x ∑ y",
+			"display": "x ∑ y"
+		},
+		{
+			"input": "\\sum{ab}",
+			"inline": "∑ab",
+			"display": "∑ab"
+		},
+		{
+			"input": "\\sum_{i=1}^{n} x",
+			"inline": "∑ᵢ₌₁ⁿ x",
+			"display": " n\n ∑  x\ni=1"
+		},
+		{
+			"input": "\\sum x",
+			"inline": "∑ x",
+			"display": "∑ x"
+		},
+		{
+			"input": "\\prod",
+			"inline": "∏",
+			"display": "∏"
+		},
+		{
+			"input": "x \\prod y",
+			"inline": "x ∏ y",
+			"display": "x ∏ y"
+		},
+		{
+			"input": "\\prod{ab}",
+			"inline": "∏ab",
+			"display": "∏ab"
+		},
+		{
+			"input": "\\prod_{i=1}^{n} x",
+			"inline": "∏ᵢ₌₁ⁿ x",
+			"display": " n\n ∏  x\ni=1"
+		},
+		{
+			"input": "\\prod x",
+			"inline": "∏ x",
+			"display": "∏ x"
+		},
+		{
+			"input": "\\coprod",
+			"inline": "∐",
+			"display": "∐"
+		},
+		{
+			"input": "x \\coprod y",
+			"inline": "x ∐ y",
+			"display": "x ∐ y"
+		},
+		{
+			"input": "\\coprod{ab}",
+			"inline": "∐ab",
+			"display": "∐ab"
+		},
+		{
+			"input": "\\coprod_{i=1}^{n} x",
+			"inline": "∐ᵢ₌₁ⁿ x",
+			"display": " n\n ∐  x\ni=1"
+		},
+		{
+			"input": "\\coprod x",
+			"inline": "∐ x",
+			"display": "∐ x"
+		},
+		{
+			"input": "\\infty",
+			"inline": "∞",
+			"display": "∞"
+		},
+		{
+			"input": "x \\infty y",
+			"inline": "x ∞ y",
+			"display": "x ∞ y"
+		},
+		{
+			"input": "\\infty{ab}",
+			"inline": "∞ab",
+			"display": "∞ab"
+		},
+		{
+			"input": "\\infty_{i=1}^{n} x",
+			"inline": "∞ᵢ₌₁ⁿ x",
+			"display": "∞ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\infty x",
+			"inline": "∞ x",
+			"display": "∞ x"
+		},
+		{
+			"input": "\\emptyset",
+			"inline": "∅",
+			"display": "∅"
+		},
+		{
+			"input": "x \\emptyset y",
+			"inline": "x ∅ y",
+			"display": "x ∅ y"
+		},
+		{
+			"input": "\\emptyset{ab}",
+			"inline": "∅ab",
+			"display": "∅ab"
+		},
+		{
+			"input": "\\emptyset_{i=1}^{n} x",
+			"inline": "∅ᵢ₌₁ⁿ x",
+			"display": "∅ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\emptyset x",
+			"inline": "∅ x",
+			"display": "∅ x"
+		},
+		{
+			"input": "\\varnothing",
+			"inline": "∅",
+			"display": "∅"
+		},
+		{
+			"input": "x \\varnothing y",
+			"inline": "x ∅ y",
+			"display": "x ∅ y"
+		},
+		{
+			"input": "\\varnothing{ab}",
+			"inline": "∅ab",
+			"display": "∅ab"
+		},
+		{
+			"input": "\\varnothing_{i=1}^{n} x",
+			"inline": "∅ᵢ₌₁ⁿ x",
+			"display": "∅ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\varnothing x",
+			"inline": "∅ x",
+			"display": "∅ x"
+		},
+		{
+			"input": "\\angle",
+			"inline": "∠",
+			"display": "∠"
+		},
+		{
+			"input": "x \\angle y",
+			"inline": "x ∠ y",
+			"display": "x ∠ y"
+		},
+		{
+			"input": "\\angle{ab}",
+			"inline": "∠ab",
+			"display": "∠ab"
+		},
+		{
+			"input": "\\angle_{i=1}^{n} x",
+			"inline": "∠ᵢ₌₁ⁿ x",
+			"display": "∠ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\angle x",
+			"inline": "∠ x",
+			"display": "∠ x"
+		},
+		{
+			"input": "\\therefore",
+			"inline": "∴",
+			"display": "∴"
+		},
+		{
+			"input": "x \\therefore y",
+			"inline": "x ∴ y",
+			"display": "x ∴ y"
+		},
+		{
+			"input": "\\therefore{ab}",
+			"inline": "∴ab",
+			"display": "∴ab"
+		},
+		{
+			"input": "\\therefore_{i=1}^{n} x",
+			"inline": "∴ᵢ₌₁ⁿ x",
+			"display": "∴ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\therefore x",
+			"inline": "∴ x",
+			"display": "∴ x"
+		},
+		{
+			"input": "\\because",
+			"inline": "∵",
+			"display": "∵"
+		},
+		{
+			"input": "x \\because y",
+			"inline": "x ∵ y",
+			"display": "x ∵ y"
+		},
+		{
+			"input": "\\because{ab}",
+			"inline": "∵ab",
+			"display": "∵ab"
+		},
+		{
+			"input": "\\because_{i=1}^{n} x",
+			"inline": "∵ᵢ₌₁ⁿ x",
+			"display": "∵ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\because x",
+			"inline": "∵ x",
+			"display": "∵ x"
+		},
+		{
+			"input": "\\aleph",
+			"inline": "ℵ",
+			"display": "ℵ"
+		},
+		{
+			"input": "x \\aleph y",
+			"inline": "x ℵ y",
+			"display": "x ℵ y"
+		},
+		{
+			"input": "\\aleph{ab}",
+			"inline": "ℵab",
+			"display": "ℵab"
+		},
+		{
+			"input": "\\aleph_{i=1}^{n} x",
+			"inline": "ℵᵢ₌₁ⁿ x",
+			"display": "ℵᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\aleph x",
+			"inline": "ℵ x",
+			"display": "ℵ x"
+		},
+		{
+			"input": "\\beth",
+			"inline": "ℶ",
+			"display": "ℶ"
+		},
+		{
+			"input": "x \\beth y",
+			"inline": "x ℶ y",
+			"display": "x ℶ y"
+		},
+		{
+			"input": "\\beth{ab}",
+			"inline": "ℶab",
+			"display": "ℶab"
+		},
+		{
+			"input": "\\beth_{i=1}^{n} x",
+			"inline": "ℶᵢ₌₁ⁿ x",
+			"display": "ℶᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\beth x",
+			"inline": "ℶ x",
+			"display": "ℶ x"
+		},
+		{
+			"input": "\\gimel",
+			"inline": "ℷ",
+			"display": "ℷ"
+		},
+		{
+			"input": "x \\gimel y",
+			"inline": "x ℷ y",
+			"display": "x ℷ y"
+		},
+		{
+			"input": "\\gimel{ab}",
+			"inline": "ℷab",
+			"display": "ℷab"
+		},
+		{
+			"input": "\\gimel_{i=1}^{n} x",
+			"inline": "ℷᵢ₌₁ⁿ x",
+			"display": "ℷᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\gimel x",
+			"inline": "ℷ x",
+			"display": "ℷ x"
+		},
+		{
+			"input": "\\daleth",
+			"inline": "ℸ",
+			"display": "ℸ"
+		},
+		{
+			"input": "x \\daleth y",
+			"inline": "x ℸ y",
+			"display": "x ℸ y"
+		},
+		{
+			"input": "\\daleth{ab}",
+			"inline": "ℸab",
+			"display": "ℸab"
+		},
+		{
+			"input": "\\daleth_{i=1}^{n} x",
+			"inline": "ℸᵢ₌₁ⁿ x",
+			"display": "ℸᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\daleth x",
+			"inline": "ℸ x",
+			"display": "ℸ x"
+		},
+		{
+			"input": "\\top",
+			"inline": "⊤",
+			"display": "⊤"
+		},
+		{
+			"input": "x \\top y",
+			"inline": "x ⊤ y",
+			"display": "x ⊤ y"
+		},
+		{
+			"input": "\\top{ab}",
+			"inline": "⊤ab",
+			"display": "⊤ab"
+		},
+		{
+			"input": "\\top_{i=1}^{n} x",
+			"inline": "⊤ᵢ₌₁ⁿ x",
+			"display": "⊤ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\top x",
+			"inline": "⊤ x",
+			"display": "⊤ x"
+		},
+		{
+			"input": "\\bot",
+			"inline": "⊥",
+			"display": "⊥"
+		},
+		{
+			"input": "x \\bot y",
+			"inline": "x ⊥ y",
+			"display": "x ⊥ y"
+		},
+		{
+			"input": "\\bot{ab}",
+			"inline": "⊥ab",
+			"display": "⊥ab"
+		},
+		{
+			"input": "\\bot_{i=1}^{n} x",
+			"inline": "⊥ᵢ₌₁ⁿ x",
+			"display": "⊥ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\bot x",
+			"inline": "⊥ x",
+			"display": "⊥ x"
+		},
+		{
+			"input": "\\triangle",
+			"inline": "△",
+			"display": "△"
+		},
+		{
+			"input": "x \\triangle y",
+			"inline": "x △ y",
+			"display": "x △ y"
+		},
+		{
+			"input": "\\triangle{ab}",
+			"inline": "△ab",
+			"display": "△ab"
+		},
+		{
+			"input": "\\triangle_{i=1}^{n} x",
+			"inline": "△ᵢ₌₁ⁿ x",
+			"display": "△ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\triangle x",
+			"inline": "△ x",
+			"display": "△ x"
+		},
+		{
+			"input": "\\square",
+			"inline": "□",
+			"display": "□"
+		},
+		{
+			"input": "x \\square y",
+			"inline": "x □ y",
+			"display": "x □ y"
+		},
+		{
+			"input": "\\square{ab}",
+			"inline": "□ab",
+			"display": "□ab"
+		},
+		{
+			"input": "\\square_{i=1}^{n} x",
+			"inline": "□ᵢ₌₁ⁿ x",
+			"display": "□ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\square x",
+			"inline": "□ x",
+			"display": "□ x"
+		},
+		{
+			"input": "\\lozenge",
+			"inline": "◊",
+			"display": "◊"
+		},
+		{
+			"input": "x \\lozenge y",
+			"inline": "x ◊ y",
+			"display": "x ◊ y"
+		},
+		{
+			"input": "\\lozenge{ab}",
+			"inline": "◊ab",
+			"display": "◊ab"
+		},
+		{
+			"input": "\\lozenge_{i=1}^{n} x",
+			"inline": "◊ᵢ₌₁ⁿ x",
+			"display": "◊ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\lozenge x",
+			"inline": "◊ x",
+			"display": "◊ x"
+		},
+		{
+			"input": "\\checkmark",
+			"inline": "✓",
+			"display": "✓"
+		},
+		{
+			"input": "x \\checkmark y",
+			"inline": "x ✓ y",
+			"display": "x ✓ y"
+		},
+		{
+			"input": "\\checkmark{ab}",
+			"inline": "✓ab",
+			"display": "✓ab"
+		},
+		{
+			"input": "\\checkmark_{i=1}^{n} x",
+			"inline": "✓ᵢ₌₁ⁿ x",
+			"display": "✓ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\checkmark x",
+			"inline": "✓ x",
+			"display": "✓ x"
+		},
+		{
+			"input": "\\complement",
+			"inline": "∁",
+			"display": "∁"
+		},
+		{
+			"input": "x \\complement y",
+			"inline": "x ∁ y",
+			"display": "x ∁ y"
+		},
+		{
+			"input": "\\complement{ab}",
+			"inline": "∁ab",
+			"display": "∁ab"
+		},
+		{
+			"input": "\\complement_{i=1}^{n} x",
+			"inline": "∁ᵢ₌₁ⁿ x",
+			"display": "∁ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\complement x",
+			"inline": "∁ x",
+			"display": "∁ x"
+		},
+		{
+			"input": "\\wp",
+			"inline": "℘",
+			"display": "℘"
+		},
+		{
+			"input": "x \\wp y",
+			"inline": "x ℘ y",
+			"display": "x ℘ y"
+		},
+		{
+			"input": "\\wp{ab}",
+			"inline": "℘ab",
+			"display": "℘ab"
+		},
+		{
+			"input": "\\wp_{i=1}^{n} x",
+			"inline": "℘ᵢ₌₁ⁿ x",
+			"display": "℘ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\wp x",
+			"inline": "℘ x",
+			"display": "℘ x"
+		},
+		{
+			"input": "\\prime",
+			"inline": "′",
+			"display": "′"
+		},
+		{
+			"input": "x \\prime y",
+			"inline": "x ′ y",
+			"display": "x ′ y"
+		},
+		{
+			"input": "\\prime{ab}",
+			"inline": "′ab",
+			"display": "′ab"
+		},
+		{
+			"input": "\\prime_{i=1}^{n} x",
+			"inline": "′ᵢ₌₁ⁿ x",
+			"display": "′ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\prime x",
+			"inline": "′ x",
+			"display": "′ x"
+		},
+		{
+			"input": "\\ldots",
+			"inline": "…",
+			"display": "…"
+		},
+		{
+			"input": "x \\ldots y",
+			"inline": "x … y",
+			"display": "x … y"
+		},
+		{
+			"input": "\\ldots{ab}",
+			"inline": "…ab",
+			"display": "…ab"
+		},
+		{
+			"input": "\\ldots_{i=1}^{n} x",
+			"inline": "…ᵢ₌₁ⁿ x",
+			"display": "…ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\ldots x",
+			"inline": "… x",
+			"display": "… x"
+		},
+		{
+			"input": "\\dots",
+			"inline": "…",
+			"display": "…"
+		},
+		{
+			"input": "x \\dots y",
+			"inline": "x … y",
+			"display": "x … y"
+		},
+		{
+			"input": "\\dots{ab}",
+			"inline": "…ab",
+			"display": "…ab"
+		},
+		{
+			"input": "\\dots_{i=1}^{n} x",
+			"inline": "…ᵢ₌₁ⁿ x",
+			"display": "…ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\dots x",
+			"inline": "… x",
+			"display": "… x"
+		},
+		{
+			"input": "\\cdots",
+			"inline": "⋯",
+			"display": "⋯"
+		},
+		{
+			"input": "x \\cdots y",
+			"inline": "x ⋯ y",
+			"display": "x ⋯ y"
+		},
+		{
+			"input": "\\cdots{ab}",
+			"inline": "⋯ab",
+			"display": "⋯ab"
+		},
+		{
+			"input": "\\cdots_{i=1}^{n} x",
+			"inline": "⋯ᵢ₌₁ⁿ x",
+			"display": "⋯ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\cdots x",
+			"inline": "⋯ x",
+			"display": "⋯ x"
+		},
+		{
+			"input": "\\vdots",
+			"inline": "⋮",
+			"display": "⋮"
+		},
+		{
+			"input": "x \\vdots y",
+			"inline": "x ⋮ y",
+			"display": "x ⋮ y"
+		},
+		{
+			"input": "\\vdots{ab}",
+			"inline": "⋮ab",
+			"display": "⋮ab"
+		},
+		{
+			"input": "\\vdots_{i=1}^{n} x",
+			"inline": "⋮ᵢ₌₁ⁿ x",
+			"display": "⋮ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\vdots x",
+			"inline": "⋮ x",
+			"display": "⋮ x"
+		},
+		{
+			"input": "\\ddots",
+			"inline": "⋱",
+			"display": "⋱"
+		},
+		{
+			"input": "x \\ddots y",
+			"inline": "x ⋱ y",
+			"display": "x ⋱ y"
+		},
+		{
+			"input": "\\ddots{ab}",
+			"inline": "⋱ab",
+			"display": "⋱ab"
+		},
+		{
+			"input": "\\ddots_{i=1}^{n} x",
+			"inline": "⋱ᵢ₌₁ⁿ x",
+			"display": "⋱ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\ddots x",
+			"inline": "⋱ x",
+			"display": "⋱ x"
+		},
+		{
+			"input": "\\ell",
+			"inline": "ℓ",
+			"display": "ℓ"
+		},
+		{
+			"input": "x \\ell y",
+			"inline": "x ℓ y",
+			"display": "x ℓ y"
+		},
+		{
+			"input": "\\ell{ab}",
+			"inline": "ℓab",
+			"display": "ℓab"
+		},
+		{
+			"input": "\\ell_{i=1}^{n} x",
+			"inline": "ℓᵢ₌₁ⁿ x",
+			"display": "ℓᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\ell x",
+			"inline": "ℓ x",
+			"display": "ℓ x"
+		},
+		{
+			"input": "\\hbar",
+			"inline": "ℏ",
+			"display": "ℏ"
+		},
+		{
+			"input": "x \\hbar y",
+			"inline": "x ℏ y",
+			"display": "x ℏ y"
+		},
+		{
+			"input": "\\hbar{ab}",
+			"inline": "ℏab",
+			"display": "ℏab"
+		},
+		{
+			"input": "\\hbar_{i=1}^{n} x",
+			"inline": "ℏᵢ₌₁ⁿ x",
+			"display": "ℏᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\hbar x",
+			"inline": "ℏ x",
+			"display": "ℏ x"
+		},
+		{
+			"input": "\\Im",
+			"inline": "ℑ",
+			"display": "ℑ"
+		},
+		{
+			"input": "x \\Im y",
+			"inline": "x ℑ y",
+			"display": "x ℑ y"
+		},
+		{
+			"input": "\\Im{ab}",
+			"inline": "ℑab",
+			"display": "ℑab"
+		},
+		{
+			"input": "\\Im_{i=1}^{n} x",
+			"inline": "ℑᵢ₌₁ⁿ x",
+			"display": "ℑᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\Im x",
+			"inline": "ℑ x",
+			"display": "ℑ x"
+		},
+		{
+			"input": "\\Re",
+			"inline": "ℜ",
+			"display": "ℜ"
+		},
+		{
+			"input": "x \\Re y",
+			"inline": "x ℜ y",
+			"display": "x ℜ y"
+		},
+		{
+			"input": "\\Re{ab}",
+			"inline": "ℜab",
+			"display": "ℜab"
+		},
+		{
+			"input": "\\Re_{i=1}^{n} x",
+			"inline": "ℜᵢ₌₁ⁿ x",
+			"display": "ℜᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\Re x",
+			"inline": "ℜ x",
+			"display": "ℜ x"
+		},
+		{
+			"input": "\\langle",
+			"inline": "⟨",
+			"display": "⟨"
+		},
+		{
+			"input": "x \\langle y",
+			"inline": "x ⟨ y",
+			"display": "x ⟨ y"
+		},
+		{
+			"input": "\\langle{ab}",
+			"inline": "⟨ab",
+			"display": "⟨ab"
+		},
+		{
+			"input": "\\langle_{i=1}^{n} x",
+			"inline": "⟨ᵢ₌₁ⁿ x",
+			"display": "⟨ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\langle x",
+			"inline": "⟨ x",
+			"display": "⟨ x"
+		},
+		{
+			"input": "\\rangle",
+			"inline": "⟩",
+			"display": "⟩"
+		},
+		{
+			"input": "x \\rangle y",
+			"inline": "x ⟩ y",
+			"display": "x ⟩ y"
+		},
+		{
+			"input": "\\rangle{ab}",
+			"inline": "⟩ab",
+			"display": "⟩ab"
+		},
+		{
+			"input": "\\rangle_{i=1}^{n} x",
+			"inline": "⟩ᵢ₌₁ⁿ x",
+			"display": "⟩ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\rangle x",
+			"inline": "⟩ x",
+			"display": "⟩ x"
+		},
+		{
+			"input": "\\vert",
+			"inline": "|",
+			"display": "|"
+		},
+		{
+			"input": "x \\vert y",
+			"inline": "x | y",
+			"display": "x | y"
+		},
+		{
+			"input": "\\vert{ab}",
+			"inline": "|ab",
+			"display": "|ab"
+		},
+		{
+			"input": "\\vert_{i=1}^{n} x",
+			"inline": "|ᵢ₌₁ⁿ x",
+			"display": "|ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\vert x",
+			"inline": "| x",
+			"display": "| x"
+		},
+		{
+			"input": "\\lvert",
+			"inline": "|",
+			"display": "|"
+		},
+		{
+			"input": "x \\lvert y",
+			"inline": "x | y",
+			"display": "x | y"
+		},
+		{
+			"input": "\\lvert{ab}",
+			"inline": "|ab",
+			"display": "|ab"
+		},
+		{
+			"input": "\\lvert_{i=1}^{n} x",
+			"inline": "|ᵢ₌₁ⁿ x",
+			"display": "|ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\lvert x",
+			"inline": "| x",
+			"display": "| x"
+		},
+		{
+			"input": "\\rvert",
+			"inline": "|",
+			"display": "|"
+		},
+		{
+			"input": "x \\rvert y",
+			"inline": "x | y",
+			"display": "x | y"
+		},
+		{
+			"input": "\\rvert{ab}",
+			"inline": "|ab",
+			"display": "|ab"
+		},
+		{
+			"input": "\\rvert_{i=1}^{n} x",
+			"inline": "|ᵢ₌₁ⁿ x",
+			"display": "|ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\rvert x",
+			"inline": "| x",
+			"display": "| x"
+		},
+		{
+			"input": "\\Vert",
+			"inline": "‖",
+			"display": "‖"
+		},
+		{
+			"input": "x \\Vert y",
+			"inline": "x ‖ y",
+			"display": "x ‖ y"
+		},
+		{
+			"input": "\\Vert{ab}",
+			"inline": "‖ab",
+			"display": "‖ab"
+		},
+		{
+			"input": "\\Vert_{i=1}^{n} x",
+			"inline": "‖ᵢ₌₁ⁿ x",
+			"display": "‖ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\Vert x",
+			"inline": "‖ x",
+			"display": "‖ x"
+		},
+		{
+			"input": "\\lVert",
+			"inline": "‖",
+			"display": "‖"
+		},
+		{
+			"input": "x \\lVert y",
+			"inline": "x ‖ y",
+			"display": "x ‖ y"
+		},
+		{
+			"input": "\\lVert{ab}",
+			"inline": "‖ab",
+			"display": "‖ab"
+		},
+		{
+			"input": "\\lVert_{i=1}^{n} x",
+			"inline": "‖ᵢ₌₁ⁿ x",
+			"display": "‖ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\lVert x",
+			"inline": "‖ x",
+			"display": "‖ x"
+		},
+		{
+			"input": "\\rVert",
+			"inline": "‖",
+			"display": "‖"
+		},
+		{
+			"input": "x \\rVert y",
+			"inline": "x ‖ y",
+			"display": "x ‖ y"
+		},
+		{
+			"input": "\\rVert{ab}",
+			"inline": "‖ab",
+			"display": "‖ab"
+		},
+		{
+			"input": "\\rVert_{i=1}^{n} x",
+			"inline": "‖ᵢ₌₁ⁿ x",
+			"display": "‖ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\rVert x",
+			"inline": "‖ x",
+			"display": "‖ x"
+		},
+		{
+			"input": "\\lbrace",
+			"inline": "{",
+			"display": "{"
+		},
+		{
+			"input": "x \\lbrace y",
+			"inline": "x { y",
+			"display": "x { y"
+		},
+		{
+			"input": "\\lbrace{ab}",
+			"inline": "{ab",
+			"display": "{ab"
+		},
+		{
+			"input": "\\lbrace_{i=1}^{n} x",
+			"inline": "{ᵢ₌₁ⁿ x",
+			"display": "{ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\lbrace x",
+			"inline": "{ x",
+			"display": "{ x"
+		},
+		{
+			"input": "\\rbrace",
+			"inline": "}",
+			"display": "}"
+		},
+		{
+			"input": "x \\rbrace y",
+			"inline": "x } y",
+			"display": "x } y"
+		},
+		{
+			"input": "\\rbrace{ab}",
+			"inline": "}ab",
+			"display": "}ab"
+		},
+		{
+			"input": "\\rbrace_{i=1}^{n} x",
+			"inline": "}ᵢ₌₁ⁿ x",
+			"display": "}ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\rbrace x",
+			"inline": "} x",
+			"display": "} x"
+		},
+		{
+			"input": "\\backslash",
+			"inline": "\\",
+			"display": "\\"
+		},
+		{
+			"input": "x \\backslash y",
+			"inline": "x \\ y",
+			"display": "x \\ y"
+		},
+		{
+			"input": "\\backslash{ab}",
+			"inline": "\\ab",
+			"display": "\\ab"
+		},
+		{
+			"input": "\\backslash_{i=1}^{n} x",
+			"inline": "\\ᵢ₌₁ⁿ x",
+			"display": "\\ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\backslash x",
+			"inline": "\\ x",
+			"display": "\\ x"
+		},
+		{
+			"input": "\\lfloor",
+			"inline": "⌊",
+			"display": "⌊"
+		},
+		{
+			"input": "x \\lfloor y",
+			"inline": "x ⌊ y",
+			"display": "x ⌊ y"
+		},
+		{
+			"input": "\\lfloor{ab}",
+			"inline": "⌊ab",
+			"display": "⌊ab"
+		},
+		{
+			"input": "\\lfloor_{i=1}^{n} x",
+			"inline": "⌊ᵢ₌₁ⁿ x",
+			"display": "⌊ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\lfloor x",
+			"inline": "⌊ x",
+			"display": "⌊ x"
+		},
+		{
+			"input": "\\rfloor",
+			"inline": "⌋",
+			"display": "⌋"
+		},
+		{
+			"input": "x \\rfloor y",
+			"inline": "x ⌋ y",
+			"display": "x ⌋ y"
+		},
+		{
+			"input": "\\rfloor{ab}",
+			"inline": "⌋ab",
+			"display": "⌋ab"
+		},
+		{
+			"input": "\\rfloor_{i=1}^{n} x",
+			"inline": "⌋ᵢ₌₁ⁿ x",
+			"display": "⌋ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\rfloor x",
+			"inline": "⌋ x",
+			"display": "⌋ x"
+		},
+		{
+			"input": "\\lceil",
+			"inline": "⌈",
+			"display": "⌈"
+		},
+		{
+			"input": "x \\lceil y",
+			"inline": "x ⌈ y",
+			"display": "x ⌈ y"
+		},
+		{
+			"input": "\\lceil{ab}",
+			"inline": "⌈ab",
+			"display": "⌈ab"
+		},
+		{
+			"input": "\\lceil_{i=1}^{n} x",
+			"inline": "⌈ᵢ₌₁ⁿ x",
+			"display": "⌈ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\lceil x",
+			"inline": "⌈ x",
+			"display": "⌈ x"
+		},
+		{
+			"input": "\\rceil",
+			"inline": "⌉",
+			"display": "⌉"
+		},
+		{
+			"input": "x \\rceil y",
+			"inline": "x ⌉ y",
+			"display": "x ⌉ y"
+		},
+		{
+			"input": "\\rceil{ab}",
+			"inline": "⌉ab",
+			"display": "⌉ab"
+		},
+		{
+			"input": "\\rceil_{i=1}^{n} x",
+			"inline": "⌉ᵢ₌₁ⁿ x",
+			"display": "⌉ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\rceil x",
+			"inline": "⌉ x",
+			"display": "⌉ x"
+		},
+		{
+			"input": "\\colon",
+			"inline": ":",
+			"display": ":"
+		},
+		{
+			"input": "x \\colon y",
+			"inline": "x : y",
+			"display": "x : y"
+		},
+		{
+			"input": "\\colon{ab}",
+			"inline": ":ab",
+			"display": ":ab"
+		},
+		{
+			"input": "\\colon_{i=1}^{n} x",
+			"inline": ":ᵢ₌₁ⁿ x",
+			"display": ":ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\colon x",
+			"inline": ": x",
+			"display": ": x"
+		},
+		{
+			"input": "\\C",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\C y",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\C{ab}",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\C_{i=1}^{n} x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\C x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\H",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\H y",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\H{ab}",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\H_{i=1}^{n} x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\H x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\N",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\N y",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\N{ab}",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\N_{i=1}^{n} x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\N x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\P",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\P y",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\P{ab}",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\P_{i=1}^{n} x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\P x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\Q",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\Q y",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\Q{ab}",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\Q_{i=1}^{n} x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\Q x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\R",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\R y",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\R{ab}",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\R_{i=1}^{n} x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\R x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\Z",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\Z y",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\Z{ab}",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\Z_{i=1}^{n} x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\Z x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\a",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\a y",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\a{ab}",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\a_{i=1}^{n} x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\a x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\b",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\b y",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\b{ab}",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\b_{i=1}^{n} x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\b x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\c",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\c y",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\c{ab}",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\c_{i=1}^{n} x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\c x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\d",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\d y",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\d{ab}",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\d_{i=1}^{n} x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\d x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\e",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\e y",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\e{ab}",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\e_{i=1}^{n} x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\e x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\f",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\f y",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\f{ab}",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\f_{i=1}^{n} x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\f x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\g",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\g y",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\g{ab}",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\g_{i=1}^{n} x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\g x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\h",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\h y",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\h{ab}",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\h_{i=1}^{n} x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\h x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\i",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\i y",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\i{ab}",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\i_{i=1}^{n} x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\i x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\j",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\j y",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\j{ab}",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\j_{i=1}^{n} x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\j x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\k",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\k y",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\k{ab}",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\k_{i=1}^{n} x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\k x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\l",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\l y",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\l{ab}",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\l_{i=1}^{n} x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\l x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\m",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\m y",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\m{ab}",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\m_{i=1}^{n} x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\m x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\n",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\n y",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\n{ab}",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\n_{i=1}^{n} x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\n x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\o",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\o y",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\o{ab}",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\o_{i=1}^{n} x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\o x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\p",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\p y",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\p{ab}",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\p_{i=1}^{n} x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\p x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\r",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\r y",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\r{ab}",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\r_{i=1}^{n} x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\r x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\s",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\s y",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\s{ab}",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\s_{i=1}^{n} x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\s x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\t",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\t y",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\t{ab}",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\t_{i=1}^{n} x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\t x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\u",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\u y",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\u{ab}",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\u_{i=1}^{n} x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\u x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\v",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\v y",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\v{ab}",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\v_{i=1}^{n} x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\v x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\w",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\w y",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\w{ab}",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\w_{i=1}^{n} x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\w x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\x y",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\x{ab}",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\x_{i=1}^{n} x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\x x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\y",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\y y",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\y{ab}",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\y_{i=1}^{n} x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\y x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\z",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\z y",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\z{ab}",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\z_{i=1}^{n} x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\z x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\acute",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\acute y",
+			"inline": "x ý",
+			"display": "x ý"
+		},
+		{
+			"input": "\\acute{ab}",
+			"inline": "acute(ab)",
+			"display": "acute(ab)"
+		},
+		{
+			"input": "\\acute_{i=1}^{n} x",
+			"inline": "_́i = 1ⁿ x",
+			"display": "_́i = 1ⁿ x"
+		},
+		{
+			"input": "\\acute x",
+			"inline": "x́",
+			"display": "x́"
+		},
+		{
+			"input": "\\bar",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\bar y",
+			"inline": "x y̅",
+			"display": "x y̅"
+		},
+		{
+			"input": "\\bar{ab}",
+			"inline": "bar(ab)",
+			"display": "bar(ab)"
+		},
+		{
+			"input": "\\bar_{i=1}^{n} x",
+			"inline": "_̅i = 1ⁿ x",
+			"display": "_̅i = 1ⁿ x"
+		},
+		{
+			"input": "\\bar x",
+			"inline": "x̅",
+			"display": "x̅"
+		},
+		{
+			"input": "\\breve",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\breve y",
+			"inline": "x y̆",
+			"display": "x y̆"
+		},
+		{
+			"input": "\\breve{ab}",
+			"inline": "breve(ab)",
+			"display": "breve(ab)"
+		},
+		{
+			"input": "\\breve_{i=1}^{n} x",
+			"inline": "_̆i = 1ⁿ x",
+			"display": "_̆i = 1ⁿ x"
+		},
+		{
+			"input": "\\breve x",
+			"inline": "x̆",
+			"display": "x̆"
+		},
+		{
+			"input": "\\check",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\check y",
+			"inline": "x y̌",
+			"display": "x y̌"
+		},
+		{
+			"input": "\\check{ab}",
+			"inline": "check(ab)",
+			"display": "check(ab)"
+		},
+		{
+			"input": "\\check_{i=1}^{n} x",
+			"inline": "_̌i = 1ⁿ x",
+			"display": "_̌i = 1ⁿ x"
+		},
+		{
+			"input": "\\check x",
+			"inline": "x̌",
+			"display": "x̌"
+		},
+		{
+			"input": "\\ddot",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\ddot y",
+			"inline": "x ÿ",
+			"display": "x ÿ"
+		},
+		{
+			"input": "\\ddot{ab}",
+			"inline": "ddot(ab)",
+			"display": "ddot(ab)"
+		},
+		{
+			"input": "\\ddot_{i=1}^{n} x",
+			"inline": "_̈i = 1ⁿ x",
+			"display": "_̈i = 1ⁿ x"
+		},
+		{
+			"input": "\\ddot x",
+			"inline": "ẍ",
+			"display": "ẍ"
+		},
+		{
+			"input": "\\dot",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\dot y",
+			"inline": "x ẏ",
+			"display": "x ẏ"
+		},
+		{
+			"input": "\\dot{ab}",
+			"inline": "dot(ab)",
+			"display": "dot(ab)"
+		},
+		{
+			"input": "\\dot_{i=1}^{n} x",
+			"inline": "_̇i = 1ⁿ x",
+			"display": "_̇i = 1ⁿ x"
+		},
+		{
+			"input": "\\dot x",
+			"inline": "ẋ",
+			"display": "ẋ"
+		},
+		{
+			"input": "\\grave",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\grave y",
+			"inline": "x ỳ",
+			"display": "x ỳ"
+		},
+		{
+			"input": "\\grave{ab}",
+			"inline": "grave(ab)",
+			"display": "grave(ab)"
+		},
+		{
+			"input": "\\grave_{i=1}^{n} x",
+			"inline": "_̀i = 1ⁿ x",
+			"display": "_̀i = 1ⁿ x"
+		},
+		{
+			"input": "\\grave x",
+			"inline": "x̀",
+			"display": "x̀"
+		},
+		{
+			"input": "\\hat",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\hat y",
+			"inline": "x ŷ",
+			"display": "x ŷ"
+		},
+		{
+			"input": "\\hat{ab}",
+			"inline": "hat(ab)",
+			"display": "hat(ab)"
+		},
+		{
+			"input": "\\hat_{i=1}^{n} x",
+			"inline": "_̂i = 1ⁿ x",
+			"display": "_̂i = 1ⁿ x"
+		},
+		{
+			"input": "\\hat x",
+			"inline": "x̂",
+			"display": "x̂"
+		},
+		{
+			"input": "\\mathring",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\mathring y",
+			"inline": "x ẙ",
+			"display": "x ẙ"
+		},
+		{
+			"input": "\\mathring{ab}",
+			"inline": "mathring(ab)",
+			"display": "mathring(ab)"
+		},
+		{
+			"input": "\\mathring_{i=1}^{n} x",
+			"inline": "_̊i = 1ⁿ x",
+			"display": "_̊i = 1ⁿ x"
+		},
+		{
+			"input": "\\mathring x",
+			"inline": "x̊",
+			"display": "x̊"
+		},
+		{
+			"input": "\\overleftarrow",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\overleftarrow y",
+			"inline": "x y⃖",
+			"display": "x y⃖"
+		},
+		{
+			"input": "\\overleftarrow{ab}",
+			"inline": "overleftarrow(ab)",
+			"display": "overleftarrow(ab)"
+		},
+		{
+			"input": "\\overleftarrow_{i=1}^{n} x",
+			"inline": "_⃖i = 1ⁿ x",
+			"display": "_⃖i = 1ⁿ x"
+		},
+		{
+			"input": "\\overleftarrow x",
+			"inline": "x⃖",
+			"display": "x⃖"
+		},
+		{
+			"input": "\\overleftrightarrow",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\overleftrightarrow y",
+			"inline": "x y⃡",
+			"display": "x y⃡"
+		},
+		{
+			"input": "\\overleftrightarrow{ab}",
+			"inline": "overleftrightarrow(ab)",
+			"display": "overleftrightarrow(ab)"
+		},
+		{
+			"input": "\\overleftrightarrow_{i=1}^{n} x",
+			"inline": "_⃡i = 1ⁿ x",
+			"display": "_⃡i = 1ⁿ x"
+		},
+		{
+			"input": "\\overleftrightarrow x",
+			"inline": "x⃡",
+			"display": "x⃡"
+		},
+		{
+			"input": "\\overline",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\overline y",
+			"inline": "x y̅",
+			"display": "x y̅"
+		},
+		{
+			"input": "\\overline{ab}",
+			"inline": "overline(ab)",
+			"display": "overline(ab)"
+		},
+		{
+			"input": "\\overline_{i=1}^{n} x",
+			"inline": "_̅i = 1ⁿ x",
+			"display": "_̅i = 1ⁿ x"
+		},
+		{
+			"input": "\\overline x",
+			"inline": "x̅",
+			"display": "x̅"
+		},
+		{
+			"input": "\\overrightarrow",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\overrightarrow y",
+			"inline": "x y⃗",
+			"display": "x y⃗"
+		},
+		{
+			"input": "\\overrightarrow{ab}",
+			"inline": "overrightarrow(ab)",
+			"display": "overrightarrow(ab)"
+		},
+		{
+			"input": "\\overrightarrow_{i=1}^{n} x",
+			"inline": "_⃗i = 1ⁿ x",
+			"display": "_⃗i = 1ⁿ x"
+		},
+		{
+			"input": "\\overrightarrow x",
+			"inline": "x⃗",
+			"display": "x⃗"
+		},
+		{
+			"input": "\\tilde",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\tilde y",
+			"inline": "x ỹ",
+			"display": "x ỹ"
+		},
+		{
+			"input": "\\tilde{ab}",
+			"inline": "tilde(ab)",
+			"display": "tilde(ab)"
+		},
+		{
+			"input": "\\tilde_{i=1}^{n} x",
+			"inline": "_̃i = 1ⁿ x",
+			"display": "_̃i = 1ⁿ x"
+		},
+		{
+			"input": "\\tilde x",
+			"inline": "x̃",
+			"display": "x̃"
+		},
+		{
+			"input": "\\underline",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\underline y",
+			"inline": "x y̲",
+			"display": "x y̲"
+		},
+		{
+			"input": "\\underline{ab}",
+			"inline": "underline(ab)",
+			"display": "underline(ab)"
+		},
+		{
+			"input": "\\underline_{i=1}^{n} x",
+			"inline": "_̲i = 1ⁿ x",
+			"display": "_̲i = 1ⁿ x"
+		},
+		{
+			"input": "\\underline x",
+			"inline": "x̲",
+			"display": "x̲"
+		},
+		{
+			"input": "\\vec",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\vec y",
+			"inline": "x y⃗",
+			"display": "x y⃗"
+		},
+		{
+			"input": "\\vec{ab}",
+			"inline": "vec(ab)",
+			"display": "vec(ab)"
+		},
+		{
+			"input": "\\vec_{i=1}^{n} x",
+			"inline": "_⃗i = 1ⁿ x",
+			"display": "_⃗i = 1ⁿ x"
+		},
+		{
+			"input": "\\vec x",
+			"inline": "x⃗",
+			"display": "x⃗"
+		},
+		{
+			"input": "\\widehat",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\widehat y",
+			"inline": "x ŷ",
+			"display": "x ŷ"
+		},
+		{
+			"input": "\\widehat{ab}",
+			"inline": "widehat(ab)",
+			"display": "widehat(ab)"
+		},
+		{
+			"input": "\\widehat_{i=1}^{n} x",
+			"inline": "_̂i = 1ⁿ x",
+			"display": "_̂i = 1ⁿ x"
+		},
+		{
+			"input": "\\widehat x",
+			"inline": "x̂",
+			"display": "x̂"
+		},
+		{
+			"input": "\\widetilde",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\widetilde y",
+			"inline": "x ỹ",
+			"display": "x ỹ"
+		},
+		{
+			"input": "\\widetilde{ab}",
+			"inline": "widetilde(ab)",
+			"display": "widetilde(ab)"
+		},
+		{
+			"input": "\\widetilde_{i=1}^{n} x",
+			"inline": "_̃i = 1ⁿ x",
+			"display": "_̃i = 1ⁿ x"
+		},
+		{
+			"input": "\\widetilde x",
+			"inline": "x̃",
+			"display": "x̃"
+		},
+		{
+			"input": "\\type",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\type y",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\type{ab}",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\type_{i=1}^{n} x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\type x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\arccos",
+			"inline": "arccos",
+			"display": "arccos"
+		},
+		{
+			"input": "x \\arccos y",
+			"inline": "x arccos y",
+			"display": "x arccos y"
+		},
+		{
+			"input": "\\arccos{ab}",
+			"inline": "arccos ab",
+			"display": "arccos ab"
+		},
+		{
+			"input": "\\arccos_{i=1}^{n} x",
+			"inline": "arccosᵢ₌₁ⁿ x",
+			"display": "arccosᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\arccos x",
+			"inline": "arccos x",
+			"display": "arccos x"
+		},
+		{
+			"input": "\\arcsin",
+			"inline": "arcsin",
+			"display": "arcsin"
+		},
+		{
+			"input": "x \\arcsin y",
+			"inline": "x arcsin y",
+			"display": "x arcsin y"
+		},
+		{
+			"input": "\\arcsin{ab}",
+			"inline": "arcsin ab",
+			"display": "arcsin ab"
+		},
+		{
+			"input": "\\arcsin_{i=1}^{n} x",
+			"inline": "arcsinᵢ₌₁ⁿ x",
+			"display": "arcsinᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\arcsin x",
+			"inline": "arcsin x",
+			"display": "arcsin x"
+		},
+		{
+			"input": "\\arctan",
+			"inline": "arctan",
+			"display": "arctan"
+		},
+		{
+			"input": "x \\arctan y",
+			"inline": "x arctan y",
+			"display": "x arctan y"
+		},
+		{
+			"input": "\\arctan{ab}",
+			"inline": "arctan ab",
+			"display": "arctan ab"
+		},
+		{
+			"input": "\\arctan_{i=1}^{n} x",
+			"inline": "arctanᵢ₌₁ⁿ x",
+			"display": "arctanᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\arctan x",
+			"inline": "arctan x",
+			"display": "arctan x"
+		},
+		{
+			"input": "\\arg",
+			"inline": "arg",
+			"display": "arg"
+		},
+		{
+			"input": "x \\arg y",
+			"inline": "x arg y",
+			"display": "x arg y"
+		},
+		{
+			"input": "\\arg{ab}",
+			"inline": "arg ab",
+			"display": "arg ab"
+		},
+		{
+			"input": "\\arg_{i=1}^{n} x",
+			"inline": "argᵢ₌₁ⁿ x",
+			"display": "argᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\arg x",
+			"inline": "arg x",
+			"display": "arg x"
+		},
+		{
+			"input": "\\cos",
+			"inline": "cos",
+			"display": "cos"
+		},
+		{
+			"input": "x \\cos y",
+			"inline": "x cos y",
+			"display": "x cos y"
+		},
+		{
+			"input": "\\cos{ab}",
+			"inline": "cos ab",
+			"display": "cos ab"
+		},
+		{
+			"input": "\\cos_{i=1}^{n} x",
+			"inline": "cosᵢ₌₁ⁿ x",
+			"display": "cosᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\cos x",
+			"inline": "cos x",
+			"display": "cos x"
+		},
+		{
+			"input": "\\cosh",
+			"inline": "cosh",
+			"display": "cosh"
+		},
+		{
+			"input": "x \\cosh y",
+			"inline": "x cosh y",
+			"display": "x cosh y"
+		},
+		{
+			"input": "\\cosh{ab}",
+			"inline": "cosh ab",
+			"display": "cosh ab"
+		},
+		{
+			"input": "\\cosh_{i=1}^{n} x",
+			"inline": "coshᵢ₌₁ⁿ x",
+			"display": "coshᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\cosh x",
+			"inline": "cosh x",
+			"display": "cosh x"
+		},
+		{
+			"input": "\\cot",
+			"inline": "cot",
+			"display": "cot"
+		},
+		{
+			"input": "x \\cot y",
+			"inline": "x cot y",
+			"display": "x cot y"
+		},
+		{
+			"input": "\\cot{ab}",
+			"inline": "cot ab",
+			"display": "cot ab"
+		},
+		{
+			"input": "\\cot_{i=1}^{n} x",
+			"inline": "cotᵢ₌₁ⁿ x",
+			"display": "cotᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\cot x",
+			"inline": "cot x",
+			"display": "cot x"
+		},
+		{
+			"input": "\\coth",
+			"inline": "coth",
+			"display": "coth"
+		},
+		{
+			"input": "x \\coth y",
+			"inline": "x coth y",
+			"display": "x coth y"
+		},
+		{
+			"input": "\\coth{ab}",
+			"inline": "coth ab",
+			"display": "coth ab"
+		},
+		{
+			"input": "\\coth_{i=1}^{n} x",
+			"inline": "cothᵢ₌₁ⁿ x",
+			"display": "cothᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\coth x",
+			"inline": "coth x",
+			"display": "coth x"
+		},
+		{
+			"input": "\\csc",
+			"inline": "csc",
+			"display": "csc"
+		},
+		{
+			"input": "x \\csc y",
+			"inline": "x csc y",
+			"display": "x csc y"
+		},
+		{
+			"input": "\\csc{ab}",
+			"inline": "csc ab",
+			"display": "csc ab"
+		},
+		{
+			"input": "\\csc_{i=1}^{n} x",
+			"inline": "cscᵢ₌₁ⁿ x",
+			"display": "cscᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\csc x",
+			"inline": "csc x",
+			"display": "csc x"
+		},
+		{
+			"input": "\\deg",
+			"inline": "deg",
+			"display": "deg"
+		},
+		{
+			"input": "x \\deg y",
+			"inline": "x deg y",
+			"display": "x deg y"
+		},
+		{
+			"input": "\\deg{ab}",
+			"inline": "deg ab",
+			"display": "deg ab"
+		},
+		{
+			"input": "\\deg_{i=1}^{n} x",
+			"inline": "degᵢ₌₁ⁿ x",
+			"display": "degᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\deg x",
+			"inline": "deg x",
+			"display": "deg x"
+		},
+		{
+			"input": "\\det",
+			"inline": "det",
+			"display": "det"
+		},
+		{
+			"input": "x \\det y",
+			"inline": "x det y",
+			"display": "x det y"
+		},
+		{
+			"input": "\\det{ab}",
+			"inline": "det ab",
+			"display": "det ab"
+		},
+		{
+			"input": "\\det_{i=1}^{n} x",
+			"inline": "detᵢ₌₁ⁿ x",
+			"display": "detᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\det x",
+			"inline": "det x",
+			"display": "det x"
+		},
+		{
+			"input": "\\dim",
+			"inline": "dim",
+			"display": "dim"
+		},
+		{
+			"input": "x \\dim y",
+			"inline": "x dim y",
+			"display": "x dim y"
+		},
+		{
+			"input": "\\dim{ab}",
+			"inline": "dim ab",
+			"display": "dim ab"
+		},
+		{
+			"input": "\\dim_{i=1}^{n} x",
+			"inline": "dimᵢ₌₁ⁿ x",
+			"display": "dimᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\dim x",
+			"inline": "dim x",
+			"display": "dim x"
+		},
+		{
+			"input": "\\exp",
+			"inline": "exp",
+			"display": "exp"
+		},
+		{
+			"input": "x \\exp y",
+			"inline": "x exp y",
+			"display": "x exp y"
+		},
+		{
+			"input": "\\exp{ab}",
+			"inline": "exp ab",
+			"display": "exp ab"
+		},
+		{
+			"input": "\\exp_{i=1}^{n} x",
+			"inline": "expᵢ₌₁ⁿ x",
+			"display": "expᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\exp x",
+			"inline": "exp x",
+			"display": "exp x"
+		},
+		{
+			"input": "\\gcd",
+			"inline": "gcd",
+			"display": "gcd"
+		},
+		{
+			"input": "x \\gcd y",
+			"inline": "x gcd y",
+			"display": "x gcd y"
+		},
+		{
+			"input": "\\gcd{ab}",
+			"inline": "gcd ab",
+			"display": "gcd ab"
+		},
+		{
+			"input": "\\gcd_{i=1}^{n} x",
+			"inline": "gcdᵢ₌₁ⁿ x",
+			"display": "gcdᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\gcd x",
+			"inline": "gcd x",
+			"display": "gcd x"
+		},
+		{
+			"input": "\\hom",
+			"inline": "hom",
+			"display": "hom"
+		},
+		{
+			"input": "x \\hom y",
+			"inline": "x hom y",
+			"display": "x hom y"
+		},
+		{
+			"input": "\\hom{ab}",
+			"inline": "hom ab",
+			"display": "hom ab"
+		},
+		{
+			"input": "\\hom_{i=1}^{n} x",
+			"inline": "homᵢ₌₁ⁿ x",
+			"display": "homᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\hom x",
+			"inline": "hom x",
+			"display": "hom x"
+		},
+		{
+			"input": "\\inf",
+			"inline": "inf",
+			"display": "inf"
+		},
+		{
+			"input": "x \\inf y",
+			"inline": "x inf y",
+			"display": "x inf y"
+		},
+		{
+			"input": "\\inf{ab}",
+			"inline": "inf ab",
+			"display": "inf ab"
+		},
+		{
+			"input": "\\inf_{i=1}^{n} x",
+			"inline": "inf[i=1]ⁿ x",
+			"display": " n\ninf x\ni=1"
+		},
+		{
+			"input": "\\inf x",
+			"inline": "inf x",
+			"display": "inf x"
+		},
+		{
+			"input": "\\ker",
+			"inline": "ker",
+			"display": "ker"
+		},
+		{
+			"input": "x \\ker y",
+			"inline": "x ker y",
+			"display": "x ker y"
+		},
+		{
+			"input": "\\ker{ab}",
+			"inline": "ker ab",
+			"display": "ker ab"
+		},
+		{
+			"input": "\\ker_{i=1}^{n} x",
+			"inline": "kerᵢ₌₁ⁿ x",
+			"display": "kerᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\ker x",
+			"inline": "ker x",
+			"display": "ker x"
+		},
+		{
+			"input": "\\lg",
+			"inline": "lg",
+			"display": "lg"
+		},
+		{
+			"input": "x \\lg y",
+			"inline": "x lg y",
+			"display": "x lg y"
+		},
+		{
+			"input": "\\lg{ab}",
+			"inline": "lg ab",
+			"display": "lg ab"
+		},
+		{
+			"input": "\\lg_{i=1}^{n} x",
+			"inline": "lgᵢ₌₁ⁿ x",
+			"display": "lgᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\lg x",
+			"inline": "lg x",
+			"display": "lg x"
+		},
+		{
+			"input": "\\lim",
+			"inline": "lim",
+			"display": "lim"
+		},
+		{
+			"input": "x \\lim y",
+			"inline": "x lim y",
+			"display": "x lim y"
+		},
+		{
+			"input": "\\lim{ab}",
+			"inline": "lim ab",
+			"display": "lim ab"
+		},
+		{
+			"input": "\\lim_{i=1}^{n} x",
+			"inline": "lim[i=1]ⁿ x",
+			"display": " n\nlim x\ni=1"
+		},
+		{
+			"input": "\\lim x",
+			"inline": "lim x",
+			"display": "lim x"
+		},
+		{
+			"input": "\\liminf",
+			"inline": "liminf",
+			"display": "liminf"
+		},
+		{
+			"input": "x \\liminf y",
+			"inline": "x liminf y",
+			"display": "x liminf y"
+		},
+		{
+			"input": "\\liminf{ab}",
+			"inline": "liminf ab",
+			"display": "liminf ab"
+		},
+		{
+			"input": "\\liminf_{i=1}^{n} x",
+			"inline": "liminf[i=1]ⁿ x",
+			"display": "  n\nliminf x\n i=1"
+		},
+		{
+			"input": "\\liminf x",
+			"inline": "liminf x",
+			"display": "liminf x"
+		},
+		{
+			"input": "\\limsup",
+			"inline": "limsup",
+			"display": "limsup"
+		},
+		{
+			"input": "x \\limsup y",
+			"inline": "x limsup y",
+			"display": "x limsup y"
+		},
+		{
+			"input": "\\limsup{ab}",
+			"inline": "limsup ab",
+			"display": "limsup ab"
+		},
+		{
+			"input": "\\limsup_{i=1}^{n} x",
+			"inline": "limsup[i=1]ⁿ x",
+			"display": "  n\nlimsup x\n i=1"
+		},
+		{
+			"input": "\\limsup x",
+			"inline": "limsup x",
+			"display": "limsup x"
+		},
+		{
+			"input": "\\ln",
+			"inline": "ln",
+			"display": "ln"
+		},
+		{
+			"input": "x \\ln y",
+			"inline": "x ln y",
+			"display": "x ln y"
+		},
+		{
+			"input": "\\ln{ab}",
+			"inline": "ln ab",
+			"display": "ln ab"
+		},
+		{
+			"input": "\\ln_{i=1}^{n} x",
+			"inline": "lnᵢ₌₁ⁿ x",
+			"display": "lnᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\ln x",
+			"inline": "ln x",
+			"display": "ln x"
+		},
+		{
+			"input": "\\log",
+			"inline": "log",
+			"display": "log"
+		},
+		{
+			"input": "x \\log y",
+			"inline": "x log y",
+			"display": "x log y"
+		},
+		{
+			"input": "\\log{ab}",
+			"inline": "log ab",
+			"display": "log ab"
+		},
+		{
+			"input": "\\log_{i=1}^{n} x",
+			"inline": "logᵢ₌₁ⁿ x",
+			"display": "logᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\log x",
+			"inline": "log x",
+			"display": "log x"
+		},
+		{
+			"input": "\\max",
+			"inline": "max",
+			"display": "max"
+		},
+		{
+			"input": "x \\max y",
+			"inline": "x max y",
+			"display": "x max y"
+		},
+		{
+			"input": "\\max{ab}",
+			"inline": "max ab",
+			"display": "max ab"
+		},
+		{
+			"input": "\\max_{i=1}^{n} x",
+			"inline": "max[i=1]ⁿ x",
+			"display": " n\nmax x\ni=1"
+		},
+		{
+			"input": "\\max x",
+			"inline": "max x",
+			"display": "max x"
+		},
+		{
+			"input": "\\min",
+			"inline": "min",
+			"display": "min"
+		},
+		{
+			"input": "x \\min y",
+			"inline": "x min y",
+			"display": "x min y"
+		},
+		{
+			"input": "\\min{ab}",
+			"inline": "min ab",
+			"display": "min ab"
+		},
+		{
+			"input": "\\min_{i=1}^{n} x",
+			"inline": "min[i=1]ⁿ x",
+			"display": " n\nmin x\ni=1"
+		},
+		{
+			"input": "\\min x",
+			"inline": "min x",
+			"display": "min x"
+		},
+		{
+			"input": "\\Pr",
+			"inline": "Pr",
+			"display": "Pr"
+		},
+		{
+			"input": "x \\Pr y",
+			"inline": "x Pr y",
+			"display": "x Pr y"
+		},
+		{
+			"input": "\\Pr{ab}",
+			"inline": "Pr ab",
+			"display": "Pr ab"
+		},
+		{
+			"input": "\\Pr_{i=1}^{n} x",
+			"inline": "Prᵢ₌₁ⁿ x",
+			"display": "Prᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\Pr x",
+			"inline": "Pr x",
+			"display": "Pr x"
+		},
+		{
+			"input": "\\sec",
+			"inline": "sec",
+			"display": "sec"
+		},
+		{
+			"input": "x \\sec y",
+			"inline": "x sec y",
+			"display": "x sec y"
+		},
+		{
+			"input": "\\sec{ab}",
+			"inline": "sec ab",
+			"display": "sec ab"
+		},
+		{
+			"input": "\\sec_{i=1}^{n} x",
+			"inline": "secᵢ₌₁ⁿ x",
+			"display": "secᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\sec x",
+			"inline": "sec x",
+			"display": "sec x"
+		},
+		{
+			"input": "\\sin",
+			"inline": "sin",
+			"display": "sin"
+		},
+		{
+			"input": "x \\sin y",
+			"inline": "x sin y",
+			"display": "x sin y"
+		},
+		{
+			"input": "\\sin{ab}",
+			"inline": "sin ab",
+			"display": "sin ab"
+		},
+		{
+			"input": "\\sin_{i=1}^{n} x",
+			"inline": "sinᵢ₌₁ⁿ x",
+			"display": "sinᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\sin x",
+			"inline": "sin x",
+			"display": "sin x"
+		},
+		{
+			"input": "\\sinh",
+			"inline": "sinh",
+			"display": "sinh"
+		},
+		{
+			"input": "x \\sinh y",
+			"inline": "x sinh y",
+			"display": "x sinh y"
+		},
+		{
+			"input": "\\sinh{ab}",
+			"inline": "sinh ab",
+			"display": "sinh ab"
+		},
+		{
+			"input": "\\sinh_{i=1}^{n} x",
+			"inline": "sinhᵢ₌₁ⁿ x",
+			"display": "sinhᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\sinh x",
+			"inline": "sinh x",
+			"display": "sinh x"
+		},
+		{
+			"input": "\\sup",
+			"inline": "sup",
+			"display": "sup"
+		},
+		{
+			"input": "x \\sup y",
+			"inline": "x sup y",
+			"display": "x sup y"
+		},
+		{
+			"input": "\\sup{ab}",
+			"inline": "sup ab",
+			"display": "sup ab"
+		},
+		{
+			"input": "\\sup_{i=1}^{n} x",
+			"inline": "sup[i=1]ⁿ x",
+			"display": " n\nsup x\ni=1"
+		},
+		{
+			"input": "\\sup x",
+			"inline": "sup x",
+			"display": "sup x"
+		},
+		{
+			"input": "\\tan",
+			"inline": "tan",
+			"display": "tan"
+		},
+		{
+			"input": "x \\tan y",
+			"inline": "x tan y",
+			"display": "x tan y"
+		},
+		{
+			"input": "\\tan{ab}",
+			"inline": "tan ab",
+			"display": "tan ab"
+		},
+		{
+			"input": "\\tan_{i=1}^{n} x",
+			"inline": "tanᵢ₌₁ⁿ x",
+			"display": "tanᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\tan x",
+			"inline": "tan x",
+			"display": "tan x"
+		},
+		{
+			"input": "\\tanh",
+			"inline": "tanh",
+			"display": "tanh"
+		},
+		{
+			"input": "x \\tanh y",
+			"inline": "x tanh y",
+			"display": "x tanh y"
+		},
+		{
+			"input": "\\tanh{ab}",
+			"inline": "tanh ab",
+			"display": "tanh ab"
+		},
+		{
+			"input": "\\tanh_{i=1}^{n} x",
+			"inline": "tanhᵢ₌₁ⁿ x",
+			"display": "tanhᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\tanh x",
+			"inline": "tanh x",
+			"display": "tanh x"
+		},
+		{
+			"input": "\\argmax",
+			"inline": "argmax",
+			"display": "argmax"
+		},
+		{
+			"input": "x \\argmax y",
+			"inline": "x argmax y",
+			"display": "x argmax y"
+		},
+		{
+			"input": "\\argmax{ab}",
+			"inline": "argmax ab",
+			"display": "argmax ab"
+		},
+		{
+			"input": "\\argmax_{i=1}^{n} x",
+			"inline": "argmax[i=1]ⁿ x",
+			"display": "  n\nargmax x\n i=1"
+		},
+		{
+			"input": "\\argmax x",
+			"inline": "argmax x",
+			"display": "argmax x"
+		},
+		{
+			"input": "\\argmin",
+			"inline": "argmin",
+			"display": "argmin"
+		},
+		{
+			"input": "x \\argmin y",
+			"inline": "x argmin y",
+			"display": "x argmin y"
+		},
+		{
+			"input": "\\argmin{ab}",
+			"inline": "argmin ab",
+			"display": "argmin ab"
+		},
+		{
+			"input": "\\argmin_{i=1}^{n} x",
+			"inline": "argmin[i=1]ⁿ x",
+			"display": "  n\nargmin x\n i=1"
+		},
+		{
+			"input": "\\argmin x",
+			"inline": "argmin x",
+			"display": "argmin x"
+		},
+		{
+			"input": "\\injlim",
+			"inline": "injlim",
+			"display": "injlim"
+		},
+		{
+			"input": "x \\injlim y",
+			"inline": "x injlim y",
+			"display": "x injlim y"
+		},
+		{
+			"input": "\\injlim{ab}",
+			"inline": "injlim ab",
+			"display": "injlim ab"
+		},
+		{
+			"input": "\\injlim_{i=1}^{n} x",
+			"inline": "injlim[i=1]ⁿ x",
+			"display": "  n\ninjlim x\n i=1"
+		},
+		{
+			"input": "\\injlim x",
+			"inline": "injlim x",
+			"display": "injlim x"
+		},
+		{
+			"input": "\\projlim",
+			"inline": "projlim",
+			"display": "projlim"
+		},
+		{
+			"input": "x \\projlim y",
+			"inline": "x projlim y",
+			"display": "x projlim y"
+		},
+		{
+			"input": "\\projlim{ab}",
+			"inline": "projlim ab",
+			"display": "projlim ab"
+		},
+		{
+			"input": "\\projlim_{i=1}^{n} x",
+			"inline": "projlim[i=1]ⁿ x",
+			"display": "   n\nprojlim x\n  i=1"
+		},
+		{
+			"input": "\\projlim x",
+			"inline": "projlim x",
+			"display": "projlim x"
+		},
+		{
+			"input": "\\,",
+			"inline": "",
+			"display": ""
+		},
+		{
+			"input": "x \\, y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\,{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\,_{i=1}^{n} x",
+			"inline": "ᵢ₌₁ⁿ x",
+			"display": "ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\, x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\:",
+			"inline": "",
+			"display": ""
+		},
+		{
+			"input": "x \\: y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\:{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\:_{i=1}^{n} x",
+			"inline": "ᵢ₌₁ⁿ x",
+			"display": "ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\: x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\;",
+			"inline": "",
+			"display": ""
+		},
+		{
+			"input": "x \\; y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\;{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\;_{i=1}^{n} x",
+			"inline": "ᵢ₌₁ⁿ x",
+			"display": "ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\; x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\ ",
+			"inline": "",
+			"display": ""
+		},
+		{
+			"input": "x \\  y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\ {ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\ _{i=1}^{n} x",
+			"inline": "ᵢ₌₁ⁿ x",
+			"display": "ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\  x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\>",
+			"inline": "",
+			"display": ""
+		},
+		{
+			"input": "x \\> y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\>{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\>_{i=1}^{n} x",
+			"inline": "ᵢ₌₁ⁿ x",
+			"display": "ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\> x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\enspace",
+			"inline": "",
+			"display": ""
+		},
+		{
+			"input": "x \\enspace y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\enspace{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\enspace_{i=1}^{n} x",
+			"inline": "ᵢ₌₁ⁿ x",
+			"display": "ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\enspace x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\enskip",
+			"inline": "",
+			"display": ""
+		},
+		{
+			"input": "x \\enskip y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\enskip{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\enskip_{i=1}^{n} x",
+			"inline": "ᵢ₌₁ⁿ x",
+			"display": "ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\enskip x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\medspace",
+			"inline": "",
+			"display": ""
+		},
+		{
+			"input": "x \\medspace y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\medspace{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\medspace_{i=1}^{n} x",
+			"inline": "ᵢ₌₁ⁿ x",
+			"display": "ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\medspace x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\quad",
+			"inline": "",
+			"display": ""
+		},
+		{
+			"input": "x \\quad y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\quad{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\quad_{i=1}^{n} x",
+			"inline": "ᵢ₌₁ⁿ x",
+			"display": "ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\quad x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\qquad",
+			"inline": "",
+			"display": ""
+		},
+		{
+			"input": "x \\qquad y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\qquad{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\qquad_{i=1}^{n} x",
+			"inline": "ᵢ₌₁ⁿ x",
+			"display": "ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\qquad x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\thickspace",
+			"inline": "",
+			"display": ""
+		},
+		{
+			"input": "x \\thickspace y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\thickspace{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\thickspace_{i=1}^{n} x",
+			"inline": "ᵢ₌₁ⁿ x",
+			"display": "ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\thickspace x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\thinspace",
+			"inline": "",
+			"display": ""
+		},
+		{
+			"input": "x \\thinspace y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\thinspace{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\thinspace_{i=1}^{n} x",
+			"inline": "ᵢ₌₁ⁿ x",
+			"display": "ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\thinspace x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\!",
+			"inline": "",
+			"display": ""
+		},
+		{
+			"input": "x \\! y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\!{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\!_{i=1}^{n} x",
+			"inline": "ᵢ₌₁ⁿ x",
+			"display": "ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\! x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\negmedspace",
+			"inline": "",
+			"display": ""
+		},
+		{
+			"input": "x \\negmedspace y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\negmedspace{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\negmedspace_{i=1}^{n} x",
+			"inline": "ᵢ₌₁ⁿ x",
+			"display": "ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\negmedspace x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\negthickspace",
+			"inline": "",
+			"display": ""
+		},
+		{
+			"input": "x \\negthickspace y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\negthickspace{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\negthickspace_{i=1}^{n} x",
+			"inline": "ᵢ₌₁ⁿ x",
+			"display": "ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\negthickspace x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\negthinspace",
+			"inline": "",
+			"display": ""
+		},
+		{
+			"input": "x \\negthinspace y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\negthinspace{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\negthinspace_{i=1}^{n} x",
+			"inline": "ᵢ₌₁ⁿ x",
+			"display": "ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\negthinspace x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\bf",
+			"inline": "",
+			"display": ""
+		},
+		{
+			"input": "x \\bf y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\bf{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\bf_{i=1}^{n} x",
+			"inline": "ᵢ₌₁ⁿ x",
+			"display": "ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\bf x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\cal",
+			"inline": "",
+			"display": ""
+		},
+		{
+			"input": "x \\cal y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\cal{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\cal_{i=1}^{n} x",
+			"inline": "ᵢ₌₁ⁿ x",
+			"display": "ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\cal x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\it",
+			"inline": "",
+			"display": ""
+		},
+		{
+			"input": "x \\it y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\it{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\it_{i=1}^{n} x",
+			"inline": "ᵢ₌₁ⁿ x",
+			"display": "ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\it x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\rm",
+			"inline": "",
+			"display": ""
+		},
+		{
+			"input": "x \\rm y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\rm{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\rm_{i=1}^{n} x",
+			"inline": "ᵢ₌₁ⁿ x",
+			"display": "ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\rm x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\sf",
+			"inline": "",
+			"display": ""
+		},
+		{
+			"input": "x \\sf y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\sf{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\sf_{i=1}^{n} x",
+			"inline": "ᵢ₌₁ⁿ x",
+			"display": "ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\sf x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\sl",
+			"inline": "",
+			"display": ""
+		},
+		{
+			"input": "x \\sl y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\sl{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\sl_{i=1}^{n} x",
+			"inline": "ᵢ₌₁ⁿ x",
+			"display": "ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\sl x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\tt",
+			"inline": "",
+			"display": ""
+		},
+		{
+			"input": "x \\tt y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\tt{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\tt_{i=1}^{n} x",
+			"inline": "ᵢ₌₁ⁿ x",
+			"display": "ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\tt x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\displaystyle",
+			"inline": "",
+			"display": ""
+		},
+		{
+			"input": "x \\displaystyle y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\displaystyle{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\displaystyle_{i=1}^{n} x",
+			"inline": "ᵢ₌₁ⁿ x",
+			"display": "ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\displaystyle x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\limits",
+			"inline": "",
+			"display": ""
+		},
+		{
+			"input": "x \\limits y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\limits{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\limits_{i=1}^{n} x",
+			"inline": "ᵢ₌₁ⁿ x",
+			"display": "ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\limits x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\nolimits",
+			"inline": "",
+			"display": ""
+		},
+		{
+			"input": "x \\nolimits y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\nolimits{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\nolimits_{i=1}^{n} x",
+			"inline": "ᵢ₌₁ⁿ x",
+			"display": "ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\nolimits x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\scriptstyle",
+			"inline": "",
+			"display": ""
+		},
+		{
+			"input": "x \\scriptstyle y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\scriptstyle{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\scriptstyle_{i=1}^{n} x",
+			"inline": "ᵢ₌₁ⁿ x",
+			"display": "ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\scriptstyle x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\scriptscriptstyle",
+			"inline": "",
+			"display": ""
+		},
+		{
+			"input": "x \\scriptscriptstyle y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\scriptscriptstyle{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\scriptscriptstyle_{i=1}^{n} x",
+			"inline": "ᵢ₌₁ⁿ x",
+			"display": "ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\scriptscriptstyle x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\textstyle",
+			"inline": "",
+			"display": ""
+		},
+		{
+			"input": "x \\textstyle y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\textstyle{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\textstyle_{i=1}^{n} x",
+			"inline": "ᵢ₌₁ⁿ x",
+			"display": "ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\textstyle x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\big",
+			"inline": "",
+			"display": ""
+		},
+		{
+			"input": "x \\big y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\big{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\big_{i=1}^{n} x",
+			"inline": "ᵢ₌₁ⁿ x",
+			"display": "ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\big x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\Big",
+			"inline": "",
+			"display": ""
+		},
+		{
+			"input": "x \\Big y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\Big{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\Big_{i=1}^{n} x",
+			"inline": "ᵢ₌₁ⁿ x",
+			"display": "ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\Big x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\bigg",
+			"inline": "",
+			"display": ""
+		},
+		{
+			"input": "x \\bigg y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\bigg{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\bigg_{i=1}^{n} x",
+			"inline": "ᵢ₌₁ⁿ x",
+			"display": "ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\bigg x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\Bigg",
+			"inline": "",
+			"display": ""
+		},
+		{
+			"input": "x \\Bigg y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\Bigg{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\Bigg_{i=1}^{n} x",
+			"inline": "ᵢ₌₁ⁿ x",
+			"display": "ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\Bigg x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\bigl",
+			"inline": "",
+			"display": ""
+		},
+		{
+			"input": "x \\bigl y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\bigl{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\bigl_{i=1}^{n} x",
+			"inline": "ᵢ₌₁ⁿ x",
+			"display": "ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\bigl x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\Bigl",
+			"inline": "",
+			"display": ""
+		},
+		{
+			"input": "x \\Bigl y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\Bigl{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\Bigl_{i=1}^{n} x",
+			"inline": "ᵢ₌₁ⁿ x",
+			"display": "ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\Bigl x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\biggl",
+			"inline": "",
+			"display": ""
+		},
+		{
+			"input": "x \\biggl y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\biggl{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\biggl_{i=1}^{n} x",
+			"inline": "ᵢ₌₁ⁿ x",
+			"display": "ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\biggl x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\Biggl",
+			"inline": "",
+			"display": ""
+		},
+		{
+			"input": "x \\Biggl y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\Biggl{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\Biggl_{i=1}^{n} x",
+			"inline": "ᵢ₌₁ⁿ x",
+			"display": "ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\Biggl x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\bigr",
+			"inline": "",
+			"display": ""
+		},
+		{
+			"input": "x \\bigr y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\bigr{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\bigr_{i=1}^{n} x",
+			"inline": "ᵢ₌₁ⁿ x",
+			"display": "ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\bigr x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\Bigr",
+			"inline": "",
+			"display": ""
+		},
+		{
+			"input": "x \\Bigr y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\Bigr{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\Bigr_{i=1}^{n} x",
+			"inline": "ᵢ₌₁ⁿ x",
+			"display": "ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\Bigr x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\biggr",
+			"inline": "",
+			"display": ""
+		},
+		{
+			"input": "x \\biggr y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\biggr{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\biggr_{i=1}^{n} x",
+			"inline": "ᵢ₌₁ⁿ x",
+			"display": "ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\biggr x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\Biggr",
+			"inline": "",
+			"display": ""
+		},
+		{
+			"input": "x \\Biggr y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\Biggr{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\Biggr_{i=1}^{n} x",
+			"inline": "ᵢ₌₁ⁿ x",
+			"display": "ᵢ₌₁ⁿ x"
+		},
+		{
+			"input": "\\Biggr x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\emph",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\emph y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\emph{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\emph_{i=1}^{n} x",
+			"inline": "_i = 1ⁿ x",
+			"display": "_i = 1ⁿ x"
+		},
+		{
+			"input": "\\emph x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\mathcal",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\mathcal y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\mathcal{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\mathcal_{i=1}^{n} x",
+			"inline": "_i = 1ⁿ x",
+			"display": "_i = 1ⁿ x"
+		},
+		{
+			"input": "\\mathcal x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\mathbf",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\mathbf y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\mathbf{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\mathbf_{i=1}^{n} x",
+			"inline": "_i = 1ⁿ x",
+			"display": "_i = 1ⁿ x"
+		},
+		{
+			"input": "\\mathbf x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\mathfrak",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\mathfrak y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\mathfrak{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\mathfrak_{i=1}^{n} x",
+			"inline": "_i = 1ⁿ x",
+			"display": "_i = 1ⁿ x"
+		},
+		{
+			"input": "\\mathfrak x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\mathit",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\mathit y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\mathit{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\mathit_{i=1}^{n} x",
+			"inline": "_i = 1ⁿ x",
+			"display": "_i = 1ⁿ x"
+		},
+		{
+			"input": "\\mathit x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\mathrm",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\mathrm y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\mathrm{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\mathrm_{i=1}^{n} x",
+			"inline": "_i = 1ⁿ x",
+			"display": "_i = 1ⁿ x"
+		},
+		{
+			"input": "\\mathrm x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\mathnormal",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\mathnormal y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\mathnormal{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\mathnormal_{i=1}^{n} x",
+			"inline": "_i = 1ⁿ x",
+			"display": "_i = 1ⁿ x"
+		},
+		{
+			"input": "\\mathnormal x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\mathscr",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\mathscr y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\mathscr{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\mathscr_{i=1}^{n} x",
+			"inline": "_i = 1ⁿ x",
+			"display": "_i = 1ⁿ x"
+		},
+		{
+			"input": "\\mathscr x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\mathsf",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\mathsf y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\mathsf{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\mathsf_{i=1}^{n} x",
+			"inline": "_i = 1ⁿ x",
+			"display": "_i = 1ⁿ x"
+		},
+		{
+			"input": "\\mathsf x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\mathtt",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\mathtt y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\mathtt{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\mathtt_{i=1}^{n} x",
+			"inline": "_i = 1ⁿ x",
+			"display": "_i = 1ⁿ x"
+		},
+		{
+			"input": "\\mathtt x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\mathup",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\mathup y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\mathup{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\mathup_{i=1}^{n} x",
+			"inline": "_i = 1ⁿ x",
+			"display": "_i = 1ⁿ x"
+		},
+		{
+			"input": "\\mathup x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\mbox",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\mbox y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\mbox{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\mbox_{i=1}^{n} x",
+			"inline": "_i = 1ⁿ x",
+			"display": "_i = 1ⁿ x"
+		},
+		{
+			"input": "\\mbox x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\overbrace",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\overbrace y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\overbrace{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\overbrace_{i=1}^{n} x",
+			"inline": "_i = 1ⁿ x",
+			"display": "_i = 1ⁿ x"
+		},
+		{
+			"input": "\\overbrace x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\pmb",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\pmb y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\pmb{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\pmb_{i=1}^{n} x",
+			"inline": "_i = 1ⁿ x",
+			"display": "_i = 1ⁿ x"
+		},
+		{
+			"input": "\\pmb x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\smash",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\smash y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\smash{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\smash_{i=1}^{n} x",
+			"inline": "_i = 1ⁿ x",
+			"display": "_i = 1ⁿ x"
+		},
+		{
+			"input": "\\smash x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\substack",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\substack y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\substack{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\substack_{i=1}^{n} x",
+			"inline": "_i = 1ⁿ x",
+			"display": "_i = 1ⁿ x"
+		},
+		{
+			"input": "\\substack x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\text",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\text y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\text{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\text_{i=1}^{n} x",
+			"inline": "_i = 1ⁿ x",
+			"display": "_i = 1ⁿ x"
+		},
+		{
+			"input": "\\text x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\textbf",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\textbf y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\textbf{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\textbf_{i=1}^{n} x",
+			"inline": "_i = 1ⁿ x",
+			"display": "_i = 1ⁿ x"
+		},
+		{
+			"input": "\\textbf x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\textit",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\textit y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\textit{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\textit_{i=1}^{n} x",
+			"inline": "_i = 1ⁿ x",
+			"display": "_i = 1ⁿ x"
+		},
+		{
+			"input": "\\textit x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\textmd",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\textmd y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\textmd{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\textmd_{i=1}^{n} x",
+			"inline": "_i = 1ⁿ x",
+			"display": "_i = 1ⁿ x"
+		},
+		{
+			"input": "\\textmd x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\textnormal",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\textnormal y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\textnormal{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\textnormal_{i=1}^{n} x",
+			"inline": "_i = 1ⁿ x",
+			"display": "_i = 1ⁿ x"
+		},
+		{
+			"input": "\\textnormal x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\textrm",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\textrm y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\textrm{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\textrm_{i=1}^{n} x",
+			"inline": "_i = 1ⁿ x",
+			"display": "_i = 1ⁿ x"
+		},
+		{
+			"input": "\\textrm x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\textsc",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\textsc y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\textsc{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\textsc_{i=1}^{n} x",
+			"inline": "_i = 1ⁿ x",
+			"display": "_i = 1ⁿ x"
+		},
+		{
+			"input": "\\textsc x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\textsf",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\textsf y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\textsf{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\textsf_{i=1}^{n} x",
+			"inline": "_i = 1ⁿ x",
+			"display": "_i = 1ⁿ x"
+		},
+		{
+			"input": "\\textsf x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\textsl",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\textsl y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\textsl{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\textsl_{i=1}^{n} x",
+			"inline": "_i = 1ⁿ x",
+			"display": "_i = 1ⁿ x"
+		},
+		{
+			"input": "\\textsl x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\texttt",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\texttt y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\texttt{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\texttt_{i=1}^{n} x",
+			"inline": "_i = 1ⁿ x",
+			"display": "_i = 1ⁿ x"
+		},
+		{
+			"input": "\\texttt x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\textup",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\textup y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\textup{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\textup_{i=1}^{n} x",
+			"inline": "_i = 1ⁿ x",
+			"display": "_i = 1ⁿ x"
+		},
+		{
+			"input": "\\textup x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\underbrace",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\underbrace y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\underbrace{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\underbrace_{i=1}^{n} x",
+			"inline": "_i = 1ⁿ x",
+			"display": "_i = 1ⁿ x"
+		},
+		{
+			"input": "\\underbrace x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\bm",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\bm y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\bm{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\bm_{i=1}^{n} x",
+			"inline": "_i = 1ⁿ x",
+			"display": "_i = 1ⁿ x"
+		},
+		{
+			"input": "\\bm x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\boldsymbol",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x \\boldsymbol y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\boldsymbol{ab}",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\boldsymbol_{i=1}^{n} x",
+			"inline": "_i = 1ⁿ x",
+			"display": "_i = 1ⁿ x"
+		},
+		{
+			"input": "\\boldsymbol x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "\\mathbb{C}^3 \\to \\mathbb{C}^3",
+			"inline": "ℂ³ → ℂ³",
+			"display": "ℂ³ → ℂ³"
+		},
+		{
+			"input": "\\{3x+2y,\\; 27x^2-4z-1,\\; x(x-1)(x+1)\\} \\quad\\Rightarrow\\quad x \\in \\{0, \\pm 1\\},",
+			"inline": "{3x+2y, 27x²-4z-1, x(x-1)(x+1)} ⇒ x ∈ {0, ± 1},",
+			"display": "{3x+2y, 27x²-4z-1, x(x-1)(x+1)} ⇒ x ∈ {0, ± 1},"
+		},
+		{
+			"input": "F_1 = -\\frac{1}{4x^2}.",
+			"inline": "F₁ = -1/(4x²).",
+			"display": "        1\nF₁ = - ─── .\n       4x²"
+		},
+		{
+			"input": "-2",
+			"inline": "-2",
+			"display": "-2"
+		},
+		{
+			"input": "(0,0,-1/4)",
+			"inline": "(0,0,-1/4)",
+			"display": "(0,0,-1/4)"
+		},
+		{
+			"input": "(1,-3/2,13/2)",
+			"inline": "(1,-3/2,13/2)",
+			"display": "(1,-3/2,13/2)"
+		},
+		{
+			"input": "(1,1,1)",
+			"inline": "(1,1,1)",
+			"display": "(1,1,1)"
+		},
+		{
+			"input": "(2,1,0)",
+			"inline": "(2,1,0)",
+			"display": "(2,1,0)"
+		},
+		{
+			"input": "(-1/4, 0, 0)",
+			"inline": "(-1/4, 0, 0)",
+			"display": "(-1/4, 0, 0)"
+		},
+		{
+			"input": "\\{(0,0,-1/4), (1,-3/2,13/2), (-1,3/2,13/2)\\}",
+			"inline": "{(0,0,-1/4), (1,-3/2,13/2), (-1,3/2,13/2)}",
+			"display": "{(0,0,-1/4), (1,-3/2,13/2), (-1,3/2,13/2)}"
+		},
+		{
+			"input": "(2,1,1)",
+			"inline": "(2,1,1)",
+			"display": "(2,1,1)"
+		},
+		{
+			"input": "(7/3,-2/5,11/7)",
+			"inline": "(7/3,-2/5,11/7)",
+			"display": "(7/3,-2/5,11/7)"
+		},
+		{
+			"input": "\\{y - p(x),\\; q(x)\\}",
+			"inline": "{y - p(x), q(x)}",
+			"display": "{y - p(x), q(x)}"
+		},
+		{
+			"input": "\\deg q = 3",
+			"inline": "deg q = 3",
+			"display": "deg q = 3"
+		},
+		{
+			"input": "[\\mathbb{C}(x,y,z):\\mathbb{C}(F_1,F_2,F_3)] = 3",
+			"inline": "[ℂ(x,y,z):ℂ(F₁,F₂,F₃)] = 3",
+			"display": "[ℂ(x,y,z):ℂ(F₁,F₂,F₃)] = 3"
+		},
+		{
+			"input": "u = 1+xy",
+			"inline": "u = 1+xy",
+			"display": "u = 1+xy"
+		},
+		{
+			"input": "G = u^2 z + y^2(4+3xy)",
+			"inline": "G = u² z + y²(4+3xy)",
+			"display": "G = u² z + y²(4+3xy)"
+		},
+		{
+			"input": "F_1 = uG",
+			"inline": "F₁ = uG",
+			"display": "F₁ = uG"
+		},
+		{
+			"input": "F_2 = y + 3xG",
+			"inline": "F₂ = y + 3xG",
+			"display": "F₂ = y + 3xG"
+		},
+		{
+			"input": "x=0",
+			"inline": "x = 0",
+			"display": "x = 0"
+		},
+		{
+			"input": "F_2 = F_3 = 0",
+			"inline": "F₂ = F₃ = 0",
+			"display": "F₂ = F₃ = 0"
+		},
+		{
+			"input": "xy = -3/2",
+			"inline": "xy = -3/2",
+			"display": "xy = -3/2"
+		},
+		{
+			"input": "x^2 z = 13/2",
+			"inline": "x² z = 13/2",
+			"display": "x² z = 13/2"
+		},
+		{
+			"input": "\\mathbb{C}^*",
+			"inline": "ℂ^*",
+			"display": " *\nℂ"
+		},
+		{
+			"input": "s \\mapsto (s,\\, -\\tfrac{3}{2s},\\, \\tfrac{13}{2s^2})",
+			"inline": "s ↦ (s, -3/(2s), 13/(2s²))",
+			"display": "s ↦ (s, -3/(2s), 13/(2s²))"
+		},
+		{
+			"input": "X",
+			"inline": "X",
+			"display": "X"
+		},
+		{
+			"input": "p_\\pm",
+			"inline": "p_±",
+			"display": "p\n ±"
+		},
+		{
+			"input": "F(-x,-y,z) = (F_1, -F_2, -F_3)",
+			"inline": "F(-x,-y,z) = (F₁, -F₂, -F₃)",
+			"display": "F(-x,-y,z) = (F₁, -F₂, -F₃)"
+		},
+		{
+			"input": "p_0",
+			"inline": "p₀",
+			"display": "p₀"
+		},
+		{
+			"input": "s \\to \\infty",
+			"inline": "s → ∞",
+			"display": "s → ∞"
+		},
+		{
+			"input": "(0,0,0)",
+			"inline": "(0,0,0)",
+			"display": "(0,0,0)"
+		},
+		{
+			"input": "\\ge 2",
+			"inline": "≥ 2",
+			"display": "≥ 2"
+		},
+		{
+			"input": "\\ge 3",
+			"inline": "≥ 3",
+			"display": "≥ 3"
+		},
+		{
+			"input": "1",
+			"inline": "1",
+			"display": "1"
+		},
+		{
+			"input": "\\mathrm{diag}(-1/2,1,1),\\quad F_{\\rm intrinsic}(\\lambda)",
+			"inline": "diag(-1/2,1,1), F_intrinsic(λ)",
+			"display": "diag(-1/2,1,1), F_intrinsic(λ)"
+		},
+		{
+			"input": "4+3xy",
+			"inline": "4+3xy",
+			"display": "4+3xy"
+		},
+		{
+			"input": "E \\approx \\frac{0.1\\ \\text{lux}}{100\\ \\text{lm/W}} = 0.001\\ \\text{W/m}^2",
+			"inline": "E ≈ (0.1 lux)/(100 lm/W) = 0.001 W/m²",
+			"display": "    0.1 lux\nE ≈ ──────── = 0.001 W/m²\n    100 lm/W"
+		},
+		{
+			"input": "\\boxed{1\\ \\text{milliwatt per square metre}}",
+			"inline": "[1 milliwatt per square metre]",
+			"display": "[1 milliwatt per square metre]"
+		},
+		{
+			"input": "5\\ \\text{km}^2 = 5{,}000{,}000\\ \\text{m}^2",
+			"inline": "5 km² = 5,000,000 m²",
+			"display": "5 km² = 5,000,000 m²"
+		},
+		{
+			"input": "P_{\\text{light}} = 0.001 \\times 5{,}000{,}000\n= \\boxed{5{,}000\\ \\text{W}}",
+			"inline": "P_light = 0.001 × 5,000,000 = [5,000 W]",
+			"display": "P_light = 0.001 × 5,000,000 = [5,000 W]"
+		},
+		{
+			"input": "P_{\\text{electric}} = 5\\ \\text{kW} \\times 0.2\n= \\boxed{1\\ \\text{kW}}",
+			"inline": "P_electric = 5 kW × 0.2 = [1 kW]",
+			"display": "P_electric = 5 kW × 0.2 = [1 kW]"
+		},
+		{
+			"input": "\\pi(2.5\\ \\text{km})^2 = 19.6\\ \\text{km}^2",
+			"inline": "π(2.5 km)² = 19.6 km²",
+			"display": "π(2.5 km)² = 19.6 km²"
+		},
+		{
+			"input": "0.001\\ \\text{W/m}^2 \\times 19.6 \\times 10^6\\ \\text{m}^2\n\\approx \\boxed{20\\ \\text{kW optical}}",
+			"inline": "0.001 W/m² × 19.6 × 10⁶ m² ≈ [20 kW optical]",
+			"display": "0.001 W/m² × 19.6 × 10⁶ m² ≈ [20 kW optical]"
+		},
+		{
+			"input": "1\\ \\text{kW} \\times \\frac{1}{3600}\\ \\text{hour}\n= \\boxed{0.28\\ \\text{Wh}}",
+			"inline": "1 kW × 1/3600 hour = [0.28 Wh]",
+			"display": "        1\n1 kW × ──── hour = [0.28 Wh]\n       3600"
+		},
+		{
+			"input": "\\det\\!\\left(\\frac{\\partial(F_1,F_2,F_3)}{\\partial(x,y,z)}\\right)=-2.",
+			"inline": "det((∂(F₁,F₂,F₃))/(∂(x,y,z))) = -2.",
+			"display": "     ∂(F₁,F₂,F₃)\ndet( ─────────── ) = -2.\n      ∂(x,y,z)"
+		},
+		{
+			"input": "\\begin{aligned}\nF(0,0,-\\tfrac14)&=(-\\tfrac14,0,0),\\\\\nF(1,-\\tfrac32,\\tfrac{13}2)&=(-\\tfrac14,0,0),\\\\\nF(-1,\\tfrac32,\\tfrac{13}2)&=(-\\tfrac14,0,0).\n\\end{aligned}",
+			"inline": "F(0,0,-1/4) = (-1/4,0,0),\nF(1,-3/2,13/2) = (-1/4,0,0),\nF(-1,3/2,13/2) = (-1/4,0,0).",
+			"display": "F(0,0,-1/4) = (-1/4,0,0),\nF(1,-3/2,13/2) = (-1/4,0,0),\nF(-1,3/2,13/2) = (-1/4,0,0)."
+		},
+		{
+			"input": "F=(F_1,F_2,F_3)",
+			"inline": "F = (F₁,F₂,F₃)",
+			"display": "F = (F₁,F₂,F₃)"
+		},
+		{
+			"input": "F",
+			"inline": "F",
+			"display": "F"
+		},
+		{
+			"input": "3",
+			"inline": "3",
+			"display": "3"
+		},
+		{
+			"input": "J = \\begin{pmatrix}\n\\frac{\\partial f_1}{\\partial x} & \\frac{\\partial f_1}{\\partial y} & \\frac{\\partial f_1}{\\partial z} \\\\\n\\frac{\\partial f_2}{\\partial x} & \\frac{\\partial f_2}{\\partial y} & \\frac{\\partial f_2}{\\partial z} \\\\\n\\frac{\\partial f_3}{\\partial x} & \\frac{\\partial f_3}{\\partial y} & \\frac{\\partial f_3}{\\partial z}\n\\end{pmatrix}",
+			"inline": "J = ⎛ (∂ f₁)/(∂ x) │ (∂ f₁)/(∂ y) │ (∂ f₁)/(∂ z) ⎞\n    ⎜ (∂ f₂)/(∂ x) │ (∂ f₂)/(∂ y) │ (∂ f₂)/(∂ z) ⎟\n    ⎝ (∂ f₃)/(∂ x) │ (∂ f₃)/(∂ y) │ (∂ f₃)/(∂ z) ⎠",
+			"display": "J = ⎛ (∂ f₁)/(∂ x) │ (∂ f₁)/(∂ y) │ (∂ f₁)/(∂ z) ⎞\n    ⎜ (∂ f₂)/(∂ x) │ (∂ f₂)/(∂ y) │ (∂ f₂)/(∂ z) ⎟\n    ⎝ (∂ f₃)/(∂ x) │ (∂ f₃)/(∂ y) │ (∂ f₃)/(∂ z) ⎠"
+		},
+		{
+			"input": "\\begin{aligned}\nf_1 &= (1+xy)^3 z + y^2(1+xy)(4+3xy) \\\\\nf_2 &= y + 3x(1+xy)^2 z + 3xy^2(4+3xy) \\\\\nf_3 &= 2x - 3x^2y - x^3z\n\\end{aligned}",
+			"inline": "f₁ = (1+xy)³ z + y²(1+xy)(4+3xy)\nf₂ = y + 3x(1+xy)² z + 3xy²(4+3xy)\nf₃ = 2x - 3x²y - x³z",
+			"display": "f₁ = (1+xy)³ z + y²(1+xy)(4+3xy)\nf₂ = y + 3x(1+xy)² z + 3xy²(4+3xy)\nf₃ = 2x - 3x²y - x³z"
+		},
+		{
+			"input": "x, y, z",
+			"inline": "x, y, z",
+			"display": "x, y, z"
+		},
+		{
+			"input": "(x, y, z)",
+			"inline": "(x, y, z)",
+			"display": "(x, y, z)"
+		},
+		{
+			"input": "(0,\\; 0,\\; -\\tfrac14)",
+			"inline": "(0, 0, -1/4)",
+			"display": "(0, 0, -1/4)"
+		},
+		{
+			"input": "(-\\tfrac14,\\; 0,\\; 0)",
+			"inline": "(-1/4, 0, 0)",
+			"display": "(-1/4, 0, 0)"
+		},
+		{
+			"input": "(1,\\; -\\tfrac32,\\; \\tfrac{13}{2})",
+			"inline": "(1, -3/2, 13/2)",
+			"display": "(1, -3/2, 13/2)"
+		},
+		{
+			"input": "(-1,\\; \\tfrac32,\\; \\tfrac{13}{2})",
+			"inline": "(-1, 3/2, 13/2)",
+			"display": "(-1, 3/2, 13/2)"
+		},
+		{
+			"input": "(-\\frac14, 0, 0)",
+			"inline": "(-1/4, 0, 0)",
+			"display": "   1\n(- ─ , 0, 0)\n   4"
+		},
+		{
+			"input": "F: \\mathbb{C}^3 \\to \\mathbb{C}^3",
+			"inline": "F: ℂ³ → ℂ³",
+			"display": "F: ℂ³ → ℂ³"
+		},
+		{
+			"input": "F(0,0,-\\tfrac14) = F(1,-\\tfrac32,\\tfrac{13}{2}) = F(-1,\\tfrac32,\\tfrac{13}{2}) = (-\\tfrac14, 0, 0)",
+			"inline": "F(0,0,-1/4) = F(1,-3/2,13/2) = F(-1,3/2,13/2) = (-1/4, 0, 0)",
+			"display": "F(0,0,-1/4) = F(1,-3/2,13/2) = F(-1,3/2,13/2) = (-1/4, 0, 0)"
+		},
+		{
+			"input": "\\mathbb{C}^3",
+			"inline": "ℂ³",
+			"display": "ℂ³"
+		},
+		{
+			"input": "\\begin{aligned}\nf_1 &= \\frac{f_1^{\\text{ut}}(u,t)}{x^2}, \\quad\nf_2 = \\frac{f_2^{\\text{ut}}(u,t)}{x}, \\quad\nf_3 = x\\,(2 - 3u - t)\n\\end{aligned}",
+			"inline": "f₁ = (f₁ᵘᵗ(u,t))/(x²), f₂ = (f₂ᵘᵗ(u,t))/x, f₃ = x (2 - 3u - t)",
+			"display": "     f₁ᵘᵗ(u,t)        f₂ᵘᵗ(u,t)\nf₁ = ───────── , f₂ = ───────── , f₃ = x (2 - 3u - t)\n        x²                x"
+		},
+		{
+			"input": "\\det J_F",
+			"inline": "det J_F",
+			"display": "det J\n     F"
+		},
+		{
+			"input": "(-\\tfrac14, 0, 0)",
+			"inline": "(-1/4, 0, 0)",
+			"display": "(-1/4, 0, 0)"
+		},
+		{
+			"input": "u = xy",
+			"inline": "u = xy",
+			"display": "u = xy"
+		},
+		{
+			"input": "t = x^2z",
+			"inline": "t = x²z",
+			"display": "t = x²z"
+		},
+		{
+			"input": "x \\neq 0",
+			"inline": "x ≠ 0",
+			"display": "x ≠ 0"
+		},
+		{
+			"input": "f_1^{\\text{ut}}, f_2^{\\text{ut}}",
+			"inline": "f₁ᵘᵗ, f₂ᵘᵗ",
+			"display": "f₁ᵘᵗ, f₂ᵘᵗ"
+		},
+		{
+			"input": "u,t",
+			"inline": "u,t",
+			"display": "u,t"
+		},
+		{
+			"input": "x",
+			"inline": "x",
+			"display": "x"
+		},
+		{
+			"input": "x, x^2",
+			"inline": "x, x²",
+			"display": "x, x²"
+		},
+		{
+			"input": "\\mathbb{C}^n \\to \\mathbb{C}^n",
+			"inline": "ℂⁿ → ℂⁿ",
+			"display": "ℂⁿ → ℂⁿ"
+		},
+		{
+			"input": "n \\geq 2",
+			"inline": "n ≥ 2",
+			"display": "n ≥ 2"
+		},
+		{
+			"input": "\\mathbb{P}^3",
+			"inline": "ℙ³",
+			"display": "ℙ³"
+		},
+		{
+			"input": "e^{i\\pi}+1=0",
+			"inline": "e^(iπ)+1 = 0",
+			"display": "e^(iπ)+1 = 0"
+		},
+		{
+			"input": "\\boxed{\n\\mathcal{Z}(\\beta)\n=\n\\int_{\\mathcal M}\n\\exp\\!\\left(\n-\\beta\\left[\n\\frac12 g^{ij}(x)\\,\\partial_i\\phi\\,\\partial_j\\phi\n+V(\\phi)\n\\right]\\right)\n\\mathcal D\\phi\n}",
+			"inline": "[Z(β) = ∫_M exp( -β[ 1/2 gⁱʲ(x) ∂ᵢϕ ∂ⱼϕ +V(ϕ) ]) Dϕ]",
+			"display": "                  1\n[Z(β) =∫ exp( -β[ ─ gⁱʲ(x) ∂ᵢϕ ∂ⱼϕ +V(ϕ) ]) Dϕ]\n       M          2"
+		},
+		{
+			"input": "\\begin{aligned}\n\\nabla_\\mu T^{\\mu\\nu}\n&=\n\\frac{1}{\\sqrt{-g}}\n\\partial_\\mu\\!\\left(\\sqrt{-g}\\,T^{\\mu\\nu}\\right)\n+\\Gamma^\\nu_{\\mu\\lambda}T^{\\mu\\lambda}\n=0, \\\\[4pt]\nR_{\\mu\\nu}-\\frac12 Rg_{\\mu\\nu}+\\Lambda g_{\\mu\\nu}\n&=\n\\frac{8\\pi G}{c^4}T_{\\mu\\nu}.\n\\end{aligned}",
+			"inline": "∇_μ T^(μν) = 1/(√(-g)) ∂_μ(√(-g) T^(μν)) +Γ^ν_(μλ)T^(μλ) = 0,\nR_(μν)-1/2 Rg_(μν)+Λ g_(μν) = (8π G)/(c⁴)T_(μν).",
+			"display": "             1\n∇ T^(μν) = ───── ∂ (√(-g) T^(μν)) +Γ^ν_(μλ)T^(μλ) = 0,\n μ         √(-g)  μ\n        1                    8π G\nR_(μν)- ─ Rg_(μν)+Λ g_(μν) = ──── T_(μν).\n        2                     c⁴"
+		},
+		{
+			"input": "f(z)\n=\n\\frac{1}{2\\pi i}\n\\oint_{\\gamma}\n\\frac{f(\\zeta)}{\\zeta-z}\\,d\\zeta,\n\\qquad\n\\det\\!\\begin{pmatrix}\n\\lambda-a & -b & 0\\\\\n-c & \\lambda-d & -e\\\\\n0 & -f & \\lambda-g\n\\end{pmatrix}\n=0.",
+			"inline": "f(z) = 1/(2π i) ∮_γ (f(ζ))/(ζ-z) dζ, det⎛ λ-a │ -b  │ 0   ⎞ = 0.\n                                        ⎜ -c  │ λ-d │ -e  ⎟\n                                        ⎝ 0   │ -f  │ λ-g ⎠",
+			"display": "        1      f(ζ)\nf(z) = ──── ∮  ──── dζ, det⎛ λ-a │ -b  │ 0   ⎞ = 0.\n       2π i γ  ζ-z         ⎜ -c  │ λ-d │ -e  ⎟\n                           ⎝ 0   │ -f  │ λ-g ⎠"
+		},
+		{
+			"input": "\\Psi(x,t)=\n\\sum_{n=1}^{\\infty}\n\\underbrace{\nc_n\n\\sqrt{\\frac{2}{L}}\n\\sin\\!\\left(\\frac{n\\pi x}{L}\\right)\n}_{\\text{spatial eigenmode}}\n\\exp\\!\\left(-\\frac{i\\hbar n^2\\pi^2}{2mL^2}t\\right),\n\\qquad\n|\\Psi(x,t)|^2\n=\n\\begin{cases}\n\\Psi^\\ast\\Psi, & 0<x<L,\\\\\n0, & \\text{otherwise}.\n\\end{cases}",
+			"inline": "                                                                                                 ⎧ Ψ^∗Ψ if 0 < x < L,\nΨ(x,t) = ∑ₙ₌₁^∞ cₙ √(2/L) sin((nπ x)/L)_(spatial eigenmode) exp(-(iℏ n²π²)/(2mL²)t), |Ψ(x,t)|² = ⎨\n                                                                                                 ⎩ 0    otherwise.",
+			"display": "         ∞        2        nπ x                             iℏ n²π²                 ⎧ Ψ^∗Ψ if 0 < x < L,\nΨ(x,t) = ∑  cₙ √( ─ ) sin( ──── )_(spatial eigenmode) exp(- ─────── t), |Ψ(x,t)|² = ⎨\n        n=1       L         L                                2mL²                   ⎩ 0    otherwise."
+		},
+		{
+			"input": "x=\\frac{-b\\pm\\sqrt{b^2-4ac}}{2a}",
+			"inline": "x = (-b±√(b²-4ac))/(2a)",
+			"display": "    -b±√(b²-4ac)\nx = ────────────\n         2a"
+		},
+		{
+			"input": "\\int_0^\\infty e^{-x^2}\\,dx=\\frac{\\sqrt{\\pi}}{2}",
+			"inline": "∫₀^∞ e^(-x²) dx = (√π)/2",
+			"display": "     2\n∞  -x      √π\n∫ e   dx = ──\n0          2"
+		},
+		{
+			"input": "e^{i\\theta}=\\cos\\theta+i\\sin\\theta",
+			"inline": "e^(iθ) = cos θ+i sin θ",
+			"display": "e^(iθ) = cos θ+i sin θ"
+		},
+		{
+			"input": "\\sum_{n=1}^{\\infty}\\frac{1}{n^2}=\\frac{\\pi^2}{6}",
+			"inline": "∑ₙ₌₁^∞1/(n²) = π²/6",
+			"display": " ∞   1    π²\n ∑   ── = ──\nn=1  n²   6"
+		},
+		{
+			"input": "\\lim_{x\\to 0}\\frac{\\sin x}{x}=1",
+			"inline": "lim[x→0] (sin x)/x = 1",
+			"display": "     sin x\nlim  ───── = 1\nx→0    x"
+		},
+		{
+			"input": "\\lim_{n\\to\\infty}\n\\left(1+\\frac{1}{n}\\right)^n=e",
+			"inline": "lim[n→∞] (1+1/n)ⁿ = e",
+			"display": "        1\nlim (1+ ─ )ⁿ = e\nn→∞     n"
+		},
+		{
+			"input": "\\int_0^1 \\frac{x^2}{1+x^3}\\,dx\n=\\frac{1}{3}\\ln 2",
+			"inline": "∫₀¹ x²/(1+x³) dx = 1/3 ln 2",
+			"display": "1   x²       1\n∫  ──── dx = ─ ln 2\n0  1+x³      3"
+		},
+		{
+			"input": "\\sum_{k=1}^{n}\\frac{k}{k+1}\n=n+1-H_{n+1}",
+			"inline": "∑ₖ₌₁ⁿk/(k+1) = n+1-Hₙ₊₁",
+			"display": " n    k\n ∑   ─── = n+1-Hₙ₊₁\nk=1  k+1"
+		},
+		{
+			"input": "\\frac{\n  \\displaystyle \\frac{x^2+1}{x-1}\n  -\n  \\displaystyle \\frac{2x}{x+1}\n}{\n  \\displaystyle \\frac{x}{x^2-1}\n}",
+			"inline": "((x²+1)/(x-1) - 2x/(x+1))/(x/(x²-1))",
+			"display": "(x²+1)/(x-1) - 2x/(x+1)\n───────────────────────\n       x/(x²-1)"
+		},
+		{
+			"input": "\\lim_{x\\to 0}\n\\frac{\n  \\displaystyle \\frac{\\sin x}{x}-1\n}{\n  \\displaystyle \\frac{e^x-1}{x}-1\n}\n=0",
+			"inline": "lim[x→0] ((sin x)/x-1)/((eˣ-1)/x-1) = 0",
+			"display": "     (sin x)/x-1\nlim  ─────────── = 0\nx→0  (eˣ-1)/x-1"
+		},
+		{
+			"input": "\\frac{\n  1+\\displaystyle\\frac{1}{1+\\frac{1}{x}}\n}{\n  1-\\displaystyle\\frac{1}{1-\\frac{1}{x}}\n}",
+			"inline": "(1+1/(1+1/x))/(1-1/(1-1/x))",
+			"display": "1+1/(1+1/x)\n───────────\n1-1/(1-1/x)"
+		},
+		{
+			"input": "\\sum_{n=1}^{\\infty}\n\\frac{\n  \\displaystyle \\frac{1}{n}-\\frac{1}{n+1}\n}{\n  \\displaystyle 1+\\frac{1}{n^2}\n}",
+			"inline": "∑ₙ₌₁^∞ (1/n-1/(n+1))/(1+1/(n²))",
+			"display": " ∞   1/n-1/(n+1)\n ∑   ───────────\nn=1   1+1/(n²)"
+		},
+		{
+			"input": "\\sum_{i=0}^n \\alpha_i + \\int_0^\\infty e^{-x^2}\\,dx = \\sqrt{\\pi}",
+			"inline": "∑ᵢ₌₀ⁿ αᵢ + ∫₀^∞ e^(-x²) dx = √π",
+			"display": "             2\n n      ∞  -x\n ∑  αᵢ +∫ e   dx = √π\ni=0     0"
+		},
+		{
+			"input": "\\binom{n}{k}+\\vec{x}+\\hat{y}+\\overline{AB}",
+			"inline": "(n choose k)+x⃗+ŷ+overline(AB)",
+			"display": "(n choose k)+x⃗+ŷ+overline(AB)"
+		},
+		{
+			"input": "\\epsilon+\\varepsilon+\\varsigma+\\varkappa+\\oplus+\\otimes+\\therefore+\\because",
+			"inline": "ϵ+ε+ς+ϰ+⊕+⊗+∴+∵",
+			"display": "ϵ+ε+ς+ϰ+⊕+⊗+∴+∵"
+		},
+		{
+			"input": "A\\not\\subseteq B,\\quad x\\not\\in X",
+			"inline": "A ⊈ B, x ∉ X",
+			"display": "A ⊈ B, x ∉ X"
+		},
+		{
+			"input": "R\\bowtie S,\\quad R\\Join S",
+			"inline": "R ⋈ S, R ⋈ S",
+			"display": "R ⋈ S, R ⋈ S"
+		},
+		{
+			"input": "R\\ltimes S,\\quad R\\rtimes S",
+			"inline": "R ⋉ S, R ⋊ S",
+			"display": "R ⋉ S, R ⋊ S"
+		},
+		{
+			"input": "R\\leftouterjoin S,\\quad R\\rightouterjoin S,\\quad R\\fullouterjoin S",
+			"inline": "R ⟕ S, R ⟖ S, R ⟗ S",
+			"display": "R ⟕ S, R ⟖ S, R ⟗ S"
+		},
+		{
+			"input": "\\lvert{x}\\rvert+\\lVert{v}\\rVert+\\left.\\frac{dy}{dx}\\right|_{x=0}",
+			"inline": "|x|+‖v‖+dy/(dx)|ₓ₌₀",
+			"display": "         dy\n|x|+‖v‖+ ── |ₓ₌₀\n         dx"
+		},
+		{
+			"input": "\\left\\lbrace x \\middle| x>0 \\right\\rbrace",
+			"inline": "{ x | x > 0 }",
+			"display": "{ x | x > 0 }"
+		},
+		{
+			"input": "\\operatorname*{arg\\,max}_{x\\in X} f(x)",
+			"inline": "arg max[x∈X] f(x)",
+			"display": "arg max f(x)\n  x∈X"
+		},
+		{
+			"input": "a\\bmod n,\\quad a\\equiv b\\pmod n",
+			"inline": "a mod n, a ≡ b (mod n)",
+			"display": "a mod n, a ≡ b (mod n)"
+		},
+		{
+			"input": "\\overset{!}{=}+\\underset{n}{x}+\\stackrel{def}{=}",
+			"inline": "=^!+xₙ+=ᵈᵉᶠ",
+			"display": "=^!+xₙ+=ᵈᵉᶠ"
+		},
+		{
+			"input": "\\sqrt[2]{x}+\\sqrt[3]{x}+\\sqrt[4]{x}+\\sqrt[n]{x}+\\sqrt[k]{x+1}",
+			"inline": "√x+∛x+∜x+ⁿ√x+ᵏ√(x+1)",
+			"display": "√x+∛x+∜x+ⁿ√x+ᵏ√(x+1)"
+		},
+		{
+			"input": "\\acute{x}+\\grave{y}+\\widehat{xyz}+\\overrightarrow{AB}",
+			"inline": "x́+ỳ+widehat(xyz)+overrightarrow(AB)",
+			"display": "x́+ỳ+widehat(xyz)+overrightarrow(AB)"
+		},
+		{
+			"input": "\\textnormal{hello}+\\mbox{world}+\\boldsymbol{x}+{\\rm roman}+{\\bf bold}+{\\it italic}+{\\sf sans}+{\\tt mono}+{\\cal calligraphic}+{\\sl slanted}",
+			"inline": "hello+world+x+roman+bold+italic+sans+mono+calligraphic+slanted",
+			"display": "hello+world+x+roman+bold+italic+sans+mono+calligraphic+slanted"
+		},
+		{
+			"input": "\\begin{equation}\\begin{split}a&=b\\\\&=c\\end{split}\\end{equation}",
+			"inline": "a = b\n= c",
+			"display": "a = b\n= c"
+		},
+		{
+			"input": "\\begin{alignedat}{2}a&=b&\\quad c&=d\\\\e&=f&g&=h\\end{alignedat}",
+			"inline": "a = b c = d\ne = f g = h",
+			"display": "a = b c = d\ne = f g = h"
+		},
+		{
+			"input": "f(x)=\\begin{cases}a & x<0 \\\\ b & \\text{if }x=0 \\\\ c & \\text{otherwise}\\end{cases}",
+			"inline": "       ⎧ a if x < 0\nf(x) = ⎨ b if x = 0\n       ⎩ c otherwise",
+			"display": "       ⎧ a if x < 0\nf(x) = ⎨ b if x = 0\n       ⎩ c otherwise"
+		},
+		{
+			"input": "\\begin{pmatrix}1&200\\\\3000&4\\end{pmatrix}",
+			"inline": "⎛ 1    │ 200 ⎞\n⎝ 3000 │ 4   ⎠",
+			"display": "⎛ 1    │ 200 ⎞\n⎝ 3000 │ 4   ⎠"
+		},
+		{
+			"input": "R\\left(\\frac{\\pi}{4}\\right)\n=\n\\begin{pmatrix}\n\\frac{\\sqrt{2}}{2} & -\\frac{\\sqrt{2}}{2}\\\\\n\\frac{\\sqrt{2}}{2} & \\frac{\\sqrt{2}}{2}\n\\end{pmatrix}.",
+			"inline": "R(π/4) = ⎛ (√2)/2 │ -(√2)/2 ⎞\n         ⎝ (√2)/2 │ (√2)/2  ⎠.",
+			"display": "   π\nR( ─ ) = ⎛ (√2)/2 │ -(√2)/2 ⎞\n   4     ⎝ (√2)/2 │ (√2)/2  ⎠."
+		},
+		{
+			"input": "\\mathbf w\n=\nR\\left(\\frac{\\pi}{4}\\right)\n\\begin{pmatrix}1\\\\0\\end{pmatrix}\n=\n\\begin{pmatrix}\\frac{\\sqrt{2}}{2}\\\\\\frac{\\sqrt{2}}{2}\\end{pmatrix}.",
+			"inline": "w = R(π/4) ⎛ 1 ⎞ = ⎛ (√2)/2 ⎞\n           ⎝ 0 ⎠   ⎝ (√2)/2 ⎠.",
+			"display": "       π\nw = R( ─ ) ⎛ 1 ⎞ = ⎛ (√2)/2 ⎞\n       4   ⎝ 0 ⎠   ⎝ (√2)/2 ⎠."
+		},
+		{
+			"input": "A\\mathbf e_1=\\begin{pmatrix}\\pi\\\\0\\end{pmatrix},\\qquad A\\mathbf e_2=\\begin{pmatrix}0\\\\\\frac{1}{\\pi}\\end{pmatrix}.",
+			"inline": "Ae₁ = ⎛ π ⎞, Ae₂ = ⎛ 0   ⎞\n      ⎝ 0 ⎠        ⎝ 1/π ⎠.",
+			"display": "Ae₁ = ⎛ π ⎞, Ae₂ = ⎛ 0   ⎞\n      ⎝ 0 ⎠        ⎝ 1/π ⎠."
+		},
+		{
+			"input": "\\sum_{i=0}^n x_i=\\begin{pmatrix}a&b\\\\c&d\\end{pmatrix}.",
+			"inline": "∑ᵢ₌₀ⁿ xᵢ = ⎛ a │ b ⎞\n           ⎝ c │ d ⎠.",
+			"display": " n\n ∑  xᵢ = ⎛ a │ b ⎞\ni=0      ⎝ c │ d ⎠."
+		},
+		{
+			"input": "x\\neq0",
+			"inline": "x ≠ 0",
+			"display": "x ≠ 0"
+		},
+		{
+			"input": "A\\to B",
+			"inline": "A → B",
+			"display": "A → B"
+		},
+		{
+			"input": "\\pi\\cdot\\frac{1}{\\pi}",
+			"inline": "π · 1/π",
+			"display": "    1\nπ · ─\n    π"
+		},
+		{
+			"input": "\\sin\\theta",
+			"inline": "sin θ",
+			"display": "sin θ"
+		},
+		{
+			"input": "\\sin^2 x",
+			"inline": "sin² x",
+			"display": "sin² x"
+		},
+		{
+			"input": "-\\sin\\theta",
+			"inline": "-sin θ",
+			"display": "-sin θ"
+		},
+		{
+			"input": "i\\sin\\theta",
+			"inline": "i sin θ",
+			"display": "i sin θ"
+		},
+		{
+			"input": "\\det(A)",
+			"inline": "det(A)",
+			"display": "det(A)"
+		},
+		{
+			"input": "\\boxed{\n(1,1,1),\\ (1,1,2),\\ (1,2,5),\\ (1,5,13),\\ (2,5,29),\\\n(1,13,34),\\ (1,34,89)\n}.",
+			"inline": "[(1,1,1), (1,1,2), (1,2,5), (1,5,13), (2,5,29), (1,13,34), (1,34,89)].",
+			"display": "[(1,1,1), (1,1,2), (1,2,5), (1,5,13), (2,5,29), (1,13,34), (1,34,89)]."
+		},
+		{
+			"input": "\\sum_{i=0}^n x_i",
+			"inline": "∑ᵢ₌₀ⁿ xᵢ",
+			"display": " n\n ∑  xᵢ\ni=0"
+		},
+		{
+			"input": "\\min_{x\\in X} f(x)",
+			"inline": "min[x∈X] f(x)",
+			"display": "min f(x)\nx∈X"
+		},
+		{
+			"input": "\\int\\nolimits_0^1 f(x)\\,dx",
+			"inline": "∫₀¹ f(x) dx",
+			"display": "∫₀¹ f(x) dx"
+		},
+		{
+			"input": "\\int\\limits_0^1 f(x)\\,dx",
+			"inline": "∫₀¹ f(x) dx",
+			"display": "1\n∫ f(x) dx\n0"
+		},
+		{
+			"input": "f(x) = \\begin{cases} x^{2} & x \\geq 0 \\\\ -x & x < 0 \\end{cases}",
+			"inline": "       ⎧ x² if x ≥ 0\nf(x) = ⎨\n       ⎩ -x if x < 0",
+			"display": "       ⎧ x² if x ≥ 0\nf(x) = ⎨\n       ⎩ -x if x < 0"
+		},
+		{
+			"input": "\\frac{x^2+1}{x-1}",
+			"inline": "(x²+1)/(x-1)",
+			"display": "x²+1\n────\nx-1"
+		},
+		{
+			"input": "\\frac{\\frac{x^2+1}{x-1}-\\frac{2x}{x+1}}{\\frac{x}{x^2-1}}",
+			"inline": "((x²+1)/(x-1)-2x/(x+1))/(x/(x²-1))",
+			"display": "(x²+1)/(x-1)-2x/(x+1)\n─────────────────────\n      x/(x²-1)"
+		},
+		{
+			"input": "\\lim_{x\\to 0}\\frac{\\frac{\\sin x}{x}-1}{\\frac{e^x-1}{x}-1}=0",
+			"inline": "lim[x→0] ((sin x)/x-1)/((eˣ-1)/x-1) = 0",
+			"display": "     (sin x)/x-1\nlim  ─────────── = 0\nx→0  (eˣ-1)/x-1"
+		},
+		{
+			"input": "\\frac{1+\\frac{1}{1+\\frac{1}{x}}}{1-\\frac{1}{1-\\frac{1}{x}}}",
+			"inline": "(1+1/(1+1/x))/(1-1/(1-1/x))",
+			"display": "1+1/(1+1/x)\n───────────\n1-1/(1-1/x)"
+		},
+		{
+			"input": "\\partial_tU_2(t,0)=Aj_*(1-t)^{-A-1}.\\qquad x^{n^2}+x_{i_j}",
+			"inline": "∂ₜU₂(t,0) = Aj_*(1-t)^(-A-1). x^(n²)+x_(iⱼ)",
+			"display": "                            2\n                    -A-1   n\n∂ₜU₂(t,0) = Aj (1-t)    . x  +x\n              *                i\n                                j"
+		},
+		{
+			"input": "e^{\\frac{1}{2}}+\\tfrac{1}{2}",
+			"inline": "e^(1/2)+1/2",
+			"display": "e^(1/2)+1/2"
+		},
+		{
+			"input": "x + \\unknown{y}",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\frac{1}{x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\begin{matrix}1 & 2",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x^2 + y^2 = z^2",
+			"inline": "x² + y² = z²",
+			"display": "x² + y² = z²"
+		},
+		{
+			"input": "a_i^2",
+			"inline": "aᵢ²",
+			"display": "aᵢ²"
+		},
+		{
+			"input": "a^{n+1}_{k}",
+			"inline": "aⁿ⁺¹ₖ",
+			"display": "aⁿ⁺¹ₖ"
+		},
+		{
+			"input": "e^{i\\pi} + 1 = 0",
+			"inline": "e^(iπ) + 1 = 0",
+			"display": "e^(iπ) + 1 = 0"
+		},
+		{
+			"input": "x^{\\frac{1}{2}}",
+			"inline": "x^(1/2)",
+			"display": "x^(1/2)"
+		},
+		{
+			"input": "x_{\\alpha\\beta}",
+			"inline": "x_(αβ)",
+			"display": "x_(αβ)"
+		},
+		{
+			"input": "x^{ab}",
+			"inline": "xᵃᵇ",
+			"display": "xᵃᵇ"
+		},
+		{
+			"input": "x^{AB}",
+			"inline": "x^(AB)",
+			"display": " AB\nx"
+		},
+		{
+			"input": "x^*",
+			"inline": "x^*",
+			"display": " *\nx"
+		},
+		{
+			"input": "x_{ijk}",
+			"inline": "xᵢⱼₖ",
+			"display": "xᵢⱼₖ"
+		},
+		{
+			"input": "x^{a/b}",
+			"inline": "x^(a/b)",
+			"display": "x^(a/b)"
+		},
+		{
+			"input": "\\frac{a+b}{c}",
+			"inline": "(a+b)/c",
+			"display": "a+b\n───\n c"
+		},
+		{
+			"input": "\\frac{1}{2}",
+			"inline": "1/2",
+			"display": "1\n─\n2"
+		},
+		{
+			"input": "\\tfrac{x}{y}",
+			"inline": "x/y",
+			"display": "x/y"
+		},
+		{
+			"input": "\\dfrac{\\frac{a}{b}}{c}",
+			"inline": "(a/b)/c",
+			"display": "a/b\n───\n c"
+		},
+		{
+			"input": "\\frac12",
+			"inline": "1/2",
+			"display": "1\n─\n2"
+		},
+		{
+			"input": "\\sqrt{x}",
+			"inline": "√x",
+			"display": "√x"
+		},
+		{
+			"input": "\\sqrt[3]{x+1}",
+			"inline": "∛(x+1)",
+			"display": "∛(x+1)"
+		},
+		{
+			"input": "\\sqrt[4]{y}",
+			"inline": "∜y",
+			"display": "∜y"
+		},
+		{
+			"input": "\\sqrt[n]{y}",
+			"inline": "ⁿ√y",
+			"display": "ⁿ√y"
+		},
+		{
+			"input": "\\sqrt[2]{ab}",
+			"inline": "√ab",
+			"display": "√ab"
+		},
+		{
+			"input": "\\sqrt[",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\sum_{i=1}^{n} i^2",
+			"inline": "∑ᵢ₌₁ⁿ i²",
+			"display": " n\n ∑  i²\ni=1"
+		},
+		{
+			"input": "\\int_0^1 f(x)\\,dx",
+			"inline": "∫₀¹ f(x) dx",
+			"display": "1\n∫ f(x) dx\n0"
+		},
+		{
+			"input": "\\lim_{x \\to 0} \\frac{\\sin x}{x}",
+			"inline": "lim[x→0] (sin x)/x",
+			"display": "     sin x\nlim  ─────\nx→0    x"
+		},
+		{
+			"input": "\\lim\\limits_{n} a_n",
+			"inline": "lim[n] aₙ",
+			"display": "lim aₙ\n n"
+		},
+		{
+			"input": "\\sum\\nolimits_{k} k",
+			"inline": "∑ₖ k",
+			"display": "∑ₖ k"
+		},
+		{
+			"input": "\\operatorname{rank}(A)",
+			"inline": "rank (A)",
+			"display": "rank (A)"
+		},
+		{
+			"input": "\\operatorname*{argmax}_{x} f",
+			"inline": "argmax[x] f",
+			"display": "argmax f\n  x"
+		},
+		{
+			"input": "\\sin x \\cos y",
+			"inline": "sin x cos y",
+			"display": "sin x cos y"
+		},
+		{
+			"input": "2\\sin x",
+			"inline": "2 sin x",
+			"display": "2 sin x"
+		},
+		{
+			"input": "\\log_2 n",
+			"inline": "log₂ n",
+			"display": "log₂ n"
+		},
+		{
+			"input": "a \\bmod b",
+			"inline": "a mod b",
+			"display": "a mod b"
+		},
+		{
+			"input": "a \\equiv b \\pmod{n}",
+			"inline": "a ≡ b (mod n)",
+			"display": "a ≡ b (mod n)"
+		},
+		{
+			"input": "x \\pod{3}",
+			"inline": "x (3)",
+			"display": "x (3)"
+		},
+		{
+			"input": "\\overset{!}{=}",
+			"inline": "=^!",
+			"display": "=^!"
+		},
+		{
+			"input": "\\underset{x}{\\min}",
+			"inline": "minₓ",
+			"display": "minₓ"
+		},
+		{
+			"input": "\\stackrel{def}{=}",
+			"inline": "=ᵈᵉᶠ",
+			"display": "=ᵈᵉᶠ"
+		},
+		{
+			"input": "\\not\\in",
+			"inline": "∉",
+			"display": "∉"
+		},
+		{
+			"input": "\\not=",
+			"inline": "≠",
+			"display": "≠"
+		},
+		{
+			"input": "\\not{abc}",
+			"inline": "a̸bc",
+			"display": "a̸bc"
+		},
+		{
+			"input": "\\not{}",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\mathbb{R}^n",
+			"inline": "ℝⁿ",
+			"display": "ℝⁿ"
+		},
+		{
+			"input": "\\mathbb{RQx}",
+			"inline": "ℝℚx",
+			"display": "ℝℚx"
+		},
+		{
+			"input": "\\hat{x}",
+			"inline": "x̂",
+			"display": "x̂"
+		},
+		{
+			"input": "\\hat{xy}",
+			"inline": "hat(xy)",
+			"display": "hat(xy)"
+		},
+		{
+			"input": "\\vec{v}",
+			"inline": "v⃗",
+			"display": "v⃗"
+		},
+		{
+			"input": "\\text{if } x",
+			"inline": "if x",
+			"display": "if x"
+		},
+		{
+			"input": "\\textbf{ bold }",
+			"inline": "bold",
+			"display": "bold"
+		},
+		{
+			"input": "\\mathrm{ d }x",
+			"inline": "dx",
+			"display": "dx"
+		},
+		{
+			"input": "\\boxed{ 42 }",
+			"inline": "[42]",
+			"display": "[42]"
+		},
+		{
+			"input": "\\binom{n}{k}",
+			"inline": "(n choose k)",
+			"display": "(n choose k)"
+		},
+		{
+			"input": "\\left( x \\right.",
+			"inline": "( x",
+			"display": "( x"
+		},
+		{
+			"input": "\\big( x \\Big)",
+			"inline": "( x )",
+			"display": "( x )"
+		},
+		{
+			"input": "a\\!b",
+			"inline": "ab",
+			"display": "ab"
+		},
+		{
+			"input": "\\sin\\!x",
+			"inline": "sinx",
+			"display": "sinx"
+		},
+		{
+			"input": "a\\,b\\;c\\quad d",
+			"inline": "a b c d",
+			"display": "a b c d"
+		},
+		{
+			"input": "a~b",
+			"inline": "a b",
+			"display": "a b"
+		},
+		{
+			"input": "a & b",
+			"inline": "a b",
+			"display": "a b"
+		},
+		{
+			"input": "\\{ x \\}",
+			"inline": "{ x }",
+			"display": "{ x }"
+		},
+		{
+			"input": "\\$5 \\% \\# \\_ \\&",
+			"inline": "$5 % # _ &",
+			"display": "$5 % # _ &"
+		},
+		{
+			"input": "a \\| b",
+			"inline": "a ‖ b",
+			"display": "a ‖ b"
+		},
+		{
+			"input": "a\\\\b",
+			"inline": "a\nb",
+			"display": "a\nb"
+		},
+		{
+			"input": "\\bf x y",
+			"inline": "x y",
+			"display": "x y"
+		},
+		{
+			"input": "\\unknown",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\end{x}",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "{a",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "a}",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x^",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\frac{a}",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "",
+			"inline": "",
+			"display": ""
+		},
+		{
+			"input": "\\begin{cases} x, & x > 0 \\\\ -x, & \\text{otherwise} \\end{cases}",
+			"inline": "⎧ x  if x > 0\n⎨\n⎩ -x otherwise",
+			"display": "⎧ x  if x > 0\n⎨\n⎩ -x otherwise"
+		},
+		{
+			"input": "f(x) = \\begin{cases} 1 & x \\ge 0 \\\\ 0 & x < 0 \\end{cases}.",
+			"inline": "       ⎧ 1 if x ≥ 0\nf(x) = ⎨\n       ⎩ 0 if x < 0.",
+			"display": "       ⎧ 1 if x ≥ 0\nf(x) = ⎨\n       ⎩ 0 if x < 0."
+		},
+		{
+			"input": "\\begin{cases} 1 & \\text{if } a \\\\ 2 & \\text{when } b \\\\ 3 & c \\\\ 4 \\end{cases}",
+			"inline": "⎧ 1 if a\n⎨ 2 when b\n⎨\n⎨ 3 if c\n⎩ 4",
+			"display": "⎧ 1 if a\n⎨ 2 when b\n⎨\n⎨ 3 if c\n⎩ 4"
+		},
+		{
+			"input": "\\begin{cases} 1 & a \\end{cases}",
+			"inline": "⎧ 1 if a",
+			"display": "⎧ 1 if a"
+		},
+		{
+			"input": "\\begin{pmatrix} 1 & 2 \\\\ 3 & 4 \\end{pmatrix}",
+			"inline": "⎛ 1 │ 2 ⎞\n⎝ 3 │ 4 ⎠",
+			"display": "⎛ 1 │ 2 ⎞\n⎝ 3 │ 4 ⎠"
+		},
+		{
+			"input": "A = \\begin{bmatrix} a & b & c \\\\ d & e & f \\\\ g & h & i \\end{bmatrix}.",
+			"inline": "A = ⎡ a │ b │ c ⎤\n    ⎢ d │ e │ f ⎥\n    ⎣ g │ h │ i ⎦.",
+			"display": "A = ⎡ a │ b │ c ⎤\n    ⎢ d │ e │ f ⎥\n    ⎣ g │ h │ i ⎦."
+		},
+		{
+			"input": "\\begin{Bmatrix} 1 \\\\ 22 \\end{Bmatrix}",
+			"inline": "⎧ 1  ⎫\n⎩ 22 ⎭",
+			"display": "⎧ 1  ⎫\n⎩ 22 ⎭"
+		},
+		{
+			"input": "\\begin{vmatrix} a & b \\\\ c & d \\end{vmatrix}",
+			"inline": "│ a │ b │\n│ c │ d │",
+			"display": "│ a │ b │\n│ c │ d │"
+		},
+		{
+			"input": "\\begin{Vmatrix} x \\\\ y \\end{Vmatrix}",
+			"inline": "║ x ║\n║ y ║",
+			"display": "║ x ║\n║ y ║"
+		},
+		{
+			"input": "\\begin{matrix} 1 & 2 \\end{matrix}",
+			"inline": "1 │ 2",
+			"display": "1 │ 2"
+		},
+		{
+			"input": "\\begin{array}{cc} 1 & 2 \\\\ 3 & 4 \\end{array}",
+			"inline": "1 │ 2\n3 │ 4",
+			"display": "1 │ 2\n3 │ 4"
+		},
+		{
+			"input": "\\begin{smallmatrix} a & b \\\\ c & d \\end{smallmatrix}",
+			"inline": "a │ b\nc │ d",
+			"display": "a │ b\nc │ d"
+		},
+		{
+			"input": "\\begin{aligned} a &= b + c \\\\[2pt] d &= e \\end{aligned}",
+			"inline": "a = b + c\nd = e",
+			"display": "a = b + c\nd = e"
+		},
+		{
+			"input": "\\begin{align*} x &= 1 \\\\ y &= 2 \\end{align*}",
+			"inline": "x = 1\ny = 2",
+			"display": "x = 1\ny = 2"
+		},
+		{
+			"input": "\\begin{alignedat}{2} a &= b & c &= d \\end{alignedat}",
+			"inline": "a = b c = d",
+			"display": "a = b c = d"
+		},
+		{
+			"input": "\\begin{equation} E = mc^2 \\end{equation}",
+			"inline": "E = mc²",
+			"display": "E = mc²"
+		},
+		{
+			"input": "\\begin{gather} a \\\\ b \\end{gather}",
+			"inline": "a\nb",
+			"display": "a\nb"
+		},
+		{
+			"input": "\\begin{unknown} x \\end{unknown}",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\begin{cases} x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "\\begin x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}",
+			"inline": "x = (-b ± √(b² - 4ac))/(2a)",
+			"display": "    -b ± √(b² - 4ac)\nx = ────────────────\n           2a"
+		},
+		{
+			"input": "\\frac{\\sum_{i=1}^n x_i}{n}",
+			"inline": "(∑ᵢ₌₁ⁿ xᵢ)/n",
+			"display": "   n\n ∑  xᵢ\n i=1\n──────\n  n"
+		},
+		{
+			"input": "\\sum_{i=1}^{n} \\frac{1}{i^2} = \\frac{\\pi^2}{6}",
+			"inline": "∑ᵢ₌₁ⁿ 1/(i²) = π²/6",
+			"display": " n   1    π²\n ∑   ── = ──\ni=1  i²   6"
+		},
+		{
+			"input": "\\prod_{k} \\left( 1 - \\frac{1}{p_k} \\right)",
+			"inline": "∏ₖ ( 1 - 1/(pₖ) )",
+			"display": "        1\n∏ ( 1 - ── )\nk       pₖ"
+		},
+		{
+			"input": "\\int_{-\\infty}^{\\infty} e^{-x^2} dx = \\sqrt{\\pi}",
+			"inline": "∫_(-∞)^∞ e^(-x²) dx = √π",
+			"display": "      2\n∞   -x\n∫  e   dx = √π\n-∞"
+		},
+		{
+			"input": "\\begin{pmatrix} \\frac{1}{2} & 0 \\\\ 0 & 1 \\end{pmatrix} x",
+			"inline": "⎛ 1/2 │ 0 ⎞ x\n⎝ 0   │ 1 ⎠",
+			"display": "⎛ 1/2 │ 0 ⎞ x\n⎝ 0   │ 1 ⎠"
+		},
+		{
+			"input": "a\\\nb",
+			"inline": "a b",
+			"display": "a b"
+		},
+		{
+			"input": "\\sum_{i}_{j} x",
+			"inline": null,
+			"display": null
+		},
+		{
+			"input": "x^{y^{z}}",
+			"inline": "x^(yᶻ)",
+			"display": "  z\n y\nx"
+		},
+		{
+			"input": "x_{a_{b}}",
+			"inline": "x_(a_b)",
+			"display": "x\n a\n  b"
+		},
+		{
+			"input": "\\max_{x \\in S} f(x)",
+			"inline": "max[x∈S] f(x)",
+			"display": "max f(x)\nx∈S"
+		},
+		{
+			"input": "\\arg\\max_x f",
+			"inline": "arg max[x] f",
+			"display": "argmax f\n    x"
+		},
+		{
+			"input": "\\sin_{x}",
+			"inline": "sinₓ",
+			"display": "sinₓ"
+		},
+		{
+			"input": "\\cos\\theta",
+			"inline": "cos θ",
+			"display": "cos θ"
+		},
+		{
+			"input": "\\ln(x)\\exp(y)",
+			"inline": "ln(x) exp(y)",
+			"display": "ln(x) exp(y)"
+		},
+		{
+			"input": "\\mathbf{v} \\cdot \\mathbf{w}",
+			"inline": "v · w",
+			"display": "v · w"
+		},
+		{
+			"input": "a \\times b",
+			"inline": "a × b",
+			"display": "a × b"
+		},
+		{
+			"input": "a \\le b \\leq c",
+			"inline": "a ≤ b ≤ c",
+			"display": "a ≤ b ≤ c"
+		},
+		{
+			"input": "\\alpha\\beta\\gamma",
+			"inline": "αβγ",
+			"display": "αβγ"
+		},
+		{
+			"input": "x' + y''",
+			"inline": "x' + y''",
+			"display": "x' + y''"
+		},
+		{
+			"input": "1.5 \\cdot 10^{-3}",
+			"inline": "1.5 · 10⁻³",
+			"display": "1.5 · 10⁻³"
+		},
+		{
+			"input": "x^{2\\pi}",
+			"inline": "x^(2π)",
+			"display": "x^(2π)"
+		},
+		{
+			"input": "x^{-1}",
+			"inline": "x⁻¹",
+			"display": "x⁻¹"
+		},
+		{
+			"input": "x_{n-1}",
+			"inline": "xₙ₋₁",
+			"display": "xₙ₋₁"
+		},
+		{
+			"input": "\\frac{a}{b}\\frac{c}{d}",
+			"inline": "a/bc/d",
+			"display": "a  c\n─  ─\nb  d"
+		},
+		{
+			"input": "\\frac{a}{\\frac{b}{c}}",
+			"inline": "a/(b/c)",
+			"display": " a\n───\nb/c"
+		},
+		{
+			"input": "\\text{a}\n\\text{b}",
+			"inline": "a b",
+			"display": "a b"
+		},
+		{
+			"input": "a\n\nb",
+			"inline": "a b",
+			"display": "a b"
+		},
+		{
+			"input": "x^{\\sum_{i} i}",
+			"inline": "x^(∑ᵢ i)",
+			"display": " ∑ i\n i\nx"
+		}
+	]
+}

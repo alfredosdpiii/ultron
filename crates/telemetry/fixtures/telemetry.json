@@ -1,0 +1,735 @@
+{
+	"spanCases": [
+		{
+			"id": "attributes-and-events",
+			"roots": [
+				{
+					"name": "op",
+					"attributes": {
+						"kind": "read",
+						"n": 3,
+						"ok": true,
+						"tags": [
+							"a",
+							"b"
+						],
+						"sizes": [
+							1,
+							2.5
+						],
+						"flags": [
+							true,
+							false
+						]
+					},
+					"ops": [
+						[
+							"event",
+							"start"
+						],
+						[
+							"event",
+							"progress",
+							{
+								"pct": 50
+							}
+						],
+						[
+							"set",
+							{
+								"kind": "write",
+								"extra": "x"
+							}
+						],
+						[
+							"set",
+							{
+								"n": 4
+							}
+						]
+					],
+					"end": "ok"
+				}
+			],
+			"snapshots": [],
+			"spans": [
+				{
+					"id": 1,
+					"parentId": null,
+					"name": "op",
+					"attributes": {
+						"kind": "write",
+						"n": 4,
+						"ok": true,
+						"tags": [
+							"a",
+							"b"
+						],
+						"sizes": [
+							1,
+							2.5
+						],
+						"flags": [
+							true,
+							false
+						],
+						"extra": "x"
+					},
+					"events": [
+						{
+							"name": "start",
+							"attributes": {}
+						},
+						{
+							"name": "progress",
+							"attributes": {
+								"pct": 50
+							}
+						}
+					],
+					"status": {
+						"status": "ok"
+					},
+					"settled": true,
+					"endSequence": 1
+				}
+			]
+		},
+		{
+			"id": "nested-end-order",
+			"roots": [
+				{
+					"name": "root",
+					"ops": [
+						[
+							"child",
+							{
+								"name": "a",
+								"ops": [
+									[
+										"child",
+										{
+											"name": "a1",
+											"end": "ok"
+										}
+									]
+								],
+								"end": "ok"
+							}
+						],
+						[
+							"child",
+							{
+								"name": "b",
+								"end": {
+									"error": {
+										"name": "TypeError",
+										"message": "bad"
+									}
+								}
+							}
+						]
+					],
+					"end": "ok"
+				},
+				{
+					"name": "second-root",
+					"end": "ok"
+				}
+			],
+			"snapshots": [],
+			"spans": [
+				{
+					"id": 1,
+					"parentId": null,
+					"name": "root",
+					"attributes": {},
+					"events": [],
+					"status": {
+						"status": "ok"
+					},
+					"settled": true,
+					"endSequence": 4
+				},
+				{
+					"id": 2,
+					"parentId": 1,
+					"name": "a",
+					"attributes": {},
+					"events": [],
+					"status": {
+						"status": "ok"
+					},
+					"settled": true,
+					"endSequence": 2
+				},
+				{
+					"id": 3,
+					"parentId": 2,
+					"name": "a1",
+					"attributes": {},
+					"events": [],
+					"status": {
+						"status": "ok"
+					},
+					"settled": true,
+					"endSequence": 1
+				},
+				{
+					"id": 4,
+					"parentId": 1,
+					"name": "b",
+					"attributes": {},
+					"events": [],
+					"status": {
+						"status": "error",
+						"error": {
+							"name": "TypeError",
+							"message": "bad"
+						}
+					},
+					"settled": true,
+					"endSequence": 3
+				},
+				{
+					"id": 5,
+					"parentId": null,
+					"name": "second-root",
+					"attributes": {},
+					"events": [],
+					"status": {
+						"status": "ok"
+					},
+					"settled": true,
+					"endSequence": 5
+				}
+			]
+		},
+		{
+			"id": "automatic-error-status",
+			"roots": [
+				{
+					"name": "error-instance",
+					"end": {
+						"error": {
+							"name": "RangeError",
+							"message": "out of range"
+						}
+					}
+				},
+				{
+					"name": "non-error-value",
+					"end": "throwValue"
+				}
+			],
+			"snapshots": [],
+			"spans": [
+				{
+					"id": 1,
+					"parentId": null,
+					"name": "error-instance",
+					"attributes": {},
+					"events": [],
+					"status": {
+						"status": "error",
+						"error": {
+							"name": "RangeError",
+							"message": "out of range"
+						}
+					},
+					"settled": true,
+					"endSequence": 1
+				},
+				{
+					"id": 2,
+					"parentId": null,
+					"name": "non-error-value",
+					"attributes": {},
+					"events": [],
+					"status": {
+						"status": "error"
+					},
+					"settled": true,
+					"endSequence": 2
+				}
+			]
+		},
+		{
+			"id": "explicit-status-wins",
+			"roots": [
+				{
+					"name": "last-status",
+					"ops": [
+						[
+							"status",
+							{
+								"status": "error",
+								"error": {
+									"name": "Expected",
+									"message": "first"
+								}
+							}
+						],
+						[
+							"status",
+							{
+								"status": "ok"
+							}
+						]
+					],
+					"end": "ok"
+				},
+				{
+					"name": "explicit-before-throw",
+					"ops": [
+						[
+							"status",
+							{
+								"status": "ok"
+							}
+						]
+					],
+					"end": {
+						"error": {
+							"name": "Error",
+							"message": "after explicit status"
+						}
+					}
+				},
+				{
+					"name": "explicit-error-no-details",
+					"ops": [
+						[
+							"status",
+							{
+								"status": "error"
+							}
+						]
+					],
+					"end": "ok"
+				},
+				{
+					"name": "expected-failure",
+					"ops": [
+						[
+							"status",
+							{
+								"status": "error",
+								"error": {
+									"name": "Expected",
+									"message": "returned failure"
+								}
+							}
+						]
+					],
+					"end": "ok"
+				}
+			],
+			"snapshots": [],
+			"spans": [
+				{
+					"id": 1,
+					"parentId": null,
+					"name": "last-status",
+					"attributes": {},
+					"events": [],
+					"status": {
+						"status": "ok"
+					},
+					"settled": true,
+					"endSequence": 1
+				},
+				{
+					"id": 2,
+					"parentId": null,
+					"name": "explicit-before-throw",
+					"attributes": {},
+					"events": [],
+					"status": {
+						"status": "ok"
+					},
+					"settled": true,
+					"endSequence": 2
+				},
+				{
+					"id": 3,
+					"parentId": null,
+					"name": "explicit-error-no-details",
+					"attributes": {},
+					"events": [],
+					"status": {
+						"status": "error"
+					},
+					"settled": true,
+					"endSequence": 3
+				},
+				{
+					"id": 4,
+					"parentId": null,
+					"name": "expected-failure",
+					"attributes": {},
+					"events": [],
+					"status": {
+						"status": "error",
+						"error": {
+							"name": "Expected",
+							"message": "returned failure"
+						}
+					},
+					"settled": true,
+					"endSequence": 4
+				}
+			]
+		},
+		{
+			"id": "settled-span-ignores-mutation",
+			"roots": [
+				{
+					"name": "done",
+					"attributes": {
+						"a": 1
+					},
+					"end": "ok",
+					"late": [
+						[
+							"event",
+							"late"
+						],
+						[
+							"set",
+							{
+								"a": 2,
+								"b": 3
+							}
+						],
+						[
+							"status",
+							{
+								"status": "error"
+							}
+						],
+						[
+							"child",
+							{
+								"name": "orphan",
+								"ops": [
+									[
+										"event",
+										"x"
+									],
+									[
+										"child",
+										{
+											"name": "orphan-child",
+											"end": "ok"
+										}
+									]
+								],
+								"end": "ok"
+							}
+						]
+					]
+				},
+				{
+					"name": "after",
+					"end": "ok"
+				}
+			],
+			"snapshots": [],
+			"spans": [
+				{
+					"id": 1,
+					"parentId": null,
+					"name": "done",
+					"attributes": {
+						"a": 1
+					},
+					"events": [],
+					"status": {
+						"status": "ok"
+					},
+					"settled": true,
+					"endSequence": 1
+				},
+				{
+					"id": 2,
+					"parentId": null,
+					"name": "after",
+					"attributes": {},
+					"events": [],
+					"status": {
+						"status": "ok"
+					},
+					"settled": true,
+					"endSequence": 2
+				}
+			]
+		},
+		{
+			"id": "open-snapshot",
+			"roots": [
+				{
+					"name": "snapshot",
+					"attributes": {
+						"tags": [
+							"initial"
+						]
+					},
+					"ops": [
+						[
+							"event",
+							"event",
+							{
+								"value": 1
+							}
+						],
+						[
+							"snapshot"
+						]
+					],
+					"end": "ok"
+				}
+			],
+			"snapshots": [
+				[
+					{
+						"id": 1,
+						"parentId": null,
+						"name": "snapshot",
+						"attributes": {
+							"tags": [
+								"initial"
+							]
+						},
+						"events": [
+							{
+								"name": "event",
+								"attributes": {
+									"value": 1
+								}
+							}
+						],
+						"status": {
+							"status": "ok"
+						},
+						"settled": false
+					}
+				]
+			],
+			"spans": [
+				{
+					"id": 1,
+					"parentId": null,
+					"name": "snapshot",
+					"attributes": {
+						"tags": [
+							"initial"
+						]
+					},
+					"events": [
+						{
+							"name": "event",
+							"attributes": {
+								"value": 1
+							}
+						}
+					],
+					"status": {
+						"status": "ok"
+					},
+					"settled": true,
+					"endSequence": 1
+				}
+			]
+		},
+		{
+			"id": "empty",
+			"roots": [],
+			"snapshots": [],
+			"spans": []
+		}
+	],
+	"noopChildIsSameSpan": true,
+	"installCases": [
+		{
+			"env": null,
+			"setting": null,
+			"enabled": true
+		},
+		{
+			"env": null,
+			"setting": true,
+			"enabled": true
+		},
+		{
+			"env": null,
+			"setting": false,
+			"enabled": false
+		},
+		{
+			"env": "1",
+			"setting": null,
+			"enabled": true
+		},
+		{
+			"env": "1",
+			"setting": true,
+			"enabled": true
+		},
+		{
+			"env": "1",
+			"setting": false,
+			"enabled": true
+		},
+		{
+			"env": "true",
+			"setting": null,
+			"enabled": true
+		},
+		{
+			"env": "true",
+			"setting": true,
+			"enabled": true
+		},
+		{
+			"env": "true",
+			"setting": false,
+			"enabled": true
+		},
+		{
+			"env": "TRUE",
+			"setting": null,
+			"enabled": true
+		},
+		{
+			"env": "TRUE",
+			"setting": true,
+			"enabled": true
+		},
+		{
+			"env": "TRUE",
+			"setting": false,
+			"enabled": true
+		},
+		{
+			"env": "Yes",
+			"setting": null,
+			"enabled": true
+		},
+		{
+			"env": "Yes",
+			"setting": true,
+			"enabled": true
+		},
+		{
+			"env": "Yes",
+			"setting": false,
+			"enabled": true
+		},
+		{
+			"env": "yes",
+			"setting": null,
+			"enabled": true
+		},
+		{
+			"env": "yes",
+			"setting": true,
+			"enabled": true
+		},
+		{
+			"env": "yes",
+			"setting": false,
+			"enabled": true
+		},
+		{
+			"env": "0",
+			"setting": null,
+			"enabled": false
+		},
+		{
+			"env": "0",
+			"setting": true,
+			"enabled": false
+		},
+		{
+			"env": "0",
+			"setting": false,
+			"enabled": false
+		},
+		{
+			"env": "false",
+			"setting": null,
+			"enabled": false
+		},
+		{
+			"env": "false",
+			"setting": true,
+			"enabled": false
+		},
+		{
+			"env": "false",
+			"setting": false,
+			"enabled": false
+		},
+		{
+			"env": "",
+			"setting": null,
+			"enabled": false
+		},
+		{
+			"env": "",
+			"setting": true,
+			"enabled": false
+		},
+		{
+			"env": "",
+			"setting": false,
+			"enabled": false
+		},
+		{
+			"env": "on",
+			"setting": null,
+			"enabled": false
+		},
+		{
+			"env": "on",
+			"setting": true,
+			"enabled": false
+		},
+		{
+			"env": "on",
+			"setting": false,
+			"enabled": false
+		},
+		{
+			"env": " 1",
+			"setting": null,
+			"enabled": false
+		},
+		{
+			"env": " 1",
+			"setting": true,
+			"enabled": false
+		},
+		{
+			"env": " 1",
+			"setting": false,
+			"enabled": false
+		},
+		{
+			"env": "2",
+			"setting": null,
+			"enabled": false
+		},
+		{
+			"env": "2",
+			"setting": true,
+			"enabled": false
+		},
+		{
+			"env": "2",
+			"setting": false,
+			"enabled": false
+		}
+	]
+}

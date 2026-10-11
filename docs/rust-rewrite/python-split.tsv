@@ -1,0 +1,27 @@
+module	lines	target	note
+rlm/agent_class_api.py	1478	python	typed agent classes are Python by contract; validation helpers may move
+rlm/agents_api.py	96	python	thin API
+rlm/autoreview_api.py	2131	rust	heavy logic becomes Rust host operations behind a thin Python API
+rlm/autoreview_compiled.py	2560	rust	heavy logic becomes Rust host operations behind a thin Python API
+rlm/autoreview_deep.py	1399	rust	heavy logic becomes Rust host operations behind a thin Python API
+rlm/autoreview_reference.py	1451	rust	heavy logic becomes Rust host operations behind a thin Python API
+rlm/autoreview_tests.py	772	rust	heavy logic becomes Rust host operations behind a thin Python API
+rlm/context_api.py	55	python	thin API
+rlm/family_api.py	38	python	thin API
+rlm/goal_api.py	32	python	thin API
+rlm/grants_api.py	21	python	thin API
+rlm/hints_api.py	30	python	thin API
+rlm/infer_api.py	565	python	thin API; host side in crates/inference
+rlm/instances_api.py	23	python	thin API
+rlm/memory_api.py	21	python	thin API
+rlm/progress_api.py	22	python	thin API
+rlm/release_gate_api.py	18	python	thin API
+rlm/review_api.py	1403	rust	heavy logic becomes Rust host operations behind a thin Python API
+rlm/review_prompts.py	787	rust	heavy logic becomes Rust host operations behind a thin Python API
+rlm/runtime.py	2162	python	the REPL itself
+rlm/schedules_api.py	62	python	thin API
+rlm/secret_patterns.py	171	rust	crates/host secrets (done); Python keeps the shared pattern data only if the REPL needs it
+rlm/skills_api.py	259	python	thin API (code skills stay Python)
+rlm/tools_api.py	458	python	thin API
+rlm/worktree_api.py	66	python	thin API
+loki-engine/loki.py	8668	rust	crates/loki binary with the same CLI and output

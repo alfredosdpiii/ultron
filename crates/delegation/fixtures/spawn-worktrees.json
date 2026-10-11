@@ -1,0 +1,2733 @@
+[
+	{
+		"name": "worktree children commit, are checked and merge",
+		"workspace": "git",
+		"files": {
+			"a.txt": "one\n",
+			"b.txt": "b\n"
+		},
+		"children": [
+			{
+				"actions": [
+					[
+						"write",
+						"a.txt",
+						"one\ntwo\n"
+					],
+					[
+						"write",
+						"new.txt",
+						"fresh\n"
+					],
+					[
+						"call",
+						"rlm.finish",
+						{
+							"status": "passed",
+							"summary": "did it",
+							"evidence": [
+								"cargo test: exit 0, 4 passed"
+							],
+							"changed_files": [
+								"a.txt",
+								"<repo>/new.txt"
+							]
+						}
+					]
+				],
+				"text": "done"
+			},
+			{
+				"actions": [
+					[
+						"call",
+						"rlm.finish",
+						{
+							"status": "passed",
+							"summary": "did it",
+							"evidence": [
+								"cargo test: exit 0, 4 passed"
+							],
+							"changed_files": [
+								"ghost.txt"
+							]
+						}
+					]
+				],
+				"text": "claimed"
+			},
+			{
+				"actions": [
+					[
+						"write",
+						"shared.txt",
+						"s\n"
+					],
+					[
+						"call",
+						"rlm.finish",
+						{
+							"status": "passed",
+							"summary": "did it",
+							"evidence": [
+								"cargo test: exit 0, 4 passed"
+							],
+							"changed_files": [
+								"shared.txt"
+							]
+						}
+					]
+				],
+				"text": "shared"
+			},
+			{
+				"actions": [
+					[
+						"write",
+						"b.txt",
+						"b2\n"
+					]
+				],
+				"text": "no verdict"
+			},
+			{
+				"actions": [
+					[
+						"write",
+						"c.txt",
+						"c\n"
+					],
+					[
+						"call",
+						"rlm.finish",
+						{
+							"status": "failed",
+							"summary": "could not finish"
+						}
+					]
+				],
+				"text": "failed"
+			}
+		],
+		"steps": [
+			{
+				"op": [
+					"call",
+					"rlm.spawn",
+					{
+						"prompt": "edit a",
+						"kwargs": {
+							"name": "editor",
+							"worktree": true
+						}
+					}
+				],
+				"result": {
+					"rlm_child_id": "ultron-task-#0",
+					"name": "editor",
+					"session_dir": "",
+					"model": "",
+					"timeout_ms": 1800000,
+					"parent_branch_anchor": "",
+					"worktree": {
+						"branch": "ultron/fixture-/editor",
+						"path": "<root>/repo/.git/ultron-worktrees/wt#0",
+						"cwd": "<root>/repo/.git/ultron-worktrees/wt#0"
+					}
+				}
+			},
+			{
+				"op": [
+					"settle"
+				]
+			},
+			{
+				"op": [
+					"call",
+					"rlm.spawn",
+					{
+						"prompt": "claim",
+						"kwargs": {
+							"name": "claimer",
+							"worktree": true
+						}
+					}
+				],
+				"result": {
+					"rlm_child_id": "ultron-task-#1",
+					"name": "claimer",
+					"session_dir": "",
+					"model": "",
+					"timeout_ms": 1800000,
+					"parent_branch_anchor": "",
+					"worktree": {
+						"branch": "ultron/fixture-/claimer",
+						"path": "<root>/repo/.git/ultron-worktrees/wt#1",
+						"cwd": "<root>/repo/.git/ultron-worktrees/wt#1"
+					}
+				}
+			},
+			{
+				"op": [
+					"settle"
+				]
+			},
+			{
+				"op": [
+					"call",
+					"rlm.spawn",
+					{
+						"prompt": "shared",
+						"kwargs": {
+							"name": "sharer"
+						}
+					}
+				],
+				"result": {
+					"rlm_child_id": "ultron-task-#2",
+					"name": "sharer",
+					"session_dir": "",
+					"model": "",
+					"timeout_ms": 1800000,
+					"parent_branch_anchor": "",
+					"worktree": null
+				}
+			},
+			{
+				"op": [
+					"settle"
+				]
+			},
+			{
+				"op": [
+					"call",
+					"rlm.spawn",
+					{
+						"prompt": "b",
+						"kwargs": {
+							"name": "silent",
+							"worktree": "auto"
+						}
+					}
+				],
+				"result": {
+					"rlm_child_id": "ultron-task-#3",
+					"name": "silent",
+					"session_dir": "",
+					"model": "",
+					"timeout_ms": 1800000,
+					"parent_branch_anchor": "",
+					"worktree": {
+						"branch": "ultron/fixture-/silent",
+						"path": "<root>/repo/.git/ultron-worktrees/wt#2",
+						"cwd": "<root>/repo/.git/ultron-worktrees/wt#2"
+					}
+				}
+			},
+			{
+				"op": [
+					"settle"
+				]
+			},
+			{
+				"op": [
+					"call",
+					"rlm.spawn",
+					{
+						"prompt": "c",
+						"kwargs": {
+							"name": "failer",
+							"worktree": true
+						}
+					}
+				],
+				"result": {
+					"rlm_child_id": "ultron-task-#4",
+					"name": "failer",
+					"session_dir": "",
+					"model": "",
+					"timeout_ms": 1800000,
+					"parent_branch_anchor": "",
+					"worktree": {
+						"branch": "ultron/fixture-/failer",
+						"path": "<root>/repo/.git/ultron-worktrees/wt#3",
+						"cwd": "<root>/repo/.git/ultron-worktrees/wt#3"
+					}
+				}
+			},
+			{
+				"op": [
+					"settle"
+				]
+			},
+			{
+				"op": [
+					"call",
+					"rlm.collect",
+					{}
+				],
+				"result": {
+					"results": [
+						{
+							"id": "ultron-task-#0",
+							"result": {
+								"status": "succeeded",
+								"value": "done",
+								"verification": "unverified",
+								"verdict": {
+									"status": "passed",
+									"summary": "did it",
+									"outputs": {},
+									"evidence": [
+										"cargo test: exit 0, 4 passed"
+									],
+									"changed_files": [
+										"a.txt",
+										"new.txt"
+									]
+								},
+								"check": {
+									"outcome": "verified",
+									"unobserved": [],
+									"unreported": [],
+									"unlisted": [],
+									"concurrent": []
+								},
+								"worktree": {
+									"task": "ultron-task-#0",
+									"branch": "ultron/fixture-/editor",
+									"path": "<root>/repo/.git/ultron-worktrees/wt#0",
+									"repo": "<root>/repo",
+									"base": "#0",
+									"commit": "#1",
+									"changed_files": [
+										"a.txt",
+										"new.txt"
+									],
+									"diffstat": "2 files changed, 2 insertions(+)"
+								}
+							}
+						},
+						{
+							"id": "ultron-task-#1",
+							"result": {
+								"status": "succeeded",
+								"value": "claimed",
+								"verification": "unverified",
+								"verdict": {
+									"status": "passed",
+									"summary": "did it",
+									"outputs": {},
+									"evidence": [
+										"cargo test: exit 0, 4 passed"
+									],
+									"changed_files": [
+										"ghost.txt"
+									]
+								},
+								"check": {
+									"outcome": "contradicted",
+									"unobserved": [
+										"ghost.txt"
+									],
+									"unreported": [],
+									"unlisted": [],
+									"concurrent": []
+								},
+								"worktree": {
+									"task": "ultron-task-#1",
+									"branch": "ultron/fixture-/claimer",
+									"path": "<root>/repo/.git/ultron-worktrees/wt#1",
+									"repo": "<root>/repo",
+									"base": "#0",
+									"commit": null,
+									"changed_files": [],
+									"diffstat": "",
+									"removed": true
+								}
+							}
+						},
+						{
+							"id": "ultron-task-#2",
+							"result": {
+								"status": "succeeded",
+								"value": "shared",
+								"verification": "unverified",
+								"verdict": {
+									"status": "passed",
+									"summary": "did it",
+									"outputs": {},
+									"evidence": [
+										"cargo test: exit 0, 4 passed"
+									],
+									"changed_files": [
+										"shared.txt"
+									]
+								},
+								"check": {
+									"outcome": "verified",
+									"unobserved": [],
+									"unreported": [],
+									"unlisted": [],
+									"concurrent": []
+								}
+							}
+						},
+						{
+							"id": "ultron-task-#3",
+							"result": {
+								"status": "succeeded",
+								"value": "no verdict",
+								"verification": "unverified",
+								"verdict": null,
+								"check": {
+									"outcome": "unchecked",
+									"unobserved": [],
+									"unreported": [
+										"b.txt"
+									],
+									"unlisted": [],
+									"concurrent": [],
+									"reason": "the subagent ended without a verdict (rlm.finish)"
+								},
+								"unverified": true,
+								"worktree": {
+									"task": "ultron-task-#3",
+									"branch": "ultron/fixture-/silent",
+									"path": "<root>/repo/.git/ultron-worktrees/wt#2",
+									"repo": "<root>/repo",
+									"base": "#2",
+									"commit": "#3",
+									"changed_files": [
+										"b.txt"
+									],
+									"diffstat": "1 file changed, 1 insertion(+), 1 deletion(-)"
+								}
+							}
+						},
+						{
+							"id": "ultron-task-#4",
+							"result": {
+								"status": "succeeded",
+								"value": "failed",
+								"verification": "unverified",
+								"verdict": {
+									"status": "failed",
+									"summary": "could not finish",
+									"outputs": {},
+									"evidence": [],
+									"changed_files": []
+								},
+								"check": {
+									"outcome": "verified",
+									"unobserved": [],
+									"unreported": [
+										"c.txt"
+									],
+									"unlisted": [],
+									"concurrent": []
+								},
+								"worktree": {
+									"task": "ultron-task-#4",
+									"branch": "ultron/fixture-/failer",
+									"path": "<root>/repo/.git/ultron-worktrees/wt#3",
+									"repo": "<root>/repo",
+									"base": "#4",
+									"commit": "#5",
+									"changed_files": [
+										"c.txt"
+									],
+									"diffstat": "1 file changed, 1 insertion(+)"
+								}
+							}
+						}
+					]
+				}
+			},
+			{
+				"op": [
+					"call",
+					"rlm.worktrees.list",
+					{}
+				],
+				"result": {
+					"worktrees": [
+						{
+							"id": "wt#0",
+							"task": "ultron-task-#0",
+							"name": "editor",
+							"branch": "ultron/fixture-/editor",
+							"path": "<root>/repo/.git/ultron-worktrees/wt#0",
+							"state": "ended",
+							"commit": "#1",
+							"running": false,
+							"session": "fixture-session"
+						},
+						{
+							"id": "wt#3",
+							"task": "ultron-task-#4",
+							"name": "failer",
+							"branch": "ultron/fixture-/failer",
+							"path": "<root>/repo/.git/ultron-worktrees/wt#3",
+							"state": "failed",
+							"commit": "#5",
+							"running": false,
+							"session": "fixture-session"
+						},
+						{
+							"id": "wt#2",
+							"task": "ultron-task-#3",
+							"name": "silent",
+							"branch": "ultron/fixture-/silent",
+							"path": "<root>/repo/.git/ultron-worktrees/wt#2",
+							"state": "ended",
+							"commit": "#3",
+							"running": false,
+							"session": "fixture-session"
+						}
+					]
+				}
+			},
+			{
+				"op": [
+					"call",
+					"rlm.merge",
+					{}
+				],
+				"result": {
+					"ok": false,
+					"merged": [
+						"ultron-task-#0",
+						"ultron-task-#3"
+					],
+					"results": [
+						{
+							"id": "ultron-task-#0",
+							"name": "editor",
+							"branch": "ultron/fixture-/editor",
+							"status": "merged",
+							"files": [
+								"a.txt",
+								"new.txt"
+							],
+							"diffstat": "2 files changed, 2 insertions(+)"
+						},
+						{
+							"id": "ultron-task-#1",
+							"name": "claimer",
+							"branch": "ultron/fixture-/claimer",
+							"status": "empty"
+						},
+						{
+							"id": "ultron-task-#3",
+							"name": "silent",
+							"branch": "ultron/fixture-/silent",
+							"status": "merged",
+							"files": [
+								"b.txt"
+							],
+							"diffstat": "1 file changed, 1 insertion(+), 1 deletion(-)"
+						},
+						{
+							"id": "ultron-task-#4",
+							"name": "failer",
+							"branch": "ultron/fixture-/failer",
+							"status": "skipped",
+							"reason": "the child did not succeed (succeeded, verdict failed); include_failed=True merges it anyway",
+							"commit": "#5"
+						}
+					],
+					"note": "Merged changes are uncommitted modifications in your working tree (new files untracked); review and commit them yourself."
+				}
+			},
+			{
+				"op": [
+					"files",
+					[
+						"a.txt",
+						"b.txt",
+						"c.txt",
+						"new.txt",
+						"shared.txt"
+					]
+				],
+				"result": [
+					"one\ntwo\n",
+					"b2\n",
+					null,
+					"fresh\n",
+					"s\n"
+				]
+			},
+			{
+				"op": [
+					"branches"
+				],
+				"result": [
+					"main",
+					"ultron/fixture-/failer"
+				]
+			},
+			{
+				"op": [
+					"status"
+				],
+				"result": " M a.txt\n M b.txt\n?? new.txt\n?? shared.txt\n"
+			},
+			{
+				"op": [
+					"call",
+					"rlm.merge",
+					{
+						"selectors": [
+							"$0"
+						]
+					}
+				],
+				"result": {
+					"ok": true,
+					"merged": [
+						"ultron-task-#0"
+					],
+					"results": [
+						{
+							"id": "ultron-task-#0",
+							"name": "editor",
+							"branch": "ultron/fixture-/editor",
+							"status": "merged",
+							"files": [
+								"a.txt",
+								"new.txt"
+							],
+							"note": "already merged"
+						}
+					],
+					"note": "Merged changes are uncommitted modifications in your working tree (new files untracked); review and commit them yourself."
+				}
+			},
+			{
+				"op": [
+					"call",
+					"rlm.merge",
+					{
+						"selectors": [
+							"$4",
+							"$2"
+						],
+						"include_failed": true
+					}
+				],
+				"result": {
+					"ok": true,
+					"merged": [
+						"ultron-task-#4"
+					],
+					"results": [
+						{
+							"id": "ultron-task-#4",
+							"name": "failer",
+							"branch": "ultron/fixture-/failer",
+							"status": "merged",
+							"files": [
+								"c.txt"
+							],
+							"diffstat": "1 file changed, 1 insertion(+)"
+						},
+						{
+							"id": "ultron-task-#2",
+							"name": "ultron-task-#2",
+							"status": "no_worktree",
+							"reason": "it ran in the shared tree: its changes are already there"
+						}
+					],
+					"note": "Merged changes are uncommitted modifications in your working tree (new files untracked); review and commit them yourself."
+				}
+			},
+			{
+				"op": [
+					"call",
+					"rlm.merge",
+					{
+						"selectors": [
+							"$0",
+							"$0"
+						]
+					}
+				],
+				"error": "rlm.merge: a child is listed twice"
+			},
+			{
+				"op": [
+					"call",
+					"rlm.merge",
+					{
+						"selectors": [
+							"nope"
+						]
+					}
+				],
+				"error": "Unknown RLM child: nope"
+			},
+			{
+				"op": [
+					"call",
+					"rlm.merge",
+					{
+						"on_conflict": "explode"
+					}
+				],
+				"error": "on_conflict must be \"stop\", \"skip\" or \"markers\""
+			},
+			{
+				"op": [
+					"call",
+					"rlm.worktrees.list",
+					{
+						"all": true
+					}
+				],
+				"result": {
+					"worktrees": []
+				}
+			},
+			{
+				"op": [
+					"call",
+					"rlm.worktrees.cleanup",
+					{}
+				],
+				"result": {
+					"removed": [],
+					"kept_branches": [],
+					"running": []
+				}
+			},
+			{
+				"op": [
+					"branches"
+				],
+				"result": [
+					"main"
+				]
+			}
+		],
+		"runs": [
+			{
+				"index": 0,
+				"taskId": "ultron-task-#0",
+				"prompt": "edit a\n\n[Worktree] You work in your own Git worktree <root>/repo/.git/ultron-worktrees/wt#0 (branch ultron/fixture-/editor): a private copy of your parent's checkout, uncommitted changes included. Use paths relative to it; read/edit/write map absolute paths under <root>/repo into it, but shell commands do not, so never cd there. Your changes are committed on your branch when you finish and your parent merges them: do not commit, switch branches or push yourself.",
+				"cwd": "<root>/repo/.git/ultron-worktrees/wt#0",
+				"env": {
+					"ULTRON_WORKTREE": "<root>/repo/.git/ultron-worktrees/wt#0",
+					"ULTRON_PARENT_REPO": "<root>/repo",
+					"ULTRON_WORKTREE_BRANCH": "ultron/fixture-/editor",
+					"PWD": "<root>/repo/.git/ultron-worktrees/wt#0"
+				},
+				"calls": [
+					{
+						"type": "rlm.finish",
+						"result": {
+							"recorded": true,
+							"status": "passed",
+							"next": "End your turn now with a short reply; the host checks changed_files against the files that changed while you ran."
+						}
+					}
+				]
+			},
+			{
+				"index": 1,
+				"taskId": "ultron-task-#1",
+				"prompt": "claim\n\n[Worktree] You work in your own Git worktree <root>/repo/.git/ultron-worktrees/wt#1 (branch ultron/fixture-/claimer): a private copy of your parent's checkout, uncommitted changes included. Use paths relative to it; read/edit/write map absolute paths under <root>/repo into it, but shell commands do not, so never cd there. Your changes are committed on your branch when you finish and your parent merges them: do not commit, switch branches or push yourself.",
+				"cwd": "<root>/repo/.git/ultron-worktrees/wt#1",
+				"env": {
+					"ULTRON_WORKTREE": "<root>/repo/.git/ultron-worktrees/wt#1",
+					"ULTRON_PARENT_REPO": "<root>/repo",
+					"ULTRON_WORKTREE_BRANCH": "ultron/fixture-/claimer",
+					"PWD": "<root>/repo/.git/ultron-worktrees/wt#1"
+				},
+				"calls": [
+					{
+						"type": "rlm.finish",
+						"result": {
+							"recorded": true,
+							"status": "passed",
+							"next": "End your turn now with a short reply; the host checks changed_files against the files that changed while you ran."
+						}
+					}
+				]
+			},
+			{
+				"index": 2,
+				"taskId": "ultron-task-#2",
+				"prompt": "shared",
+				"cwd": null,
+				"env": null,
+				"calls": [
+					{
+						"type": "rlm.finish",
+						"result": {
+							"recorded": true,
+							"status": "passed",
+							"next": "End your turn now with a short reply; the host checks changed_files against the files that changed while you ran."
+						}
+					}
+				]
+			},
+			{
+				"index": 3,
+				"taskId": "ultron-task-#3",
+				"prompt": "b\n\n[Worktree] You work in your own Git worktree <root>/repo/.git/ultron-worktrees/wt#2 (branch ultron/fixture-/silent): a private copy of your parent's checkout, uncommitted changes included. Use paths relative to it; read/edit/write map absolute paths under <root>/repo into it, but shell commands do not, so never cd there. Your changes are committed on your branch when you finish and your parent merges them: do not commit, switch branches or push yourself.",
+				"cwd": "<root>/repo/.git/ultron-worktrees/wt#2",
+				"env": {
+					"ULTRON_WORKTREE": "<root>/repo/.git/ultron-worktrees/wt#2",
+					"ULTRON_PARENT_REPO": "<root>/repo",
+					"ULTRON_WORKTREE_BRANCH": "ultron/fixture-/silent",
+					"PWD": "<root>/repo/.git/ultron-worktrees/wt#2"
+				},
+				"calls": []
+			},
+			{
+				"index": 4,
+				"taskId": "ultron-task-#4",
+				"prompt": "c\n\n[Worktree] You work in your own Git worktree <root>/repo/.git/ultron-worktrees/wt#3 (branch ultron/fixture-/failer): a private copy of your parent's checkout, uncommitted changes included. Use paths relative to it; read/edit/write map absolute paths under <root>/repo into it, but shell commands do not, so never cd there. Your changes are committed on your branch when you finish and your parent merges them: do not commit, switch branches or push yourself.",
+				"cwd": "<root>/repo/.git/ultron-worktrees/wt#3",
+				"env": {
+					"ULTRON_WORKTREE": "<root>/repo/.git/ultron-worktrees/wt#3",
+					"ULTRON_PARENT_REPO": "<root>/repo",
+					"ULTRON_WORKTREE_BRANCH": "ultron/fixture-/failer",
+					"PWD": "<root>/repo/.git/ultron-worktrees/wt#3"
+				},
+				"calls": [
+					{
+						"type": "rlm.finish",
+						"result": {
+							"recorded": true,
+							"status": "failed",
+							"next": "End your turn now with a short reply; the host checks changed_files against the files that changed while you ran."
+						}
+					}
+				]
+			}
+		],
+		"events": [
+			{
+				"task": {
+					"id": "ultron-task-#0",
+					"key": "key-#0",
+					"fingerprint": "e91419faf6f86703141bd9d73707ba4a5ea32ab9321c76a07d6dfe0bcbc25977",
+					"definition": "rlm-child@1",
+					"state": "completed",
+					"result": {
+						"status": "succeeded",
+						"value": "done",
+						"verification": "unverified",
+						"verdict": {
+							"status": "passed",
+							"summary": "did it",
+							"outputs": {},
+							"evidence": [
+								"cargo test: exit 0, 4 passed"
+							],
+							"changed_files": [
+								"a.txt",
+								"new.txt"
+							]
+						},
+						"check": {
+							"outcome": "verified",
+							"unobserved": [],
+							"unreported": [],
+							"unlisted": [],
+							"concurrent": []
+						},
+						"worktree": {
+							"task": "ultron-task-#0",
+							"branch": "ultron/fixture-/editor",
+							"path": "<root>/repo/.git/ultron-worktrees/wt#0",
+							"repo": "<root>/repo",
+							"base": "#0",
+							"commit": "#1",
+							"changed_files": [
+								"a.txt",
+								"new.txt"
+							],
+							"diffstat": "2 files changed, 2 insertions(+)"
+						}
+					}
+				},
+				"kind": "child_done",
+				"ownerLane": "main",
+				"awaited": false,
+				"fetch": "await rlm.collect([\"ultron-task-#0\"])"
+			},
+			{
+				"task": {
+					"id": "ultron-task-#1",
+					"key": "key-#1",
+					"fingerprint": "6fe793d826fc2d60d20b87fe044b8b04d6f7b5d48f4f8d17078c6371b68308f5",
+					"definition": "rlm-child@1",
+					"state": "completed",
+					"result": {
+						"status": "succeeded",
+						"value": "claimed",
+						"verification": "unverified",
+						"verdict": {
+							"status": "passed",
+							"summary": "did it",
+							"outputs": {},
+							"evidence": [
+								"cargo test: exit 0, 4 passed"
+							],
+							"changed_files": [
+								"ghost.txt"
+							]
+						},
+						"check": {
+							"outcome": "contradicted",
+							"unobserved": [
+								"ghost.txt"
+							],
+							"unreported": [],
+							"unlisted": [],
+							"concurrent": []
+						},
+						"worktree": {
+							"task": "ultron-task-#1",
+							"branch": "ultron/fixture-/claimer",
+							"path": "<root>/repo/.git/ultron-worktrees/wt#1",
+							"repo": "<root>/repo",
+							"base": "#0",
+							"commit": null,
+							"changed_files": [],
+							"diffstat": "",
+							"removed": true
+						}
+					}
+				},
+				"kind": "child_done",
+				"ownerLane": "main",
+				"awaited": false,
+				"fetch": "await rlm.collect([\"ultron-task-#1\"])"
+			},
+			{
+				"task": {
+					"id": "ultron-task-#2",
+					"key": "key-#2",
+					"fingerprint": "a6c56c46943810a924ed4e498a5ffd2e8be49f1eb495206bd97ee88a187a5df9",
+					"definition": "rlm-child@1",
+					"state": "completed",
+					"result": {
+						"status": "succeeded",
+						"value": "shared",
+						"verification": "unverified",
+						"verdict": {
+							"status": "passed",
+							"summary": "did it",
+							"outputs": {},
+							"evidence": [
+								"cargo test: exit 0, 4 passed"
+							],
+							"changed_files": [
+								"shared.txt"
+							]
+						},
+						"check": {
+							"outcome": "verified",
+							"unobserved": [],
+							"unreported": [],
+							"unlisted": [],
+							"concurrent": []
+						}
+					}
+				},
+				"kind": "child_done",
+				"ownerLane": "main",
+				"awaited": false,
+				"fetch": "await rlm.collect([\"ultron-task-#2\"])"
+			},
+			{
+				"task": {
+					"id": "ultron-task-#3",
+					"key": "key-#3",
+					"fingerprint": "287b678c9da8100e0590b704c3253b3c92c5611b713b5c41a16bda876d3b00c6",
+					"definition": "rlm-child@1",
+					"state": "completed",
+					"result": {
+						"status": "succeeded",
+						"value": "no verdict",
+						"verification": "unverified",
+						"verdict": null,
+						"check": {
+							"outcome": "unchecked",
+							"unobserved": [],
+							"unreported": [
+								"b.txt"
+							],
+							"unlisted": [],
+							"concurrent": [],
+							"reason": "the subagent ended without a verdict (rlm.finish)"
+						},
+						"unverified": true,
+						"worktree": {
+							"task": "ultron-task-#3",
+							"branch": "ultron/fixture-/silent",
+							"path": "<root>/repo/.git/ultron-worktrees/wt#2",
+							"repo": "<root>/repo",
+							"base": "#2",
+							"commit": "#3",
+							"changed_files": [
+								"b.txt"
+							],
+							"diffstat": "1 file changed, 1 insertion(+), 1 deletion(-)"
+						}
+					}
+				},
+				"kind": "child_done",
+				"ownerLane": "main",
+				"awaited": false,
+				"fetch": "await rlm.collect([\"ultron-task-#3\"])"
+			},
+			{
+				"task": {
+					"id": "ultron-task-#4",
+					"key": "key-#4",
+					"fingerprint": "6d0f5a98dfdcadd3af5aa456c6cbf953e18677748f20784499a71f4989369ba1",
+					"definition": "rlm-child@1",
+					"state": "completed",
+					"result": {
+						"status": "succeeded",
+						"value": "failed",
+						"verification": "unverified",
+						"verdict": {
+							"status": "failed",
+							"summary": "could not finish",
+							"outputs": {},
+							"evidence": [],
+							"changed_files": []
+						},
+						"check": {
+							"outcome": "verified",
+							"unobserved": [],
+							"unreported": [
+								"c.txt"
+							],
+							"unlisted": [],
+							"concurrent": []
+						},
+						"worktree": {
+							"task": "ultron-task-#4",
+							"branch": "ultron/fixture-/failer",
+							"path": "<root>/repo/.git/ultron-worktrees/wt#3",
+							"repo": "<root>/repo",
+							"base": "#4",
+							"commit": "#5",
+							"changed_files": [
+								"c.txt"
+							],
+							"diffstat": "1 file changed, 1 insertion(+)"
+						}
+					}
+				},
+				"kind": "child_done",
+				"ownerLane": "main",
+				"awaited": false,
+				"fetch": "await rlm.collect([\"ultron-task-#4\"])"
+			}
+		],
+		"journal": {
+			"version": 1,
+			"tasks": [
+				{
+					"id": "ultron-task-#0",
+					"definition": "rlm-child@1",
+					"fingerprint": "e91419faf6f86703141bd9d73707ba4a5ea32ab9321c76a07d6dfe0bcbc25977",
+					"key": "key-#0",
+					"state": "completed",
+					"result": {
+						"status": "succeeded",
+						"value": "done",
+						"verification": "unverified",
+						"verdict": {
+							"status": "passed",
+							"summary": "did it",
+							"outputs": {},
+							"evidence": [
+								"cargo test: exit 0, 4 passed"
+							],
+							"changed_files": [
+								"a.txt",
+								"new.txt"
+							]
+						},
+						"check": {
+							"outcome": "verified",
+							"unobserved": [],
+							"unreported": [],
+							"unlisted": [],
+							"concurrent": []
+						},
+						"worktree": {
+							"task": "ultron-task-#0",
+							"branch": "ultron/fixture-/editor",
+							"path": "<root>/repo/.git/ultron-worktrees/wt#0",
+							"repo": "<root>/repo",
+							"base": "#0",
+							"commit": "#1",
+							"changed_files": [
+								"a.txt",
+								"new.txt"
+							],
+							"diffstat": "2 files changed, 2 insertions(+)"
+						}
+					}
+				},
+				{
+					"id": "ultron-task-#1",
+					"definition": "rlm-child@1",
+					"fingerprint": "6fe793d826fc2d60d20b87fe044b8b04d6f7b5d48f4f8d17078c6371b68308f5",
+					"key": "key-#1",
+					"state": "completed",
+					"result": {
+						"status": "succeeded",
+						"value": "claimed",
+						"verification": "unverified",
+						"verdict": {
+							"status": "passed",
+							"summary": "did it",
+							"outputs": {},
+							"evidence": [
+								"cargo test: exit 0, 4 passed"
+							],
+							"changed_files": [
+								"ghost.txt"
+							]
+						},
+						"check": {
+							"outcome": "contradicted",
+							"unobserved": [
+								"ghost.txt"
+							],
+							"unreported": [],
+							"unlisted": [],
+							"concurrent": []
+						},
+						"worktree": {
+							"task": "ultron-task-#1",
+							"branch": "ultron/fixture-/claimer",
+							"path": "<root>/repo/.git/ultron-worktrees/wt#1",
+							"repo": "<root>/repo",
+							"base": "#0",
+							"commit": null,
+							"changed_files": [],
+							"diffstat": "",
+							"removed": true
+						}
+					}
+				},
+				{
+					"id": "ultron-task-#2",
+					"definition": "rlm-child@1",
+					"fingerprint": "a6c56c46943810a924ed4e498a5ffd2e8be49f1eb495206bd97ee88a187a5df9",
+					"key": "key-#2",
+					"state": "completed",
+					"result": {
+						"status": "succeeded",
+						"value": "shared",
+						"verification": "unverified",
+						"verdict": {
+							"status": "passed",
+							"summary": "did it",
+							"outputs": {},
+							"evidence": [
+								"cargo test: exit 0, 4 passed"
+							],
+							"changed_files": [
+								"shared.txt"
+							]
+						},
+						"check": {
+							"outcome": "verified",
+							"unobserved": [],
+							"unreported": [],
+							"unlisted": [],
+							"concurrent": []
+						}
+					}
+				},
+				{
+					"id": "ultron-task-#3",
+					"definition": "rlm-child@1",
+					"fingerprint": "287b678c9da8100e0590b704c3253b3c92c5611b713b5c41a16bda876d3b00c6",
+					"key": "key-#3",
+					"state": "completed",
+					"result": {
+						"status": "succeeded",
+						"value": "no verdict",
+						"verification": "unverified",
+						"verdict": null,
+						"check": {
+							"outcome": "unchecked",
+							"unobserved": [],
+							"unreported": [
+								"b.txt"
+							],
+							"unlisted": [],
+							"concurrent": [],
+							"reason": "the subagent ended without a verdict (rlm.finish)"
+						},
+						"unverified": true,
+						"worktree": {
+							"task": "ultron-task-#3",
+							"branch": "ultron/fixture-/silent",
+							"path": "<root>/repo/.git/ultron-worktrees/wt#2",
+							"repo": "<root>/repo",
+							"base": "#2",
+							"commit": "#3",
+							"changed_files": [
+								"b.txt"
+							],
+							"diffstat": "1 file changed, 1 insertion(+), 1 deletion(-)"
+						}
+					}
+				},
+				{
+					"id": "ultron-task-#4",
+					"definition": "rlm-child@1",
+					"fingerprint": "6d0f5a98dfdcadd3af5aa456c6cbf953e18677748f20784499a71f4989369ba1",
+					"key": "key-#4",
+					"state": "completed",
+					"result": {
+						"status": "succeeded",
+						"value": "failed",
+						"verification": "unverified",
+						"verdict": {
+							"status": "failed",
+							"summary": "could not finish",
+							"outputs": {},
+							"evidence": [],
+							"changed_files": []
+						},
+						"check": {
+							"outcome": "verified",
+							"unobserved": [],
+							"unreported": [
+								"c.txt"
+							],
+							"unlisted": [],
+							"concurrent": []
+						},
+						"worktree": {
+							"task": "ultron-task-#4",
+							"branch": "ultron/fixture-/failer",
+							"path": "<root>/repo/.git/ultron-worktrees/wt#3",
+							"repo": "<root>/repo",
+							"base": "#4",
+							"commit": "#5",
+							"changed_files": [
+								"c.txt"
+							],
+							"diffstat": "1 file changed, 1 insertion(+)"
+						}
+					}
+				}
+			]
+		}
+	},
+	{
+		"name": "conflicting worktree children stop, skip and write markers",
+		"workspace": "git",
+		"files": {
+			"a.txt": "1\nshared\n3\n",
+			"z.txt": "z\n"
+		},
+		"children": [
+			{
+				"actions": [
+					[
+						"write",
+						"a.txt",
+						"1\nfirst\n3\n"
+					],
+					[
+						"call",
+						"rlm.finish",
+						{
+							"status": "passed",
+							"summary": "did it",
+							"evidence": [
+								"cargo test: exit 0, 4 passed"
+							],
+							"changed_files": [
+								"a.txt"
+							]
+						}
+					]
+				],
+				"text": "one"
+			},
+			{
+				"actions": [
+					[
+						"write",
+						"a.txt",
+						"1\nsecond\n3\n"
+					],
+					[
+						"call",
+						"rlm.finish",
+						{
+							"status": "passed",
+							"summary": "did it",
+							"evidence": [
+								"cargo test: exit 0, 4 passed"
+							],
+							"changed_files": [
+								"a.txt"
+							]
+						}
+					]
+				],
+				"text": "two"
+			},
+			{
+				"actions": [
+					[
+						"write",
+						"z.txt",
+						"z2\n"
+					],
+					[
+						"call",
+						"rlm.finish",
+						{
+							"status": "passed",
+							"summary": "did it",
+							"evidence": [
+								"cargo test: exit 0, 4 passed"
+							],
+							"changed_files": [
+								"z.txt"
+							]
+						}
+					]
+				],
+				"text": "three"
+			}
+		],
+		"steps": [
+			{
+				"op": [
+					"call",
+					"rlm.spawn",
+					{
+						"prompt": "one",
+						"kwargs": {
+							"name": "one",
+							"worktree": true
+						}
+					}
+				],
+				"result": {
+					"rlm_child_id": "ultron-task-#5",
+					"name": "one",
+					"session_dir": "",
+					"model": "",
+					"timeout_ms": 1800000,
+					"parent_branch_anchor": "",
+					"worktree": {
+						"branch": "ultron/fixture-/one",
+						"path": "<root>/repo/.git/ultron-worktrees/wt#0",
+						"cwd": "<root>/repo/.git/ultron-worktrees/wt#0"
+					}
+				}
+			},
+			{
+				"op": [
+					"settle"
+				]
+			},
+			{
+				"op": [
+					"call",
+					"rlm.spawn",
+					{
+						"prompt": "two",
+						"kwargs": {
+							"name": "two",
+							"worktree": true
+						}
+					}
+				],
+				"result": {
+					"rlm_child_id": "ultron-task-#6",
+					"name": "two",
+					"session_dir": "",
+					"model": "",
+					"timeout_ms": 1800000,
+					"parent_branch_anchor": "",
+					"worktree": {
+						"branch": "ultron/fixture-/two",
+						"path": "<root>/repo/.git/ultron-worktrees/wt#1",
+						"cwd": "<root>/repo/.git/ultron-worktrees/wt#1"
+					}
+				}
+			},
+			{
+				"op": [
+					"settle"
+				]
+			},
+			{
+				"op": [
+					"call",
+					"rlm.spawn",
+					{
+						"prompt": "three",
+						"kwargs": {
+							"name": "three",
+							"worktree": true
+						}
+					}
+				],
+				"result": {
+					"rlm_child_id": "ultron-task-#7",
+					"name": "three",
+					"session_dir": "",
+					"model": "",
+					"timeout_ms": 1800000,
+					"parent_branch_anchor": "",
+					"worktree": {
+						"branch": "ultron/fixture-/three",
+						"path": "<root>/repo/.git/ultron-worktrees/wt#2",
+						"cwd": "<root>/repo/.git/ultron-worktrees/wt#2"
+					}
+				}
+			},
+			{
+				"op": [
+					"settle"
+				]
+			},
+			{
+				"op": [
+					"call",
+					"rlm.merge",
+					{}
+				],
+				"result": {
+					"ok": false,
+					"merged": [
+						"ultron-task-#5"
+					],
+					"stopped_at": "ultron-task-#6",
+					"results": [
+						{
+							"id": "ultron-task-#5",
+							"name": "one",
+							"branch": "ultron/fixture-/one",
+							"status": "merged",
+							"files": [
+								"a.txt"
+							],
+							"diffstat": "1 file changed, 1 insertion(+), 1 deletion(-)"
+						},
+						{
+							"id": "ultron-task-#6",
+							"name": "two",
+							"branch": "ultron/fixture-/two",
+							"status": "conflict",
+							"files": [
+								"a.txt"
+							],
+							"conflicts": [
+								{
+									"path": "a.txt",
+									"kind": "CONFLICT (contents)",
+									"hunks": [
+										{
+											"line": 2,
+											"ours": "first",
+											"theirs": "second"
+										}
+									]
+								}
+							],
+							"markers": false,
+							"message": "nothing of two was written: CONFLICT (content): Merge conflict in a.txt. Its branch ultron/fixture-/two keeps the work (worktree <root>/repo/.git/ultron-worktrees/wt#1)",
+							"commit": "#6"
+						},
+						{
+							"id": "ultron-task-#7",
+							"name": "three",
+							"branch": "ultron/fixture-/three",
+							"status": "not_attempted",
+							"reason": "stopped at the conflict of ultron-task-#6"
+						}
+					],
+					"note": "Merged changes are uncommitted modifications in your working tree (new files untracked); review and commit them yourself."
+				}
+			},
+			{
+				"op": [
+					"files",
+					[
+						"a.txt",
+						"z.txt"
+					]
+				],
+				"result": [
+					"1\nfirst\n3\n",
+					"z\n"
+				]
+			},
+			{
+				"op": [
+					"call",
+					"rlm.merge",
+					{
+						"selectors": [
+							"$1",
+							"$2"
+						],
+						"on_conflict": "skip"
+					}
+				],
+				"result": {
+					"ok": false,
+					"merged": [
+						"ultron-task-#7"
+					],
+					"results": [
+						{
+							"id": "ultron-task-#6",
+							"name": "two",
+							"branch": "ultron/fixture-/two",
+							"status": "conflict",
+							"files": [
+								"a.txt"
+							],
+							"conflicts": [
+								{
+									"path": "a.txt",
+									"kind": "CONFLICT (contents)",
+									"hunks": [
+										{
+											"line": 2,
+											"ours": "first",
+											"theirs": "second"
+										}
+									]
+								}
+							],
+							"markers": false,
+							"message": "nothing of two was written: CONFLICT (content): Merge conflict in a.txt. Its branch ultron/fixture-/two keeps the work (worktree <root>/repo/.git/ultron-worktrees/wt#1)",
+							"commit": "#6"
+						},
+						{
+							"id": "ultron-task-#7",
+							"name": "three",
+							"branch": "ultron/fixture-/three",
+							"status": "merged",
+							"files": [
+								"z.txt"
+							],
+							"diffstat": "1 file changed, 1 insertion(+), 1 deletion(-)"
+						}
+					],
+					"note": "Merged changes are uncommitted modifications in your working tree (new files untracked); review and commit them yourself."
+				}
+			},
+			{
+				"op": [
+					"files",
+					[
+						"a.txt",
+						"z.txt"
+					]
+				],
+				"result": [
+					"1\nfirst\n3\n",
+					"z2\n"
+				]
+			},
+			{
+				"op": [
+					"call",
+					"rlm.merge",
+					{
+						"selectors": [
+							"$1"
+						],
+						"on_conflict": "markers"
+					}
+				],
+				"result": {
+					"ok": false,
+					"merged": [],
+					"stopped_at": "ultron-task-#6",
+					"results": [
+						{
+							"id": "ultron-task-#6",
+							"name": "two",
+							"branch": "ultron/fixture-/two",
+							"status": "conflict",
+							"files": [
+								"a.txt"
+							],
+							"conflicts": [
+								{
+									"path": "a.txt",
+									"kind": "CONFLICT (contents)",
+									"hunks": [
+										{
+											"line": 2,
+											"ours": "first",
+											"theirs": "second"
+										}
+									]
+								}
+							],
+							"markers": true,
+							"message": "conflict markers written in a.txt: resolve them, or restore those files",
+							"commit": "#6"
+						}
+					],
+					"note": "Merged changes are uncommitted modifications in your working tree (new files untracked); review and commit them yourself."
+				}
+			},
+			{
+				"op": [
+					"files",
+					[
+						"a.txt"
+					]
+				],
+				"result": [
+					"1\n<<<<<<< working tree\nfirst\n=======\nsecond\n>>>>>>> ultron/fixture-/two\n3\n"
+				]
+			},
+			{
+				"op": [
+					"branches"
+				],
+				"result": [
+					"main",
+					"ultron/fixture-/two"
+				]
+			},
+			{
+				"op": [
+					"call",
+					"rlm.worktrees.list",
+					{}
+				],
+				"result": {
+					"worktrees": [
+						{
+							"id": "wt#1",
+							"task": "ultron-task-#6",
+							"name": "two",
+							"branch": "ultron/fixture-/two",
+							"path": "<root>/repo/.git/ultron-worktrees/wt#1",
+							"state": "conflict",
+							"commit": "#6",
+							"running": false,
+							"session": "fixture-session"
+						}
+					]
+				}
+			}
+		],
+		"runs": [
+			{
+				"index": 0,
+				"taskId": "ultron-task-#5",
+				"prompt": "one\n\n[Worktree] You work in your own Git worktree <root>/repo/.git/ultron-worktrees/wt#0 (branch ultron/fixture-/one): a private copy of your parent's checkout, uncommitted changes included. Use paths relative to it; read/edit/write map absolute paths under <root>/repo into it, but shell commands do not, so never cd there. Your changes are committed on your branch when you finish and your parent merges them: do not commit, switch branches or push yourself.",
+				"cwd": "<root>/repo/.git/ultron-worktrees/wt#0",
+				"env": {
+					"ULTRON_WORKTREE": "<root>/repo/.git/ultron-worktrees/wt#0",
+					"ULTRON_PARENT_REPO": "<root>/repo",
+					"ULTRON_WORKTREE_BRANCH": "ultron/fixture-/one",
+					"PWD": "<root>/repo/.git/ultron-worktrees/wt#0"
+				},
+				"calls": [
+					{
+						"type": "rlm.finish",
+						"result": {
+							"recorded": true,
+							"status": "passed",
+							"next": "End your turn now with a short reply; the host checks changed_files against the files that changed while you ran."
+						}
+					}
+				]
+			},
+			{
+				"index": 1,
+				"taskId": "ultron-task-#6",
+				"prompt": "two\n\n[Worktree] You work in your own Git worktree <root>/repo/.git/ultron-worktrees/wt#1 (branch ultron/fixture-/two): a private copy of your parent's checkout, uncommitted changes included. Use paths relative to it; read/edit/write map absolute paths under <root>/repo into it, but shell commands do not, so never cd there. Your changes are committed on your branch when you finish and your parent merges them: do not commit, switch branches or push yourself.",
+				"cwd": "<root>/repo/.git/ultron-worktrees/wt#1",
+				"env": {
+					"ULTRON_WORKTREE": "<root>/repo/.git/ultron-worktrees/wt#1",
+					"ULTRON_PARENT_REPO": "<root>/repo",
+					"ULTRON_WORKTREE_BRANCH": "ultron/fixture-/two",
+					"PWD": "<root>/repo/.git/ultron-worktrees/wt#1"
+				},
+				"calls": [
+					{
+						"type": "rlm.finish",
+						"result": {
+							"recorded": true,
+							"status": "passed",
+							"next": "End your turn now with a short reply; the host checks changed_files against the files that changed while you ran."
+						}
+					}
+				]
+			},
+			{
+				"index": 2,
+				"taskId": "ultron-task-#7",
+				"prompt": "three\n\n[Worktree] You work in your own Git worktree <root>/repo/.git/ultron-worktrees/wt#2 (branch ultron/fixture-/three): a private copy of your parent's checkout, uncommitted changes included. Use paths relative to it; read/edit/write map absolute paths under <root>/repo into it, but shell commands do not, so never cd there. Your changes are committed on your branch when you finish and your parent merges them: do not commit, switch branches or push yourself.",
+				"cwd": "<root>/repo/.git/ultron-worktrees/wt#2",
+				"env": {
+					"ULTRON_WORKTREE": "<root>/repo/.git/ultron-worktrees/wt#2",
+					"ULTRON_PARENT_REPO": "<root>/repo",
+					"ULTRON_WORKTREE_BRANCH": "ultron/fixture-/three",
+					"PWD": "<root>/repo/.git/ultron-worktrees/wt#2"
+				},
+				"calls": [
+					{
+						"type": "rlm.finish",
+						"result": {
+							"recorded": true,
+							"status": "passed",
+							"next": "End your turn now with a short reply; the host checks changed_files against the files that changed while you ran."
+						}
+					}
+				]
+			}
+		],
+		"events": [
+			{
+				"task": {
+					"id": "ultron-task-#5",
+					"key": "key-#5",
+					"fingerprint": "3ba949cbe940d9b59778355c392ab09d959285326eeb2af42f8ad5708eeeb46b",
+					"definition": "rlm-child@1",
+					"state": "completed",
+					"result": {
+						"status": "succeeded",
+						"value": "one",
+						"verification": "unverified",
+						"verdict": {
+							"status": "passed",
+							"summary": "did it",
+							"outputs": {},
+							"evidence": [
+								"cargo test: exit 0, 4 passed"
+							],
+							"changed_files": [
+								"a.txt"
+							]
+						},
+						"check": {
+							"outcome": "verified",
+							"unobserved": [],
+							"unreported": [],
+							"unlisted": [],
+							"concurrent": []
+						},
+						"worktree": {
+							"task": "ultron-task-#5",
+							"branch": "ultron/fixture-/one",
+							"path": "<root>/repo/.git/ultron-worktrees/wt#0",
+							"repo": "<root>/repo",
+							"base": "#7",
+							"commit": "#8",
+							"changed_files": [
+								"a.txt"
+							],
+							"diffstat": "1 file changed, 1 insertion(+), 1 deletion(-)"
+						}
+					}
+				},
+				"kind": "child_done",
+				"ownerLane": "main",
+				"awaited": false,
+				"fetch": "await rlm.collect([\"ultron-task-#5\"])"
+			},
+			{
+				"task": {
+					"id": "ultron-task-#6",
+					"key": "key-#6",
+					"fingerprint": "3a069da7c43d50c361bb6fc3d839b8201c67b7946340a4a79ec8b8ef8f5ee0fc",
+					"definition": "rlm-child@1",
+					"state": "completed",
+					"result": {
+						"status": "succeeded",
+						"value": "two",
+						"verification": "unverified",
+						"verdict": {
+							"status": "passed",
+							"summary": "did it",
+							"outputs": {},
+							"evidence": [
+								"cargo test: exit 0, 4 passed"
+							],
+							"changed_files": [
+								"a.txt"
+							]
+						},
+						"check": {
+							"outcome": "verified",
+							"unobserved": [],
+							"unreported": [],
+							"unlisted": [],
+							"concurrent": []
+						},
+						"worktree": {
+							"task": "ultron-task-#6",
+							"branch": "ultron/fixture-/two",
+							"path": "<root>/repo/.git/ultron-worktrees/wt#1",
+							"repo": "<root>/repo",
+							"base": "#7",
+							"commit": "#6",
+							"changed_files": [
+								"a.txt"
+							],
+							"diffstat": "1 file changed, 1 insertion(+), 1 deletion(-)"
+						}
+					}
+				},
+				"kind": "child_done",
+				"ownerLane": "main",
+				"awaited": false,
+				"fetch": "await rlm.collect([\"ultron-task-#6\"])"
+			},
+			{
+				"task": {
+					"id": "ultron-task-#7",
+					"key": "key-#7",
+					"fingerprint": "a0a3b4badc6a17f0eb6f28be8938348f345963ba9fdfbfdf60c3b6a8d92f335e",
+					"definition": "rlm-child@1",
+					"state": "completed",
+					"result": {
+						"status": "succeeded",
+						"value": "three",
+						"verification": "unverified",
+						"verdict": {
+							"status": "passed",
+							"summary": "did it",
+							"outputs": {},
+							"evidence": [
+								"cargo test: exit 0, 4 passed"
+							],
+							"changed_files": [
+								"z.txt"
+							]
+						},
+						"check": {
+							"outcome": "verified",
+							"unobserved": [],
+							"unreported": [],
+							"unlisted": [],
+							"concurrent": []
+						},
+						"worktree": {
+							"task": "ultron-task-#7",
+							"branch": "ultron/fixture-/three",
+							"path": "<root>/repo/.git/ultron-worktrees/wt#2",
+							"repo": "<root>/repo",
+							"base": "#7",
+							"commit": "#9",
+							"changed_files": [
+								"z.txt"
+							],
+							"diffstat": "1 file changed, 1 insertion(+), 1 deletion(-)"
+						}
+					}
+				},
+				"kind": "child_done",
+				"ownerLane": "main",
+				"awaited": false,
+				"fetch": "await rlm.collect([\"ultron-task-#7\"])"
+			}
+		],
+		"journal": {
+			"version": 1,
+			"tasks": [
+				{
+					"id": "ultron-task-#5",
+					"definition": "rlm-child@1",
+					"fingerprint": "3ba949cbe940d9b59778355c392ab09d959285326eeb2af42f8ad5708eeeb46b",
+					"key": "key-#5",
+					"state": "completed",
+					"result": {
+						"status": "succeeded",
+						"value": "one",
+						"verification": "unverified",
+						"verdict": {
+							"status": "passed",
+							"summary": "did it",
+							"outputs": {},
+							"evidence": [
+								"cargo test: exit 0, 4 passed"
+							],
+							"changed_files": [
+								"a.txt"
+							]
+						},
+						"check": {
+							"outcome": "verified",
+							"unobserved": [],
+							"unreported": [],
+							"unlisted": [],
+							"concurrent": []
+						},
+						"worktree": {
+							"task": "ultron-task-#5",
+							"branch": "ultron/fixture-/one",
+							"path": "<root>/repo/.git/ultron-worktrees/wt#0",
+							"repo": "<root>/repo",
+							"base": "#7",
+							"commit": "#8",
+							"changed_files": [
+								"a.txt"
+							],
+							"diffstat": "1 file changed, 1 insertion(+), 1 deletion(-)"
+						}
+					}
+				},
+				{
+					"id": "ultron-task-#6",
+					"definition": "rlm-child@1",
+					"fingerprint": "3a069da7c43d50c361bb6fc3d839b8201c67b7946340a4a79ec8b8ef8f5ee0fc",
+					"key": "key-#6",
+					"state": "completed",
+					"result": {
+						"status": "succeeded",
+						"value": "two",
+						"verification": "unverified",
+						"verdict": {
+							"status": "passed",
+							"summary": "did it",
+							"outputs": {},
+							"evidence": [
+								"cargo test: exit 0, 4 passed"
+							],
+							"changed_files": [
+								"a.txt"
+							]
+						},
+						"check": {
+							"outcome": "verified",
+							"unobserved": [],
+							"unreported": [],
+							"unlisted": [],
+							"concurrent": []
+						},
+						"worktree": {
+							"task": "ultron-task-#6",
+							"branch": "ultron/fixture-/two",
+							"path": "<root>/repo/.git/ultron-worktrees/wt#1",
+							"repo": "<root>/repo",
+							"base": "#7",
+							"commit": "#6",
+							"changed_files": [
+								"a.txt"
+							],
+							"diffstat": "1 file changed, 1 insertion(+), 1 deletion(-)"
+						}
+					}
+				},
+				{
+					"id": "ultron-task-#7",
+					"definition": "rlm-child@1",
+					"fingerprint": "a0a3b4badc6a17f0eb6f28be8938348f345963ba9fdfbfdf60c3b6a8d92f335e",
+					"key": "key-#7",
+					"state": "completed",
+					"result": {
+						"status": "succeeded",
+						"value": "three",
+						"verification": "unverified",
+						"verdict": {
+							"status": "passed",
+							"summary": "did it",
+							"outputs": {},
+							"evidence": [
+								"cargo test: exit 0, 4 passed"
+							],
+							"changed_files": [
+								"z.txt"
+							]
+						},
+						"check": {
+							"outcome": "verified",
+							"unobserved": [],
+							"unreported": [],
+							"unlisted": [],
+							"concurrent": []
+						},
+						"worktree": {
+							"task": "ultron-task-#7",
+							"branch": "ultron/fixture-/three",
+							"path": "<root>/repo/.git/ultron-worktrees/wt#2",
+							"repo": "<root>/repo",
+							"base": "#7",
+							"commit": "#9",
+							"changed_files": [
+								"z.txt"
+							],
+							"diffstat": "1 file changed, 1 insertion(+), 1 deletion(-)"
+						}
+					}
+				}
+			]
+		}
+	},
+	{
+		"name": "a worktree child's own children work in its worktree",
+		"workspace": "git",
+		"files": {
+			"a.txt": "a\n"
+		},
+		"children": [
+			{
+				"actions": [
+					[
+						"call",
+						"rlm.spawn",
+						{
+							"prompt": "inner",
+							"kwargs": {
+								"name": "inner"
+							}
+						}
+					],
+					[
+						"call",
+						"rlm.collect",
+						{}
+					],
+					[
+						"call",
+						"rlm.finish",
+						{
+							"status": "passed",
+							"summary": "did it",
+							"evidence": [
+								"cargo test: exit 0, 4 passed"
+							],
+							"changed_files": [
+								"inner.txt"
+							]
+						}
+					]
+				],
+				"text": "outer done"
+			},
+			{
+				"actions": [
+					[
+						"write",
+						"inner.txt",
+						"i\n"
+					],
+					[
+						"call",
+						"rlm.finish",
+						{
+							"status": "passed",
+							"summary": "did it",
+							"evidence": [
+								"cargo test: exit 0, 4 passed"
+							],
+							"changed_files": [
+								"inner.txt"
+							]
+						}
+					]
+				],
+				"text": "inner done"
+			}
+		],
+		"steps": [
+			{
+				"op": [
+					"call",
+					"rlm.spawn",
+					{
+						"prompt": "outer",
+						"kwargs": {
+							"name": "outer",
+							"worktree": true,
+							"depth": 1
+						}
+					}
+				],
+				"result": {
+					"rlm_child_id": "ultron-task-#8",
+					"name": "outer",
+					"session_dir": "",
+					"model": "",
+					"timeout_ms": 1800000,
+					"parent_branch_anchor": "",
+					"worktree": {
+						"branch": "ultron/fixture-/outer",
+						"path": "<root>/repo/.git/ultron-worktrees/wt#0",
+						"cwd": "<root>/repo/.git/ultron-worktrees/wt#0"
+					}
+				}
+			},
+			{
+				"op": [
+					"settle"
+				]
+			},
+			{
+				"op": [
+					"call",
+					"rlm.collect",
+					{}
+				],
+				"result": {
+					"results": [
+						{
+							"id": "ultron-task-#8",
+							"result": {
+								"status": "succeeded",
+								"value": "outer done",
+								"verification": "unverified",
+								"verdict": {
+									"status": "passed",
+									"summary": "did it",
+									"outputs": {},
+									"evidence": [
+										"cargo test: exit 0, 4 passed"
+									],
+									"changed_files": [
+										"inner.txt"
+									]
+								},
+								"check": {
+									"outcome": "verified",
+									"unobserved": [],
+									"unreported": [],
+									"unlisted": [],
+									"concurrent": []
+								},
+								"worktree": {
+									"task": "ultron-task-#8",
+									"branch": "ultron/fixture-/outer",
+									"path": "<root>/repo/.git/ultron-worktrees/wt#0",
+									"repo": "<root>/repo",
+									"base": "#10",
+									"commit": "#11",
+									"changed_files": [
+										"inner.txt"
+									],
+									"diffstat": "1 file changed, 1 insertion(+)"
+								}
+							}
+						},
+						{
+							"id": "ultron-task-#9",
+							"result": {
+								"status": "succeeded",
+								"value": "inner done",
+								"verification": "unverified",
+								"verdict": {
+									"status": "passed",
+									"summary": "did it",
+									"outputs": {},
+									"evidence": [
+										"cargo test: exit 0, 4 passed"
+									],
+									"changed_files": [
+										"inner.txt"
+									]
+								},
+								"check": {
+									"outcome": "verified",
+									"unobserved": [],
+									"unreported": [],
+									"unlisted": [],
+									"concurrent": []
+								}
+							}
+						}
+					]
+				}
+			},
+			{
+				"op": [
+					"call",
+					"rlm.merge",
+					{}
+				],
+				"result": {
+					"ok": true,
+					"merged": [
+						"ultron-task-#8"
+					],
+					"results": [
+						{
+							"id": "ultron-task-#8",
+							"name": "outer",
+							"branch": "ultron/fixture-/outer",
+							"status": "merged",
+							"files": [
+								"inner.txt"
+							],
+							"diffstat": "1 file changed, 1 insertion(+)"
+						}
+					],
+					"note": "Merged changes are uncommitted modifications in your working tree (new files untracked); review and commit them yourself."
+				}
+			},
+			{
+				"op": [
+					"files",
+					[
+						"inner.txt"
+					]
+				],
+				"result": [
+					"i\n"
+				]
+			}
+		],
+		"runs": [
+			{
+				"index": 0,
+				"taskId": "ultron-task-#8",
+				"prompt": "outer\n\n[Worktree] You work in your own Git worktree <root>/repo/.git/ultron-worktrees/wt#0 (branch ultron/fixture-/outer): a private copy of your parent's checkout, uncommitted changes included. Use paths relative to it; read/edit/write map absolute paths under <root>/repo into it, but shell commands do not, so never cd there. Your changes are committed on your branch when you finish and your parent merges them: do not commit, switch branches or push yourself.",
+				"cwd": "<root>/repo/.git/ultron-worktrees/wt#0",
+				"env": {
+					"ULTRON_WORKTREE": "<root>/repo/.git/ultron-worktrees/wt#0",
+					"ULTRON_PARENT_REPO": "<root>/repo",
+					"ULTRON_WORKTREE_BRANCH": "ultron/fixture-/outer",
+					"PWD": "<root>/repo/.git/ultron-worktrees/wt#0"
+				},
+				"calls": [
+					{
+						"type": "rlm.spawn",
+						"result": {
+							"rlm_child_id": "ultron-task-#9",
+							"name": "inner",
+							"session_dir": "",
+							"model": "",
+							"timeout_ms": 1800000,
+							"parent_branch_anchor": "",
+							"worktree": null
+						}
+					},
+					{
+						"type": "rlm.collect",
+						"result": {
+							"results": [
+								{
+									"id": "ultron-task-#9",
+									"result": {
+										"status": "succeeded",
+										"value": "inner done",
+										"verification": "unverified",
+										"verdict": {
+											"status": "passed",
+											"summary": "did it",
+											"outputs": {},
+											"evidence": [
+												"cargo test: exit 0, 4 passed"
+											],
+											"changed_files": [
+												"inner.txt"
+											]
+										},
+										"check": {
+											"outcome": "verified",
+											"unobserved": [],
+											"unreported": [],
+											"unlisted": [],
+											"concurrent": []
+										}
+									}
+								}
+							]
+						}
+					},
+					{
+						"type": "rlm.finish",
+						"result": {
+							"recorded": true,
+							"status": "passed",
+							"next": "End your turn now with a short reply; the host checks changed_files against the files that changed while you ran."
+						}
+					}
+				]
+			},
+			{
+				"index": 1,
+				"taskId": "ultron-task-#9",
+				"prompt": "inner",
+				"cwd": "<root>/repo/.git/ultron-worktrees/wt#0",
+				"env": {
+					"ULTRON_WORKTREE": "<root>/repo/.git/ultron-worktrees/wt#0",
+					"ULTRON_PARENT_REPO": "<root>/repo",
+					"ULTRON_WORKTREE_BRANCH": "ultron/fixture-/outer",
+					"PWD": "<root>/repo/.git/ultron-worktrees/wt#0"
+				},
+				"calls": [
+					{
+						"type": "rlm.finish",
+						"result": {
+							"recorded": true,
+							"status": "passed",
+							"next": "End your turn now with a short reply; the host checks changed_files against the files that changed while you ran."
+						}
+					}
+				]
+			}
+		],
+		"events": [
+			{
+				"task": {
+					"id": "ultron-task-#9",
+					"key": "key-#8",
+					"fingerprint": "316f956ad4b7d3e6bd462bfe447c617c617a19ae3e4e93a0474e78676dd7b00a",
+					"definition": "rlm-child@1",
+					"state": "completed",
+					"result": {
+						"status": "succeeded",
+						"value": "inner done",
+						"verification": "unverified",
+						"verdict": {
+							"status": "passed",
+							"summary": "did it",
+							"outputs": {},
+							"evidence": [
+								"cargo test: exit 0, 4 passed"
+							],
+							"changed_files": [
+								"inner.txt"
+							]
+						},
+						"check": {
+							"outcome": "verified",
+							"unobserved": [],
+							"unreported": [],
+							"unlisted": [],
+							"concurrent": []
+						}
+					},
+					"parentId": "ultron-task-#8"
+				},
+				"kind": "child_done",
+				"ownerLane": "ultron.rlm-child.ultron-task-#8",
+				"awaited": true,
+				"fetch": "await rlm.collect([\"ultron-task-#9\"])"
+			},
+			{
+				"task": {
+					"id": "ultron-task-#8",
+					"key": "key-#9",
+					"fingerprint": "3b0e5df2c86ba37123c4de0562fb476c767fad05c71f433bca1c45edf14dd34f",
+					"definition": "rlm-child@1",
+					"state": "completed",
+					"result": {
+						"status": "succeeded",
+						"value": "outer done",
+						"verification": "unverified",
+						"verdict": {
+							"status": "passed",
+							"summary": "did it",
+							"outputs": {},
+							"evidence": [
+								"cargo test: exit 0, 4 passed"
+							],
+							"changed_files": [
+								"inner.txt"
+							]
+						},
+						"check": {
+							"outcome": "verified",
+							"unobserved": [],
+							"unreported": [],
+							"unlisted": [],
+							"concurrent": []
+						},
+						"worktree": {
+							"task": "ultron-task-#8",
+							"branch": "ultron/fixture-/outer",
+							"path": "<root>/repo/.git/ultron-worktrees/wt#0",
+							"repo": "<root>/repo",
+							"base": "#10",
+							"commit": "#11",
+							"changed_files": [
+								"inner.txt"
+							],
+							"diffstat": "1 file changed, 1 insertion(+)"
+						}
+					}
+				},
+				"kind": "child_done",
+				"ownerLane": "main",
+				"awaited": false,
+				"fetch": "await rlm.collect([\"ultron-task-#8\"])"
+			}
+		],
+		"journal": {
+			"version": 1,
+			"tasks": [
+				{
+					"id": "ultron-task-#8",
+					"definition": "rlm-child@1",
+					"fingerprint": "3b0e5df2c86ba37123c4de0562fb476c767fad05c71f433bca1c45edf14dd34f",
+					"key": "key-#9",
+					"state": "completed",
+					"result": {
+						"status": "succeeded",
+						"value": "outer done",
+						"verification": "unverified",
+						"verdict": {
+							"status": "passed",
+							"summary": "did it",
+							"outputs": {},
+							"evidence": [
+								"cargo test: exit 0, 4 passed"
+							],
+							"changed_files": [
+								"inner.txt"
+							]
+						},
+						"check": {
+							"outcome": "verified",
+							"unobserved": [],
+							"unreported": [],
+							"unlisted": [],
+							"concurrent": []
+						},
+						"worktree": {
+							"task": "ultron-task-#8",
+							"branch": "ultron/fixture-/outer",
+							"path": "<root>/repo/.git/ultron-worktrees/wt#0",
+							"repo": "<root>/repo",
+							"base": "#10",
+							"commit": "#11",
+							"changed_files": [
+								"inner.txt"
+							],
+							"diffstat": "1 file changed, 1 insertion(+)"
+						}
+					}
+				},
+				{
+					"id": "ultron-task-#9",
+					"definition": "rlm-child@1",
+					"fingerprint": "316f956ad4b7d3e6bd462bfe447c617c617a19ae3e4e93a0474e78676dd7b00a",
+					"key": "key-#8",
+					"state": "completed",
+					"parentId": "ultron-task-#8",
+					"result": {
+						"status": "succeeded",
+						"value": "inner done",
+						"verification": "unverified",
+						"verdict": {
+							"status": "passed",
+							"summary": "did it",
+							"outputs": {},
+							"evidence": [
+								"cargo test: exit 0, 4 passed"
+							],
+							"changed_files": [
+								"inner.txt"
+							]
+						},
+						"check": {
+							"outcome": "verified",
+							"unobserved": [],
+							"unreported": [],
+							"unlisted": [],
+							"concurrent": []
+						}
+					}
+				}
+			]
+		}
+	},
+	{
+		"name": "worktree=auto falls back outside Git; worktree=True does not",
+		"workspace": "plain",
+		"files": null,
+		"children": [
+			{
+				"actions": [
+					[
+						"write",
+						"p.txt",
+						"p\n"
+					],
+					[
+						"call",
+						"rlm.finish",
+						{
+							"status": "passed",
+							"summary": "did it",
+							"evidence": [
+								"cargo test: exit 0, 4 passed"
+							],
+							"changed_files": [
+								"p.txt"
+							]
+						}
+					]
+				],
+				"text": "plain"
+			}
+		],
+		"steps": [
+			{
+				"op": [
+					"call",
+					"rlm.spawn",
+					{
+						"prompt": "auto",
+						"kwargs": {
+							"name": "auto",
+							"worktree": "auto"
+						}
+					}
+				],
+				"result": {
+					"rlm_child_id": "ultron-task-#10",
+					"name": "auto",
+					"session_dir": "",
+					"model": "",
+					"timeout_ms": 1800000,
+					"parent_branch_anchor": "",
+					"worktree": null
+				}
+			},
+			{
+				"op": [
+					"settle"
+				]
+			},
+			{
+				"op": [
+					"call",
+					"rlm.spawn",
+					{
+						"prompt": "strict",
+						"kwargs": {
+							"name": "strict",
+							"worktree": true
+						}
+					}
+				],
+				"error": "worktree=True: worktree=True needs a Git repository, and <root>/repo is not inside one"
+			},
+			{
+				"op": [
+					"call",
+					"rlm.spawn",
+					{
+						"prompt": "x",
+						"kwargs": {
+							"name": "x",
+							"worktree_setup": {
+								"command": "true"
+							}
+						}
+					}
+				],
+				"error": "worktree_setup needs worktree=True"
+			},
+			{
+				"op": [
+					"call",
+					"rlm.collect",
+					{}
+				],
+				"result": {
+					"results": [
+						{
+							"id": "ultron-task-#10",
+							"result": {
+								"status": "succeeded",
+								"value": "plain",
+								"verification": "unverified",
+								"verdict": {
+									"status": "passed",
+									"summary": "did it",
+									"outputs": {},
+									"evidence": [
+										"cargo test: exit 0, 4 passed"
+									],
+									"changed_files": [
+										"p.txt"
+									]
+								},
+								"check": {
+									"outcome": "verified",
+									"unobserved": [],
+									"unreported": [],
+									"unlisted": [],
+									"concurrent": []
+								}
+							}
+						}
+					]
+				}
+			},
+			{
+				"op": [
+					"call",
+					"rlm.merge",
+					{}
+				],
+				"result": {
+					"ok": true,
+					"merged": [],
+					"results": [],
+					"note": "Merged changes are uncommitted modifications in your working tree (new files untracked); review and commit them yourself."
+				}
+			}
+		],
+		"runs": [
+			{
+				"index": 0,
+				"taskId": "ultron-task-#10",
+				"prompt": "auto",
+				"cwd": null,
+				"env": null,
+				"calls": [
+					{
+						"type": "rlm.finish",
+						"result": {
+							"recorded": true,
+							"status": "passed",
+							"next": "End your turn now with a short reply; the host checks changed_files against the files that changed while you ran."
+						}
+					}
+				]
+			}
+		],
+		"events": [
+			{
+				"task": {
+					"id": "ultron-task-#10",
+					"key": "key-#10",
+					"fingerprint": "dfe9baf867277c77bb0250ff9dc0a30e449964d8c6d762159961e28326add8ce",
+					"definition": "rlm-child@1",
+					"state": "completed",
+					"result": {
+						"status": "succeeded",
+						"value": "plain",
+						"verification": "unverified",
+						"verdict": {
+							"status": "passed",
+							"summary": "did it",
+							"outputs": {},
+							"evidence": [
+								"cargo test: exit 0, 4 passed"
+							],
+							"changed_files": [
+								"p.txt"
+							]
+						},
+						"check": {
+							"outcome": "verified",
+							"unobserved": [],
+							"unreported": [],
+							"unlisted": [],
+							"concurrent": []
+						}
+					}
+				},
+				"kind": "child_done",
+				"ownerLane": "main",
+				"awaited": false,
+				"fetch": "await rlm.collect([\"ultron-task-#10\"])"
+			}
+		],
+		"journal": {
+			"version": 1,
+			"tasks": [
+				{
+					"id": "ultron-task-#10",
+					"definition": "rlm-child@1",
+					"fingerprint": "dfe9baf867277c77bb0250ff9dc0a30e449964d8c6d762159961e28326add8ce",
+					"key": "key-#10",
+					"state": "completed",
+					"result": {
+						"status": "succeeded",
+						"value": "plain",
+						"verification": "unverified",
+						"verdict": {
+							"status": "passed",
+							"summary": "did it",
+							"outputs": {},
+							"evidence": [
+								"cargo test: exit 0, 4 passed"
+							],
+							"changed_files": [
+								"p.txt"
+							]
+						},
+						"check": {
+							"outcome": "verified",
+							"unobserved": [],
+							"unreported": [],
+							"unlisted": [],
+							"concurrent": []
+						}
+					}
+				}
+			]
+		}
+	},
+	{
+		"name": "no workspace at all",
+		"workspace": "none",
+		"files": null,
+		"children": [],
+		"steps": [
+			{
+				"op": [
+					"call",
+					"rlm.spawn",
+					{
+						"prompt": "strict",
+						"kwargs": {
+							"name": "strict",
+							"worktree": true
+						}
+					}
+				],
+				"error": "worktree=True needs a working directory, and this session has none"
+			},
+			{
+				"op": [
+					"call",
+					"rlm.merge",
+					{}
+				],
+				"error": "rlm.merge needs a working directory, and this session has none"
+			},
+			{
+				"op": [
+					"call",
+					"rlm.worktrees.cleanup",
+					{}
+				],
+				"result": {
+					"removed": [],
+					"kept_branches": [],
+					"running": []
+				}
+			}
+		],
+		"runs": [],
+		"events": [],
+		"journal": null
+	}
+]

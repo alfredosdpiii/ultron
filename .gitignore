@@ -1,5 +1,7 @@
 node_modules/
 dist/
+/target/
+/crates/*/target/
 .artifacts/
 *.log
 .DS_Store

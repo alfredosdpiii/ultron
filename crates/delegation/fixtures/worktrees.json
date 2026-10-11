@@ -1,0 +1,1864 @@
+{
+	"scenarios": [
+		{
+			"name": "child edits, commits and merges into a clean parent",
+			"steps": [
+				{
+					"op": [
+						"init",
+						"repo",
+						{
+							"a.txt": "one\n",
+							"src/b.txt": "b\n",
+							"src/keep.txt": "k\n"
+						}
+					],
+					"result": null
+				},
+				{
+					"op": [
+						"create",
+						{
+							"cwd": "repo",
+							"sessionId": "Session-ABC_123",
+							"name": "Fix the Parser!"
+						}
+					],
+					"result": {
+						"version": 1,
+						"id": "wt#0",
+						"sessionId": "Session-ABC_123",
+						"name": "Fix the Parser!",
+						"owner": {
+							"pid": 0,
+							"host": "<host>"
+						},
+						"repo": "<root>/repo",
+						"commonDir": "<root>/repo/.git",
+						"path": "<root>/repo/.git/ultron-worktrees/wt#0",
+						"cwd": "<root>/repo/.git/ultron-worktrees/wt#0",
+						"branch": "ultron/session-/fix-the-parser",
+						"head": "#0",
+						"base": "#0",
+						"dirty": false,
+						"linked": [],
+						"copied": [],
+						"createdAt": 0,
+						"state": "active"
+					}
+				},
+				{
+					"op": [
+						"read",
+						"$0/a.txt"
+					],
+					"result": "one\n"
+				},
+				{
+					"op": [
+						"write",
+						"$0/a.txt",
+						"one\ntwo\n"
+					],
+					"result": null
+				},
+				{
+					"op": [
+						"write",
+						"$0/new.txt",
+						"fresh\n"
+					],
+					"result": null
+				},
+				{
+					"op": [
+						"rm",
+						"$0/src/b.txt"
+					],
+					"result": null
+				},
+				{
+					"op": [
+						"dirty",
+						"$0"
+					],
+					"result": [
+						"a.txt",
+						"src/b.txt",
+						"new.txt"
+					]
+				},
+				{
+					"op": [
+						"commit",
+						0,
+						{
+							"summary": "Teach the parser two",
+							"status": "passed",
+							"taskId": "task-1"
+						}
+					],
+					"result": {
+						"commit": "#1",
+						"changedFiles": [
+							"a.txt",
+							"new.txt",
+							"src/b.txt"
+						],
+						"diffstat": "3 files changed, 2 insertions(+), 1 deletion(-)"
+					}
+				},
+				{
+					"op": [
+						"git",
+						"$0",
+						[
+							"log",
+							"-1",
+							"--format=%B"
+						]
+					],
+					"result": "Teach the parser two\n\nUltron sub-agent \"Fix the Parser!\" (task task-1), passed.\n\n"
+				},
+				{
+					"op": [
+						"merge",
+						"repo",
+						0,
+						"stop"
+					],
+					"result": {
+						"status": "merged",
+						"files": [
+							"a.txt",
+							"new.txt",
+							"src/b.txt"
+						],
+						"diffstat": "3 files changed, 2 insertions(+), 1 deletion(-)"
+					}
+				},
+				{
+					"op": [
+						"read",
+						"repo/a.txt"
+					],
+					"result": "one\ntwo\n"
+				},
+				{
+					"op": [
+						"read",
+						"repo/new.txt"
+					],
+					"result": "fresh\n"
+				},
+				{
+					"op": [
+						"read",
+						"repo/src/b.txt"
+					],
+					"result": null
+				},
+				{
+					"op": [
+						"status",
+						"repo"
+					],
+					"result": " M a.txt\n D src/b.txt\n?? new.txt\n"
+				},
+				{
+					"op": [
+						"merge",
+						"repo",
+						0,
+						"stop"
+					],
+					"result": {
+						"status": "empty"
+					}
+				},
+				{
+					"op": [
+						"remove",
+						0,
+						true
+					],
+					"result": null
+				},
+				{
+					"op": [
+						"branches",
+						"repo"
+					],
+					"result": [
+						"main"
+					]
+				},
+				{
+					"op": [
+						"records",
+						"repo"
+					],
+					"result": []
+				},
+				{
+					"op": [
+						"exists",
+						"$0"
+					],
+					"result": false
+				}
+			]
+		},
+		{
+			"name": "dirty parent is snapshotted; an unchanged child is empty",
+			"steps": [
+				{
+					"op": [
+						"init",
+						"repo",
+						{
+							"a.txt": "one\n"
+						}
+					],
+					"result": null
+				},
+				{
+					"op": [
+						"write",
+						"repo/a.txt",
+						"changed\n"
+					],
+					"result": null
+				},
+				{
+					"op": [
+						"write",
+						"repo/untracked.txt",
+						"u\n"
+					],
+					"result": null
+				},
+				{
+					"op": [
+						"create",
+						{
+							"cwd": "repo",
+							"sessionId": "s",
+							"name": "x"
+						}
+					],
+					"result": {
+						"version": 1,
+						"id": "wt#0",
+						"sessionId": "s",
+						"name": "x",
+						"owner": {
+							"pid": 0,
+							"host": "<host>"
+						},
+						"repo": "<root>/repo",
+						"commonDir": "<root>/repo/.git",
+						"path": "<root>/repo/.git/ultron-worktrees/wt#0",
+						"cwd": "<root>/repo/.git/ultron-worktrees/wt#0",
+						"branch": "ultron/s/x",
+						"head": "#2",
+						"base": "#3",
+						"dirty": true,
+						"linked": [],
+						"copied": [],
+						"createdAt": 0,
+						"state": "active"
+					}
+				},
+				{
+					"op": [
+						"read",
+						"$0/a.txt"
+					],
+					"result": "changed\n"
+				},
+				{
+					"op": [
+						"read",
+						"$0/untracked.txt"
+					],
+					"result": "u\n"
+				},
+				{
+					"op": [
+						"commit",
+						0,
+						{
+							"summary": "",
+							"status": "failed"
+						}
+					],
+					"result": {
+						"commit": null,
+						"changedFiles": [],
+						"diffstat": ""
+					}
+				},
+				{
+					"op": [
+						"merge",
+						"repo",
+						0,
+						"stop"
+					],
+					"result": {
+						"status": "empty"
+					}
+				},
+				{
+					"op": [
+						"status",
+						"repo"
+					],
+					"result": " M a.txt\n?? untracked.txt\n"
+				}
+			]
+		},
+		{
+			"name": "branch names are unique and slugged; a subdirectory cwd maps into the worktree",
+			"steps": [
+				{
+					"op": [
+						"init",
+						"repo",
+						{
+							"src/deep/f.txt": "f\n"
+						}
+					],
+					"result": null
+				},
+				{
+					"op": [
+						"create",
+						{
+							"cwd": "repo",
+							"sessionId": "sess",
+							"name": "same"
+						}
+					],
+					"result": {
+						"version": 1,
+						"id": "wt#0",
+						"sessionId": "sess",
+						"name": "same",
+						"owner": {
+							"pid": 0,
+							"host": "<host>"
+						},
+						"repo": "<root>/repo",
+						"commonDir": "<root>/repo/.git",
+						"path": "<root>/repo/.git/ultron-worktrees/wt#0",
+						"cwd": "<root>/repo/.git/ultron-worktrees/wt#0",
+						"branch": "ultron/sess/same",
+						"head": "#4",
+						"base": "#4",
+						"dirty": false,
+						"linked": [],
+						"copied": [],
+						"createdAt": 0,
+						"state": "active"
+					}
+				},
+				{
+					"op": [
+						"create",
+						{
+							"cwd": "repo",
+							"sessionId": "sess",
+							"name": "same"
+						}
+					],
+					"result": {
+						"version": 1,
+						"id": "wt#1",
+						"sessionId": "sess",
+						"name": "same",
+						"owner": {
+							"pid": 0,
+							"host": "<host>"
+						},
+						"repo": "<root>/repo",
+						"commonDir": "<root>/repo/.git",
+						"path": "<root>/repo/.git/ultron-worktrees/wt#1",
+						"cwd": "<root>/repo/.git/ultron-worktrees/wt#1",
+						"branch": "ultron/sess/same-2",
+						"head": "#4",
+						"base": "#4",
+						"dirty": false,
+						"linked": [],
+						"copied": [],
+						"createdAt": 0,
+						"state": "active"
+					}
+				},
+				{
+					"op": [
+						"create",
+						{
+							"cwd": "repo",
+							"sessionId": "sess",
+							"name": "..."
+						}
+					],
+					"result": {
+						"version": 1,
+						"id": "wt#2",
+						"sessionId": "sess",
+						"name": "...",
+						"owner": {
+							"pid": 0,
+							"host": "<host>"
+						},
+						"repo": "<root>/repo",
+						"commonDir": "<root>/repo/.git",
+						"path": "<root>/repo/.git/ultron-worktrees/wt#2",
+						"cwd": "<root>/repo/.git/ultron-worktrees/wt#2",
+						"branch": "ultron/sess/child",
+						"head": "#4",
+						"base": "#4",
+						"dirty": false,
+						"linked": [],
+						"copied": [],
+						"createdAt": 0,
+						"state": "active"
+					}
+				},
+				{
+					"op": [
+						"create",
+						{
+							"cwd": "repo",
+							"sessionId": "Ünïcode Session",
+							"name": "Ünïcode -- Name..with..dots"
+						}
+					],
+					"result": {
+						"version": 1,
+						"id": "wt#3",
+						"sessionId": "Ünïcode Session",
+						"name": "Ünïcode -- Name..with..dots",
+						"owner": {
+							"pid": 0,
+							"host": "<host>"
+						},
+						"repo": "<root>/repo",
+						"commonDir": "<root>/repo/.git",
+						"path": "<root>/repo/.git/ultron-worktrees/wt#3",
+						"cwd": "<root>/repo/.git/ultron-worktrees/wt#3",
+						"branch": "ultron/n-code-s/n-code-name.with.dots",
+						"head": "#4",
+						"base": "#4",
+						"dirty": false,
+						"linked": [],
+						"copied": [],
+						"createdAt": 0,
+						"state": "active"
+					}
+				},
+				{
+					"op": [
+						"create",
+						{
+							"cwd": "repo/src/deep",
+							"sessionId": "sess",
+							"name": "a-very-long-name-that-goes-on-and-on-and-on-and-on-forever"
+						}
+					],
+					"result": {
+						"version": 1,
+						"id": "wt#4",
+						"sessionId": "sess",
+						"name": "a-very-long-name-that-goes-on-and-on-and-on-and-on-forever",
+						"owner": {
+							"pid": 0,
+							"host": "<host>"
+						},
+						"repo": "<root>/repo",
+						"commonDir": "<root>/repo/.git",
+						"path": "<root>/repo/.git/ultron-worktrees/wt#4",
+						"cwd": "<root>/repo/.git/ultron-worktrees/wt#4/src/deep",
+						"branch": "ultron/sess/a-very-long-name-that-goes-on-and-on-and",
+						"head": "#4",
+						"base": "#4",
+						"dirty": false,
+						"linked": [],
+						"copied": [],
+						"createdAt": 0,
+						"state": "active"
+					}
+				},
+				{
+					"op": [
+						"read",
+						"$4/src/deep/f.txt"
+					],
+					"result": "f\n"
+				},
+				{
+					"op": [
+						"branches",
+						"repo"
+					],
+					"result": [
+						"main",
+						"ultron/n-code-s/n-code-name.with.dots",
+						"ultron/sess/a-very-long-name-that-goes-on-and-on-and",
+						"ultron/sess/child",
+						"ultron/sess/same",
+						"ultron/sess/same-2"
+					]
+				},
+				{
+					"op": [
+						"notes",
+						4
+					],
+					"result": {
+						"env": {
+							"ULTRON_WORKTREE": "<root>/repo/.git/ultron-worktrees/wt#4",
+							"ULTRON_PARENT_REPO": "<root>/repo",
+							"ULTRON_WORKTREE_BRANCH": "ultron/sess/a-very-long-name-that-goes-on-and-on-and",
+							"PWD": "<root>/repo/.git/ultron-worktrees/wt#4/src/deep"
+						},
+						"brief": "[Worktree] You work in your own Git worktree <root>/repo/.git/ultron-worktrees/wt#4/src/deep (branch ultron/sess/a-very-long-name-that-goes-on-and-on-and): a private copy of your parent's checkout, uncommitted changes included. Use paths relative to it; read/edit/write map absolute paths under <root>/repo into it, but shell commands do not, so never cd there. Your changes are committed on your branch when you finish and your parent merges them: do not commit, switch branches or push yourself."
+					}
+				}
+			]
+		},
+		{
+			"name": "conflicts stop, skip writing, or write markers",
+			"steps": [
+				{
+					"op": [
+						"init",
+						"repo",
+						{
+							"a.txt": "line 1\nshared\nline 3\n",
+							"b.txt": "b\n"
+						}
+					],
+					"result": null
+				},
+				{
+					"op": [
+						"create",
+						{
+							"cwd": "repo",
+							"sessionId": "s",
+							"name": "c"
+						}
+					],
+					"result": {
+						"version": 1,
+						"id": "wt#0",
+						"sessionId": "s",
+						"name": "c",
+						"owner": {
+							"pid": 0,
+							"host": "<host>"
+						},
+						"repo": "<root>/repo",
+						"commonDir": "<root>/repo/.git",
+						"path": "<root>/repo/.git/ultron-worktrees/wt#0",
+						"cwd": "<root>/repo/.git/ultron-worktrees/wt#0",
+						"branch": "ultron/s/c",
+						"head": "#5",
+						"base": "#5",
+						"dirty": false,
+						"linked": [],
+						"copied": [],
+						"createdAt": 0,
+						"state": "active"
+					}
+				},
+				{
+					"op": [
+						"write",
+						"$0/a.txt",
+						"line 1\nchild\nline 3\n"
+					],
+					"result": null
+				},
+				{
+					"op": [
+						"write",
+						"$0/b.txt",
+						"b child\n"
+					],
+					"result": null
+				},
+				{
+					"op": [
+						"commit",
+						0,
+						{
+							"summary": "child edit",
+							"status": "passed"
+						}
+					],
+					"result": {
+						"commit": "#6",
+						"changedFiles": [
+							"a.txt",
+							"b.txt"
+						],
+						"diffstat": "2 files changed, 2 insertions(+), 2 deletions(-)"
+					}
+				},
+				{
+					"op": [
+						"write",
+						"repo/a.txt",
+						"line 1\nparent\nline 3\n"
+					],
+					"result": null
+				},
+				{
+					"op": [
+						"merge",
+						"repo",
+						0,
+						"stop"
+					],
+					"result": {
+						"status": "conflict",
+						"files": [
+							"a.txt"
+						],
+						"conflicts": [
+							{
+								"path": "a.txt",
+								"kind": "CONFLICT (contents)",
+								"hunks": [
+									{
+										"line": 2,
+										"ours": "parent",
+										"theirs": "child"
+									}
+								]
+							}
+						],
+						"markers": false,
+						"message": "CONFLICT (content): Merge conflict in a.txt"
+					}
+				},
+				{
+					"op": [
+						"read",
+						"repo/a.txt"
+					],
+					"result": "line 1\nparent\nline 3\n"
+				},
+				{
+					"op": [
+						"read",
+						"repo/b.txt"
+					],
+					"result": "b\n"
+				},
+				{
+					"op": [
+						"merge",
+						"repo",
+						0,
+						"markers"
+					],
+					"result": {
+						"status": "conflict",
+						"files": [
+							"a.txt"
+						],
+						"conflicts": [
+							{
+								"path": "a.txt",
+								"kind": "CONFLICT (contents)",
+								"hunks": [
+									{
+										"line": 2,
+										"ours": "parent",
+										"theirs": "child"
+									}
+								]
+							}
+						],
+						"markers": true,
+						"message": "CONFLICT (content): Merge conflict in a.txt"
+					}
+				},
+				{
+					"op": [
+						"read",
+						"repo/a.txt"
+					],
+					"result": "line 1\n<<<<<<< working tree\nparent\n=======\nchild\n>>>>>>> ultron/s/c\nline 3\n"
+				},
+				{
+					"op": [
+						"read",
+						"repo/b.txt"
+					],
+					"result": "b child\n"
+				}
+			]
+		},
+		{
+			"name": "a child deleting a whole directory and a clean merge after a parent edit elsewhere",
+			"steps": [
+				{
+					"op": [
+						"init",
+						"repo",
+						{
+							"one/two/f.txt": "f\n",
+							"top.txt": "t\n",
+							"other.txt": "o\n"
+						}
+					],
+					"result": null
+				},
+				{
+					"op": [
+						"create",
+						{
+							"cwd": "repo",
+							"sessionId": "s",
+							"name": "d"
+						}
+					],
+					"result": {
+						"version": 1,
+						"id": "wt#0",
+						"sessionId": "s",
+						"name": "d",
+						"owner": {
+							"pid": 0,
+							"host": "<host>"
+						},
+						"repo": "<root>/repo",
+						"commonDir": "<root>/repo/.git",
+						"path": "<root>/repo/.git/ultron-worktrees/wt#0",
+						"cwd": "<root>/repo/.git/ultron-worktrees/wt#0",
+						"branch": "ultron/s/d",
+						"head": "#7",
+						"base": "#7",
+						"dirty": false,
+						"linked": [],
+						"copied": [],
+						"createdAt": 0,
+						"state": "active"
+					}
+				},
+				{
+					"op": [
+						"rm",
+						"$0/one/two/f.txt"
+					],
+					"result": null
+				},
+				{
+					"op": [
+						"write",
+						"$0/top.txt",
+						"t2\n"
+					],
+					"result": null
+				},
+				{
+					"op": [
+						"commit",
+						0,
+						{
+							"summary": "drop one",
+							"status": "passed"
+						}
+					],
+					"result": {
+						"commit": "#8",
+						"changedFiles": [
+							"one/two/f.txt",
+							"top.txt"
+						],
+						"diffstat": "2 files changed, 1 insertion(+), 2 deletions(-)"
+					}
+				},
+				{
+					"op": [
+						"write",
+						"repo/other.txt",
+						"parent edit\n"
+					],
+					"result": null
+				},
+				{
+					"op": [
+						"merge",
+						"repo",
+						0,
+						"stop"
+					],
+					"result": {
+						"status": "merged",
+						"files": [
+							"one/two/f.txt",
+							"top.txt"
+						],
+						"diffstat": "2 files changed, 1 insertion(+), 2 deletions(-)"
+					}
+				},
+				{
+					"op": [
+						"exists",
+						"repo/one"
+					],
+					"result": false
+				},
+				{
+					"op": [
+						"read",
+						"repo/top.txt"
+					],
+					"result": "t2\n"
+				},
+				{
+					"op": [
+						"read",
+						"repo/other.txt"
+					],
+					"result": "parent edit\n"
+				},
+				{
+					"op": [
+						"status",
+						"repo"
+					],
+					"result": " D one/two/f.txt\n M other.txt\n M top.txt\n"
+				}
+			]
+		},
+		{
+			"name": "commit limited to paths",
+			"steps": [
+				{
+					"op": [
+						"init",
+						"repo",
+						{
+							"a.txt": "a\n"
+						}
+					],
+					"result": null
+				},
+				{
+					"op": [
+						"create",
+						{
+							"cwd": "repo",
+							"sessionId": "s",
+							"name": "p"
+						}
+					],
+					"result": {
+						"version": 1,
+						"id": "wt#0",
+						"sessionId": "s",
+						"name": "p",
+						"owner": {
+							"pid": 0,
+							"host": "<host>"
+						},
+						"repo": "<root>/repo",
+						"commonDir": "<root>/repo/.git",
+						"path": "<root>/repo/.git/ultron-worktrees/wt#0",
+						"cwd": "<root>/repo/.git/ultron-worktrees/wt#0",
+						"branch": "ultron/s/p",
+						"head": "#9",
+						"base": "#9",
+						"dirty": false,
+						"linked": [],
+						"copied": [],
+						"createdAt": 0,
+						"state": "active"
+					}
+				},
+				{
+					"op": [
+						"write",
+						"$0/one.txt",
+						"1\n"
+					],
+					"result": null
+				},
+				{
+					"op": [
+						"write",
+						"$0/two.txt",
+						"2\n"
+					],
+					"result": null
+				},
+				{
+					"op": [
+						"commitPaths",
+						0,
+						[
+							"one.txt"
+						]
+					],
+					"result": {
+						"commit": "#10",
+						"changedFiles": [
+							"one.txt"
+						],
+						"diffstat": "1 file changed, 1 insertion(+)"
+					}
+				},
+				{
+					"op": [
+						"dirty",
+						"$0"
+					],
+					"result": [
+						"two.txt"
+					]
+				}
+			]
+		},
+		{
+			"name": "setup links dependency trees and copies env files",
+			"steps": [
+				{
+					"op": [
+						"init",
+						"repo",
+						{
+							".gitignore": "node_modules/\n.env\n.env.*\n.venv/\nbig.env\n",
+							"a.txt": "a\n",
+							"pkgs/w/index.js": "w\n"
+						}
+					],
+					"result": null
+				},
+				{
+					"op": [
+						"write",
+						"repo/node_modules/left-pad/index.js",
+						"lp\n"
+					],
+					"result": null
+				},
+				{
+					"op": [
+						"write",
+						"repo/node_modules/@scope/x/index.js",
+						"x\n"
+					],
+					"result": null
+				},
+				{
+					"op": [
+						"symlink",
+						"../pkgs/w",
+						"repo/node_modules/w"
+					],
+					"result": null
+				},
+				{
+					"op": [
+						"write",
+						"repo/.env",
+						"K=1\n"
+					],
+					"result": null
+				},
+				{
+					"op": [
+						"write",
+						"repo/.env.local",
+						"L=2\n"
+					],
+					"result": null
+				},
+				{
+					"op": [
+						"write",
+						"repo/.venv/bin/python",
+						"py\n"
+					],
+					"result": null
+				},
+				{
+					"op": [
+						"create",
+						{
+							"cwd": "repo",
+							"sessionId": "s",
+							"name": "setup"
+						}
+					],
+					"result": {
+						"version": 1,
+						"id": "wt#0",
+						"sessionId": "s",
+						"name": "setup",
+						"owner": {
+							"pid": 0,
+							"host": "<host>"
+						},
+						"repo": "<root>/repo",
+						"commonDir": "<root>/repo/.git",
+						"path": "<root>/repo/.git/ultron-worktrees/wt#0",
+						"cwd": "<root>/repo/.git/ultron-worktrees/wt#0",
+						"branch": "ultron/s/setup",
+						"head": "#11",
+						"base": "#11",
+						"dirty": false,
+						"linked": [
+							".venv",
+							"node_modules"
+						],
+						"copied": [
+							".env",
+							".env.local"
+						],
+						"createdAt": 0,
+						"state": "active"
+					}
+				},
+				{
+					"op": [
+						"ls",
+						"$0/node_modules"
+					],
+					"result": [
+						{
+							"name": "@scope",
+							"dir": true
+						},
+						{
+							"name": "left-pad",
+							"link": "<root>/repo/node_modules/left-pad"
+						},
+						{
+							"name": "w",
+							"link": "<root>/repo/.git/ultron-worktrees/wt#0/pkgs/w"
+						}
+					]
+				},
+				{
+					"op": [
+						"ls",
+						"$0/node_modules/@scope"
+					],
+					"result": [
+						{
+							"name": "x",
+							"link": "<root>/repo/node_modules/@scope/x"
+						}
+					]
+				},
+				{
+					"op": [
+						"ls",
+						"$0/.venv"
+					],
+					"result": [
+						{
+							"name": "bin",
+							"link": "<root>/repo/.venv/bin"
+						}
+					]
+				},
+				{
+					"op": [
+						"read",
+						"$0/.env"
+					],
+					"result": "K=1\n"
+				},
+				{
+					"op": [
+						"read",
+						"$0/.env.local"
+					],
+					"result": "L=2\n"
+				},
+				{
+					"op": [
+						"dirty",
+						"$0"
+					],
+					"result": []
+				},
+				{
+					"op": [
+						"commit",
+						0,
+						{
+							"summary": "nothing",
+							"status": "passed"
+						}
+					],
+					"result": {
+						"commit": null,
+						"changedFiles": [],
+						"diffstat": ""
+					}
+				},
+				{
+					"op": [
+						"remove",
+						0,
+						true
+					],
+					"result": null
+				},
+				{
+					"op": [
+						"ls",
+						"repo/node_modules"
+					],
+					"result": [
+						{
+							"name": "@scope",
+							"dir": true
+						},
+						{
+							"name": "left-pad",
+							"dir": true
+						},
+						{
+							"name": "w",
+							"link": "../pkgs/w"
+						}
+					]
+				},
+				{
+					"op": [
+						"create",
+						{
+							"cwd": "repo",
+							"sessionId": "s",
+							"name": "explicit",
+							"setup": {
+								"link": [],
+								"copy": [
+									".env"
+								],
+								"command": "  echo hi  ",
+								"timeoutMs": 5000
+							}
+						}
+					],
+					"result": {
+						"version": 1,
+						"id": "wt#1",
+						"sessionId": "s",
+						"name": "explicit",
+						"owner": {
+							"pid": 0,
+							"host": "<host>"
+						},
+						"repo": "<root>/repo",
+						"commonDir": "<root>/repo/.git",
+						"path": "<root>/repo/.git/ultron-worktrees/wt#1",
+						"cwd": "<root>/repo/.git/ultron-worktrees/wt#1",
+						"branch": "ultron/s/explicit",
+						"head": "#11",
+						"base": "#11",
+						"dirty": false,
+						"linked": [],
+						"copied": [
+							".env"
+						],
+						"command": "echo hi",
+						"commandTimeoutMs": 5000,
+						"createdAt": 0,
+						"state": "active"
+					}
+				},
+				{
+					"op": [
+						"ls",
+						"$1"
+					],
+					"result": [
+						{
+							"name": ".env",
+							"dir": false
+						},
+						{
+							"name": ".git",
+							"dir": false
+						},
+						{
+							"name": ".gitignore",
+							"dir": false
+						},
+						{
+							"name": "a.txt",
+							"dir": false
+						},
+						{
+							"name": "pkgs",
+							"dir": true
+						}
+					]
+				},
+				{
+					"op": [
+						"setupCommand",
+						1
+					],
+					"result": null
+				},
+				{
+					"op": [
+						"create",
+						{
+							"cwd": "repo",
+							"sessionId": "s",
+							"name": "bad",
+							"setup": {
+								"link": [
+									"missing"
+								]
+							}
+						}
+					],
+					"error": "worktree setup link missing does not exist in <root>/repo",
+					"fallback": false
+				},
+				{
+					"op": [
+						"create",
+						{
+							"cwd": "repo",
+							"sessionId": "s",
+							"name": "bad",
+							"setup": {
+								"copy": [
+									"/etc/passwd"
+								]
+							}
+						}
+					],
+					"error": "worktree setup copy path \"/etc/passwd\" must be relative to the repository root",
+					"fallback": false
+				},
+				{
+					"op": [
+						"create",
+						{
+							"cwd": "repo",
+							"sessionId": "s",
+							"name": "bad",
+							"setup": {
+								"link": [
+									"a/../b"
+								]
+							}
+						}
+					],
+					"error": "worktree setup link path \"a/../b\" must be relative to the repository root",
+					"fallback": false
+				},
+				{
+					"op": [
+						"create",
+						{
+							"cwd": "repo",
+							"sessionId": "s",
+							"name": "bad",
+							"setup": {
+								"copy": [
+									"node_modules"
+								]
+							}
+						}
+					],
+					"error": "worktree setup copy node_modules is not a file in <root>/repo",
+					"fallback": false
+				},
+				{
+					"op": [
+						"create",
+						{
+							"cwd": "repo",
+							"sessionId": "s",
+							"name": "failing",
+							"setup": {
+								"link": [],
+								"copy": [],
+								"command": "echo out; echo err >&2; exit 3"
+							}
+						}
+					],
+					"result": {
+						"version": 1,
+						"id": "wt#2",
+						"sessionId": "s",
+						"name": "failing",
+						"owner": {
+							"pid": 0,
+							"host": "<host>"
+						},
+						"repo": "<root>/repo",
+						"commonDir": "<root>/repo/.git",
+						"path": "<root>/repo/.git/ultron-worktrees/wt#2",
+						"cwd": "<root>/repo/.git/ultron-worktrees/wt#2",
+						"branch": "ultron/s/failing",
+						"head": "#11",
+						"base": "#11",
+						"dirty": false,
+						"linked": [],
+						"copied": [],
+						"command": "echo out; echo err >&2; exit 3",
+						"createdAt": 0,
+						"state": "active"
+					}
+				},
+				{
+					"op": [
+						"setupCommand",
+						2
+					],
+					"error": "worktree setup command \"echo out; echo err >&2; exit 3\" failed (exit 3): out\nerr",
+					"fallback": false
+				},
+				{
+					"op": [
+						"branches",
+						"repo"
+					],
+					"result": [
+						"main",
+						"ultron/s/explicit",
+						"ultron/s/failing"
+					]
+				},
+				{
+					"op": [
+						"records",
+						"repo"
+					],
+					"result": [
+						{
+							"version": 1,
+							"id": "wt#1",
+							"sessionId": "s",
+							"name": "explicit",
+							"owner": {
+								"pid": 0,
+								"host": "<host>"
+							},
+							"repo": "<root>/repo",
+							"commonDir": "<root>/repo/.git",
+							"path": "<root>/repo/.git/ultron-worktrees/wt#1",
+							"cwd": "<root>/repo/.git/ultron-worktrees/wt#1",
+							"branch": "ultron/s/explicit",
+							"head": "#11",
+							"base": "#11",
+							"dirty": false,
+							"linked": [],
+							"copied": [
+								".env"
+							],
+							"command": "echo hi",
+							"commandTimeoutMs": 5000,
+							"createdAt": 0,
+							"state": "active"
+						},
+						{
+							"version": 1,
+							"id": "wt#2",
+							"sessionId": "s",
+							"name": "failing",
+							"owner": {
+								"pid": 0,
+								"host": "<host>"
+							},
+							"repo": "<root>/repo",
+							"commonDir": "<root>/repo/.git",
+							"path": "<root>/repo/.git/ultron-worktrees/wt#2",
+							"cwd": "<root>/repo/.git/ultron-worktrees/wt#2",
+							"branch": "ultron/s/failing",
+							"head": "#11",
+							"base": "#11",
+							"dirty": false,
+							"linked": [],
+							"copied": [],
+							"command": "echo out; echo err >&2; exit 3",
+							"createdAt": 0,
+							"state": "active"
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "not a repository, and a repository without commits",
+			"steps": [
+				{
+					"op": [
+						"mkdir",
+						"plain"
+					],
+					"result": null
+				},
+				{
+					"op": [
+						"create",
+						{
+							"cwd": "plain",
+							"sessionId": "s",
+							"name": "x"
+						}
+					],
+					"error": "worktree=True needs a Git repository, and <root>/plain is not inside one",
+					"fallback": true
+				},
+				{
+					"op": [
+						"git",
+						"",
+						[
+							"init",
+							"-q",
+							"-b",
+							"main",
+							"empty"
+						]
+					],
+					"result": ""
+				},
+				{
+					"op": [
+						"create",
+						{
+							"cwd": "empty",
+							"sessionId": "s",
+							"name": "x"
+						}
+					],
+					"error": "worktree=True needs a commit to branch from, and the repository at <root>/empty has none yet",
+					"fallback": true
+				},
+				{
+					"op": [
+						"records",
+						"plain"
+					],
+					"result": []
+				}
+			]
+		},
+		{
+			"name": "pruning dead owners keeps branches with work",
+			"steps": [
+				{
+					"op": [
+						"init",
+						"repo",
+						{
+							"a.txt": "a\n"
+						}
+					],
+					"result": null
+				},
+				{
+					"op": [
+						"create",
+						{
+							"cwd": "repo",
+							"sessionId": "s",
+							"name": "worked"
+						}
+					],
+					"result": {
+						"version": 1,
+						"id": "wt#0",
+						"sessionId": "s",
+						"name": "worked",
+						"owner": {
+							"pid": 0,
+							"host": "<host>"
+						},
+						"repo": "<root>/repo",
+						"commonDir": "<root>/repo/.git",
+						"path": "<root>/repo/.git/ultron-worktrees/wt#0",
+						"cwd": "<root>/repo/.git/ultron-worktrees/wt#0",
+						"branch": "ultron/s/worked",
+						"head": "#12",
+						"base": "#12",
+						"dirty": false,
+						"linked": [],
+						"copied": [],
+						"createdAt": 0,
+						"state": "active"
+					}
+				},
+				{
+					"op": [
+						"create",
+						{
+							"cwd": "repo",
+							"sessionId": "s",
+							"name": "idle"
+						}
+					],
+					"result": {
+						"version": 1,
+						"id": "wt#1",
+						"sessionId": "s",
+						"name": "idle",
+						"owner": {
+							"pid": 0,
+							"host": "<host>"
+						},
+						"repo": "<root>/repo",
+						"commonDir": "<root>/repo/.git",
+						"path": "<root>/repo/.git/ultron-worktrees/wt#1",
+						"cwd": "<root>/repo/.git/ultron-worktrees/wt#1",
+						"branch": "ultron/s/idle",
+						"head": "#12",
+						"base": "#12",
+						"dirty": false,
+						"linked": [],
+						"copied": [],
+						"createdAt": 0,
+						"state": "active"
+					}
+				},
+				{
+					"op": [
+						"create",
+						{
+							"cwd": "repo",
+							"sessionId": "s",
+							"name": "alive"
+						}
+					],
+					"result": {
+						"version": 1,
+						"id": "wt#2",
+						"sessionId": "s",
+						"name": "alive",
+						"owner": {
+							"pid": 0,
+							"host": "<host>"
+						},
+						"repo": "<root>/repo",
+						"commonDir": "<root>/repo/.git",
+						"path": "<root>/repo/.git/ultron-worktrees/wt#2",
+						"cwd": "<root>/repo/.git/ultron-worktrees/wt#2",
+						"branch": "ultron/s/alive",
+						"head": "#12",
+						"base": "#12",
+						"dirty": false,
+						"linked": [],
+						"copied": [],
+						"createdAt": 0,
+						"state": "active"
+					}
+				},
+				{
+					"op": [
+						"write",
+						"$0/a.txt",
+						"uncommitted\n"
+					],
+					"result": null
+				},
+				{
+					"op": [
+						"deadOwner",
+						0
+					],
+					"result": null
+				},
+				{
+					"op": [
+						"deadOwner",
+						1
+					],
+					"result": null
+				},
+				{
+					"op": [
+						"prune",
+						"repo",
+						{}
+					],
+					"result": {
+						"removed": [
+							"<root>/repo/.git/ultron-worktrees/wt#1",
+							"<root>/repo/.git/ultron-worktrees/wt#0"
+						],
+						"keptBranches": [
+							"ultron/s/worked"
+						]
+					}
+				},
+				{
+					"op": [
+						"branches",
+						"repo"
+					],
+					"result": [
+						"main",
+						"ultron/s/alive",
+						"ultron/s/worked"
+					]
+				},
+				{
+					"op": [
+						"records",
+						"repo"
+					],
+					"result": [
+						{
+							"version": 1,
+							"id": "wt#2",
+							"sessionId": "s",
+							"name": "alive",
+							"owner": {
+								"pid": 0,
+								"host": "<host>"
+							},
+							"repo": "<root>/repo",
+							"commonDir": "<root>/repo/.git",
+							"path": "<root>/repo/.git/ultron-worktrees/wt#2",
+							"cwd": "<root>/repo/.git/ultron-worktrees/wt#2",
+							"branch": "ultron/s/alive",
+							"head": "#12",
+							"base": "#12",
+							"dirty": false,
+							"linked": [],
+							"copied": [],
+							"createdAt": 0,
+							"state": "active"
+						}
+					]
+				},
+				{
+					"op": [
+						"git",
+						"repo",
+						[
+							"log",
+							"-1",
+							"--format=%B",
+							"ultron/s/worked"
+						]
+					],
+					"result": "Uncommitted work of sub-agent worked, saved when its worktree was pruned\n\nUltron sub-agent \"worked\", interrupted.\n\n"
+				},
+				{
+					"op": [
+						"prune",
+						"repo",
+						{
+							"force": true,
+							"deleteBranches": true
+						}
+					],
+					"result": {
+						"removed": [
+							"<root>/repo/.git/ultron-worktrees/wt#2"
+						],
+						"keptBranches": []
+					}
+				},
+				{
+					"op": [
+						"branches",
+						"repo"
+					],
+					"result": [
+						"main",
+						"ultron/s/worked"
+					]
+				},
+				{
+					"op": [
+						"records",
+						"repo"
+					],
+					"result": []
+				}
+			]
+		}
+	],
+	"pure": {
+		"commitMessage": [
+			{
+				"args": [
+					"",
+					"kid",
+					null,
+					"failed"
+				],
+				"result": "Sub-agent kid (failed)\n\nUltron sub-agent \"kid\", failed."
+			},
+			{
+				"args": [
+					"  short summary  ",
+					"kid",
+					"task-9",
+					"passed"
+				],
+				"result": "short summary\n\nUltron sub-agent \"kid\" (task task-9), passed."
+			},
+			{
+				"args": [
+					"first line\nsecond line\n\nthird",
+					"kid",
+					"t",
+					"passed"
+				],
+				"result": "first line\n\nsecond line\n\nthird\n\nUltron sub-agent \"kid\" (task t), passed."
+			},
+			{
+				"args": [
+					"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nmore",
+					"kid",
+					"t",
+					"passed"
+				],
+				"result": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…\n\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nmore\n\nUltron sub-agent \"kid\" (task t), passed."
+			},
+			{
+				"args": [
+					"éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé",
+					"kid",
+					null,
+					"blocked"
+				],
+				"result": "éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé\n\nUltron sub-agent \"kid\", blocked."
+			},
+			{
+				"args": [
+					"a😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+					"kid",
+					null,
+					"passed"
+				],
+				"result": "a😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀…\n\na😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\n\nUltron sub-agent \"kid\", passed."
+			}
+		],
+		"conflictHunks": [
+			{
+				"text": "no conflicts\n",
+				"result": []
+			},
+			{
+				"text": "a\n<<<<<<< ours\nmine\n=======\ntheirs\n>>>>>>> b\nz\n",
+				"result": [
+					{
+						"line": 2,
+						"ours": "mine",
+						"theirs": "theirs"
+					}
+				]
+			},
+			{
+				"text": "<<<<<<< o\nx\n||||||| base\nbase\n=======\ny\n>>>>>>> t\n<<<<<<< o\nunterminated\n",
+				"result": [
+					{
+						"line": 1,
+						"ours": "x",
+						"theirs": "y"
+					},
+					{
+						"line": 8,
+						"ours": "unterminated\n",
+						"theirs": ""
+					}
+				]
+			},
+			{
+				"text": "<<<<<<< o\n0\n=======\nt0\n>>>>>>> t\n<<<<<<< o\n1\n=======\nt1\n>>>>>>> t\n<<<<<<< o\n2\n=======\nt2\n>>>>>>> t\n<<<<<<< o\n3\n=======\nt3\n>>>>>>> t\n<<<<<<< o\n4\n=======\nt4\n>>>>>>> t\n<<<<<<< o\n5\n=======\nt5\n>>>>>>> t\n<<<<<<< o\n6\n=======\nt6\n>>>>>>> t",
+				"result": [
+					{
+						"line": 1,
+						"ours": "0",
+						"theirs": "t0"
+					},
+					{
+						"line": 6,
+						"ours": "1",
+						"theirs": "t1"
+					},
+					{
+						"line": 11,
+						"ours": "2",
+						"theirs": "t2"
+					},
+					{
+						"line": 16,
+						"ours": "3",
+						"theirs": "t3"
+					},
+					{
+						"line": 21,
+						"ours": "4",
+						"theirs": "t4"
+					}
+				]
+			},
+			{
+				"text": "<<<<<<< o\noooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo\n=======\nttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt\n>>>>>>> t\n",
+				"result": [
+					{
+						"line": 1,
+						"ours": "ooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo…",
+						"theirs": "ttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt"
+					}
+				]
+			}
+		],
+		"keepWorktrees": [
+			{
+				"value": null,
+				"result": false
+			},
+			{
+				"value": "",
+				"result": false
+			},
+			{
+				"value": "0",
+				"result": false
+			},
+			{
+				"value": "false",
+				"result": false
+			},
+			{
+				"value": " No ",
+				"result": false
+			},
+			{
+				"value": "off",
+				"result": false
+			},
+			{
+				"value": "1",
+				"result": true
+			},
+			{
+				"value": "yes",
+				"result": true
+			},
+			{
+				"value": "anything",
+				"result": true
+			}
+		]
+	}
+}

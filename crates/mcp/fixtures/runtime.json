@@ -1,0 +1,1087 @@
+{
+	"env": {
+		"MCPRT_A": "alpha",
+		"MCPRT_B": "beta",
+		"MCPRT_EMPTY": ""
+	},
+	"home": "/home/fixture",
+	"resolveCases": [
+		{
+			"value": "plain",
+			"ok": "plain"
+		},
+		{
+			"value": "$MCPRT_A",
+			"ok": "alpha"
+		},
+		{
+			"value": "${MCPRT_A}-${MCPRT_B}",
+			"ok": "alpha-beta"
+		},
+		{
+			"value": "x$MCPRT_A.y",
+			"ok": "xalpha.y"
+		},
+		{
+			"value": "$$MCPRT_A",
+			"ok": "$MCPRT_A"
+		},
+		{
+			"value": "$!bang",
+			"ok": "!bang"
+		},
+		{
+			"value": "cost $5",
+			"ok": "cost $5"
+		},
+		{
+			"value": "${",
+			"ok": "${"
+		},
+		{
+			"value": "${not-a-name}",
+			"ok": "${not-a-name}"
+		},
+		{
+			"value": "$",
+			"ok": "$"
+		},
+		{
+			"value": "a$",
+			"ok": "a$"
+		},
+		{
+			"value": "$MCPRT_MISSING",
+			"err": "Failed to resolve thing from environment variable: MCPRT_MISSING"
+		},
+		{
+			"value": "$MCPRT_MISSING_1 $MCPRT_MISSING_2 $MCPRT_MISSING_1",
+			"err": "Failed to resolve thing from environment variables: MCPRT_MISSING_1, MCPRT_MISSING_2"
+		},
+		{
+			"value": "$MCPRT_EMPTY",
+			"err": "Failed to resolve thing from environment variable: MCPRT_EMPTY"
+		},
+		{
+			"value": "${MCPRT_A",
+			"ok": "${MCPRT_A"
+		},
+		{
+			"value": "!echo  hello  ",
+			"ok": "hello"
+		},
+		{
+			"value": "!printf ''",
+			"err": "Failed to resolve thing from shell command: printf ''"
+		},
+		{
+			"value": "!exit 3",
+			"err": "Failed to resolve thing from shell command: exit 3"
+		},
+		{
+			"value": "!echo $MCPRT_B",
+			"ok": "beta"
+		},
+		{
+			"value": "!echo out; echo err >&2",
+			"ok": "out"
+		},
+		{
+			"value": "",
+			"ok": ""
+		},
+		{
+			"value": "$_u",
+			"err": "Failed to resolve thing from environment variable: _u"
+		},
+		{
+			"value": "${_X9}",
+			"err": "Failed to resolve thing from environment variable: _X9"
+		}
+	],
+	"headerCases": [
+		{
+			"headers": {
+				"Authorization": "Bearer $MCPRT_A",
+				"X-Key": "${MCPRT_B}"
+			},
+			"ok": {
+				"Authorization": "Bearer alpha",
+				"X-Key": "beta"
+			}
+		},
+		{
+			"headers": {},
+			"ok": null
+		},
+		{
+			"headers": {
+				"X-Ok": "v",
+				"X-Bad": "$MCPRT_NOPE"
+			},
+			"err": "Failed to resolve MCP server \"s\" header \"X-Bad\" from environment variable: MCPRT_NOPE"
+		}
+	],
+	"transportCases": [
+		{
+			"config": {
+				"command": "~/bin/server",
+				"args": [
+					"~",
+					"~/data",
+					"x~/y",
+					"~user"
+				],
+				"cwd": "~/work",
+				"env": {
+					"TOKEN": "$MCPRT_A"
+				}
+			},
+			"ok": {
+				"command": "/home/fixture/bin/server",
+				"args": [
+					"/home/fixture",
+					"/home/fixture/data",
+					"x~/y",
+					"~user"
+				],
+				"cwd": "/home/fixture/work",
+				"env": {
+					"TOKEN": "alpha"
+				},
+				"stderr": "pipe"
+			}
+		},
+		{
+			"config": {
+				"command": "server",
+				"inheritEnv": false
+			},
+			"ok": {
+				"command": "server",
+				"inheritEnv": false,
+				"cwd": "/proj/root",
+				"env": {},
+				"stderr": "pipe"
+			}
+		},
+		{
+			"config": {
+				"command": "/abs/server",
+				"cwd": "sub/dir",
+				"env": {
+					"A": "lit"
+				}
+			},
+			"ok": {
+				"command": "/abs/server",
+				"cwd": "/proj/root/sub/dir",
+				"env": {
+					"A": "lit"
+				},
+				"stderr": "pipe"
+			}
+		},
+		{
+			"config": {
+				"command": "~"
+			},
+			"ok": {
+				"command": "/home/fixture",
+				"cwd": "/proj/root",
+				"env": {},
+				"stderr": "pipe"
+			}
+		},
+		{
+			"config": {
+				"command": "s",
+				"cwd": "../up/./x"
+			},
+			"ok": {
+				"command": "s",
+				"cwd": "/proj/up/x",
+				"env": {},
+				"stderr": "pipe"
+			}
+		},
+		{
+			"config": {
+				"command": "s",
+				"env": {
+					"BAD": "${MCPRT_NONE}"
+				}
+			},
+			"err": "Failed to resolve MCP server \"srv\" env \"BAD\" from environment variable: MCPRT_NONE"
+		}
+	],
+	"convertCases": [
+		{
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "hi"
+					},
+					{
+						"type": "resource_link",
+						"uri": "file:///a.txt",
+						"name": "a",
+						"mimeType": "text/plain",
+						"size": 2048,
+						"description": "the a"
+					},
+					{
+						"type": "resource_link",
+						"uri": "x://b",
+						"name": "b",
+						"title": "Bee"
+					},
+					{
+						"type": "resource_link",
+						"uri": "x://c",
+						"name": "c",
+						"title": null,
+						"size": 5,
+						"mimeType": ""
+					},
+					{
+						"type": "resource",
+						"resource": {
+							"uri": "file:///doc.json",
+							"mimeType": "application/json; charset=utf-8",
+							"blob": "eyJhIjoxfQ=="
+						}
+					},
+					{
+						"type": "resource",
+						"resource": {
+							"uri": "file:///img.png",
+							"mimeType": "image/png",
+							"blob": "iVBO"
+						}
+					},
+					{
+						"type": "resource",
+						"resource": {
+							"uri": "https://h/dir/file.tar.gz?q=1",
+							"mimeType": "application/gzip",
+							"blob": "BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcH"
+						}
+					},
+					{
+						"type": "resource",
+						"resource": {
+							"uri": "mem://noext",
+							"blob": "AAEC"
+						}
+					},
+					{
+						"type": "resource",
+						"resource": {
+							"uri": "mem://h/file.abcdefghij",
+							"blob": "AAEC"
+						}
+					},
+					{
+						"type": "resource",
+						"resource": {
+							"uri": "mem://x.verylongext",
+							"mimeType": "application/octet-stream",
+							"blob": "AAE"
+						}
+					},
+					{
+						"type": "resource",
+						"resource": {
+							"uri": "file:///t",
+							"mimeType": "text/markdown",
+							"text": "# md"
+						}
+					},
+					{
+						"type": "resource",
+						"resource": {
+							"uri": "file:///s.svg",
+							"mimeType": "image/svg+xml",
+							"blob": "PHN2Zy8+"
+						}
+					},
+					{
+						"type": "resource",
+						"resource": {
+							"uri": "file:///a.xml",
+							"mimeType": "application/atom+xml",
+							"blob": "PGEvPg=="
+						}
+					},
+					{
+						"type": "audio",
+						"data": "x",
+						"mimeType": "audio/wav"
+					}
+				]
+			},
+			"readable": false,
+			"failing": false,
+			"out": {
+				"content": [
+					{
+						"type": "text",
+						"text": "hi"
+					},
+					{
+						"type": "text",
+						"text": "[Resource file:///a.txt \"a\" (text/plain, 2.0KB): the a]"
+					},
+					{
+						"type": "text",
+						"text": "[Resource x://b \"Bee\"]"
+					},
+					{
+						"type": "text",
+						"text": "[Resource x://c \"c\" (5B)]"
+					},
+					{
+						"type": "text",
+						"text": "{\"a\":1}"
+					},
+					{
+						"type": "image",
+						"data": "iVBO",
+						"mimeType": "image/png"
+					},
+					{
+						"type": "text",
+						"text": "[Binary resource https://h/dir/file.tar.gz?q=1 (application/gzip, 2.9KB) saved to /saved/1.gz]"
+					},
+					{
+						"type": "text",
+						"text": "[Binary resource mem://noext (unknown type, 3B) saved to /saved/2.bin]"
+					},
+					{
+						"type": "text",
+						"text": "[Binary resource mem://h/file.abcdefghij (unknown type, 3B) saved to /saved/3.bin]"
+					},
+					{
+						"type": "text",
+						"text": "[Binary resource mem://x.verylongext (application/octet-stream, 2B) saved to /saved/4.bin]"
+					},
+					{
+						"type": "text",
+						"text": "# md"
+					},
+					{
+						"type": "image",
+						"data": "PHN2Zy8+",
+						"mimeType": "image/svg+xml"
+					},
+					{
+						"type": "text",
+						"text": "<a/>"
+					},
+					{
+						"type": "text",
+						"text": "[audio audio/wav omitted]"
+					}
+				],
+				"isError": false
+			},
+			"saved": [
+				{
+					"data": "BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcH",
+					"extension": ".gz"
+				},
+				{
+					"data": "AAEC",
+					"extension": ".bin"
+				},
+				{
+					"data": "AAEC",
+					"extension": ".bin"
+				},
+				{
+					"data": "AAE=",
+					"extension": ".bin"
+				}
+			]
+		},
+		{
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "hi"
+					},
+					{
+						"type": "resource_link",
+						"uri": "file:///a.txt",
+						"name": "a",
+						"mimeType": "text/plain",
+						"size": 2048,
+						"description": "the a"
+					},
+					{
+						"type": "resource_link",
+						"uri": "x://b",
+						"name": "b",
+						"title": "Bee"
+					},
+					{
+						"type": "resource_link",
+						"uri": "x://c",
+						"name": "c",
+						"title": null,
+						"size": 5,
+						"mimeType": ""
+					},
+					{
+						"type": "resource",
+						"resource": {
+							"uri": "file:///doc.json",
+							"mimeType": "application/json; charset=utf-8",
+							"blob": "eyJhIjoxfQ=="
+						}
+					},
+					{
+						"type": "resource",
+						"resource": {
+							"uri": "file:///img.png",
+							"mimeType": "image/png",
+							"blob": "iVBO"
+						}
+					},
+					{
+						"type": "resource",
+						"resource": {
+							"uri": "https://h/dir/file.tar.gz?q=1",
+							"mimeType": "application/gzip",
+							"blob": "BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcH"
+						}
+					},
+					{
+						"type": "resource",
+						"resource": {
+							"uri": "mem://noext",
+							"blob": "AAEC"
+						}
+					},
+					{
+						"type": "resource",
+						"resource": {
+							"uri": "mem://h/file.abcdefghij",
+							"blob": "AAEC"
+						}
+					},
+					{
+						"type": "resource",
+						"resource": {
+							"uri": "mem://x.verylongext",
+							"mimeType": "application/octet-stream",
+							"blob": "AAE"
+						}
+					},
+					{
+						"type": "resource",
+						"resource": {
+							"uri": "file:///t",
+							"mimeType": "text/markdown",
+							"text": "# md"
+						}
+					},
+					{
+						"type": "resource",
+						"resource": {
+							"uri": "file:///s.svg",
+							"mimeType": "image/svg+xml",
+							"blob": "PHN2Zy8+"
+						}
+					},
+					{
+						"type": "resource",
+						"resource": {
+							"uri": "file:///a.xml",
+							"mimeType": "application/atom+xml",
+							"blob": "PGEvPg=="
+						}
+					},
+					{
+						"type": "audio",
+						"data": "x",
+						"mimeType": "audio/wav"
+					}
+				]
+			},
+			"readable": true,
+			"failing": false,
+			"out": {
+				"content": [
+					{
+						"type": "text",
+						"text": "hi"
+					},
+					{
+						"type": "text",
+						"text": "[Resource file:///a.txt \"a\" (text/plain, 2.0KB): the a. Read it with await mcp.read(\"srv\", uri)]"
+					},
+					{
+						"type": "text",
+						"text": "[Resource x://b \"Bee\". Read it with await mcp.read(\"srv\", uri)]"
+					},
+					{
+						"type": "text",
+						"text": "[Resource x://c \"c\" (5B). Read it with await mcp.read(\"srv\", uri)]"
+					},
+					{
+						"type": "text",
+						"text": "{\"a\":1}"
+					},
+					{
+						"type": "image",
+						"data": "iVBO",
+						"mimeType": "image/png"
+					},
+					{
+						"type": "text",
+						"text": "[Binary resource https://h/dir/file.tar.gz?q=1 (application/gzip, 2.9KB) saved to /saved/1.gz]"
+					},
+					{
+						"type": "text",
+						"text": "[Binary resource mem://noext (unknown type, 3B) saved to /saved/2.bin]"
+					},
+					{
+						"type": "text",
+						"text": "[Binary resource mem://h/file.abcdefghij (unknown type, 3B) saved to /saved/3.bin]"
+					},
+					{
+						"type": "text",
+						"text": "[Binary resource mem://x.verylongext (application/octet-stream, 2B) saved to /saved/4.bin]"
+					},
+					{
+						"type": "text",
+						"text": "# md"
+					},
+					{
+						"type": "image",
+						"data": "PHN2Zy8+",
+						"mimeType": "image/svg+xml"
+					},
+					{
+						"type": "text",
+						"text": "<a/>"
+					},
+					{
+						"type": "text",
+						"text": "[audio audio/wav omitted]"
+					}
+				],
+				"isError": false
+			},
+			"saved": [
+				{
+					"data": "BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcH",
+					"extension": ".gz"
+				},
+				{
+					"data": "AAEC",
+					"extension": ".bin"
+				},
+				{
+					"data": "AAEC",
+					"extension": ".bin"
+				},
+				{
+					"data": "AAE=",
+					"extension": ".bin"
+				}
+			]
+		},
+		{
+			"result": {
+				"content": [],
+				"structuredContent": {
+					"ok": true,
+					"n": [
+						1,
+						2
+					]
+				}
+			},
+			"readable": false,
+			"failing": false,
+			"out": {
+				"content": [
+					{
+						"type": "text",
+						"text": "{\n  \"ok\": true,\n  \"n\": [\n    1,\n    2\n  ]\n}"
+					}
+				],
+				"isError": false
+			},
+			"saved": []
+		},
+		{
+			"result": {
+				"content": [],
+				"structuredContent": {
+					"ok": true,
+					"n": [
+						1,
+						2
+					]
+				}
+			},
+			"readable": true,
+			"failing": false,
+			"out": {
+				"content": [
+					{
+						"type": "text",
+						"text": "{\n  \"ok\": true,\n  \"n\": [\n    1,\n    2\n  ]\n}"
+					}
+				],
+				"isError": false
+			},
+			"saved": []
+		},
+		{
+			"result": {
+				"content": [],
+				"isError": true
+			},
+			"readable": false,
+			"failing": false,
+			"out": {
+				"content": [
+					{
+						"type": "text",
+						"text": "MCP tool srv/tool returned an error"
+					}
+				],
+				"isError": true
+			},
+			"saved": []
+		},
+		{
+			"result": {
+				"content": [],
+				"isError": true
+			},
+			"readable": true,
+			"failing": false,
+			"out": {
+				"content": [
+					{
+						"type": "text",
+						"text": "MCP tool srv/tool returned an error"
+					}
+				],
+				"isError": true
+			},
+			"saved": []
+		},
+		{
+			"result": {
+				"content": [
+					{
+						"type": "image",
+						"data": "AA==",
+						"mimeType": "image/png"
+					}
+				],
+				"isError": true
+			},
+			"readable": false,
+			"failing": false,
+			"out": {
+				"content": [
+					{
+						"type": "image",
+						"data": "AA==",
+						"mimeType": "image/png"
+					},
+					{
+						"type": "text",
+						"text": "MCP tool srv/tool returned an error"
+					}
+				],
+				"isError": true
+			},
+			"saved": []
+		},
+		{
+			"result": {
+				"content": [
+					{
+						"type": "image",
+						"data": "AA==",
+						"mimeType": "image/png"
+					}
+				],
+				"isError": true
+			},
+			"readable": true,
+			"failing": false,
+			"out": {
+				"content": [
+					{
+						"type": "image",
+						"data": "AA==",
+						"mimeType": "image/png"
+					},
+					{
+						"type": "text",
+						"text": "MCP tool srv/tool returned an error"
+					}
+				],
+				"isError": true
+			},
+			"saved": []
+		},
+		{
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "bad"
+					}
+				],
+				"isError": true
+			},
+			"readable": false,
+			"failing": false,
+			"out": {
+				"content": [
+					{
+						"type": "text",
+						"text": "bad"
+					}
+				],
+				"isError": true
+			},
+			"saved": []
+		},
+		{
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "bad"
+					}
+				],
+				"isError": true
+			},
+			"readable": true,
+			"failing": false,
+			"out": {
+				"content": [
+					{
+						"type": "text",
+						"text": "bad"
+					}
+				],
+				"isError": true
+			},
+			"saved": []
+		},
+		{
+			"result": {
+				"content": [
+					{
+						"type": "resource",
+						"resource": {
+							"uri": "file:///f.bin",
+							"mimeType": "application/zip",
+							"blob": "UEsD"
+						}
+					}
+				]
+			},
+			"readable": false,
+			"failing": false,
+			"out": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[Binary resource file:///f.bin (application/zip, 3B) saved to /saved/1.bin]"
+					}
+				],
+				"isError": false
+			},
+			"saved": [
+				{
+					"data": "UEsD",
+					"extension": ".bin"
+				}
+			]
+		},
+		{
+			"result": {
+				"content": [
+					{
+						"type": "resource",
+						"resource": {
+							"uri": "file:///f.bin",
+							"mimeType": "application/zip",
+							"blob": "UEsD"
+						}
+					}
+				]
+			},
+			"readable": true,
+			"failing": true,
+			"out": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[Binary resource file:///f.bin (application/zip, 3B) could not be saved: disk full]"
+					}
+				],
+				"isError": false
+			},
+			"saved": []
+		}
+	],
+	"appCases": [
+		{
+			"item": {
+				"uri": "ui://widget"
+			},
+			"app": true
+		},
+		{
+			"item": {
+				"uriTemplate": "ui://t/{id}"
+			},
+			"app": true
+		},
+		{
+			"item": {
+				"uri": "file:///a",
+				"mimeType": "text/html;profile=mcp-app"
+			},
+			"app": true
+		},
+		{
+			"item": {
+				"uri": "file:///a",
+				"mimeType": "text/html; Profile = \"mcp-app\""
+			},
+			"app": true
+		},
+		{
+			"item": {
+				"uri": "file:///a",
+				"mimeType": "text/html"
+			},
+			"app": false
+		},
+		{
+			"item": {
+				"uri": "file:///a",
+				"mimeType": "text/html; profile=other"
+			},
+			"app": false
+		},
+		{
+			"item": {
+				"uri": "file:///ui://"
+			},
+			"app": false
+		},
+		{
+			"item": {},
+			"app": false
+		}
+	],
+	"listedCases": [
+		{
+			"item": {
+				"uri": "a",
+				"name": "n",
+				"_meta": {
+					"x": 1
+				},
+				"icons": [],
+				"mimeType": "t"
+			},
+			"out": {
+				"server": "srv",
+				"uri": "a",
+				"name": "n",
+				"mimeType": "t"
+			}
+		},
+		{
+			"item": {
+				"server": "other",
+				"uriTemplate": "t/{x}"
+			},
+			"out": {
+				"server": "other",
+				"uriTemplate": "t/{x}"
+			}
+		}
+	],
+	"sseCases": [
+		{
+			"chunks": [
+				"data: {\"a\":1}\n\n"
+			],
+			"events": [
+				{
+					"kind": "event",
+					"data": "{\"a\":1}"
+				}
+			],
+			"error": null
+		},
+		{
+			"chunks": [
+				"event: message\nid: 7\ndata: one\ndata: two\n\n",
+				"retry: 1500\nretry: x\n: comment\n\n"
+			],
+			"events": [
+				{
+					"kind": "id",
+					"id": "7"
+				},
+				{
+					"kind": "event",
+					"event": "message",
+					"data": "one\ntwo",
+					"id": "7"
+				},
+				{
+					"kind": "retry",
+					"ms": 1500
+				}
+			],
+			"error": null
+		},
+		{
+			"chunks": [
+				"da",
+				"ta: split\r\n\r",
+				"\n"
+			],
+			"events": [
+				{
+					"kind": "event",
+					"data": "split"
+				}
+			],
+			"error": null
+		},
+		{
+			"chunks": [
+				"id: 1\n\n",
+				"event: ping\ndata:nospace\n\nfield-only\ndata\n\n"
+			],
+			"events": [
+				{
+					"kind": "id",
+					"id": "1"
+				},
+				{
+					"kind": "event",
+					"event": "ping",
+					"data": "nospace"
+				},
+				{
+					"kind": "event",
+					"data": ""
+				}
+			],
+			"error": null
+		},
+		{
+			"chunks": [
+				"data: tail-without-blank"
+			],
+			"events": [],
+			"error": "MCP SSE event exceeds 12 bytes"
+		},
+		{
+			"chunks": [
+				"data: t"
+			],
+			"events": [
+				{
+					"kind": "event",
+					"data": "t"
+				}
+			],
+			"error": null
+		},
+		{
+			"chunks": [
+				"data:  two\n\n"
+			],
+			"events": [
+				{
+					"kind": "event",
+					"data": " two"
+				}
+			],
+			"error": null
+		},
+		{
+			"chunks": [
+				"data: a\n",
+				"data: b"
+			],
+			"events": [
+				{
+					"kind": "event",
+					"data": "a\nb"
+				}
+			],
+			"error": null
+		},
+		{
+			"chunks": [
+				"id: a\u0000b\ndata: z\n\n"
+			],
+			"events": [
+				{
+					"kind": "event",
+					"data": "z"
+				}
+			],
+			"error": null
+		},
+		{
+			"chunks": [
+				"data: xxxxxxxxxxxxxxxxxxxx\n\n"
+			],
+			"events": [],
+			"error": "MCP SSE event exceeds 12 bytes"
+		},
+		{
+			"chunks": [
+				"data: 12345\ndata: 12345\n\n"
+			],
+			"events": [
+				{
+					"kind": "event",
+					"data": "12345\n12345"
+				}
+			],
+			"error": null
+		},
+		{
+			"chunks": [
+				"data: é\n",
+				"\n"
+			],
+			"events": [
+				{
+					"kind": "event",
+					"data": "é"
+				}
+			],
+			"error": null
+		}
+	]
+}

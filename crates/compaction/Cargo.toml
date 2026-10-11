@@ -1,0 +1,16 @@
+[package]
+name = "compaction"
+version = "0.1.0"
+description = "Context compaction and branch summarization of packages/coding-agent/src/core/compaction: token estimation, cut points, summary requests"
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+ai = { path = "../ai" }
+indexmap = "=2.14.2"
+serde_json = { version = "=1.0.151", features = ["float_roundtrip", "preserve_order"] }
+session-file = { path = "../session-file" }
+
+[lints]
+workspace = true

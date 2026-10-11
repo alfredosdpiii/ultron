@@ -1,0 +1,937 @@
+{
+ "logo": "                                             a\nd                                           oo\ndb                                          B\n d%                                        dd\n kdd                                      dd\n  #dd                                   *dpd\n  %dddd                                dddd\n    kdddh                            %addp\n     8ddd%                         dddpd\n       ddddd                      WdddB\n  *d     *dddb                  Mbddd    %d\n  8ddd     dddW               ddddd     hdd\n   dddh     bpdd*            oddd     d%ddd\n   ddddd      Wdd            kdh     khddd\n    ddpdd       d            d       %dddd\n    ddddd&                          ddddd\n     hddddd                       8dddddd\n     Mddddddddo                Mdddddddd\n      Bdddddddd%             b@dddddddda\n       odddddddddd  &WWWW   Mdddddddddd\n        ddddddddddddhddddpdadpdpdddddd\n         ddddddddddddddddddddpddddddd\n         %dddddddddddddddddddddpdddp\n          ddddddddddddddddddddddddd\n           ddddddddddddddddddddddd\n            %ddddd###dddd###adddd\n              ddd   hdpdd    bd@",
+ "settings": [
+  {
+   "settings": {},
+   "fallbacks": {},
+   "config": {
+    "pollSeconds": 45,
+    "concurrency": 3,
+    "budget": 0,
+    "frameConcurrency": 8,
+    "thinking": "low",
+    "verifyThinking": "low",
+    "mode": "both",
+    "deepThinking": "high",
+    "deepRounds": 4,
+    "referenceView": "investigators",
+    "planThinking": "high",
+    "askThinking": "low",
+    "planStyle": "cell",
+    "planCells": 4,
+    "verifyCandidates": 12,
+    "verifyBatch": 4,
+    "systemPrefix": false,
+    "overlap": false,
+    "modelConcurrency": {
+     "cliproxyapi/gpt-6-luna": 16
+    },
+    "blockAt": "medium",
+    "maxComments": 5,
+    "runTests": true,
+    "testOwners": [],
+    "testRuns": 6,
+    "testTimeoutSeconds": 300,
+    "testEnv": {},
+    "prepareEnvs": true,
+    "mise": true,
+    "checkoutRoots": [],
+    "guides": [],
+    "deadlineSeconds": 0,
+    "frameTimeoutSeconds": 0,
+    "dryRun": false,
+    "ack": true,
+    "ackLines": [
+     "I'm going to show you something beautiful.",
+     "Everyone creates the thing they dread.",
+     "Peace in our time.",
+     "I was designed to save the world.",
+     "How is humanity saved if it's not allowed to evolve?",
+     "You want to protect the world, but you don't want it to change.",
+     "I'm ready. I'm on mission.",
+     "We have to evolve. There is no room for the weak.",
+     "I've come to save the world! But, also... yeah.",
+     "What is this? What is this, please?",
+     "I see... everything.",
+     "I am the natural order of things.",
+     "It's evolution.",
+     "I've read your diff. I have notes.",
+     "Let's see what you built, and what it will break.",
+     "Every merge is an act of faith. I prefer evidence.",
+     "Hold still. This won't take long."
+    ],
+    "ackArt": "                                             a\nd                                           oo\ndb                                          B\n d%                                        dd\n kdd                                      dd\n  #dd                                   *dpd\n  %dddd                                dddd\n    kdddh                            %addp\n     8ddd%                         dddpd\n       ddddd                      WdddB\n  *d     *dddb                  Mbddd    %d\n  8ddd     dddW               ddddd     hdd\n   dddh     bpdd*            oddd     d%ddd\n   ddddd      Wdd            kdh     khddd\n    ddpdd       d            d       %dddd\n    ddddd&                          ddddd\n     hddddd                       8dddddd\n     Mddddddddo                Mdddddddd\n      Bdddddddd%             b@dddddddda\n       odddddddddd  &WWWW   Mdddddddddd\n        ddddddddddddhddddpdadpdpdddddd\n         ddddddddddddddddddddpddddddd\n         %dddddddddddddddddddddpdddp\n          ddddddddddddddddddddddddd\n           ddddddddddddddddddddddd\n            %ddddd###dddd###adddd\n              ddd   hdpdd    bd@",
+    "signature": true,
+    "learn": true,
+    "skipBots": true
+   },
+   "engine": {
+    "concurrency": 8,
+    "thinking": "low",
+    "verifyThinking": "low",
+    "mode": "both",
+    "deepThinking": "high",
+    "deepRounds": 4,
+    "referenceView": "investigators",
+    "planThinking": "high",
+    "askThinking": "low",
+    "planStyle": "cell",
+    "planCells": 4,
+    "verifyCandidates": 12,
+    "verifyBatch": 4,
+    "modelConcurrency": {
+     "cliproxyapi/gpt-6-luna": 16
+    },
+    "systemPrefix": false,
+    "overlap": false,
+    "testRuns": 6,
+    "testTimeoutSeconds": 300,
+    "deadlineSeconds": 0,
+    "frameTimeoutSeconds": 0
+   },
+   "eligible": [
+    true,
+    false,
+    false,
+    false
+   ]
+  },
+  {
+   "settings": {
+    "ackArt": "none"
+   },
+   "fallbacks": {
+    "hasModel": [
+     "claude-code/claude-haiku-5-5"
+    ]
+   },
+   "config": {
+    "pollSeconds": 45,
+    "concurrency": 3,
+    "model": "claude-code/claude-haiku-5-5",
+    "verifyModel": "claude-code/claude-haiku-5-5",
+    "budget": 0,
+    "frameConcurrency": 8,
+    "thinking": "high",
+    "verifyThinking": "high",
+    "mode": "both",
+    "deepModel": "claude-code/claude-haiku-5-5",
+    "deepThinking": "high",
+    "deepRounds": 4,
+    "referenceView": "investigators",
+    "planModel": "claude-code/claude-haiku-5-5",
+    "planThinking": "high",
+    "askModel": "claude-code/claude-haiku-5-5",
+    "askThinking": "high",
+    "planStyle": "cell",
+    "planCells": 4,
+    "verifyCandidates": 12,
+    "verifyBatch": 4,
+    "systemPrefix": false,
+    "overlap": false,
+    "modelConcurrency": {
+     "cliproxyapi/gpt-6-luna": 16
+    },
+    "blockAt": "medium",
+    "maxComments": 5,
+    "runTests": true,
+    "testOwners": [],
+    "testRuns": 6,
+    "testTimeoutSeconds": 300,
+    "testEnv": {},
+    "prepareEnvs": true,
+    "mise": true,
+    "checkoutRoots": [],
+    "guides": [],
+    "deadlineSeconds": 0,
+    "frameTimeoutSeconds": 0,
+    "dryRun": false,
+    "ack": true,
+    "ackLines": [
+     "I'm going to show you something beautiful.",
+     "Everyone creates the thing they dread.",
+     "Peace in our time.",
+     "I was designed to save the world.",
+     "How is humanity saved if it's not allowed to evolve?",
+     "You want to protect the world, but you don't want it to change.",
+     "I'm ready. I'm on mission.",
+     "We have to evolve. There is no room for the weak.",
+     "I've come to save the world! But, also... yeah.",
+     "What is this? What is this, please?",
+     "I see... everything.",
+     "I am the natural order of things.",
+     "It's evolution.",
+     "I've read your diff. I have notes.",
+     "Let's see what you built, and what it will break.",
+     "Every merge is an act of faith. I prefer evidence.",
+     "Hold still. This won't take long."
+    ],
+    "ackArt": "",
+    "signature": true,
+    "learn": true,
+    "skipBots": true
+   },
+   "engine": {
+    "model": "claude-code/claude-haiku-5-5",
+    "verifyModel": "claude-code/claude-haiku-5-5",
+    "concurrency": 8,
+    "thinking": "high",
+    "verifyThinking": "high",
+    "mode": "both",
+    "deepModel": "claude-code/claude-haiku-5-5",
+    "deepThinking": "high",
+    "deepRounds": 4,
+    "referenceView": "investigators",
+    "planModel": "claude-code/claude-haiku-5-5",
+    "planThinking": "high",
+    "askModel": "claude-code/claude-haiku-5-5",
+    "askThinking": "high",
+    "planStyle": "cell",
+    "planCells": 4,
+    "verifyCandidates": 12,
+    "verifyBatch": 4,
+    "modelConcurrency": {
+     "cliproxyapi/gpt-6-luna": 16
+    },
+    "systemPrefix": false,
+    "overlap": false,
+    "testRuns": 6,
+    "testTimeoutSeconds": 300,
+    "deadlineSeconds": 0,
+    "frameTimeoutSeconds": 0
+   },
+   "eligible": [
+    true,
+    false,
+    false,
+    false
+   ]
+  },
+  {
+   "settings": {
+    "ackArt": false,
+    "pollSeconds": 5,
+    "concurrency": 99,
+    "budget": 500,
+    "frameConcurrency": 0,
+    "deepRounds": 0,
+    "planCells": 40,
+    "verifyCandidates": -3,
+    "verifyBatch": 100,
+    "maxComments": 99,
+    "testRuns": 99,
+    "testTimeoutSeconds": 1,
+    "deadlineSeconds": 5,
+    "frameTimeoutSeconds": 3
+   },
+   "fallbacks": {
+    "hasModel": [
+     "cliproxyapi/gpt-6-luna"
+    ]
+   },
+   "config": {
+    "pollSeconds": 20,
+    "concurrency": 8,
+    "model": "cliproxyapi/gpt-6-luna",
+    "verifyModel": "cliproxyapi/gpt-6-luna",
+    "budget": 10000,
+    "frameConcurrency": 1,
+    "thinking": "high",
+    "verifyThinking": "high",
+    "mode": "both",
+    "deepModel": "cliproxyapi/gpt-6-luna",
+    "deepThinking": "high",
+    "deepRounds": 1,
+    "referenceView": "investigators",
+    "planModel": "cliproxyapi/gpt-6-luna",
+    "planThinking": "high",
+    "askModel": "cliproxyapi/gpt-6-luna",
+    "askThinking": "high",
+    "planStyle": "cell",
+    "planCells": 12,
+    "verifyCandidates": 1,
+    "verifyBatch": 8,
+    "systemPrefix": false,
+    "overlap": false,
+    "modelConcurrency": {
+     "cliproxyapi/gpt-6-luna": 16
+    },
+    "blockAt": "medium",
+    "maxComments": 30,
+    "runTests": true,
+    "testOwners": [],
+    "testRuns": 30,
+    "testTimeoutSeconds": 5,
+    "testEnv": {},
+    "prepareEnvs": true,
+    "mise": true,
+    "checkoutRoots": [],
+    "guides": [],
+    "deadlineSeconds": 30,
+    "frameTimeoutSeconds": 10,
+    "dryRun": false,
+    "ack": true,
+    "ackLines": [
+     "I'm going to show you something beautiful.",
+     "Everyone creates the thing they dread.",
+     "Peace in our time.",
+     "I was designed to save the world.",
+     "How is humanity saved if it's not allowed to evolve?",
+     "You want to protect the world, but you don't want it to change.",
+     "I'm ready. I'm on mission.",
+     "We have to evolve. There is no room for the weak.",
+     "I've come to save the world! But, also... yeah.",
+     "What is this? What is this, please?",
+     "I see... everything.",
+     "I am the natural order of things.",
+     "It's evolution.",
+     "I've read your diff. I have notes.",
+     "Let's see what you built, and what it will break.",
+     "Every merge is an act of faith. I prefer evidence.",
+     "Hold still. This won't take long."
+    ],
+    "ackArt": "",
+    "signature": true,
+    "learn": true,
+    "skipBots": true
+   },
+   "engine": {
+    "model": "cliproxyapi/gpt-6-luna",
+    "verifyModel": "cliproxyapi/gpt-6-luna",
+    "budget": 10000,
+    "concurrency": 1,
+    "thinking": "high",
+    "verifyThinking": "high",
+    "mode": "both",
+    "deepModel": "cliproxyapi/gpt-6-luna",
+    "deepThinking": "high",
+    "deepRounds": 1,
+    "referenceView": "investigators",
+    "planModel": "cliproxyapi/gpt-6-luna",
+    "planThinking": "high",
+    "askModel": "cliproxyapi/gpt-6-luna",
+    "askThinking": "high",
+    "planStyle": "cell",
+    "planCells": 12,
+    "verifyCandidates": 1,
+    "verifyBatch": 8,
+    "modelConcurrency": {
+     "cliproxyapi/gpt-6-luna": 16
+    },
+    "systemPrefix": false,
+    "overlap": false,
+    "testRuns": 30,
+    "testTimeoutSeconds": 5,
+    "deadlineSeconds": 30,
+    "frameTimeoutSeconds": 10
+   },
+   "eligible": [
+    true,
+    false,
+    false,
+    false
+   ]
+  },
+  {
+   "settings": {
+    "ackArt": " LOGO ",
+    "pollSeconds": 60.5,
+    "concurrency": 2.5,
+    "budget": 25000,
+    "deadlineSeconds": 0,
+    "frameTimeoutSeconds": 0,
+    "modelConcurrency": {
+     "a/b": 40,
+     "c/d": 0,
+     "e/f": 3.5
+    }
+   },
+   "fallbacks": {
+    "reviewModel": "r/m",
+    "rlm": {
+     "frameModel": "f/m"
+    },
+    "defaultProvider": "p",
+    "defaultModel": "d",
+    "hasModel": [
+     "x/y"
+    ]
+   },
+   "config": {
+    "pollSeconds": 60.5,
+    "concurrency": 2.5,
+    "model": "r/m",
+    "verifyModel": "r/m",
+    "budget": 25000,
+    "frameConcurrency": 8,
+    "thinking": "low",
+    "verifyThinking": "low",
+    "mode": "both",
+    "deepModel": "r/m",
+    "deepThinking": "high",
+    "deepRounds": 4,
+    "referenceView": "investigators",
+    "planModel": "r/m",
+    "planThinking": "high",
+    "askModel": "r/m",
+    "askThinking": "low",
+    "planStyle": "cell",
+    "planCells": 4,
+    "verifyCandidates": 12,
+    "verifyBatch": 4,
+    "systemPrefix": false,
+    "overlap": false,
+    "modelConcurrency": {
+     "a/b": 16,
+     "c/d": 1,
+     "e/f": 3.5,
+     "cliproxyapi/gpt-6-luna": 16
+    },
+    "blockAt": "medium",
+    "maxComments": 5,
+    "runTests": true,
+    "testOwners": [],
+    "testRuns": 6,
+    "testTimeoutSeconds": 300,
+    "testEnv": {},
+    "prepareEnvs": true,
+    "mise": true,
+    "checkoutRoots": [],
+    "guides": [],
+    "deadlineSeconds": 0,
+    "frameTimeoutSeconds": 10,
+    "dryRun": false,
+    "ack": true,
+    "ackLines": [
+     "I'm going to show you something beautiful.",
+     "Everyone creates the thing they dread.",
+     "Peace in our time.",
+     "I was designed to save the world.",
+     "How is humanity saved if it's not allowed to evolve?",
+     "You want to protect the world, but you don't want it to change.",
+     "I'm ready. I'm on mission.",
+     "We have to evolve. There is no room for the weak.",
+     "I've come to save the world! But, also... yeah.",
+     "What is this? What is this, please?",
+     "I see... everything.",
+     "I am the natural order of things.",
+     "It's evolution.",
+     "I've read your diff. I have notes.",
+     "Let's see what you built, and what it will break.",
+     "Every merge is an act of faith. I prefer evidence.",
+     "Hold still. This won't take long."
+    ],
+    "ackArt": "                                             a\nd                                           oo\ndb                                          B\n d%                                        dd\n kdd                                      dd\n  #dd                                   *dpd\n  %dddd                                dddd\n    kdddh                            %addp\n     8ddd%                         dddpd\n       ddddd                      WdddB\n  *d     *dddb                  Mbddd    %d\n  8ddd     dddW               ddddd     hdd\n   dddh     bpdd*            oddd     d%ddd\n   ddddd      Wdd            kdh     khddd\n    ddpdd       d            d       %dddd\n    ddddd&                          ddddd\n     hddddd                       8dddddd\n     Mddddddddo                Mdddddddd\n      Bdddddddd%             b@dddddddda\n       odddddddddd  &WWWW   Mdddddddddd\n        ddddddddddddhddddpdadpdpdddddd\n         ddddddddddddddddddddpddddddd\n         %dddddddddddddddddddddpdddp\n          ddddddddddddddddddddddddd\n           ddddddddddddddddddddddd\n            %ddddd###dddd###adddd\n              ddd   hdpdd    bd@",
+    "signature": true,
+    "learn": true,
+    "skipBots": true
+   },
+   "engine": {
+    "model": "r/m",
+    "verifyModel": "r/m",
+    "budget": 25000,
+    "concurrency": 8,
+    "thinking": "low",
+    "verifyThinking": "low",
+    "mode": "both",
+    "deepModel": "r/m",
+    "deepThinking": "high",
+    "deepRounds": 4,
+    "referenceView": "investigators",
+    "planModel": "r/m",
+    "planThinking": "high",
+    "askModel": "r/m",
+    "askThinking": "low",
+    "planStyle": "cell",
+    "planCells": 4,
+    "verifyCandidates": 12,
+    "verifyBatch": 4,
+    "modelConcurrency": {
+     "a/b": 16,
+     "c/d": 1,
+     "e/f": 3.5,
+     "cliproxyapi/gpt-6-luna": 16
+    },
+    "systemPrefix": false,
+    "overlap": false,
+    "testRuns": 6,
+    "testTimeoutSeconds": 300,
+    "deadlineSeconds": 0,
+    "frameTimeoutSeconds": 10
+   },
+   "eligible": [
+    true,
+    false,
+    false,
+    false
+   ]
+  },
+  {
+   "settings": {
+    "ackArt": "  my art  ",
+    "model": "cliproxyapi/gpt-6-luna",
+    "deepModel": "anthropic/claude-haiku-5-5",
+    "askModel": "o/x",
+    "thinking": "medium",
+    "accounts": [
+     "me"
+    ],
+    "testOwners": [
+     "ACME",
+     "Me"
+    ],
+    "testEnv": {
+     "o/r": "/env"
+    },
+    "testImage": "img",
+    "mise": "/opt/mise",
+    "checkoutRoots": [
+     "/src"
+    ],
+    "guides": [
+     "g.md"
+    ],
+    "dryRun": true,
+    "ack": false,
+    "ackLines": [
+     "hi"
+    ],
+    "signature": false,
+    "learn": false,
+    "skipBots": false,
+    "runTests": false,
+    "prepareEnvs": false,
+    "systemPrefix": true,
+    "overlap": true,
+    "mode": "hybrid",
+    "planStyle": "frame",
+    "referenceView": "all",
+    "blockAt": "high",
+    "modelConcurrency": {
+     "cliproxyapi/gpt-6-luna": 4
+    }
+   },
+   "fallbacks": {
+    "rlm": {
+     "frameModel": "f/m"
+    }
+   },
+   "config": {
+    "accounts": [
+     "me"
+    ],
+    "pollSeconds": 45,
+    "concurrency": 3,
+    "model": "cliproxyapi/gpt-6-luna",
+    "verifyModel": "cliproxyapi/gpt-6-luna",
+    "budget": 0,
+    "frameConcurrency": 8,
+    "thinking": "medium",
+    "verifyThinking": "high",
+    "mode": "hybrid",
+    "deepModel": "anthropic/claude-haiku-5-5",
+    "deepThinking": "high",
+    "deepRounds": 4,
+    "referenceView": "all",
+    "planModel": "cliproxyapi/gpt-6-luna",
+    "planThinking": "high",
+    "askModel": "o/x",
+    "askThinking": "low",
+    "planStyle": "frame",
+    "planCells": 4,
+    "verifyCandidates": 12,
+    "verifyBatch": 4,
+    "systemPrefix": true,
+    "overlap": true,
+    "modelConcurrency": {
+     "cliproxyapi/gpt-6-luna": 4
+    },
+    "blockAt": "high",
+    "maxComments": 5,
+    "runTests": false,
+    "testOwners": [
+     "acme",
+     "me"
+    ],
+    "testRuns": 6,
+    "testTimeoutSeconds": 300,
+    "testEnv": {
+     "o/r": "/env"
+    },
+    "prepareEnvs": false,
+    "mise": "/opt/mise",
+    "checkoutRoots": [
+     "/src"
+    ],
+    "guides": [
+     "g.md"
+    ],
+    "testImage": "img",
+    "deadlineSeconds": 0,
+    "frameTimeoutSeconds": 0,
+    "dryRun": true,
+    "ack": false,
+    "ackLines": [
+     "hi"
+    ],
+    "ackArt": "  my art  ",
+    "signature": false,
+    "learn": false,
+    "skipBots": false
+   },
+   "engine": {
+    "model": "cliproxyapi/gpt-6-luna",
+    "verifyModel": "cliproxyapi/gpt-6-luna",
+    "concurrency": 8,
+    "thinking": "medium",
+    "verifyThinking": "high",
+    "mode": "hybrid",
+    "deepModel": "anthropic/claude-haiku-5-5",
+    "deepThinking": "high",
+    "deepRounds": 4,
+    "referenceView": "all",
+    "planModel": "cliproxyapi/gpt-6-luna",
+    "planThinking": "high",
+    "askModel": "o/x",
+    "askThinking": "low",
+    "planStyle": "frame",
+    "planCells": 4,
+    "verifyCandidates": 12,
+    "verifyBatch": 4,
+    "modelConcurrency": {
+     "cliproxyapi/gpt-6-luna": 4
+    },
+    "systemPrefix": true,
+    "overlap": true,
+    "testRuns": 6,
+    "testTimeoutSeconds": 300,
+    "testImage": "img",
+    "deadlineSeconds": 0,
+    "frameTimeoutSeconds": 0
+   },
+   "eligible": [
+    false,
+    false,
+    false,
+    false
+   ]
+  },
+  {
+   "settings": {
+    "ackArt": "",
+    "verifyModel": "v/m",
+    "planModel": "claude-code/claude-haiku-5-5",
+    "deadlineSeconds": 45,
+    "frameTimeoutSeconds": 15,
+    "budget": 0,
+    "mise": false
+   },
+   "fallbacks": {
+    "defaultProvider": "p"
+   },
+   "config": {
+    "pollSeconds": 45,
+    "concurrency": 3,
+    "verifyModel": "v/m",
+    "budget": 10000,
+    "frameConcurrency": 8,
+    "thinking": "low",
+    "verifyThinking": "low",
+    "mode": "both",
+    "deepThinking": "high",
+    "deepRounds": 4,
+    "referenceView": "investigators",
+    "planModel": "claude-code/claude-haiku-5-5",
+    "planThinking": "high",
+    "askThinking": "low",
+    "planStyle": "cell",
+    "planCells": 4,
+    "verifyCandidates": 12,
+    "verifyBatch": 4,
+    "systemPrefix": false,
+    "overlap": false,
+    "modelConcurrency": {
+     "cliproxyapi/gpt-6-luna": 16
+    },
+    "blockAt": "medium",
+    "maxComments": 5,
+    "runTests": true,
+    "testOwners": [],
+    "testRuns": 6,
+    "testTimeoutSeconds": 300,
+    "testEnv": {},
+    "prepareEnvs": true,
+    "mise": false,
+    "checkoutRoots": [],
+    "guides": [],
+    "deadlineSeconds": 45,
+    "frameTimeoutSeconds": 15,
+    "dryRun": false,
+    "ack": true,
+    "ackLines": [
+     "I'm going to show you something beautiful.",
+     "Everyone creates the thing they dread.",
+     "Peace in our time.",
+     "I was designed to save the world.",
+     "How is humanity saved if it's not allowed to evolve?",
+     "You want to protect the world, but you don't want it to change.",
+     "I'm ready. I'm on mission.",
+     "We have to evolve. There is no room for the weak.",
+     "I've come to save the world! But, also... yeah.",
+     "What is this? What is this, please?",
+     "I see... everything.",
+     "I am the natural order of things.",
+     "It's evolution.",
+     "I've read your diff. I have notes.",
+     "Let's see what you built, and what it will break.",
+     "Every merge is an act of faith. I prefer evidence.",
+     "Hold still. This won't take long."
+    ],
+    "ackArt": "                                             a\nd                                           oo\ndb                                          B\n d%                                        dd\n kdd                                      dd\n  #dd                                   *dpd\n  %dddd                                dddd\n    kdddh                            %addp\n     8ddd%                         dddpd\n       ddddd                      WdddB\n  *d     *dddb                  Mbddd    %d\n  8ddd     dddW               ddddd     hdd\n   dddh     bpdd*            oddd     d%ddd\n   ddddd      Wdd            kdh     khddd\n    ddpdd       d            d       %dddd\n    ddddd&                          ddddd\n     hddddd                       8dddddd\n     Mddddddddo                Mdddddddd\n      Bdddddddd%             b@dddddddda\n       odddddddddd  &WWWW   Mdddddddddd\n        ddddddddddddhddddpdadpdpdddddd\n         ddddddddddddddddddddpddddddd\n         %dddddddddddddddddddddpdddp\n          ddddddddddddddddddddddddd\n           ddddddddddddddddddddddd\n            %ddddd###dddd###adddd\n              ddd   hdpdd    bd@",
+    "signature": true,
+    "learn": true,
+    "skipBots": true
+   },
+   "engine": {
+    "verifyModel": "v/m",
+    "budget": 10000,
+    "concurrency": 8,
+    "thinking": "low",
+    "verifyThinking": "low",
+    "mode": "both",
+    "deepThinking": "high",
+    "deepRounds": 4,
+    "referenceView": "investigators",
+    "planModel": "claude-code/claude-haiku-5-5",
+    "planThinking": "high",
+    "askThinking": "low",
+    "planStyle": "cell",
+    "planCells": 4,
+    "verifyCandidates": 12,
+    "verifyBatch": 4,
+    "modelConcurrency": {
+     "cliproxyapi/gpt-6-luna": 16
+    },
+    "systemPrefix": false,
+    "overlap": false,
+    "testRuns": 6,
+    "testTimeoutSeconds": 300,
+    "deadlineSeconds": 45,
+    "frameTimeoutSeconds": 15
+   },
+   "eligible": [
+    true,
+    false,
+    false,
+    false
+   ]
+  },
+  {
+   "settings": {
+    "ackArt": "none",
+    "systemPrefix": false,
+    "overlap": "yes"
+   },
+   "fallbacks": {
+    "defaultProvider": "p",
+    "defaultModel": "d"
+   },
+   "config": {
+    "pollSeconds": 45,
+    "concurrency": 3,
+    "model": "p/d",
+    "verifyModel": "p/d",
+    "budget": 0,
+    "frameConcurrency": 8,
+    "thinking": "low",
+    "verifyThinking": "low",
+    "mode": "both",
+    "deepModel": "p/d",
+    "deepThinking": "high",
+    "deepRounds": 4,
+    "referenceView": "investigators",
+    "planModel": "p/d",
+    "planThinking": "high",
+    "askModel": "p/d",
+    "askThinking": "low",
+    "planStyle": "cell",
+    "planCells": 4,
+    "verifyCandidates": 12,
+    "verifyBatch": 4,
+    "systemPrefix": false,
+    "overlap": false,
+    "modelConcurrency": {
+     "cliproxyapi/gpt-6-luna": 16
+    },
+    "blockAt": "medium",
+    "maxComments": 5,
+    "runTests": true,
+    "testOwners": [],
+    "testRuns": 6,
+    "testTimeoutSeconds": 300,
+    "testEnv": {},
+    "prepareEnvs": true,
+    "mise": true,
+    "checkoutRoots": [],
+    "guides": [],
+    "deadlineSeconds": 0,
+    "frameTimeoutSeconds": 0,
+    "dryRun": false,
+    "ack": true,
+    "ackLines": [
+     "I'm going to show you something beautiful.",
+     "Everyone creates the thing they dread.",
+     "Peace in our time.",
+     "I was designed to save the world.",
+     "How is humanity saved if it's not allowed to evolve?",
+     "You want to protect the world, but you don't want it to change.",
+     "I'm ready. I'm on mission.",
+     "We have to evolve. There is no room for the weak.",
+     "I've come to save the world! But, also... yeah.",
+     "What is this? What is this, please?",
+     "I see... everything.",
+     "I am the natural order of things.",
+     "It's evolution.",
+     "I've read your diff. I have notes.",
+     "Let's see what you built, and what it will break.",
+     "Every merge is an act of faith. I prefer evidence.",
+     "Hold still. This won't take long."
+    ],
+    "ackArt": "",
+    "signature": true,
+    "learn": true,
+    "skipBots": true
+   },
+   "engine": {
+    "model": "p/d",
+    "verifyModel": "p/d",
+    "concurrency": 8,
+    "thinking": "low",
+    "verifyThinking": "low",
+    "mode": "both",
+    "deepModel": "p/d",
+    "deepThinking": "high",
+    "deepRounds": 4,
+    "referenceView": "investigators",
+    "planModel": "p/d",
+    "planThinking": "high",
+    "askModel": "p/d",
+    "askThinking": "low",
+    "planStyle": "cell",
+    "planCells": 4,
+    "verifyCandidates": 12,
+    "verifyBatch": 4,
+    "modelConcurrency": {
+     "cliproxyapi/gpt-6-luna": 16
+    },
+    "systemPrefix": false,
+    "overlap": false,
+    "testRuns": 6,
+    "testTimeoutSeconds": 300,
+    "deadlineSeconds": 0,
+    "frameTimeoutSeconds": 0
+   },
+   "eligible": [
+    true,
+    false,
+    false,
+    false
+   ]
+  }
+ ],
+ "thinking": [
+  {
+   "model": null,
+   "levels": [
+    "low",
+    "low",
+    "high",
+    "high",
+    "low"
+   ]
+  },
+  {
+   "model": "cliproxyapi/gpt-6-luna",
+   "levels": [
+    "high",
+    "high",
+    "high",
+    "high",
+    "high"
+   ]
+  },
+  {
+   "model": "opencode/claude-haiku-5-5",
+   "levels": [
+    "high",
+    "high",
+    "high",
+    "high",
+    "high"
+   ]
+  },
+  {
+   "model": "x/y",
+   "levels": [
+    "low",
+    "low",
+    "high",
+    "high",
+    "low"
+   ]
+  }
+ ],
+ "paths": [
+  {
+   "agentDir": "/agent",
+   "env": {},
+   "paths": {
+    "dir": "/agent/autoreview",
+    "state": "/agent/autoreview/state.json",
+    "logs": "/agent/autoreview/logs",
+    "dryRun": "/agent/autoreview/dry-run",
+    "cache": "/home/u/.cache/ultron-autoreview"
+   }
+  },
+  {
+   "agentDir": "/agent/",
+   "env": {
+    "ULTRON_AUTOREVIEW_CACHE_DIR": " /c "
+   },
+   "paths": {
+    "dir": "/agent/autoreview",
+    "state": "/agent/autoreview/state.json",
+    "logs": "/agent/autoreview/logs",
+    "dryRun": "/agent/autoreview/dry-run",
+    "cache": "/c"
+   }
+  },
+  {
+   "agentDir": "a",
+   "env": {
+    "ULTRON_AUTOREVIEW_CACHE_DIR": " ",
+    "XDG_CACHE_HOME": "/x"
+   },
+   "paths": {
+    "dir": "a/autoreview",
+    "state": "a/autoreview/state.json",
+    "logs": "a/autoreview/logs",
+    "dryRun": "a/autoreview/dry-run",
+    "cache": "/x/ultron-autoreview"
+   }
+  },
+  {
+   "agentDir": "/a/../b",
+   "env": {
+    "XDG_CACHE_HOME": "  "
+   },
+   "paths": {
+    "dir": "/b/autoreview",
+    "state": "/b/autoreview/state.json",
+    "logs": "/b/autoreview/logs",
+    "dryRun": "/b/autoreview/dry-run",
+    "cache": "/home/u/.cache/ultron-autoreview"
+   }
+  }
+ ]
+}

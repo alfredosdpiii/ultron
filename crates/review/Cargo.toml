@@ -1,0 +1,20 @@
+[package]
+name = "review"
+version = "0.1.0"
+description = "Code review (/review) and autoreview: deterministic host logic behind the Python review API"
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+indexmap = { version = "=2.14.2", features = ["serde"] }
+regex = "=1.13.1"
+ring = "=0.17.14"
+serde = { version = "=1.0.229", features = ["derive"] }
+serde_json = { version = "=1.0.151", features = ["preserve_order"] }
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+tempfile = "=3.27.0"

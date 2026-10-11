@@ -1,0 +1,292 @@
+{
+	"files": {
+		"Zed.json": "{\n  \"$schema\": \"https://raw.githubusercontent.com/earendil-works/pi/main/packages/coding-agent/src/modes/interactive/theme/theme-schema.json\",\n  \"name\": \"Zed\",\n  \"vars\": {\n    \"cyan\": \"#00d7ff\",\n    \"blue\": \"#5f87ff\",\n    \"green\": \"#b5bd68\",\n    \"red\": \"#cc6666\",\n    \"yellow\": \"#ffff00\",\n    \"text\": \"#d4d4d4\",\n    \"gray\": \"#808080\",\n    \"dimGray\": \"#666666\",\n    \"darkGray\": \"#505050\",\n    \"accent\": \"#8abeb7\",\n    \"selectedBg\": \"#3a3a4a\",\n    \"userMsgBg\": \"#343541\",\n    \"toolPendingBg\": \"#282832\",\n    \"toolSuccessBg\": \"#283228\",\n    \"toolErrorBg\": \"#3c2828\",\n    \"customMsgBg\": \"#2d2838\"\n  },\n  \"colors\": {\n    \"accent\": \"#112233\",\n    \"border\": \"blue\",\n    \"borderAccent\": \"cyan\",\n    \"borderMuted\": \"darkGray\",\n    \"success\": \"green\",\n    \"error\": \"red\",\n    \"warning\": \"yellow\",\n    \"muted\": \"gray\",\n    \"dim\": \"dimGray\",\n    \"text\": \"text\",\n    \"thinkingText\": \"gray\",\n    \"selectedBg\": \"selectedBg\",\n    \"scrollbarTrack\": \"darkGray\",\n    \"scrollbarThumb\": \"text\",\n    \"searchMatchBg\": \"selectedBg\",\n    \"searchMatchText\": \"text\",\n    \"userMessageBg\": \"userMsgBg\",\n    \"userMessageText\": \"text\",\n    \"customMessageBg\": \"customMsgBg\",\n    \"customMessageText\": \"text\",\n    \"customMessageLabel\": \"#9575cd\",\n    \"toolPendingBg\": \"toolPendingBg\",\n    \"toolSuccessBg\": \"toolSuccessBg\",\n    \"toolErrorBg\": \"toolErrorBg\",\n    \"toolTitle\": \"text\",\n    \"toolOutput\": \"gray\",\n    \"mdHeading\": \"#f0c674\",\n    \"mdLink\": \"#81a2be\",\n    \"mdLinkUrl\": \"dimGray\",\n    \"mdCode\": \"accent\",\n    \"mdCodeBlock\": \"green\",\n    \"mdCodeBlockBorder\": \"gray\",\n    \"mdQuote\": \"gray\",\n    \"mdQuoteBorder\": \"gray\",\n    \"mdHr\": \"gray\",\n    \"mdListBullet\": \"accent\",\n    \"toolDiffAdded\": \"green\",\n    \"toolDiffRemoved\": \"red\",\n    \"toolDiffContext\": \"gray\",\n    \"syntaxComment\": \"#6A9955\",\n    \"syntaxKeyword\": \"#569CD6\",\n    \"syntaxFunction\": \"#DCDCAA\",\n    \"syntaxVariable\": \"#9CDCFE\",\n    \"syntaxString\": \"#CE9178\",\n    \"syntaxNumber\": \"#B5CEA8\",\n    \"syntaxType\": \"#4EC9B0\",\n    \"syntaxOperator\": \"#D4D4D4\",\n    \"syntaxPunctuation\": \"#D4D4D4\",\n    \"thinkingOff\": \"darkGray\",\n    \"thinkingMinimal\": \"#6e6e6e\",\n    \"thinkingLow\": \"#5f87af\",\n    \"thinkingMedium\": \"#81a2be\",\n    \"thinkingHigh\": \"#b294bb\",\n    \"thinkingXhigh\": \"#d183e8\",\n    \"thinkingMax\": \"#ff5fff\",\n    \"bashMode\": \"green\"\n  },\n  \"export\": {\n    \"pageBg\": \"#18181e\",\n    \"cardBg\": \"#1e1e24\",\n    \"infoBg\": \"#3c3728\"\n  }\n}",
+		"alpha.json": "{\n  \"$schema\": \"https://raw.githubusercontent.com/earendil-works/pi/main/packages/coding-agent/src/modes/interactive/theme/theme-schema.json\",\n  \"name\": \"alpha\",\n  \"vars\": {\n    \"cyan\": \"#00d7ff\",\n    \"blue\": \"#5f87ff\",\n    \"green\": \"#b5bd68\",\n    \"red\": \"#cc6666\",\n    \"yellow\": \"#ffff00\",\n    \"text\": \"#d4d4d4\",\n    \"gray\": \"#808080\",\n    \"dimGray\": \"#666666\",\n    \"darkGray\": \"#505050\",\n    \"accent\": \"#8abeb7\",\n    \"selectedBg\": \"#3a3a4a\",\n    \"userMsgBg\": \"#343541\",\n    \"toolPendingBg\": \"#282832\",\n    \"toolSuccessBg\": \"#283228\",\n    \"toolErrorBg\": \"#3c2828\",\n    \"customMsgBg\": \"#2d2838\"\n  },\n  \"colors\": {\n    \"accent\": \"#445566\",\n    \"border\": \"blue\",\n    \"borderAccent\": \"cyan\",\n    \"borderMuted\": \"darkGray\",\n    \"success\": \"green\",\n    \"error\": \"red\",\n    \"warning\": \"yellow\",\n    \"muted\": \"gray\",\n    \"dim\": \"dimGray\",\n    \"text\": \"text\",\n    \"thinkingText\": \"gray\",\n    \"selectedBg\": \"selectedBg\",\n    \"scrollbarTrack\": \"darkGray\",\n    \"scrollbarThumb\": \"text\",\n    \"searchMatchBg\": \"selectedBg\",\n    \"searchMatchText\": \"text\",\n    \"userMessageBg\": \"userMsgBg\",\n    \"userMessageText\": \"text\",\n    \"customMessageBg\": \"customMsgBg\",\n    \"customMessageText\": \"text\",\n    \"customMessageLabel\": \"#9575cd\",\n    \"toolPendingBg\": \"toolPendingBg\",\n    \"toolSuccessBg\": \"toolSuccessBg\",\n    \"toolErrorBg\": \"toolErrorBg\",\n    \"toolTitle\": \"text\",\n    \"toolOutput\": \"gray\",\n    \"mdHeading\": \"#f0c674\",\n    \"mdLink\": \"#81a2be\",\n    \"mdLinkUrl\": \"dimGray\",\n    \"mdCode\": \"accent\",\n    \"mdCodeBlock\": \"green\",\n    \"mdCodeBlockBorder\": \"gray\",\n    \"mdQuote\": \"gray\",\n    \"mdQuoteBorder\": \"gray\",\n    \"mdHr\": \"gray\",\n    \"mdListBullet\": \"accent\",\n    \"toolDiffAdded\": \"green\",\n    \"toolDiffRemoved\": \"red\",\n    \"toolDiffContext\": \"gray\",\n    \"syntaxComment\": \"#6A9955\",\n    \"syntaxKeyword\": \"#569CD6\",\n    \"syntaxFunction\": \"#DCDCAA\",\n    \"syntaxVariable\": \"#9CDCFE\",\n    \"syntaxString\": \"#CE9178\",\n    \"syntaxNumber\": \"#B5CEA8\",\n    \"syntaxType\": \"#4EC9B0\",\n    \"syntaxOperator\": \"#D4D4D4\",\n    \"syntaxPunctuation\": \"#D4D4D4\",\n    \"thinkingOff\": \"darkGray\",\n    \"thinkingMinimal\": \"#6e6e6e\",\n    \"thinkingLow\": \"#5f87af\",\n    \"thinkingMedium\": \"#81a2be\",\n    \"thinkingHigh\": \"#b294bb\",\n    \"thinkingXhigh\": \"#d183e8\",\n    \"thinkingMax\": \"#ff5fff\",\n    \"bashMode\": \"green\"\n  },\n  \"export\": {\n    \"pageBg\": \"#18181e\",\n    \"cardBg\": \"#1e1e24\",\n    \"infoBg\": \"#3c3728\"\n  }\n}",
+		"beta.json": "{\n  \"$schema\": \"https://raw.githubusercontent.com/earendil-works/pi/main/packages/coding-agent/src/modes/interactive/theme/theme-schema.json\",\n  \"name\": \"Beta\",\n  \"vars\": {\n    \"cyan\": \"#00d7ff\",\n    \"blue\": \"#5f87ff\",\n    \"green\": \"#b5bd68\",\n    \"red\": \"#cc6666\",\n    \"yellow\": \"#ffff00\",\n    \"text\": \"#d4d4d4\",\n    \"gray\": \"#808080\",\n    \"dimGray\": \"#666666\",\n    \"darkGray\": \"#505050\",\n    \"accent\": \"#8abeb7\",\n    \"selectedBg\": \"#3a3a4a\",\n    \"userMsgBg\": \"#343541\",\n    \"toolPendingBg\": \"#282832\",\n    \"toolSuccessBg\": \"#283228\",\n    \"toolErrorBg\": \"#3c2828\",\n    \"customMsgBg\": \"#2d2838\"\n  },\n  \"colors\": {\n    \"accent\": \"#778899\",\n    \"border\": \"blue\",\n    \"borderAccent\": \"cyan\",\n    \"borderMuted\": \"darkGray\",\n    \"success\": \"green\",\n    \"error\": \"red\",\n    \"warning\": \"yellow\",\n    \"muted\": \"gray\",\n    \"dim\": \"dimGray\",\n    \"text\": \"text\",\n    \"thinkingText\": \"gray\",\n    \"selectedBg\": \"selectedBg\",\n    \"scrollbarTrack\": \"darkGray\",\n    \"scrollbarThumb\": \"text\",\n    \"searchMatchBg\": \"selectedBg\",\n    \"searchMatchText\": \"text\",\n    \"userMessageBg\": \"userMsgBg\",\n    \"userMessageText\": \"text\",\n    \"customMessageBg\": \"customMsgBg\",\n    \"customMessageText\": \"text\",\n    \"customMessageLabel\": \"#9575cd\",\n    \"toolPendingBg\": \"toolPendingBg\",\n    \"toolSuccessBg\": \"toolSuccessBg\",\n    \"toolErrorBg\": \"toolErrorBg\",\n    \"toolTitle\": \"text\",\n    \"toolOutput\": \"gray\",\n    \"mdHeading\": \"#f0c674\",\n    \"mdLink\": \"#81a2be\",\n    \"mdLinkUrl\": \"dimGray\",\n    \"mdCode\": \"accent\",\n    \"mdCodeBlock\": \"green\",\n    \"mdCodeBlockBorder\": \"gray\",\n    \"mdQuote\": \"gray\",\n    \"mdQuoteBorder\": \"gray\",\n    \"mdHr\": \"gray\",\n    \"mdListBullet\": \"accent\",\n    \"toolDiffAdded\": \"green\",\n    \"toolDiffRemoved\": \"red\",\n    \"toolDiffContext\": \"gray\",\n    \"syntaxComment\": \"#6A9955\",\n    \"syntaxKeyword\": \"#569CD6\",\n    \"syntaxFunction\": \"#DCDCAA\",\n    \"syntaxVariable\": \"#9CDCFE\",\n    \"syntaxString\": \"#CE9178\",\n    \"syntaxNumber\": \"#B5CEA8\",\n    \"syntaxType\": \"#4EC9B0\",\n    \"syntaxOperator\": \"#D4D4D4\",\n    \"syntaxPunctuation\": \"#D4D4D4\",\n    \"thinkingOff\": \"darkGray\",\n    \"thinkingMinimal\": \"#6e6e6e\",\n    \"thinkingLow\": \"#5f87af\",\n    \"thinkingMedium\": \"#81a2be\",\n    \"thinkingHigh\": \"#b294bb\",\n    \"thinkingXhigh\": \"#d183e8\",\n    \"thinkingMax\": \"#ff5fff\",\n    \"bashMode\": \"green\"\n  },\n  \"export\": {\n    \"pageBg\": \"#18181e\",\n    \"cardBg\": \"#1e1e24\",\n    \"infoBg\": \"#3c3728\"\n  }\n}",
+		"beta-lower.json": "{\n  \"$schema\": \"https://raw.githubusercontent.com/earendil-works/pi/main/packages/coding-agent/src/modes/interactive/theme/theme-schema.json\",\n  \"name\": \"beta\",\n  \"vars\": {\n    \"cyan\": \"#00d7ff\",\n    \"blue\": \"#5f87ff\",\n    \"green\": \"#b5bd68\",\n    \"red\": \"#cc6666\",\n    \"yellow\": \"#ffff00\",\n    \"text\": \"#d4d4d4\",\n    \"gray\": \"#808080\",\n    \"dimGray\": \"#666666\",\n    \"darkGray\": \"#505050\",\n    \"accent\": \"#8abeb7\",\n    \"selectedBg\": \"#3a3a4a\",\n    \"userMsgBg\": \"#343541\",\n    \"toolPendingBg\": \"#282832\",\n    \"toolSuccessBg\": \"#283228\",\n    \"toolErrorBg\": \"#3c2828\",\n    \"customMsgBg\": \"#2d2838\"\n  },\n  \"colors\": {\n    \"accent\": \"#123456\",\n    \"border\": \"blue\",\n    \"borderAccent\": \"cyan\",\n    \"borderMuted\": \"darkGray\",\n    \"success\": \"green\",\n    \"error\": \"red\",\n    \"warning\": \"yellow\",\n    \"muted\": \"gray\",\n    \"dim\": \"dimGray\",\n    \"text\": \"text\",\n    \"thinkingText\": \"gray\",\n    \"selectedBg\": \"selectedBg\",\n    \"scrollbarTrack\": \"darkGray\",\n    \"scrollbarThumb\": \"text\",\n    \"searchMatchBg\": \"selectedBg\",\n    \"searchMatchText\": \"text\",\n    \"userMessageBg\": \"userMsgBg\",\n    \"userMessageText\": \"text\",\n    \"customMessageBg\": \"customMsgBg\",\n    \"customMessageText\": \"text\",\n    \"customMessageLabel\": \"#9575cd\",\n    \"toolPendingBg\": \"toolPendingBg\",\n    \"toolSuccessBg\": \"toolSuccessBg\",\n    \"toolErrorBg\": \"toolErrorBg\",\n    \"toolTitle\": \"text\",\n    \"toolOutput\": \"gray\",\n    \"mdHeading\": \"#f0c674\",\n    \"mdLink\": \"#81a2be\",\n    \"mdLinkUrl\": \"dimGray\",\n    \"mdCode\": \"accent\",\n    \"mdCodeBlock\": \"green\",\n    \"mdCodeBlockBorder\": \"gray\",\n    \"mdQuote\": \"gray\",\n    \"mdQuoteBorder\": \"gray\",\n    \"mdHr\": \"gray\",\n    \"mdListBullet\": \"accent\",\n    \"toolDiffAdded\": \"green\",\n    \"toolDiffRemoved\": \"red\",\n    \"toolDiffContext\": \"gray\",\n    \"syntaxComment\": \"#6A9955\",\n    \"syntaxKeyword\": \"#569CD6\",\n    \"syntaxFunction\": \"#DCDCAA\",\n    \"syntaxVariable\": \"#9CDCFE\",\n    \"syntaxString\": \"#CE9178\",\n    \"syntaxNumber\": \"#B5CEA8\",\n    \"syntaxType\": \"#4EC9B0\",\n    \"syntaxOperator\": \"#D4D4D4\",\n    \"syntaxPunctuation\": \"#D4D4D4\",\n    \"thinkingOff\": \"darkGray\",\n    \"thinkingMinimal\": \"#6e6e6e\",\n    \"thinkingLow\": \"#5f87af\",\n    \"thinkingMedium\": \"#81a2be\",\n    \"thinkingHigh\": \"#b294bb\",\n    \"thinkingXhigh\": \"#d183e8\",\n    \"thinkingMax\": \"#ff5fff\",\n    \"bashMode\": \"green\"\n  },\n  \"export\": {\n    \"pageBg\": \"#18181e\",\n    \"cardBg\": \"#1e1e24\",\n    \"infoBg\": \"#3c3728\"\n  }\n}",
+		"dup.json": "{\n  \"$schema\": \"https://raw.githubusercontent.com/earendil-works/pi/main/packages/coding-agent/src/modes/interactive/theme/theme-schema.json\",\n  \"name\": \"alpha\",\n  \"vars\": {\n    \"cyan\": \"#00d7ff\",\n    \"blue\": \"#5f87ff\",\n    \"green\": \"#b5bd68\",\n    \"red\": \"#cc6666\",\n    \"yellow\": \"#ffff00\",\n    \"text\": \"#d4d4d4\",\n    \"gray\": \"#808080\",\n    \"dimGray\": \"#666666\",\n    \"darkGray\": \"#505050\",\n    \"accent\": \"#8abeb7\",\n    \"selectedBg\": \"#3a3a4a\",\n    \"userMsgBg\": \"#343541\",\n    \"toolPendingBg\": \"#282832\",\n    \"toolSuccessBg\": \"#283228\",\n    \"toolErrorBg\": \"#3c2828\",\n    \"customMsgBg\": \"#2d2838\"\n  },\n  \"colors\": {\n    \"accent\": \"#000000\",\n    \"border\": \"blue\",\n    \"borderAccent\": \"cyan\",\n    \"borderMuted\": \"darkGray\",\n    \"success\": \"green\",\n    \"error\": \"red\",\n    \"warning\": \"yellow\",\n    \"muted\": \"gray\",\n    \"dim\": \"dimGray\",\n    \"text\": \"text\",\n    \"thinkingText\": \"gray\",\n    \"selectedBg\": \"selectedBg\",\n    \"scrollbarTrack\": \"darkGray\",\n    \"scrollbarThumb\": \"text\",\n    \"searchMatchBg\": \"selectedBg\",\n    \"searchMatchText\": \"text\",\n    \"userMessageBg\": \"userMsgBg\",\n    \"userMessageText\": \"text\",\n    \"customMessageBg\": \"customMsgBg\",\n    \"customMessageText\": \"text\",\n    \"customMessageLabel\": \"#9575cd\",\n    \"toolPendingBg\": \"toolPendingBg\",\n    \"toolSuccessBg\": \"toolSuccessBg\",\n    \"toolErrorBg\": \"toolErrorBg\",\n    \"toolTitle\": \"text\",\n    \"toolOutput\": \"gray\",\n    \"mdHeading\": \"#f0c674\",\n    \"mdLink\": \"#81a2be\",\n    \"mdLinkUrl\": \"dimGray\",\n    \"mdCode\": \"accent\",\n    \"mdCodeBlock\": \"green\",\n    \"mdCodeBlockBorder\": \"gray\",\n    \"mdQuote\": \"gray\",\n    \"mdQuoteBorder\": \"gray\",\n    \"mdHr\": \"gray\",\n    \"mdListBullet\": \"accent\",\n    \"toolDiffAdded\": \"green\",\n    \"toolDiffRemoved\": \"red\",\n    \"toolDiffContext\": \"gray\",\n    \"syntaxComment\": \"#6A9955\",\n    \"syntaxKeyword\": \"#569CD6\",\n    \"syntaxFunction\": \"#DCDCAA\",\n    \"syntaxVariable\": \"#9CDCFE\",\n    \"syntaxString\": \"#CE9178\",\n    \"syntaxNumber\": \"#B5CEA8\",\n    \"syntaxType\": \"#4EC9B0\",\n    \"syntaxOperator\": \"#D4D4D4\",\n    \"syntaxPunctuation\": \"#D4D4D4\",\n    \"thinkingOff\": \"darkGray\",\n    \"thinkingMinimal\": \"#6e6e6e\",\n    \"thinkingLow\": \"#5f87af\",\n    \"thinkingMedium\": \"#81a2be\",\n    \"thinkingHigh\": \"#b294bb\",\n    \"thinkingXhigh\": \"#d183e8\",\n    \"thinkingMax\": \"#ff5fff\",\n    \"bashMode\": \"green\"\n  },\n  \"export\": {\n    \"pageBg\": \"#18181e\",\n    \"cardBg\": \"#1e1e24\",\n    \"infoBg\": \"#3c3728\"\n  }\n}",
+		"bad.json": "{\"name\":\"bad\",\"colors\":{\"accent\":\"#fff\"}}",
+		"broken.json": "{ not json",
+		"notes.txt": "ignored",
+		"reg-source.json": "{\n  \"$schema\": \"https://raw.githubusercontent.com/earendil-works/pi/main/packages/coding-agent/src/modes/interactive/theme/theme-schema.json\",\n  \"name\": \"reg\",\n  \"vars\": {\n    \"cyan\": \"#00d7ff\",\n    \"blue\": \"#5f87ff\",\n    \"green\": \"#b5bd68\",\n    \"red\": \"#cc6666\",\n    \"yellow\": \"#ffff00\",\n    \"text\": \"#d4d4d4\",\n    \"gray\": \"#808080\",\n    \"dimGray\": \"#666666\",\n    \"darkGray\": \"#505050\",\n    \"accent\": \"#8abeb7\",\n    \"selectedBg\": \"#3a3a4a\",\n    \"userMsgBg\": \"#343541\",\n    \"toolPendingBg\": \"#282832\",\n    \"toolSuccessBg\": \"#283228\",\n    \"toolErrorBg\": \"#3c2828\",\n    \"customMsgBg\": \"#2d2838\"\n  },\n  \"colors\": {\n    \"accent\": \"#abcdef\",\n    \"border\": \"blue\",\n    \"borderAccent\": \"cyan\",\n    \"borderMuted\": \"darkGray\",\n    \"success\": \"green\",\n    \"error\": \"red\",\n    \"warning\": \"yellow\",\n    \"muted\": \"gray\",\n    \"dim\": \"dimGray\",\n    \"text\": \"text\",\n    \"thinkingText\": \"gray\",\n    \"selectedBg\": \"selectedBg\",\n    \"scrollbarTrack\": \"darkGray\",\n    \"scrollbarThumb\": \"text\",\n    \"searchMatchBg\": \"selectedBg\",\n    \"searchMatchText\": \"text\",\n    \"userMessageBg\": \"userMsgBg\",\n    \"userMessageText\": \"text\",\n    \"customMessageBg\": \"customMsgBg\",\n    \"customMessageText\": \"text\",\n    \"customMessageLabel\": \"#9575cd\",\n    \"toolPendingBg\": \"toolPendingBg\",\n    \"toolSuccessBg\": \"toolSuccessBg\",\n    \"toolErrorBg\": \"toolErrorBg\",\n    \"toolTitle\": \"text\",\n    \"toolOutput\": \"gray\",\n    \"mdHeading\": \"#f0c674\",\n    \"mdLink\": \"#81a2be\",\n    \"mdLinkUrl\": \"dimGray\",\n    \"mdCode\": \"accent\",\n    \"mdCodeBlock\": \"green\",\n    \"mdCodeBlockBorder\": \"gray\",\n    \"mdQuote\": \"gray\",\n    \"mdQuoteBorder\": \"gray\",\n    \"mdHr\": \"gray\",\n    \"mdListBullet\": \"accent\",\n    \"toolDiffAdded\": \"green\",\n    \"toolDiffRemoved\": \"red\",\n    \"toolDiffContext\": \"gray\",\n    \"syntaxComment\": \"#6A9955\",\n    \"syntaxKeyword\": \"#569CD6\",\n    \"syntaxFunction\": \"#DCDCAA\",\n    \"syntaxVariable\": \"#9CDCFE\",\n    \"syntaxString\": \"#CE9178\",\n    \"syntaxNumber\": \"#B5CEA8\",\n    \"syntaxType\": \"#4EC9B0\",\n    \"syntaxOperator\": \"#D4D4D4\",\n    \"syntaxPunctuation\": \"#D4D4D4\",\n    \"thinkingOff\": \"darkGray\",\n    \"thinkingMinimal\": \"#6e6e6e\",\n    \"thinkingLow\": \"#5f87af\",\n    \"thinkingMedium\": \"#81a2be\",\n    \"thinkingHigh\": \"#b294bb\",\n    \"thinkingXhigh\": \"#d183e8\",\n    \"thinkingMax\": \"#ff5fff\",\n    \"bashMode\": \"green\"\n  },\n  \"export\": {\n    \"pageBg\": \"#18181e\",\n    \"cardBg\": \"#1e1e24\",\n    \"infoBg\": \"#3c3728\"\n  }\n}"
+	},
+	"steps": [
+		{
+			"op": "list",
+			"result": [
+				{
+					"name": "alpha",
+					"path": "<custom>/alpha.json"
+				},
+				{
+					"name": "beta",
+					"path": "<custom>/beta-lower.json"
+				},
+				{
+					"name": "Beta",
+					"path": "<custom>/beta.json"
+				},
+				{
+					"name": "dark",
+					"path": "<builtin>/dark.json"
+				},
+				{
+					"name": "light",
+					"path": "<builtin>/light.json"
+				},
+				{
+					"name": "reg",
+					"path": "<custom>/reg-source.json"
+				},
+				{
+					"name": "Zed",
+					"path": "<custom>/Zed.json"
+				}
+			]
+		},
+		{
+			"op": "init",
+			"arg": "Zed",
+			"result": null,
+			"current": {
+				"name": "Zed",
+				"accent": "\u001b[38;2;17;34;51mx\u001b[39m"
+			},
+			"changes": 0
+		},
+		{
+			"op": "init",
+			"arg": "nope",
+			"result": null,
+			"current": {
+				"name": "dark",
+				"accent": "\u001b[38;2;138;190;183mx\u001b[39m"
+			},
+			"changes": 0
+		},
+		{
+			"op": "init",
+			"arg": "light",
+			"result": null,
+			"current": {
+				"name": "light",
+				"accent": "\u001b[38;2;90;128;128mx\u001b[39m"
+			},
+			"changes": 0
+		},
+		{
+			"op": "init",
+			"arg": "bad",
+			"result": null,
+			"current": {
+				"name": "dark",
+				"accent": "\u001b[38;2;138;190;183mx\u001b[39m"
+			},
+			"changes": 0
+		},
+		{
+			"op": "set",
+			"arg": "alpha",
+			"result": {
+				"success": true,
+				"error": null
+			},
+			"current": {
+				"name": "alpha",
+				"accent": "\u001b[38;2;68;85;102mx\u001b[39m"
+			},
+			"changes": 1
+		},
+		{
+			"op": "set",
+			"arg": "Beta",
+			"result": {
+				"success": false,
+				"error": "Theme not found: Beta"
+			},
+			"current": {
+				"name": "dark",
+				"accent": "\u001b[38;2;138;190;183mx\u001b[39m"
+			},
+			"changes": 1
+		},
+		{
+			"op": "set",
+			"arg": "bad",
+			"result": {
+				"success": false,
+				"error": "Invalid theme \"bad\":\n\nMissing required color tokens:\n  - bashMode\n  - border\n  - borderAccent\n  - borderMuted\n  - customMessageBg\n  - customMessageLabel\n  - customMessageText\n  - dim\n  - error\n  - mdCode\n  - mdCodeBlock\n  - mdCodeBlockBorder\n  - mdHeading\n  - mdHr\n  - mdLink\n  - mdLinkUrl\n  - mdListBullet\n  - mdQuote\n  - mdQuoteBorder\n  - muted\n  - selectedBg\n  - success\n  - syntaxComment\n  - syntaxFunction\n  - syntaxKeyword\n  - syntaxNumber\n  - syntaxOperator\n  - syntaxPunctuation\n  - syntaxString\n  - syntaxType\n  - syntaxVariable\n  - text\n  - thinkingHigh\n  - thinkingLow\n  - thinkingMedium\n  - thinkingMinimal\n  - thinkingOff\n  - thinkingText\n  - thinkingXhigh\n  - toolDiffAdded\n  - toolDiffContext\n  - toolDiffRemoved\n  - toolErrorBg\n  - toolOutput\n  - toolPendingBg\n  - toolSuccessBg\n  - toolTitle\n  - userMessageBg\n  - userMessageText\n  - warning\n\nPlease add these colors to your theme's \"colors\" object.\nSee the built-in themes (dark.json, light.json) for reference values."
+			},
+			"current": {
+				"name": "dark",
+				"accent": "\u001b[38;2;138;190;183mx\u001b[39m"
+			},
+			"changes": 1
+		},
+		{
+			"op": "set",
+			"arg": "broken",
+			"result": {
+				"success": false,
+				"error": "Failed to parse theme broken: SyntaxError: Expected property name or '}' in JSON at position 2 (line 1 column 3)"
+			},
+			"current": {
+				"name": "dark",
+				"accent": "\u001b[38;2;138;190;183mx\u001b[39m"
+			},
+			"changes": 1
+		},
+		{
+			"op": "set",
+			"arg": "missing",
+			"result": {
+				"success": false,
+				"error": "Theme not found: missing"
+			},
+			"current": {
+				"name": "dark",
+				"accent": "\u001b[38;2;138;190;183mx\u001b[39m"
+			},
+			"changes": 1
+		},
+		{
+			"op": "set",
+			"arg": "light",
+			"result": {
+				"success": true,
+				"error": null
+			},
+			"current": {
+				"name": "light",
+				"accent": "\u001b[38;2;90;128;128mx\u001b[39m"
+			},
+			"changes": 2
+		},
+		{
+			"op": "set",
+			"arg": "reg",
+			"result": {
+				"success": false,
+				"error": "Theme not found: reg"
+			},
+			"current": {
+				"name": "dark",
+				"accent": "\u001b[38;2;138;190;183mx\u001b[39m"
+			},
+			"changes": 2
+		},
+		{
+			"op": "list",
+			"result": [
+				{
+					"name": "alpha",
+					"path": "<custom>/alpha.json"
+				},
+				{
+					"name": "beta",
+					"path": "<custom>/beta-lower.json"
+				},
+				{
+					"name": "Beta",
+					"path": "<custom>/beta.json"
+				},
+				{
+					"name": "dark",
+					"path": "<builtin>/dark.json"
+				},
+				{
+					"name": "light",
+					"path": "<builtin>/light.json"
+				},
+				{
+					"name": "reg",
+					"path": "<custom>/reg-source.json"
+				},
+				{
+					"name": "Zed",
+					"path": "<custom>/Zed.json"
+				}
+			]
+		},
+		{
+			"op": "set",
+			"arg": "reg",
+			"result": {
+				"success": true,
+				"error": null
+			},
+			"current": {
+				"name": "reg",
+				"accent": "\u001b[38;2;171;205;239mx\u001b[39m"
+			},
+			"changes": 3
+		},
+		{
+			"op": "byName",
+			"arg": "reg",
+			"result": "\u001b[38;2;171;205;239mx\u001b[39m"
+		},
+		{
+			"op": "byName",
+			"arg": "bad",
+			"result": null
+		},
+		{
+			"op": "byName",
+			"arg": "Zed",
+			"result": "\u001b[38;2;17;34;51mx\u001b[39m"
+		},
+		{
+			"op": "byName",
+			"arg": "missing",
+			"result": null
+		},
+		{
+			"op": "instance",
+			"arg": "alpha",
+			"result": null,
+			"current": {
+				"name": "alpha",
+				"accent": "\u001b[38;2;68;85;102mx\u001b[39m"
+			},
+			"changes": 4
+		},
+		{
+			"op": "registerInvalid",
+			"result": "Invalid theme name \"a/b\": theme names cannot contain \"/\" because it is reserved for automatic light/dark theme settings."
+		},
+		{
+			"op": "list",
+			"result": [
+				{
+					"name": "alpha",
+					"path": "<custom>/alpha.json"
+				},
+				{
+					"name": "beta",
+					"path": "<custom>/beta-lower.json"
+				},
+				{
+					"name": "Beta",
+					"path": "<custom>/beta.json"
+				},
+				{
+					"name": "dark",
+					"path": "<builtin>/dark.json"
+				},
+				{
+					"name": "light",
+					"path": "<builtin>/light.json"
+				},
+				{
+					"name": "reg",
+					"path": "<custom>/reg-source.json"
+				},
+				{
+					"name": "Zed",
+					"path": "<custom>/Zed.json"
+				}
+			]
+		}
+	]
+}

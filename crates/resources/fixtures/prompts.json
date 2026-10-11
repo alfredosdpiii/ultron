@@ -1,0 +1,1940 @@
+{
+	"docPaths": {
+		"readme": "$PKG/README.md",
+		"docs": "$PKG/docs",
+		"examples": "$PKG/examples"
+	},
+	"trees": {
+		"context": [
+			[
+				"agent/AGENTS.md",
+				"Global rules.\n"
+			],
+			[
+				"AGENTS.md",
+				"﻿Root agents with BOM.\n"
+			],
+			[
+				"proj/CLAUDE.md",
+				"Project claude.\n"
+			],
+			[
+				"proj/CLAUDE.MD",
+				"Never chosen: CLAUDE.md is first.\n"
+			],
+			[
+				"proj/a/AGENTS.override.md",
+				"Override wins.\n"
+			],
+			[
+				"proj/a/AGENTS.md",
+				"Shadowed by override.\n"
+			],
+			[
+				"proj/a/b/c/.keep",
+				""
+			],
+			[
+				"proj/a/b/AGENTS.md/.dir",
+				""
+			]
+		],
+		"skills": [
+			[
+				"agent/skills/alpha/SKILL.md",
+				"---\nname: alpha\ndescription: Alpha skill. Does alpha things & more <tags>.\n---\n\n# Body of alpha\nUse it well.\n"
+			],
+			[
+				"agent/skills/beta/SKILL.md",
+				"---\ndescription: Beta from dir name.\n---\n\n# Body of unnamed\nUse it well.\n"
+			],
+			[
+				"agent/skills/beta/nested/SKILL.md",
+				"---\nname: never\ndescription: Not reached: parent is a skill root.\n---\n\n# Body of never\nUse it well.\n"
+			],
+			[
+				"agent/skills/root-file.md",
+				"---\nname: root-file\ndescription: A root markdown skill.\n---\n\n# Body of root-file\nUse it well.\n"
+			],
+			[
+				"agent/skills/no-desc.md",
+				"---\nname: no-desc\n---\n\n# Body of no-desc\nUse it well.\n"
+			],
+			[
+				"agent/skills/group/gamma/SKILL.md",
+				"---\nname: Gamma_Bad--\ndescription: Invalid name still loads.\n---\n\n# Body of Gamma_Bad--\nUse it well.\n"
+			],
+			[
+				"agent/skills/group/loose.md",
+				"---\nname: loose\ndescription: Not loaded: not at root.\n---\n\n# Body of loose\nUse it well.\n"
+			],
+			[
+				"agent/skills/group/delta/SKILL.md",
+				"---\nname: delta\ndescription:   \n---\n\n# Body of delta\nUse it well.\n"
+			],
+			[
+				"agent/skills/hidden/SKILL.md",
+				"---\nname: hidden\ndescription: Hidden from listing.\ndisable-model-invocation: true\n---\n\n# Body of hidden\nUse it well.\n"
+			],
+			[
+				"agent/skills/.dot/SKILL.md",
+				"---\nname: dot\ndescription: Skipped dot dir.\n---\n\n# Body of dot\nUse it well.\n"
+			],
+			[
+				"agent/skills/node_modules/x/SKILL.md",
+				"---\nname: nm\ndescription: Skipped node_modules.\n---\n\n# Body of nm\nUse it well.\n"
+			],
+			[
+				"agent/skills/multi/SKILL.md",
+				"---\nname: multi\ndescription: |\n  First line.\n  Second line with 'quotes'.\n---\n\n# Body of multi\nUse it well.\n"
+			],
+			[
+				"agent/skills/badyaml/SKILL.md",
+				"---\nname: [unclosed\n---\nbody\n"
+			],
+			[
+				"agent/skills/link",
+				null,
+				"alpha"
+			],
+			[
+				"proj/.pi/skills/alpha/SKILL.md",
+				"---\nname: alpha\ndescription: Project alpha collides.\n---\n\n# Body of alpha\nUse it well.\n"
+			],
+			[
+				"proj/.pi/skills/proj-only/SKILL.md",
+				"---\nname: proj-only\ndescription: Project skill.\n---\n\n# Body of proj-only\nUse it well.\n"
+			],
+			[
+				"extra/one.md",
+				"---\nname: extra-one\ndescription: Explicit file skill.\n---\n\n# Body of extra-one\nUse it well.\n"
+			],
+			[
+				"extra/dir/zeta/SKILL.md",
+				"---\nname: zeta\ndescription: Explicit dir skill.\n---\n\n# Body of zeta\nUse it well.\n"
+			],
+			[
+				"extra/notes.txt",
+				"not markdown"
+			],
+			[
+				"agent/AGENTS.md",
+				"Global.\n"
+			],
+			[
+				"proj/AGENTS.md",
+				"Project.\n"
+			]
+		],
+		"prompts": [
+			[
+				"agent/prompts/review.md",
+				"---\ndescription: Review code\nargument-hint: <file>\n---\nReview $1 then ${@:2}.\n"
+			],
+			[
+				"agent/prompts/long.md",
+				"\n\n   \nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nsecond\n"
+			],
+			[
+				"agent/prompts/short.md",
+				"Short first line\nAll: $ARGUMENTS / ${1:-none} / ${@:-empty}\n"
+			],
+			[
+				"agent/prompts/.hidden.md",
+				"Hidden but loaded.\n"
+			],
+			[
+				"agent/prompts/empty.md",
+				""
+			],
+			[
+				"agent/prompts/.md",
+				"Unnamed template $1\n"
+			],
+			[
+				"agent/prompts/edge61.md",
+				"yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy\n"
+			],
+			[
+				"agent/prompts/edge60.md",
+				"zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz\n"
+			],
+			[
+				"agent/prompts/bad.md",
+				"---\nfoo: [x\n---\nbody\n"
+			],
+			[
+				"agent/prompts/notes.txt",
+				"ignored"
+			],
+			[
+				"agent/prompts/sub/nested.md",
+				"Not loaded: non-recursive.\n"
+			],
+			[
+				"proj/.pi/prompts/review.md",
+				"---\ndescription: 42\n---\nProject review $@\n"
+			],
+			[
+				"extra/one.md",
+				"---\nargument-hint: \"\"\n---\nExplicit $1\n"
+			],
+			[
+				"extra/dir/two.md",
+				"Two ${@:1:1}\n"
+			]
+		],
+		"systemFiles": [
+			[
+				"agent/SYSTEM.md",
+				"﻿Global system.\n"
+			],
+			[
+				"agent/APPEND_SYSTEM.md",
+				"Global append.\n"
+			],
+			[
+				"proj/.pi/SYSTEM.md",
+				"Project system.\n"
+			],
+			[
+				"proj/.pi/APPEND_SYSTEM.md",
+				"Project append.\n"
+			],
+			[
+				"bare/.pi/SYSTEM.md",
+				"Untrusted unless trusted.\n"
+			],
+			[
+				"custom.md",
+				"Custom file prompt.\n"
+			],
+			[
+				"somedir/.keep",
+				""
+			]
+		],
+		"worktree": [
+			[
+				"repo/AGENTS.md",
+				"Main repo agents.\n"
+			],
+			[
+				"repo/README",
+				"x\n"
+			]
+		]
+	},
+	"context": [
+		{
+			"tree": "context",
+			"cwd": "proj/a/b/c",
+			"agentDir": "agent",
+			"files": [
+				{
+					"path": "$ROOT/agent/AGENTS.md",
+					"content": "Global rules.\n"
+				},
+				{
+					"path": "$ROOT/AGENTS.md",
+					"content": "Root agents with BOM.\n"
+				},
+				{
+					"path": "$ROOT/proj/CLAUDE.md",
+					"content": "Project claude.\n"
+				},
+				{
+					"path": "$ROOT/proj/a/AGENTS.override.md",
+					"content": "Override wins.\n"
+				}
+			]
+		},
+		{
+			"tree": "context",
+			"cwd": "proj/a",
+			"agentDir": "agent",
+			"files": [
+				{
+					"path": "$ROOT/agent/AGENTS.md",
+					"content": "Global rules.\n"
+				},
+				{
+					"path": "$ROOT/AGENTS.md",
+					"content": "Root agents with BOM.\n"
+				},
+				{
+					"path": "$ROOT/proj/CLAUDE.md",
+					"content": "Project claude.\n"
+				},
+				{
+					"path": "$ROOT/proj/a/AGENTS.override.md",
+					"content": "Override wins.\n"
+				}
+			]
+		},
+		{
+			"tree": "context",
+			"cwd": "proj",
+			"agentDir": "agent",
+			"files": [
+				{
+					"path": "$ROOT/agent/AGENTS.md",
+					"content": "Global rules.\n"
+				},
+				{
+					"path": "$ROOT/AGENTS.md",
+					"content": "Root agents with BOM.\n"
+				},
+				{
+					"path": "$ROOT/proj/CLAUDE.md",
+					"content": "Project claude.\n"
+				}
+			]
+		},
+		{
+			"tree": "context",
+			"cwd": ".",
+			"agentDir": "agent",
+			"files": [
+				{
+					"path": "$ROOT/agent/AGENTS.md",
+					"content": "Global rules.\n"
+				},
+				{
+					"path": "$ROOT/AGENTS.md",
+					"content": "Root agents with BOM.\n"
+				}
+			]
+		},
+		{
+			"tree": "worktree",
+			"git": true,
+			"cwd": "repo/wt/one",
+			"agentDir": "agent",
+			"files": [
+				{
+					"path": "$ROOT/repo/wt/one/AGENTS.md",
+					"content": "Main repo agents.\n"
+				}
+			]
+		}
+	],
+	"skills": [
+		{
+			"tree": "skills",
+			"cwd": "proj",
+			"agentDir": "agent",
+			"includeDefaults": true,
+			"skillPaths": [],
+			"skills": [
+				{
+					"name": "alpha",
+					"description": "Alpha skill. Does alpha things & more <tags>.",
+					"filePath": "$ROOT/agent/skills/alpha/SKILL.md",
+					"baseDir": "$ROOT/agent/skills/alpha",
+					"source": "user",
+					"disableModelInvocation": false,
+					"alwaysOnContent": null
+				},
+				{
+					"name": "beta",
+					"description": "Beta from dir name.",
+					"filePath": "$ROOT/agent/skills/beta/SKILL.md",
+					"baseDir": "$ROOT/agent/skills/beta",
+					"source": "user",
+					"disableModelInvocation": false,
+					"alwaysOnContent": null
+				},
+				{
+					"name": "Gamma_Bad--",
+					"description": "Invalid name still loads.",
+					"filePath": "$ROOT/agent/skills/group/gamma/SKILL.md",
+					"baseDir": "$ROOT/agent/skills/group/gamma",
+					"source": "user",
+					"disableModelInvocation": false,
+					"alwaysOnContent": null
+				},
+				{
+					"name": "hidden",
+					"description": "Hidden from listing.",
+					"filePath": "$ROOT/agent/skills/hidden/SKILL.md",
+					"baseDir": "$ROOT/agent/skills/hidden",
+					"source": "user",
+					"disableModelInvocation": true,
+					"alwaysOnContent": null
+				},
+				{
+					"name": "multi",
+					"description": "First line.\nSecond line with 'quotes'.\n",
+					"filePath": "$ROOT/agent/skills/multi/SKILL.md",
+					"baseDir": "$ROOT/agent/skills/multi",
+					"source": "user",
+					"disableModelInvocation": false,
+					"alwaysOnContent": null
+				},
+				{
+					"name": "root-file",
+					"description": "A root markdown skill.",
+					"filePath": "$ROOT/agent/skills/root-file.md",
+					"baseDir": "$ROOT/agent/skills",
+					"source": "user",
+					"disableModelInvocation": false,
+					"alwaysOnContent": null
+				},
+				{
+					"name": "proj-only",
+					"description": "Project skill.",
+					"filePath": "$ROOT/proj/.pi/skills/proj-only/SKILL.md",
+					"baseDir": "$ROOT/proj/.pi/skills/proj-only",
+					"source": "project",
+					"disableModelInvocation": false,
+					"alwaysOnContent": null
+				}
+			],
+			"diagnostics": [
+				{
+					"type": "warning",
+					"message": "Flow sequence in block collection must be sufficiently indented and end with a ] at line 1, column 16:\n\nname: [unclosed\n               ^\n",
+					"path": "$ROOT/agent/skills/badyaml/SKILL.md",
+					"collision": null
+				},
+				{
+					"type": "warning",
+					"message": "description is required",
+					"path": "$ROOT/agent/skills/group/delta/SKILL.md",
+					"collision": null
+				},
+				{
+					"type": "warning",
+					"message": "name contains invalid characters (must be lowercase a-z, 0-9, hyphens only)",
+					"path": "$ROOT/agent/skills/group/gamma/SKILL.md",
+					"collision": null
+				},
+				{
+					"type": "warning",
+					"message": "name must not start or end with a hyphen",
+					"path": "$ROOT/agent/skills/group/gamma/SKILL.md",
+					"collision": null
+				},
+				{
+					"type": "warning",
+					"message": "name must not contain consecutive hyphens",
+					"path": "$ROOT/agent/skills/group/gamma/SKILL.md",
+					"collision": null
+				},
+				{
+					"type": "collision",
+					"message": "name \"alpha\" collision",
+					"path": "$ROOT/proj/.pi/skills/alpha/SKILL.md",
+					"collision": [
+						"$ROOT/agent/skills/alpha/SKILL.md",
+						"$ROOT/proj/.pi/skills/alpha/SKILL.md"
+					]
+				}
+			]
+		},
+		{
+			"tree": "skills",
+			"cwd": "proj",
+			"agentDir": "agent",
+			"includeDefaults": true,
+			"skillPaths": [
+				"../extra/one.md",
+				" ../extra/dir ",
+				"../extra/notes.txt",
+				"../missing"
+			],
+			"skills": [
+				{
+					"name": "alpha",
+					"description": "Alpha skill. Does alpha things & more <tags>.",
+					"filePath": "$ROOT/agent/skills/alpha/SKILL.md",
+					"baseDir": "$ROOT/agent/skills/alpha",
+					"source": "user",
+					"disableModelInvocation": false,
+					"alwaysOnContent": null
+				},
+				{
+					"name": "beta",
+					"description": "Beta from dir name.",
+					"filePath": "$ROOT/agent/skills/beta/SKILL.md",
+					"baseDir": "$ROOT/agent/skills/beta",
+					"source": "user",
+					"disableModelInvocation": false,
+					"alwaysOnContent": null
+				},
+				{
+					"name": "Gamma_Bad--",
+					"description": "Invalid name still loads.",
+					"filePath": "$ROOT/agent/skills/group/gamma/SKILL.md",
+					"baseDir": "$ROOT/agent/skills/group/gamma",
+					"source": "user",
+					"disableModelInvocation": false,
+					"alwaysOnContent": null
+				},
+				{
+					"name": "hidden",
+					"description": "Hidden from listing.",
+					"filePath": "$ROOT/agent/skills/hidden/SKILL.md",
+					"baseDir": "$ROOT/agent/skills/hidden",
+					"source": "user",
+					"disableModelInvocation": true,
+					"alwaysOnContent": null
+				},
+				{
+					"name": "multi",
+					"description": "First line.\nSecond line with 'quotes'.\n",
+					"filePath": "$ROOT/agent/skills/multi/SKILL.md",
+					"baseDir": "$ROOT/agent/skills/multi",
+					"source": "user",
+					"disableModelInvocation": false,
+					"alwaysOnContent": null
+				},
+				{
+					"name": "root-file",
+					"description": "A root markdown skill.",
+					"filePath": "$ROOT/agent/skills/root-file.md",
+					"baseDir": "$ROOT/agent/skills",
+					"source": "user",
+					"disableModelInvocation": false,
+					"alwaysOnContent": null
+				},
+				{
+					"name": "proj-only",
+					"description": "Project skill.",
+					"filePath": "$ROOT/proj/.pi/skills/proj-only/SKILL.md",
+					"baseDir": "$ROOT/proj/.pi/skills/proj-only",
+					"source": "project",
+					"disableModelInvocation": false,
+					"alwaysOnContent": null
+				},
+				{
+					"name": "extra-one",
+					"description": "Explicit file skill.",
+					"filePath": "$ROOT/extra/one.md",
+					"baseDir": "$ROOT/extra",
+					"source": "temporary",
+					"disableModelInvocation": false,
+					"alwaysOnContent": null
+				},
+				{
+					"name": "zeta",
+					"description": "Explicit dir skill.",
+					"filePath": "$ROOT/extra/dir/zeta/SKILL.md",
+					"baseDir": "$ROOT/extra/dir/zeta",
+					"source": "temporary",
+					"disableModelInvocation": false,
+					"alwaysOnContent": null
+				}
+			],
+			"diagnostics": [
+				{
+					"type": "warning",
+					"message": "Flow sequence in block collection must be sufficiently indented and end with a ] at line 1, column 16:\n\nname: [unclosed\n               ^\n",
+					"path": "$ROOT/agent/skills/badyaml/SKILL.md",
+					"collision": null
+				},
+				{
+					"type": "warning",
+					"message": "description is required",
+					"path": "$ROOT/agent/skills/group/delta/SKILL.md",
+					"collision": null
+				},
+				{
+					"type": "warning",
+					"message": "name contains invalid characters (must be lowercase a-z, 0-9, hyphens only)",
+					"path": "$ROOT/agent/skills/group/gamma/SKILL.md",
+					"collision": null
+				},
+				{
+					"type": "warning",
+					"message": "name must not start or end with a hyphen",
+					"path": "$ROOT/agent/skills/group/gamma/SKILL.md",
+					"collision": null
+				},
+				{
+					"type": "warning",
+					"message": "name must not contain consecutive hyphens",
+					"path": "$ROOT/agent/skills/group/gamma/SKILL.md",
+					"collision": null
+				},
+				{
+					"type": "warning",
+					"message": "skill path is not a markdown file",
+					"path": "$ROOT/extra/notes.txt",
+					"collision": null
+				},
+				{
+					"type": "warning",
+					"message": "skill path does not exist",
+					"path": "$ROOT/missing",
+					"collision": null
+				},
+				{
+					"type": "collision",
+					"message": "name \"alpha\" collision",
+					"path": "$ROOT/proj/.pi/skills/alpha/SKILL.md",
+					"collision": [
+						"$ROOT/agent/skills/alpha/SKILL.md",
+						"$ROOT/proj/.pi/skills/alpha/SKILL.md"
+					]
+				}
+			]
+		},
+		{
+			"tree": "skills",
+			"cwd": "proj",
+			"agentDir": "agent",
+			"includeDefaults": false,
+			"skillPaths": [
+				"$ROOT/agent/skills/alpha",
+				"../extra/one.md"
+			],
+			"skills": [
+				{
+					"name": "alpha",
+					"description": "Alpha skill. Does alpha things & more <tags>.",
+					"filePath": "$ROOT/agent/skills/alpha/SKILL.md",
+					"baseDir": "$ROOT/agent/skills/alpha",
+					"source": "user",
+					"disableModelInvocation": false,
+					"alwaysOnContent": null
+				},
+				{
+					"name": "extra-one",
+					"description": "Explicit file skill.",
+					"filePath": "$ROOT/extra/one.md",
+					"baseDir": "$ROOT/extra",
+					"source": "temporary",
+					"disableModelInvocation": false,
+					"alwaysOnContent": null
+				}
+			],
+			"diagnostics": []
+		}
+	],
+	"prompts": [
+		{
+			"name": "defaults",
+			"input": {},
+			"skillsFrom": "all",
+			"contextFrom": "loaded",
+			"sections": [
+				[
+					"preamble",
+					"You are an expert coding assistant operating inside pi, a coding agent harness. You help users by reading files, executing commands, editing code, and writing new files."
+				],
+				[
+					"tools",
+					"<tools>\n(none)\n\nIn addition to the tools above, you may have access to other custom tools depending on the project.\n</tools>"
+				],
+				[
+					"rules",
+					"<rules>\n- Use bash for file operations like ls, rg, find\n- Be concise in your responses\n- Show file paths clearly when working with files\n</rules>"
+				],
+				[
+					"docs",
+					"<docs>\nPi documentation (read only when the user asks about pi itself, its SDK, extensions, themes, skills, or TUI):\n- Main documentation: $PKG/README.md\n- Additional docs: $PKG/docs\n- Examples: $PKG/examples (extensions, custom tools, SDK)\n- When reading pi docs or examples, resolve docs/... under Additional docs and examples/... under Examples, not the current working directory\n- When asked about: extensions (docs/extensions.md, examples/extensions/), themes (docs/themes.md), skills (docs/skills.md), prompt templates (docs/prompt-templates.md), TUI components (docs/tui.md), keybindings (docs/keybindings.md), SDK integrations (docs/sdk.md), custom providers (docs/custom-provider.md), adding models (docs/models.md), pi packages (docs/packages.md), environment variables (docs/environment-variables.md)\n- When working on pi topics, read the docs and examples, and follow .md cross-references before implementing\n- Always read pi .md files completely and follow links to related docs (e.g., tui.md for TUI API details)\n</docs>"
+				],
+				[
+					"project_context",
+					"<project_context>\nProject-specific instructions and guidelines:\n\n<project_instructions path=\"$ROOT/agent/AGENTS.md\">\nGlobal.\n\n</project_instructions>\n\n<project_instructions path=\"$ROOT/proj/AGENTS.md\">\nProject.\n\n</project_instructions>\n</project_context>"
+				],
+				[
+					"skills",
+					"<skills>\nThe following skills provide specialized instructions for specific tasks.\nUse the read tool to load a skill's file when the task matches its description.\nWhen a skill file references a relative path, resolve it against the skill directory (parent of SKILL.md / dirname of the path) and use that absolute path in tool commands.\n\n<available_skills>\n  <skill>\n    <name>alpha</name>\n    <description>Alpha skill. Does alpha things &amp; more &lt;tags&gt;.</description>\n    <location>$ROOT/agent/skills/alpha/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>beta</name>\n    <description>Beta from dir name.</description>\n    <location>$ROOT/agent/skills/beta/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>Gamma_Bad--</name>\n    <description>Invalid name still loads.</description>\n    <location>$ROOT/agent/skills/group/gamma/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>multi</name>\n    <description>First line.\nSecond line with &apos;quotes&apos;.\n</description>\n    <location>$ROOT/agent/skills/multi/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>root-file</name>\n    <description>A root markdown skill.</description>\n    <location>$ROOT/agent/skills/root-file.md</location>\n  </skill>\n  <skill>\n    <name>proj-only</name>\n    <description>Project skill.</description>\n    <location>$ROOT/proj/.pi/skills/proj-only/SKILL.md</location>\n  </skill>\n</available_skills>\n\nBundled skills in $BUNDLED (<source>/<name>/SKILL.md). Read one only when the user asks for it or the task plainly calls for that workflow; ordinary coding needs none. The principles pstack's skills cite are pstack/principle-<name>/SKILL.md.\n- humanlayer/diagram-it: Explain the current topic visually: a small diagram, call tree, file tree, stat…\n- pstack/architect: Sketch types, signatures and module structure before code, run an arena of stru…\n- pstack/arena: Run N parallel candidate implementations of the same task on different models,…\n- pstack/automate-me: Use for \"automate me\", \"create/update/refresh my -mode skill\", \"turn/capture my…\n- pstack/benchmark-checklist: Vet a perf measurement (limiter, tuning, limits, errors, repeatability, relevan…\n- pstack/blast-radius: Find what a change could break somewhere else before it ships, beyond the diff,…\n- pstack/bro: Restate the last message in plain human language, with no jargon.\n- pstack/correct: Find the mistakes agents keep repeating in this repo and make each one impossib…\n- pstack/create-verification-skill: Generate a project-local verification skill (.pi/skills/verify-<app>/) that dri…\n- pstack/figure-it-out: Design an auditable playbook when no narrower one fits: a large migration, an a…\n- pstack/how: Use for \"how does X work\", code walkthroughs before changing something, and pla…\n- pstack/interrogate: Adversarial multi-model code review: run Ultron's /review once per model family…\n- pstack/maintain-verification-skill: Periodic pass that keeps a project's verification skill and feature map honest:…\n- pstack/no-comments: Hunt the comments in a diff or file set (one Comment Sicko frame per file), del…\n- pstack/recall: Reconstruct your recent working context from your own Ultron session history, l…\n- pstack/reflect: Review the current session through three reviewer lenses (judgment, tooling, di…\n- pstack/rigor: Rigorous engineering mode (poteto's way of working): routes a task to a playboo…\n- pstack/show-me-your-work: Keep a reviewable decision trail for long-running or unattended work: a TSV log…\n- pstack/swarm: Fan out N parallel subagents over slices of a task or as a race on one brief, c…\n- pstack/tdd: Use only when the user explicitly asks for TDD, a failing test, or a regression…\n- pstack/teach: Explain a body of work plainly so a person actually understands it.\n- pstack/technical-writing: Layered technical-writing standard: Diátaxis structure, Google developer style…\n- pstack/typescript-best-practices: TypeScript best practices for types, boundaries and module shape.\n- pstack/unslop: Cut AI tells from any writing.\n- pstack/why: Use for 'why does X work this way', 'why we picked Y', design rationale, regres…\n- qingyuna/answer-me-with-html: Answer a hard question with one visual HTML page: you write a short Markdown dr…\n</skills>"
+				],
+				[
+					"cwd",
+					"<cwd>\n$ROOT/proj\n</cwd>"
+				]
+			],
+			"text": "You are an expert coding assistant operating inside pi, a coding agent harness. You help users by reading files, executing commands, editing code, and writing new files.\n\n<tools>\n(none)\n\nIn addition to the tools above, you may have access to other custom tools depending on the project.\n</tools>\n\n<rules>\n- Use bash for file operations like ls, rg, find\n- Be concise in your responses\n- Show file paths clearly when working with files\n</rules>\n\n<docs>\nPi documentation (read only when the user asks about pi itself, its SDK, extensions, themes, skills, or TUI):\n- Main documentation: $PKG/README.md\n- Additional docs: $PKG/docs\n- Examples: $PKG/examples (extensions, custom tools, SDK)\n- When reading pi docs or examples, resolve docs/... under Additional docs and examples/... under Examples, not the current working directory\n- When asked about: extensions (docs/extensions.md, examples/extensions/), themes (docs/themes.md), skills (docs/skills.md), prompt templates (docs/prompt-templates.md), TUI components (docs/tui.md), keybindings (docs/keybindings.md), SDK integrations (docs/sdk.md), custom providers (docs/custom-provider.md), adding models (docs/models.md), pi packages (docs/packages.md), environment variables (docs/environment-variables.md)\n- When working on pi topics, read the docs and examples, and follow .md cross-references before implementing\n- Always read pi .md files completely and follow links to related docs (e.g., tui.md for TUI API details)\n</docs>\n\n<project_context>\nProject-specific instructions and guidelines:\n\n<project_instructions path=\"$ROOT/agent/AGENTS.md\">\nGlobal.\n\n</project_instructions>\n\n<project_instructions path=\"$ROOT/proj/AGENTS.md\">\nProject.\n\n</project_instructions>\n</project_context>\n\n<skills>\nThe following skills provide specialized instructions for specific tasks.\nUse the read tool to load a skill's file when the task matches its description.\nWhen a skill file references a relative path, resolve it against the skill directory (parent of SKILL.md / dirname of the path) and use that absolute path in tool commands.\n\n<available_skills>\n  <skill>\n    <name>alpha</name>\n    <description>Alpha skill. Does alpha things &amp; more &lt;tags&gt;.</description>\n    <location>$ROOT/agent/skills/alpha/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>beta</name>\n    <description>Beta from dir name.</description>\n    <location>$ROOT/agent/skills/beta/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>Gamma_Bad--</name>\n    <description>Invalid name still loads.</description>\n    <location>$ROOT/agent/skills/group/gamma/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>multi</name>\n    <description>First line.\nSecond line with &apos;quotes&apos;.\n</description>\n    <location>$ROOT/agent/skills/multi/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>root-file</name>\n    <description>A root markdown skill.</description>\n    <location>$ROOT/agent/skills/root-file.md</location>\n  </skill>\n  <skill>\n    <name>proj-only</name>\n    <description>Project skill.</description>\n    <location>$ROOT/proj/.pi/skills/proj-only/SKILL.md</location>\n  </skill>\n</available_skills>\n\nBundled skills in $BUNDLED (<source>/<name>/SKILL.md). Read one only when the user asks for it or the task plainly calls for that workflow; ordinary coding needs none. The principles pstack's skills cite are pstack/principle-<name>/SKILL.md.\n- humanlayer/diagram-it: Explain the current topic visually: a small diagram, call tree, file tree, stat…\n- pstack/architect: Sketch types, signatures and module structure before code, run an arena of stru…\n- pstack/arena: Run N parallel candidate implementations of the same task on different models,…\n- pstack/automate-me: Use for \"automate me\", \"create/update/refresh my -mode skill\", \"turn/capture my…\n- pstack/benchmark-checklist: Vet a perf measurement (limiter, tuning, limits, errors, repeatability, relevan…\n- pstack/blast-radius: Find what a change could break somewhere else before it ships, beyond the diff,…\n- pstack/bro: Restate the last message in plain human language, with no jargon.\n- pstack/correct: Find the mistakes agents keep repeating in this repo and make each one impossib…\n- pstack/create-verification-skill: Generate a project-local verification skill (.pi/skills/verify-<app>/) that dri…\n- pstack/figure-it-out: Design an auditable playbook when no narrower one fits: a large migration, an a…\n- pstack/how: Use for \"how does X work\", code walkthroughs before changing something, and pla…\n- pstack/interrogate: Adversarial multi-model code review: run Ultron's /review once per model family…\n- pstack/maintain-verification-skill: Periodic pass that keeps a project's verification skill and feature map honest:…\n- pstack/no-comments: Hunt the comments in a diff or file set (one Comment Sicko frame per file), del…\n- pstack/recall: Reconstruct your recent working context from your own Ultron session history, l…\n- pstack/reflect: Review the current session through three reviewer lenses (judgment, tooling, di…\n- pstack/rigor: Rigorous engineering mode (poteto's way of working): routes a task to a playboo…\n- pstack/show-me-your-work: Keep a reviewable decision trail for long-running or unattended work: a TSV log…\n- pstack/swarm: Fan out N parallel subagents over slices of a task or as a race on one brief, c…\n- pstack/tdd: Use only when the user explicitly asks for TDD, a failing test, or a regression…\n- pstack/teach: Explain a body of work plainly so a person actually understands it.\n- pstack/technical-writing: Layered technical-writing standard: Diátaxis structure, Google developer style…\n- pstack/typescript-best-practices: TypeScript best practices for types, boundaries and module shape.\n- pstack/unslop: Cut AI tells from any writing.\n- pstack/why: Use for 'why does X work this way', 'why we picked Y', design rationale, regres…\n- qingyuna/answer-me-with-html: Answer a hard question with one visual HTML page: you write a short Markdown dr…\n</skills>\n\n<cwd>\n$ROOT/proj\n</cwd>"
+		},
+		{
+			"name": "rlmOnly",
+			"input": {
+				"selectedTools": [
+					"rlm"
+				],
+				"toolSnippets": {
+					"rlm": "Python REPL"
+				},
+				"toolGuidelines": {
+					"rlm": [
+						"Do all work through the rlm tool; batch related steps into one cell and keep intermediate results in variables"
+					]
+				},
+				"includeHarnessDocs": false
+			},
+			"skillsFrom": "all",
+			"contextFrom": "loaded",
+			"sections": [
+				[
+					"preamble",
+					"You are an expert coding assistant operating inside pi, a coding agent harness. You help users by reading files, executing commands, editing code, and writing new files."
+				],
+				[
+					"tools",
+					"<tools>\n- rlm: Python REPL\n</tools>"
+				],
+				[
+					"rules",
+					"<rules>\n- Do all work through the rlm tool; batch related steps into one cell and keep intermediate results in variables\n- Be concise in your responses\n- Show file paths clearly when working with files\n</rules>"
+				],
+				[
+					"project_context",
+					"<project_context>\nProject-specific instructions and guidelines:\n\n<project_instructions path=\"$ROOT/agent/AGENTS.md\">\nGlobal.\n\n</project_instructions>\n\n<project_instructions path=\"$ROOT/proj/AGENTS.md\">\nProject.\n\n</project_instructions>\n</project_context>"
+				],
+				[
+					"skills",
+					"<skills>\nThe following skills provide specialized instructions for specific tasks.\nLoad a skill's file in the rlm tool (`print(Path(location).read_text())`) when the task matches its description.\nWhen a skill file references a relative path, resolve it against the skill directory (parent of SKILL.md / dirname of the path) and use that absolute path in tool commands.\n\n<available_skills>\n  <skill>\n    <name>alpha</name>\n    <description>Alpha skill. Does alpha things &amp; more &lt;tags&gt;.</description>\n    <location>$ROOT/agent/skills/alpha/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>beta</name>\n    <description>Beta from dir name.</description>\n    <location>$ROOT/agent/skills/beta/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>Gamma_Bad--</name>\n    <description>Invalid name still loads.</description>\n    <location>$ROOT/agent/skills/group/gamma/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>multi</name>\n    <description>First line.\nSecond line with &apos;quotes&apos;.\n</description>\n    <location>$ROOT/agent/skills/multi/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>root-file</name>\n    <description>A root markdown skill.</description>\n    <location>$ROOT/agent/skills/root-file.md</location>\n  </skill>\n  <skill>\n    <name>proj-only</name>\n    <description>Project skill.</description>\n    <location>$ROOT/proj/.pi/skills/proj-only/SKILL.md</location>\n  </skill>\n</available_skills>\n\nBundled skills in $BUNDLED (<source>/<name>/SKILL.md). Read one only when the user asks for it or the task plainly calls for that workflow; ordinary coding needs none. The principles pstack's skills cite are pstack/principle-<name>/SKILL.md.\n- humanlayer/diagram-it: Explain the current topic visually: a small diagram, call tree, file tree, stat…\n- pstack/architect: Sketch types, signatures and module structure before code, run an arena of stru…\n- pstack/arena: Run N parallel candidate implementations of the same task on different models,…\n- pstack/automate-me: Use for \"automate me\", \"create/update/refresh my -mode skill\", \"turn/capture my…\n- pstack/benchmark-checklist: Vet a perf measurement (limiter, tuning, limits, errors, repeatability, relevan…\n- pstack/blast-radius: Find what a change could break somewhere else before it ships, beyond the diff,…\n- pstack/bro: Restate the last message in plain human language, with no jargon.\n- pstack/correct: Find the mistakes agents keep repeating in this repo and make each one impossib…\n- pstack/create-verification-skill: Generate a project-local verification skill (.pi/skills/verify-<app>/) that dri…\n- pstack/figure-it-out: Design an auditable playbook when no narrower one fits: a large migration, an a…\n- pstack/how: Use for \"how does X work\", code walkthroughs before changing something, and pla…\n- pstack/interrogate: Adversarial multi-model code review: run Ultron's /review once per model family…\n- pstack/maintain-verification-skill: Periodic pass that keeps a project's verification skill and feature map honest:…\n- pstack/no-comments: Hunt the comments in a diff or file set (one Comment Sicko frame per file), del…\n- pstack/recall: Reconstruct your recent working context from your own Ultron session history, l…\n- pstack/reflect: Review the current session through three reviewer lenses (judgment, tooling, di…\n- pstack/rigor: Rigorous engineering mode (poteto's way of working): routes a task to a playboo…\n- pstack/show-me-your-work: Keep a reviewable decision trail for long-running or unattended work: a TSV log…\n- pstack/swarm: Fan out N parallel subagents over slices of a task or as a race on one brief, c…\n- pstack/tdd: Use only when the user explicitly asks for TDD, a failing test, or a regression…\n- pstack/teach: Explain a body of work plainly so a person actually understands it.\n- pstack/technical-writing: Layered technical-writing standard: Diátaxis structure, Google developer style…\n- pstack/typescript-best-practices: TypeScript best practices for types, boundaries and module shape.\n- pstack/unslop: Cut AI tells from any writing.\n- pstack/why: Use for 'why does X work this way', 'why we picked Y', design rationale, regres…\n- qingyuna/answer-me-with-html: Answer a hard question with one visual HTML page: you write a short Markdown dr…\n</skills>"
+				],
+				[
+					"cwd",
+					"<cwd>\n$ROOT/proj\n</cwd>"
+				]
+			],
+			"text": "You are an expert coding assistant operating inside pi, a coding agent harness. You help users by reading files, executing commands, editing code, and writing new files.\n\n<tools>\n- rlm: Python REPL\n</tools>\n\n<rules>\n- Do all work through the rlm tool; batch related steps into one cell and keep intermediate results in variables\n- Be concise in your responses\n- Show file paths clearly when working with files\n</rules>\n\n<project_context>\nProject-specific instructions and guidelines:\n\n<project_instructions path=\"$ROOT/agent/AGENTS.md\">\nGlobal.\n\n</project_instructions>\n\n<project_instructions path=\"$ROOT/proj/AGENTS.md\">\nProject.\n\n</project_instructions>\n</project_context>\n\n<skills>\nThe following skills provide specialized instructions for specific tasks.\nLoad a skill's file in the rlm tool (`print(Path(location).read_text())`) when the task matches its description.\nWhen a skill file references a relative path, resolve it against the skill directory (parent of SKILL.md / dirname of the path) and use that absolute path in tool commands.\n\n<available_skills>\n  <skill>\n    <name>alpha</name>\n    <description>Alpha skill. Does alpha things &amp; more &lt;tags&gt;.</description>\n    <location>$ROOT/agent/skills/alpha/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>beta</name>\n    <description>Beta from dir name.</description>\n    <location>$ROOT/agent/skills/beta/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>Gamma_Bad--</name>\n    <description>Invalid name still loads.</description>\n    <location>$ROOT/agent/skills/group/gamma/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>multi</name>\n    <description>First line.\nSecond line with &apos;quotes&apos;.\n</description>\n    <location>$ROOT/agent/skills/multi/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>root-file</name>\n    <description>A root markdown skill.</description>\n    <location>$ROOT/agent/skills/root-file.md</location>\n  </skill>\n  <skill>\n    <name>proj-only</name>\n    <description>Project skill.</description>\n    <location>$ROOT/proj/.pi/skills/proj-only/SKILL.md</location>\n  </skill>\n</available_skills>\n\nBundled skills in $BUNDLED (<source>/<name>/SKILL.md). Read one only when the user asks for it or the task plainly calls for that workflow; ordinary coding needs none. The principles pstack's skills cite are pstack/principle-<name>/SKILL.md.\n- humanlayer/diagram-it: Explain the current topic visually: a small diagram, call tree, file tree, stat…\n- pstack/architect: Sketch types, signatures and module structure before code, run an arena of stru…\n- pstack/arena: Run N parallel candidate implementations of the same task on different models,…\n- pstack/automate-me: Use for \"automate me\", \"create/update/refresh my -mode skill\", \"turn/capture my…\n- pstack/benchmark-checklist: Vet a perf measurement (limiter, tuning, limits, errors, repeatability, relevan…\n- pstack/blast-radius: Find what a change could break somewhere else before it ships, beyond the diff,…\n- pstack/bro: Restate the last message in plain human language, with no jargon.\n- pstack/correct: Find the mistakes agents keep repeating in this repo and make each one impossib…\n- pstack/create-verification-skill: Generate a project-local verification skill (.pi/skills/verify-<app>/) that dri…\n- pstack/figure-it-out: Design an auditable playbook when no narrower one fits: a large migration, an a…\n- pstack/how: Use for \"how does X work\", code walkthroughs before changing something, and pla…\n- pstack/interrogate: Adversarial multi-model code review: run Ultron's /review once per model family…\n- pstack/maintain-verification-skill: Periodic pass that keeps a project's verification skill and feature map honest:…\n- pstack/no-comments: Hunt the comments in a diff or file set (one Comment Sicko frame per file), del…\n- pstack/recall: Reconstruct your recent working context from your own Ultron session history, l…\n- pstack/reflect: Review the current session through three reviewer lenses (judgment, tooling, di…\n- pstack/rigor: Rigorous engineering mode (poteto's way of working): routes a task to a playboo…\n- pstack/show-me-your-work: Keep a reviewable decision trail for long-running or unattended work: a TSV log…\n- pstack/swarm: Fan out N parallel subagents over slices of a task or as a race on one brief, c…\n- pstack/tdd: Use only when the user explicitly asks for TDD, a failing test, or a regression…\n- pstack/teach: Explain a body of work plainly so a person actually understands it.\n- pstack/technical-writing: Layered technical-writing standard: Diátaxis structure, Google developer style…\n- pstack/typescript-best-practices: TypeScript best practices for types, boundaries and module shape.\n- pstack/unslop: Cut AI tells from any writing.\n- pstack/why: Use for 'why does X work this way', 'why we picked Y', design rationale, regres…\n- qingyuna/answer-me-with-html: Answer a hard question with one visual HTML page: you write a short Markdown dr…\n</skills>\n\n<cwd>\n$ROOT/proj\n</cwd>"
+		},
+		{
+			"name": "engineering",
+			"input": {
+				"selectedTools": [
+					"rlm"
+				],
+				"engineering": true,
+				"includeHarnessDocs": false
+			},
+			"skillsFrom": "all",
+			"contextFrom": "loaded",
+			"sections": [
+				[
+					"preamble",
+					"You are an expert coding assistant operating inside pi, a coding agent harness. You help users by reading files, executing commands, editing code, and writing new files."
+				],
+				[
+					"tools",
+					"<tools>\n(none)\n</tools>"
+				],
+				[
+					"rules",
+					"<rules>\n- Be concise in your responses\n- Show file paths clearly when working with files\n</rules>"
+				],
+				[
+					"project_context",
+					"<project_context>\nProject-specific instructions and guidelines:\n\n<project_instructions path=\"$ROOT/agent/AGENTS.md\">\nGlobal.\n\n</project_instructions>\n\n<project_instructions path=\"$ROOT/proj/AGENTS.md\">\nProject.\n\n</project_instructions>\n</project_context>"
+				],
+				[
+					"skills",
+					"<skills>\nAlways-on skills: the user set these to apply to every task. Follow them without being asked; their text is below, so do not read their files.\n\n<skill name=\"alpha\" location=\"$ROOT/agent/skills/alpha/SKILL.md\">\nReferences are relative to $ROOT/agent/skills/alpha.\n\n# Body of alpha\nUse it well.\n</skill>\n\n<skill name=\"multi\" location=\"$ROOT/agent/skills/multi/SKILL.md\">\nReferences are relative to $ROOT/agent/skills/multi.\n\n# Body of multi\nUse it well.\n</skill>\n\nThe following skills provide specialized instructions for specific tasks.\nLoad a skill's file in the rlm tool (`print(Path(location).read_text())`) when the task matches its description.\nWhen a skill file references a relative path, resolve it against the skill directory (parent of SKILL.md / dirname of the path) and use that absolute path in tool commands.\n\n<available_skills>\n  <skill>\n    <name>beta</name>\n    <description>Beta from dir name.</description>\n    <location>$ROOT/agent/skills/beta/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>Gamma_Bad--</name>\n    <description>Invalid name still loads.</description>\n    <location>$ROOT/agent/skills/group/gamma/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>root-file</name>\n    <description>A root markdown skill.</description>\n    <location>$ROOT/agent/skills/root-file.md</location>\n  </skill>\n  <skill>\n    <name>proj-only</name>\n    <description>Project skill.</description>\n    <location>$ROOT/proj/.pi/skills/proj-only/SKILL.md</location>\n  </skill>\n</available_skills>\n\nBundled skills in $BUNDLED (<source>/<name>/SKILL.md). Read one only when the user asks for it or the task plainly calls for that workflow; ordinary coding needs none. The principles pstack's skills cite are pstack/principle-<name>/SKILL.md.\n- humanlayer/diagram-it: Explain the current topic visually: a small diagram, call tree, file tree, stat…\n- pstack/architect: Sketch types, signatures and module structure before code, run an arena of stru…\n- pstack/arena: Run N parallel candidate implementations of the same task on different models,…\n- pstack/automate-me: Use for \"automate me\", \"create/update/refresh my -mode skill\", \"turn/capture my…\n- pstack/benchmark-checklist: Vet a perf measurement (limiter, tuning, limits, errors, repeatability, relevan…\n- pstack/blast-radius: Find what a change could break somewhere else before it ships, beyond the diff,…\n- pstack/bro: Restate the last message in plain human language, with no jargon.\n- pstack/correct: Find the mistakes agents keep repeating in this repo and make each one impossib…\n- pstack/create-verification-skill: Generate a project-local verification skill (.pi/skills/verify-<app>/) that dri…\n- pstack/figure-it-out: Design an auditable playbook when no narrower one fits: a large migration, an a…\n- pstack/how: Use for \"how does X work\", code walkthroughs before changing something, and pla…\n- pstack/interrogate: Adversarial multi-model code review: run Ultron's /review once per model family…\n- pstack/maintain-verification-skill: Periodic pass that keeps a project's verification skill and feature map honest:…\n- pstack/no-comments: Hunt the comments in a diff or file set (one Comment Sicko frame per file), del…\n- pstack/recall: Reconstruct your recent working context from your own Ultron session history, l…\n- pstack/reflect: Review the current session through three reviewer lenses (judgment, tooling, di…\n- pstack/rigor: Rigorous engineering mode (poteto's way of working): routes a task to a playboo…\n- pstack/show-me-your-work: Keep a reviewable decision trail for long-running or unattended work: a TSV log…\n- pstack/swarm: Fan out N parallel subagents over slices of a task or as a race on one brief, c…\n- pstack/tdd: Use only when the user explicitly asks for TDD, a failing test, or a regression…\n- pstack/teach: Explain a body of work plainly so a person actually understands it.\n- pstack/technical-writing: Layered technical-writing standard: Diátaxis structure, Google developer style…\n- pstack/typescript-best-practices: TypeScript best practices for types, boundaries and module shape.\n- pstack/unslop: Cut AI tells from any writing.\n- pstack/why: Use for 'why does X work this way', 'why we picked Y', design rationale, regres…\n- qingyuna/answer-me-with-html: Answer a hard question with one visual HTML page: you write a short Markdown dr…\n</skills>"
+				],
+				[
+					"cwd",
+					"<cwd>\n$ROOT/proj\n</cwd>"
+				]
+			],
+			"text": "You are an expert coding assistant operating inside pi, a coding agent harness. You help users by reading files, executing commands, editing code, and writing new files.\n\n<tools>\n(none)\n</tools>\n\n<rules>\n- Be concise in your responses\n- Show file paths clearly when working with files\n</rules>\n\n<project_context>\nProject-specific instructions and guidelines:\n\n<project_instructions path=\"$ROOT/agent/AGENTS.md\">\nGlobal.\n\n</project_instructions>\n\n<project_instructions path=\"$ROOT/proj/AGENTS.md\">\nProject.\n\n</project_instructions>\n</project_context>\n\n<skills>\nAlways-on skills: the user set these to apply to every task. Follow them without being asked; their text is below, so do not read their files.\n\n<skill name=\"alpha\" location=\"$ROOT/agent/skills/alpha/SKILL.md\">\nReferences are relative to $ROOT/agent/skills/alpha.\n\n# Body of alpha\nUse it well.\n</skill>\n\n<skill name=\"multi\" location=\"$ROOT/agent/skills/multi/SKILL.md\">\nReferences are relative to $ROOT/agent/skills/multi.\n\n# Body of multi\nUse it well.\n</skill>\n\nThe following skills provide specialized instructions for specific tasks.\nLoad a skill's file in the rlm tool (`print(Path(location).read_text())`) when the task matches its description.\nWhen a skill file references a relative path, resolve it against the skill directory (parent of SKILL.md / dirname of the path) and use that absolute path in tool commands.\n\n<available_skills>\n  <skill>\n    <name>beta</name>\n    <description>Beta from dir name.</description>\n    <location>$ROOT/agent/skills/beta/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>Gamma_Bad--</name>\n    <description>Invalid name still loads.</description>\n    <location>$ROOT/agent/skills/group/gamma/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>root-file</name>\n    <description>A root markdown skill.</description>\n    <location>$ROOT/agent/skills/root-file.md</location>\n  </skill>\n  <skill>\n    <name>proj-only</name>\n    <description>Project skill.</description>\n    <location>$ROOT/proj/.pi/skills/proj-only/SKILL.md</location>\n  </skill>\n</available_skills>\n\nBundled skills in $BUNDLED (<source>/<name>/SKILL.md). Read one only when the user asks for it or the task plainly calls for that workflow; ordinary coding needs none. The principles pstack's skills cite are pstack/principle-<name>/SKILL.md.\n- humanlayer/diagram-it: Explain the current topic visually: a small diagram, call tree, file tree, stat…\n- pstack/architect: Sketch types, signatures and module structure before code, run an arena of stru…\n- pstack/arena: Run N parallel candidate implementations of the same task on different models,…\n- pstack/automate-me: Use for \"automate me\", \"create/update/refresh my -mode skill\", \"turn/capture my…\n- pstack/benchmark-checklist: Vet a perf measurement (limiter, tuning, limits, errors, repeatability, relevan…\n- pstack/blast-radius: Find what a change could break somewhere else before it ships, beyond the diff,…\n- pstack/bro: Restate the last message in plain human language, with no jargon.\n- pstack/correct: Find the mistakes agents keep repeating in this repo and make each one impossib…\n- pstack/create-verification-skill: Generate a project-local verification skill (.pi/skills/verify-<app>/) that dri…\n- pstack/figure-it-out: Design an auditable playbook when no narrower one fits: a large migration, an a…\n- pstack/how: Use for \"how does X work\", code walkthroughs before changing something, and pla…\n- pstack/interrogate: Adversarial multi-model code review: run Ultron's /review once per model family…\n- pstack/maintain-verification-skill: Periodic pass that keeps a project's verification skill and feature map honest:…\n- pstack/no-comments: Hunt the comments in a diff or file set (one Comment Sicko frame per file), del…\n- pstack/recall: Reconstruct your recent working context from your own Ultron session history, l…\n- pstack/reflect: Review the current session through three reviewer lenses (judgment, tooling, di…\n- pstack/rigor: Rigorous engineering mode (poteto's way of working): routes a task to a playboo…\n- pstack/show-me-your-work: Keep a reviewable decision trail for long-running or unattended work: a TSV log…\n- pstack/swarm: Fan out N parallel subagents over slices of a task or as a race on one brief, c…\n- pstack/tdd: Use only when the user explicitly asks for TDD, a failing test, or a regression…\n- pstack/teach: Explain a body of work plainly so a person actually understands it.\n- pstack/technical-writing: Layered technical-writing standard: Diátaxis structure, Google developer style…\n- pstack/typescript-best-practices: TypeScript best practices for types, boundaries and module shape.\n- pstack/unslop: Cut AI tells from any writing.\n- pstack/why: Use for 'why does X work this way', 'why we picked Y', design rationale, regres…\n- qingyuna/answer-me-with-html: Answer a hard question with one visual HTML page: you write a short Markdown dr…\n</skills>\n\n<cwd>\n$ROOT/proj\n</cwd>"
+		},
+		{
+			"name": "bashOnly",
+			"input": {
+				"selectedTools": [
+					"bash",
+					"powershell"
+				],
+				"toolSnippets": {
+					"bash": "Run shell",
+					"powershell": ""
+				},
+				"promptGuidelines": [
+					"  Be concise in your responses  ",
+					"Extra rule",
+					""
+				]
+			},
+			"skillsFrom": "all",
+			"contextFrom": "loaded",
+			"sections": [
+				[
+					"preamble",
+					"You are an expert coding assistant operating inside pi, a coding agent harness. You help users by reading files, executing commands, editing code, and writing new files."
+				],
+				[
+					"tools",
+					"<tools>\n- bash: Run shell\n\nIn addition to the tools above, you may have access to other custom tools depending on the project.\n</tools>"
+				],
+				[
+					"rules",
+					"<rules>\n- Use bash or PowerShell for file operations like listing, searching, and finding files\n- Be concise in your responses\n- Extra rule\n- Show file paths clearly when working with files\n</rules>"
+				],
+				[
+					"docs",
+					"<docs>\nPi documentation (read only when the user asks about pi itself, its SDK, extensions, themes, skills, or TUI):\n- Main documentation: $PKG/README.md\n- Additional docs: $PKG/docs\n- Examples: $PKG/examples (extensions, custom tools, SDK)\n- When reading pi docs or examples, resolve docs/... under Additional docs and examples/... under Examples, not the current working directory\n- When asked about: extensions (docs/extensions.md, examples/extensions/), themes (docs/themes.md), skills (docs/skills.md), prompt templates (docs/prompt-templates.md), TUI components (docs/tui.md), keybindings (docs/keybindings.md), SDK integrations (docs/sdk.md), custom providers (docs/custom-provider.md), adding models (docs/models.md), pi packages (docs/packages.md), environment variables (docs/environment-variables.md)\n- When working on pi topics, read the docs and examples, and follow .md cross-references before implementing\n- Always read pi .md files completely and follow links to related docs (e.g., tui.md for TUI API details)\n</docs>"
+				],
+				[
+					"project_context",
+					"<project_context>\nProject-specific instructions and guidelines:\n\n<project_instructions path=\"$ROOT/agent/AGENTS.md\">\nGlobal.\n\n</project_instructions>\n\n<project_instructions path=\"$ROOT/proj/AGENTS.md\">\nProject.\n\n</project_instructions>\n</project_context>"
+				],
+				[
+					"skills",
+					"<skills>\nThe following skills provide specialized instructions for specific tasks.\nUse bash to load a skill's file when the task matches its description.\nWhen a skill file references a relative path, resolve it against the skill directory (parent of SKILL.md / dirname of the path) and use that absolute path in tool commands.\n\n<available_skills>\n  <skill>\n    <name>alpha</name>\n    <description>Alpha skill. Does alpha things &amp; more &lt;tags&gt;.</description>\n    <location>$ROOT/agent/skills/alpha/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>beta</name>\n    <description>Beta from dir name.</description>\n    <location>$ROOT/agent/skills/beta/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>Gamma_Bad--</name>\n    <description>Invalid name still loads.</description>\n    <location>$ROOT/agent/skills/group/gamma/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>multi</name>\n    <description>First line.\nSecond line with &apos;quotes&apos;.\n</description>\n    <location>$ROOT/agent/skills/multi/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>root-file</name>\n    <description>A root markdown skill.</description>\n    <location>$ROOT/agent/skills/root-file.md</location>\n  </skill>\n  <skill>\n    <name>proj-only</name>\n    <description>Project skill.</description>\n    <location>$ROOT/proj/.pi/skills/proj-only/SKILL.md</location>\n  </skill>\n</available_skills>\n\nBundled skills in $BUNDLED (<source>/<name>/SKILL.md). Read one only when the user asks for it or the task plainly calls for that workflow; ordinary coding needs none. The principles pstack's skills cite are pstack/principle-<name>/SKILL.md.\n- humanlayer/diagram-it: Explain the current topic visually: a small diagram, call tree, file tree, stat…\n- pstack/architect: Sketch types, signatures and module structure before code, run an arena of stru…\n- pstack/arena: Run N parallel candidate implementations of the same task on different models,…\n- pstack/automate-me: Use for \"automate me\", \"create/update/refresh my -mode skill\", \"turn/capture my…\n- pstack/benchmark-checklist: Vet a perf measurement (limiter, tuning, limits, errors, repeatability, relevan…\n- pstack/blast-radius: Find what a change could break somewhere else before it ships, beyond the diff,…\n- pstack/bro: Restate the last message in plain human language, with no jargon.\n- pstack/correct: Find the mistakes agents keep repeating in this repo and make each one impossib…\n- pstack/create-verification-skill: Generate a project-local verification skill (.pi/skills/verify-<app>/) that dri…\n- pstack/figure-it-out: Design an auditable playbook when no narrower one fits: a large migration, an a…\n- pstack/how: Use for \"how does X work\", code walkthroughs before changing something, and pla…\n- pstack/interrogate: Adversarial multi-model code review: run Ultron's /review once per model family…\n- pstack/maintain-verification-skill: Periodic pass that keeps a project's verification skill and feature map honest:…\n- pstack/no-comments: Hunt the comments in a diff or file set (one Comment Sicko frame per file), del…\n- pstack/recall: Reconstruct your recent working context from your own Ultron session history, l…\n- pstack/reflect: Review the current session through three reviewer lenses (judgment, tooling, di…\n- pstack/rigor: Rigorous engineering mode (poteto's way of working): routes a task to a playboo…\n- pstack/show-me-your-work: Keep a reviewable decision trail for long-running or unattended work: a TSV log…\n- pstack/swarm: Fan out N parallel subagents over slices of a task or as a race on one brief, c…\n- pstack/tdd: Use only when the user explicitly asks for TDD, a failing test, or a regression…\n- pstack/teach: Explain a body of work plainly so a person actually understands it.\n- pstack/technical-writing: Layered technical-writing standard: Diátaxis structure, Google developer style…\n- pstack/typescript-best-practices: TypeScript best practices for types, boundaries and module shape.\n- pstack/unslop: Cut AI tells from any writing.\n- pstack/why: Use for 'why does X work this way', 'why we picked Y', design rationale, regres…\n- qingyuna/answer-me-with-html: Answer a hard question with one visual HTML page: you write a short Markdown dr…\n</skills>"
+				],
+				[
+					"cwd",
+					"<cwd>\n$ROOT/proj\n</cwd>"
+				]
+			],
+			"text": "You are an expert coding assistant operating inside pi, a coding agent harness. You help users by reading files, executing commands, editing code, and writing new files.\n\n<tools>\n- bash: Run shell\n\nIn addition to the tools above, you may have access to other custom tools depending on the project.\n</tools>\n\n<rules>\n- Use bash or PowerShell for file operations like listing, searching, and finding files\n- Be concise in your responses\n- Extra rule\n- Show file paths clearly when working with files\n</rules>\n\n<docs>\nPi documentation (read only when the user asks about pi itself, its SDK, extensions, themes, skills, or TUI):\n- Main documentation: $PKG/README.md\n- Additional docs: $PKG/docs\n- Examples: $PKG/examples (extensions, custom tools, SDK)\n- When reading pi docs or examples, resolve docs/... under Additional docs and examples/... under Examples, not the current working directory\n- When asked about: extensions (docs/extensions.md, examples/extensions/), themes (docs/themes.md), skills (docs/skills.md), prompt templates (docs/prompt-templates.md), TUI components (docs/tui.md), keybindings (docs/keybindings.md), SDK integrations (docs/sdk.md), custom providers (docs/custom-provider.md), adding models (docs/models.md), pi packages (docs/packages.md), environment variables (docs/environment-variables.md)\n- When working on pi topics, read the docs and examples, and follow .md cross-references before implementing\n- Always read pi .md files completely and follow links to related docs (e.g., tui.md for TUI API details)\n</docs>\n\n<project_context>\nProject-specific instructions and guidelines:\n\n<project_instructions path=\"$ROOT/agent/AGENTS.md\">\nGlobal.\n\n</project_instructions>\n\n<project_instructions path=\"$ROOT/proj/AGENTS.md\">\nProject.\n\n</project_instructions>\n</project_context>\n\n<skills>\nThe following skills provide specialized instructions for specific tasks.\nUse bash to load a skill's file when the task matches its description.\nWhen a skill file references a relative path, resolve it against the skill directory (parent of SKILL.md / dirname of the path) and use that absolute path in tool commands.\n\n<available_skills>\n  <skill>\n    <name>alpha</name>\n    <description>Alpha skill. Does alpha things &amp; more &lt;tags&gt;.</description>\n    <location>$ROOT/agent/skills/alpha/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>beta</name>\n    <description>Beta from dir name.</description>\n    <location>$ROOT/agent/skills/beta/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>Gamma_Bad--</name>\n    <description>Invalid name still loads.</description>\n    <location>$ROOT/agent/skills/group/gamma/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>multi</name>\n    <description>First line.\nSecond line with &apos;quotes&apos;.\n</description>\n    <location>$ROOT/agent/skills/multi/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>root-file</name>\n    <description>A root markdown skill.</description>\n    <location>$ROOT/agent/skills/root-file.md</location>\n  </skill>\n  <skill>\n    <name>proj-only</name>\n    <description>Project skill.</description>\n    <location>$ROOT/proj/.pi/skills/proj-only/SKILL.md</location>\n  </skill>\n</available_skills>\n\nBundled skills in $BUNDLED (<source>/<name>/SKILL.md). Read one only when the user asks for it or the task plainly calls for that workflow; ordinary coding needs none. The principles pstack's skills cite are pstack/principle-<name>/SKILL.md.\n- humanlayer/diagram-it: Explain the current topic visually: a small diagram, call tree, file tree, stat…\n- pstack/architect: Sketch types, signatures and module structure before code, run an arena of stru…\n- pstack/arena: Run N parallel candidate implementations of the same task on different models,…\n- pstack/automate-me: Use for \"automate me\", \"create/update/refresh my -mode skill\", \"turn/capture my…\n- pstack/benchmark-checklist: Vet a perf measurement (limiter, tuning, limits, errors, repeatability, relevan…\n- pstack/blast-radius: Find what a change could break somewhere else before it ships, beyond the diff,…\n- pstack/bro: Restate the last message in plain human language, with no jargon.\n- pstack/correct: Find the mistakes agents keep repeating in this repo and make each one impossib…\n- pstack/create-verification-skill: Generate a project-local verification skill (.pi/skills/verify-<app>/) that dri…\n- pstack/figure-it-out: Design an auditable playbook when no narrower one fits: a large migration, an a…\n- pstack/how: Use for \"how does X work\", code walkthroughs before changing something, and pla…\n- pstack/interrogate: Adversarial multi-model code review: run Ultron's /review once per model family…\n- pstack/maintain-verification-skill: Periodic pass that keeps a project's verification skill and feature map honest:…\n- pstack/no-comments: Hunt the comments in a diff or file set (one Comment Sicko frame per file), del…\n- pstack/recall: Reconstruct your recent working context from your own Ultron session history, l…\n- pstack/reflect: Review the current session through three reviewer lenses (judgment, tooling, di…\n- pstack/rigor: Rigorous engineering mode (poteto's way of working): routes a task to a playboo…\n- pstack/show-me-your-work: Keep a reviewable decision trail for long-running or unattended work: a TSV log…\n- pstack/swarm: Fan out N parallel subagents over slices of a task or as a race on one brief, c…\n- pstack/tdd: Use only when the user explicitly asks for TDD, a failing test, or a regression…\n- pstack/teach: Explain a body of work plainly so a person actually understands it.\n- pstack/technical-writing: Layered technical-writing standard: Diátaxis structure, Google developer style…\n- pstack/typescript-best-practices: TypeScript best practices for types, boundaries and module shape.\n- pstack/unslop: Cut AI tells from any writing.\n- pstack/why: Use for 'why does X work this way', 'why we picked Y', design rationale, regres…\n- qingyuna/answer-me-with-html: Answer a hard question with one visual HTML page: you write a short Markdown dr…\n</skills>\n\n<cwd>\n$ROOT/proj\n</cwd>"
+		},
+		{
+			"name": "grepTools",
+			"input": {
+				"selectedTools": [
+					"read",
+					"bash",
+					"grep"
+				],
+				"toolGuidelines": {
+					"read": [
+						"Read first",
+						"Extra rule"
+					],
+					"grep": [
+						"Grep rule"
+					]
+				},
+				"promptGuidelines": [
+					"Extra rule"
+				]
+			},
+			"skillsFrom": "all",
+			"contextFrom": "loaded",
+			"sections": [
+				[
+					"preamble",
+					"You are an expert coding assistant operating inside pi, a coding agent harness. You help users by reading files, executing commands, editing code, and writing new files."
+				],
+				[
+					"tools",
+					"<tools>\n(none)\n\nIn addition to the tools above, you may have access to other custom tools depending on the project.\n</tools>"
+				],
+				[
+					"rules",
+					"<rules>\n- Read first\n- Extra rule\n- Grep rule\n- Be concise in your responses\n- Show file paths clearly when working with files\n</rules>"
+				],
+				[
+					"docs",
+					"<docs>\nPi documentation (read only when the user asks about pi itself, its SDK, extensions, themes, skills, or TUI):\n- Main documentation: $PKG/README.md\n- Additional docs: $PKG/docs\n- Examples: $PKG/examples (extensions, custom tools, SDK)\n- When reading pi docs or examples, resolve docs/... under Additional docs and examples/... under Examples, not the current working directory\n- When asked about: extensions (docs/extensions.md, examples/extensions/), themes (docs/themes.md), skills (docs/skills.md), prompt templates (docs/prompt-templates.md), TUI components (docs/tui.md), keybindings (docs/keybindings.md), SDK integrations (docs/sdk.md), custom providers (docs/custom-provider.md), adding models (docs/models.md), pi packages (docs/packages.md), environment variables (docs/environment-variables.md)\n- When working on pi topics, read the docs and examples, and follow .md cross-references before implementing\n- Always read pi .md files completely and follow links to related docs (e.g., tui.md for TUI API details)\n</docs>"
+				],
+				[
+					"project_context",
+					"<project_context>\nProject-specific instructions and guidelines:\n\n<project_instructions path=\"$ROOT/agent/AGENTS.md\">\nGlobal.\n\n</project_instructions>\n\n<project_instructions path=\"$ROOT/proj/AGENTS.md\">\nProject.\n\n</project_instructions>\n</project_context>"
+				],
+				[
+					"skills",
+					"<skills>\nThe following skills provide specialized instructions for specific tasks.\nUse the read tool to load a skill's file when the task matches its description.\nWhen a skill file references a relative path, resolve it against the skill directory (parent of SKILL.md / dirname of the path) and use that absolute path in tool commands.\n\n<available_skills>\n  <skill>\n    <name>alpha</name>\n    <description>Alpha skill. Does alpha things &amp; more &lt;tags&gt;.</description>\n    <location>$ROOT/agent/skills/alpha/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>beta</name>\n    <description>Beta from dir name.</description>\n    <location>$ROOT/agent/skills/beta/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>Gamma_Bad--</name>\n    <description>Invalid name still loads.</description>\n    <location>$ROOT/agent/skills/group/gamma/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>multi</name>\n    <description>First line.\nSecond line with &apos;quotes&apos;.\n</description>\n    <location>$ROOT/agent/skills/multi/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>root-file</name>\n    <description>A root markdown skill.</description>\n    <location>$ROOT/agent/skills/root-file.md</location>\n  </skill>\n  <skill>\n    <name>proj-only</name>\n    <description>Project skill.</description>\n    <location>$ROOT/proj/.pi/skills/proj-only/SKILL.md</location>\n  </skill>\n</available_skills>\n\nBundled skills in $BUNDLED (<source>/<name>/SKILL.md). Read one only when the user asks for it or the task plainly calls for that workflow; ordinary coding needs none. The principles pstack's skills cite are pstack/principle-<name>/SKILL.md.\n- humanlayer/diagram-it: Explain the current topic visually: a small diagram, call tree, file tree, stat…\n- pstack/architect: Sketch types, signatures and module structure before code, run an arena of stru…\n- pstack/arena: Run N parallel candidate implementations of the same task on different models,…\n- pstack/automate-me: Use for \"automate me\", \"create/update/refresh my -mode skill\", \"turn/capture my…\n- pstack/benchmark-checklist: Vet a perf measurement (limiter, tuning, limits, errors, repeatability, relevan…\n- pstack/blast-radius: Find what a change could break somewhere else before it ships, beyond the diff,…\n- pstack/bro: Restate the last message in plain human language, with no jargon.\n- pstack/correct: Find the mistakes agents keep repeating in this repo and make each one impossib…\n- pstack/create-verification-skill: Generate a project-local verification skill (.pi/skills/verify-<app>/) that dri…\n- pstack/figure-it-out: Design an auditable playbook when no narrower one fits: a large migration, an a…\n- pstack/how: Use for \"how does X work\", code walkthroughs before changing something, and pla…\n- pstack/interrogate: Adversarial multi-model code review: run Ultron's /review once per model family…\n- pstack/maintain-verification-skill: Periodic pass that keeps a project's verification skill and feature map honest:…\n- pstack/no-comments: Hunt the comments in a diff or file set (one Comment Sicko frame per file), del…\n- pstack/recall: Reconstruct your recent working context from your own Ultron session history, l…\n- pstack/reflect: Review the current session through three reviewer lenses (judgment, tooling, di…\n- pstack/rigor: Rigorous engineering mode (poteto's way of working): routes a task to a playboo…\n- pstack/show-me-your-work: Keep a reviewable decision trail for long-running or unattended work: a TSV log…\n- pstack/swarm: Fan out N parallel subagents over slices of a task or as a race on one brief, c…\n- pstack/tdd: Use only when the user explicitly asks for TDD, a failing test, or a regression…\n- pstack/teach: Explain a body of work plainly so a person actually understands it.\n- pstack/technical-writing: Layered technical-writing standard: Diátaxis structure, Google developer style…\n- pstack/typescript-best-practices: TypeScript best practices for types, boundaries and module shape.\n- pstack/unslop: Cut AI tells from any writing.\n- pstack/why: Use for 'why does X work this way', 'why we picked Y', design rationale, regres…\n- qingyuna/answer-me-with-html: Answer a hard question with one visual HTML page: you write a short Markdown dr…\n</skills>"
+				],
+				[
+					"cwd",
+					"<cwd>\n$ROOT/proj\n</cwd>"
+				]
+			],
+			"text": "You are an expert coding assistant operating inside pi, a coding agent harness. You help users by reading files, executing commands, editing code, and writing new files.\n\n<tools>\n(none)\n\nIn addition to the tools above, you may have access to other custom tools depending on the project.\n</tools>\n\n<rules>\n- Read first\n- Extra rule\n- Grep rule\n- Be concise in your responses\n- Show file paths clearly when working with files\n</rules>\n\n<docs>\nPi documentation (read only when the user asks about pi itself, its SDK, extensions, themes, skills, or TUI):\n- Main documentation: $PKG/README.md\n- Additional docs: $PKG/docs\n- Examples: $PKG/examples (extensions, custom tools, SDK)\n- When reading pi docs or examples, resolve docs/... under Additional docs and examples/... under Examples, not the current working directory\n- When asked about: extensions (docs/extensions.md, examples/extensions/), themes (docs/themes.md), skills (docs/skills.md), prompt templates (docs/prompt-templates.md), TUI components (docs/tui.md), keybindings (docs/keybindings.md), SDK integrations (docs/sdk.md), custom providers (docs/custom-provider.md), adding models (docs/models.md), pi packages (docs/packages.md), environment variables (docs/environment-variables.md)\n- When working on pi topics, read the docs and examples, and follow .md cross-references before implementing\n- Always read pi .md files completely and follow links to related docs (e.g., tui.md for TUI API details)\n</docs>\n\n<project_context>\nProject-specific instructions and guidelines:\n\n<project_instructions path=\"$ROOT/agent/AGENTS.md\">\nGlobal.\n\n</project_instructions>\n\n<project_instructions path=\"$ROOT/proj/AGENTS.md\">\nProject.\n\n</project_instructions>\n</project_context>\n\n<skills>\nThe following skills provide specialized instructions for specific tasks.\nUse the read tool to load a skill's file when the task matches its description.\nWhen a skill file references a relative path, resolve it against the skill directory (parent of SKILL.md / dirname of the path) and use that absolute path in tool commands.\n\n<available_skills>\n  <skill>\n    <name>alpha</name>\n    <description>Alpha skill. Does alpha things &amp; more &lt;tags&gt;.</description>\n    <location>$ROOT/agent/skills/alpha/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>beta</name>\n    <description>Beta from dir name.</description>\n    <location>$ROOT/agent/skills/beta/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>Gamma_Bad--</name>\n    <description>Invalid name still loads.</description>\n    <location>$ROOT/agent/skills/group/gamma/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>multi</name>\n    <description>First line.\nSecond line with &apos;quotes&apos;.\n</description>\n    <location>$ROOT/agent/skills/multi/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>root-file</name>\n    <description>A root markdown skill.</description>\n    <location>$ROOT/agent/skills/root-file.md</location>\n  </skill>\n  <skill>\n    <name>proj-only</name>\n    <description>Project skill.</description>\n    <location>$ROOT/proj/.pi/skills/proj-only/SKILL.md</location>\n  </skill>\n</available_skills>\n\nBundled skills in $BUNDLED (<source>/<name>/SKILL.md). Read one only when the user asks for it or the task plainly calls for that workflow; ordinary coding needs none. The principles pstack's skills cite are pstack/principle-<name>/SKILL.md.\n- humanlayer/diagram-it: Explain the current topic visually: a small diagram, call tree, file tree, stat…\n- pstack/architect: Sketch types, signatures and module structure before code, run an arena of stru…\n- pstack/arena: Run N parallel candidate implementations of the same task on different models,…\n- pstack/automate-me: Use for \"automate me\", \"create/update/refresh my -mode skill\", \"turn/capture my…\n- pstack/benchmark-checklist: Vet a perf measurement (limiter, tuning, limits, errors, repeatability, relevan…\n- pstack/blast-radius: Find what a change could break somewhere else before it ships, beyond the diff,…\n- pstack/bro: Restate the last message in plain human language, with no jargon.\n- pstack/correct: Find the mistakes agents keep repeating in this repo and make each one impossib…\n- pstack/create-verification-skill: Generate a project-local verification skill (.pi/skills/verify-<app>/) that dri…\n- pstack/figure-it-out: Design an auditable playbook when no narrower one fits: a large migration, an a…\n- pstack/how: Use for \"how does X work\", code walkthroughs before changing something, and pla…\n- pstack/interrogate: Adversarial multi-model code review: run Ultron's /review once per model family…\n- pstack/maintain-verification-skill: Periodic pass that keeps a project's verification skill and feature map honest:…\n- pstack/no-comments: Hunt the comments in a diff or file set (one Comment Sicko frame per file), del…\n- pstack/recall: Reconstruct your recent working context from your own Ultron session history, l…\n- pstack/reflect: Review the current session through three reviewer lenses (judgment, tooling, di…\n- pstack/rigor: Rigorous engineering mode (poteto's way of working): routes a task to a playboo…\n- pstack/show-me-your-work: Keep a reviewable decision trail for long-running or unattended work: a TSV log…\n- pstack/swarm: Fan out N parallel subagents over slices of a task or as a race on one brief, c…\n- pstack/tdd: Use only when the user explicitly asks for TDD, a failing test, or a regression…\n- pstack/teach: Explain a body of work plainly so a person actually understands it.\n- pstack/technical-writing: Layered technical-writing standard: Diátaxis structure, Google developer style…\n- pstack/typescript-best-practices: TypeScript best practices for types, boundaries and module shape.\n- pstack/unslop: Cut AI tells from any writing.\n- pstack/why: Use for 'why does X work this way', 'why we picked Y', design rationale, regres…\n- qingyuna/answer-me-with-html: Answer a hard question with one visual HTML page: you write a short Markdown dr…\n</skills>\n\n<cwd>\n$ROOT/proj\n</cwd>"
+		},
+		{
+			"name": "pwsh",
+			"input": {
+				"selectedTools": [
+					"powershell",
+					"edit"
+				]
+			},
+			"skillsFrom": "all",
+			"contextFrom": "loaded",
+			"sections": [
+				[
+					"preamble",
+					"You are an expert coding assistant operating inside pi, a coding agent harness. You help users by reading files, executing commands, editing code, and writing new files."
+				],
+				[
+					"tools",
+					"<tools>\n(none)\n\nIn addition to the tools above, you may have access to other custom tools depending on the project.\n</tools>"
+				],
+				[
+					"rules",
+					"<rules>\n- Use PowerShell for file operations like listing, searching, and finding files\n- Be concise in your responses\n- Show file paths clearly when working with files\n</rules>"
+				],
+				[
+					"docs",
+					"<docs>\nPi documentation (read only when the user asks about pi itself, its SDK, extensions, themes, skills, or TUI):\n- Main documentation: $PKG/README.md\n- Additional docs: $PKG/docs\n- Examples: $PKG/examples (extensions, custom tools, SDK)\n- When reading pi docs or examples, resolve docs/... under Additional docs and examples/... under Examples, not the current working directory\n- When asked about: extensions (docs/extensions.md, examples/extensions/), themes (docs/themes.md), skills (docs/skills.md), prompt templates (docs/prompt-templates.md), TUI components (docs/tui.md), keybindings (docs/keybindings.md), SDK integrations (docs/sdk.md), custom providers (docs/custom-provider.md), adding models (docs/models.md), pi packages (docs/packages.md), environment variables (docs/environment-variables.md)\n- When working on pi topics, read the docs and examples, and follow .md cross-references before implementing\n- Always read pi .md files completely and follow links to related docs (e.g., tui.md for TUI API details)\n</docs>"
+				],
+				[
+					"project_context",
+					"<project_context>\nProject-specific instructions and guidelines:\n\n<project_instructions path=\"$ROOT/agent/AGENTS.md\">\nGlobal.\n\n</project_instructions>\n\n<project_instructions path=\"$ROOT/proj/AGENTS.md\">\nProject.\n\n</project_instructions>\n</project_context>"
+				],
+				[
+					"cwd",
+					"<cwd>\n$ROOT/proj\n</cwd>"
+				]
+			],
+			"text": "You are an expert coding assistant operating inside pi, a coding agent harness. You help users by reading files, executing commands, editing code, and writing new files.\n\n<tools>\n(none)\n\nIn addition to the tools above, you may have access to other custom tools depending on the project.\n</tools>\n\n<rules>\n- Use PowerShell for file operations like listing, searching, and finding files\n- Be concise in your responses\n- Show file paths clearly when working with files\n</rules>\n\n<docs>\nPi documentation (read only when the user asks about pi itself, its SDK, extensions, themes, skills, or TUI):\n- Main documentation: $PKG/README.md\n- Additional docs: $PKG/docs\n- Examples: $PKG/examples (extensions, custom tools, SDK)\n- When reading pi docs or examples, resolve docs/... under Additional docs and examples/... under Examples, not the current working directory\n- When asked about: extensions (docs/extensions.md, examples/extensions/), themes (docs/themes.md), skills (docs/skills.md), prompt templates (docs/prompt-templates.md), TUI components (docs/tui.md), keybindings (docs/keybindings.md), SDK integrations (docs/sdk.md), custom providers (docs/custom-provider.md), adding models (docs/models.md), pi packages (docs/packages.md), environment variables (docs/environment-variables.md)\n- When working on pi topics, read the docs and examples, and follow .md cross-references before implementing\n- Always read pi .md files completely and follow links to related docs (e.g., tui.md for TUI API details)\n</docs>\n\n<project_context>\nProject-specific instructions and guidelines:\n\n<project_instructions path=\"$ROOT/agent/AGENTS.md\">\nGlobal.\n\n</project_instructions>\n\n<project_instructions path=\"$ROOT/proj/AGENTS.md\">\nProject.\n\n</project_instructions>\n</project_context>\n\n<cwd>\n$ROOT/proj\n</cwd>"
+		},
+		{
+			"name": "custom",
+			"input": {
+				"customPrompt": "Custom preamble.",
+				"appendSystemPrompt": "Appended text.",
+				"sections": {
+					"tools": "override tools",
+					"extra_one": "Extra section.",
+					"empty": ""
+				}
+			},
+			"skillsFrom": "all",
+			"contextFrom": "loaded",
+			"sections": [
+				[
+					"preamble",
+					"Custom preamble."
+				],
+				[
+					"addendum",
+					"<addendum>\nAppended text.\n</addendum>"
+				],
+				[
+					"project_context",
+					"<project_context>\nProject-specific instructions and guidelines:\n\n<project_instructions path=\"$ROOT/agent/AGENTS.md\">\nGlobal.\n\n</project_instructions>\n\n<project_instructions path=\"$ROOT/proj/AGENTS.md\">\nProject.\n\n</project_instructions>\n</project_context>"
+				],
+				[
+					"skills",
+					"<skills>\nThe following skills provide specialized instructions for specific tasks.\nUse the read tool to load a skill's file when the task matches its description.\nWhen a skill file references a relative path, resolve it against the skill directory (parent of SKILL.md / dirname of the path) and use that absolute path in tool commands.\n\n<available_skills>\n  <skill>\n    <name>alpha</name>\n    <description>Alpha skill. Does alpha things &amp; more &lt;tags&gt;.</description>\n    <location>$ROOT/agent/skills/alpha/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>beta</name>\n    <description>Beta from dir name.</description>\n    <location>$ROOT/agent/skills/beta/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>Gamma_Bad--</name>\n    <description>Invalid name still loads.</description>\n    <location>$ROOT/agent/skills/group/gamma/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>multi</name>\n    <description>First line.\nSecond line with &apos;quotes&apos;.\n</description>\n    <location>$ROOT/agent/skills/multi/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>root-file</name>\n    <description>A root markdown skill.</description>\n    <location>$ROOT/agent/skills/root-file.md</location>\n  </skill>\n  <skill>\n    <name>proj-only</name>\n    <description>Project skill.</description>\n    <location>$ROOT/proj/.pi/skills/proj-only/SKILL.md</location>\n  </skill>\n</available_skills>\n\nBundled skills in $BUNDLED (<source>/<name>/SKILL.md). Read one only when the user asks for it or the task plainly calls for that workflow; ordinary coding needs none. The principles pstack's skills cite are pstack/principle-<name>/SKILL.md.\n- humanlayer/diagram-it: Explain the current topic visually: a small diagram, call tree, file tree, stat…\n- pstack/architect: Sketch types, signatures and module structure before code, run an arena of stru…\n- pstack/arena: Run N parallel candidate implementations of the same task on different models,…\n- pstack/automate-me: Use for \"automate me\", \"create/update/refresh my -mode skill\", \"turn/capture my…\n- pstack/benchmark-checklist: Vet a perf measurement (limiter, tuning, limits, errors, repeatability, relevan…\n- pstack/blast-radius: Find what a change could break somewhere else before it ships, beyond the diff,…\n- pstack/bro: Restate the last message in plain human language, with no jargon.\n- pstack/correct: Find the mistakes agents keep repeating in this repo and make each one impossib…\n- pstack/create-verification-skill: Generate a project-local verification skill (.pi/skills/verify-<app>/) that dri…\n- pstack/figure-it-out: Design an auditable playbook when no narrower one fits: a large migration, an a…\n- pstack/how: Use for \"how does X work\", code walkthroughs before changing something, and pla…\n- pstack/interrogate: Adversarial multi-model code review: run Ultron's /review once per model family…\n- pstack/maintain-verification-skill: Periodic pass that keeps a project's verification skill and feature map honest:…\n- pstack/no-comments: Hunt the comments in a diff or file set (one Comment Sicko frame per file), del…\n- pstack/recall: Reconstruct your recent working context from your own Ultron session history, l…\n- pstack/reflect: Review the current session through three reviewer lenses (judgment, tooling, di…\n- pstack/rigor: Rigorous engineering mode (poteto's way of working): routes a task to a playboo…\n- pstack/show-me-your-work: Keep a reviewable decision trail for long-running or unattended work: a TSV log…\n- pstack/swarm: Fan out N parallel subagents over slices of a task or as a race on one brief, c…\n- pstack/tdd: Use only when the user explicitly asks for TDD, a failing test, or a regression…\n- pstack/teach: Explain a body of work plainly so a person actually understands it.\n- pstack/technical-writing: Layered technical-writing standard: Diátaxis structure, Google developer style…\n- pstack/typescript-best-practices: TypeScript best practices for types, boundaries and module shape.\n- pstack/unslop: Cut AI tells from any writing.\n- pstack/why: Use for 'why does X work this way', 'why we picked Y', design rationale, regres…\n- qingyuna/answer-me-with-html: Answer a hard question with one visual HTML page: you write a short Markdown dr…\n</skills>"
+				],
+				[
+					"cwd",
+					"<cwd>\n$ROOT/proj\n</cwd>"
+				],
+				[
+					"tools",
+					"<tools>\noverride tools\n</tools>"
+				],
+				[
+					"extra_one",
+					"<extra_one>\nExtra section.\n</extra_one>"
+				]
+			],
+			"text": "Custom preamble.\n\n<addendum>\nAppended text.\n</addendum>\n\n<project_context>\nProject-specific instructions and guidelines:\n\n<project_instructions path=\"$ROOT/agent/AGENTS.md\">\nGlobal.\n\n</project_instructions>\n\n<project_instructions path=\"$ROOT/proj/AGENTS.md\">\nProject.\n\n</project_instructions>\n</project_context>\n\n<skills>\nThe following skills provide specialized instructions for specific tasks.\nUse the read tool to load a skill's file when the task matches its description.\nWhen a skill file references a relative path, resolve it against the skill directory (parent of SKILL.md / dirname of the path) and use that absolute path in tool commands.\n\n<available_skills>\n  <skill>\n    <name>alpha</name>\n    <description>Alpha skill. Does alpha things &amp; more &lt;tags&gt;.</description>\n    <location>$ROOT/agent/skills/alpha/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>beta</name>\n    <description>Beta from dir name.</description>\n    <location>$ROOT/agent/skills/beta/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>Gamma_Bad--</name>\n    <description>Invalid name still loads.</description>\n    <location>$ROOT/agent/skills/group/gamma/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>multi</name>\n    <description>First line.\nSecond line with &apos;quotes&apos;.\n</description>\n    <location>$ROOT/agent/skills/multi/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>root-file</name>\n    <description>A root markdown skill.</description>\n    <location>$ROOT/agent/skills/root-file.md</location>\n  </skill>\n  <skill>\n    <name>proj-only</name>\n    <description>Project skill.</description>\n    <location>$ROOT/proj/.pi/skills/proj-only/SKILL.md</location>\n  </skill>\n</available_skills>\n\nBundled skills in $BUNDLED (<source>/<name>/SKILL.md). Read one only when the user asks for it or the task plainly calls for that workflow; ordinary coding needs none. The principles pstack's skills cite are pstack/principle-<name>/SKILL.md.\n- humanlayer/diagram-it: Explain the current topic visually: a small diagram, call tree, file tree, stat…\n- pstack/architect: Sketch types, signatures and module structure before code, run an arena of stru…\n- pstack/arena: Run N parallel candidate implementations of the same task on different models,…\n- pstack/automate-me: Use for \"automate me\", \"create/update/refresh my -mode skill\", \"turn/capture my…\n- pstack/benchmark-checklist: Vet a perf measurement (limiter, tuning, limits, errors, repeatability, relevan…\n- pstack/blast-radius: Find what a change could break somewhere else before it ships, beyond the diff,…\n- pstack/bro: Restate the last message in plain human language, with no jargon.\n- pstack/correct: Find the mistakes agents keep repeating in this repo and make each one impossib…\n- pstack/create-verification-skill: Generate a project-local verification skill (.pi/skills/verify-<app>/) that dri…\n- pstack/figure-it-out: Design an auditable playbook when no narrower one fits: a large migration, an a…\n- pstack/how: Use for \"how does X work\", code walkthroughs before changing something, and pla…\n- pstack/interrogate: Adversarial multi-model code review: run Ultron's /review once per model family…\n- pstack/maintain-verification-skill: Periodic pass that keeps a project's verification skill and feature map honest:…\n- pstack/no-comments: Hunt the comments in a diff or file set (one Comment Sicko frame per file), del…\n- pstack/recall: Reconstruct your recent working context from your own Ultron session history, l…\n- pstack/reflect: Review the current session through three reviewer lenses (judgment, tooling, di…\n- pstack/rigor: Rigorous engineering mode (poteto's way of working): routes a task to a playboo…\n- pstack/show-me-your-work: Keep a reviewable decision trail for long-running or unattended work: a TSV log…\n- pstack/swarm: Fan out N parallel subagents over slices of a task or as a race on one brief, c…\n- pstack/tdd: Use only when the user explicitly asks for TDD, a failing test, or a regression…\n- pstack/teach: Explain a body of work plainly so a person actually understands it.\n- pstack/technical-writing: Layered technical-writing standard: Diátaxis structure, Google developer style…\n- pstack/typescript-best-practices: TypeScript best practices for types, boundaries and module shape.\n- pstack/unslop: Cut AI tells from any writing.\n- pstack/why: Use for 'why does X work this way', 'why we picked Y', design rationale, regres…\n- qingyuna/answer-me-with-html: Answer a hard question with one visual HTML page: you write a short Markdown dr…\n</skills>\n\n<cwd>\n$ROOT/proj\n</cwd>\n\n<tools>\noverride tools\n</tools>\n\n<extra_one>\nExtra section.\n</extra_one>"
+		},
+		{
+			"name": "overrideSection",
+			"input": {
+				"sections": {
+					"rules": "Custom rules.",
+					"cwd": "elsewhere",
+					"after": "Last."
+				}
+			},
+			"skillsFrom": "all",
+			"contextFrom": "loaded",
+			"sections": [
+				[
+					"preamble",
+					"You are an expert coding assistant operating inside pi, a coding agent harness. You help users by reading files, executing commands, editing code, and writing new files."
+				],
+				[
+					"tools",
+					"<tools>\n(none)\n\nIn addition to the tools above, you may have access to other custom tools depending on the project.\n</tools>"
+				],
+				[
+					"rules",
+					"<rules>\nCustom rules.\n</rules>"
+				],
+				[
+					"docs",
+					"<docs>\nPi documentation (read only when the user asks about pi itself, its SDK, extensions, themes, skills, or TUI):\n- Main documentation: $PKG/README.md\n- Additional docs: $PKG/docs\n- Examples: $PKG/examples (extensions, custom tools, SDK)\n- When reading pi docs or examples, resolve docs/... under Additional docs and examples/... under Examples, not the current working directory\n- When asked about: extensions (docs/extensions.md, examples/extensions/), themes (docs/themes.md), skills (docs/skills.md), prompt templates (docs/prompt-templates.md), TUI components (docs/tui.md), keybindings (docs/keybindings.md), SDK integrations (docs/sdk.md), custom providers (docs/custom-provider.md), adding models (docs/models.md), pi packages (docs/packages.md), environment variables (docs/environment-variables.md)\n- When working on pi topics, read the docs and examples, and follow .md cross-references before implementing\n- Always read pi .md files completely and follow links to related docs (e.g., tui.md for TUI API details)\n</docs>"
+				],
+				[
+					"project_context",
+					"<project_context>\nProject-specific instructions and guidelines:\n\n<project_instructions path=\"$ROOT/agent/AGENTS.md\">\nGlobal.\n\n</project_instructions>\n\n<project_instructions path=\"$ROOT/proj/AGENTS.md\">\nProject.\n\n</project_instructions>\n</project_context>"
+				],
+				[
+					"skills",
+					"<skills>\nThe following skills provide specialized instructions for specific tasks.\nUse the read tool to load a skill's file when the task matches its description.\nWhen a skill file references a relative path, resolve it against the skill directory (parent of SKILL.md / dirname of the path) and use that absolute path in tool commands.\n\n<available_skills>\n  <skill>\n    <name>alpha</name>\n    <description>Alpha skill. Does alpha things &amp; more &lt;tags&gt;.</description>\n    <location>$ROOT/agent/skills/alpha/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>beta</name>\n    <description>Beta from dir name.</description>\n    <location>$ROOT/agent/skills/beta/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>Gamma_Bad--</name>\n    <description>Invalid name still loads.</description>\n    <location>$ROOT/agent/skills/group/gamma/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>multi</name>\n    <description>First line.\nSecond line with &apos;quotes&apos;.\n</description>\n    <location>$ROOT/agent/skills/multi/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>root-file</name>\n    <description>A root markdown skill.</description>\n    <location>$ROOT/agent/skills/root-file.md</location>\n  </skill>\n  <skill>\n    <name>proj-only</name>\n    <description>Project skill.</description>\n    <location>$ROOT/proj/.pi/skills/proj-only/SKILL.md</location>\n  </skill>\n</available_skills>\n\nBundled skills in $BUNDLED (<source>/<name>/SKILL.md). Read one only when the user asks for it or the task plainly calls for that workflow; ordinary coding needs none. The principles pstack's skills cite are pstack/principle-<name>/SKILL.md.\n- humanlayer/diagram-it: Explain the current topic visually: a small diagram, call tree, file tree, stat…\n- pstack/architect: Sketch types, signatures and module structure before code, run an arena of stru…\n- pstack/arena: Run N parallel candidate implementations of the same task on different models,…\n- pstack/automate-me: Use for \"automate me\", \"create/update/refresh my -mode skill\", \"turn/capture my…\n- pstack/benchmark-checklist: Vet a perf measurement (limiter, tuning, limits, errors, repeatability, relevan…\n- pstack/blast-radius: Find what a change could break somewhere else before it ships, beyond the diff,…\n- pstack/bro: Restate the last message in plain human language, with no jargon.\n- pstack/correct: Find the mistakes agents keep repeating in this repo and make each one impossib…\n- pstack/create-verification-skill: Generate a project-local verification skill (.pi/skills/verify-<app>/) that dri…\n- pstack/figure-it-out: Design an auditable playbook when no narrower one fits: a large migration, an a…\n- pstack/how: Use for \"how does X work\", code walkthroughs before changing something, and pla…\n- pstack/interrogate: Adversarial multi-model code review: run Ultron's /review once per model family…\n- pstack/maintain-verification-skill: Periodic pass that keeps a project's verification skill and feature map honest:…\n- pstack/no-comments: Hunt the comments in a diff or file set (one Comment Sicko frame per file), del…\n- pstack/recall: Reconstruct your recent working context from your own Ultron session history, l…\n- pstack/reflect: Review the current session through three reviewer lenses (judgment, tooling, di…\n- pstack/rigor: Rigorous engineering mode (poteto's way of working): routes a task to a playboo…\n- pstack/show-me-your-work: Keep a reviewable decision trail for long-running or unattended work: a TSV log…\n- pstack/swarm: Fan out N parallel subagents over slices of a task or as a race on one brief, c…\n- pstack/tdd: Use only when the user explicitly asks for TDD, a failing test, or a regression…\n- pstack/teach: Explain a body of work plainly so a person actually understands it.\n- pstack/technical-writing: Layered technical-writing standard: Diátaxis structure, Google developer style…\n- pstack/typescript-best-practices: TypeScript best practices for types, boundaries and module shape.\n- pstack/unslop: Cut AI tells from any writing.\n- pstack/why: Use for 'why does X work this way', 'why we picked Y', design rationale, regres…\n- qingyuna/answer-me-with-html: Answer a hard question with one visual HTML page: you write a short Markdown dr…\n</skills>"
+				],
+				[
+					"cwd",
+					"<cwd>\nelsewhere\n</cwd>"
+				],
+				[
+					"after",
+					"<after>\nLast.\n</after>"
+				]
+			],
+			"text": "You are an expert coding assistant operating inside pi, a coding agent harness. You help users by reading files, executing commands, editing code, and writing new files.\n\n<tools>\n(none)\n\nIn addition to the tools above, you may have access to other custom tools depending on the project.\n</tools>\n\n<rules>\nCustom rules.\n</rules>\n\n<docs>\nPi documentation (read only when the user asks about pi itself, its SDK, extensions, themes, skills, or TUI):\n- Main documentation: $PKG/README.md\n- Additional docs: $PKG/docs\n- Examples: $PKG/examples (extensions, custom tools, SDK)\n- When reading pi docs or examples, resolve docs/... under Additional docs and examples/... under Examples, not the current working directory\n- When asked about: extensions (docs/extensions.md, examples/extensions/), themes (docs/themes.md), skills (docs/skills.md), prompt templates (docs/prompt-templates.md), TUI components (docs/tui.md), keybindings (docs/keybindings.md), SDK integrations (docs/sdk.md), custom providers (docs/custom-provider.md), adding models (docs/models.md), pi packages (docs/packages.md), environment variables (docs/environment-variables.md)\n- When working on pi topics, read the docs and examples, and follow .md cross-references before implementing\n- Always read pi .md files completely and follow links to related docs (e.g., tui.md for TUI API details)\n</docs>\n\n<project_context>\nProject-specific instructions and guidelines:\n\n<project_instructions path=\"$ROOT/agent/AGENTS.md\">\nGlobal.\n\n</project_instructions>\n\n<project_instructions path=\"$ROOT/proj/AGENTS.md\">\nProject.\n\n</project_instructions>\n</project_context>\n\n<skills>\nThe following skills provide specialized instructions for specific tasks.\nUse the read tool to load a skill's file when the task matches its description.\nWhen a skill file references a relative path, resolve it against the skill directory (parent of SKILL.md / dirname of the path) and use that absolute path in tool commands.\n\n<available_skills>\n  <skill>\n    <name>alpha</name>\n    <description>Alpha skill. Does alpha things &amp; more &lt;tags&gt;.</description>\n    <location>$ROOT/agent/skills/alpha/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>beta</name>\n    <description>Beta from dir name.</description>\n    <location>$ROOT/agent/skills/beta/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>Gamma_Bad--</name>\n    <description>Invalid name still loads.</description>\n    <location>$ROOT/agent/skills/group/gamma/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>multi</name>\n    <description>First line.\nSecond line with &apos;quotes&apos;.\n</description>\n    <location>$ROOT/agent/skills/multi/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>root-file</name>\n    <description>A root markdown skill.</description>\n    <location>$ROOT/agent/skills/root-file.md</location>\n  </skill>\n  <skill>\n    <name>proj-only</name>\n    <description>Project skill.</description>\n    <location>$ROOT/proj/.pi/skills/proj-only/SKILL.md</location>\n  </skill>\n</available_skills>\n\nBundled skills in $BUNDLED (<source>/<name>/SKILL.md). Read one only when the user asks for it or the task plainly calls for that workflow; ordinary coding needs none. The principles pstack's skills cite are pstack/principle-<name>/SKILL.md.\n- humanlayer/diagram-it: Explain the current topic visually: a small diagram, call tree, file tree, stat…\n- pstack/architect: Sketch types, signatures and module structure before code, run an arena of stru…\n- pstack/arena: Run N parallel candidate implementations of the same task on different models,…\n- pstack/automate-me: Use for \"automate me\", \"create/update/refresh my -mode skill\", \"turn/capture my…\n- pstack/benchmark-checklist: Vet a perf measurement (limiter, tuning, limits, errors, repeatability, relevan…\n- pstack/blast-radius: Find what a change could break somewhere else before it ships, beyond the diff,…\n- pstack/bro: Restate the last message in plain human language, with no jargon.\n- pstack/correct: Find the mistakes agents keep repeating in this repo and make each one impossib…\n- pstack/create-verification-skill: Generate a project-local verification skill (.pi/skills/verify-<app>/) that dri…\n- pstack/figure-it-out: Design an auditable playbook when no narrower one fits: a large migration, an a…\n- pstack/how: Use for \"how does X work\", code walkthroughs before changing something, and pla…\n- pstack/interrogate: Adversarial multi-model code review: run Ultron's /review once per model family…\n- pstack/maintain-verification-skill: Periodic pass that keeps a project's verification skill and feature map honest:…\n- pstack/no-comments: Hunt the comments in a diff or file set (one Comment Sicko frame per file), del…\n- pstack/recall: Reconstruct your recent working context from your own Ultron session history, l…\n- pstack/reflect: Review the current session through three reviewer lenses (judgment, tooling, di…\n- pstack/rigor: Rigorous engineering mode (poteto's way of working): routes a task to a playboo…\n- pstack/show-me-your-work: Keep a reviewable decision trail for long-running or unattended work: a TSV log…\n- pstack/swarm: Fan out N parallel subagents over slices of a task or as a race on one brief, c…\n- pstack/tdd: Use only when the user explicitly asks for TDD, a failing test, or a regression…\n- pstack/teach: Explain a body of work plainly so a person actually understands it.\n- pstack/technical-writing: Layered technical-writing standard: Diátaxis structure, Google developer style…\n- pstack/typescript-best-practices: TypeScript best practices for types, boundaries and module shape.\n- pstack/unslop: Cut AI tells from any writing.\n- pstack/why: Use for 'why does X work this way', 'why we picked Y', design rationale, regres…\n- qingyuna/answer-me-with-html: Answer a hard question with one visual HTML page: you write a short Markdown dr…\n</skills>\n\n<cwd>\nelsewhere\n</cwd>\n\n<after>\nLast.\n</after>"
+		},
+		{
+			"name": "noTools",
+			"input": {
+				"selectedTools": [
+					"edit",
+					"write"
+				]
+			},
+			"skillsFrom": "none",
+			"contextFrom": "none",
+			"sections": [
+				[
+					"preamble",
+					"You are an expert coding assistant operating inside pi, a coding agent harness. You help users by reading files, executing commands, editing code, and writing new files."
+				],
+				[
+					"tools",
+					"<tools>\n(none)\n\nIn addition to the tools above, you may have access to other custom tools depending on the project.\n</tools>"
+				],
+				[
+					"rules",
+					"<rules>\n- Be concise in your responses\n- Show file paths clearly when working with files\n</rules>"
+				],
+				[
+					"docs",
+					"<docs>\nPi documentation (read only when the user asks about pi itself, its SDK, extensions, themes, skills, or TUI):\n- Main documentation: $PKG/README.md\n- Additional docs: $PKG/docs\n- Examples: $PKG/examples (extensions, custom tools, SDK)\n- When reading pi docs or examples, resolve docs/... under Additional docs and examples/... under Examples, not the current working directory\n- When asked about: extensions (docs/extensions.md, examples/extensions/), themes (docs/themes.md), skills (docs/skills.md), prompt templates (docs/prompt-templates.md), TUI components (docs/tui.md), keybindings (docs/keybindings.md), SDK integrations (docs/sdk.md), custom providers (docs/custom-provider.md), adding models (docs/models.md), pi packages (docs/packages.md), environment variables (docs/environment-variables.md)\n- When working on pi topics, read the docs and examples, and follow .md cross-references before implementing\n- Always read pi .md files completely and follow links to related docs (e.g., tui.md for TUI API details)\n</docs>"
+				],
+				[
+					"cwd",
+					"<cwd>\n$ROOT/proj\n</cwd>"
+				]
+			],
+			"text": "You are an expert coding assistant operating inside pi, a coding agent harness. You help users by reading files, executing commands, editing code, and writing new files.\n\n<tools>\n(none)\n\nIn addition to the tools above, you may have access to other custom tools depending on the project.\n</tools>\n\n<rules>\n- Be concise in your responses\n- Show file paths clearly when working with files\n</rules>\n\n<docs>\nPi documentation (read only when the user asks about pi itself, its SDK, extensions, themes, skills, or TUI):\n- Main documentation: $PKG/README.md\n- Additional docs: $PKG/docs\n- Examples: $PKG/examples (extensions, custom tools, SDK)\n- When reading pi docs or examples, resolve docs/... under Additional docs and examples/... under Examples, not the current working directory\n- When asked about: extensions (docs/extensions.md, examples/extensions/), themes (docs/themes.md), skills (docs/skills.md), prompt templates (docs/prompt-templates.md), TUI components (docs/tui.md), keybindings (docs/keybindings.md), SDK integrations (docs/sdk.md), custom providers (docs/custom-provider.md), adding models (docs/models.md), pi packages (docs/packages.md), environment variables (docs/environment-variables.md)\n- When working on pi topics, read the docs and examples, and follow .md cross-references before implementing\n- Always read pi .md files completely and follow links to related docs (e.g., tui.md for TUI API details)\n</docs>\n\n<cwd>\n$ROOT/proj\n</cwd>"
+		},
+		{
+			"name": "windowsCwd",
+			"input": {
+				"cwd": "C:\\work\\proj"
+			},
+			"skillsFrom": "none",
+			"contextFrom": "none",
+			"sections": [
+				[
+					"preamble",
+					"You are an expert coding assistant operating inside pi, a coding agent harness. You help users by reading files, executing commands, editing code, and writing new files."
+				],
+				[
+					"tools",
+					"<tools>\n(none)\n\nIn addition to the tools above, you may have access to other custom tools depending on the project.\n</tools>"
+				],
+				[
+					"rules",
+					"<rules>\n- Use bash for file operations like ls, rg, find\n- Be concise in your responses\n- Show file paths clearly when working with files\n</rules>"
+				],
+				[
+					"docs",
+					"<docs>\nPi documentation (read only when the user asks about pi itself, its SDK, extensions, themes, skills, or TUI):\n- Main documentation: $PKG/README.md\n- Additional docs: $PKG/docs\n- Examples: $PKG/examples (extensions, custom tools, SDK)\n- When reading pi docs or examples, resolve docs/... under Additional docs and examples/... under Examples, not the current working directory\n- When asked about: extensions (docs/extensions.md, examples/extensions/), themes (docs/themes.md), skills (docs/skills.md), prompt templates (docs/prompt-templates.md), TUI components (docs/tui.md), keybindings (docs/keybindings.md), SDK integrations (docs/sdk.md), custom providers (docs/custom-provider.md), adding models (docs/models.md), pi packages (docs/packages.md), environment variables (docs/environment-variables.md)\n- When working on pi topics, read the docs and examples, and follow .md cross-references before implementing\n- Always read pi .md files completely and follow links to related docs (e.g., tui.md for TUI API details)\n</docs>"
+				],
+				[
+					"cwd",
+					"<cwd>\nC:/work/proj\n</cwd>"
+				]
+			],
+			"text": "You are an expert coding assistant operating inside pi, a coding agent harness. You help users by reading files, executing commands, editing code, and writing new files.\n\n<tools>\n(none)\n\nIn addition to the tools above, you may have access to other custom tools depending on the project.\n</tools>\n\n<rules>\n- Use bash for file operations like ls, rg, find\n- Be concise in your responses\n- Show file paths clearly when working with files\n</rules>\n\n<docs>\nPi documentation (read only when the user asks about pi itself, its SDK, extensions, themes, skills, or TUI):\n- Main documentation: $PKG/README.md\n- Additional docs: $PKG/docs\n- Examples: $PKG/examples (extensions, custom tools, SDK)\n- When reading pi docs or examples, resolve docs/... under Additional docs and examples/... under Examples, not the current working directory\n- When asked about: extensions (docs/extensions.md, examples/extensions/), themes (docs/themes.md), skills (docs/skills.md), prompt templates (docs/prompt-templates.md), TUI components (docs/tui.md), keybindings (docs/keybindings.md), SDK integrations (docs/sdk.md), custom providers (docs/custom-provider.md), adding models (docs/models.md), pi packages (docs/packages.md), environment variables (docs/environment-variables.md)\n- When working on pi topics, read the docs and examples, and follow .md cross-references before implementing\n- Always read pi .md files completely and follow links to related docs (e.g., tui.md for TUI API details)\n</docs>\n\n<cwd>\nC:/work/proj\n</cwd>"
+		},
+		{
+			"name": "emptyCustom",
+			"input": {
+				"customPrompt": ""
+			},
+			"skillsFrom": "hidden",
+			"contextFrom": "loaded",
+			"sections": [
+				[
+					"preamble",
+					"You are an expert coding assistant operating inside pi, a coding agent harness. You help users by reading files, executing commands, editing code, and writing new files."
+				],
+				[
+					"tools",
+					"<tools>\n(none)\n\nIn addition to the tools above, you may have access to other custom tools depending on the project.\n</tools>"
+				],
+				[
+					"rules",
+					"<rules>\n- Use bash for file operations like ls, rg, find\n- Be concise in your responses\n- Show file paths clearly when working with files\n</rules>"
+				],
+				[
+					"docs",
+					"<docs>\nPi documentation (read only when the user asks about pi itself, its SDK, extensions, themes, skills, or TUI):\n- Main documentation: $PKG/README.md\n- Additional docs: $PKG/docs\n- Examples: $PKG/examples (extensions, custom tools, SDK)\n- When reading pi docs or examples, resolve docs/... under Additional docs and examples/... under Examples, not the current working directory\n- When asked about: extensions (docs/extensions.md, examples/extensions/), themes (docs/themes.md), skills (docs/skills.md), prompt templates (docs/prompt-templates.md), TUI components (docs/tui.md), keybindings (docs/keybindings.md), SDK integrations (docs/sdk.md), custom providers (docs/custom-provider.md), adding models (docs/models.md), pi packages (docs/packages.md), environment variables (docs/environment-variables.md)\n- When working on pi topics, read the docs and examples, and follow .md cross-references before implementing\n- Always read pi .md files completely and follow links to related docs (e.g., tui.md for TUI API details)\n</docs>"
+				],
+				[
+					"project_context",
+					"<project_context>\nProject-specific instructions and guidelines:\n\n<project_instructions path=\"$ROOT/agent/AGENTS.md\">\nGlobal.\n\n</project_instructions>\n\n<project_instructions path=\"$ROOT/proj/AGENTS.md\">\nProject.\n\n</project_instructions>\n</project_context>"
+				],
+				[
+					"cwd",
+					"<cwd>\n$ROOT/proj\n</cwd>"
+				]
+			],
+			"text": "You are an expert coding assistant operating inside pi, a coding agent harness. You help users by reading files, executing commands, editing code, and writing new files.\n\n<tools>\n(none)\n\nIn addition to the tools above, you may have access to other custom tools depending on the project.\n</tools>\n\n<rules>\n- Use bash for file operations like ls, rg, find\n- Be concise in your responses\n- Show file paths clearly when working with files\n</rules>\n\n<docs>\nPi documentation (read only when the user asks about pi itself, its SDK, extensions, themes, skills, or TUI):\n- Main documentation: $PKG/README.md\n- Additional docs: $PKG/docs\n- Examples: $PKG/examples (extensions, custom tools, SDK)\n- When reading pi docs or examples, resolve docs/... under Additional docs and examples/... under Examples, not the current working directory\n- When asked about: extensions (docs/extensions.md, examples/extensions/), themes (docs/themes.md), skills (docs/skills.md), prompt templates (docs/prompt-templates.md), TUI components (docs/tui.md), keybindings (docs/keybindings.md), SDK integrations (docs/sdk.md), custom providers (docs/custom-provider.md), adding models (docs/models.md), pi packages (docs/packages.md), environment variables (docs/environment-variables.md)\n- When working on pi topics, read the docs and examples, and follow .md cross-references before implementing\n- Always read pi .md files completely and follow links to related docs (e.g., tui.md for TUI API details)\n</docs>\n\n<project_context>\nProject-specific instructions and guidelines:\n\n<project_instructions path=\"$ROOT/agent/AGENTS.md\">\nGlobal.\n\n</project_instructions>\n\n<project_instructions path=\"$ROOT/proj/AGENTS.md\">\nProject.\n\n</project_instructions>\n</project_context>\n\n<cwd>\n$ROOT/proj\n</cwd>"
+		},
+		{
+			"name": "invalid:Bad",
+			"error": "Invalid system prompt section name: Bad"
+		},
+		{
+			"name": "invalid:preamble",
+			"error": "Invalid system prompt section name: preamble"
+		},
+		{
+			"name": "invalid:1x",
+			"error": "Invalid system prompt section name: 1x"
+		},
+		{
+			"name": "invalid:a b",
+			"error": "Invalid system prompt section name: a b"
+		}
+	],
+	"runtime": [
+		{
+			"tools": [
+				"read",
+				"bash"
+			],
+			"options": {},
+			"text": null
+		},
+		{
+			"tools": [
+				"rlm"
+			],
+			"options": {
+				"hints": false
+			},
+			"text": "## Runtime\nEach rlm call runs a cell in your lane's persistent kernel: program over files, shell and agents, keep data in variables and print only what the next step needs. Output over ~20 KB is cut in the middle (the marker names a file with all of it) and a large value is shown by reference; `preview(x)` gives a bounded view. APIs are pre-imported and async; check `help(obj)` before guessing.\nA turn ends when you reply without calling rlm; that reply is your answer. Never end a turn with a promise (\"I'll check next\"): do the work now. An exception ends the cell after what it printed: fix the cause, do not rerun: its writes and started agents may already have happened. Subagents, tasks and jobs survive a kernel restart, and so does `state` (a dict); re-create imports and functions.\nNothing needs polling: a job, tool call, subagent or task that ends while you are not waiting sends a `<runtime_event kind=... id=... status=... fetch=...>` message, which starts a new turn if yours ended. Start long work and do the rest meanwhile; never sleep, poll or loop waiting, and if only that result is left, await it (`await job.result()`). Run independent operations together with `asyncio.gather`.\n\n## Skills\n- `out = await bash('''cmd''')` (always triple-quoted, even for one line; the text reaches bash as written, backslashes included) returns stdout and stderr as a str, with `[exit code N]` appended on failure (`out.ok`, `out.exit_code`). Prefer `rg -n`, `sed -n 'A,Bp'`, `head` over whole files. A command still running after 30 s continues as a job (`out.job`; its end arrives as an event); `yield_after=0` starts a suite or build you know takes minutes as a job at once. `help(bash)`.\n- `await read(path)` returns a file's text (a ContextHandle over 256 KiB); `await view_image(path)` shows you an image.\n- `await edit(path=..., old_str=..., new_str=...)` replaces exactly one occurrence and raises ValueError when old_str is absent or ambiguous: read first, copy old_str exactly, several hunks in one cell. Create files with `await write(path, text)`.\n- The kernel is the system Python without the project's packages: run all project code (tests, repros, builds, imports) through `bash` with the project's own interpreter and toolchain (`.venv/bin/python -m pytest -q`, `npm test`). Work on data files in the cell itself, not in a `python - <<EOF` heredoc through `bash`, and write the requested output in the cell that computes it.\n\n## Search before delegating\nFor many files or a large input, narrow with code first: 1. search the concept and its synonyms (`re`, `h.search`, `rg -il`) and count hits; 2. print one compact line per candidate (id and matching sentence); 3. read the deciding passages of unclear candidates and judge them yourself. Use `rlm.map` only for candidates a line or two cannot settle, or text over ~100 KB, one passage per frame. Do not spawn subagents to read or classify documents: each re-sends this prompt and its transcript every turn.\n\n## Bounded inference\nLarge inputs stay out of your context as handles; examples: `help(rlm.load)`, `help(rlm.map)`.\n- `h = await rlm.load(path_or_text)`: `h.search(regex)`, `h.count(regex)`, `h.lines(a, b)`, `h.chunks(n)`; views print their text.\n- `await rlm.infer(task, context=[views], contract=T, budget=Budget(calls, tokens, depth))`: one private sub-model call (no transcript, no tools), contract-validated and re-asked; running out returns a falsy `Incomplete`.\n- `await rlm.map(task, items, contract=T)`: one frame per item, in order, under one shared budget (default 500,000 tokens; `budget=Budget(tokens=...)` for more).\n- Every frame is a model request: filter with code first, give each frame only the passage it must judge, and compute exact numbers in Python.\n\n## Delegation\n`h = await rlm.spawn(brief, name=...)` starts a subagent (own REPL, your tools and files, not your chat). Spawn only for independent multi-step work, with a self-contained brief (goal, paths, constraints, what to return), several at once; `depth=N` lets a child delegate too (≤3 levels). Children editing files: `worktree=True` each (coupled work in one brief), then `await rlm.merge(hs)`. Then do only work no child owns; never check on children's files, logs or progress: results come to you. With nothing of your own left, `await rlm.collect(hs)` (free), or end your turn: each end arrives as a `child_done` event. Trust only verdicts whose `check.outcome` is \"verified\"; re-check the rest. `help(rlm.spawn)`.\nIf you are a subagent, do the brief yourself (spawn only if given depth), then `await rlm.finish(status, summary, evidence=[...], changed_files=[...])` and reply briefly with paths and uncertainties.\nTyped agents, graphs, jobs: `help(agents)`, `help(workflows)`, `help(background)`.\n\n## Other APIs\n- `ctx` edits your view of your own context (`ctx.history()`, `ctx.forget`, `ctx.summarize`, `ctx.pin`, `ctx.note`); a seen task result collapses to one line (`await agents.result(id)`). `help(ctx)`.\n- Save a working procedure that will recur as a tested code skill (`await skills.propose_code(...)`); reuse one with `from code_skills import <name>`. `help(skills)`.\n- `@agent` classes: docstring-only async methods are typed model calls, annotated fields durable state. `help(agent)`.\n- `memory.prepare(query)` recalls long-term memory, `memory.propose(text, evidence)` keeps a fact; neither runs on its own."
+		},
+		{
+			"tools": [
+				"rlm"
+			],
+			"options": {
+				"hints": true,
+				"delivery": "next-call",
+				"externalRoot": true
+			},
+			"text": "## Runtime\nEach rlm call runs a cell in your lane's persistent kernel: program over files, shell and agents, keep data in variables and print only what the next step needs. Output over ~20 KB is cut in the middle (the marker names a file with all of it) and a large value is shown by reference; `preview(x)` gives a bounded view. APIs are pre-imported and async; check `help(obj)` before guessing. Act on a trailing `[hint:<tag>]` line (`await hints.mute(tag)` once understood).\nA turn ends when you reply without calling rlm; that reply is your answer. Never end a turn with a promise (\"I'll check next\"): do the work now. An exception ends the cell after what it printed: fix the cause, do not rerun: its writes and started agents may already have happened. Subagents, tasks and jobs survive a kernel restart, and so does `state` (a dict); re-create imports and functions.\nNothing needs polling: a job, tool call, subagent or task that ends while you are not waiting on it is reported as a `<runtime_event kind=... id=... status=... fetch=...>` line at the top of your next rlm result (after you reply, with the user's next message). Nothing wakes you after you reply, so before ending your turn await what the answer still needs (`await rlm.collect(hs)`, `await job.result()`; waiting costs no model turns). Start long work and do the rest meanwhile; never sleep, poll or loop checking. Run independent operations together with `asyncio.gather`.\n\n## Skills\n- `out = await bash('''cmd''')` (always triple-quoted, even for one line; the text reaches bash as written, backslashes included) returns stdout and stderr as a str, with `[exit code N]` appended on failure (`out.ok`, `out.exit_code`). Prefer `rg -n`, `sed -n 'A,Bp'`, `head` over whole files. A command still running after 30 s continues as a job (`out.job`; its end arrives as an event); `yield_after=0` starts a suite or build you know takes minutes as a job at once. `help(bash)`.\n- `await read(path)` returns a file's text (a ContextHandle over 256 KiB); `await view_image(path)` shows you an image.\n- `await edit(path=..., old_str=..., new_str=...)` replaces exactly one occurrence and raises ValueError when old_str is absent or ambiguous: read first, copy old_str exactly, several hunks in one cell. Create files with `await write(path, text)`.\n- The kernel is the system Python without the project's packages: run all project code (tests, repros, builds, imports) through `bash` with the project's own interpreter and toolchain (`.venv/bin/python -m pytest -q`, `npm test`). Work on data files in the cell itself, not in a `python - <<EOF` heredoc through `bash`, and write the requested output in the cell that computes it.\n\n## Search before delegating\nFor many files or a large input, narrow with code first: 1. search the concept and its synonyms (`re`, `h.search`, `rg -il`) and count hits; 2. print one compact line per candidate (id and matching sentence); 3. read the deciding passages of unclear candidates and judge them yourself. Use `rlm.map` only for candidates a line or two cannot settle, or text over ~100 KB, one passage per frame. Do not spawn subagents to read or classify documents: each re-sends this prompt and its transcript every turn.\n\n## Bounded inference\nLarge inputs stay out of your context as handles; examples: `help(rlm.load)`, `help(rlm.map)`.\n- `h = await rlm.load(path_or_text)`: `h.search(regex)`, `h.count(regex)`, `h.lines(a, b)`, `h.chunks(n)`; views print their text.\n- `await rlm.infer(task, context=[views], contract=T, budget=Budget(calls, tokens, depth))`: one private sub-model call (no transcript, no tools), contract-validated and re-asked; running out returns a falsy `Incomplete`.\n- `await rlm.map(task, items, contract=T)`: one frame per item, in order, under one shared budget (default 500,000 tokens; `budget=Budget(tokens=...)` for more).\n- Every frame is a model request: filter with code first, give each frame only the passage it must judge, and compute exact numbers in Python.\n\n## Delegation\n`h = await rlm.spawn(brief, name=...)` starts a subagent (own REPL, your tools and files, not your chat). Spawn only for independent multi-step work, with a self-contained brief (goal, paths, constraints, what to return), several at once; `depth=N` lets a child delegate too (≤3 levels). Children editing files: `worktree=True` each (coupled work in one brief), then `await rlm.merge(hs)`. Then do only work no child owns; never check on children's files, logs or progress: results come to you. With nothing of your own left, `await rlm.collect(hs)` (free). Trust only verdicts whose `check.outcome` is \"verified\"; re-check the rest. `help(rlm.spawn)`.\nIf you are a subagent, do the brief yourself (spawn only if given depth), then `await rlm.finish(status, summary, evidence=[...], changed_files=[...])` and reply briefly with paths and uncertainties.\nTyped agents, graphs, jobs: `help(agents)`, `help(workflows)`, `help(background)`.\n\n## Other APIs\n- Save a working procedure that will recur as a tested code skill (`await skills.propose_code(...)`); reuse one with `from code_skills import <name>`. `help(skills)`.\n- `@agent` classes: docstring-only async methods are typed model calls, annotated fields durable state. `help(agent)`.\n- `memory.prepare(query)` recalls long-term memory, `memory.propose(text, evidence)` keeps a fact; neither runs on its own."
+		},
+		{
+			"tools": [
+				"rlm",
+				"bash",
+				"edit"
+			],
+			"options": {
+				"hints": false,
+				"asyncEvents": false
+			},
+			"text": "## Runtime\nEach rlm call runs a cell in your lane's persistent kernel: program over files, shell and agents, keep data in variables and print only what the next step needs. Output over ~20 KB is cut in the middle (the marker names a file with all of it) and a large value is shown by reference; `preview(x)` gives a bounded view. APIs are pre-imported and async; check `help(obj)` before guessing.\nA turn ends when you reply without calling rlm; that reply is your answer. Never end a turn with a promise (\"I'll check next\"): do the work now. An exception ends the cell after what it printed: fix the cause, do not rerun: its writes and started agents may already have happened. Subagents, tasks and jobs survive a kernel restart, and so does `state` (a dict); re-create imports and functions.\nCompletions are not announced in this session (ULTRON_ASYNC_EVENTS=off): when you need a result, wait for it with `await job.result()`, `await rlm.collect(...)` or `await agents.result(id)`. Run independent operations together with `asyncio.gather`.\n\n## Skills\n- Inside rlm you can also run shell with `out = await bash('''command''')`: it returns the output as a string (`[exit code N]` appended on failure; `out.ok`; a command still running after 30 s continues as a job, `out.job`), useful when mixing shell and Python in one cell.\n- `await read(path)` returns a file's text (a ContextHandle over 256 KiB); `await view_image(path)` shows you an image.\n- The native edit tool and the `edit` skill both replace exactly one occurrence of old text (the skill raises ValueError when old_str is absent or ambiguous); use either.\n- The kernel is the system Python without the project's packages: run all project code (tests, repros, builds, imports) through `bash` with the project's own interpreter and toolchain (`.venv/bin/python -m pytest -q`, `npm test`). Work on data files in the cell itself, not in a `python - <<EOF` heredoc through `bash`, and write the requested output in the cell that computes it.\n\n## Search before delegating\nFor many files or a large input, narrow with code first: 1. search the concept and its synonyms (`re`, `h.search`, `rg -il`) and count hits; 2. print one compact line per candidate (id and matching sentence); 3. read the deciding passages of unclear candidates and judge them yourself. Use `rlm.map` only for candidates a line or two cannot settle, or text over ~100 KB, one passage per frame. Do not spawn subagents to read or classify documents: each re-sends this prompt and its transcript every turn.\n\n## Bounded inference\nLarge inputs stay out of your context as handles; examples: `help(rlm.load)`, `help(rlm.map)`.\n- `h = await rlm.load(path_or_text)`: `h.search(regex)`, `h.count(regex)`, `h.lines(a, b)`, `h.chunks(n)`; views print their text.\n- `await rlm.infer(task, context=[views], contract=T, budget=Budget(calls, tokens, depth))`: one private sub-model call (no transcript, no tools), contract-validated and re-asked; running out returns a falsy `Incomplete`.\n- `await rlm.map(task, items, contract=T)`: one frame per item, in order, under one shared budget (default 500,000 tokens; `budget=Budget(tokens=...)` for more).\n- Every frame is a model request: filter with code first, give each frame only the passage it must judge, and compute exact numbers in Python.\n\n## Delegation\n`h = await rlm.spawn(brief, name=...)` starts a subagent (own REPL, your tools and files, not your chat). Spawn only for independent multi-step work, with a self-contained brief (goal, paths, constraints, what to return), several at once; `depth=N` lets a child delegate too (≤3 levels). Children editing files: `worktree=True` each (coupled work in one brief), then `await rlm.merge(hs)`. Then do only work no child owns; never check on children's files, logs or progress: results come to you. With nothing of your own left, `await rlm.collect(hs)` (free). Trust only verdicts whose `check.outcome` is \"verified\"; re-check the rest. `help(rlm.spawn)`.\nIf you are a subagent, do the brief yourself (spawn only if given depth), then `await rlm.finish(status, summary, evidence=[...], changed_files=[...])` and reply briefly with paths and uncertainties.\nTyped agents, graphs, jobs: `help(agents)`, `help(workflows)`, `help(background)`.\n\n## Other APIs\n- `ctx` edits your view of your own context (`ctx.history()`, `ctx.forget`, `ctx.summarize`, `ctx.pin`, `ctx.note`); a seen task result collapses to one line (`await agents.result(id)`). `help(ctx)`.\n- Save a working procedure that will recur as a tested code skill (`await skills.propose_code(...)`); reuse one with `from code_skills import <name>`. `help(skills)`.\n- `@agent` classes: docstring-only async methods are typed model calls, annotated fields durable state. `help(agent)`.\n- `memory.prepare(query)` recalls long-term memory, `memory.propose(text, evidence)` keeps a fact; neither runs on its own."
+		},
+		{
+			"tools": [
+				"rlm"
+			],
+			"options": {
+				"hints": false,
+				"delivery": "off",
+				"extensionTools": [
+					{
+						"name": "mcp",
+						"description": "Does   thing\n0."
+					},
+					{
+						"name": "tool1",
+						"description": ""
+					},
+					{
+						"name": "tool2",
+						"description": "Long word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word end"
+					},
+					{
+						"name": "tool3",
+						"description": "Does   thing\n3."
+					},
+					{
+						"name": "tool4",
+						"description": "Does   thing\n4."
+					},
+					{
+						"name": "tool5",
+						"description": "Does   thing\n5."
+					},
+					{
+						"name": "tool6",
+						"description": "Does   thing\n6."
+					},
+					{
+						"name": "tool7",
+						"description": "Does   thing\n7."
+					},
+					{
+						"name": "tool8",
+						"description": "Does   thing\n8."
+					},
+					{
+						"name": "tool9",
+						"description": "Does   thing\n9."
+					},
+					{
+						"name": "tool10",
+						"description": "Does   thing\n10."
+					},
+					{
+						"name": "tool11",
+						"description": "Does   thing\n11."
+					},
+					{
+						"name": "tool12",
+						"description": "Does   thing\n12."
+					},
+					{
+						"name": "tool13",
+						"description": "Does   thing\n13."
+					}
+				],
+				"mcpServers": [
+					"exa",
+					"linear",
+					"s0",
+					"s1",
+					"s2",
+					"s3",
+					"s4",
+					"s5",
+					"s6",
+					"s7",
+					"s8",
+					"s9",
+					"s10",
+					"s11"
+				]
+			},
+			"text": "## Runtime\nEach rlm call runs a cell in your lane's persistent kernel: program over files, shell and agents, keep data in variables and print only what the next step needs. Output over ~20 KB is cut in the middle (the marker names a file with all of it) and a large value is shown by reference; `preview(x)` gives a bounded view. APIs are pre-imported and async; check `help(obj)` before guessing.\nA turn ends when you reply without calling rlm; that reply is your answer. Never end a turn with a promise (\"I'll check next\"): do the work now. An exception ends the cell after what it printed: fix the cause, do not rerun: its writes and started agents may already have happened. Subagents, tasks and jobs survive a kernel restart, and so does `state` (a dict); re-create imports and functions.\nCompletions are not announced in this session (ULTRON_ASYNC_EVENTS=off): when you need a result, wait for it with `await job.result()`, `await rlm.collect(...)` or `await agents.result(id)`. Run independent operations together with `asyncio.gather`.\n\n## Skills\n- `out = await bash('''cmd''')` (always triple-quoted, even for one line; the text reaches bash as written, backslashes included) returns stdout and stderr as a str, with `[exit code N]` appended on failure (`out.ok`, `out.exit_code`). Prefer `rg -n`, `sed -n 'A,Bp'`, `head` over whole files. A command still running after 30 s continues as a job (`out.job`; its end arrives as an event); `yield_after=0` starts a suite or build you know takes minutes as a job at once. `help(bash)`.\n- `await read(path)` returns a file's text (a ContextHandle over 256 KiB); `await view_image(path)` shows you an image.\n- `await edit(path=..., old_str=..., new_str=...)` replaces exactly one occurrence and raises ValueError when old_str is absent or ambiguous: read first, copy old_str exactly, several hunks in one cell. Create files with `await write(path, text)`.\n- The kernel is the system Python without the project's packages: run all project code (tests, repros, builds, imports) through `bash` with the project's own interpreter and toolchain (`.venv/bin/python -m pytest -q`, `npm test`). Work on data files in the cell itself, not in a `python - <<EOF` heredoc through `bash`, and write the requested output in the cell that computes it.\n\n## Search before delegating\nFor many files or a large input, narrow with code first: 1. search the concept and its synonyms (`re`, `h.search`, `rg -il`) and count hits; 2. print one compact line per candidate (id and matching sentence); 3. read the deciding passages of unclear candidates and judge them yourself. Use `rlm.map` only for candidates a line or two cannot settle, or text over ~100 KB, one passage per frame. Do not spawn subagents to read or classify documents: each re-sends this prompt and its transcript every turn.\n\n## Bounded inference\nLarge inputs stay out of your context as handles; examples: `help(rlm.load)`, `help(rlm.map)`.\n- `h = await rlm.load(path_or_text)`: `h.search(regex)`, `h.count(regex)`, `h.lines(a, b)`, `h.chunks(n)`; views print their text.\n- `await rlm.infer(task, context=[views], contract=T, budget=Budget(calls, tokens, depth))`: one private sub-model call (no transcript, no tools), contract-validated and re-asked; running out returns a falsy `Incomplete`.\n- `await rlm.map(task, items, contract=T)`: one frame per item, in order, under one shared budget (default 500,000 tokens; `budget=Budget(tokens=...)` for more).\n- Every frame is a model request: filter with code first, give each frame only the passage it must judge, and compute exact numbers in Python.\n\n## Extension tools\n\nTools from Pi extensions are pre-imported async skills in the REPL, not separate tools. `r = await tools.call(\"name\", {\"key\": value})` or `await tools.<name>(key=value)` runs one in the host with its real context and returns a ToolResult: the text as a string (kept whole up to 256 KiB, so keep it in a variable and print only what you need), `.details` (structured, or None) and `.json()` to parse a JSON reply; a failing tool raises ToolError. `await tools.list()` and `await tools.describe(name)` give names, descriptions and JSON-schema parameters. Available:\n- mcp: Does thing 0.\n- tool1: (no description)\n- tool2: Long word word word word word word word word word word word word word word word word word word word word word word word…\n- tool3: Does thing 3.\n- tool4: Does thing 4.\n- tool5: Does thing 5.\n- tool6: Does thing 6.\n- tool7: Does thing 7.\n- tool8: Does thing 8.\n- tool9: Does thing 9.\n- tool10: Does thing 10.\n- tool11: Does thing 11.\n- … 2 more: `await tools.list()`\n\nMCP servers (exa, linear, s0, s1, s2, s3, s4, s5, s6, s7, s8, s9) are reached through the `mcp` namespace: `await mcp.servers()`, `await mcp.tools(\"server\")` (tool names), `await mcp.describe(\"tool\")` (its parameters), `await mcp.search(\"query\")`, and `r = await mcp.call(\"tool\", key=value, ...)`, whose keyword arguments are the MCP tool's arguments (or `await mcp.<server>.<tool>(...)`, with `-` in the server name written as `_`). Gateway errors (unknown tool, server not connected, auth required) raise McpError.\n\nSlow calls never hold you: a plain call still running after 30 s keeps running in the host (`r.running` True, `r.call` its ToolCall) and its completion arrives as a `<runtime_event kind=\"tool_done\">` whose fetch returns the result (`await tools.result(id)`). `yield_after=0` returns a ToolCall handle at once (`await call.result()` waits, `await call.cancel()` stops it); `yield_after=None` waits however long it takes. Run independent calls together in one cell with `asyncio.gather` and keep ids and results in variables. For a start-run/wait-run pair (such as Exa's `exa_agent_create_run` and `exa_agent_wait_run`), start every run in one cell, then leave the waits running as calls instead of blocking the turn:\n```python\nqueries = [\"first question\", \"second question\"]\nruns = await asyncio.gather(*(mcp.call(\"exa-agent_exa_agent_create_run\", query=q, effort=\"medium\") for q in queries))\nrun_ids = [r.json()[\"id\"] for r in runs]  # the id field as the reply names it: print(runs[0]) once if unsure\nwaits = await asyncio.gather(*(mcp.call(\"exa-agent_exa_agent_wait_run\", run_id=i, yield_after=0) for i in run_ids))\n```\nThen do other work or end your turn: each wait's completion arrives as a runtime event.\n\n## Delegation\n`h = await rlm.spawn(brief, name=...)` starts a subagent (own REPL, your tools and files, not your chat). Spawn only for independent multi-step work, with a self-contained brief (goal, paths, constraints, what to return), several at once; `depth=N` lets a child delegate too (≤3 levels). Children editing files: `worktree=True` each (coupled work in one brief), then `await rlm.merge(hs)`. Then do only work no child owns; never check on children's files, logs or progress: results come to you. With nothing of your own left, `await rlm.collect(hs)` (free). Trust only verdicts whose `check.outcome` is \"verified\"; re-check the rest. `help(rlm.spawn)`.\nIf you are a subagent, do the brief yourself (spawn only if given depth), then `await rlm.finish(status, summary, evidence=[...], changed_files=[...])` and reply briefly with paths and uncertainties.\nTyped agents, graphs, jobs: `help(agents)`, `help(workflows)`, `help(background)`.\n\n## Other APIs\n- `ctx` edits your view of your own context (`ctx.history()`, `ctx.forget`, `ctx.summarize`, `ctx.pin`, `ctx.note`); a seen task result collapses to one line (`await agents.result(id)`). `help(ctx)`.\n- Save a working procedure that will recur as a tested code skill (`await skills.propose_code(...)`); reuse one with `from code_skills import <name>`. `help(skills)`.\n- `@agent` classes: docstring-only async methods are typed model calls, annotated fields durable state. `help(agent)`.\n- `memory.prepare(query)` recalls long-term memory, `memory.propose(text, evidence)` keeps a fact; neither runs on its own."
+		},
+		{
+			"tools": [
+				"rlm"
+			],
+			"options": {
+				"hints": false,
+				"delivery": "next-call",
+				"extensionTools": [
+					{
+						"name": "tool1",
+						"description": ""
+					},
+					{
+						"name": "tool2",
+						"description": "Long word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word end"
+					}
+				],
+				"mcpServers": []
+			},
+			"text": "## Runtime\nEach rlm call runs a cell in your lane's persistent kernel: program over files, shell and agents, keep data in variables and print only what the next step needs. Output over ~20 KB is cut in the middle (the marker names a file with all of it) and a large value is shown by reference; `preview(x)` gives a bounded view. APIs are pre-imported and async; check `help(obj)` before guessing.\nA turn ends when you reply without calling rlm; that reply is your answer. Never end a turn with a promise (\"I'll check next\"): do the work now. An exception ends the cell after what it printed: fix the cause, do not rerun: its writes and started agents may already have happened. Subagents, tasks and jobs survive a kernel restart, and so does `state` (a dict); re-create imports and functions.\nNothing needs polling: a job, tool call, subagent or task that ends while you are not waiting on it is reported as a `<runtime_event kind=... id=... status=... fetch=...>` line at the top of your next rlm result (after you reply, with the user's next message). Nothing wakes you after you reply, so before ending your turn await what the answer still needs (`await rlm.collect(hs)`, `await job.result()`; waiting costs no model turns). Start long work and do the rest meanwhile; never sleep, poll or loop checking. Run independent operations together with `asyncio.gather`.\n\n## Skills\n- `out = await bash('''cmd''')` (always triple-quoted, even for one line; the text reaches bash as written, backslashes included) returns stdout and stderr as a str, with `[exit code N]` appended on failure (`out.ok`, `out.exit_code`). Prefer `rg -n`, `sed -n 'A,Bp'`, `head` over whole files. A command still running after 30 s continues as a job (`out.job`; its end arrives as an event); `yield_after=0` starts a suite or build you know takes minutes as a job at once. `help(bash)`.\n- `await read(path)` returns a file's text (a ContextHandle over 256 KiB); `await view_image(path)` shows you an image.\n- `await edit(path=..., old_str=..., new_str=...)` replaces exactly one occurrence and raises ValueError when old_str is absent or ambiguous: read first, copy old_str exactly, several hunks in one cell. Create files with `await write(path, text)`.\n- The kernel is the system Python without the project's packages: run all project code (tests, repros, builds, imports) through `bash` with the project's own interpreter and toolchain (`.venv/bin/python -m pytest -q`, `npm test`). Work on data files in the cell itself, not in a `python - <<EOF` heredoc through `bash`, and write the requested output in the cell that computes it.\n\n## Search before delegating\nFor many files or a large input, narrow with code first: 1. search the concept and its synonyms (`re`, `h.search`, `rg -il`) and count hits; 2. print one compact line per candidate (id and matching sentence); 3. read the deciding passages of unclear candidates and judge them yourself. Use `rlm.map` only for candidates a line or two cannot settle, or text over ~100 KB, one passage per frame. Do not spawn subagents to read or classify documents: each re-sends this prompt and its transcript every turn.\n\n## Bounded inference\nLarge inputs stay out of your context as handles; examples: `help(rlm.load)`, `help(rlm.map)`.\n- `h = await rlm.load(path_or_text)`: `h.search(regex)`, `h.count(regex)`, `h.lines(a, b)`, `h.chunks(n)`; views print their text.\n- `await rlm.infer(task, context=[views], contract=T, budget=Budget(calls, tokens, depth))`: one private sub-model call (no transcript, no tools), contract-validated and re-asked; running out returns a falsy `Incomplete`.\n- `await rlm.map(task, items, contract=T)`: one frame per item, in order, under one shared budget (default 500,000 tokens; `budget=Budget(tokens=...)` for more).\n- Every frame is a model request: filter with code first, give each frame only the passage it must judge, and compute exact numbers in Python.\n\n## Extension tools\n\nTools from Pi extensions are pre-imported async skills in the REPL, not separate tools. `r = await tools.call(\"name\", {\"key\": value})` or `await tools.<name>(key=value)` runs one in the host with its real context and returns a ToolResult: the text as a string (kept whole up to 256 KiB, so keep it in a variable and print only what you need), `.details` (structured, or None) and `.json()` to parse a JSON reply; a failing tool raises ToolError. `await tools.list()` and `await tools.describe(name)` give names, descriptions and JSON-schema parameters. Available:\n- tool1: (no description)\n- tool2: Long word word word word word word word word word word word word word word word word word word word word word word word…\n\nSlow calls never hold you: a plain call still running after 30 s keeps running in the host (`r.running` True, `r.call` its ToolCall) and its completion arrives as a `<runtime_event kind=\"tool_done\">` (at the top of your next rlm result) whose fetch returns the result (`await tools.result(id)`). `yield_after=0` returns a ToolCall handle at once (`await call.result()` waits, `await call.cancel()` stops it); `yield_after=None` waits however long it takes. Run independent calls together in one cell with `asyncio.gather` and keep ids and results in variables. For a start-run/wait-run pair (such as Exa's `exa_agent_create_run` and `exa_agent_wait_run`), start every run in one cell, then leave the waits running as calls instead of blocking the turn:\n```python\nqueries = [\"first question\", \"second question\"]\nruns = await asyncio.gather(*(mcp.call(\"exa-agent_exa_agent_create_run\", query=q, effort=\"medium\") for q in queries))\nrun_ids = [r.json()[\"id\"] for r in runs]  # the id field as the reply names it: print(runs[0]) once if unsure\nwaits = await asyncio.gather(*(mcp.call(\"exa-agent_exa_agent_wait_run\", run_id=i, yield_after=0) for i in run_ids))\n```\nThen do other work: each wait's completion arrives as a runtime event with a later rlm result; await the ones your answer needs before replying.\n\n## Delegation\n`h = await rlm.spawn(brief, name=...)` starts a subagent (own REPL, your tools and files, not your chat). Spawn only for independent multi-step work, with a self-contained brief (goal, paths, constraints, what to return), several at once; `depth=N` lets a child delegate too (≤3 levels). Children editing files: `worktree=True` each (coupled work in one brief), then `await rlm.merge(hs)`. Then do only work no child owns; never check on children's files, logs or progress: results come to you. With nothing of your own left, `await rlm.collect(hs)` (free). Trust only verdicts whose `check.outcome` is \"verified\"; re-check the rest. `help(rlm.spawn)`.\nIf you are a subagent, do the brief yourself (spawn only if given depth), then `await rlm.finish(status, summary, evidence=[...], changed_files=[...])` and reply briefly with paths and uncertainties.\nTyped agents, graphs, jobs: `help(agents)`, `help(workflows)`, `help(background)`.\n\n## Other APIs\n- `ctx` edits your view of your own context (`ctx.history()`, `ctx.forget`, `ctx.summarize`, `ctx.pin`, `ctx.note`); a seen task result collapses to one line (`await agents.result(id)`). `help(ctx)`.\n- Save a working procedure that will recur as a tested code skill (`await skills.propose_code(...)`); reuse one with `from code_skills import <name>`. `help(skills)`.\n- `@agent` classes: docstring-only async methods are typed model calls, annotated fields durable state. `help(agent)`.\n- `memory.prepare(query)` recalls long-term memory, `memory.propose(text, evidence)` keeps a fact; neither runs on its own."
+		},
+		{
+			"tools": [
+				"rlm"
+			],
+			"options": {
+				"hints": false,
+				"extensionTools": [
+					{
+						"name": "mcp",
+						"description": "Does   thing\n0."
+					},
+					{
+						"name": "tool1",
+						"description": ""
+					}
+				],
+				"nativeExtensionTools": [
+					"tool1"
+				]
+			},
+			"text": "## Runtime\nEach rlm call runs a cell in your lane's persistent kernel: program over files, shell and agents, keep data in variables and print only what the next step needs. Output over ~20 KB is cut in the middle (the marker names a file with all of it) and a large value is shown by reference; `preview(x)` gives a bounded view. APIs are pre-imported and async; check `help(obj)` before guessing.\nA turn ends when you reply without calling rlm; that reply is your answer. Never end a turn with a promise (\"I'll check next\"): do the work now. An exception ends the cell after what it printed: fix the cause, do not rerun: its writes and started agents may already have happened. Subagents, tasks and jobs survive a kernel restart, and so does `state` (a dict); re-create imports and functions.\nNothing needs polling: a job, tool call, subagent or task that ends while you are not waiting sends a `<runtime_event kind=... id=... status=... fetch=...>` message, which starts a new turn if yours ended. Start long work and do the rest meanwhile; never sleep, poll or loop waiting, and if only that result is left, await it (`await job.result()`). Run independent operations together with `asyncio.gather`.\n\n## Skills\n- `out = await bash('''cmd''')` (always triple-quoted, even for one line; the text reaches bash as written, backslashes included) returns stdout and stderr as a str, with `[exit code N]` appended on failure (`out.ok`, `out.exit_code`). Prefer `rg -n`, `sed -n 'A,Bp'`, `head` over whole files. A command still running after 30 s continues as a job (`out.job`; its end arrives as an event); `yield_after=0` starts a suite or build you know takes minutes as a job at once. `help(bash)`.\n- `await read(path)` returns a file's text (a ContextHandle over 256 KiB); `await view_image(path)` shows you an image.\n- `await edit(path=..., old_str=..., new_str=...)` replaces exactly one occurrence and raises ValueError when old_str is absent or ambiguous: read first, copy old_str exactly, several hunks in one cell. Create files with `await write(path, text)`.\n- The kernel is the system Python without the project's packages: run all project code (tests, repros, builds, imports) through `bash` with the project's own interpreter and toolchain (`.venv/bin/python -m pytest -q`, `npm test`). Work on data files in the cell itself, not in a `python - <<EOF` heredoc through `bash`, and write the requested output in the cell that computes it.\n\n## Search before delegating\nFor many files or a large input, narrow with code first: 1. search the concept and its synonyms (`re`, `h.search`, `rg -il`) and count hits; 2. print one compact line per candidate (id and matching sentence); 3. read the deciding passages of unclear candidates and judge them yourself. Use `rlm.map` only for candidates a line or two cannot settle, or text over ~100 KB, one passage per frame. Do not spawn subagents to read or classify documents: each re-sends this prompt and its transcript every turn.\n\n## Bounded inference\nLarge inputs stay out of your context as handles; examples: `help(rlm.load)`, `help(rlm.map)`.\n- `h = await rlm.load(path_or_text)`: `h.search(regex)`, `h.count(regex)`, `h.lines(a, b)`, `h.chunks(n)`; views print their text.\n- `await rlm.infer(task, context=[views], contract=T, budget=Budget(calls, tokens, depth))`: one private sub-model call (no transcript, no tools), contract-validated and re-asked; running out returns a falsy `Incomplete`.\n- `await rlm.map(task, items, contract=T)`: one frame per item, in order, under one shared budget (default 500,000 tokens; `budget=Budget(tokens=...)` for more).\n- Every frame is a model request: filter with code first, give each frame only the passage it must judge, and compute exact numbers in Python.\n\n## Extension tools\n\nTools from Pi extensions are pre-imported async skills in the REPL, not separate tools. `r = await tools.call(\"name\", {\"key\": value})` or `await tools.<name>(key=value)` runs one in the host with its real context and returns a ToolResult: the text as a string (kept whole up to 256 KiB, so keep it in a variable and print only what you need), `.details` (structured, or None) and `.json()` to parse a JSON reply; a failing tool raises ToolError. `await tools.list()` and `await tools.describe(name)` give names, descriptions and JSON-schema parameters. Available:\n- mcp: Does thing 0.\n\nMCP servers are reached through the `mcp` namespace: `await mcp.servers()`, `await mcp.tools(\"server\")` (tool names), `await mcp.describe(\"tool\")` (its parameters), `await mcp.search(\"query\")`, and `r = await mcp.call(\"tool\", key=value, ...)`, whose keyword arguments are the MCP tool's arguments (or `await mcp.<server>.<tool>(...)`, with `-` in the server name written as `_`). Gateway errors (unknown tool, server not connected, auth required) raise McpError.\n\nSlow calls never hold you: a plain call still running after 30 s keeps running in the host (`r.running` True, `r.call` its ToolCall) and its completion arrives as a `<runtime_event kind=\"tool_done\">` whose fetch returns the result (`await tools.result(id)`). `yield_after=0` returns a ToolCall handle at once (`await call.result()` waits, `await call.cancel()` stops it); `yield_after=None` waits however long it takes. Run independent calls together in one cell with `asyncio.gather` and keep ids and results in variables. For a start-run/wait-run pair (such as Exa's `exa_agent_create_run` and `exa_agent_wait_run`), start every run in one cell, then leave the waits running as calls instead of blocking the turn:\n```python\nqueries = [\"first question\", \"second question\"]\nruns = await asyncio.gather(*(mcp.call(\"exa-agent_exa_agent_create_run\", query=q, effort=\"medium\") for q in queries))\nrun_ids = [r.json()[\"id\"] for r in runs]  # the id field as the reply names it: print(runs[0]) once if unsure\nwaits = await asyncio.gather(*(mcp.call(\"exa-agent_exa_agent_wait_run\", run_id=i, yield_after=0) for i in run_ids))\n```\nThen do other work or end your turn: each wait's completion arrives as a runtime event.\n\n## Delegation\n`h = await rlm.spawn(brief, name=...)` starts a subagent (own REPL, your tools and files, not your chat). Spawn only for independent multi-step work, with a self-contained brief (goal, paths, constraints, what to return), several at once; `depth=N` lets a child delegate too (≤3 levels). Children editing files: `worktree=True` each (coupled work in one brief), then `await rlm.merge(hs)`. Then do only work no child owns; never check on children's files, logs or progress: results come to you. With nothing of your own left, `await rlm.collect(hs)` (free), or end your turn: each end arrives as a `child_done` event. Trust only verdicts whose `check.outcome` is \"verified\"; re-check the rest. `help(rlm.spawn)`.\nIf you are a subagent, do the brief yourself (spawn only if given depth), then `await rlm.finish(status, summary, evidence=[...], changed_files=[...])` and reply briefly with paths and uncertainties.\nTyped agents, graphs, jobs: `help(agents)`, `help(workflows)`, `help(background)`.\n\n## Other APIs\n- `ctx` edits your view of your own context (`ctx.history()`, `ctx.forget`, `ctx.summarize`, `ctx.pin`, `ctx.note`); a seen task result collapses to one line (`await agents.result(id)`). `help(ctx)`.\n- Save a working procedure that will recur as a tested code skill (`await skills.propose_code(...)`); reuse one with `from code_skills import <name>`. `help(skills)`.\n- `@agent` classes: docstring-only async methods are typed model calls, annotated fields durable state. `help(agent)`.\n- `memory.prepare(query)` recalls long-term memory, `memory.propose(text, evidence)` keeps a fact; neither runs on its own."
+		},
+		{
+			"tools": [
+				"rlm"
+			],
+			"options": {
+				"hints": false,
+				"extensionTools": [
+					{
+						"name": "mcp",
+						"description": "Does   thing\n0."
+					}
+				],
+				"nativeExtensionTools": [
+					"mcp"
+				]
+			},
+			"text": "## Runtime\nEach rlm call runs a cell in your lane's persistent kernel: program over files, shell and agents, keep data in variables and print only what the next step needs. Output over ~20 KB is cut in the middle (the marker names a file with all of it) and a large value is shown by reference; `preview(x)` gives a bounded view. APIs are pre-imported and async; check `help(obj)` before guessing.\nA turn ends when you reply without calling rlm; that reply is your answer. Never end a turn with a promise (\"I'll check next\"): do the work now. An exception ends the cell after what it printed: fix the cause, do not rerun: its writes and started agents may already have happened. Subagents, tasks and jobs survive a kernel restart, and so does `state` (a dict); re-create imports and functions.\nNothing needs polling: a job, tool call, subagent or task that ends while you are not waiting sends a `<runtime_event kind=... id=... status=... fetch=...>` message, which starts a new turn if yours ended. Start long work and do the rest meanwhile; never sleep, poll or loop waiting, and if only that result is left, await it (`await job.result()`). Run independent operations together with `asyncio.gather`.\n\n## Skills\n- `out = await bash('''cmd''')` (always triple-quoted, even for one line; the text reaches bash as written, backslashes included) returns stdout and stderr as a str, with `[exit code N]` appended on failure (`out.ok`, `out.exit_code`). Prefer `rg -n`, `sed -n 'A,Bp'`, `head` over whole files. A command still running after 30 s continues as a job (`out.job`; its end arrives as an event); `yield_after=0` starts a suite or build you know takes minutes as a job at once. `help(bash)`.\n- `await read(path)` returns a file's text (a ContextHandle over 256 KiB); `await view_image(path)` shows you an image.\n- `await edit(path=..., old_str=..., new_str=...)` replaces exactly one occurrence and raises ValueError when old_str is absent or ambiguous: read first, copy old_str exactly, several hunks in one cell. Create files with `await write(path, text)`.\n- The kernel is the system Python without the project's packages: run all project code (tests, repros, builds, imports) through `bash` with the project's own interpreter and toolchain (`.venv/bin/python -m pytest -q`, `npm test`). Work on data files in the cell itself, not in a `python - <<EOF` heredoc through `bash`, and write the requested output in the cell that computes it.\n\n## Search before delegating\nFor many files or a large input, narrow with code first: 1. search the concept and its synonyms (`re`, `h.search`, `rg -il`) and count hits; 2. print one compact line per candidate (id and matching sentence); 3. read the deciding passages of unclear candidates and judge them yourself. Use `rlm.map` only for candidates a line or two cannot settle, or text over ~100 KB, one passage per frame. Do not spawn subagents to read or classify documents: each re-sends this prompt and its transcript every turn.\n\n## Bounded inference\nLarge inputs stay out of your context as handles; examples: `help(rlm.load)`, `help(rlm.map)`.\n- `h = await rlm.load(path_or_text)`: `h.search(regex)`, `h.count(regex)`, `h.lines(a, b)`, `h.chunks(n)`; views print their text.\n- `await rlm.infer(task, context=[views], contract=T, budget=Budget(calls, tokens, depth))`: one private sub-model call (no transcript, no tools), contract-validated and re-asked; running out returns a falsy `Incomplete`.\n- `await rlm.map(task, items, contract=T)`: one frame per item, in order, under one shared budget (default 500,000 tokens; `budget=Budget(tokens=...)` for more).\n- Every frame is a model request: filter with code first, give each frame only the passage it must judge, and compute exact numbers in Python.\n\n## Delegation\n`h = await rlm.spawn(brief, name=...)` starts a subagent (own REPL, your tools and files, not your chat). Spawn only for independent multi-step work, with a self-contained brief (goal, paths, constraints, what to return), several at once; `depth=N` lets a child delegate too (≤3 levels). Children editing files: `worktree=True` each (coupled work in one brief), then `await rlm.merge(hs)`. Then do only work no child owns; never check on children's files, logs or progress: results come to you. With nothing of your own left, `await rlm.collect(hs)` (free), or end your turn: each end arrives as a `child_done` event. Trust only verdicts whose `check.outcome` is \"verified\"; re-check the rest. `help(rlm.spawn)`.\nIf you are a subagent, do the brief yourself (spawn only if given depth), then `await rlm.finish(status, summary, evidence=[...], changed_files=[...])` and reply briefly with paths and uncertainties.\nTyped agents, graphs, jobs: `help(agents)`, `help(workflows)`, `help(background)`.\n\n## Other APIs\n- `ctx` edits your view of your own context (`ctx.history()`, `ctx.forget`, `ctx.summarize`, `ctx.pin`, `ctx.note`); a seen task result collapses to one line (`await agents.result(id)`). `help(ctx)`.\n- Save a working procedure that will recur as a tested code skill (`await skills.propose_code(...)`); reuse one with `from code_skills import <name>`. `help(skills)`.\n- `@agent` classes: docstring-only async methods are typed model calls, annotated fields durable state. `help(agent)`.\n- `memory.prepare(query)` recalls long-term memory, `memory.propose(text, evidence)` keeps a fact; neither runs on its own."
+		}
+	],
+	"guidelines": [
+		{
+			"tools": [
+				"rlm"
+			],
+			"lines": [
+				"Do all work through the rlm tool; batch related steps into one cell and keep intermediate results in variables"
+			]
+		},
+		{
+			"tools": [
+				"rlm",
+				"write"
+			],
+			"lines": [
+				"Use the rlm tool for multi-step or data-heavy work: load and process data in Python, keep it in variables across calls, and print only what you need"
+			]
+		},
+		{
+			"tools": [],
+			"lines": [
+				"Do all work through the rlm tool; batch related steps into one cell and keep intermediate results in variables"
+			]
+		}
+	],
+	"diffs": [
+		{
+			"from": "defaults",
+			"to": "rlmAppend",
+			"patch": {
+				"rules": "<rules>\n- Be concise in your responses\n- Show file paths clearly when working with files\n</rules>",
+				"addendum": "<addendum>\nNow appended.\n</addendum>",
+				"skills": "<skills>\nThe following skills provide specialized instructions for specific tasks.\nLoad a skill's file in the rlm tool (`print(Path(location).read_text())`) when the task matches its description.\nWhen a skill file references a relative path, resolve it against the skill directory (parent of SKILL.md / dirname of the path) and use that absolute path in tool commands.\n\n<available_skills>\n  <skill>\n    <name>alpha</name>\n    <description>Alpha skill. Does alpha things &amp; more &lt;tags&gt;.</description>\n    <location>$ROOT/agent/skills/alpha/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>beta</name>\n    <description>Beta from dir name.</description>\n    <location>$ROOT/agent/skills/beta/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>Gamma_Bad--</name>\n    <description>Invalid name still loads.</description>\n    <location>$ROOT/agent/skills/group/gamma/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>multi</name>\n    <description>First line.\nSecond line with &apos;quotes&apos;.\n</description>\n    <location>$ROOT/agent/skills/multi/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>root-file</name>\n    <description>A root markdown skill.</description>\n    <location>$ROOT/agent/skills/root-file.md</location>\n  </skill>\n  <skill>\n    <name>proj-only</name>\n    <description>Project skill.</description>\n    <location>$ROOT/proj/.pi/skills/proj-only/SKILL.md</location>\n  </skill>\n</available_skills>\n\nBundled skills in $BUNDLED (<source>/<name>/SKILL.md). Read one only when the user asks for it or the task plainly calls for that workflow; ordinary coding needs none. The principles pstack's skills cite are pstack/principle-<name>/SKILL.md.\n- humanlayer/diagram-it: Explain the current topic visually: a small diagram, call tree, file tree, stat…\n- pstack/architect: Sketch types, signatures and module structure before code, run an arena of stru…\n- pstack/arena: Run N parallel candidate implementations of the same task on different models,…\n- pstack/automate-me: Use for \"automate me\", \"create/update/refresh my -mode skill\", \"turn/capture my…\n- pstack/benchmark-checklist: Vet a perf measurement (limiter, tuning, limits, errors, repeatability, relevan…\n- pstack/blast-radius: Find what a change could break somewhere else before it ships, beyond the diff,…\n- pstack/bro: Restate the last message in plain human language, with no jargon.\n- pstack/correct: Find the mistakes agents keep repeating in this repo and make each one impossib…\n- pstack/create-verification-skill: Generate a project-local verification skill (.pi/skills/verify-<app>/) that dri…\n- pstack/figure-it-out: Design an auditable playbook when no narrower one fits: a large migration, an a…\n- pstack/how: Use for \"how does X work\", code walkthroughs before changing something, and pla…\n- pstack/interrogate: Adversarial multi-model code review: run Ultron's /review once per model family…\n- pstack/maintain-verification-skill: Periodic pass that keeps a project's verification skill and feature map honest:…\n- pstack/no-comments: Hunt the comments in a diff or file set (one Comment Sicko frame per file), del…\n- pstack/recall: Reconstruct your recent working context from your own Ultron session history, l…\n- pstack/reflect: Review the current session through three reviewer lenses (judgment, tooling, di…\n- pstack/rigor: Rigorous engineering mode (poteto's way of working): routes a task to a playboo…\n- pstack/show-me-your-work: Keep a reviewable decision trail for long-running or unattended work: a TSV log…\n- pstack/swarm: Fan out N parallel subagents over slices of a task or as a race on one brief, c…\n- pstack/tdd: Use only when the user explicitly asks for TDD, a failing test, or a regression…\n- pstack/teach: Explain a body of work plainly so a person actually understands it.\n- pstack/technical-writing: Layered technical-writing standard: Diátaxis structure, Google developer style…\n- pstack/typescript-best-practices: TypeScript best practices for types, boundaries and module shape.\n- pstack/unslop: Cut AI tells from any writing.\n- pstack/why: Use for 'why does X work this way', 'why we picked Y', design rationale, regres…\n- qingyuna/answer-me-with-html: Answer a hard question with one visual HTML page: you write a short Markdown dr…\n</skills>"
+			}
+		},
+		{
+			"from": "defaults",
+			"to": "defaults",
+			"patch": null
+		}
+	],
+	"always": {
+		"names": [
+			"multi",
+			"nope",
+			"alpha",
+			"multi"
+		],
+		"diagnostics": [
+			{
+				"type": "warning",
+				"message": "alwaysSkills: no skill named \"nope\" is loaded",
+				"path": null,
+				"collision": null
+			}
+		],
+		"skills": [
+			{
+				"name": "alpha",
+				"description": "Alpha skill. Does alpha things & more <tags>.",
+				"filePath": "$ROOT/agent/skills/alpha/SKILL.md",
+				"baseDir": "$ROOT/agent/skills/alpha",
+				"source": "user",
+				"disableModelInvocation": false,
+				"alwaysOnContent": "# Body of alpha\nUse it well."
+			},
+			{
+				"name": "beta",
+				"description": "Beta from dir name.",
+				"filePath": "$ROOT/agent/skills/beta/SKILL.md",
+				"baseDir": "$ROOT/agent/skills/beta",
+				"source": "user",
+				"disableModelInvocation": false,
+				"alwaysOnContent": null
+			},
+			{
+				"name": "Gamma_Bad--",
+				"description": "Invalid name still loads.",
+				"filePath": "$ROOT/agent/skills/group/gamma/SKILL.md",
+				"baseDir": "$ROOT/agent/skills/group/gamma",
+				"source": "user",
+				"disableModelInvocation": false,
+				"alwaysOnContent": null
+			},
+			{
+				"name": "hidden",
+				"description": "Hidden from listing.",
+				"filePath": "$ROOT/agent/skills/hidden/SKILL.md",
+				"baseDir": "$ROOT/agent/skills/hidden",
+				"source": "user",
+				"disableModelInvocation": true,
+				"alwaysOnContent": null
+			},
+			{
+				"name": "multi",
+				"description": "First line.\nSecond line with 'quotes'.\n",
+				"filePath": "$ROOT/agent/skills/multi/SKILL.md",
+				"baseDir": "$ROOT/agent/skills/multi",
+				"source": "user",
+				"disableModelInvocation": false,
+				"alwaysOnContent": "# Body of multi\nUse it well."
+			},
+			{
+				"name": "root-file",
+				"description": "A root markdown skill.",
+				"filePath": "$ROOT/agent/skills/root-file.md",
+				"baseDir": "$ROOT/agent/skills",
+				"source": "user",
+				"disableModelInvocation": false,
+				"alwaysOnContent": null
+			},
+			{
+				"name": "proj-only",
+				"description": "Project skill.",
+				"filePath": "$ROOT/proj/.pi/skills/proj-only/SKILL.md",
+				"baseDir": "$ROOT/proj/.pi/skills/proj-only",
+				"source": "project",
+				"disableModelInvocation": false,
+				"alwaysOnContent": null
+			}
+		]
+	},
+	"bundledCount": 50,
+	"templates": [
+		{
+			"tree": "prompts",
+			"includeDefaults": true,
+			"promptPaths": [],
+			"templates": [
+				{
+					"name": ".hidden",
+					"description": "Hidden but loaded.",
+					"argumentHint": null,
+					"content": "Hidden but loaded.\n",
+					"scope": "user",
+					"filePath": "$ROOT/agent/prompts/.hidden.md"
+				},
+				{
+					"name": "",
+					"description": "Unnamed template $1",
+					"argumentHint": null,
+					"content": "Unnamed template $1\n",
+					"scope": "user",
+					"filePath": "$ROOT/agent/prompts/.md"
+				},
+				{
+					"name": "edge60",
+					"description": "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
+					"argumentHint": null,
+					"content": "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz\n",
+					"scope": "user",
+					"filePath": "$ROOT/agent/prompts/edge60.md"
+				},
+				{
+					"name": "edge61",
+					"description": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy...",
+					"argumentHint": null,
+					"content": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy\n",
+					"scope": "user",
+					"filePath": "$ROOT/agent/prompts/edge61.md"
+				},
+				{
+					"name": "empty",
+					"description": "",
+					"argumentHint": null,
+					"content": "",
+					"scope": "user",
+					"filePath": "$ROOT/agent/prompts/empty.md"
+				},
+				{
+					"name": "long",
+					"description": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...",
+					"argumentHint": null,
+					"content": "\n\n   \nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nsecond\n",
+					"scope": "user",
+					"filePath": "$ROOT/agent/prompts/long.md"
+				},
+				{
+					"name": "review",
+					"description": "Review code",
+					"argumentHint": "<file>",
+					"content": "Review $1 then ${@:2}.",
+					"scope": "user",
+					"filePath": "$ROOT/agent/prompts/review.md"
+				},
+				{
+					"name": "short",
+					"description": "Short first line",
+					"argumentHint": null,
+					"content": "Short first line\nAll: $ARGUMENTS / ${1:-none} / ${@:-empty}\n",
+					"scope": "user",
+					"filePath": "$ROOT/agent/prompts/short.md"
+				},
+				{
+					"name": "review",
+					"description": "Project review $@",
+					"argumentHint": null,
+					"content": "Project review $@",
+					"scope": "project",
+					"filePath": "$ROOT/proj/.pi/prompts/review.md"
+				}
+			],
+			"diagnostics": [
+				{
+					"type": "warning",
+					"message": "Flow sequence in block collection must be sufficiently indented and end with a ] at line 1, column 8:\n\nfoo: [x\n       ^\n",
+					"path": "$ROOT/agent/prompts/bad.md",
+					"collision": null
+				}
+			]
+		},
+		{
+			"tree": "prompts",
+			"includeDefaults": false,
+			"promptPaths": [
+				"../extra/one.md",
+				" ../extra/dir ",
+				"../missing",
+				"../extra",
+				"$ROOT/agent/prompts/review.md"
+			],
+			"templates": [
+				{
+					"name": "one",
+					"description": "Explicit $1",
+					"argumentHint": null,
+					"content": "Explicit $1",
+					"scope": "temporary",
+					"filePath": "$ROOT/extra/one.md"
+				},
+				{
+					"name": "two",
+					"description": "Two ${@:1:1}",
+					"argumentHint": null,
+					"content": "Two ${@:1:1}\n",
+					"scope": "temporary",
+					"filePath": "$ROOT/extra/dir/two.md"
+				},
+				{
+					"name": "one",
+					"description": "Explicit $1",
+					"argumentHint": null,
+					"content": "Explicit $1",
+					"scope": "temporary",
+					"filePath": "$ROOT/extra/one.md"
+				},
+				{
+					"name": "review",
+					"description": "Review code",
+					"argumentHint": "<file>",
+					"content": "Review $1 then ${@:2}.",
+					"scope": "user",
+					"filePath": "$ROOT/agent/prompts/review.md"
+				}
+			],
+			"diagnostics": []
+		}
+	],
+	"expand": [
+		{
+			"text": "/review a.ts b c",
+			"out": "Review a.ts then b c."
+		},
+		{
+			"text": "/review",
+			"out": "Review  then ."
+		},
+		{
+			"text": "/short  'quoted arg'  \"two words\"\tthree",
+			"out": "Short first line\nAll: quoted arg two words three / quoted arg / quoted arg two words three\n"
+		},
+		{
+			"text": "/short",
+			"out": "Short first line\nAll:  / none / empty\n"
+		},
+		{
+			"text": "/missing x",
+			"out": "/missing x"
+		},
+		{
+			"text": "no slash",
+			"out": "no slash"
+		},
+		{
+			"text": "/",
+			"out": "/"
+		},
+		{
+			"text": "/ review",
+			"out": "/ review"
+		},
+		{
+			"text": "/review\n\nmulti\nline",
+			"out": "Review multi then line."
+		}
+	],
+	"parseArgs": [
+		{
+			"input": "",
+			"args": []
+		},
+		{
+			"input": "a b  c",
+			"args": [
+				"a",
+				"b",
+				"c"
+			]
+		},
+		{
+			"input": "'a b' \"c d\" e'f g'h",
+			"args": [
+				"a b",
+				"c d",
+				"ef gh"
+			]
+		},
+		{
+			"input": "unterminated 'quote here",
+			"args": [
+				"unterminated",
+				"quote here"
+			]
+		},
+		{
+			"input": "tab\tsep\nnl nbspnel﻿bom",
+			"args": [
+				"tab",
+				"sep",
+				"nl",
+				"nbspnel",
+				"bom"
+			]
+		},
+		{
+			"input": "\"\" ''",
+			"args": []
+		}
+	],
+	"substitute": [
+		{
+			"content": "$1 $2 $3 $4",
+			"args": [],
+			"out": "   "
+		},
+		{
+			"content": "$@|$ARGUMENTS|$ARGUMENTSX|$@@",
+			"args": [],
+			"out": "||X|@"
+		},
+		{
+			"content": "${@:2}|${@:1:2}|${@:0:1}|${@:3:0}|${@:9}",
+			"args": [],
+			"out": "||||"
+		},
+		{
+			"content": "${4:-d}|${1:-x}|${@:-none}|${ARGUMENTS:-z}|${2:-}",
+			"args": [],
+			"out": "d|x|none|z|"
+		},
+		{
+			"content": "${@:-none} $5$ ${x} $ $$1 ${1} ${@:} ${@:1:} ${1:-no-close",
+			"args": [],
+			"out": "none $ ${x} $ $ ${1} ${@:} ${@:1:} ${1:-no-close"
+		},
+		{
+			"content": "$0 $10 $99999999999999999999999 ${99999999999999999999:-big}",
+			"args": [],
+			"out": "   big"
+		},
+		{
+			"content": "unicode ✓ $1 ✓",
+			"args": [],
+			"out": "unicode ✓  ✓"
+		},
+		{
+			"content": "$1 $2 $3 $4",
+			"args": [
+				"a"
+			],
+			"out": "a   "
+		},
+		{
+			"content": "$@|$ARGUMENTS|$ARGUMENTSX|$@@",
+			"args": [
+				"a"
+			],
+			"out": "a|a|aX|a@"
+		},
+		{
+			"content": "${@:2}|${@:1:2}|${@:0:1}|${@:3:0}|${@:9}",
+			"args": [
+				"a"
+			],
+			"out": "|a|a||"
+		},
+		{
+			"content": "${4:-d}|${1:-x}|${@:-none}|${ARGUMENTS:-z}|${2:-}",
+			"args": [
+				"a"
+			],
+			"out": "d|a|a|a|"
+		},
+		{
+			"content": "${@:-none} $5$ ${x} $ $$1 ${1} ${@:} ${@:1:} ${1:-no-close",
+			"args": [
+				"a"
+			],
+			"out": "a $ ${x} $ $a ${1} ${@:} ${@:1:} ${1:-no-close"
+		},
+		{
+			"content": "$0 $10 $99999999999999999999999 ${99999999999999999999:-big}",
+			"args": [
+				"a"
+			],
+			"out": "   big"
+		},
+		{
+			"content": "unicode ✓ $1 ✓",
+			"args": [
+				"a"
+			],
+			"out": "unicode ✓ a ✓"
+		},
+		{
+			"content": "$1 $2 $3 $4",
+			"args": [
+				"a",
+				"b",
+				"c"
+			],
+			"out": "a b c "
+		},
+		{
+			"content": "$@|$ARGUMENTS|$ARGUMENTSX|$@@",
+			"args": [
+				"a",
+				"b",
+				"c"
+			],
+			"out": "a b c|a b c|a b cX|a b c@"
+		},
+		{
+			"content": "${@:2}|${@:1:2}|${@:0:1}|${@:3:0}|${@:9}",
+			"args": [
+				"a",
+				"b",
+				"c"
+			],
+			"out": "b c|a b|a||"
+		},
+		{
+			"content": "${4:-d}|${1:-x}|${@:-none}|${ARGUMENTS:-z}|${2:-}",
+			"args": [
+				"a",
+				"b",
+				"c"
+			],
+			"out": "d|a|a b c|a b c|b"
+		},
+		{
+			"content": "${@:-none} $5$ ${x} $ $$1 ${1} ${@:} ${@:1:} ${1:-no-close",
+			"args": [
+				"a",
+				"b",
+				"c"
+			],
+			"out": "a b c $ ${x} $ $a ${1} ${@:} ${@:1:} ${1:-no-close"
+		},
+		{
+			"content": "$0 $10 $99999999999999999999999 ${99999999999999999999:-big}",
+			"args": [
+				"a",
+				"b",
+				"c"
+			],
+			"out": "   big"
+		},
+		{
+			"content": "unicode ✓ $1 ✓",
+			"args": [
+				"a",
+				"b",
+				"c"
+			],
+			"out": "unicode ✓ a ✓"
+		},
+		{
+			"content": "$1 $2 $3 $4",
+			"args": [
+				"",
+				"x"
+			],
+			"out": " x  "
+		},
+		{
+			"content": "$@|$ARGUMENTS|$ARGUMENTSX|$@@",
+			"args": [
+				"",
+				"x"
+			],
+			"out": " x| x| xX| x@"
+		},
+		{
+			"content": "${@:2}|${@:1:2}|${@:0:1}|${@:3:0}|${@:9}",
+			"args": [
+				"",
+				"x"
+			],
+			"out": "x| x|||"
+		},
+		{
+			"content": "${4:-d}|${1:-x}|${@:-none}|${ARGUMENTS:-z}|${2:-}",
+			"args": [
+				"",
+				"x"
+			],
+			"out": "d|x| x| x|x"
+		},
+		{
+			"content": "${@:-none} $5$ ${x} $ $$1 ${1} ${@:} ${@:1:} ${1:-no-close",
+			"args": [
+				"",
+				"x"
+			],
+			"out": " x $ ${x} $ $ ${1} ${@:} ${@:1:} ${1:-no-close"
+		},
+		{
+			"content": "$0 $10 $99999999999999999999999 ${99999999999999999999:-big}",
+			"args": [
+				"",
+				"x"
+			],
+			"out": "   big"
+		},
+		{
+			"content": "unicode ✓ $1 ✓",
+			"args": [
+				"",
+				"x"
+			],
+			"out": "unicode ✓  ✓"
+		}
+	],
+	"promptFiles": [
+		{
+			"cwd": "proj",
+			"agentDir": "agent",
+			"trusted": true,
+			"systemPrompt": null,
+			"appendSystemPrompt": null,
+			"out": {
+				"systemPrompt": "Project system.\n",
+				"systemPromptSource": "$ROOT/proj/.pi/SYSTEM.md",
+				"appendSystemPrompt": [
+					"Project append.\n"
+				],
+				"appendSources": [
+					"$ROOT/proj/.pi/APPEND_SYSTEM.md"
+				]
+			}
+		},
+		{
+			"cwd": "proj",
+			"agentDir": "agent",
+			"trusted": false,
+			"systemPrompt": null,
+			"appendSystemPrompt": null,
+			"out": {
+				"systemPrompt": "Global system.\n",
+				"systemPromptSource": "$ROOT/agent/SYSTEM.md",
+				"appendSystemPrompt": [
+					"Global append.\n"
+				],
+				"appendSources": [
+					"$ROOT/agent/APPEND_SYSTEM.md"
+				]
+			}
+		},
+		{
+			"cwd": "bare",
+			"agentDir": "none",
+			"trusted": true,
+			"systemPrompt": null,
+			"appendSystemPrompt": null,
+			"out": {
+				"systemPrompt": "Untrusted unless trusted.\n",
+				"systemPromptSource": "$ROOT/bare/.pi/SYSTEM.md",
+				"appendSystemPrompt": [],
+				"appendSources": []
+			}
+		},
+		{
+			"cwd": "bare",
+			"agentDir": "none",
+			"trusted": false,
+			"systemPrompt": null,
+			"appendSystemPrompt": null,
+			"out": {
+				"systemPrompt": null,
+				"systemPromptSource": null,
+				"appendSystemPrompt": [],
+				"appendSources": []
+			}
+		},
+		{
+			"cwd": "proj",
+			"agentDir": "agent",
+			"trusted": true,
+			"systemPrompt": "Literal system text",
+			"appendSystemPrompt": [],
+			"out": {
+				"systemPrompt": "Literal system text",
+				"systemPromptSource": null,
+				"appendSystemPrompt": [],
+				"appendSources": []
+			}
+		},
+		{
+			"cwd": "proj",
+			"agentDir": "agent",
+			"trusted": true,
+			"systemPrompt": "$ROOT/custom.md",
+			"appendSystemPrompt": [
+				"$ROOT/custom.md",
+				"literal append",
+				"$ROOT/somedir",
+				""
+			],
+			"out": {
+				"systemPrompt": "Custom file prompt.\n",
+				"systemPromptSource": "$ROOT/custom.md",
+				"appendSystemPrompt": [
+					"Custom file prompt.\n",
+					"literal append",
+					"$ROOT/somedir"
+				],
+				"appendSources": [
+					"$ROOT/custom.md",
+					"$ROOT/somedir"
+				]
+			}
+		},
+		{
+			"cwd": "proj",
+			"agentDir": "agent",
+			"trusted": false,
+			"systemPrompt": "",
+			"appendSystemPrompt": null,
+			"out": {
+				"systemPrompt": null,
+				"systemPromptSource": null,
+				"appendSystemPrompt": [
+					"Global append.\n"
+				],
+				"appendSources": [
+					"$ROOT/agent/APPEND_SYSTEM.md"
+				]
+			}
+		}
+	]
+}

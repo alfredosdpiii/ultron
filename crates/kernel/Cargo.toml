@@ -1,0 +1,22 @@
+[package]
+name = "kernel"
+version = "0.1.0"
+description = "Supervisor for Ultron's persistent Python kernel (runtime.py): process, wire protocol, host requests"
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+command-fds = "=0.3.3"
+getrandom = "=0.4.3"
+rustix = { version = "=1.1.5", features = ["process", "std"] }
+sandbox = { path = "../sandbox" }
+serde = { version = "=1.0.229", features = ["derive"] }
+serde_json = { version = "=1.0.151", features = ["preserve_order"] }
+sha2 = "=0.10.9"
+
+[dev-dependencies]
+tempfile = "=3.27.0"
+
+[lints]
+workspace = true

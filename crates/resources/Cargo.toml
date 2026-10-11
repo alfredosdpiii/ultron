@@ -1,0 +1,17 @@
+[package]
+name = "resources"
+version = "0.1.0"
+description = "System prompt and resource assembly: context files, skills, the runtime guide"
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+yaml-rust2 = "=0.13.0"
+
+[dev-dependencies]
+serde_json = { version = "=1.0.151", features = ["preserve_order"] }
+tempfile = "=3.27.0"
+
+[lints]
+workspace = true

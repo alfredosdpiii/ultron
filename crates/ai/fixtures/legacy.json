@@ -1,0 +1,82 @@
+[
+	{
+		"name": "streamAnthropic",
+		"api": "anthropic-messages",
+		"simple": false
+	},
+	{
+		"name": "streamAzureOpenAIResponses",
+		"api": "azure-openai-responses",
+		"simple": false
+	},
+	{
+		"name": "streamGoogle",
+		"api": "google-generative-ai",
+		"simple": false
+	},
+	{
+		"name": "streamGoogleVertex",
+		"api": "google-vertex",
+		"simple": false
+	},
+	{
+		"name": "streamMistral",
+		"api": "mistral-conversations",
+		"simple": false
+	},
+	{
+		"name": "streamOpenAICodexResponses",
+		"api": "openai-codex-responses",
+		"simple": false
+	},
+	{
+		"name": "streamOpenAICompletions",
+		"api": "openai-completions",
+		"simple": false
+	},
+	{
+		"name": "streamOpenAIResponses",
+		"api": "openai-responses",
+		"simple": false
+	},
+	{
+		"name": "streamSimpleAnthropic",
+		"api": "anthropic-messages",
+		"simple": true
+	},
+	{
+		"name": "streamSimpleAzureOpenAIResponses",
+		"api": "azure-openai-responses",
+		"simple": true
+	},
+	{
+		"name": "streamSimpleGoogle",
+		"api": "google-generative-ai",
+		"simple": true
+	},
+	{
+		"name": "streamSimpleGoogleVertex",
+		"api": "google-vertex",
+		"simple": true
+	},
+	{
+		"name": "streamSimpleMistral",
+		"api": "mistral-conversations",
+		"simple": true
+	},
+	{
+		"name": "streamSimpleOpenAICodexResponses",
+		"api": "openai-codex-responses",
+		"simple": true
+	},
+	{
+		"name": "streamSimpleOpenAICompletions",
+		"api": "openai-completions",
+		"simple": true
+	},
+	{
+		"name": "streamSimpleOpenAIResponses",
+		"api": "openai-responses",
+		"simple": true
+	}
+]

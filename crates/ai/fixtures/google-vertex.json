@@ -1,0 +1,3158 @@
+{
+	"generator": "crates/ai/fixtures/generate-more.mjs",
+	"now": 1767225600000,
+	"scenarios": [
+		{
+			"name": "vertex/gemini3-history-tools",
+			"fn": "stream",
+			"model": {
+				"id": "gemini-3-pro-preview",
+				"name": "Test Model",
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"baseUrl": "https://{location}-aiplatform.googleapis.com",
+				"reasoning": true,
+				"input": [
+					"text",
+					"image"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000,
+				"thinkingLevelMap": {
+					"off": null,
+					"minimal": "low",
+					"low": "low",
+					"medium": "high",
+					"high": "high"
+				}
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "system",
+						"content": "You are helpful.",
+						"timestamp": 1,
+						"toolsAdded": [
+							{
+								"name": "read",
+								"description": "Read a file",
+								"parameters": {
+									"$schema": "http://json-schema.org/draft-07/schema#",
+									"type": "object",
+									"properties": {
+										"path": {
+											"type": "string"
+										},
+										"limit": {
+											"type": "number"
+										}
+									},
+									"required": [
+										"path"
+									]
+								}
+							},
+							{
+								"name": "bash",
+								"description": "Run a command",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"command": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"command"
+									]
+								},
+								"constrainedSampling": {
+									"type": "json_schema",
+									"strict": "prefer"
+								}
+							}
+						],
+						"sections": {
+							"rules": "<rules>be brief</rules>"
+						}
+					},
+					{
+						"role": "user",
+						"content": "List files",
+						"timestamp": 2
+					},
+					{
+						"role": "assistant",
+						"content": [
+							{
+								"type": "thinking",
+								"thinking": "I should read.",
+								"thinkingSignature": "c2lnbmF0dXJl"
+							},
+							{
+								"type": "thinking",
+								"thinking": "",
+								"thinkingSignature": "bad sig!"
+							},
+							{
+								"type": "text",
+								"text": "",
+								"textSignature": "c2lnbmF0dXJl"
+							},
+							{
+								"type": "text",
+								"text": "Reading.",
+								"textSignature": "not-base64"
+							},
+							{
+								"type": "text",
+								"text": "Odd signature length.",
+								"textSignature": "abcde"
+							},
+							{
+								"type": "toolCall",
+								"id": "call_1",
+								"name": "read",
+								"arguments": {
+									"path": "a.txt"
+								},
+								"thoughtSignature": "c2lnbmF0dXJl"
+							},
+							{
+								"type": "toolCall",
+								"id": "call_2",
+								"name": "read",
+								"arguments": {
+									"path": "b.txt"
+								}
+							}
+						],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-3-pro-preview",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "toolUse",
+						"timestamp": 3
+					},
+					{
+						"role": "toolResult",
+						"toolCallId": "call_1",
+						"toolName": "read",
+						"content": [
+							{
+								"type": "text",
+								"text": "contents of a"
+							},
+							{
+								"type": "image",
+								"data": "aGVsbG8=",
+								"mimeType": "image/png"
+							}
+						],
+						"isError": false,
+						"timestamp": 4
+					},
+					{
+						"role": "toolResult",
+						"toolCallId": "call_2",
+						"toolName": "read",
+						"content": [
+							{
+								"type": "image",
+								"data": "aGVsbG8=",
+								"mimeType": "image/png"
+							}
+						],
+						"isError": true,
+						"timestamp": 4
+					},
+					{
+						"role": "user",
+						"content": [
+							{
+								"type": "text",
+								"text": "Now look at this"
+							},
+							{
+								"type": "image",
+								"data": "aGVsbG8=",
+								"mimeType": "image/png"
+							}
+						],
+						"timestamp": 2
+					},
+					{
+						"role": "assistant",
+						"content": [
+							{
+								"type": "thinking",
+								"thinking": "Foreign thoughts",
+								"thinkingSignature": "c2lnbmF0dXJl"
+							},
+							{
+								"type": "thinking",
+								"thinking": "  ",
+								"thinkingSignature": "c2lnbmF0dXJl"
+							},
+							{
+								"type": "text",
+								"text": "Foreign answer",
+								"textSignature": "c2lnbmF0dXJl"
+							},
+							{
+								"type": "toolCall",
+								"id": "call|weird+id/with=chars",
+								"name": "bash",
+								"arguments": {
+									"command": "ls"
+								}
+							}
+						],
+						"api": "anthropic-messages",
+						"provider": "anthropic",
+						"model": "claude-x",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "toolUse",
+						"timestamp": 3
+					},
+					{
+						"role": "system",
+						"content": "Mid-conversation rule",
+						"timestamp": 1,
+						"toolsAdded": [
+							{
+								"name": "grep",
+								"description": "Search",
+								"parameters": {
+									"type": "object",
+									"properties": {}
+								}
+							}
+						]
+					},
+					{
+						"role": "user",
+						"content": "Continue",
+						"timestamp": 2
+					},
+					{
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "partial"
+							}
+						],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-3-pro-preview",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "error",
+						"timestamp": 3,
+						"errorMessage": "boom"
+					},
+					{
+						"role": "user",
+						"content": "Again",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"apiKey": " v-key ",
+				"temperature": 0.2,
+				"maxTokens": 1000,
+				"toolChoice": "auto",
+				"thinking": {
+					"enabled": true,
+					"level": "LOW"
+				}
+			},
+			"responses": [
+				{
+					"chunks": [
+						"data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"Hmm\",\"thought\":true,\"thoughtSignature\":\"c2lnbmF0dXJl\"}]},\"index\":0}],\"responseId\":\"vr-1\"}\r\n\r\n",
+						"data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"Done.\"}]},\"index\":0}]}\r\n\r\n",
+						"data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"functionCall\":{\"name\":\"read\",\"args\":{\"path\":\"x\"}}}]},\"index\":0}]}\r\n\r\n",
+						"data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[]},\"finishReason\":\"STOP\",\"index\":0}],\"usageMetadata\":{\"promptTokenCount\":120,\"cachedContentTokenCount\":20,\"candidatesTokenCount\":30,\"thoughtsTokenCount\":7,\"totalTokenCount\":157}}\r\n\r\n"
+					]
+				}
+			],
+			"abortOn": null,
+			"result": {
+				"role": "assistant",
+				"content": [
+					{
+						"type": "thinking",
+						"thinking": "Hmm",
+						"thinkingSignature": "c2lnbmF0dXJl"
+					},
+					{
+						"type": "text",
+						"text": "Done."
+					},
+					{
+						"type": "toolCall",
+						"id": "read_1767225600000_1",
+						"name": "read",
+						"arguments": {
+							"path": "x"
+						}
+					}
+				],
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"model": "gemini-3-pro-preview",
+				"usage": {
+					"input": 100,
+					"output": 37,
+					"cacheRead": 20,
+					"cacheWrite": 0,
+					"reasoning": 7,
+					"totalTokens": 157,
+					"cost": {
+						"input": 0.00030000000000000003,
+						"output": 0.000555,
+						"cacheRead": 0.000006,
+						"cacheWrite": 0,
+						"total": 0.0008610000000000001
+					}
+				},
+				"stopReason": "toolUse",
+				"timestamp": 1767225600000,
+				"responseId": "vr-1",
+				"rawStopReason": "STOP"
+			},
+			"thrown": null,
+			"events": [
+				{
+					"type": "start",
+					"partial": {
+						"role": "assistant",
+						"content": [],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-3-pro-preview",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "thinking_start",
+					"contentIndex": 0,
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "thinking",
+								"thinking": ""
+							}
+						],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-3-pro-preview",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000,
+						"responseId": "vr-1"
+					}
+				},
+				{
+					"type": "thinking_delta",
+					"contentIndex": 0,
+					"delta": "Hmm",
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "thinking",
+								"thinking": "Hmm",
+								"thinkingSignature": "c2lnbmF0dXJl"
+							}
+						],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-3-pro-preview",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000,
+						"responseId": "vr-1"
+					}
+				},
+				{
+					"type": "thinking_end",
+					"contentIndex": 0,
+					"content": "Hmm",
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "thinking",
+								"thinking": "Hmm",
+								"thinkingSignature": "c2lnbmF0dXJl"
+							}
+						],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-3-pro-preview",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000,
+						"responseId": "vr-1"
+					}
+				},
+				{
+					"type": "text_start",
+					"contentIndex": 1,
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "thinking",
+								"thinking": "Hmm",
+								"thinkingSignature": "c2lnbmF0dXJl"
+							},
+							{
+								"type": "text",
+								"text": ""
+							}
+						],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-3-pro-preview",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000,
+						"responseId": "vr-1"
+					}
+				},
+				{
+					"type": "text_delta",
+					"contentIndex": 1,
+					"delta": "Done.",
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "thinking",
+								"thinking": "Hmm",
+								"thinkingSignature": "c2lnbmF0dXJl"
+							},
+							{
+								"type": "text",
+								"text": "Done."
+							}
+						],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-3-pro-preview",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000,
+						"responseId": "vr-1"
+					}
+				},
+				{
+					"type": "text_end",
+					"contentIndex": 1,
+					"content": "Done.",
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "thinking",
+								"thinking": "Hmm",
+								"thinkingSignature": "c2lnbmF0dXJl"
+							},
+							{
+								"type": "text",
+								"text": "Done."
+							}
+						],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-3-pro-preview",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000,
+						"responseId": "vr-1"
+					}
+				},
+				{
+					"type": "toolcall_start",
+					"contentIndex": 2,
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "thinking",
+								"thinking": "Hmm",
+								"thinkingSignature": "c2lnbmF0dXJl"
+							},
+							{
+								"type": "text",
+								"text": "Done."
+							},
+							{
+								"type": "toolCall",
+								"id": "read_1767225600000_1",
+								"name": "read",
+								"arguments": {
+									"path": "x"
+								}
+							}
+						],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-3-pro-preview",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000,
+						"responseId": "vr-1"
+					}
+				},
+				{
+					"type": "toolcall_delta",
+					"contentIndex": 2,
+					"delta": "{\"path\":\"x\"}",
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "thinking",
+								"thinking": "Hmm",
+								"thinkingSignature": "c2lnbmF0dXJl"
+							},
+							{
+								"type": "text",
+								"text": "Done."
+							},
+							{
+								"type": "toolCall",
+								"id": "read_1767225600000_1",
+								"name": "read",
+								"arguments": {
+									"path": "x"
+								}
+							}
+						],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-3-pro-preview",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000,
+						"responseId": "vr-1"
+					}
+				},
+				{
+					"type": "toolcall_end",
+					"contentIndex": 2,
+					"toolCall": {
+						"type": "toolCall",
+						"id": "read_1767225600000_1",
+						"name": "read",
+						"arguments": {
+							"path": "x"
+						}
+					},
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "thinking",
+								"thinking": "Hmm",
+								"thinkingSignature": "c2lnbmF0dXJl"
+							},
+							{
+								"type": "text",
+								"text": "Done."
+							},
+							{
+								"type": "toolCall",
+								"id": "read_1767225600000_1",
+								"name": "read",
+								"arguments": {
+									"path": "x"
+								}
+							}
+						],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-3-pro-preview",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000,
+						"responseId": "vr-1"
+					}
+				},
+				{
+					"type": "done",
+					"reason": "toolUse",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "thinking",
+								"thinking": "Hmm",
+								"thinkingSignature": "c2lnbmF0dXJl"
+							},
+							{
+								"type": "text",
+								"text": "Done."
+							},
+							{
+								"type": "toolCall",
+								"id": "read_1767225600000_1",
+								"name": "read",
+								"arguments": {
+									"path": "x"
+								}
+							}
+						],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-3-pro-preview",
+						"usage": {
+							"input": 100,
+							"output": 37,
+							"cacheRead": 20,
+							"cacheWrite": 0,
+							"reasoning": 7,
+							"totalTokens": 157,
+							"cost": {
+								"input": 0.00030000000000000003,
+								"output": 0.000555,
+								"cacheRead": 0.000006,
+								"cacheWrite": 0,
+								"total": 0.0008610000000000001
+							}
+						},
+						"stopReason": "toolUse",
+						"timestamp": 1767225600000,
+						"responseId": "vr-1",
+						"rawStopReason": "STOP"
+					}
+				}
+			],
+			"requests": [
+				{
+					"url": "https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3-pro-preview:streamGenerateContent?alt=sse",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json",
+						"user-agent": "<pi-user-agent>",
+						"x-goog-api-key": "v-key"
+					},
+					"body": {
+						"contents": [
+							{
+								"parts": [
+									{
+										"text": "List files"
+									}
+								],
+								"role": "user"
+							},
+							{
+								"parts": [
+									{
+										"text": "I should read.",
+										"thought": true,
+										"thoughtSignature": "c2lnbmF0dXJl"
+									},
+									{
+										"text": "",
+										"thoughtSignature": "c2lnbmF0dXJl"
+									},
+									{
+										"text": "Reading."
+									},
+									{
+										"text": "Odd signature length."
+									},
+									{
+										"functionCall": {
+											"name": "read",
+											"args": {
+												"path": "a.txt"
+											},
+											"id": "call_1"
+										},
+										"thoughtSignature": "c2lnbmF0dXJl"
+									},
+									{
+										"functionCall": {
+											"name": "read",
+											"args": {
+												"path": "b.txt"
+											},
+											"id": "call_2"
+										}
+									}
+								],
+								"role": "model"
+							},
+							{
+								"parts": [
+									{
+										"functionResponse": {
+											"name": "read",
+											"response": {
+												"output": "contents of a"
+											},
+											"parts": [
+												{
+													"inlineData": {
+														"mimeType": "image/png",
+														"data": "aGVsbG8="
+													}
+												}
+											],
+											"id": "call_1"
+										}
+									},
+									{
+										"functionResponse": {
+											"name": "read",
+											"response": {
+												"error": "(see attached image)"
+											},
+											"parts": [
+												{
+													"inlineData": {
+														"mimeType": "image/png",
+														"data": "aGVsbG8="
+													}
+												}
+											],
+											"id": "call_2"
+										}
+									}
+								],
+								"role": "user"
+							},
+							{
+								"parts": [
+									{
+										"text": "Now look at this"
+									},
+									{
+										"inlineData": {
+											"mimeType": "image/png",
+											"data": "aGVsbG8="
+										}
+									}
+								],
+								"role": "user"
+							},
+							{
+								"parts": [
+									{
+										"text": "Foreign thoughts"
+									},
+									{
+										"text": "Foreign answer"
+									},
+									{
+										"functionCall": {
+											"name": "bash",
+											"args": {
+												"command": "ls"
+											},
+											"id": "call_weird_id_with_chars"
+										}
+									}
+								],
+								"role": "model"
+							},
+							{
+								"parts": [
+									{
+										"functionResponse": {
+											"name": "bash",
+											"response": {
+												"error": "No result provided"
+											},
+											"id": "call_weird_id_with_chars"
+										}
+									}
+								],
+								"role": "user"
+							},
+							{
+								"parts": [
+									{
+										"text": "Continue"
+									}
+								],
+								"role": "user"
+							},
+							{
+								"parts": [
+									{
+										"text": "Again"
+									}
+								],
+								"role": "user"
+							}
+						],
+						"systemInstruction": {
+							"parts": [
+								{
+									"text": "You are helpful.\n\nMid-conversation rule\n\n<rules>be brief</rules>"
+								}
+							],
+							"role": "user"
+						},
+						"tools": [
+							{
+								"functionDeclarations": [
+									{
+										"name": "read",
+										"description": "Read a file",
+										"parametersJsonSchema": {
+											"$schema": "http://json-schema.org/draft-07/schema#",
+											"type": "object",
+											"properties": {
+												"path": {
+													"type": "string"
+												},
+												"limit": {
+													"type": "number"
+												}
+											},
+											"required": [
+												"path"
+											]
+										}
+									},
+									{
+										"name": "bash",
+										"description": "Run a command",
+										"parametersJsonSchema": {
+											"type": "object",
+											"properties": {
+												"command": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"command"
+											],
+											"additionalProperties": false
+										}
+									},
+									{
+										"name": "grep",
+										"description": "Search",
+										"parametersJsonSchema": {
+											"type": "object",
+											"properties": {}
+										}
+									}
+								]
+							}
+						],
+						"toolConfig": {
+							"functionCallingConfig": {
+								"mode": "VALIDATED"
+							}
+						},
+						"generationConfig": {
+							"temperature": 0.2,
+							"maxOutputTokens": 1000,
+							"thinkingConfig": {
+								"includeThoughts": true,
+								"thinkingLevel": "LOW"
+							}
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "vertex/custom-base-url-lite",
+			"fn": "stream",
+			"model": {
+				"id": "gemini-2.5-flash-lite",
+				"name": "Test Model",
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"baseUrl": "https://proxy.example.com/vertex/v1beta1",
+				"reasoning": true,
+				"input": [
+					"text",
+					"image"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000,
+				"headers": {
+					"X-Model": "m"
+				}
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "system",
+						"content": "sys",
+						"timestamp": 1,
+						"toolsAdded": [
+							{
+								"name": "read",
+								"description": "Read a file",
+								"parameters": {
+									"$schema": "http://json-schema.org/draft-07/schema#",
+									"type": "object",
+									"properties": {
+										"path": {
+											"type": "string"
+										},
+										"limit": {
+											"type": "number"
+										}
+									},
+									"required": [
+										"path"
+									]
+								}
+							},
+							{
+								"name": "bash",
+								"description": "Run a command",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"command": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"command"
+									]
+								},
+								"constrainedSampling": {
+									"type": "json_schema",
+									"strict": "prefer"
+								}
+							}
+						]
+					},
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"apiKey": "v-key",
+				"headers": {
+					"X-Extra": "1"
+				}
+			},
+			"responses": [
+				{
+					"chunks": [
+						"data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"ok\"}]},\"finishReason\":\"MAX_TOKENS\",\"index\":0}]}\r\n\r\n"
+					]
+				}
+			],
+			"abortOn": null,
+			"result": {
+				"role": "assistant",
+				"content": [
+					{
+						"type": "text",
+						"text": "ok"
+					}
+				],
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"model": "gemini-2.5-flash-lite",
+				"usage": {
+					"input": 0,
+					"output": 0,
+					"cacheRead": 0,
+					"cacheWrite": 0,
+					"totalTokens": 0,
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"total": 0
+					}
+				},
+				"stopReason": "length",
+				"timestamp": 1767225600000,
+				"rawStopReason": "MAX_TOKENS"
+			},
+			"thrown": null,
+			"events": [
+				{
+					"type": "start",
+					"partial": {
+						"role": "assistant",
+						"content": [],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-flash-lite",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "text_start",
+					"contentIndex": 0,
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": ""
+							}
+						],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-flash-lite",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "text_delta",
+					"contentIndex": 0,
+					"delta": "ok",
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "ok"
+							}
+						],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-flash-lite",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "text_end",
+					"contentIndex": 0,
+					"content": "ok",
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "ok"
+							}
+						],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-flash-lite",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "length",
+						"timestamp": 1767225600000,
+						"rawStopReason": "MAX_TOKENS"
+					}
+				},
+				{
+					"type": "done",
+					"reason": "length",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "ok"
+							}
+						],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-flash-lite",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "length",
+						"timestamp": 1767225600000,
+						"rawStopReason": "MAX_TOKENS"
+					}
+				}
+			],
+			"requests": [
+				{
+					"url": "https://proxy.example.com/vertex/v1beta1/publishers/google/models/gemini-2.5-flash-lite:streamGenerateContent?alt=sse",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json",
+						"user-agent": "<pi-user-agent>",
+						"x-extra": "1",
+						"x-goog-api-key": "v-key",
+						"x-model": "m"
+					},
+					"body": {
+						"contents": [
+							{
+								"parts": [
+									{
+										"text": "hi"
+									}
+								],
+								"role": "user"
+							}
+						],
+						"systemInstruction": {
+							"parts": [
+								{
+									"text": "sys"
+								}
+							],
+							"role": "user"
+						},
+						"tools": [
+							{
+								"functionDeclarations": [
+									{
+										"name": "read",
+										"description": "Read a file",
+										"parametersJsonSchema": {
+											"$schema": "http://json-schema.org/draft-07/schema#",
+											"type": "object",
+											"properties": {
+												"path": {
+													"type": "string"
+												},
+												"limit": {
+													"type": "number"
+												}
+											},
+											"required": [
+												"path"
+											]
+										}
+									},
+									{
+										"name": "bash",
+										"description": "Run a command",
+										"parametersJsonSchema": {
+											"type": "object",
+											"properties": {
+												"command": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"command"
+											]
+										}
+									}
+								]
+							}
+						],
+						"generationConfig": {}
+					}
+				}
+			]
+		},
+		{
+			"name": "vertex/custom-base-url-no-version",
+			"fn": "stream",
+			"model": {
+				"id": "gemini-2.5-pro",
+				"name": "Test Model",
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"baseUrl": "https://proxy.example.com/vertex/",
+				"reasoning": true,
+				"input": [
+					"text",
+					"image"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "system",
+						"content": "sys",
+						"timestamp": 1,
+						"toolsAdded": [
+							{
+								"name": "read",
+								"description": "Read a file",
+								"parameters": {
+									"$schema": "http://json-schema.org/draft-07/schema#",
+									"type": "object",
+									"properties": {
+										"path": {
+											"type": "string"
+										},
+										"limit": {
+											"type": "number"
+										}
+									},
+									"required": [
+										"path"
+									]
+								}
+							},
+							{
+								"name": "bash",
+								"description": "Run a command",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"command": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"command"
+									]
+								},
+								"constrainedSampling": {
+									"type": "json_schema",
+									"strict": "prefer"
+								}
+							}
+						]
+					},
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"apiKey": "v-key"
+			},
+			"responses": [
+				{
+					"chunks": [
+						"data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"ok\"}]},\"finishReason\":\"STOP\",\"index\":0}]}\r\n\r\n"
+					]
+				}
+			],
+			"abortOn": null,
+			"result": {
+				"role": "assistant",
+				"content": [
+					{
+						"type": "text",
+						"text": "ok"
+					}
+				],
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"model": "gemini-2.5-pro",
+				"usage": {
+					"input": 0,
+					"output": 0,
+					"cacheRead": 0,
+					"cacheWrite": 0,
+					"totalTokens": 0,
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"total": 0
+					}
+				},
+				"stopReason": "stop",
+				"timestamp": 1767225600000,
+				"rawStopReason": "STOP"
+			},
+			"thrown": null,
+			"events": [
+				{
+					"type": "start",
+					"partial": {
+						"role": "assistant",
+						"content": [],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-pro",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "text_start",
+					"contentIndex": 0,
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": ""
+							}
+						],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-pro",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "text_delta",
+					"contentIndex": 0,
+					"delta": "ok",
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "ok"
+							}
+						],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-pro",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "text_end",
+					"contentIndex": 0,
+					"content": "ok",
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "ok"
+							}
+						],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-pro",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "stop",
+						"timestamp": 1767225600000,
+						"rawStopReason": "STOP"
+					}
+				},
+				{
+					"type": "done",
+					"reason": "stop",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "ok"
+							}
+						],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-pro",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "stop",
+						"timestamp": 1767225600000,
+						"rawStopReason": "STOP"
+					}
+				}
+			],
+			"requests": [
+				{
+					"url": "https://proxy.example.com/vertex/v1/publishers/google/models/gemini-2.5-pro:streamGenerateContent?alt=sse",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json",
+						"user-agent": "<pi-user-agent>",
+						"x-goog-api-key": "v-key"
+					},
+					"body": {
+						"contents": [
+							{
+								"parts": [
+									{
+										"text": "hi"
+									}
+								],
+								"role": "user"
+							}
+						],
+						"systemInstruction": {
+							"parts": [
+								{
+									"text": "sys"
+								}
+							],
+							"role": "user"
+						},
+						"tools": [
+							{
+								"functionDeclarations": [
+									{
+										"name": "read",
+										"description": "Read a file",
+										"parametersJsonSchema": {
+											"$schema": "http://json-schema.org/draft-07/schema#",
+											"type": "object",
+											"properties": {
+												"path": {
+													"type": "string"
+												},
+												"limit": {
+													"type": "number"
+												}
+											},
+											"required": [
+												"path"
+											]
+										}
+									},
+									{
+										"name": "bash",
+										"description": "Run a command",
+										"parametersJsonSchema": {
+											"type": "object",
+											"properties": {
+												"command": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"command"
+											]
+										}
+									}
+								]
+							}
+						],
+						"generationConfig": {}
+					}
+				}
+			]
+		},
+		{
+			"name": "vertex/no-finish-reason",
+			"fn": "stream",
+			"model": {
+				"id": "gemini-3-pro-preview",
+				"name": "Test Model",
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"baseUrl": "https://{location}-aiplatform.googleapis.com",
+				"reasoning": true,
+				"input": [
+					"text",
+					"image"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000,
+				"thinkingLevelMap": {
+					"off": null,
+					"minimal": "low",
+					"low": "low",
+					"medium": "high",
+					"high": "high"
+				}
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "system",
+						"content": "sys",
+						"timestamp": 1,
+						"toolsAdded": [
+							{
+								"name": "read",
+								"description": "Read a file",
+								"parameters": {
+									"$schema": "http://json-schema.org/draft-07/schema#",
+									"type": "object",
+									"properties": {
+										"path": {
+											"type": "string"
+										},
+										"limit": {
+											"type": "number"
+										}
+									},
+									"required": [
+										"path"
+									]
+								}
+							},
+							{
+								"name": "bash",
+								"description": "Run a command",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"command": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"command"
+									]
+								},
+								"constrainedSampling": {
+									"type": "json_schema",
+									"strict": "prefer"
+								}
+							}
+						]
+					},
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"apiKey": "v-key"
+			},
+			"responses": [
+				{
+					"chunks": [
+						"data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"par\"}]},\"index\":0}]}\r\n\r\n"
+					]
+				}
+			],
+			"abortOn": null,
+			"result": {
+				"role": "assistant",
+				"content": [
+					{
+						"type": "text",
+						"text": "par"
+					}
+				],
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"model": "gemini-3-pro-preview",
+				"usage": {
+					"input": 0,
+					"output": 0,
+					"cacheRead": 0,
+					"cacheWrite": 0,
+					"totalTokens": 0,
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"total": 0
+					}
+				},
+				"stopReason": "error",
+				"timestamp": 1767225600000,
+				"errorMessage": "Google Vertex stream ended without a finish reason"
+			},
+			"thrown": null,
+			"events": [
+				{
+					"type": "start",
+					"partial": {
+						"role": "assistant",
+						"content": [],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-3-pro-preview",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "text_start",
+					"contentIndex": 0,
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": ""
+							}
+						],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-3-pro-preview",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "text_delta",
+					"contentIndex": 0,
+					"delta": "par",
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "par"
+							}
+						],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-3-pro-preview",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "text_end",
+					"contentIndex": 0,
+					"content": "par",
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "par"
+							}
+						],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-3-pro-preview",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "error",
+					"reason": "error",
+					"error": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "par"
+							}
+						],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-3-pro-preview",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "error",
+						"timestamp": 1767225600000,
+						"errorMessage": "Google Vertex stream ended without a finish reason"
+					}
+				}
+			],
+			"requests": [
+				{
+					"url": "https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3-pro-preview:streamGenerateContent?alt=sse",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json",
+						"user-agent": "<pi-user-agent>",
+						"x-goog-api-key": "v-key"
+					},
+					"body": {
+						"contents": [
+							{
+								"parts": [
+									{
+										"text": "hi"
+									}
+								],
+								"role": "user"
+							}
+						],
+						"systemInstruction": {
+							"parts": [
+								{
+									"text": "sys"
+								}
+							],
+							"role": "user"
+						},
+						"tools": [
+							{
+								"functionDeclarations": [
+									{
+										"name": "read",
+										"description": "Read a file",
+										"parametersJsonSchema": {
+											"$schema": "http://json-schema.org/draft-07/schema#",
+											"type": "object",
+											"properties": {
+												"path": {
+													"type": "string"
+												},
+												"limit": {
+													"type": "number"
+												}
+											},
+											"required": [
+												"path"
+											]
+										}
+									},
+									{
+										"name": "bash",
+										"description": "Run a command",
+										"parametersJsonSchema": {
+											"type": "object",
+											"properties": {
+												"command": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"command"
+											],
+											"additionalProperties": false
+										}
+									}
+								]
+							}
+						],
+						"toolConfig": {
+							"functionCallingConfig": {
+								"mode": "VALIDATED"
+							}
+						},
+						"generationConfig": {}
+					}
+				}
+			]
+		},
+		{
+			"name": "vertex/http-403",
+			"fn": "stream",
+			"model": {
+				"id": "gemini-3-pro-preview",
+				"name": "Test Model",
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"baseUrl": "https://{location}-aiplatform.googleapis.com",
+				"reasoning": true,
+				"input": [
+					"text",
+					"image"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000,
+				"thinkingLevelMap": {
+					"off": null,
+					"minimal": "low",
+					"low": "low",
+					"medium": "high",
+					"high": "high"
+				}
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "system",
+						"content": "sys",
+						"timestamp": 1,
+						"toolsAdded": [
+							{
+								"name": "read",
+								"description": "Read a file",
+								"parameters": {
+									"$schema": "http://json-schema.org/draft-07/schema#",
+									"type": "object",
+									"properties": {
+										"path": {
+											"type": "string"
+										},
+										"limit": {
+											"type": "number"
+										}
+									},
+									"required": [
+										"path"
+									]
+								}
+							},
+							{
+								"name": "bash",
+								"description": "Run a command",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"command": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"command"
+									]
+								},
+								"constrainedSampling": {
+									"type": "json_schema",
+									"strict": "prefer"
+								}
+							}
+						]
+					},
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"apiKey": "v-key"
+			},
+			"responses": [
+				{
+					"status": 403,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"error\":{\"code\":403,\"message\":\"denied\",\"status\":\"PERMISSION_DENIED\"}}"
+					]
+				}
+			],
+			"abortOn": null,
+			"result": {
+				"role": "assistant",
+				"content": [],
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"model": "gemini-3-pro-preview",
+				"usage": {
+					"input": 0,
+					"output": 0,
+					"cacheRead": 0,
+					"cacheWrite": 0,
+					"totalTokens": 0,
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"total": 0
+					}
+				},
+				"stopReason": "error",
+				"timestamp": 1767225600000,
+				"errorMessage": "{\"error\":{\"code\":403,\"message\":\"denied\",\"status\":\"PERMISSION_DENIED\"}}"
+			},
+			"thrown": null,
+			"events": [
+				{
+					"type": "error",
+					"reason": "error",
+					"error": {
+						"role": "assistant",
+						"content": [],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-3-pro-preview",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "error",
+						"timestamp": 1767225600000,
+						"errorMessage": "{\"error\":{\"code\":403,\"message\":\"denied\",\"status\":\"PERMISSION_DENIED\"}}"
+					}
+				}
+			],
+			"requests": [
+				{
+					"url": "https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3-pro-preview:streamGenerateContent?alt=sse",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json",
+						"user-agent": "<pi-user-agent>",
+						"x-goog-api-key": "v-key"
+					},
+					"body": {
+						"contents": [
+							{
+								"parts": [
+									{
+										"text": "hi"
+									}
+								],
+								"role": "user"
+							}
+						],
+						"systemInstruction": {
+							"parts": [
+								{
+									"text": "sys"
+								}
+							],
+							"role": "user"
+						},
+						"tools": [
+							{
+								"functionDeclarations": [
+									{
+										"name": "read",
+										"description": "Read a file",
+										"parametersJsonSchema": {
+											"$schema": "http://json-schema.org/draft-07/schema#",
+											"type": "object",
+											"properties": {
+												"path": {
+													"type": "string"
+												},
+												"limit": {
+													"type": "number"
+												}
+											},
+											"required": [
+												"path"
+											]
+										}
+									},
+									{
+										"name": "bash",
+										"description": "Run a command",
+										"parametersJsonSchema": {
+											"type": "object",
+											"properties": {
+												"command": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"command"
+											],
+											"additionalProperties": false
+										}
+									}
+								]
+							}
+						],
+						"toolConfig": {
+							"functionCallingConfig": {
+								"mode": "VALIDATED"
+							}
+						},
+						"generationConfig": {}
+					}
+				}
+			]
+		},
+		{
+			"name": "vertex/placeholder-key-needs-project",
+			"fn": "stream",
+			"model": {
+				"id": "gemini-3-pro-preview",
+				"name": "Test Model",
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"baseUrl": "https://{location}-aiplatform.googleapis.com",
+				"reasoning": true,
+				"input": [
+					"text",
+					"image"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000,
+				"thinkingLevelMap": {
+					"off": null,
+					"minimal": "low",
+					"low": "low",
+					"medium": "high",
+					"high": "high"
+				}
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "system",
+						"content": "sys",
+						"timestamp": 1,
+						"toolsAdded": [
+							{
+								"name": "read",
+								"description": "Read a file",
+								"parameters": {
+									"$schema": "http://json-schema.org/draft-07/schema#",
+									"type": "object",
+									"properties": {
+										"path": {
+											"type": "string"
+										},
+										"limit": {
+											"type": "number"
+										}
+									},
+									"required": [
+										"path"
+									]
+								}
+							},
+							{
+								"name": "bash",
+								"description": "Run a command",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"command": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"command"
+									]
+								},
+								"constrainedSampling": {
+									"type": "json_schema",
+									"strict": "prefer"
+								}
+							}
+						]
+					},
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"apiKey": "<authenticated>"
+			},
+			"responses": [],
+			"abortOn": null,
+			"result": {
+				"role": "assistant",
+				"content": [],
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"model": "gemini-3-pro-preview",
+				"usage": {
+					"input": 0,
+					"output": 0,
+					"cacheRead": 0,
+					"cacheWrite": 0,
+					"totalTokens": 0,
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"total": 0
+					}
+				},
+				"stopReason": "error",
+				"timestamp": 1767225600000,
+				"errorMessage": "Vertex AI requires a project ID. Set GOOGLE_CLOUD_PROJECT/GCLOUD_PROJECT or pass project in options."
+			},
+			"thrown": null,
+			"events": [
+				{
+					"type": "error",
+					"reason": "error",
+					"error": {
+						"role": "assistant",
+						"content": [],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-3-pro-preview",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "error",
+						"timestamp": 1767225600000,
+						"errorMessage": "Vertex AI requires a project ID. Set GOOGLE_CLOUD_PROJECT/GCLOUD_PROJECT or pass project in options."
+					}
+				}
+			],
+			"requests": []
+		},
+		{
+			"name": "vertex/marker-key-needs-location",
+			"fn": "stream",
+			"model": {
+				"id": "gemini-3-pro-preview",
+				"name": "Test Model",
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"baseUrl": "https://{location}-aiplatform.googleapis.com",
+				"reasoning": true,
+				"input": [
+					"text",
+					"image"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000,
+				"thinkingLevelMap": {
+					"off": null,
+					"minimal": "low",
+					"low": "low",
+					"medium": "high",
+					"high": "high"
+				}
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "system",
+						"content": "sys",
+						"timestamp": 1,
+						"toolsAdded": [
+							{
+								"name": "read",
+								"description": "Read a file",
+								"parameters": {
+									"$schema": "http://json-schema.org/draft-07/schema#",
+									"type": "object",
+									"properties": {
+										"path": {
+											"type": "string"
+										},
+										"limit": {
+											"type": "number"
+										}
+									},
+									"required": [
+										"path"
+									]
+								}
+							},
+							{
+								"name": "bash",
+								"description": "Run a command",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"command": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"command"
+									]
+								},
+								"constrainedSampling": {
+									"type": "json_schema",
+									"strict": "prefer"
+								}
+							}
+						]
+					},
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"apiKey": "gcp-vertex-credentials",
+				"project": "p-1"
+			},
+			"responses": [],
+			"abortOn": null,
+			"result": {
+				"role": "assistant",
+				"content": [],
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"model": "gemini-3-pro-preview",
+				"usage": {
+					"input": 0,
+					"output": 0,
+					"cacheRead": 0,
+					"cacheWrite": 0,
+					"totalTokens": 0,
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"total": 0
+					}
+				},
+				"stopReason": "error",
+				"timestamp": 1767225600000,
+				"errorMessage": "Vertex AI requires a location. Set GOOGLE_CLOUD_LOCATION or pass location in options."
+			},
+			"thrown": null,
+			"events": [
+				{
+					"type": "error",
+					"reason": "error",
+					"error": {
+						"role": "assistant",
+						"content": [],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-3-pro-preview",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "error",
+						"timestamp": 1767225600000,
+						"errorMessage": "Vertex AI requires a location. Set GOOGLE_CLOUD_LOCATION or pass location in options."
+					}
+				}
+			],
+			"requests": []
+		},
+		{
+			"name": "vertex/simple-lite-minimal",
+			"fn": "streamSimple",
+			"model": {
+				"id": "gemini-2.5-flash-lite",
+				"name": "Test Model",
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"baseUrl": "https://proxy.example.com/vertex/v1beta1",
+				"reasoning": true,
+				"input": [
+					"text",
+					"image"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000,
+				"headers": {
+					"X-Model": "m"
+				}
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "system",
+						"content": "sys",
+						"timestamp": 1,
+						"toolsAdded": [
+							{
+								"name": "read",
+								"description": "Read a file",
+								"parameters": {
+									"$schema": "http://json-schema.org/draft-07/schema#",
+									"type": "object",
+									"properties": {
+										"path": {
+											"type": "string"
+										},
+										"limit": {
+											"type": "number"
+										}
+									},
+									"required": [
+										"path"
+									]
+								}
+							},
+							{
+								"name": "bash",
+								"description": "Run a command",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"command": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"command"
+									]
+								},
+								"constrainedSampling": {
+									"type": "json_schema",
+									"strict": "prefer"
+								}
+							}
+						]
+					},
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"apiKey": "v-key",
+				"reasoning": "minimal"
+			},
+			"responses": [
+				{
+					"chunks": [
+						"data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"ok\"}]},\"finishReason\":\"STOP\",\"index\":0}]}\r\n\r\n"
+					]
+				}
+			],
+			"abortOn": null,
+			"result": {
+				"role": "assistant",
+				"content": [
+					{
+						"type": "text",
+						"text": "ok"
+					}
+				],
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"model": "gemini-2.5-flash-lite",
+				"usage": {
+					"input": 0,
+					"output": 0,
+					"cacheRead": 0,
+					"cacheWrite": 0,
+					"totalTokens": 0,
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"total": 0
+					}
+				},
+				"stopReason": "stop",
+				"timestamp": 1767225600000,
+				"rawStopReason": "STOP"
+			},
+			"thrown": null,
+			"events": [
+				{
+					"type": "start",
+					"partial": {
+						"role": "assistant",
+						"content": [],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-flash-lite",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "text_start",
+					"contentIndex": 0,
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": ""
+							}
+						],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-flash-lite",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "text_delta",
+					"contentIndex": 0,
+					"delta": "ok",
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "ok"
+							}
+						],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-flash-lite",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "text_end",
+					"contentIndex": 0,
+					"content": "ok",
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "ok"
+							}
+						],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-flash-lite",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "stop",
+						"timestamp": 1767225600000,
+						"rawStopReason": "STOP"
+					}
+				},
+				{
+					"type": "done",
+					"reason": "stop",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "ok"
+							}
+						],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-flash-lite",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "stop",
+						"timestamp": 1767225600000,
+						"rawStopReason": "STOP"
+					}
+				}
+			],
+			"requests": [
+				{
+					"url": "https://proxy.example.com/vertex/v1beta1/publishers/google/models/gemini-2.5-flash-lite:streamGenerateContent?alt=sse",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json",
+						"user-agent": "<pi-user-agent>",
+						"x-goog-api-key": "v-key",
+						"x-model": "m"
+					},
+					"body": {
+						"contents": [
+							{
+								"parts": [
+									{
+										"text": "hi"
+									}
+								],
+								"role": "user"
+							}
+						],
+						"systemInstruction": {
+							"parts": [
+								{
+									"text": "sys"
+								}
+							],
+							"role": "user"
+						},
+						"tools": [
+							{
+								"functionDeclarations": [
+									{
+										"name": "read",
+										"description": "Read a file",
+										"parametersJsonSchema": {
+											"$schema": "http://json-schema.org/draft-07/schema#",
+											"type": "object",
+											"properties": {
+												"path": {
+													"type": "string"
+												},
+												"limit": {
+													"type": "number"
+												}
+											},
+											"required": [
+												"path"
+											]
+										}
+									},
+									{
+										"name": "bash",
+										"description": "Run a command",
+										"parametersJsonSchema": {
+											"type": "object",
+											"properties": {
+												"command": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"command"
+											]
+										}
+									}
+								]
+							}
+						],
+						"generationConfig": {
+							"maxOutputTokens": 32000,
+							"thinkingConfig": {
+								"includeThoughts": true,
+								"thinkingBudget": 128
+							}
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "vertex/simple-no-key-needs-project",
+			"fn": "streamSimple",
+			"model": {
+				"id": "gemini-3-pro-preview",
+				"name": "Test Model",
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"baseUrl": "https://{location}-aiplatform.googleapis.com",
+				"reasoning": true,
+				"input": [
+					"text",
+					"image"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000,
+				"thinkingLevelMap": {
+					"off": null,
+					"minimal": "low",
+					"low": "low",
+					"medium": "high",
+					"high": "high"
+				}
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "system",
+						"content": "sys",
+						"timestamp": 1,
+						"toolsAdded": [
+							{
+								"name": "read",
+								"description": "Read a file",
+								"parameters": {
+									"$schema": "http://json-schema.org/draft-07/schema#",
+									"type": "object",
+									"properties": {
+										"path": {
+											"type": "string"
+										},
+										"limit": {
+											"type": "number"
+										}
+									},
+									"required": [
+										"path"
+									]
+								}
+							},
+							{
+								"name": "bash",
+								"description": "Run a command",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"command": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"command"
+									]
+								},
+								"constrainedSampling": {
+									"type": "json_schema",
+									"strict": "prefer"
+								}
+							}
+						]
+					},
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"reasoning": "low"
+			},
+			"responses": [],
+			"abortOn": null,
+			"result": {
+				"role": "assistant",
+				"content": [],
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"model": "gemini-3-pro-preview",
+				"usage": {
+					"input": 0,
+					"output": 0,
+					"cacheRead": 0,
+					"cacheWrite": 0,
+					"totalTokens": 0,
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"total": 0
+					}
+				},
+				"stopReason": "error",
+				"timestamp": 1767225600000,
+				"errorMessage": "Vertex AI requires a project ID. Set GOOGLE_CLOUD_PROJECT/GCLOUD_PROJECT or pass project in options."
+			},
+			"thrown": null,
+			"events": [
+				{
+					"type": "error",
+					"reason": "error",
+					"error": {
+						"role": "assistant",
+						"content": [],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-3-pro-preview",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "error",
+						"timestamp": 1767225600000,
+						"errorMessage": "Vertex AI requires a project ID. Set GOOGLE_CLOUD_PROJECT/GCLOUD_PROJECT or pass project in options."
+					}
+				}
+			],
+			"requests": []
+		}
+	]
+}

@@ -1,0 +1,240 @@
+{
+	"area": "instances",
+	"scenarios": [
+		{
+			"name": "retain, invoke, close",
+			"cells": [
+				{
+					"code": "import json as _json\nprint(_json.dumps(await instances.list(), sort_keys=True))",
+					"status": "ok",
+					"stdout": "[]\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nprint(_json.dumps(await instances.retain(\"task-done\"), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"closed_at\": null, \"created_at\": 1760000000000, \"definition\": \"rlm-child@1\", \"id\": \"ultron-instance-<uuid>\", \"invocations\": [], \"lane\": \"lane-task-done\", \"owner\": null, \"pinned\": true, \"state\": \"open\", \"task_id\": \"task-done\"}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "await rlm.host_request(\"test.clock\", {\"ms\": 1000})\nimport json as _json\nprint(_json.dumps(await instances.retain(\"task-done\"), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"closed_at\": null, \"created_at\": 1760000000000, \"definition\": \"rlm-child@1\", \"id\": \"ultron-instance-<uuid>\", \"invocations\": [], \"lane\": \"lane-task-done\", \"owner\": null, \"pinned\": true, \"state\": \"open\", \"task_id\": \"task-done\"}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\ntry:\n    r = await instances.retain(\"child-done\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await instances.retain(\"nope\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await instances.retain(\"task-a\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await instances.retain(\"det-done\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await instances.retain(\"task-failed\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await instances.retain(\"\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await rlm.host_request(\"instances.retain\", {\"task_id\": \"task-done\", \"x\": 1})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)",
+					"status": "ok",
+					"stdout": "RuntimeError Only the task's parent can retain it\nRuntimeError Unknown Ultron task\nRuntimeError Only a completed task can be retained\nRuntimeError Only RLM tasks have a lane to retain\nRuntimeError Only a completed task can be retained\nRuntimeError task_id must be a nonempty string\nRuntimeError Unknown payload field: x\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "await rlm.host_request(\"test.caller\", {\"id\": \"task-a\"})\nimport json as _json\nprint(_json.dumps([await instances.retain(\"child-done\"), await instances.retain(\"other-done\")], sort_keys=True))",
+					"status": "ok",
+					"stdout": "[{\"closed_at\": null, \"created_at\": 1760000001000, \"definition\": \"rlm-child@1\", \"id\": \"ultron-instance-<uuid>\", \"invocations\": [], \"lane\": \"ultron.rlm-child.child-done\", \"owner\": \"task-a\", \"pinned\": true, \"state\": \"open\", \"task_id\": \"child-done\"}, {\"closed_at\": null, \"created_at\": 1760000001000, \"definition\": \"rlm-child@1\", \"id\": \"ultron-instance-<uuid>\", \"invocations\": [], \"lane\": \"ultron.rlm-child.other-done\", \"owner\": \"task-a\", \"pinned\": false, \"state\": \"open\", \"task_id\": \"other-done\"}]\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "await rlm.host_request(\"test.caller\", {\"id\": \"task-a\"})\ni1 = (await instances.list())[0]['id']\nimport json as _json\nprint(_json.dumps(await instances.list(), sort_keys=True))\nimport json as _json\ntry:\n    r = await instances.get(i1)\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await instances.close(i1)\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await instances.invoke(i1, {\"q\": 1})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)",
+					"status": "ok",
+					"stdout": "[{\"closed_at\": null, \"created_at\": 1760000001000, \"definition\": \"rlm-child@1\", \"id\": \"ultron-instance-<uuid>\", \"invocations\": [], \"lane\": \"ultron.rlm-child.child-done\", \"owner\": \"task-a\", \"state\": \"open\", \"task_id\": \"child-done\"}, {\"closed_at\": null, \"created_at\": 1760000001000, \"definition\": \"rlm-child@1\", \"id\": \"ultron-instance-<uuid>\", \"invocations\": [], \"lane\": \"ultron.rlm-child.other-done\", \"owner\": \"task-a\", \"state\": \"open\", \"task_id\": \"other-done\"}]\nok {\"closed_at\": null, \"created_at\": 1760000001000, \"definition\": \"rlm-child@1\", \"id\": \"ultron-instance-<uuid>\", \"invocations\": [], \"lane\": \"ultron.rlm-child.child-done\", \"owner\": \"task-a\", \"state\": \"open\", \"task_id\": \"child-done\"}\nok {\"closed_at\": 1760000001000, \"created_at\": 1760000001000, \"definition\": \"rlm-child@1\", \"id\": \"ultron-instance-<uuid>\", \"invocations\": [], \"lane\": \"ultron.rlm-child.child-done\", \"owner\": \"task-a\", \"state\": \"closed\", \"task_id\": \"child-done\"}\nRuntimeError Instance is closed\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "await rlm.host_request(\"test.caller\", {\"id\": None})\ni1 = (await instances.list())[0]['id']\nimport json as _json\nprint(_json.dumps(await instances.invoke(i1, {\"q\": 1}), sort_keys=True))\nimport json as _json\ntry:\n    r = await instances.invoke(i1, {\"q\": 2})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)",
+					"status": "ok",
+					"stdout": "{\"instance_id\": \"ultron-instance-<uuid>\", \"task_id\": \"spawned-1\"}\nRuntimeError Instance is busy with a previous invocation\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "i1 = (await instances.list())[0]['id']\nawait rlm.host_request(\"test.finish\", {\"id\": \"spawned-1\", \"value\": \"done\"})\nawait rlm.host_request(\"test.clock\", {\"ms\": 500})\nimport json as _json\nprint(_json.dumps([await instances.invoke(i1, [\"a\", 2], key=\"k1\"), await instances.get(i1)], sort_keys=True))",
+					"status": "ok",
+					"stdout": "[{\"instance_id\": \"ultron-instance-<uuid>\", \"task_id\": \"spawned-2\"}, {\"closed_at\": null, \"created_at\": 1760000000000, \"definition\": \"rlm-child@1\", \"id\": \"ultron-instance-<uuid>\", \"invocations\": [{\"at\": 1760000001000, \"input_sha256\": \"6ae0f660046dadcf5fe8462c0e00a062db4c8d67be82f4098c5ea4208d19b076\", \"task_id\": \"spawned-1\"}, {\"at\": 1760000001500, \"input_sha256\": \"a5b8338b45ff4de091fba872f3d9f7bfb12cd617d8140449d6eb25666e748312\", \"task_id\": \"spawned-2\"}], \"lane\": \"lane-task-done\", \"owner\": null, \"state\": \"open\", \"task_id\": \"task-done\"}]\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "i1 = (await instances.list())[0]['id']\nawait rlm.host_request(\"test.finish\", {\"id\": \"spawned-2\", \"value\": \"done\"})\nimport json as _json\nprint(_json.dumps([await instances.invoke(i1, [\"a\", 2], key=\"k1\"), await instances.get(i1)], sort_keys=True))",
+					"status": "ok",
+					"stdout": "[{\"instance_id\": \"ultron-instance-<uuid>\", \"task_id\": \"spawned-2\"}, {\"closed_at\": null, \"created_at\": 1760000000000, \"definition\": \"rlm-child@1\", \"id\": \"ultron-instance-<uuid>\", \"invocations\": [{\"at\": 1760000001000, \"input_sha256\": \"6ae0f660046dadcf5fe8462c0e00a062db4c8d67be82f4098c5ea4208d19b076\", \"task_id\": \"spawned-1\"}, {\"at\": 1760000001500, \"input_sha256\": \"a5b8338b45ff4de091fba872f3d9f7bfb12cd617d8140449d6eb25666e748312\", \"task_id\": \"spawned-2\"}], \"lane\": \"lane-task-done\", \"owner\": null, \"state\": \"open\", \"task_id\": \"task-done\"}]\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "i1 = (await instances.list())[0]['id']\nimport json as _json\ntry:\n    r = await instances.invoke(i1, 1, key=\"\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await rlm.host_request(\"instances.invoke\", {\"id\": i1})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await instances.invoke(\"\", 1)\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await instances.invoke(\"nope\", 1)\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await rlm.host_request(\"instances.invoke\", {\"id\": i1, \"input\": 1, \"extra\": 2})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)",
+					"status": "ok",
+					"stdout": "RuntimeError key must be a nonempty string\nRuntimeError input must be JSON\nRuntimeError id must be a nonempty string\nRuntimeError Unknown instance\nRuntimeError Unknown payload field: extra\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "i1 = (await instances.list())[0]['id']\nawait rlm.host_request(\"test.clock\", {\"ms\": 2000})\nimport json as _json\nprint(_json.dumps([await instances.close(i1), await instances.close(i1)], sort_keys=True))\nimport json as _json\ntry:\n    r = await instances.invoke(i1, 1)\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await instances.get(\"nope\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await rlm.host_request(\"instances.list\", {\"x\": 1})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await rlm.host_request(\"instances.nope\", {})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)",
+					"status": "ok",
+					"stdout": "[{\"closed_at\": 1760000003500, \"created_at\": 1760000000000, \"definition\": \"rlm-child@1\", \"id\": \"ultron-instance-<uuid>\", \"invocations\": [{\"at\": 1760000001000, \"input_sha256\": \"6ae0f660046dadcf5fe8462c0e00a062db4c8d67be82f4098c5ea4208d19b076\", \"task_id\": \"spawned-1\"}, {\"at\": 1760000001500, \"input_sha256\": \"a5b8338b45ff4de091fba872f3d9f7bfb12cd617d8140449d6eb25666e748312\", \"task_id\": \"spawned-2\"}], \"lane\": \"lane-task-done\", \"owner\": null, \"state\": \"closed\", \"task_id\": \"task-done\"}, {\"closed_at\": 1760000003500, \"created_at\": 1760000000000, \"definition\": \"rlm-child@1\", \"id\": \"ultron-instance-<uuid>\", \"invocations\": [{\"at\": 1760000001000, \"input_sha256\": \"6ae0f660046dadcf5fe8462c0e00a062db4c8d67be82f4098c5ea4208d19b076\", \"task_id\": \"spawned-1\"}, {\"at\": 1760000001500, \"input_sha256\": \"a5b8338b45ff4de091fba872f3d9f7bfb12cd617d8140449d6eb25666e748312\", \"task_id\": \"spawned-2\"}], \"lane\": \"lane-task-done\", \"owner\": null, \"state\": \"closed\", \"task_id\": \"task-done\"}]\nRuntimeError Instance is closed\nRuntimeError Unknown instance\nRuntimeError Unknown payload field: x\nRuntimeError Unknown instance request: instances.nope\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nprint(_json.dumps([await instances.retain(\"task-done\"), await instances.list()], sort_keys=True))",
+					"status": "ok",
+					"stdout": "[{\"closed_at\": 1760000003500, \"created_at\": 1760000000000, \"definition\": \"rlm-child@1\", \"id\": \"ultron-instance-<uuid>\", \"invocations\": [{\"at\": 1760000001000, \"input_sha256\": \"6ae0f660046dadcf5fe8462c0e00a062db4c8d67be82f4098c5ea4208d19b076\", \"task_id\": \"spawned-1\"}, {\"at\": 1760000001500, \"input_sha256\": \"a5b8338b45ff4de091fba872f3d9f7bfb12cd617d8140449d6eb25666e748312\", \"task_id\": \"spawned-2\"}], \"lane\": \"lane-task-done\", \"owner\": null, \"pinned\": false, \"state\": \"closed\", \"task_id\": \"task-done\"}, [{\"closed_at\": 1760000003500, \"created_at\": 1760000000000, \"definition\": \"rlm-child@1\", \"id\": \"ultron-instance-<uuid>\", \"invocations\": [{\"at\": 1760000001000, \"input_sha256\": \"6ae0f660046dadcf5fe8462c0e00a062db4c8d67be82f4098c5ea4208d19b076\", \"task_id\": \"spawned-1\"}, {\"at\": 1760000001500, \"input_sha256\": \"a5b8338b45ff4de091fba872f3d9f7bfb12cd617d8140449d6eb25666e748312\", \"task_id\": \"spawned-2\"}], \"lane\": \"lane-task-done\", \"owner\": null, \"state\": \"closed\", \"task_id\": \"task-done\"}, {\"closed_at\": 1760000001000, \"created_at\": 1760000001000, \"definition\": \"rlm-child@1\", \"id\": \"ultron-instance-<uuid>\", \"invocations\": [], \"lane\": \"ultron.rlm-child.child-done\", \"owner\": \"task-a\", \"state\": \"closed\", \"task_id\": \"child-done\"}, {\"closed_at\": null, \"created_at\": 1760000001000, \"definition\": \"rlm-child@1\", \"id\": \"ultron-instance-<uuid>\", \"invocations\": [], \"lane\": \"ultron.rlm-child.other-done\", \"owner\": \"task-a\", \"state\": \"open\", \"task_id\": \"other-done\"}]]\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "await rlm.host_request(\"test.caller\", {\"id\": \"task-a\"})\nimport json as _json\nprint(_json.dumps(await instances.retain(\"other-done\"), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"closed_at\": null, \"created_at\": 1760000001000, \"definition\": \"rlm-child@1\", \"id\": \"ultron-instance-<uuid>\", \"invocations\": [], \"lane\": \"ultron.rlm-child.other-done\", \"owner\": \"task-a\", \"pinned\": true, \"state\": \"open\", \"task_id\": \"other-done\"}\n",
+					"result": "",
+					"error": null
+				}
+			],
+			"state": {
+				"document": {
+					"version": 1,
+					"instances": [
+						{
+							"id": "ultron-instance-<uuid>",
+							"task_id": "task-done",
+							"definition": "rlm-child@1",
+							"lane": "lane-task-done",
+							"owner": null,
+							"state": "closed",
+							"created_at": 1760000000000,
+							"closed_at": 1760000003500,
+							"invocations": [
+								{
+									"task_id": "spawned-1",
+									"at": 1760000001000,
+									"input_sha256": "6ae0f660046dadcf5fe8462c0e00a062db4c8d67be82f4098c5ea4208d19b076"
+								},
+								{
+									"task_id": "spawned-2",
+									"at": 1760000001500,
+									"input_sha256": "a5b8338b45ff4de091fba872f3d9f7bfb12cd617d8140449d6eb25666e748312"
+								}
+							]
+						},
+						{
+							"id": "ultron-instance-<uuid>",
+							"task_id": "child-done",
+							"definition": "rlm-child@1",
+							"lane": "ultron.rlm-child.child-done",
+							"owner": "task-a",
+							"state": "closed",
+							"created_at": 1760000001000,
+							"closed_at": 1760000001000,
+							"invocations": []
+						},
+						{
+							"id": "ultron-instance-<uuid>",
+							"task_id": "other-done",
+							"definition": "rlm-child@1",
+							"lane": "ultron.rlm-child.other-done",
+							"owner": "task-a",
+							"state": "open",
+							"created_at": 1760000001000,
+							"closed_at": null,
+							"invocations": []
+						}
+					]
+				},
+				"log": [
+					[
+						"taskLane",
+						"task-done"
+					],
+					[
+						"pinLane",
+						"lane-task-done",
+						"instance:ultron-instance-<uuid>"
+					],
+					[
+						"taskLane",
+						"child-done"
+					],
+					[
+						"pinLane",
+						"ultron.rlm-child.child-done",
+						"instance:ultron-instance-<uuid>"
+					],
+					[
+						"taskLane",
+						"other-done"
+					],
+					[
+						"pinLane",
+						"ultron.rlm-child.other-done",
+						"instance:ultron-instance-<uuid>"
+					],
+					[
+						"unpinLane",
+						"ultron.rlm-child.child-done",
+						"instance:ultron-instance-<uuid>"
+					],
+					[
+						"spawn",
+						{
+							"definition": "rlm-child@1",
+							"input": {
+								"q": 1
+							},
+							"lane": "lane-task-done"
+						},
+						null
+					],
+					[
+						"spawn",
+						{
+							"definition": "rlm-child@1",
+							"input": [
+								"a",
+								2
+							],
+							"lane": "lane-task-done",
+							"key": "instance:ultron-instance-<uuid>:k1"
+						},
+						null
+					],
+					[
+						"spawn",
+						{
+							"definition": "rlm-child@1",
+							"input": [
+								"a",
+								2
+							],
+							"lane": "lane-task-done",
+							"key": "instance:ultron-instance-<uuid>:k1"
+						},
+						null
+					],
+					[
+						"unpinLane",
+						"lane-task-done",
+						"instance:ultron-instance-<uuid>"
+					],
+					[
+						"pinLane",
+						"ultron.rlm-child.other-done",
+						"instance:ultron-instance-<uuid>"
+					]
+				],
+				"restart": [
+					[
+						"pinLane",
+						"ultron.rlm-child.other-done",
+						"instance:ultron-instance-<uuid>"
+					]
+				]
+			}
+		}
+	]
+}

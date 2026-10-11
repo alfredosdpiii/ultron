@@ -1,0 +1,303 @@
+{
+	"port": "dynamic",
+	"steps": [
+		{
+			"op": "connect",
+			"ok": {
+				"protocolVersion": "2025-06-18",
+				"sessionId": "sess-1"
+			}
+		},
+		{
+			"op": "listTools",
+			"ok": [
+				{
+					"name": "echo",
+					"inputSchema": {
+						"type": "object"
+					}
+				}
+			]
+		},
+		{
+			"op": "callTool",
+			"name": "echo",
+			"args": {
+				"text": "hi"
+			},
+			"ok": {
+				"content": [
+					{
+						"type": "text",
+						"text": "hi"
+					}
+				]
+			}
+		},
+		{
+			"op": "callTool",
+			"name": "overloaded",
+			"err": {
+				"name": "McpHttpError",
+				"message": "MCP HTTP request failed with status 503: busy, try later",
+				"status": 503
+			}
+		},
+		{
+			"op": "callTool",
+			"name": "expire",
+			"err": {
+				"name": "McpSessionExpiredError",
+				"message": "MCP session expired",
+				"status": 404
+			}
+		},
+		{
+			"op": "callTool",
+			"name": "accepted",
+			"err": {
+				"name": "McpHttpError",
+				"message": "MCP server accepted request tools/call without a response",
+				"status": 202
+			}
+		},
+		{
+			"op": "callTool",
+			"name": "weird",
+			"err": {
+				"name": "McpHttpError",
+				"message": "Unsupported MCP response content type: text/html",
+				"status": 200
+			}
+		},
+		{
+			"op": "callTool",
+			"name": "unanswered",
+			"err": {
+				"name": "McpError",
+				"message": "MCP response stream failed: stream ended without a response",
+				"code": -32603
+			}
+		},
+		{
+			"op": "callTool",
+			"name": "denied",
+			"err": {
+				"name": "McpAuthRequiredError",
+				"message": "MCP server requires authentication",
+				"status": 401
+			}
+		},
+		{
+			"op": "close",
+			"ok": null
+		}
+	],
+	"requests": [
+		{
+			"method": "POST",
+			"headers": {
+				"accept": "application/json, text/event-stream",
+				"content-type": "application/json",
+				"x-custom": "c1"
+			},
+			"body": {
+				"jsonrpc": "2.0",
+				"id": 1,
+				"method": "initialize",
+				"params": {
+					"protocolVersion": "2025-11-25",
+					"capabilities": {},
+					"clientInfo": {
+						"name": "fixture-client",
+						"version": "1.0.0"
+					}
+				}
+			}
+		},
+		{
+			"method": "POST",
+			"headers": {
+				"accept": "application/json, text/event-stream",
+				"content-type": "application/json",
+				"mcp-session-id": "sess-1",
+				"mcp-protocol-version": "2025-06-18",
+				"x-custom": "c1"
+			},
+			"body": {
+				"jsonrpc": "2.0",
+				"method": "notifications/initialized"
+			}
+		},
+		{
+			"method": "GET",
+			"headers": {
+				"accept": "text/event-stream",
+				"mcp-session-id": "sess-1",
+				"mcp-protocol-version": "2025-06-18",
+				"x-custom": "c1"
+			},
+			"body": null
+		},
+		{
+			"method": "POST",
+			"headers": {
+				"accept": "application/json, text/event-stream",
+				"content-type": "application/json",
+				"mcp-session-id": "sess-1",
+				"mcp-protocol-version": "2025-06-18",
+				"x-custom": "c1"
+			},
+			"body": {
+				"jsonrpc": "2.0",
+				"id": 2,
+				"method": "tools/list"
+			}
+		},
+		{
+			"method": "POST",
+			"headers": {
+				"accept": "application/json, text/event-stream",
+				"content-type": "application/json",
+				"mcp-session-id": "sess-1",
+				"mcp-protocol-version": "2025-06-18",
+				"x-custom": "c1"
+			},
+			"body": {
+				"jsonrpc": "2.0",
+				"id": 3,
+				"method": "tools/call",
+				"params": {
+					"name": "echo",
+					"arguments": {
+						"text": "hi"
+					}
+				}
+			}
+		},
+		{
+			"method": "POST",
+			"headers": {
+				"accept": "application/json, text/event-stream",
+				"content-type": "application/json",
+				"mcp-session-id": "sess-1",
+				"mcp-protocol-version": "2025-06-18",
+				"x-custom": "c1"
+			},
+			"body": {
+				"jsonrpc": "2.0",
+				"id": 4,
+				"method": "tools/call",
+				"params": {
+					"name": "overloaded",
+					"arguments": {}
+				}
+			}
+		},
+		{
+			"method": "POST",
+			"headers": {
+				"accept": "application/json, text/event-stream",
+				"content-type": "application/json",
+				"mcp-session-id": "sess-1",
+				"mcp-protocol-version": "2025-06-18",
+				"x-custom": "c1"
+			},
+			"body": {
+				"jsonrpc": "2.0",
+				"id": 5,
+				"method": "tools/call",
+				"params": {
+					"name": "expire",
+					"arguments": {}
+				}
+			}
+		},
+		{
+			"method": "POST",
+			"headers": {
+				"accept": "application/json, text/event-stream",
+				"content-type": "application/json",
+				"mcp-session-id": "sess-1",
+				"mcp-protocol-version": "2025-06-18",
+				"x-custom": "c1"
+			},
+			"body": {
+				"jsonrpc": "2.0",
+				"id": 6,
+				"method": "tools/call",
+				"params": {
+					"name": "accepted",
+					"arguments": {}
+				}
+			}
+		},
+		{
+			"method": "POST",
+			"headers": {
+				"accept": "application/json, text/event-stream",
+				"content-type": "application/json",
+				"mcp-session-id": "sess-1",
+				"mcp-protocol-version": "2025-06-18",
+				"x-custom": "c1"
+			},
+			"body": {
+				"jsonrpc": "2.0",
+				"id": 7,
+				"method": "tools/call",
+				"params": {
+					"name": "weird",
+					"arguments": {}
+				}
+			}
+		},
+		{
+			"method": "POST",
+			"headers": {
+				"accept": "application/json, text/event-stream",
+				"content-type": "application/json",
+				"mcp-session-id": "sess-1",
+				"mcp-protocol-version": "2025-06-18",
+				"x-custom": "c1"
+			},
+			"body": {
+				"jsonrpc": "2.0",
+				"id": 8,
+				"method": "tools/call",
+				"params": {
+					"name": "unanswered",
+					"arguments": {}
+				}
+			}
+		},
+		{
+			"method": "POST",
+			"headers": {
+				"accept": "application/json, text/event-stream",
+				"content-type": "application/json",
+				"mcp-session-id": "sess-1",
+				"mcp-protocol-version": "2025-06-18",
+				"x-custom": "c1"
+			},
+			"body": {
+				"jsonrpc": "2.0",
+				"id": 9,
+				"method": "tools/call",
+				"params": {
+					"name": "denied",
+					"arguments": {}
+				}
+			}
+		},
+		{
+			"method": "DELETE",
+			"headers": {
+				"accept": "*/*",
+				"mcp-session-id": "sess-1",
+				"mcp-protocol-version": "2025-06-18",
+				"x-custom": "c1"
+			},
+			"body": null
+		}
+	]
+}

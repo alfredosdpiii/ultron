@@ -1,0 +1,50 @@
+import json as _j, ast as _ast, sys as _sys, time as _time, traceback as _tb, inspect as _inspect, os as _os
+_cfg = _j.loads({CONFIG})
+_started = _time.monotonic()
+_report = {"passed": False, "tests": [], "doc": None, "functions": []}
+def _err(error):
+    text = "".join(_tb.format_exception(type(error), error, error.__traceback__)[-6:])
+    return text[-2000:]
+try:
+    _skill_path = _os.path.join(_cfg["dir"], "skill.py")
+    _source = open(_skill_path, encoding="utf-8").read()
+    _tree = _ast.parse(_source, filename="skill.py")
+    _report["doc"] = _ast.get_docstring(_tree)
+    for _node in _tree.body:
+        if isinstance(_node, (_ast.FunctionDef, _ast.AsyncFunctionDef, _ast.ClassDef)) and not _node.name.startswith("_"):
+            _sig = _node.name + ("(" + _ast.unparse(_node.args) + ")" if not isinstance(_node, _ast.ClassDef) else "")
+            if not isinstance(_node, _ast.ClassDef) and _node.returns is not None:
+                _sig += " -> " + _ast.unparse(_node.returns)
+            _report["functions"].append({"name": _node.name, "signature": ("async " if isinstance(_node, _ast.AsyncFunctionDef) else "") + _sig, "doc": _ast.get_docstring(_node)})
+    _report["functions"] = _report["functions"][:20]
+    _sys.path.insert(0, _cfg["dir"])
+    import code_skills as _cs
+    _cs._use_candidate(_cfg["name"], _skill_path)
+    _module = getattr(_cs, _cfg["name"])
+    if _cfg["kind"] == "policy":
+        try:
+            assert callable(getattr(_module, "plan", None)), "a policy skill must define a callable plan(...)"
+            _report["tests"].append({"name": "policy_defines_plan", "ok": True})
+        except (Exception, SystemExit) as _error:
+            _report["tests"].append({"name": "policy_defines_plan", "ok": False, "error": _err(_error)})
+    _test_ns = {"__name__": "test_skill"}
+    exec(compile(open(_os.path.join(_cfg["dir"], "test_skill.py"), encoding="utf-8").read(), "test_skill.py", "exec"), _test_ns)
+    _tests = sorted(name for name, value in _test_ns.items() if name.startswith("test") and callable(value))
+    if not _tests:
+        _report["error"] = "test_source defines no test_* functions"
+    for _name in _tests:
+        try:
+            _value = _test_ns[_name]()
+            if _inspect.isawaitable(_value):
+                await _value
+            _report["tests"].append({"name": _name, "ok": True})
+        except (Exception, SystemExit) as _error:
+            _report["tests"].append({"name": _name, "ok": False, "error": _err(_error)})
+    _report["tests"] = _report["tests"][:50]
+    _report["passed"] = bool(_tests) and "error" not in _report and all(item["ok"] for item in _report["tests"])
+except BaseException as _error:
+    _report["error"] = _err(_error)
+_report["durationMs"] = int((_time.monotonic() - _started) * 1000)
+with open(_cfg["reportPath"], "w", encoding="utf-8") as _handle:
+    _handle.write("ULTRON_CODE_SKILL_REPORT" + _j.dumps(_report))
+None

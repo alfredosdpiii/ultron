@@ -1,0 +1,49 @@
+[package]
+name = "cli"
+version = "0.1.0"
+description = "The `ultron` binary: composition root (host stack, kernel, extensions), argument parsing, help, version, --list-models, session selection, print/JSON/RPC modes and `sandbox doctor`"
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "ultron"
+path = "src/main.rs"
+
+[dependencies]
+agent = { path = "../agent" }
+ai = { path = "../ai" }
+loki = { path = "../loki" }
+resources = { path = "../resources" }
+tokio = { version = "=1.53.2", features = ["rt", "time"] }
+client = { path = "../client" }
+compaction = { path = "../compaction" }
+config = { path = "../config" }
+daemon = { path = "../daemon" }
+delegation = { path = "../delegation" }
+extensions = { path = "../extensions" }
+host = { path = "../host" }
+interactive = { path = "../interactive" }
+indexmap = "=2.14.2"
+regex = "=1.13.1"
+kernel-apis = { path = "../kernel-apis" }
+sandbox = { path = "../sandbox" }
+session-core = { path = "../session-core" }
+session-journal = { path = "../session-journal" }
+inference = { path = "../inference" }
+kernel = { path = "../kernel" }
+mcp = { path = "../mcp" }
+session-file = { path = "../session-file" }
+sha2 = "=0.10.9"
+serde_json = { version = "=1.0.151", features = ["preserve_order"] }
+tui = { path = "../tui" }
+
+[dev-dependencies]
+chord-delta = { path = "../chord-delta" }
+protocol = { path = "../protocol" }
+rustix = { version = "=1.1.5", features = ["process", "std"] }
+ring = "=0.17.14"
+tempfile = "=3.27.0"
+
+[lints]
+workspace = true

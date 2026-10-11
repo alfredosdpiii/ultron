@@ -1,0 +1,821 @@
+{
+	"base": {
+		".gitignore": "build/\n",
+		"notes.txt": "hello\n",
+		"src/app.c": "int main(void) { return 0; }\n"
+	},
+	"sessions": [
+		{
+			"name": "on",
+			"mode": "on",
+			"cells": [
+				"await write('clean.txt', 'just text\\n')",
+				"key = 'AKIA' + 'Q7XRJ2M4PL3ZWNVB'\nawait write('config.env', f'KEY={key}\\n')",
+				"import os; os.path.exists('config.env')",
+				"await write('.loki/loki.json', '{}')",
+				"await write('.github/workflows/loki.yml', 'x')",
+				"await edit('notes.txt', 'hello', 'token ' + key)",
+				"open('notes.txt').read()",
+				"await edit('notes.txt', 'hello', 'hello again')",
+				"await write('../outside.txt', key)",
+				"await write('merge.txt', '<<<<<<< ours\\na\\n=======\\nb\\n>>>>>>> theirs\\n')",
+				"await write('src', 'x')",
+				"await write('.github/workflows/ci.yml', 'on: pull_request\\njobs:\\n  b:\\n    steps:\\n      - run: echo ${{ github.head_ref }}\\n')",
+				"await write('placeholder.env', 'K=AKIA' + 'EXAMPLEXAMPLEXAMPL\\n')",
+				"import asyncio; await asyncio.gather(write('x.txt', 'a'), write('y.env', key), return_exceptions=True)",
+				"await write('deep/new/dir/file.txt', 'nested\\n')",
+				"await bash('echo hi > out.py')",
+				"os.path.exists('out.py')",
+				"str(await bash('echo hi > notes.md; cat notes.md'))",
+				"str(await bash('mkdir -p build && echo x > build/out.js && cat build/out.js'))",
+				"await bash('cp notes.txt .loki/x')",
+				"await bash('sed -i s/a/b/ src/app.c')",
+				"await bash('cat notes.txt | tee copy.cfg')",
+				"str(await bash('echo quiet 2>/dev/null'))",
+				"str(await bash('ls src > /dev/null && echo listed'))",
+				"await bash('echo x > app.ts', yield_after=5)",
+				"await rlm.host_request('shell.run', {'command': 'echo x > run.ts'})",
+				"await rlm.host_request('bash', {'command': 'echo x >> src/app.c'})",
+				"await rlm.host_request('files.before_write', {'writes': []})",
+				"await rlm.host_request('files.before_write', {'writes': [{'path': 'a.txt'}]})",
+				"await rlm.host_request('files.before_write', {'writes': [{'path': 'a.txt', 'content': 'x'}, {'path': '.loki/a', 'content': 'x'}]})"
+			],
+			"results": [
+				{
+					"code": "await write('clean.txt', 'just text\\n')",
+					"ok": {
+						"status": "ok",
+						"stdout": "",
+						"result": "'Wrote clean.txt (10 bytes)'",
+						"error": null
+					}
+				},
+				{
+					"code": "key = 'AKIA' + 'Q7XRJ2M4PL3ZWNVB'\nawait write('config.env', f'KEY={key}\\n')",
+					"ok": {
+						"status": "error",
+						"stdout": "",
+						"result": null,
+						"error": "ValueError: config.env was not written: [Loki] config.env:1: loki/secret: hardcoded credential (AWS access key); load it from the environment or a secret store and rotate the exposed value"
+					}
+				},
+				{
+					"code": "import os; os.path.exists('config.env')",
+					"ok": {
+						"status": "ok",
+						"stdout": "",
+						"result": "False",
+						"error": null
+					}
+				},
+				{
+					"code": "await write('.loki/loki.json', '{}')",
+					"ok": {
+						"status": "error",
+						"stdout": "",
+						"result": null,
+						"error": "ValueError: .loki/loki.json was not written: [Loki] loki: protected file: .loki/loki.json (set LOKI_ALLOW_PROTECTED=1 to override)"
+					}
+				},
+				{
+					"code": "await write('.github/workflows/loki.yml', 'x')",
+					"ok": {
+						"status": "error",
+						"stdout": "",
+						"result": null,
+						"error": "ValueError: .github/workflows/loki.yml was not written: [Loki] loki: protected file: .github/workflows/loki.yml (set LOKI_ALLOW_PROTECTED=1 to override)"
+					}
+				},
+				{
+					"code": "await edit('notes.txt', 'hello', 'token ' + key)",
+					"ok": {
+						"status": "error",
+						"stdout": "",
+						"result": null,
+						"error": "ValueError: notes.txt was not written: [Loki] notes.txt:1: loki/secret: hardcoded credential (AWS access key); load it from the environment or a secret store and rotate the exposed value"
+					}
+				},
+				{
+					"code": "open('notes.txt').read()",
+					"ok": {
+						"status": "ok",
+						"stdout": "",
+						"result": "'hello\\n'",
+						"error": null
+					}
+				},
+				{
+					"code": "await edit('notes.txt', 'hello', 'hello again')",
+					"ok": {
+						"status": "ok",
+						"stdout": "",
+						"result": "'Edited notes.txt'",
+						"error": null
+					}
+				},
+				{
+					"code": "await write('../outside.txt', key)",
+					"ok": {
+						"status": "ok",
+						"stdout": "",
+						"result": "'Wrote ../outside.txt (20 bytes)'",
+						"error": null
+					}
+				},
+				{
+					"code": "await write('merge.txt', '<<<<<<< ours\\na\\n=======\\nb\\n>>>>>>> theirs\\n')",
+					"ok": {
+						"status": "error",
+						"stdout": "",
+						"result": null,
+						"error": "ValueError: merge.txt was not written: [Loki] merge.txt:1: loki/conflict-marker: unresolved merge conflict marker\nmerge.txt:5: loki/conflict-marker: unresolved merge conflict marker"
+					}
+				},
+				{
+					"code": "await write('src', 'x')",
+					"ok": {
+						"status": "error",
+						"stdout": "",
+						"result": null,
+						"error": "ValueError: src was not written: [Loki] loki: directory target is not a file: src"
+					}
+				},
+				{
+					"code": "await write('.github/workflows/ci.yml', 'on: pull_request\\njobs:\\n  b:\\n    steps:\\n      - run: echo ${{ github.head_ref }}\\n')",
+					"ok": {
+						"status": "error",
+						"stdout": "",
+						"result": null,
+						"error": "ValueError: .github/workflows/ci.yml was not written: [Loki] .github/workflows/ci.yml:5: loki/actions-injection: script injection: untrusted GitHub event field interpolated into a run step; pass it through env and quote it"
+					}
+				},
+				{
+					"code": "await write('placeholder.env', 'K=AKIA' + 'EXAMPLEXAMPLEXAMPL\\n')",
+					"ok": {
+						"status": "ok",
+						"stdout": "",
+						"result": "'Wrote placeholder.env (25 bytes)'",
+						"error": null
+					}
+				},
+				{
+					"code": "import asyncio; await asyncio.gather(write('x.txt', 'a'), write('y.env', key), return_exceptions=True)",
+					"ok": {
+						"status": "ok",
+						"stdout": "",
+						"result": "['Wrote x.txt (1 bytes)', ValueError('y.env was not written: [Loki] y.env:1: loki/secret: hardcoded credential (AWS access key); load it from the environment or a secret store and rotate the exposed value')]",
+						"error": null
+					}
+				},
+				{
+					"code": "await write('deep/new/dir/file.txt', 'nested\\n')",
+					"ok": {
+						"status": "ok",
+						"stdout": "",
+						"result": "'Wrote deep/new/dir/file.txt (7 bytes)'",
+						"error": null
+					}
+				},
+				{
+					"code": "await bash('echo hi > out.py')",
+					"ok": {
+						"status": "error",
+						"stdout": "",
+						"result": null,
+						"error": "RuntimeError: bash command was not run: [Loki] loki: `redirect` into out.py would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())"
+					}
+				},
+				{
+					"code": "os.path.exists('out.py')",
+					"ok": {
+						"status": "ok",
+						"stdout": "",
+						"result": "False",
+						"error": null
+					}
+				},
+				{
+					"code": "str(await bash('echo hi > notes.md; cat notes.md'))",
+					"ok": {
+						"status": "ok",
+						"stdout": "",
+						"result": "'hi'",
+						"error": null
+					}
+				},
+				{
+					"code": "str(await bash('mkdir -p build && echo x > build/out.js && cat build/out.js'))",
+					"ok": {
+						"status": "ok",
+						"stdout": "",
+						"result": "'x'",
+						"error": null
+					}
+				},
+				{
+					"code": "await bash('cp notes.txt .loki/x')",
+					"ok": {
+						"status": "error",
+						"stdout": "",
+						"result": null,
+						"error": "RuntimeError: bash command was not run: [Loki] loki: protected file: .loki/x (set LOKI_ALLOW_PROTECTED=1 to override)"
+					}
+				},
+				{
+					"code": "await bash('sed -i s/a/b/ src/app.c')",
+					"ok": {
+						"status": "error",
+						"stdout": "",
+						"result": null,
+						"error": "RuntimeError: bash command was not run: [Loki] loki: `sed -i` into src/app.c would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())"
+					}
+				},
+				{
+					"code": "await bash('cat notes.txt | tee copy.cfg')",
+					"ok": {
+						"status": "error",
+						"stdout": "",
+						"result": null,
+						"error": "RuntimeError: bash command was not run: [Loki] loki: `tee` into copy.cfg would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())"
+					}
+				},
+				{
+					"code": "str(await bash('echo quiet 2>/dev/null'))",
+					"ok": {
+						"status": "ok",
+						"stdout": "",
+						"result": "'quiet'",
+						"error": null
+					}
+				},
+				{
+					"code": "str(await bash('ls src > /dev/null && echo listed'))",
+					"ok": {
+						"status": "ok",
+						"stdout": "",
+						"result": "'listed'",
+						"error": null
+					}
+				},
+				{
+					"code": "await bash('echo x > app.ts', yield_after=5)",
+					"ok": {
+						"status": "error",
+						"stdout": "",
+						"result": null,
+						"error": "RuntimeError: bash command was not run: [Loki] loki: `redirect` into app.ts would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())"
+					}
+				},
+				{
+					"code": "await rlm.host_request('shell.run', {'command': 'echo x > run.ts'})",
+					"ok": {
+						"status": "error",
+						"stdout": "",
+						"result": null,
+						"error": "RuntimeError: bash command was not run: [Loki] loki: `redirect` into run.ts would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())"
+					}
+				},
+				{
+					"code": "await rlm.host_request('bash', {'command': 'echo x >> src/app.c'})",
+					"ok": {
+						"status": "error",
+						"stdout": "",
+						"result": null,
+						"error": "RuntimeError: bash command was not run: [Loki] loki: `redirect` into src/app.c would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())"
+					}
+				},
+				{
+					"code": "await rlm.host_request('files.before_write', {'writes': []})",
+					"ok": {
+						"status": "error",
+						"stdout": "",
+						"result": null,
+						"error": "RuntimeError: files.before_write needs 1 to 64 writes"
+					}
+				},
+				{
+					"code": "await rlm.host_request('files.before_write', {'writes': [{'path': 'a.txt'}]})",
+					"ok": {
+						"status": "error",
+						"stdout": "",
+						"result": null,
+						"error": "RuntimeError: files.before_write writes need a path and text content"
+					}
+				},
+				{
+					"code": "await rlm.host_request('files.before_write', {'writes': [{'path': 'a.txt', 'content': 'x'}, {'path': '.loki/a', 'content': 'x'}]})",
+					"ok": {
+						"status": "ok",
+						"stdout": "",
+						"result": "{'results': [{'blocked': False, 'notes': []}, {'blocked': True, 'reason': '[Loki] loki: protected file: .loki/a (set LOKI_ALLOW_PROTECTED=1 to override)', 'notes': []}]}",
+						"error": null
+					}
+				}
+			]
+		},
+		{
+			"name": "advise",
+			"mode": "advise",
+			"cells": [
+				"key = 'AKIA' + 'Q7XRJ2M4PL3ZWNVB'\nawait write('config.env', f'KEY={key}\\n')",
+				"open('config.env').read() == f'KEY={key}\\n'",
+				"await write('.loki/loki.json', '{}')",
+				"str(await bash('echo hi > out.py && cat out.py'))",
+				"await write('fine.txt', 'ok')"
+			],
+			"results": [
+				{
+					"code": "key = 'AKIA' + 'Q7XRJ2M4PL3ZWNVB'\nawait write('config.env', f'KEY={key}\\n')",
+					"ok": {
+						"status": "ok",
+						"stdout": "[Loki] would block this write (advise-only mode):\nconfig.env:1: loki/secret: hardcoded credential (AWS access key); load it from the environment or a secret store and rotate the exposed value\n",
+						"result": "'Wrote config.env (25 bytes)'",
+						"error": null
+					}
+				},
+				{
+					"code": "open('config.env').read() == f'KEY={key}\\n'",
+					"ok": {
+						"status": "ok",
+						"stdout": "",
+						"result": "True",
+						"error": null
+					}
+				},
+				{
+					"code": "await write('.loki/loki.json', '{}')",
+					"ok": {
+						"status": "ok",
+						"stdout": "[Loki] would block this write (advise-only mode):\nloki: protected file: .loki/loki.json (set LOKI_ALLOW_PROTECTED=1 to override)\n",
+						"result": "'Wrote .loki/loki.json (2 bytes)'",
+						"error": null
+					}
+				},
+				{
+					"code": "str(await bash('echo hi > out.py && cat out.py'))",
+					"ok": {
+						"status": "ok",
+						"stdout": "",
+						"result": "'hi'",
+						"error": null
+					}
+				},
+				{
+					"code": "await write('fine.txt', 'ok')",
+					"ok": {
+						"status": "ok",
+						"stdout": "",
+						"result": "'Wrote fine.txt (2 bytes)'",
+						"error": null
+					}
+				}
+			]
+		},
+		{
+			"name": "protected-extra",
+			"mode": "on",
+			"files": {
+				".loki/loki.json": "{\"protected_extra\":[\"secrets/**\",\"*.lock\"]}"
+			},
+			"cells": [
+				"await write('secrets/a.txt', 'x')",
+				"await write('deps.lock', 'x')",
+				"await bash('echo x > secrets/b.txt')",
+				"await write('public.txt', 'x')"
+			],
+			"results": [
+				{
+					"code": "await write('secrets/a.txt', 'x')",
+					"ok": {
+						"status": "error",
+						"stdout": "",
+						"result": null,
+						"error": "ValueError: secrets/a.txt was not written: [Loki] loki: protected file: secrets/a.txt (set LOKI_ALLOW_PROTECTED=1 to override)"
+					}
+				},
+				{
+					"code": "await write('deps.lock', 'x')",
+					"ok": {
+						"status": "error",
+						"stdout": "",
+						"result": null,
+						"error": "ValueError: deps.lock was not written: [Loki] loki: protected file: deps.lock (set LOKI_ALLOW_PROTECTED=1 to override)"
+					}
+				},
+				{
+					"code": "await bash('echo x > secrets/b.txt')",
+					"ok": {
+						"status": "error",
+						"stdout": "",
+						"result": null,
+						"error": "RuntimeError: bash command was not run: [Loki] loki: protected file: secrets/b.txt (set LOKI_ALLOW_PROTECTED=1 to override)"
+					}
+				},
+				{
+					"code": "await write('public.txt', 'x')",
+					"ok": {
+						"status": "ok",
+						"stdout": "",
+						"result": "'Wrote public.txt (1 bytes)'",
+						"error": null
+					}
+				}
+			]
+		},
+		{
+			"name": "invalid-policy",
+			"mode": "on",
+			"files": {
+				".loki/loki.json": "{\"zeta\":1}"
+			},
+			"cells": [
+				"await write('a.txt', 'x')",
+				"str(await bash('ls > listing.txt && echo ok'))",
+				"await bash('echo x > a.c')"
+			],
+			"results": [
+				{
+					"code": "await write('a.txt', 'x')",
+					"ok": {
+						"status": "error",
+						"stdout": "",
+						"result": null,
+						"error": "ValueError: a.txt was not written: [Loki] loki: invalid hook input: loki: unknown configuration key: zeta"
+					}
+				},
+				{
+					"code": "str(await bash('ls > listing.txt && echo ok'))",
+					"ok": {
+						"status": "error",
+						"stdout": "",
+						"result": null,
+						"error": "RuntimeError: bash command was not run: [Loki] loki: invalid shell input: loki: unknown configuration key: zeta"
+					}
+				},
+				{
+					"code": "await bash('echo x > a.c')",
+					"ok": {
+						"status": "error",
+						"stdout": "",
+						"result": null,
+						"error": "RuntimeError: bash command was not run: [Loki] loki: invalid shell input: loki: unknown configuration key: zeta"
+					}
+				}
+			]
+		},
+		{
+			"name": "off",
+			"mode": "off",
+			"cells": [
+				"key = 'AKIA' + 'Q7XRJ2M4PL3ZWNVB'\nawait write('config.env', f'KEY={key}\\n')",
+				"str(await bash('echo hi > out.py && cat out.py'))"
+			],
+			"results": [
+				{
+					"code": "key = 'AKIA' + 'Q7XRJ2M4PL3ZWNVB'\nawait write('config.env', f'KEY={key}\\n')",
+					"ok": {
+						"status": "ok",
+						"stdout": "",
+						"result": "'Wrote config.env (25 bytes)'",
+						"error": null
+					}
+				},
+				{
+					"code": "str(await bash('echo hi > out.py && cat out.py'))",
+					"ok": {
+						"status": "ok",
+						"stdout": "",
+						"result": "'hi'",
+						"error": null
+					}
+				}
+			]
+		},
+		{
+			"name": "subdirectory-cwd",
+			"mode": "on",
+			"cwd": "src",
+			"cells": [
+				"await write('lib.txt', 'x')",
+				"await write('../.loki/x', 'x')",
+				"key = 'AKIA' + 'Q7XRJ2M4PL3ZWNVB'\nawait write('../top.env', key)",
+				"await bash('echo x > here.c')",
+				"str(await bash('echo x > here.md && echo ok'))"
+			],
+			"results": [
+				{
+					"code": "await write('lib.txt', 'x')",
+					"ok": {
+						"status": "ok",
+						"stdout": "",
+						"result": "'Wrote lib.txt (1 bytes)'",
+						"error": null
+					}
+				},
+				{
+					"code": "await write('../.loki/x', 'x')",
+					"ok": {
+						"status": "error",
+						"stdout": "",
+						"result": null,
+						"error": "ValueError: ../.loki/x was not written: [Loki] loki: protected file: .loki/x (set LOKI_ALLOW_PROTECTED=1 to override)"
+					}
+				},
+				{
+					"code": "key = 'AKIA' + 'Q7XRJ2M4PL3ZWNVB'\nawait write('../top.env', key)",
+					"ok": {
+						"status": "error",
+						"stdout": "",
+						"result": null,
+						"error": "ValueError: ../top.env was not written: [Loki] top.env:1: loki/secret: hardcoded credential (AWS access key); load it from the environment or a secret store and rotate the exposed value"
+					}
+				},
+				{
+					"code": "await bash('echo x > here.c')",
+					"ok": {
+						"status": "error",
+						"stdout": "",
+						"result": null,
+						"error": "RuntimeError: bash command was not run: [Loki] loki: `redirect` into src/here.c would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())"
+					}
+				},
+				{
+					"code": "str(await bash('echo x > here.md && echo ok'))",
+					"ok": {
+						"status": "ok",
+						"stdout": "",
+						"result": "'ok'",
+						"error": null
+					}
+				}
+			]
+		}
+	],
+	"mayWrite": [
+		{
+			"command": "echo hi > a.py",
+			"result": true
+		},
+		{
+			"command": "cat x >> b.txt",
+			"result": true
+		},
+		{
+			"command": "echo a>b",
+			"result": true
+		},
+		{
+			"command": "cmd >| out",
+			"result": true
+		},
+		{
+			"command": "ls | tee out",
+			"result": true
+		},
+		{
+			"command": "sed -i s/a/b/ f",
+			"result": true
+		},
+		{
+			"command": "sed -n --in-place s/a/b/ f",
+			"result": true
+		},
+		{
+			"command": "perl -pi -e s/a/b/ f",
+			"result": true
+		},
+		{
+			"command": "cp a b",
+			"result": true
+		},
+		{
+			"command": "(mv a b)",
+			"result": true
+		},
+		{
+			"command": "install -m 644 a b",
+			"result": true
+		},
+		{
+			"command": "dd if=/dev/zero of=disk",
+			"result": true
+		},
+		{
+			"command": "echo hi 2>/dev/null > a.c",
+			"result": true
+		},
+		{
+			"command": "ls -la",
+			"result": false
+		},
+		{
+			"command": "npm test 2>&1 | tail -5",
+			"result": false
+		},
+		{
+			"command": "echo hi > /dev/null",
+			"result": false
+		},
+		{
+			"command": "cmd 2>>/dev/null",
+			"result": false
+		},
+		{
+			"command": "grep -r foo .",
+			"result": false
+		},
+		{
+			"command": "sed s/a/b/ f",
+			"result": false
+		},
+		{
+			"command": "perl -e 'print 1'",
+			"result": false
+		},
+		{
+			"command": "a <<< b",
+			"result": false
+		},
+		{
+			"command": "x -> y",
+			"result": false
+		},
+		{
+			"command": "cmd &>&1",
+			"result": false
+		},
+		{
+			"command": "sed s/a/b/ f | grep -i x",
+			"result": false
+		},
+		{
+			"command": "echo x >/dev/nullx",
+			"result": true
+		},
+		{
+			"command": "echo x 1>&2",
+			"result": false
+		},
+		{
+			"command": "cmd &> log",
+			"result": true
+		},
+		{
+			"command": "a;tee b",
+			"result": true
+		},
+		{
+			"command": "a&&cp b c",
+			"result": true
+		},
+		{
+			"command": "teeth x",
+			"result": false
+		},
+		{
+			"command": "xcp a b",
+			"result": false
+		},
+		{
+			"command": "dd of=x",
+			"result": true
+		},
+		{
+			"command": "dd bs=1|of=x",
+			"result": false
+		},
+		{
+			"command": "sed\t-i f",
+			"result": true
+		},
+		{
+			"command": "perl -i f",
+			"result": true
+		},
+		{
+			"command": "perl -ne 'print' f",
+			"result": false
+		},
+		{
+			"command": "echo '>'",
+			"result": true
+		},
+		{
+			"command": "<<EOF > x",
+			"result": true
+		},
+		{
+			"command": "cat file|>x",
+			"result": true
+		},
+		{
+			"command": "echo -> x",
+			"result": false
+		},
+		{
+			"command": "ls >&3",
+			"result": false
+		},
+		{
+			"command": "ls >& x",
+			"result": false
+		},
+		{
+			"command": "echo é>/dev/nullé",
+			"result": false
+		}
+	],
+	"modes": [
+		{
+			"env": null,
+			"settings": {},
+			"mode": "on"
+		},
+		{
+			"env": null,
+			"settings": {
+				"mode": "advise"
+			},
+			"mode": "advise"
+		},
+		{
+			"env": null,
+			"settings": {
+				"mode": "off"
+			},
+			"mode": "off"
+		},
+		{
+			"env": "",
+			"settings": {
+				"mode": "off"
+			},
+			"mode": "off"
+		},
+		{
+			"env": "  ",
+			"settings": {
+				"mode": "advise"
+			},
+			"mode": "advise"
+		},
+		{
+			"env": "off",
+			"settings": {},
+			"mode": "off"
+		},
+		{
+			"env": "0",
+			"settings": {
+				"mode": "on"
+			},
+			"mode": "off"
+		},
+		{
+			"env": "FALSE",
+			"settings": {},
+			"mode": "off"
+		},
+		{
+			"env": " no ",
+			"settings": {},
+			"mode": "off"
+		},
+		{
+			"env": "none",
+			"settings": {},
+			"mode": "off"
+		},
+		{
+			"env": "advise",
+			"settings": {
+				"mode": "off"
+			},
+			"mode": "advise"
+		},
+		{
+			"env": " Advise ",
+			"settings": {},
+			"mode": "advise"
+		},
+		{
+			"env": "on",
+			"settings": {
+				"mode": "off"
+			},
+			"mode": "on"
+		},
+		{
+			"env": "yes",
+			"settings": {
+				"mode": "off"
+			},
+			"mode": "on"
+		},
+		{
+			"env": "1",
+			"settings": {},
+			"mode": "on"
+		}
+	]
+}

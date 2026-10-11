@@ -1,0 +1,7 @@
+{
+	"name": "hello",
+	"command": "python3",
+	"args": ["hello.py"],
+	"eventTimeoutMs": 5000,
+	"maxRestarts": 2
+}

@@ -1,0 +1,3794 @@
+{
+	"cases": [
+		{
+			"name": "anthropic manual redirect url",
+			"provider": "anthropic",
+			"answers": [
+				"{redirect}?code=manual-code&state={state}"
+			],
+			"responses": [
+				[
+					200,
+					"{\"access_token\":\"access-token\",\"refresh_token\":\"refresh-token\",\"expires_in\":3600}"
+				]
+			],
+			"abortAt": null,
+			"hits": null,
+			"prompts": [
+				{
+					"type": "manual_code",
+					"message": "Complete login in your browser, or paste the authorization code / redirect URL here:",
+					"placeholder": "http://localhost:53692/callback",
+					"hasSignal": true
+				}
+			],
+			"events": [
+				{
+					"type": "auth_url",
+					"url": "https://claude.ai/oauth/authorize?code=true&client_id=9d1c250a-e61b-44d9-88ed-5944d1962f5e&response_type=code&redirect_uri=http%3A%2F%2Flocalhost%3A53692%2Fcallback&scope=org%3Acreate_api_key+user%3Aprofile+user%3Ainference+user%3Asessions%3Aclaude_code+user%3Amcp_servers+user%3Afile_upload&code_challenge=6oZqdX5MOLq_qBJ8vppAnT4fk6AP8UiP9zX8-Rev_9A&code_challenge_method=S256&state=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+					"instructions": "Complete login in your browser. If the browser is on another machine, paste the final redirect URL here."
+				},
+				{
+					"type": "progress",
+					"message": "Exchanging authorization code for tokens..."
+				}
+			],
+			"requests": [
+				{
+					"at": 1767225600000,
+					"url": "https://platform.claude.com/v1/oauth/token",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json",
+						"accept": "application/json"
+					},
+					"body": "{\"grant_type\":\"authorization_code\",\"client_id\":\"9d1c250a-e61b-44d9-88ed-5944d1962f5e\",\"code\":\"manual-code\",\"state\":\"AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8\",\"redirect_uri\":\"http://localhost:53692/callback\",\"code_verifier\":\"AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8\"}"
+				}
+			],
+			"callbackResponses": [],
+			"result": {
+				"type": "oauth",
+				"refresh": "refresh-token",
+				"access": "access-token",
+				"expires": 1767228900000
+			},
+			"error": null
+		},
+		{
+			"name": "anthropic manual url without scheme",
+			"provider": "anthropic",
+			"answers": [
+				"localhost:53692/callback?code=pasted-code&state={state}"
+			],
+			"responses": [
+				[
+					200,
+					"{\"access_token\":\"access-token\",\"refresh_token\":\"refresh-token\",\"expires_in\":3600}"
+				]
+			],
+			"abortAt": null,
+			"hits": null,
+			"prompts": [
+				{
+					"type": "manual_code",
+					"message": "Complete login in your browser, or paste the authorization code / redirect URL here:",
+					"placeholder": "http://localhost:53692/callback",
+					"hasSignal": true
+				}
+			],
+			"events": [
+				{
+					"type": "auth_url",
+					"url": "https://claude.ai/oauth/authorize?code=true&client_id=9d1c250a-e61b-44d9-88ed-5944d1962f5e&response_type=code&redirect_uri=http%3A%2F%2Flocalhost%3A53692%2Fcallback&scope=org%3Acreate_api_key+user%3Aprofile+user%3Ainference+user%3Asessions%3Aclaude_code+user%3Amcp_servers+user%3Afile_upload&code_challenge=6oZqdX5MOLq_qBJ8vppAnT4fk6AP8UiP9zX8-Rev_9A&code_challenge_method=S256&state=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+					"instructions": "Complete login in your browser. If the browser is on another machine, paste the final redirect URL here."
+				},
+				{
+					"type": "progress",
+					"message": "Exchanging authorization code for tokens..."
+				}
+			],
+			"requests": [
+				{
+					"at": 1767225600000,
+					"url": "https://platform.claude.com/v1/oauth/token",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json",
+						"accept": "application/json"
+					},
+					"body": "{\"grant_type\":\"authorization_code\",\"client_id\":\"9d1c250a-e61b-44d9-88ed-5944d1962f5e\",\"code\":\"pasted-code\",\"state\":\"AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8\",\"redirect_uri\":\"http://localhost:53692/callback\",\"code_verifier\":\"AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8\"}"
+				}
+			],
+			"callbackResponses": [],
+			"result": {
+				"type": "oauth",
+				"refresh": "refresh-token",
+				"access": "access-token",
+				"expires": 1767228900000
+			},
+			"error": null
+		},
+		{
+			"name": "anthropic manual query string",
+			"provider": "anthropic",
+			"answers": [
+				"code=pasted-code&state={state}"
+			],
+			"responses": [
+				[
+					200,
+					"{\"access_token\":\"access-token\",\"refresh_token\":\"refresh-token\",\"expires_in\":3600}"
+				]
+			],
+			"abortAt": null,
+			"hits": null,
+			"prompts": [
+				{
+					"type": "manual_code",
+					"message": "Complete login in your browser, or paste the authorization code / redirect URL here:",
+					"placeholder": "http://localhost:53692/callback",
+					"hasSignal": true
+				}
+			],
+			"events": [
+				{
+					"type": "auth_url",
+					"url": "https://claude.ai/oauth/authorize?code=true&client_id=9d1c250a-e61b-44d9-88ed-5944d1962f5e&response_type=code&redirect_uri=http%3A%2F%2Flocalhost%3A53692%2Fcallback&scope=org%3Acreate_api_key+user%3Aprofile+user%3Ainference+user%3Asessions%3Aclaude_code+user%3Amcp_servers+user%3Afile_upload&code_challenge=6oZqdX5MOLq_qBJ8vppAnT4fk6AP8UiP9zX8-Rev_9A&code_challenge_method=S256&state=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+					"instructions": "Complete login in your browser. If the browser is on another machine, paste the final redirect URL here."
+				},
+				{
+					"type": "progress",
+					"message": "Exchanging authorization code for tokens..."
+				}
+			],
+			"requests": [
+				{
+					"at": 1767225600000,
+					"url": "https://platform.claude.com/v1/oauth/token",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json",
+						"accept": "application/json"
+					},
+					"body": "{\"grant_type\":\"authorization_code\",\"client_id\":\"9d1c250a-e61b-44d9-88ed-5944d1962f5e\",\"code\":\"pasted-code\",\"state\":\"AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8\",\"redirect_uri\":\"http://localhost:53692/callback\",\"code_verifier\":\"AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8\"}"
+				}
+			],
+			"callbackResponses": [],
+			"result": {
+				"type": "oauth",
+				"refresh": "refresh-token",
+				"access": "access-token",
+				"expires": 1767228900000
+			},
+			"error": null
+		},
+		{
+			"name": "anthropic manual code#state",
+			"provider": "anthropic",
+			"answers": [
+				"pasted-code#{state}#extra"
+			],
+			"responses": [
+				[
+					200,
+					"{\"access_token\":\"access-token\",\"refresh_token\":\"refresh-token\",\"expires_in\":3600}"
+				]
+			],
+			"abortAt": null,
+			"hits": null,
+			"prompts": [
+				{
+					"type": "manual_code",
+					"message": "Complete login in your browser, or paste the authorization code / redirect URL here:",
+					"placeholder": "http://localhost:53692/callback",
+					"hasSignal": true
+				}
+			],
+			"events": [
+				{
+					"type": "auth_url",
+					"url": "https://claude.ai/oauth/authorize?code=true&client_id=9d1c250a-e61b-44d9-88ed-5944d1962f5e&response_type=code&redirect_uri=http%3A%2F%2Flocalhost%3A53692%2Fcallback&scope=org%3Acreate_api_key+user%3Aprofile+user%3Ainference+user%3Asessions%3Aclaude_code+user%3Amcp_servers+user%3Afile_upload&code_challenge=6oZqdX5MOLq_qBJ8vppAnT4fk6AP8UiP9zX8-Rev_9A&code_challenge_method=S256&state=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+					"instructions": "Complete login in your browser. If the browser is on another machine, paste the final redirect URL here."
+				},
+				{
+					"type": "progress",
+					"message": "Exchanging authorization code for tokens..."
+				}
+			],
+			"requests": [
+				{
+					"at": 1767225600000,
+					"url": "https://platform.claude.com/v1/oauth/token",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json",
+						"accept": "application/json"
+					},
+					"body": "{\"grant_type\":\"authorization_code\",\"client_id\":\"9d1c250a-e61b-44d9-88ed-5944d1962f5e\",\"code\":\"pasted-code\",\"state\":\"AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8\",\"redirect_uri\":\"http://localhost:53692/callback\",\"code_verifier\":\"AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8\"}"
+				}
+			],
+			"callbackResponses": [],
+			"result": {
+				"type": "oauth",
+				"refresh": "refresh-token",
+				"access": "access-token",
+				"expires": 1767228900000
+			},
+			"error": null
+		},
+		{
+			"name": "anthropic manual bare code",
+			"provider": "anthropic",
+			"answers": [
+				"  the-code  "
+			],
+			"responses": [
+				[
+					200,
+					"{\"access_token\":\"access-token\",\"refresh_token\":\"refresh-token\",\"expires_in\":3600}"
+				]
+			],
+			"abortAt": null,
+			"hits": null,
+			"prompts": [
+				{
+					"type": "manual_code",
+					"message": "Complete login in your browser, or paste the authorization code / redirect URL here:",
+					"placeholder": "http://localhost:53692/callback",
+					"hasSignal": true
+				}
+			],
+			"events": [
+				{
+					"type": "auth_url",
+					"url": "https://claude.ai/oauth/authorize?code=true&client_id=9d1c250a-e61b-44d9-88ed-5944d1962f5e&response_type=code&redirect_uri=http%3A%2F%2Flocalhost%3A53692%2Fcallback&scope=org%3Acreate_api_key+user%3Aprofile+user%3Ainference+user%3Asessions%3Aclaude_code+user%3Amcp_servers+user%3Afile_upload&code_challenge=6oZqdX5MOLq_qBJ8vppAnT4fk6AP8UiP9zX8-Rev_9A&code_challenge_method=S256&state=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+					"instructions": "Complete login in your browser. If the browser is on another machine, paste the final redirect URL here."
+				},
+				{
+					"type": "progress",
+					"message": "Exchanging authorization code for tokens..."
+				}
+			],
+			"requests": [
+				{
+					"at": 1767225600000,
+					"url": "https://platform.claude.com/v1/oauth/token",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json",
+						"accept": "application/json"
+					},
+					"body": "{\"grant_type\":\"authorization_code\",\"client_id\":\"9d1c250a-e61b-44d9-88ed-5944d1962f5e\",\"code\":\"the-code\",\"state\":\"AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8\",\"redirect_uri\":\"http://localhost:53692/callback\",\"code_verifier\":\"AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8\"}"
+				}
+			],
+			"callbackResponses": [],
+			"result": {
+				"type": "oauth",
+				"refresh": "refresh-token",
+				"access": "access-token",
+				"expires": 1767228900000
+			},
+			"error": null
+		},
+		{
+			"name": "anthropic manual state mismatch",
+			"provider": "anthropic",
+			"answers": [
+				"code=x&state=other"
+			],
+			"responses": [],
+			"abortAt": null,
+			"hits": null,
+			"prompts": [
+				{
+					"type": "manual_code",
+					"message": "Complete login in your browser, or paste the authorization code / redirect URL here:",
+					"placeholder": "http://localhost:53692/callback",
+					"hasSignal": true
+				}
+			],
+			"events": [
+				{
+					"type": "auth_url",
+					"url": "https://claude.ai/oauth/authorize?code=true&client_id=9d1c250a-e61b-44d9-88ed-5944d1962f5e&response_type=code&redirect_uri=http%3A%2F%2Flocalhost%3A53692%2Fcallback&scope=org%3Acreate_api_key+user%3Aprofile+user%3Ainference+user%3Asessions%3Aclaude_code+user%3Amcp_servers+user%3Afile_upload&code_challenge=6oZqdX5MOLq_qBJ8vppAnT4fk6AP8UiP9zX8-Rev_9A&code_challenge_method=S256&state=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+					"instructions": "Complete login in your browser. If the browser is on another machine, paste the final redirect URL here."
+				}
+			],
+			"requests": [],
+			"callbackResponses": [],
+			"result": null,
+			"error": "OAuth state mismatch"
+		},
+		{
+			"name": "anthropic manual empty",
+			"provider": "anthropic",
+			"answers": [
+				"   "
+			],
+			"responses": [],
+			"abortAt": null,
+			"hits": null,
+			"prompts": [
+				{
+					"type": "manual_code",
+					"message": "Complete login in your browser, or paste the authorization code / redirect URL here:",
+					"placeholder": "http://localhost:53692/callback",
+					"hasSignal": true
+				}
+			],
+			"events": [
+				{
+					"type": "auth_url",
+					"url": "https://claude.ai/oauth/authorize?code=true&client_id=9d1c250a-e61b-44d9-88ed-5944d1962f5e&response_type=code&redirect_uri=http%3A%2F%2Flocalhost%3A53692%2Fcallback&scope=org%3Acreate_api_key+user%3Aprofile+user%3Ainference+user%3Asessions%3Aclaude_code+user%3Amcp_servers+user%3Afile_upload&code_challenge=6oZqdX5MOLq_qBJ8vppAnT4fk6AP8UiP9zX8-Rev_9A&code_challenge_method=S256&state=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+					"instructions": "Complete login in your browser. If the browser is on another machine, paste the final redirect URL here."
+				}
+			],
+			"requests": [],
+			"callbackResponses": [],
+			"result": null,
+			"error": "Missing authorization code"
+		},
+		{
+			"name": "anthropic prompt rejects",
+			"provider": "anthropic",
+			"answers": [
+				{
+					"reject": "Login cancelled"
+				}
+			],
+			"responses": [],
+			"abortAt": null,
+			"hits": null,
+			"prompts": [
+				{
+					"type": "manual_code",
+					"message": "Complete login in your browser, or paste the authorization code / redirect URL here:",
+					"placeholder": "http://localhost:53692/callback",
+					"hasSignal": true
+				}
+			],
+			"events": [
+				{
+					"type": "auth_url",
+					"url": "https://claude.ai/oauth/authorize?code=true&client_id=9d1c250a-e61b-44d9-88ed-5944d1962f5e&response_type=code&redirect_uri=http%3A%2F%2Flocalhost%3A53692%2Fcallback&scope=org%3Acreate_api_key+user%3Aprofile+user%3Ainference+user%3Asessions%3Aclaude_code+user%3Amcp_servers+user%3Afile_upload&code_challenge=6oZqdX5MOLq_qBJ8vppAnT4fk6AP8UiP9zX8-Rev_9A&code_challenge_method=S256&state=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+					"instructions": "Complete login in your browser. If the browser is on another machine, paste the final redirect URL here."
+				}
+			],
+			"requests": [],
+			"callbackResponses": [],
+			"result": null,
+			"error": "Login cancelled"
+		},
+		{
+			"name": "anthropic exchange http error",
+			"provider": "anthropic",
+			"answers": [
+				"{redirect}?code=manual-code&state={state}"
+			],
+			"responses": [
+				[
+					400,
+					"{\"error\":\"invalid_grant\"}"
+				]
+			],
+			"abortAt": null,
+			"hits": null,
+			"prompts": [
+				{
+					"type": "manual_code",
+					"message": "Complete login in your browser, or paste the authorization code / redirect URL here:",
+					"placeholder": "http://localhost:53692/callback",
+					"hasSignal": true
+				}
+			],
+			"events": [
+				{
+					"type": "auth_url",
+					"url": "https://claude.ai/oauth/authorize?code=true&client_id=9d1c250a-e61b-44d9-88ed-5944d1962f5e&response_type=code&redirect_uri=http%3A%2F%2Flocalhost%3A53692%2Fcallback&scope=org%3Acreate_api_key+user%3Aprofile+user%3Ainference+user%3Asessions%3Aclaude_code+user%3Amcp_servers+user%3Afile_upload&code_challenge=6oZqdX5MOLq_qBJ8vppAnT4fk6AP8UiP9zX8-Rev_9A&code_challenge_method=S256&state=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+					"instructions": "Complete login in your browser. If the browser is on another machine, paste the final redirect URL here."
+				},
+				{
+					"type": "progress",
+					"message": "Exchanging authorization code for tokens..."
+				}
+			],
+			"requests": [
+				{
+					"at": 1767225600000,
+					"url": "https://platform.claude.com/v1/oauth/token",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json",
+						"accept": "application/json"
+					},
+					"body": "{\"grant_type\":\"authorization_code\",\"client_id\":\"9d1c250a-e61b-44d9-88ed-5944d1962f5e\",\"code\":\"manual-code\",\"state\":\"AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8\",\"redirect_uri\":\"http://localhost:53692/callback\",\"code_verifier\":\"AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8\"}"
+				}
+			],
+			"callbackResponses": [],
+			"result": null,
+			"error": "Token exchange request failed. url=https://platform.claude.com/v1/oauth/token; redirect_uri=http://localhost:53692/callback; response_type=authorization_code; details=Error: HTTP request failed. status=400; url=https://platform.claude.com/v1/oauth/token; body={\"error\":\"invalid_grant\"}; stack=Error: HTTP request failed. status=400; url=https://platform.claude.com/v1/oauth/token; body={\"error\":\"invalid_grant\"}\n    at postJson (file:///home/bryan/Projects/personal/ultron-rust-wt/ai-auth/packages/ai/src/auth/oauth/anthropic.ts:183:9)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async exchangeAuthorizationCode (file:///home/bryan/Projects/personal/ultron-rust-wt/ai-auth/packages/ai/src/auth/oauth/anthropic.ts:198:18)\n    at async file:///home/bryan/Projects/personal/ultron-rust-wt/ai-auth/crates/ai/fixtures/generate-oauth-login.mjs:419:12"
+		},
+		{
+			"name": "anthropic exchange network error",
+			"provider": "anthropic",
+			"answers": [
+				"{redirect}?code=manual-code&state={state}"
+			],
+			"responses": [
+				[
+					0,
+					""
+				]
+			],
+			"abortAt": null,
+			"hits": null,
+			"prompts": [
+				{
+					"type": "manual_code",
+					"message": "Complete login in your browser, or paste the authorization code / redirect URL here:",
+					"placeholder": "http://localhost:53692/callback",
+					"hasSignal": true
+				}
+			],
+			"events": [
+				{
+					"type": "auth_url",
+					"url": "https://claude.ai/oauth/authorize?code=true&client_id=9d1c250a-e61b-44d9-88ed-5944d1962f5e&response_type=code&redirect_uri=http%3A%2F%2Flocalhost%3A53692%2Fcallback&scope=org%3Acreate_api_key+user%3Aprofile+user%3Ainference+user%3Asessions%3Aclaude_code+user%3Amcp_servers+user%3Afile_upload&code_challenge=6oZqdX5MOLq_qBJ8vppAnT4fk6AP8UiP9zX8-Rev_9A&code_challenge_method=S256&state=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+					"instructions": "Complete login in your browser. If the browser is on another machine, paste the final redirect URL here."
+				},
+				{
+					"type": "progress",
+					"message": "Exchanging authorization code for tokens..."
+				}
+			],
+			"requests": [
+				{
+					"at": 1767225600000,
+					"url": "https://platform.claude.com/v1/oauth/token",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json",
+						"accept": "application/json"
+					},
+					"body": "{\"grant_type\":\"authorization_code\",\"client_id\":\"9d1c250a-e61b-44d9-88ed-5944d1962f5e\",\"code\":\"manual-code\",\"state\":\"AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8\",\"redirect_uri\":\"http://localhost:53692/callback\",\"code_verifier\":\"AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8\"}"
+				}
+			],
+			"callbackResponses": [],
+			"result": null,
+			"error": "Token exchange request failed. url=https://platform.claude.com/v1/oauth/token; redirect_uri=http://localhost:53692/callback; response_type=authorization_code; details=TypeError: fetch failed; stack=TypeError: fetch failed\n    at globalThis.fetch (file:///home/bryan/Projects/personal/ultron-rust-wt/ai-auth/crates/ai/fixtures/generate-oauth-login.mjs:81:31)\n    at postJson (file:///home/bryan/Projects/personal/ultron-rust-wt/ai-auth/packages/ai/src/auth/oauth/anthropic.ts:170:25)\n    at exchangeAuthorizationCode (file:///home/bryan/Projects/personal/ultron-rust-wt/ai-auth/packages/ai/src/auth/oauth/anthropic.ts:198:24)\n    at Object.loginAnthropic [as login] (file:///home/bryan/Projects/personal/ultron-rust-wt/ai-auth/packages/ai/src/auth/oauth/anthropic.ts:305:10)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async file:///home/bryan/Projects/personal/ultron-rust-wt/ai-auth/crates/ai/fixtures/generate-oauth-login.mjs:419:12"
+		},
+		{
+			"name": "anthropic exchange invalid json",
+			"provider": "anthropic",
+			"answers": [
+				"{redirect}?code=manual-code&state={state}"
+			],
+			"responses": [
+				[
+					200,
+					"<html>"
+				]
+			],
+			"abortAt": null,
+			"hits": null,
+			"prompts": [
+				{
+					"type": "manual_code",
+					"message": "Complete login in your browser, or paste the authorization code / redirect URL here:",
+					"placeholder": "http://localhost:53692/callback",
+					"hasSignal": true
+				}
+			],
+			"events": [
+				{
+					"type": "auth_url",
+					"url": "https://claude.ai/oauth/authorize?code=true&client_id=9d1c250a-e61b-44d9-88ed-5944d1962f5e&response_type=code&redirect_uri=http%3A%2F%2Flocalhost%3A53692%2Fcallback&scope=org%3Acreate_api_key+user%3Aprofile+user%3Ainference+user%3Asessions%3Aclaude_code+user%3Amcp_servers+user%3Afile_upload&code_challenge=6oZqdX5MOLq_qBJ8vppAnT4fk6AP8UiP9zX8-Rev_9A&code_challenge_method=S256&state=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+					"instructions": "Complete login in your browser. If the browser is on another machine, paste the final redirect URL here."
+				},
+				{
+					"type": "progress",
+					"message": "Exchanging authorization code for tokens..."
+				}
+			],
+			"requests": [
+				{
+					"at": 1767225600000,
+					"url": "https://platform.claude.com/v1/oauth/token",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json",
+						"accept": "application/json"
+					},
+					"body": "{\"grant_type\":\"authorization_code\",\"client_id\":\"9d1c250a-e61b-44d9-88ed-5944d1962f5e\",\"code\":\"manual-code\",\"state\":\"AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8\",\"redirect_uri\":\"http://localhost:53692/callback\",\"code_verifier\":\"AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8\"}"
+				}
+			],
+			"callbackResponses": [],
+			"result": null,
+			"error": "Token exchange returned invalid JSON. url=https://platform.claude.com/v1/oauth/token; body=<html>; details=SyntaxError: Unexpected token '<', \"<html>\" is not valid JSON; stack=SyntaxError: Unexpected token '<', \"<html>\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at exchangeAuthorizationCode (file:///home/bryan/Projects/personal/ultron-rust-wt/ai-auth/packages/ai/src/auth/oauth/anthropic.ts:218:20)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async file:///home/bryan/Projects/personal/ultron-rust-wt/ai-auth/crates/ai/fixtures/generate-oauth-login.mjs:419:12"
+		},
+		{
+			"name": "anthropic callback server",
+			"provider": "anthropic",
+			"answers": [
+				{
+					"wait": true
+				}
+			],
+			"responses": [
+				[
+					200,
+					"{\"access_token\":\"access-token\",\"refresh_token\":\"refresh-token\",\"expires_in\":3600}"
+				]
+			],
+			"abortAt": null,
+			"hits": [
+				"/other",
+				"/callback?error=access_denied&code=x&state={state}",
+				"/callback?code=x",
+				"/callback?code=x&state=wrong",
+				"/callback?code=browser-code&state={state}"
+			],
+			"prompts": [
+				{
+					"type": "manual_code",
+					"message": "Complete login in your browser, or paste the authorization code / redirect URL here:",
+					"placeholder": "http://localhost:53692/callback",
+					"hasSignal": true
+				}
+			],
+			"events": [
+				{
+					"type": "auth_url",
+					"url": "https://claude.ai/oauth/authorize?code=true&client_id=9d1c250a-e61b-44d9-88ed-5944d1962f5e&response_type=code&redirect_uri=http%3A%2F%2Flocalhost%3A53692%2Fcallback&scope=org%3Acreate_api_key+user%3Aprofile+user%3Ainference+user%3Asessions%3Aclaude_code+user%3Amcp_servers+user%3Afile_upload&code_challenge=6oZqdX5MOLq_qBJ8vppAnT4fk6AP8UiP9zX8-Rev_9A&code_challenge_method=S256&state=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+					"instructions": "Complete login in your browser. If the browser is on another machine, paste the final redirect URL here."
+				},
+				{
+					"type": "progress",
+					"message": "Exchanging authorization code for tokens..."
+				}
+			],
+			"requests": [
+				{
+					"at": 1767225600000,
+					"url": "https://platform.claude.com/v1/oauth/token",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json",
+						"accept": "application/json"
+					},
+					"body": "{\"grant_type\":\"authorization_code\",\"client_id\":\"9d1c250a-e61b-44d9-88ed-5944d1962f5e\",\"code\":\"browser-code\",\"state\":\"AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8\",\"redirect_uri\":\"http://localhost:53692/callback\",\"code_verifier\":\"AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8\"}"
+				}
+			],
+			"callbackResponses": [
+				{
+					"path": "/other",
+					"status": 404,
+					"contentType": "text/html; charset=utf-8",
+					"body": "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n  <title>Authentication failed</title>\n  <style>\n    :root {\n      --text: #fafafa;\n      --text-dim: #a1a1aa;\n      --page-bg: #09090b;\n      --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\";\n      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace;\n    }\n    * { box-sizing: border-box; }\n    html { color-scheme: dark; }\n    body {\n      margin: 0;\n      min-height: 100vh;\n      display: flex;\n      align-items: center;\n      justify-content: center;\n      padding: 24px;\n      background: var(--page-bg);\n      color: var(--text);\n      font-family: var(--font-sans);\n      text-align: center;\n    }\n    main {\n      width: 100%;\n      max-width: 560px;\n      display: flex;\n      flex-direction: column;\n      align-items: center;\n      justify-content: center;\n    }\n    .logo {\n      width: 72px;\n      height: 72px;\n      display: block;\n      margin-bottom: 24px;\n    }\n    h1 {\n      margin: 0 0 10px;\n      font-size: 28px;\n      line-height: 1.15;\n      font-weight: 650;\n      color: var(--text);\n    }\n    p {\n      margin: 0;\n      line-height: 1.7;\n      color: var(--text-dim);\n      font-size: 15px;\n    }\n    .details {\n      margin-top: 16px;\n      font-family: var(--font-mono);\n      font-size: 13px;\n      color: var(--text-dim);\n      white-space: pre-wrap;\n      word-break: break-word;\n    }\n  </style>\n</head>\n<body>\n  <main>\n    <div class=\"logo\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 800 800\" aria-hidden=\"true\"><path fill=\"#fff\" fill-rule=\"evenodd\" d=\"M165.29 165.29 H517.36 V400 H400 V517.36 H282.65 V634.72 H165.29 Z M282.65 282.65 V400 H400 V282.65 Z\"/><path fill=\"#fff\" d=\"M517.36 400 H634.72 V634.72 H517.36 Z\"/></svg></div>\n    <h1>Authentication failed</h1>\n    <p>Callback route not found.</p>\n    \n  </main>\n</body>\n</html>"
+				},
+				{
+					"path": "/callback?error=access_denied&code=x&state={state}",
+					"status": 400,
+					"contentType": "text/html; charset=utf-8",
+					"body": "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n  <title>Authentication failed</title>\n  <style>\n    :root {\n      --text: #fafafa;\n      --text-dim: #a1a1aa;\n      --page-bg: #09090b;\n      --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\";\n      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace;\n    }\n    * { box-sizing: border-box; }\n    html { color-scheme: dark; }\n    body {\n      margin: 0;\n      min-height: 100vh;\n      display: flex;\n      align-items: center;\n      justify-content: center;\n      padding: 24px;\n      background: var(--page-bg);\n      color: var(--text);\n      font-family: var(--font-sans);\n      text-align: center;\n    }\n    main {\n      width: 100%;\n      max-width: 560px;\n      display: flex;\n      flex-direction: column;\n      align-items: center;\n      justify-content: center;\n    }\n    .logo {\n      width: 72px;\n      height: 72px;\n      display: block;\n      margin-bottom: 24px;\n    }\n    h1 {\n      margin: 0 0 10px;\n      font-size: 28px;\n      line-height: 1.15;\n      font-weight: 650;\n      color: var(--text);\n    }\n    p {\n      margin: 0;\n      line-height: 1.7;\n      color: var(--text-dim);\n      font-size: 15px;\n    }\n    .details {\n      margin-top: 16px;\n      font-family: var(--font-mono);\n      font-size: 13px;\n      color: var(--text-dim);\n      white-space: pre-wrap;\n      word-break: break-word;\n    }\n  </style>\n</head>\n<body>\n  <main>\n    <div class=\"logo\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 800 800\" aria-hidden=\"true\"><path fill=\"#fff\" fill-rule=\"evenodd\" d=\"M165.29 165.29 H517.36 V400 H400 V517.36 H282.65 V634.72 H165.29 Z M282.65 282.65 V400 H400 V282.65 Z\"/><path fill=\"#fff\" d=\"M517.36 400 H634.72 V634.72 H517.36 Z\"/></svg></div>\n    <h1>Authentication failed</h1>\n    <p>Anthropic authentication did not complete.</p>\n    <div class=\"details\">Error: access_denied</div>\n  </main>\n</body>\n</html>"
+				},
+				{
+					"path": "/callback?code=x",
+					"status": 400,
+					"contentType": "text/html; charset=utf-8",
+					"body": "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n  <title>Authentication failed</title>\n  <style>\n    :root {\n      --text: #fafafa;\n      --text-dim: #a1a1aa;\n      --page-bg: #09090b;\n      --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\";\n      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace;\n    }\n    * { box-sizing: border-box; }\n    html { color-scheme: dark; }\n    body {\n      margin: 0;\n      min-height: 100vh;\n      display: flex;\n      align-items: center;\n      justify-content: center;\n      padding: 24px;\n      background: var(--page-bg);\n      color: var(--text);\n      font-family: var(--font-sans);\n      text-align: center;\n    }\n    main {\n      width: 100%;\n      max-width: 560px;\n      display: flex;\n      flex-direction: column;\n      align-items: center;\n      justify-content: center;\n    }\n    .logo {\n      width: 72px;\n      height: 72px;\n      display: block;\n      margin-bottom: 24px;\n    }\n    h1 {\n      margin: 0 0 10px;\n      font-size: 28px;\n      line-height: 1.15;\n      font-weight: 650;\n      color: var(--text);\n    }\n    p {\n      margin: 0;\n      line-height: 1.7;\n      color: var(--text-dim);\n      font-size: 15px;\n    }\n    .details {\n      margin-top: 16px;\n      font-family: var(--font-mono);\n      font-size: 13px;\n      color: var(--text-dim);\n      white-space: pre-wrap;\n      word-break: break-word;\n    }\n  </style>\n</head>\n<body>\n  <main>\n    <div class=\"logo\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 800 800\" aria-hidden=\"true\"><path fill=\"#fff\" fill-rule=\"evenodd\" d=\"M165.29 165.29 H517.36 V400 H400 V517.36 H282.65 V634.72 H165.29 Z M282.65 282.65 V400 H400 V282.65 Z\"/><path fill=\"#fff\" d=\"M517.36 400 H634.72 V634.72 H517.36 Z\"/></svg></div>\n    <h1>Authentication failed</h1>\n    <p>Missing code or state parameter.</p>\n    \n  </main>\n</body>\n</html>"
+				},
+				{
+					"path": "/callback?code=x&state=wrong",
+					"status": 400,
+					"contentType": "text/html; charset=utf-8",
+					"body": "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n  <title>Authentication failed</title>\n  <style>\n    :root {\n      --text: #fafafa;\n      --text-dim: #a1a1aa;\n      --page-bg: #09090b;\n      --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\";\n      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace;\n    }\n    * { box-sizing: border-box; }\n    html { color-scheme: dark; }\n    body {\n      margin: 0;\n      min-height: 100vh;\n      display: flex;\n      align-items: center;\n      justify-content: center;\n      padding: 24px;\n      background: var(--page-bg);\n      color: var(--text);\n      font-family: var(--font-sans);\n      text-align: center;\n    }\n    main {\n      width: 100%;\n      max-width: 560px;\n      display: flex;\n      flex-direction: column;\n      align-items: center;\n      justify-content: center;\n    }\n    .logo {\n      width: 72px;\n      height: 72px;\n      display: block;\n      margin-bottom: 24px;\n    }\n    h1 {\n      margin: 0 0 10px;\n      font-size: 28px;\n      line-height: 1.15;\n      font-weight: 650;\n      color: var(--text);\n    }\n    p {\n      margin: 0;\n      line-height: 1.7;\n      color: var(--text-dim);\n      font-size: 15px;\n    }\n    .details {\n      margin-top: 16px;\n      font-family: var(--font-mono);\n      font-size: 13px;\n      color: var(--text-dim);\n      white-space: pre-wrap;\n      word-break: break-word;\n    }\n  </style>\n</head>\n<body>\n  <main>\n    <div class=\"logo\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 800 800\" aria-hidden=\"true\"><path fill=\"#fff\" fill-rule=\"evenodd\" d=\"M165.29 165.29 H517.36 V400 H400 V517.36 H282.65 V634.72 H165.29 Z M282.65 282.65 V400 H400 V282.65 Z\"/><path fill=\"#fff\" d=\"M517.36 400 H634.72 V634.72 H517.36 Z\"/></svg></div>\n    <h1>Authentication failed</h1>\n    <p>State mismatch.</p>\n    \n  </main>\n</body>\n</html>"
+				},
+				{
+					"path": "/callback?code=browser-code&state={state}",
+					"status": 200,
+					"contentType": "text/html; charset=utf-8",
+					"body": "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n  <title>Authentication successful</title>\n  <style>\n    :root {\n      --text: #fafafa;\n      --text-dim: #a1a1aa;\n      --page-bg: #09090b;\n      --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\";\n      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace;\n    }\n    * { box-sizing: border-box; }\n    html { color-scheme: dark; }\n    body {\n      margin: 0;\n      min-height: 100vh;\n      display: flex;\n      align-items: center;\n      justify-content: center;\n      padding: 24px;\n      background: var(--page-bg);\n      color: var(--text);\n      font-family: var(--font-sans);\n      text-align: center;\n    }\n    main {\n      width: 100%;\n      max-width: 560px;\n      display: flex;\n      flex-direction: column;\n      align-items: center;\n      justify-content: center;\n    }\n    .logo {\n      width: 72px;\n      height: 72px;\n      display: block;\n      margin-bottom: 24px;\n    }\n    h1 {\n      margin: 0 0 10px;\n      font-size: 28px;\n      line-height: 1.15;\n      font-weight: 650;\n      color: var(--text);\n    }\n    p {\n      margin: 0;\n      line-height: 1.7;\n      color: var(--text-dim);\n      font-size: 15px;\n    }\n    .details {\n      margin-top: 16px;\n      font-family: var(--font-mono);\n      font-size: 13px;\n      color: var(--text-dim);\n      white-space: pre-wrap;\n      word-break: break-word;\n    }\n  </style>\n</head>\n<body>\n  <main>\n    <div class=\"logo\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 800 800\" aria-hidden=\"true\"><path fill=\"#fff\" fill-rule=\"evenodd\" d=\"M165.29 165.29 H517.36 V400 H400 V517.36 H282.65 V634.72 H165.29 Z M282.65 282.65 V400 H400 V282.65 Z\"/><path fill=\"#fff\" d=\"M517.36 400 H634.72 V634.72 H517.36 Z\"/></svg></div>\n    <h1>Authentication successful</h1>\n    <p>Anthropic authentication completed. You can close this window.</p>\n    \n  </main>\n</body>\n</html>"
+				}
+			],
+			"result": {
+				"type": "oauth",
+				"refresh": "refresh-token",
+				"access": "access-token",
+				"expires": 1767228900000
+			},
+			"error": null
+		},
+		{
+			"name": "codex browser manual",
+			"provider": "openai-codex",
+			"answers": [
+				"browser",
+				"{redirect}?code=manual-code&state={state}"
+			],
+			"responses": [
+				[
+					200,
+					"{\"access_token\":\"eyJhbGciOiJub25lIn0=.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjb3VudC03ODkifX0=.sig\",\"refresh_token\":\"r2\",\"expires_in\":3600}"
+				]
+			],
+			"abortAt": null,
+			"hits": null,
+			"prompts": [
+				{
+					"type": "select",
+					"message": "Select OpenAI Codex login method:",
+					"options": [
+						{
+							"id": "browser",
+							"label": "Browser login (default)"
+						},
+						{
+							"id": "device_code",
+							"label": "Device code login (headless)"
+						}
+					],
+					"hasSignal": false
+				},
+				{
+					"type": "manual_code",
+					"message": "Complete login in your browser, or paste the authorization code / redirect URL here:",
+					"placeholder": "http://localhost:1455/auth/callback",
+					"hasSignal": true
+				}
+			],
+			"events": [
+				{
+					"type": "auth_url",
+					"url": "https://auth.openai.com/oauth/authorize?response_type=code&client_id=app_EMoamEEZ73f0CkXaXp7hrann&redirect_uri=http%3A%2F%2Flocalhost%3A1455%2Fauth%2Fcallback&scope=openid+profile+email+offline_access&code_challenge=6oZqdX5MOLq_qBJ8vppAnT4fk6AP8UiP9zX8-Rev_9A&code_challenge_method=S256&state=202122232425262728292a2b2c2d2e2f&id_token_add_organizations=true&codex_cli_simplified_flow=true&originator=pi",
+					"instructions": "Complete login in your browser. If the browser is on another machine, paste the final redirect URL here."
+				}
+			],
+			"requests": [
+				{
+					"at": 1767225600000,
+					"url": "https://auth.openai.com/oauth/token",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "grant_type=authorization_code&client_id=app_EMoamEEZ73f0CkXaXp7hrann&code=manual-code&code_verifier=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&redirect_uri=http%3A%2F%2Flocalhost%3A1455%2Fauth%2Fcallback"
+				}
+			],
+			"callbackResponses": [],
+			"result": {
+				"type": "oauth",
+				"access": "eyJhbGciOiJub25lIn0=.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjb3VudC03ODkifX0=.sig",
+				"refresh": "r2",
+				"expires": 1767229200000,
+				"accountId": "account-789"
+			},
+			"error": null
+		},
+		{
+			"name": "codex browser code#state",
+			"provider": "openai-codex",
+			"answers": [
+				"browser",
+				"pasted#{state}"
+			],
+			"responses": [
+				[
+					200,
+					"{\"access_token\":\"eyJhbGciOiJub25lIn0=.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjb3VudC03ODkifX0=.sig\",\"refresh_token\":\"r2\",\"expires_in\":3600}"
+				]
+			],
+			"abortAt": null,
+			"hits": null,
+			"prompts": [
+				{
+					"type": "select",
+					"message": "Select OpenAI Codex login method:",
+					"options": [
+						{
+							"id": "browser",
+							"label": "Browser login (default)"
+						},
+						{
+							"id": "device_code",
+							"label": "Device code login (headless)"
+						}
+					],
+					"hasSignal": false
+				},
+				{
+					"type": "manual_code",
+					"message": "Complete login in your browser, or paste the authorization code / redirect URL here:",
+					"placeholder": "http://localhost:1455/auth/callback",
+					"hasSignal": true
+				}
+			],
+			"events": [
+				{
+					"type": "auth_url",
+					"url": "https://auth.openai.com/oauth/authorize?response_type=code&client_id=app_EMoamEEZ73f0CkXaXp7hrann&redirect_uri=http%3A%2F%2Flocalhost%3A1455%2Fauth%2Fcallback&scope=openid+profile+email+offline_access&code_challenge=6oZqdX5MOLq_qBJ8vppAnT4fk6AP8UiP9zX8-Rev_9A&code_challenge_method=S256&state=202122232425262728292a2b2c2d2e2f&id_token_add_organizations=true&codex_cli_simplified_flow=true&originator=pi",
+					"instructions": "Complete login in your browser. If the browser is on another machine, paste the final redirect URL here."
+				}
+			],
+			"requests": [
+				{
+					"at": 1767225600000,
+					"url": "https://auth.openai.com/oauth/token",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "grant_type=authorization_code&client_id=app_EMoamEEZ73f0CkXaXp7hrann&code=pasted&code_verifier=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&redirect_uri=http%3A%2F%2Flocalhost%3A1455%2Fauth%2Fcallback"
+				}
+			],
+			"callbackResponses": [],
+			"result": {
+				"type": "oauth",
+				"access": "eyJhbGciOiJub25lIn0=.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjb3VudC03ODkifX0=.sig",
+				"refresh": "r2",
+				"expires": 1767229200000,
+				"accountId": "account-789"
+			},
+			"error": null
+		},
+		{
+			"name": "codex browser bare code",
+			"provider": "openai-codex",
+			"answers": [
+				"browser",
+				"pasted"
+			],
+			"responses": [
+				[
+					200,
+					"{\"access_token\":\"eyJhbGciOiJub25lIn0=.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjb3VudC03ODkifX0=.sig\",\"refresh_token\":\"r2\",\"expires_in\":3600}"
+				]
+			],
+			"abortAt": null,
+			"hits": null,
+			"prompts": [
+				{
+					"type": "select",
+					"message": "Select OpenAI Codex login method:",
+					"options": [
+						{
+							"id": "browser",
+							"label": "Browser login (default)"
+						},
+						{
+							"id": "device_code",
+							"label": "Device code login (headless)"
+						}
+					],
+					"hasSignal": false
+				},
+				{
+					"type": "manual_code",
+					"message": "Complete login in your browser, or paste the authorization code / redirect URL here:",
+					"placeholder": "http://localhost:1455/auth/callback",
+					"hasSignal": true
+				}
+			],
+			"events": [
+				{
+					"type": "auth_url",
+					"url": "https://auth.openai.com/oauth/authorize?response_type=code&client_id=app_EMoamEEZ73f0CkXaXp7hrann&redirect_uri=http%3A%2F%2Flocalhost%3A1455%2Fauth%2Fcallback&scope=openid+profile+email+offline_access&code_challenge=6oZqdX5MOLq_qBJ8vppAnT4fk6AP8UiP9zX8-Rev_9A&code_challenge_method=S256&state=202122232425262728292a2b2c2d2e2f&id_token_add_organizations=true&codex_cli_simplified_flow=true&originator=pi",
+					"instructions": "Complete login in your browser. If the browser is on another machine, paste the final redirect URL here."
+				}
+			],
+			"requests": [
+				{
+					"at": 1767225600000,
+					"url": "https://auth.openai.com/oauth/token",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "grant_type=authorization_code&client_id=app_EMoamEEZ73f0CkXaXp7hrann&code=pasted&code_verifier=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&redirect_uri=http%3A%2F%2Flocalhost%3A1455%2Fauth%2Fcallback"
+				}
+			],
+			"callbackResponses": [],
+			"result": {
+				"type": "oauth",
+				"access": "eyJhbGciOiJub25lIn0=.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjb3VudC03ODkifX0=.sig",
+				"refresh": "r2",
+				"expires": 1767229200000,
+				"accountId": "account-789"
+			},
+			"error": null
+		},
+		{
+			"name": "codex browser state mismatch",
+			"provider": "openai-codex",
+			"answers": [
+				"browser",
+				"http://localhost:1455/auth/callback?code=x&state=nope"
+			],
+			"responses": [],
+			"abortAt": null,
+			"hits": null,
+			"prompts": [
+				{
+					"type": "select",
+					"message": "Select OpenAI Codex login method:",
+					"options": [
+						{
+							"id": "browser",
+							"label": "Browser login (default)"
+						},
+						{
+							"id": "device_code",
+							"label": "Device code login (headless)"
+						}
+					],
+					"hasSignal": false
+				},
+				{
+					"type": "manual_code",
+					"message": "Complete login in your browser, or paste the authorization code / redirect URL here:",
+					"placeholder": "http://localhost:1455/auth/callback",
+					"hasSignal": true
+				}
+			],
+			"events": [
+				{
+					"type": "auth_url",
+					"url": "https://auth.openai.com/oauth/authorize?response_type=code&client_id=app_EMoamEEZ73f0CkXaXp7hrann&redirect_uri=http%3A%2F%2Flocalhost%3A1455%2Fauth%2Fcallback&scope=openid+profile+email+offline_access&code_challenge=6oZqdX5MOLq_qBJ8vppAnT4fk6AP8UiP9zX8-Rev_9A&code_challenge_method=S256&state=202122232425262728292a2b2c2d2e2f&id_token_add_organizations=true&codex_cli_simplified_flow=true&originator=pi",
+					"instructions": "Complete login in your browser. If the browser is on another machine, paste the final redirect URL here."
+				}
+			],
+			"requests": [],
+			"callbackResponses": [],
+			"result": null,
+			"error": "State mismatch"
+		},
+		{
+			"name": "codex browser empty",
+			"provider": "openai-codex",
+			"answers": [
+				"browser",
+				""
+			],
+			"responses": [],
+			"abortAt": null,
+			"hits": null,
+			"prompts": [
+				{
+					"type": "select",
+					"message": "Select OpenAI Codex login method:",
+					"options": [
+						{
+							"id": "browser",
+							"label": "Browser login (default)"
+						},
+						{
+							"id": "device_code",
+							"label": "Device code login (headless)"
+						}
+					],
+					"hasSignal": false
+				},
+				{
+					"type": "manual_code",
+					"message": "Complete login in your browser, or paste the authorization code / redirect URL here:",
+					"placeholder": "http://localhost:1455/auth/callback",
+					"hasSignal": true
+				}
+			],
+			"events": [
+				{
+					"type": "auth_url",
+					"url": "https://auth.openai.com/oauth/authorize?response_type=code&client_id=app_EMoamEEZ73f0CkXaXp7hrann&redirect_uri=http%3A%2F%2Flocalhost%3A1455%2Fauth%2Fcallback&scope=openid+profile+email+offline_access&code_challenge=6oZqdX5MOLq_qBJ8vppAnT4fk6AP8UiP9zX8-Rev_9A&code_challenge_method=S256&state=202122232425262728292a2b2c2d2e2f&id_token_add_organizations=true&codex_cli_simplified_flow=true&originator=pi",
+					"instructions": "Complete login in your browser. If the browser is on another machine, paste the final redirect URL here."
+				}
+			],
+			"requests": [],
+			"callbackResponses": [],
+			"result": null,
+			"error": "Missing authorization code"
+		},
+		{
+			"name": "codex browser exchange missing fields",
+			"provider": "openai-codex",
+			"answers": [
+				"browser",
+				"{redirect}?code=manual-code&state={state}"
+			],
+			"responses": [
+				[
+					200,
+					"{\"access_token\":\"a\",\"refresh_token\":\"\",\"expires_in\":1}"
+				]
+			],
+			"abortAt": null,
+			"hits": null,
+			"prompts": [
+				{
+					"type": "select",
+					"message": "Select OpenAI Codex login method:",
+					"options": [
+						{
+							"id": "browser",
+							"label": "Browser login (default)"
+						},
+						{
+							"id": "device_code",
+							"label": "Device code login (headless)"
+						}
+					],
+					"hasSignal": false
+				},
+				{
+					"type": "manual_code",
+					"message": "Complete login in your browser, or paste the authorization code / redirect URL here:",
+					"placeholder": "http://localhost:1455/auth/callback",
+					"hasSignal": true
+				}
+			],
+			"events": [
+				{
+					"type": "auth_url",
+					"url": "https://auth.openai.com/oauth/authorize?response_type=code&client_id=app_EMoamEEZ73f0CkXaXp7hrann&redirect_uri=http%3A%2F%2Flocalhost%3A1455%2Fauth%2Fcallback&scope=openid+profile+email+offline_access&code_challenge=6oZqdX5MOLq_qBJ8vppAnT4fk6AP8UiP9zX8-Rev_9A&code_challenge_method=S256&state=202122232425262728292a2b2c2d2e2f&id_token_add_organizations=true&codex_cli_simplified_flow=true&originator=pi",
+					"instructions": "Complete login in your browser. If the browser is on another machine, paste the final redirect URL here."
+				}
+			],
+			"requests": [
+				{
+					"at": 1767225600000,
+					"url": "https://auth.openai.com/oauth/token",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "grant_type=authorization_code&client_id=app_EMoamEEZ73f0CkXaXp7hrann&code=manual-code&code_verifier=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&redirect_uri=http%3A%2F%2Flocalhost%3A1455%2Fauth%2Fcallback"
+				}
+			],
+			"callbackResponses": [],
+			"result": null,
+			"error": "OpenAI Codex token exchange response missing fields: {\"access_token\":\"a\",\"refresh_token\":\"\",\"expires_in\":1}"
+		},
+		{
+			"name": "codex browser exchange null",
+			"provider": "openai-codex",
+			"answers": [
+				"browser",
+				"{redirect}?code=manual-code&state={state}"
+			],
+			"responses": [
+				[
+					200,
+					"null"
+				]
+			],
+			"abortAt": null,
+			"hits": null,
+			"prompts": [
+				{
+					"type": "select",
+					"message": "Select OpenAI Codex login method:",
+					"options": [
+						{
+							"id": "browser",
+							"label": "Browser login (default)"
+						},
+						{
+							"id": "device_code",
+							"label": "Device code login (headless)"
+						}
+					],
+					"hasSignal": false
+				},
+				{
+					"type": "manual_code",
+					"message": "Complete login in your browser, or paste the authorization code / redirect URL here:",
+					"placeholder": "http://localhost:1455/auth/callback",
+					"hasSignal": true
+				}
+			],
+			"events": [
+				{
+					"type": "auth_url",
+					"url": "https://auth.openai.com/oauth/authorize?response_type=code&client_id=app_EMoamEEZ73f0CkXaXp7hrann&redirect_uri=http%3A%2F%2Flocalhost%3A1455%2Fauth%2Fcallback&scope=openid+profile+email+offline_access&code_challenge=6oZqdX5MOLq_qBJ8vppAnT4fk6AP8UiP9zX8-Rev_9A&code_challenge_method=S256&state=202122232425262728292a2b2c2d2e2f&id_token_add_organizations=true&codex_cli_simplified_flow=true&originator=pi",
+					"instructions": "Complete login in your browser. If the browser is on another machine, paste the final redirect URL here."
+				}
+			],
+			"requests": [
+				{
+					"at": 1767225600000,
+					"url": "https://auth.openai.com/oauth/token",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "grant_type=authorization_code&client_id=app_EMoamEEZ73f0CkXaXp7hrann&code=manual-code&code_verifier=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&redirect_uri=http%3A%2F%2Flocalhost%3A1455%2Fauth%2Fcallback"
+				}
+			],
+			"callbackResponses": [],
+			"result": null,
+			"error": "OpenAI Codex token exchange response missing fields: null"
+		},
+		{
+			"name": "codex browser exchange http error",
+			"provider": "openai-codex",
+			"answers": [
+				"browser",
+				"{redirect}?code=manual-code&state={state}"
+			],
+			"responses": [
+				[
+					401,
+					""
+				]
+			],
+			"abortAt": null,
+			"hits": null,
+			"prompts": [
+				{
+					"type": "select",
+					"message": "Select OpenAI Codex login method:",
+					"options": [
+						{
+							"id": "browser",
+							"label": "Browser login (default)"
+						},
+						{
+							"id": "device_code",
+							"label": "Device code login (headless)"
+						}
+					],
+					"hasSignal": false
+				},
+				{
+					"type": "manual_code",
+					"message": "Complete login in your browser, or paste the authorization code / redirect URL here:",
+					"placeholder": "http://localhost:1455/auth/callback",
+					"hasSignal": true
+				}
+			],
+			"events": [
+				{
+					"type": "auth_url",
+					"url": "https://auth.openai.com/oauth/authorize?response_type=code&client_id=app_EMoamEEZ73f0CkXaXp7hrann&redirect_uri=http%3A%2F%2Flocalhost%3A1455%2Fauth%2Fcallback&scope=openid+profile+email+offline_access&code_challenge=6oZqdX5MOLq_qBJ8vppAnT4fk6AP8UiP9zX8-Rev_9A&code_challenge_method=S256&state=202122232425262728292a2b2c2d2e2f&id_token_add_organizations=true&codex_cli_simplified_flow=true&originator=pi",
+					"instructions": "Complete login in your browser. If the browser is on another machine, paste the final redirect URL here."
+				}
+			],
+			"requests": [
+				{
+					"at": 1767225600000,
+					"url": "https://auth.openai.com/oauth/token",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "grant_type=authorization_code&client_id=app_EMoamEEZ73f0CkXaXp7hrann&code=manual-code&code_verifier=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&redirect_uri=http%3A%2F%2Flocalhost%3A1455%2Fauth%2Fcallback"
+				}
+			],
+			"callbackResponses": [],
+			"result": null,
+			"error": "OpenAI Codex token exchange failed (401): Unauthorized"
+		},
+		{
+			"name": "codex browser exchange no account",
+			"provider": "openai-codex",
+			"answers": [
+				"browser",
+				"{redirect}?code=manual-code&state={state}"
+			],
+			"responses": [
+				[
+					200,
+					"{\"access_token\":\"opaque\",\"refresh_token\":\"r\",\"expires_in\":1}"
+				]
+			],
+			"abortAt": null,
+			"hits": null,
+			"prompts": [
+				{
+					"type": "select",
+					"message": "Select OpenAI Codex login method:",
+					"options": [
+						{
+							"id": "browser",
+							"label": "Browser login (default)"
+						},
+						{
+							"id": "device_code",
+							"label": "Device code login (headless)"
+						}
+					],
+					"hasSignal": false
+				},
+				{
+					"type": "manual_code",
+					"message": "Complete login in your browser, or paste the authorization code / redirect URL here:",
+					"placeholder": "http://localhost:1455/auth/callback",
+					"hasSignal": true
+				}
+			],
+			"events": [
+				{
+					"type": "auth_url",
+					"url": "https://auth.openai.com/oauth/authorize?response_type=code&client_id=app_EMoamEEZ73f0CkXaXp7hrann&redirect_uri=http%3A%2F%2Flocalhost%3A1455%2Fauth%2Fcallback&scope=openid+profile+email+offline_access&code_challenge=6oZqdX5MOLq_qBJ8vppAnT4fk6AP8UiP9zX8-Rev_9A&code_challenge_method=S256&state=202122232425262728292a2b2c2d2e2f&id_token_add_organizations=true&codex_cli_simplified_flow=true&originator=pi",
+					"instructions": "Complete login in your browser. If the browser is on another machine, paste the final redirect URL here."
+				}
+			],
+			"requests": [
+				{
+					"at": 1767225600000,
+					"url": "https://auth.openai.com/oauth/token",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "grant_type=authorization_code&client_id=app_EMoamEEZ73f0CkXaXp7hrann&code=manual-code&code_verifier=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&redirect_uri=http%3A%2F%2Flocalhost%3A1455%2Fauth%2Fcallback"
+				}
+			],
+			"callbackResponses": [],
+			"result": null,
+			"error": "Failed to extract accountId from token"
+		},
+		{
+			"name": "codex callback server",
+			"provider": "openai-codex",
+			"answers": [
+				"browser",
+				{
+					"wait": true
+				}
+			],
+			"responses": [
+				[
+					200,
+					"{\"access_token\":\"eyJhbGciOiJub25lIn0=.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjb3VudC03ODkifX0=.sig\",\"refresh_token\":\"r2\",\"expires_in\":3600}"
+				]
+			],
+			"abortAt": null,
+			"hits": [
+				"/callback",
+				"/auth/callback?code=x&state=bad",
+				"/auth/callback?state={state}",
+				"/auth/callback?code=browser-code&state={state}"
+			],
+			"prompts": [
+				{
+					"type": "select",
+					"message": "Select OpenAI Codex login method:",
+					"options": [
+						{
+							"id": "browser",
+							"label": "Browser login (default)"
+						},
+						{
+							"id": "device_code",
+							"label": "Device code login (headless)"
+						}
+					],
+					"hasSignal": false
+				},
+				{
+					"type": "manual_code",
+					"message": "Complete login in your browser, or paste the authorization code / redirect URL here:",
+					"placeholder": "http://localhost:1455/auth/callback",
+					"hasSignal": true
+				}
+			],
+			"events": [
+				{
+					"type": "auth_url",
+					"url": "https://auth.openai.com/oauth/authorize?response_type=code&client_id=app_EMoamEEZ73f0CkXaXp7hrann&redirect_uri=http%3A%2F%2Flocalhost%3A1455%2Fauth%2Fcallback&scope=openid+profile+email+offline_access&code_challenge=6oZqdX5MOLq_qBJ8vppAnT4fk6AP8UiP9zX8-Rev_9A&code_challenge_method=S256&state=202122232425262728292a2b2c2d2e2f&id_token_add_organizations=true&codex_cli_simplified_flow=true&originator=pi",
+					"instructions": "Complete login in your browser. If the browser is on another machine, paste the final redirect URL here."
+				}
+			],
+			"requests": [
+				{
+					"at": 1767225600000,
+					"url": "https://auth.openai.com/oauth/token",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "grant_type=authorization_code&client_id=app_EMoamEEZ73f0CkXaXp7hrann&code=browser-code&code_verifier=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&redirect_uri=http%3A%2F%2Flocalhost%3A1455%2Fauth%2Fcallback"
+				}
+			],
+			"callbackResponses": [
+				{
+					"path": "/callback",
+					"status": 404,
+					"contentType": "text/html; charset=utf-8",
+					"body": "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n  <title>Authentication failed</title>\n  <style>\n    :root {\n      --text: #fafafa;\n      --text-dim: #a1a1aa;\n      --page-bg: #09090b;\n      --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\";\n      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace;\n    }\n    * { box-sizing: border-box; }\n    html { color-scheme: dark; }\n    body {\n      margin: 0;\n      min-height: 100vh;\n      display: flex;\n      align-items: center;\n      justify-content: center;\n      padding: 24px;\n      background: var(--page-bg);\n      color: var(--text);\n      font-family: var(--font-sans);\n      text-align: center;\n    }\n    main {\n      width: 100%;\n      max-width: 560px;\n      display: flex;\n      flex-direction: column;\n      align-items: center;\n      justify-content: center;\n    }\n    .logo {\n      width: 72px;\n      height: 72px;\n      display: block;\n      margin-bottom: 24px;\n    }\n    h1 {\n      margin: 0 0 10px;\n      font-size: 28px;\n      line-height: 1.15;\n      font-weight: 650;\n      color: var(--text);\n    }\n    p {\n      margin: 0;\n      line-height: 1.7;\n      color: var(--text-dim);\n      font-size: 15px;\n    }\n    .details {\n      margin-top: 16px;\n      font-family: var(--font-mono);\n      font-size: 13px;\n      color: var(--text-dim);\n      white-space: pre-wrap;\n      word-break: break-word;\n    }\n  </style>\n</head>\n<body>\n  <main>\n    <div class=\"logo\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 800 800\" aria-hidden=\"true\"><path fill=\"#fff\" fill-rule=\"evenodd\" d=\"M165.29 165.29 H517.36 V400 H400 V517.36 H282.65 V634.72 H165.29 Z M282.65 282.65 V400 H400 V282.65 Z\"/><path fill=\"#fff\" d=\"M517.36 400 H634.72 V634.72 H517.36 Z\"/></svg></div>\n    <h1>Authentication failed</h1>\n    <p>Callback route not found.</p>\n    \n  </main>\n</body>\n</html>"
+				},
+				{
+					"path": "/auth/callback?code=x&state=bad",
+					"status": 400,
+					"contentType": "text/html; charset=utf-8",
+					"body": "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n  <title>Authentication failed</title>\n  <style>\n    :root {\n      --text: #fafafa;\n      --text-dim: #a1a1aa;\n      --page-bg: #09090b;\n      --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\";\n      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace;\n    }\n    * { box-sizing: border-box; }\n    html { color-scheme: dark; }\n    body {\n      margin: 0;\n      min-height: 100vh;\n      display: flex;\n      align-items: center;\n      justify-content: center;\n      padding: 24px;\n      background: var(--page-bg);\n      color: var(--text);\n      font-family: var(--font-sans);\n      text-align: center;\n    }\n    main {\n      width: 100%;\n      max-width: 560px;\n      display: flex;\n      flex-direction: column;\n      align-items: center;\n      justify-content: center;\n    }\n    .logo {\n      width: 72px;\n      height: 72px;\n      display: block;\n      margin-bottom: 24px;\n    }\n    h1 {\n      margin: 0 0 10px;\n      font-size: 28px;\n      line-height: 1.15;\n      font-weight: 650;\n      color: var(--text);\n    }\n    p {\n      margin: 0;\n      line-height: 1.7;\n      color: var(--text-dim);\n      font-size: 15px;\n    }\n    .details {\n      margin-top: 16px;\n      font-family: var(--font-mono);\n      font-size: 13px;\n      color: var(--text-dim);\n      white-space: pre-wrap;\n      word-break: break-word;\n    }\n  </style>\n</head>\n<body>\n  <main>\n    <div class=\"logo\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 800 800\" aria-hidden=\"true\"><path fill=\"#fff\" fill-rule=\"evenodd\" d=\"M165.29 165.29 H517.36 V400 H400 V517.36 H282.65 V634.72 H165.29 Z M282.65 282.65 V400 H400 V282.65 Z\"/><path fill=\"#fff\" d=\"M517.36 400 H634.72 V634.72 H517.36 Z\"/></svg></div>\n    <h1>Authentication failed</h1>\n    <p>State mismatch.</p>\n    \n  </main>\n</body>\n</html>"
+				},
+				{
+					"path": "/auth/callback?state={state}",
+					"status": 400,
+					"contentType": "text/html; charset=utf-8",
+					"body": "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n  <title>Authentication failed</title>\n  <style>\n    :root {\n      --text: #fafafa;\n      --text-dim: #a1a1aa;\n      --page-bg: #09090b;\n      --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\";\n      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace;\n    }\n    * { box-sizing: border-box; }\n    html { color-scheme: dark; }\n    body {\n      margin: 0;\n      min-height: 100vh;\n      display: flex;\n      align-items: center;\n      justify-content: center;\n      padding: 24px;\n      background: var(--page-bg);\n      color: var(--text);\n      font-family: var(--font-sans);\n      text-align: center;\n    }\n    main {\n      width: 100%;\n      max-width: 560px;\n      display: flex;\n      flex-direction: column;\n      align-items: center;\n      justify-content: center;\n    }\n    .logo {\n      width: 72px;\n      height: 72px;\n      display: block;\n      margin-bottom: 24px;\n    }\n    h1 {\n      margin: 0 0 10px;\n      font-size: 28px;\n      line-height: 1.15;\n      font-weight: 650;\n      color: var(--text);\n    }\n    p {\n      margin: 0;\n      line-height: 1.7;\n      color: var(--text-dim);\n      font-size: 15px;\n    }\n    .details {\n      margin-top: 16px;\n      font-family: var(--font-mono);\n      font-size: 13px;\n      color: var(--text-dim);\n      white-space: pre-wrap;\n      word-break: break-word;\n    }\n  </style>\n</head>\n<body>\n  <main>\n    <div class=\"logo\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 800 800\" aria-hidden=\"true\"><path fill=\"#fff\" fill-rule=\"evenodd\" d=\"M165.29 165.29 H517.36 V400 H400 V517.36 H282.65 V634.72 H165.29 Z M282.65 282.65 V400 H400 V282.65 Z\"/><path fill=\"#fff\" d=\"M517.36 400 H634.72 V634.72 H517.36 Z\"/></svg></div>\n    <h1>Authentication failed</h1>\n    <p>Missing authorization code.</p>\n    \n  </main>\n</body>\n</html>"
+				},
+				{
+					"path": "/auth/callback?code=browser-code&state={state}",
+					"status": 200,
+					"contentType": "text/html; charset=utf-8",
+					"body": "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n  <title>Authentication successful</title>\n  <style>\n    :root {\n      --text: #fafafa;\n      --text-dim: #a1a1aa;\n      --page-bg: #09090b;\n      --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\";\n      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace;\n    }\n    * { box-sizing: border-box; }\n    html { color-scheme: dark; }\n    body {\n      margin: 0;\n      min-height: 100vh;\n      display: flex;\n      align-items: center;\n      justify-content: center;\n      padding: 24px;\n      background: var(--page-bg);\n      color: var(--text);\n      font-family: var(--font-sans);\n      text-align: center;\n    }\n    main {\n      width: 100%;\n      max-width: 560px;\n      display: flex;\n      flex-direction: column;\n      align-items: center;\n      justify-content: center;\n    }\n    .logo {\n      width: 72px;\n      height: 72px;\n      display: block;\n      margin-bottom: 24px;\n    }\n    h1 {\n      margin: 0 0 10px;\n      font-size: 28px;\n      line-height: 1.15;\n      font-weight: 650;\n      color: var(--text);\n    }\n    p {\n      margin: 0;\n      line-height: 1.7;\n      color: var(--text-dim);\n      font-size: 15px;\n    }\n    .details {\n      margin-top: 16px;\n      font-family: var(--font-mono);\n      font-size: 13px;\n      color: var(--text-dim);\n      white-space: pre-wrap;\n      word-break: break-word;\n    }\n  </style>\n</head>\n<body>\n  <main>\n    <div class=\"logo\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 800 800\" aria-hidden=\"true\"><path fill=\"#fff\" fill-rule=\"evenodd\" d=\"M165.29 165.29 H517.36 V400 H400 V517.36 H282.65 V634.72 H165.29 Z M282.65 282.65 V400 H400 V282.65 Z\"/><path fill=\"#fff\" d=\"M517.36 400 H634.72 V634.72 H517.36 Z\"/></svg></div>\n    <h1>Authentication successful</h1>\n    <p>OpenAI authentication completed. You can close this window.</p>\n    \n  </main>\n</body>\n</html>"
+				}
+			],
+			"result": {
+				"type": "oauth",
+				"access": "eyJhbGciOiJub25lIn0=.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjb3VudC03ODkifX0=.sig",
+				"refresh": "r2",
+				"expires": 1767229200000,
+				"accountId": "account-789"
+			},
+			"error": null
+		},
+		{
+			"name": "codex unknown method",
+			"provider": "openai-codex",
+			"answers": [
+				"sideways"
+			],
+			"responses": [],
+			"abortAt": null,
+			"hits": null,
+			"prompts": [
+				{
+					"type": "select",
+					"message": "Select OpenAI Codex login method:",
+					"options": [
+						{
+							"id": "browser",
+							"label": "Browser login (default)"
+						},
+						{
+							"id": "device_code",
+							"label": "Device code login (headless)"
+						}
+					],
+					"hasSignal": false
+				}
+			],
+			"events": [],
+			"requests": [],
+			"callbackResponses": [],
+			"result": null,
+			"error": "Unknown OpenAI Codex login method: sideways"
+		},
+		{
+			"name": "codex method prompt rejects",
+			"provider": "openai-codex",
+			"answers": [
+				{
+					"reject": "Login cancelled"
+				}
+			],
+			"responses": [],
+			"abortAt": null,
+			"hits": null,
+			"prompts": [
+				{
+					"type": "select",
+					"message": "Select OpenAI Codex login method:",
+					"options": [
+						{
+							"id": "browser",
+							"label": "Browser login (default)"
+						},
+						{
+							"id": "device_code",
+							"label": "Device code login (headless)"
+						}
+					],
+					"hasSignal": false
+				}
+			],
+			"events": [],
+			"requests": [],
+			"callbackResponses": [],
+			"result": null,
+			"error": "Login cancelled"
+		},
+		{
+			"name": "codex device code",
+			"provider": "openai-codex",
+			"answers": [
+				"device_code"
+			],
+			"responses": [
+				[
+					200,
+					"{\"device_auth_id\":\"dev-1\",\"user_code\":\"CODE-1\",\"interval\":\" 5 \"}"
+				],
+				[
+					403,
+					""
+				],
+				[
+					404,
+					""
+				],
+				[
+					400,
+					"{\"error\":\"deviceauth_authorization_pending\"}"
+				],
+				[
+					400,
+					"{\"error\":{\"code\":\"slow_down\"}}"
+				],
+				[
+					200,
+					"{\"authorization_code\":\"oauth-code\",\"code_verifier\":\"device-code-verifier\"}"
+				],
+				[
+					200,
+					"{\"access_token\":\"eyJhbGciOiJub25lIn0=.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjb3VudC03ODkifX0=.sig\",\"refresh_token\":\"r2\",\"expires_in\":3600}"
+				]
+			],
+			"abortAt": null,
+			"hits": null,
+			"prompts": [
+				{
+					"type": "select",
+					"message": "Select OpenAI Codex login method:",
+					"options": [
+						{
+							"id": "browser",
+							"label": "Browser login (default)"
+						},
+						{
+							"id": "device_code",
+							"label": "Device code login (headless)"
+						}
+					],
+					"hasSignal": false
+				}
+			],
+			"events": [
+				{
+					"type": "device_code",
+					"userCode": "CODE-1",
+					"verificationUri": "https://auth.openai.com/codex/device",
+					"intervalSeconds": 5,
+					"expiresInSeconds": 900
+				}
+			],
+			"requests": [
+				{
+					"at": 1767225600000,
+					"url": "https://auth.openai.com/api/accounts/deviceauth/usercode",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json"
+					},
+					"body": "{\"client_id\":\"app_EMoamEEZ73f0CkXaXp7hrann\"}"
+				},
+				{
+					"at": 1767225600000,
+					"url": "https://auth.openai.com/api/accounts/deviceauth/token",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json"
+					},
+					"body": "{\"device_auth_id\":\"dev-1\",\"user_code\":\"CODE-1\"}"
+				},
+				{
+					"at": 1767225605000,
+					"url": "https://auth.openai.com/api/accounts/deviceauth/token",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json"
+					},
+					"body": "{\"device_auth_id\":\"dev-1\",\"user_code\":\"CODE-1\"}"
+				},
+				{
+					"at": 1767225610000,
+					"url": "https://auth.openai.com/api/accounts/deviceauth/token",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json"
+					},
+					"body": "{\"device_auth_id\":\"dev-1\",\"user_code\":\"CODE-1\"}"
+				},
+				{
+					"at": 1767225615000,
+					"url": "https://auth.openai.com/api/accounts/deviceauth/token",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json"
+					},
+					"body": "{\"device_auth_id\":\"dev-1\",\"user_code\":\"CODE-1\"}"
+				},
+				{
+					"at": 1767225625000,
+					"url": "https://auth.openai.com/api/accounts/deviceauth/token",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json"
+					},
+					"body": "{\"device_auth_id\":\"dev-1\",\"user_code\":\"CODE-1\"}"
+				},
+				{
+					"at": 1767225625000,
+					"url": "https://auth.openai.com/oauth/token",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "grant_type=authorization_code&client_id=app_EMoamEEZ73f0CkXaXp7hrann&code=oauth-code&code_verifier=device-code-verifier&redirect_uri=https%3A%2F%2Fauth.openai.com%2Fdeviceauth%2Fcallback"
+				}
+			],
+			"callbackResponses": [],
+			"result": {
+				"type": "oauth",
+				"access": "eyJhbGciOiJub25lIn0=.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjb3VudC03ODkifX0=.sig",
+				"refresh": "r2",
+				"expires": 1767229225000,
+				"accountId": "account-789"
+			},
+			"error": null
+		},
+		{
+			"name": "codex device not enabled",
+			"provider": "openai-codex",
+			"answers": [
+				"device_code"
+			],
+			"responses": [
+				[
+					404,
+					"nope"
+				]
+			],
+			"abortAt": null,
+			"hits": null,
+			"prompts": [
+				{
+					"type": "select",
+					"message": "Select OpenAI Codex login method:",
+					"options": [
+						{
+							"id": "browser",
+							"label": "Browser login (default)"
+						},
+						{
+							"id": "device_code",
+							"label": "Device code login (headless)"
+						}
+					],
+					"hasSignal": false
+				}
+			],
+			"events": [],
+			"requests": [
+				{
+					"at": 1767225600000,
+					"url": "https://auth.openai.com/api/accounts/deviceauth/usercode",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json"
+					},
+					"body": "{\"client_id\":\"app_EMoamEEZ73f0CkXaXp7hrann\"}"
+				}
+			],
+			"callbackResponses": [],
+			"result": null,
+			"error": "OpenAI Codex device code login is not enabled for this server. Use browser login or verify the server URL."
+		},
+		{
+			"name": "codex device request failed",
+			"provider": "openai-codex",
+			"answers": [
+				"device_code"
+			],
+			"responses": [
+				[
+					500,
+					"boom"
+				]
+			],
+			"abortAt": null,
+			"hits": null,
+			"prompts": [
+				{
+					"type": "select",
+					"message": "Select OpenAI Codex login method:",
+					"options": [
+						{
+							"id": "browser",
+							"label": "Browser login (default)"
+						},
+						{
+							"id": "device_code",
+							"label": "Device code login (headless)"
+						}
+					],
+					"hasSignal": false
+				}
+			],
+			"events": [],
+			"requests": [
+				{
+					"at": 1767225600000,
+					"url": "https://auth.openai.com/api/accounts/deviceauth/usercode",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json"
+					},
+					"body": "{\"client_id\":\"app_EMoamEEZ73f0CkXaXp7hrann\"}"
+				}
+			],
+			"callbackResponses": [],
+			"result": null,
+			"error": "OpenAI Codex device code request failed with status 500: boom"
+		},
+		{
+			"name": "codex device request failed empty",
+			"provider": "openai-codex",
+			"answers": [
+				"device_code"
+			],
+			"responses": [
+				[
+					502,
+					""
+				]
+			],
+			"abortAt": null,
+			"hits": null,
+			"prompts": [
+				{
+					"type": "select",
+					"message": "Select OpenAI Codex login method:",
+					"options": [
+						{
+							"id": "browser",
+							"label": "Browser login (default)"
+						},
+						{
+							"id": "device_code",
+							"label": "Device code login (headless)"
+						}
+					],
+					"hasSignal": false
+				}
+			],
+			"events": [],
+			"requests": [
+				{
+					"at": 1767225600000,
+					"url": "https://auth.openai.com/api/accounts/deviceauth/usercode",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json"
+					},
+					"body": "{\"client_id\":\"app_EMoamEEZ73f0CkXaXp7hrann\"}"
+				}
+			],
+			"callbackResponses": [],
+			"result": null,
+			"error": "OpenAI Codex device code request failed with status 502"
+		},
+		{
+			"name": "codex device invalid interval",
+			"provider": "openai-codex",
+			"answers": [
+				"device_code"
+			],
+			"responses": [
+				[
+					200,
+					"{\"device_auth_id\":\"d\",\"user_code\":\"u\",\"interval\":-1}"
+				]
+			],
+			"abortAt": null,
+			"hits": null,
+			"prompts": [
+				{
+					"type": "select",
+					"message": "Select OpenAI Codex login method:",
+					"options": [
+						{
+							"id": "browser",
+							"label": "Browser login (default)"
+						},
+						{
+							"id": "device_code",
+							"label": "Device code login (headless)"
+						}
+					],
+					"hasSignal": false
+				}
+			],
+			"events": [],
+			"requests": [
+				{
+					"at": 1767225600000,
+					"url": "https://auth.openai.com/api/accounts/deviceauth/usercode",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json"
+					},
+					"body": "{\"client_id\":\"app_EMoamEEZ73f0CkXaXp7hrann\"}"
+				}
+			],
+			"callbackResponses": [],
+			"result": null,
+			"error": "Invalid OpenAI Codex device code response: {\"device_auth_id\":\"d\",\"user_code\":\"u\",\"interval\":-1}"
+		},
+		{
+			"name": "codex device interval text",
+			"provider": "openai-codex",
+			"answers": [
+				"device_code"
+			],
+			"responses": [
+				[
+					200,
+					"{\"device_auth_id\":\"d\",\"user_code\":\"u\",\"interval\":\"soon\"}"
+				]
+			],
+			"abortAt": null,
+			"hits": null,
+			"prompts": [
+				{
+					"type": "select",
+					"message": "Select OpenAI Codex login method:",
+					"options": [
+						{
+							"id": "browser",
+							"label": "Browser login (default)"
+						},
+						{
+							"id": "device_code",
+							"label": "Device code login (headless)"
+						}
+					],
+					"hasSignal": false
+				}
+			],
+			"events": [],
+			"requests": [
+				{
+					"at": 1767225600000,
+					"url": "https://auth.openai.com/api/accounts/deviceauth/usercode",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json"
+					},
+					"body": "{\"client_id\":\"app_EMoamEEZ73f0CkXaXp7hrann\"}"
+				}
+			],
+			"callbackResponses": [],
+			"result": null,
+			"error": "Invalid OpenAI Codex device code response: {\"device_auth_id\":\"d\",\"user_code\":\"u\",\"interval\":\"soon\"}"
+		},
+		{
+			"name": "codex device missing code",
+			"provider": "openai-codex",
+			"answers": [
+				"device_code"
+			],
+			"responses": [
+				[
+					200,
+					"{\"device_auth_id\":\"\",\"user_code\":\"u\",\"interval\":5}"
+				]
+			],
+			"abortAt": null,
+			"hits": null,
+			"prompts": [
+				{
+					"type": "select",
+					"message": "Select OpenAI Codex login method:",
+					"options": [
+						{
+							"id": "browser",
+							"label": "Browser login (default)"
+						},
+						{
+							"id": "device_code",
+							"label": "Device code login (headless)"
+						}
+					],
+					"hasSignal": false
+				}
+			],
+			"events": [],
+			"requests": [
+				{
+					"at": 1767225600000,
+					"url": "https://auth.openai.com/api/accounts/deviceauth/usercode",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json"
+					},
+					"body": "{\"client_id\":\"app_EMoamEEZ73f0CkXaXp7hrann\"}"
+				}
+			],
+			"callbackResponses": [],
+			"result": null,
+			"error": "Invalid OpenAI Codex device code response: {\"device_auth_id\":\"\",\"user_code\":\"u\",\"interval\":5}"
+		},
+		{
+			"name": "codex device poll failure",
+			"provider": "openai-codex",
+			"answers": [
+				"device_code"
+			],
+			"responses": [
+				[
+					200,
+					"{\"device_auth_id\":\"d\",\"user_code\":\"u\",\"interval\":0}"
+				],
+				[
+					500,
+					"{\"error\":{\"code\":\"server_error\"}}"
+				]
+			],
+			"abortAt": null,
+			"hits": null,
+			"prompts": [
+				{
+					"type": "select",
+					"message": "Select OpenAI Codex login method:",
+					"options": [
+						{
+							"id": "browser",
+							"label": "Browser login (default)"
+						},
+						{
+							"id": "device_code",
+							"label": "Device code login (headless)"
+						}
+					],
+					"hasSignal": false
+				}
+			],
+			"events": [
+				{
+					"type": "device_code",
+					"userCode": "u",
+					"verificationUri": "https://auth.openai.com/codex/device",
+					"intervalSeconds": 0,
+					"expiresInSeconds": 900
+				}
+			],
+			"requests": [
+				{
+					"at": 1767225600000,
+					"url": "https://auth.openai.com/api/accounts/deviceauth/usercode",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json"
+					},
+					"body": "{\"client_id\":\"app_EMoamEEZ73f0CkXaXp7hrann\"}"
+				},
+				{
+					"at": 1767225600000,
+					"url": "https://auth.openai.com/api/accounts/deviceauth/token",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json"
+					},
+					"body": "{\"device_auth_id\":\"d\",\"user_code\":\"u\"}"
+				}
+			],
+			"callbackResponses": [],
+			"result": null,
+			"error": "OpenAI Codex device auth failed with status 500: {\"error\":{\"code\":\"server_error\"}}"
+		},
+		{
+			"name": "codex device poll invalid success",
+			"provider": "openai-codex",
+			"answers": [
+				"device_code"
+			],
+			"responses": [
+				[
+					200,
+					"{\"device_auth_id\":\"d\",\"user_code\":\"u\",\"interval\":1}"
+				],
+				[
+					200,
+					"{\"authorization_code\":\"c\"}"
+				]
+			],
+			"abortAt": null,
+			"hits": null,
+			"prompts": [
+				{
+					"type": "select",
+					"message": "Select OpenAI Codex login method:",
+					"options": [
+						{
+							"id": "browser",
+							"label": "Browser login (default)"
+						},
+						{
+							"id": "device_code",
+							"label": "Device code login (headless)"
+						}
+					],
+					"hasSignal": false
+				}
+			],
+			"events": [
+				{
+					"type": "device_code",
+					"userCode": "u",
+					"verificationUri": "https://auth.openai.com/codex/device",
+					"intervalSeconds": 1,
+					"expiresInSeconds": 900
+				}
+			],
+			"requests": [
+				{
+					"at": 1767225600000,
+					"url": "https://auth.openai.com/api/accounts/deviceauth/usercode",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json"
+					},
+					"body": "{\"client_id\":\"app_EMoamEEZ73f0CkXaXp7hrann\"}"
+				},
+				{
+					"at": 1767225600000,
+					"url": "https://auth.openai.com/api/accounts/deviceauth/token",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json"
+					},
+					"body": "{\"device_auth_id\":\"d\",\"user_code\":\"u\"}"
+				}
+			],
+			"callbackResponses": [],
+			"result": null,
+			"error": "Invalid OpenAI Codex device auth token response: {\"authorization_code\":\"c\"}"
+		},
+		{
+			"name": "codex device timeout",
+			"provider": "openai-codex",
+			"answers": [
+				"device_code"
+			],
+			"responses": [
+				[
+					200,
+					"{\"device_auth_id\":\"d\",\"user_code\":\"u\",\"interval\":120}"
+				],
+				[
+					403,
+					""
+				],
+				[
+					403,
+					""
+				],
+				[
+					403,
+					""
+				],
+				[
+					403,
+					""
+				],
+				[
+					403,
+					""
+				],
+				[
+					403,
+					""
+				],
+				[
+					403,
+					""
+				],
+				[
+					403,
+					""
+				]
+			],
+			"abortAt": null,
+			"hits": null,
+			"prompts": [
+				{
+					"type": "select",
+					"message": "Select OpenAI Codex login method:",
+					"options": [
+						{
+							"id": "browser",
+							"label": "Browser login (default)"
+						},
+						{
+							"id": "device_code",
+							"label": "Device code login (headless)"
+						}
+					],
+					"hasSignal": false
+				}
+			],
+			"events": [
+				{
+					"type": "device_code",
+					"userCode": "u",
+					"verificationUri": "https://auth.openai.com/codex/device",
+					"intervalSeconds": 120,
+					"expiresInSeconds": 900
+				}
+			],
+			"requests": [
+				{
+					"at": 1767225600000,
+					"url": "https://auth.openai.com/api/accounts/deviceauth/usercode",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json"
+					},
+					"body": "{\"client_id\":\"app_EMoamEEZ73f0CkXaXp7hrann\"}"
+				},
+				{
+					"at": 1767225600000,
+					"url": "https://auth.openai.com/api/accounts/deviceauth/token",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json"
+					},
+					"body": "{\"device_auth_id\":\"d\",\"user_code\":\"u\"}"
+				},
+				{
+					"at": 1767225720000,
+					"url": "https://auth.openai.com/api/accounts/deviceauth/token",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json"
+					},
+					"body": "{\"device_auth_id\":\"d\",\"user_code\":\"u\"}"
+				},
+				{
+					"at": 1767225840000,
+					"url": "https://auth.openai.com/api/accounts/deviceauth/token",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json"
+					},
+					"body": "{\"device_auth_id\":\"d\",\"user_code\":\"u\"}"
+				},
+				{
+					"at": 1767225960000,
+					"url": "https://auth.openai.com/api/accounts/deviceauth/token",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json"
+					},
+					"body": "{\"device_auth_id\":\"d\",\"user_code\":\"u\"}"
+				},
+				{
+					"at": 1767226080000,
+					"url": "https://auth.openai.com/api/accounts/deviceauth/token",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json"
+					},
+					"body": "{\"device_auth_id\":\"d\",\"user_code\":\"u\"}"
+				},
+				{
+					"at": 1767226200000,
+					"url": "https://auth.openai.com/api/accounts/deviceauth/token",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json"
+					},
+					"body": "{\"device_auth_id\":\"d\",\"user_code\":\"u\"}"
+				},
+				{
+					"at": 1767226320000,
+					"url": "https://auth.openai.com/api/accounts/deviceauth/token",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json"
+					},
+					"body": "{\"device_auth_id\":\"d\",\"user_code\":\"u\"}"
+				},
+				{
+					"at": 1767226440000,
+					"url": "https://auth.openai.com/api/accounts/deviceauth/token",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json"
+					},
+					"body": "{\"device_auth_id\":\"d\",\"user_code\":\"u\"}"
+				}
+			],
+			"callbackResponses": [],
+			"result": null,
+			"error": "Device flow timed out"
+		},
+		{
+			"name": "codex device slow_down timeout",
+			"provider": "openai-codex",
+			"answers": [
+				"device_code"
+			],
+			"responses": [
+				[
+					200,
+					"{\"device_auth_id\":\"d\",\"user_code\":\"u\",\"interval\":300}"
+				],
+				[
+					400,
+					"{\"error\":\"slow_down\"}"
+				],
+				[
+					403,
+					""
+				],
+				[
+					403,
+					""
+				]
+			],
+			"abortAt": null,
+			"hits": null,
+			"prompts": [
+				{
+					"type": "select",
+					"message": "Select OpenAI Codex login method:",
+					"options": [
+						{
+							"id": "browser",
+							"label": "Browser login (default)"
+						},
+						{
+							"id": "device_code",
+							"label": "Device code login (headless)"
+						}
+					],
+					"hasSignal": false
+				}
+			],
+			"events": [
+				{
+					"type": "device_code",
+					"userCode": "u",
+					"verificationUri": "https://auth.openai.com/codex/device",
+					"intervalSeconds": 300,
+					"expiresInSeconds": 900
+				}
+			],
+			"requests": [
+				{
+					"at": 1767225600000,
+					"url": "https://auth.openai.com/api/accounts/deviceauth/usercode",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json"
+					},
+					"body": "{\"client_id\":\"app_EMoamEEZ73f0CkXaXp7hrann\"}"
+				},
+				{
+					"at": 1767225600000,
+					"url": "https://auth.openai.com/api/accounts/deviceauth/token",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json"
+					},
+					"body": "{\"device_auth_id\":\"d\",\"user_code\":\"u\"}"
+				},
+				{
+					"at": 1767225905000,
+					"url": "https://auth.openai.com/api/accounts/deviceauth/token",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json"
+					},
+					"body": "{\"device_auth_id\":\"d\",\"user_code\":\"u\"}"
+				},
+				{
+					"at": 1767226210000,
+					"url": "https://auth.openai.com/api/accounts/deviceauth/token",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json"
+					},
+					"body": "{\"device_auth_id\":\"d\",\"user_code\":\"u\"}"
+				}
+			],
+			"callbackResponses": [],
+			"result": null,
+			"error": "Device flow timed out after one or more slow_down responses. This is often caused by clock drift in WSL or VM environments. Please sync or restart the VM clock and try again."
+		},
+		{
+			"name": "codex device cancelled",
+			"provider": "openai-codex",
+			"answers": [
+				"device_code"
+			],
+			"responses": [
+				[
+					200,
+					"{\"device_auth_id\":\"d\",\"user_code\":\"u\",\"interval\":5}"
+				],
+				[
+					403,
+					""
+				]
+			],
+			"abortAt": 2,
+			"hits": null,
+			"prompts": [
+				{
+					"type": "select",
+					"message": "Select OpenAI Codex login method:",
+					"options": [
+						{
+							"id": "browser",
+							"label": "Browser login (default)"
+						},
+						{
+							"id": "device_code",
+							"label": "Device code login (headless)"
+						}
+					],
+					"hasSignal": false
+				}
+			],
+			"events": [
+				{
+					"type": "device_code",
+					"userCode": "u",
+					"verificationUri": "https://auth.openai.com/codex/device",
+					"intervalSeconds": 5,
+					"expiresInSeconds": 900
+				}
+			],
+			"requests": [
+				{
+					"at": 1767225600000,
+					"url": "https://auth.openai.com/api/accounts/deviceauth/usercode",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json"
+					},
+					"body": "{\"client_id\":\"app_EMoamEEZ73f0CkXaXp7hrann\"}"
+				},
+				{
+					"at": 1767225600000,
+					"url": "https://auth.openai.com/api/accounts/deviceauth/token",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json"
+					},
+					"body": "{\"device_auth_id\":\"d\",\"user_code\":\"u\"}"
+				}
+			],
+			"callbackResponses": [],
+			"result": null,
+			"error": "Login cancelled"
+		},
+		{
+			"name": "copilot login",
+			"provider": "github-copilot",
+			"answers": [
+				""
+			],
+			"responses": [
+				[
+					200,
+					"{\"device_code\":\"dc\",\"user_code\":\"ABCD-1234\",\"verification_uri\":\"https://github.com/login/device\",\"interval\":5,\"expires_in\":900}"
+				],
+				[
+					200,
+					"{\"error\":\"authorization_pending\"}"
+				],
+				[
+					200,
+					"{\"error\":\"slow_down\",\"interval\":10}"
+				],
+				[
+					200,
+					"{\"error\":\"slow_down\"}"
+				],
+				[
+					200,
+					"{\"access_token\":\"gho_1\",\"token_type\":\"bearer\"}"
+				],
+				[
+					200,
+					"{\"token\":\"tid=abc;exp=1767229200;proxy-ep=proxy.individual.githubcopilot.com;sku=x\",\"expires_at\":1767229200}"
+				],
+				[
+					200,
+					"{\"data\":[{\"id\":\"gpt-5.4\",\"model_picker_enabled\":true,\"policy\":{\"state\":\"enabled\"}},{\"id\":\"claude-sonnet-5\",\"model_picker_enabled\":true,\"policy\":{\"state\":\"unconfigured\"}},{\"id\":\"claude-opus-5\",\"model_picker_enabled\":true,\"policy\":{\"state\":\"unconfigured\"}},{\"id\":\"grok-4.7\",\"model_picker_enabled\":true,\"policy\":{\"state\":\"unconfigured\"}},{\"id\":\"not-in-catalog\",\"model_picker_enabled\":true,\"policy\":{\"state\":\"unconfigured\"}}]}"
+				],
+				[
+					200,
+					""
+				],
+				[
+					500,
+					""
+				],
+				[
+					0,
+					""
+				]
+			],
+			"abortAt": null,
+			"hits": null,
+			"prompts": [
+				{
+					"type": "text",
+					"message": "GitHub Enterprise URL/domain (blank for github.com)",
+					"placeholder": "company.ghe.com",
+					"hasSignal": false
+				}
+			],
+			"events": [
+				{
+					"type": "device_code",
+					"userCode": "ABCD-1234",
+					"verificationUri": "https://github.com/login/device",
+					"intervalSeconds": 5,
+					"expiresInSeconds": 900
+				},
+				{
+					"type": "progress",
+					"message": "Enabling models..."
+				}
+			],
+			"requests": [
+				{
+					"at": 1767225600000,
+					"url": "https://github.com/login/device/code",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded",
+						"user-agent": "GitHubCopilotChat/0.35.0"
+					},
+					"body": "client_id=Iv1.b507a08c87ecfe98&scope=read%3Auser"
+				},
+				{
+					"at": 1767225605000,
+					"url": "https://github.com/login/oauth/access_token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded",
+						"user-agent": "GitHubCopilotChat/0.35.0"
+					},
+					"body": "client_id=Iv1.b507a08c87ecfe98&device_code=dc&grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code"
+				},
+				{
+					"at": 1767225610000,
+					"url": "https://github.com/login/oauth/access_token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded",
+						"user-agent": "GitHubCopilotChat/0.35.0"
+					},
+					"body": "client_id=Iv1.b507a08c87ecfe98&device_code=dc&grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code"
+				},
+				{
+					"at": 1767225620000,
+					"url": "https://github.com/login/oauth/access_token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded",
+						"user-agent": "GitHubCopilotChat/0.35.0"
+					},
+					"body": "client_id=Iv1.b507a08c87ecfe98&device_code=dc&grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code"
+				},
+				{
+					"at": 1767225635000,
+					"url": "https://github.com/login/oauth/access_token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded",
+						"user-agent": "GitHubCopilotChat/0.35.0"
+					},
+					"body": "client_id=Iv1.b507a08c87ecfe98&device_code=dc&grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code"
+				},
+				{
+					"at": 1767225635000,
+					"url": "https://api.github.com/copilot_internal/v2/token",
+					"method": "GET",
+					"headers": {
+						"accept": "application/json",
+						"authorization": "Bearer gho_1",
+						"user-agent": "GitHubCopilotChat/0.35.0",
+						"editor-version": "vscode/1.107.0",
+						"editor-plugin-version": "copilot-chat/0.35.0",
+						"copilot-integration-id": "vscode-chat"
+					},
+					"body": ""
+				},
+				{
+					"at": 1767225635000,
+					"url": "https://api.individual.githubcopilot.com/models",
+					"method": "GET",
+					"headers": {
+						"accept": "application/json",
+						"authorization": "Bearer tid=abc;exp=1767229200;proxy-ep=proxy.individual.githubcopilot.com;sku=x",
+						"user-agent": "GitHubCopilotChat/0.35.0",
+						"editor-version": "vscode/1.107.0",
+						"editor-plugin-version": "copilot-chat/0.35.0",
+						"copilot-integration-id": "vscode-chat",
+						"x-github-api-version": "2026-06-01"
+					},
+					"body": ""
+				},
+				{
+					"at": 1767225635000,
+					"url": "https://api.individual.githubcopilot.com/models/claude-sonnet-5/policy",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json",
+						"authorization": "Bearer tid=abc;exp=1767229200;proxy-ep=proxy.individual.githubcopilot.com;sku=x",
+						"user-agent": "GitHubCopilotChat/0.35.0",
+						"editor-version": "vscode/1.107.0",
+						"editor-plugin-version": "copilot-chat/0.35.0",
+						"copilot-integration-id": "vscode-chat",
+						"openai-intent": "chat-policy",
+						"x-interaction-type": "chat-policy"
+					},
+					"body": "{\"state\":\"enabled\"}"
+				},
+				{
+					"at": 1767225635000,
+					"url": "https://api.individual.githubcopilot.com/models/claude-opus-5/policy",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json",
+						"authorization": "Bearer tid=abc;exp=1767229200;proxy-ep=proxy.individual.githubcopilot.com;sku=x",
+						"user-agent": "GitHubCopilotChat/0.35.0",
+						"editor-version": "vscode/1.107.0",
+						"editor-plugin-version": "copilot-chat/0.35.0",
+						"copilot-integration-id": "vscode-chat",
+						"openai-intent": "chat-policy",
+						"x-interaction-type": "chat-policy"
+					},
+					"body": "{\"state\":\"enabled\"}"
+				},
+				{
+					"at": 1767225635000,
+					"url": "https://api.individual.githubcopilot.com/models/grok-4.7/policy",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json",
+						"authorization": "Bearer tid=abc;exp=1767229200;proxy-ep=proxy.individual.githubcopilot.com;sku=x",
+						"user-agent": "GitHubCopilotChat/0.35.0",
+						"editor-version": "vscode/1.107.0",
+						"editor-plugin-version": "copilot-chat/0.35.0",
+						"copilot-integration-id": "vscode-chat",
+						"openai-intent": "chat-policy",
+						"x-interaction-type": "chat-policy"
+					},
+					"body": "{\"state\":\"enabled\"}"
+				}
+			],
+			"callbackResponses": [],
+			"result": {
+				"type": "oauth",
+				"refresh": "gho_1",
+				"access": "tid=abc;exp=1767229200;proxy-ep=proxy.individual.githubcopilot.com;sku=x",
+				"expires": 1767228900000,
+				"availableModelIds": [
+					"gpt-5.4",
+					"claude-sonnet-5",
+					"claude-opus-5",
+					"grok-4.7",
+					"not-in-catalog"
+				]
+			},
+			"error": null
+		},
+		{
+			"name": "copilot login enterprise",
+			"provider": "github-copilot",
+			"answers": [
+				"  https://Company.GHE.com/some/path "
+			],
+			"responses": [
+				[
+					200,
+					"{\"device_code\":\"dc\",\"user_code\":\"ABCD-1234\",\"verification_uri\":\"HTTPS://Company.GHE.com/login/device\",\"expires_in\":900}"
+				],
+				[
+					200,
+					"{\"access_token\":\"gho_2\"}"
+				],
+				[
+					200,
+					"{\"token\":\"tid=abc;exp=1767229200;sku=x\",\"expires_at\":1767229200}"
+				],
+				[
+					200,
+					"{\"data\":[{\"id\":\"gpt-5.4\",\"model_picker_enabled\":false,\"policy\":{\"state\":\"enabled\"}},{\"id\":\"claude-sonnet-5\",\"model_picker_enabled\":false,\"policy\":{\"state\":\"unconfigured\"}}]}"
+				]
+			],
+			"abortAt": null,
+			"hits": null,
+			"prompts": [
+				{
+					"type": "text",
+					"message": "GitHub Enterprise URL/domain (blank for github.com)",
+					"placeholder": "company.ghe.com",
+					"hasSignal": false
+				}
+			],
+			"events": [
+				{
+					"type": "device_code",
+					"userCode": "ABCD-1234",
+					"verificationUri": "https://company.ghe.com/login/device",
+					"expiresInSeconds": 900
+				}
+			],
+			"requests": [
+				{
+					"at": 1767225600000,
+					"url": "https://company.ghe.com/login/device/code",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded",
+						"user-agent": "GitHubCopilotChat/0.35.0"
+					},
+					"body": "client_id=Iv1.b507a08c87ecfe98&scope=read%3Auser"
+				},
+				{
+					"at": 1767225605000,
+					"url": "https://company.ghe.com/login/oauth/access_token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded",
+						"user-agent": "GitHubCopilotChat/0.35.0"
+					},
+					"body": "client_id=Iv1.b507a08c87ecfe98&device_code=dc&grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code"
+				},
+				{
+					"at": 1767225605000,
+					"url": "https://api.company.ghe.com/copilot_internal/v2/token",
+					"method": "GET",
+					"headers": {
+						"accept": "application/json",
+						"authorization": "Bearer gho_2",
+						"user-agent": "GitHubCopilotChat/0.35.0",
+						"editor-version": "vscode/1.107.0",
+						"editor-plugin-version": "copilot-chat/0.35.0",
+						"copilot-integration-id": "vscode-chat"
+					},
+					"body": ""
+				},
+				{
+					"at": 1767225605000,
+					"url": "https://copilot-api.company.ghe.com/models",
+					"method": "GET",
+					"headers": {
+						"accept": "application/json",
+						"authorization": "Bearer tid=abc;exp=1767229200;sku=x",
+						"user-agent": "GitHubCopilotChat/0.35.0",
+						"editor-version": "vscode/1.107.0",
+						"editor-plugin-version": "copilot-chat/0.35.0",
+						"copilot-integration-id": "vscode-chat",
+						"x-github-api-version": "2026-06-01"
+					},
+					"body": ""
+				}
+			],
+			"callbackResponses": [],
+			"result": {
+				"type": "oauth",
+				"refresh": "gho_2",
+				"access": "tid=abc;exp=1767229200;sku=x",
+				"expires": 1767228900000,
+				"enterpriseUrl": "company.ghe.com",
+				"availableModelIds": []
+			},
+			"error": null
+		},
+		{
+			"name": "copilot login policy fallback",
+			"provider": "github-copilot",
+			"answers": [
+				""
+			],
+			"responses": [
+				[
+					200,
+					"{\"device_code\":\"dc\",\"user_code\":\"ABCD-1234\",\"verification_uri\":\"https://github.com/login/device\",\"interval\":1,\"expires_in\":900}"
+				],
+				[
+					200,
+					"{\"access_token\":\"gho_3\"}"
+				],
+				[
+					200,
+					"{\"token\":\"tid=abc;exp=1767229200;proxy-ep=proxy.individual.githubcopilot.com;sku=x\",\"expires_at\":1767229200}"
+				],
+				[
+					200,
+					"{\"data\":[{\"id\":\"gpt-5.4\",\"model_picker_enabled\":false,\"policy\":{\"state\":\"enabled\"}},{\"id\":\"claude-sonnet-5\",\"model_picker_enabled\":false,\"policy\":{\"state\":\"unconfigured\"}}]}"
+				],
+				[
+					200,
+					""
+				]
+			],
+			"abortAt": null,
+			"hits": null,
+			"prompts": [
+				{
+					"type": "text",
+					"message": "GitHub Enterprise URL/domain (blank for github.com)",
+					"placeholder": "company.ghe.com",
+					"hasSignal": false
+				}
+			],
+			"events": [
+				{
+					"type": "device_code",
+					"userCode": "ABCD-1234",
+					"verificationUri": "https://github.com/login/device",
+					"intervalSeconds": 1,
+					"expiresInSeconds": 900
+				},
+				{
+					"type": "progress",
+					"message": "Enabling models..."
+				}
+			],
+			"requests": [
+				{
+					"at": 1767225600000,
+					"url": "https://github.com/login/device/code",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded",
+						"user-agent": "GitHubCopilotChat/0.35.0"
+					},
+					"body": "client_id=Iv1.b507a08c87ecfe98&scope=read%3Auser"
+				},
+				{
+					"at": 1767225601000,
+					"url": "https://github.com/login/oauth/access_token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded",
+						"user-agent": "GitHubCopilotChat/0.35.0"
+					},
+					"body": "client_id=Iv1.b507a08c87ecfe98&device_code=dc&grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code"
+				},
+				{
+					"at": 1767225601000,
+					"url": "https://api.github.com/copilot_internal/v2/token",
+					"method": "GET",
+					"headers": {
+						"accept": "application/json",
+						"authorization": "Bearer gho_3",
+						"user-agent": "GitHubCopilotChat/0.35.0",
+						"editor-version": "vscode/1.107.0",
+						"editor-plugin-version": "copilot-chat/0.35.0",
+						"copilot-integration-id": "vscode-chat"
+					},
+					"body": ""
+				},
+				{
+					"at": 1767225601000,
+					"url": "https://api.individual.githubcopilot.com/models",
+					"method": "GET",
+					"headers": {
+						"accept": "application/json",
+						"authorization": "Bearer tid=abc;exp=1767229200;proxy-ep=proxy.individual.githubcopilot.com;sku=x",
+						"user-agent": "GitHubCopilotChat/0.35.0",
+						"editor-version": "vscode/1.107.0",
+						"editor-plugin-version": "copilot-chat/0.35.0",
+						"copilot-integration-id": "vscode-chat",
+						"x-github-api-version": "2026-06-01"
+					},
+					"body": ""
+				},
+				{
+					"at": 1767225601000,
+					"url": "https://api.individual.githubcopilot.com/models/claude-sonnet-5/policy",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json",
+						"authorization": "Bearer tid=abc;exp=1767229200;proxy-ep=proxy.individual.githubcopilot.com;sku=x",
+						"user-agent": "GitHubCopilotChat/0.35.0",
+						"editor-version": "vscode/1.107.0",
+						"editor-plugin-version": "copilot-chat/0.35.0",
+						"copilot-integration-id": "vscode-chat",
+						"openai-intent": "chat-policy",
+						"x-interaction-type": "chat-policy"
+					},
+					"body": "{\"state\":\"enabled\"}"
+				}
+			],
+			"callbackResponses": [],
+			"result": {
+				"type": "oauth",
+				"refresh": "gho_3",
+				"access": "tid=abc;exp=1767229200;proxy-ep=proxy.individual.githubcopilot.com;sku=x",
+				"expires": 1767228900000,
+				"availableModelIds": [
+					"gpt-5.4",
+					"claude-sonnet-5"
+				]
+			},
+			"error": null
+		},
+		{
+			"name": "copilot login models rate limited",
+			"provider": "github-copilot",
+			"answers": [
+				""
+			],
+			"responses": [
+				[
+					200,
+					"{\"device_code\":\"dc\",\"user_code\":\"ABCD-1234\",\"verification_uri\":\"https://github.com/login/device\",\"interval\":1,\"expires_in\":900}"
+				],
+				[
+					200,
+					"{\"access_token\":\"gho_4\"}"
+				],
+				[
+					200,
+					"{\"token\":\"tid=abc;exp=1767229200;proxy-ep=proxy.individual.githubcopilot.com;sku=x\",\"expires_at\":1767229200}"
+				],
+				[
+					429,
+					"slow",
+					{
+						"retry-after": "1.5"
+					}
+				],
+				[
+					429,
+					"slow",
+					{
+						"retry-after": "Thu, 01 Jan 2026 00:00:01 GMT"
+					}
+				],
+				[
+					200,
+					"{\"data\":[{\"id\":\"gpt-5.4\",\"model_picker_enabled\":true,\"policy\":{\"state\":\"enabled\"}},{\"id\":\"claude-sonnet-5\",\"model_picker_enabled\":true,\"policy\":{\"state\":\"unconfigured\"}},{\"id\":\"claude-opus-5\",\"model_picker_enabled\":true,\"policy\":{\"state\":\"unconfigured\"}},{\"id\":\"grok-4.7\",\"model_picker_enabled\":true,\"policy\":{\"state\":\"unconfigured\"}},{\"id\":\"not-in-catalog\",\"model_picker_enabled\":true,\"policy\":{\"state\":\"unconfigured\"}}]}"
+				],
+				[
+					429,
+					"",
+					{
+						"retry-after": "0"
+					}
+				],
+				[
+					429,
+					"",
+					{
+						"retry-after": "0"
+					}
+				],
+				[
+					429,
+					"busy"
+				],
+				[
+					200,
+					""
+				]
+			],
+			"abortAt": null,
+			"hits": null,
+			"prompts": [
+				{
+					"type": "text",
+					"message": "GitHub Enterprise URL/domain (blank for github.com)",
+					"placeholder": "company.ghe.com",
+					"hasSignal": false
+				}
+			],
+			"events": [
+				{
+					"type": "device_code",
+					"userCode": "ABCD-1234",
+					"verificationUri": "https://github.com/login/device",
+					"intervalSeconds": 1,
+					"expiresInSeconds": 900
+				},
+				{
+					"type": "progress",
+					"message": "Enabling models..."
+				}
+			],
+			"requests": [
+				{
+					"at": 1767225600000,
+					"url": "https://github.com/login/device/code",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded",
+						"user-agent": "GitHubCopilotChat/0.35.0"
+					},
+					"body": "client_id=Iv1.b507a08c87ecfe98&scope=read%3Auser"
+				},
+				{
+					"at": 1767225601000,
+					"url": "https://github.com/login/oauth/access_token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded",
+						"user-agent": "GitHubCopilotChat/0.35.0"
+					},
+					"body": "client_id=Iv1.b507a08c87ecfe98&device_code=dc&grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code"
+				},
+				{
+					"at": 1767225601000,
+					"url": "https://api.github.com/copilot_internal/v2/token",
+					"method": "GET",
+					"headers": {
+						"accept": "application/json",
+						"authorization": "Bearer gho_4",
+						"user-agent": "GitHubCopilotChat/0.35.0",
+						"editor-version": "vscode/1.107.0",
+						"editor-plugin-version": "copilot-chat/0.35.0",
+						"copilot-integration-id": "vscode-chat"
+					},
+					"body": ""
+				},
+				{
+					"at": 1767225601000,
+					"url": "https://api.individual.githubcopilot.com/models",
+					"method": "GET",
+					"headers": {
+						"accept": "application/json",
+						"authorization": "Bearer tid=abc;exp=1767229200;proxy-ep=proxy.individual.githubcopilot.com;sku=x",
+						"user-agent": "GitHubCopilotChat/0.35.0",
+						"editor-version": "vscode/1.107.0",
+						"editor-plugin-version": "copilot-chat/0.35.0",
+						"copilot-integration-id": "vscode-chat",
+						"x-github-api-version": "2026-06-01"
+					},
+					"body": ""
+				},
+				{
+					"at": 1767225602500,
+					"url": "https://api.individual.githubcopilot.com/models",
+					"method": "GET",
+					"headers": {
+						"accept": "application/json",
+						"authorization": "Bearer tid=abc;exp=1767229200;proxy-ep=proxy.individual.githubcopilot.com;sku=x",
+						"user-agent": "GitHubCopilotChat/0.35.0",
+						"editor-version": "vscode/1.107.0",
+						"editor-plugin-version": "copilot-chat/0.35.0",
+						"copilot-integration-id": "vscode-chat",
+						"x-github-api-version": "2026-06-01"
+					},
+					"body": ""
+				},
+				{
+					"at": 1767225602500,
+					"url": "https://api.individual.githubcopilot.com/models",
+					"method": "GET",
+					"headers": {
+						"accept": "application/json",
+						"authorization": "Bearer tid=abc;exp=1767229200;proxy-ep=proxy.individual.githubcopilot.com;sku=x",
+						"user-agent": "GitHubCopilotChat/0.35.0",
+						"editor-version": "vscode/1.107.0",
+						"editor-plugin-version": "copilot-chat/0.35.0",
+						"copilot-integration-id": "vscode-chat",
+						"x-github-api-version": "2026-06-01"
+					},
+					"body": ""
+				},
+				{
+					"at": 1767225602500,
+					"url": "https://api.individual.githubcopilot.com/models/claude-sonnet-5/policy",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json",
+						"authorization": "Bearer tid=abc;exp=1767229200;proxy-ep=proxy.individual.githubcopilot.com;sku=x",
+						"user-agent": "GitHubCopilotChat/0.35.0",
+						"editor-version": "vscode/1.107.0",
+						"editor-plugin-version": "copilot-chat/0.35.0",
+						"copilot-integration-id": "vscode-chat",
+						"openai-intent": "chat-policy",
+						"x-interaction-type": "chat-policy"
+					},
+					"body": "{\"state\":\"enabled\"}"
+				},
+				{
+					"at": 1767225602500,
+					"url": "https://api.individual.githubcopilot.com/models/claude-sonnet-5/policy",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json",
+						"authorization": "Bearer tid=abc;exp=1767229200;proxy-ep=proxy.individual.githubcopilot.com;sku=x",
+						"user-agent": "GitHubCopilotChat/0.35.0",
+						"editor-version": "vscode/1.107.0",
+						"editor-plugin-version": "copilot-chat/0.35.0",
+						"copilot-integration-id": "vscode-chat",
+						"openai-intent": "chat-policy",
+						"x-interaction-type": "chat-policy"
+					},
+					"body": "{\"state\":\"enabled\"}"
+				},
+				{
+					"at": 1767225602500,
+					"url": "https://api.individual.githubcopilot.com/models/claude-sonnet-5/policy",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json",
+						"authorization": "Bearer tid=abc;exp=1767229200;proxy-ep=proxy.individual.githubcopilot.com;sku=x",
+						"user-agent": "GitHubCopilotChat/0.35.0",
+						"editor-version": "vscode/1.107.0",
+						"editor-plugin-version": "copilot-chat/0.35.0",
+						"copilot-integration-id": "vscode-chat",
+						"openai-intent": "chat-policy",
+						"x-interaction-type": "chat-policy"
+					},
+					"body": "{\"state\":\"enabled\"}"
+				}
+			],
+			"callbackResponses": [],
+			"result": {
+				"type": "oauth",
+				"refresh": "gho_4",
+				"access": "tid=abc;exp=1767229200;proxy-ep=proxy.individual.githubcopilot.com;sku=x",
+				"expires": 1767228900000,
+				"availableModelIds": [
+					"gpt-5.4",
+					"claude-sonnet-5",
+					"claude-opus-5",
+					"grok-4.7",
+					"not-in-catalog"
+				]
+			},
+			"error": null
+		},
+		{
+			"name": "copilot login models rate limit exhausted",
+			"provider": "github-copilot",
+			"answers": [
+				""
+			],
+			"responses": [
+				[
+					200,
+					"{\"device_code\":\"dc\",\"user_code\":\"ABCD-1234\",\"verification_uri\":\"https://github.com/login/device\",\"interval\":1,\"expires_in\":900}"
+				],
+				[
+					200,
+					"{\"access_token\":\"gho_5\"}"
+				],
+				[
+					200,
+					"{\"token\":\"tid=abc;exp=1767229200;proxy-ep=proxy.individual.githubcopilot.com;sku=x\",\"expires_at\":1767229200}"
+				],
+				[
+					429,
+					"a"
+				],
+				[
+					429,
+					"b"
+				],
+				[
+					429,
+					"c"
+				]
+			],
+			"abortAt": null,
+			"hits": null,
+			"prompts": [
+				{
+					"type": "text",
+					"message": "GitHub Enterprise URL/domain (blank for github.com)",
+					"placeholder": "company.ghe.com",
+					"hasSignal": false
+				}
+			],
+			"events": [
+				{
+					"type": "device_code",
+					"userCode": "ABCD-1234",
+					"verificationUri": "https://github.com/login/device",
+					"intervalSeconds": 1,
+					"expiresInSeconds": 900
+				}
+			],
+			"requests": [
+				{
+					"at": 1767225600000,
+					"url": "https://github.com/login/device/code",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded",
+						"user-agent": "GitHubCopilotChat/0.35.0"
+					},
+					"body": "client_id=Iv1.b507a08c87ecfe98&scope=read%3Auser"
+				},
+				{
+					"at": 1767225601000,
+					"url": "https://github.com/login/oauth/access_token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded",
+						"user-agent": "GitHubCopilotChat/0.35.0"
+					},
+					"body": "client_id=Iv1.b507a08c87ecfe98&device_code=dc&grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code"
+				},
+				{
+					"at": 1767225601000,
+					"url": "https://api.github.com/copilot_internal/v2/token",
+					"method": "GET",
+					"headers": {
+						"accept": "application/json",
+						"authorization": "Bearer gho_5",
+						"user-agent": "GitHubCopilotChat/0.35.0",
+						"editor-version": "vscode/1.107.0",
+						"editor-plugin-version": "copilot-chat/0.35.0",
+						"copilot-integration-id": "vscode-chat"
+					},
+					"body": ""
+				},
+				{
+					"at": 1767225601000,
+					"url": "https://api.individual.githubcopilot.com/models",
+					"method": "GET",
+					"headers": {
+						"accept": "application/json",
+						"authorization": "Bearer tid=abc;exp=1767229200;proxy-ep=proxy.individual.githubcopilot.com;sku=x",
+						"user-agent": "GitHubCopilotChat/0.35.0",
+						"editor-version": "vscode/1.107.0",
+						"editor-plugin-version": "copilot-chat/0.35.0",
+						"copilot-integration-id": "vscode-chat",
+						"x-github-api-version": "2026-06-01"
+					},
+					"body": ""
+				},
+				{
+					"at": 1767225601500,
+					"url": "https://api.individual.githubcopilot.com/models",
+					"method": "GET",
+					"headers": {
+						"accept": "application/json",
+						"authorization": "Bearer tid=abc;exp=1767229200;proxy-ep=proxy.individual.githubcopilot.com;sku=x",
+						"user-agent": "GitHubCopilotChat/0.35.0",
+						"editor-version": "vscode/1.107.0",
+						"editor-plugin-version": "copilot-chat/0.35.0",
+						"copilot-integration-id": "vscode-chat",
+						"x-github-api-version": "2026-06-01"
+					},
+					"body": ""
+				},
+				{
+					"at": 1767225602500,
+					"url": "https://api.individual.githubcopilot.com/models",
+					"method": "GET",
+					"headers": {
+						"accept": "application/json",
+						"authorization": "Bearer tid=abc;exp=1767229200;proxy-ep=proxy.individual.githubcopilot.com;sku=x",
+						"user-agent": "GitHubCopilotChat/0.35.0",
+						"editor-version": "vscode/1.107.0",
+						"editor-plugin-version": "copilot-chat/0.35.0",
+						"copilot-integration-id": "vscode-chat",
+						"x-github-api-version": "2026-06-01"
+					},
+					"body": ""
+				}
+			],
+			"callbackResponses": [],
+			"result": null,
+			"error": "429 Too Many Requests: c"
+		},
+		{
+			"name": "copilot login retry-after beyond budget",
+			"provider": "github-copilot",
+			"answers": [
+				""
+			],
+			"responses": [
+				[
+					200,
+					"{\"device_code\":\"dc\",\"user_code\":\"ABCD-1234\",\"verification_uri\":\"https://github.com/login/device\",\"interval\":1,\"expires_in\":900}"
+				],
+				[
+					200,
+					"{\"access_token\":\"gho_6\"}"
+				],
+				[
+					200,
+					"{\"token\":\"tid=abc;exp=1767229200;proxy-ep=proxy.individual.githubcopilot.com;sku=x\",\"expires_at\":1767229200}"
+				],
+				[
+					429,
+					"wait",
+					{
+						"retry-after": "10"
+					}
+				]
+			],
+			"abortAt": null,
+			"hits": null,
+			"prompts": [
+				{
+					"type": "text",
+					"message": "GitHub Enterprise URL/domain (blank for github.com)",
+					"placeholder": "company.ghe.com",
+					"hasSignal": false
+				}
+			],
+			"events": [
+				{
+					"type": "device_code",
+					"userCode": "ABCD-1234",
+					"verificationUri": "https://github.com/login/device",
+					"intervalSeconds": 1,
+					"expiresInSeconds": 900
+				}
+			],
+			"requests": [
+				{
+					"at": 1767225600000,
+					"url": "https://github.com/login/device/code",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded",
+						"user-agent": "GitHubCopilotChat/0.35.0"
+					},
+					"body": "client_id=Iv1.b507a08c87ecfe98&scope=read%3Auser"
+				},
+				{
+					"at": 1767225601000,
+					"url": "https://github.com/login/oauth/access_token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded",
+						"user-agent": "GitHubCopilotChat/0.35.0"
+					},
+					"body": "client_id=Iv1.b507a08c87ecfe98&device_code=dc&grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code"
+				},
+				{
+					"at": 1767225601000,
+					"url": "https://api.github.com/copilot_internal/v2/token",
+					"method": "GET",
+					"headers": {
+						"accept": "application/json",
+						"authorization": "Bearer gho_6",
+						"user-agent": "GitHubCopilotChat/0.35.0",
+						"editor-version": "vscode/1.107.0",
+						"editor-plugin-version": "copilot-chat/0.35.0",
+						"copilot-integration-id": "vscode-chat"
+					},
+					"body": ""
+				},
+				{
+					"at": 1767225601000,
+					"url": "https://api.individual.githubcopilot.com/models",
+					"method": "GET",
+					"headers": {
+						"accept": "application/json",
+						"authorization": "Bearer tid=abc;exp=1767229200;proxy-ep=proxy.individual.githubcopilot.com;sku=x",
+						"user-agent": "GitHubCopilotChat/0.35.0",
+						"editor-version": "vscode/1.107.0",
+						"editor-plugin-version": "copilot-chat/0.35.0",
+						"copilot-integration-id": "vscode-chat",
+						"x-github-api-version": "2026-06-01"
+					},
+					"body": ""
+				}
+			],
+			"callbackResponses": [],
+			"result": null,
+			"error": "429 Too Many Requests: wait"
+		},
+		{
+			"name": "copilot login retry-after unparseable",
+			"provider": "github-copilot",
+			"answers": [
+				""
+			],
+			"responses": [
+				[
+					200,
+					"{\"device_code\":\"dc\",\"user_code\":\"ABCD-1234\",\"verification_uri\":\"https://github.com/login/device\",\"interval\":1,\"expires_in\":900}"
+				],
+				[
+					200,
+					"{\"access_token\":\"gho_7\"}"
+				],
+				[
+					200,
+					"{\"token\":\"tid=abc;exp=1767229200;proxy-ep=proxy.individual.githubcopilot.com;sku=x\",\"expires_at\":1767229200}"
+				],
+				[
+					429,
+					"wait",
+					{
+						"retry-after": "soon"
+					}
+				]
+			],
+			"abortAt": null,
+			"hits": null,
+			"prompts": [
+				{
+					"type": "text",
+					"message": "GitHub Enterprise URL/domain (blank for github.com)",
+					"placeholder": "company.ghe.com",
+					"hasSignal": false
+				}
+			],
+			"events": [
+				{
+					"type": "device_code",
+					"userCode": "ABCD-1234",
+					"verificationUri": "https://github.com/login/device",
+					"intervalSeconds": 1,
+					"expiresInSeconds": 900
+				}
+			],
+			"requests": [
+				{
+					"at": 1767225600000,
+					"url": "https://github.com/login/device/code",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded",
+						"user-agent": "GitHubCopilotChat/0.35.0"
+					},
+					"body": "client_id=Iv1.b507a08c87ecfe98&scope=read%3Auser"
+				},
+				{
+					"at": 1767225601000,
+					"url": "https://github.com/login/oauth/access_token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded",
+						"user-agent": "GitHubCopilotChat/0.35.0"
+					},
+					"body": "client_id=Iv1.b507a08c87ecfe98&device_code=dc&grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code"
+				},
+				{
+					"at": 1767225601000,
+					"url": "https://api.github.com/copilot_internal/v2/token",
+					"method": "GET",
+					"headers": {
+						"accept": "application/json",
+						"authorization": "Bearer gho_7",
+						"user-agent": "GitHubCopilotChat/0.35.0",
+						"editor-version": "vscode/1.107.0",
+						"editor-plugin-version": "copilot-chat/0.35.0",
+						"copilot-integration-id": "vscode-chat"
+					},
+					"body": ""
+				},
+				{
+					"at": 1767225601000,
+					"url": "https://api.individual.githubcopilot.com/models",
+					"method": "GET",
+					"headers": {
+						"accept": "application/json",
+						"authorization": "Bearer tid=abc;exp=1767229200;proxy-ep=proxy.individual.githubcopilot.com;sku=x",
+						"user-agent": "GitHubCopilotChat/0.35.0",
+						"editor-version": "vscode/1.107.0",
+						"editor-plugin-version": "copilot-chat/0.35.0",
+						"copilot-integration-id": "vscode-chat",
+						"x-github-api-version": "2026-06-01"
+					},
+					"body": ""
+				}
+			],
+			"callbackResponses": [],
+			"result": null,
+			"error": "429 Too Many Requests: wait"
+		},
+		{
+			"name": "copilot invalid enterprise",
+			"provider": "github-copilot",
+			"answers": [
+				"http://[bad"
+			],
+			"responses": [],
+			"abortAt": null,
+			"hits": null,
+			"prompts": [
+				{
+					"type": "text",
+					"message": "GitHub Enterprise URL/domain (blank for github.com)",
+					"placeholder": "company.ghe.com",
+					"hasSignal": false
+				}
+			],
+			"events": [],
+			"requests": [],
+			"callbackResponses": [],
+			"result": null,
+			"error": "Invalid GitHub Enterprise URL/domain"
+		},
+		{
+			"name": "copilot device code http error",
+			"provider": "github-copilot",
+			"answers": [
+				""
+			],
+			"responses": [
+				[
+					500,
+					"down"
+				]
+			],
+			"abortAt": null,
+			"hits": null,
+			"prompts": [
+				{
+					"type": "text",
+					"message": "GitHub Enterprise URL/domain (blank for github.com)",
+					"placeholder": "company.ghe.com",
+					"hasSignal": false
+				}
+			],
+			"events": [],
+			"requests": [
+				{
+					"at": 1767225600000,
+					"url": "https://github.com/login/device/code",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded",
+						"user-agent": "GitHubCopilotChat/0.35.0"
+					},
+					"body": "client_id=Iv1.b507a08c87ecfe98&scope=read%3Auser"
+				}
+			],
+			"callbackResponses": [],
+			"result": null,
+			"error": "500 Internal Server Error: down"
+		},
+		{
+			"name": "copilot device code invalid",
+			"provider": "github-copilot",
+			"answers": [
+				""
+			],
+			"responses": [
+				[
+					200,
+					"[]"
+				]
+			],
+			"abortAt": null,
+			"hits": null,
+			"prompts": [
+				{
+					"type": "text",
+					"message": "GitHub Enterprise URL/domain (blank for github.com)",
+					"placeholder": "company.ghe.com",
+					"hasSignal": false
+				}
+			],
+			"events": [],
+			"requests": [
+				{
+					"at": 1767225600000,
+					"url": "https://github.com/login/device/code",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded",
+						"user-agent": "GitHubCopilotChat/0.35.0"
+					},
+					"body": "client_id=Iv1.b507a08c87ecfe98&scope=read%3Auser"
+				}
+			],
+			"callbackResponses": [],
+			"result": null,
+			"error": "Invalid device code response fields"
+		},
+		{
+			"name": "copilot device code null interval",
+			"provider": "github-copilot",
+			"answers": [
+				""
+			],
+			"responses": [
+				[
+					200,
+					"{\"device_code\":\"dc\",\"user_code\":\"ABCD-1234\",\"verification_uri\":\"https://github.com/login/device\",\"interval\":null,\"expires_in\":900}"
+				]
+			],
+			"abortAt": null,
+			"hits": null,
+			"prompts": [
+				{
+					"type": "text",
+					"message": "GitHub Enterprise URL/domain (blank for github.com)",
+					"placeholder": "company.ghe.com",
+					"hasSignal": false
+				}
+			],
+			"events": [],
+			"requests": [
+				{
+					"at": 1767225600000,
+					"url": "https://github.com/login/device/code",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded",
+						"user-agent": "GitHubCopilotChat/0.35.0"
+					},
+					"body": "client_id=Iv1.b507a08c87ecfe98&scope=read%3Auser"
+				}
+			],
+			"callbackResponses": [],
+			"result": null,
+			"error": "Invalid device code response fields"
+		},
+		{
+			"name": "copilot device code untrusted uri",
+			"provider": "github-copilot",
+			"answers": [
+				""
+			],
+			"responses": [
+				[
+					200,
+					"{\"device_code\":\"dc\",\"user_code\":\"ABCD-1234\",\"verification_uri\":\"file:///etc/passwd\",\"interval\":5,\"expires_in\":900}"
+				]
+			],
+			"abortAt": null,
+			"hits": null,
+			"prompts": [
+				{
+					"type": "text",
+					"message": "GitHub Enterprise URL/domain (blank for github.com)",
+					"placeholder": "company.ghe.com",
+					"hasSignal": false
+				}
+			],
+			"events": [],
+			"requests": [
+				{
+					"at": 1767225600000,
+					"url": "https://github.com/login/device/code",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded",
+						"user-agent": "GitHubCopilotChat/0.35.0"
+					},
+					"body": "client_id=Iv1.b507a08c87ecfe98&scope=read%3Auser"
+				}
+			],
+			"callbackResponses": [],
+			"result": null,
+			"error": "Untrusted verification_uri in device code response"
+		},
+		{
+			"name": "copilot device code unparseable uri",
+			"provider": "github-copilot",
+			"answers": [
+				""
+			],
+			"responses": [
+				[
+					200,
+					"{\"device_code\":\"dc\",\"user_code\":\"ABCD-1234\",\"verification_uri\":\"not a url\",\"interval\":5,\"expires_in\":900}"
+				]
+			],
+			"abortAt": null,
+			"hits": null,
+			"prompts": [
+				{
+					"type": "text",
+					"message": "GitHub Enterprise URL/domain (blank for github.com)",
+					"placeholder": "company.ghe.com",
+					"hasSignal": false
+				}
+			],
+			"events": [],
+			"requests": [
+				{
+					"at": 1767225600000,
+					"url": "https://github.com/login/device/code",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded",
+						"user-agent": "GitHubCopilotChat/0.35.0"
+					},
+					"body": "client_id=Iv1.b507a08c87ecfe98&scope=read%3Auser"
+				}
+			],
+			"callbackResponses": [],
+			"result": null,
+			"error": "Untrusted verification_uri in device code response"
+		},
+		{
+			"name": "copilot device denied",
+			"provider": "github-copilot",
+			"answers": [
+				""
+			],
+			"responses": [
+				[
+					200,
+					"{\"device_code\":\"dc\",\"user_code\":\"ABCD-1234\",\"verification_uri\":\"https://github.com/login/device\",\"interval\":1,\"expires_in\":900}"
+				],
+				[
+					200,
+					"{\"error\":\"access_denied\",\"error_description\":\"The user denied\"}"
+				]
+			],
+			"abortAt": null,
+			"hits": null,
+			"prompts": [
+				{
+					"type": "text",
+					"message": "GitHub Enterprise URL/domain (blank for github.com)",
+					"placeholder": "company.ghe.com",
+					"hasSignal": false
+				}
+			],
+			"events": [
+				{
+					"type": "device_code",
+					"userCode": "ABCD-1234",
+					"verificationUri": "https://github.com/login/device",
+					"intervalSeconds": 1,
+					"expiresInSeconds": 900
+				}
+			],
+			"requests": [
+				{
+					"at": 1767225600000,
+					"url": "https://github.com/login/device/code",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded",
+						"user-agent": "GitHubCopilotChat/0.35.0"
+					},
+					"body": "client_id=Iv1.b507a08c87ecfe98&scope=read%3Auser"
+				},
+				{
+					"at": 1767225601000,
+					"url": "https://github.com/login/oauth/access_token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded",
+						"user-agent": "GitHubCopilotChat/0.35.0"
+					},
+					"body": "client_id=Iv1.b507a08c87ecfe98&device_code=dc&grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code"
+				}
+			],
+			"callbackResponses": [],
+			"result": null,
+			"error": "Device flow failed: access_denied: The user denied"
+		},
+		{
+			"name": "copilot device invalid token response",
+			"provider": "github-copilot",
+			"answers": [
+				""
+			],
+			"responses": [
+				[
+					200,
+					"{\"device_code\":\"dc\",\"user_code\":\"ABCD-1234\",\"verification_uri\":\"https://github.com/login/device\",\"interval\":1,\"expires_in\":900}"
+				],
+				[
+					200,
+					"{\"x\":1}"
+				]
+			],
+			"abortAt": null,
+			"hits": null,
+			"prompts": [
+				{
+					"type": "text",
+					"message": "GitHub Enterprise URL/domain (blank for github.com)",
+					"placeholder": "company.ghe.com",
+					"hasSignal": false
+				}
+			],
+			"events": [
+				{
+					"type": "device_code",
+					"userCode": "ABCD-1234",
+					"verificationUri": "https://github.com/login/device",
+					"intervalSeconds": 1,
+					"expiresInSeconds": 900
+				}
+			],
+			"requests": [
+				{
+					"at": 1767225600000,
+					"url": "https://github.com/login/device/code",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded",
+						"user-agent": "GitHubCopilotChat/0.35.0"
+					},
+					"body": "client_id=Iv1.b507a08c87ecfe98&scope=read%3Auser"
+				},
+				{
+					"at": 1767225601000,
+					"url": "https://github.com/login/oauth/access_token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded",
+						"user-agent": "GitHubCopilotChat/0.35.0"
+					},
+					"body": "client_id=Iv1.b507a08c87ecfe98&device_code=dc&grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code"
+				}
+			],
+			"callbackResponses": [],
+			"result": null,
+			"error": "Invalid device token response"
+		},
+		{
+			"name": "copilot device poll http error",
+			"provider": "github-copilot",
+			"answers": [
+				""
+			],
+			"responses": [
+				[
+					200,
+					"{\"device_code\":\"dc\",\"user_code\":\"ABCD-1234\",\"verification_uri\":\"https://github.com/login/device\",\"interval\":1,\"expires_in\":900}"
+				],
+				[
+					502,
+					"gateway"
+				]
+			],
+			"abortAt": null,
+			"hits": null,
+			"prompts": [
+				{
+					"type": "text",
+					"message": "GitHub Enterprise URL/domain (blank for github.com)",
+					"placeholder": "company.ghe.com",
+					"hasSignal": false
+				}
+			],
+			"events": [
+				{
+					"type": "device_code",
+					"userCode": "ABCD-1234",
+					"verificationUri": "https://github.com/login/device",
+					"intervalSeconds": 1,
+					"expiresInSeconds": 900
+				}
+			],
+			"requests": [
+				{
+					"at": 1767225600000,
+					"url": "https://github.com/login/device/code",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded",
+						"user-agent": "GitHubCopilotChat/0.35.0"
+					},
+					"body": "client_id=Iv1.b507a08c87ecfe98&scope=read%3Auser"
+				},
+				{
+					"at": 1767225601000,
+					"url": "https://github.com/login/oauth/access_token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded",
+						"user-agent": "GitHubCopilotChat/0.35.0"
+					},
+					"body": "client_id=Iv1.b507a08c87ecfe98&device_code=dc&grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code"
+				}
+			],
+			"callbackResponses": [],
+			"result": null,
+			"error": "502 Bad Gateway: gateway"
+		},
+		{
+			"name": "copilot device timeout",
+			"provider": "github-copilot",
+			"answers": [
+				""
+			],
+			"responses": [
+				[
+					200,
+					"{\"device_code\":\"dc\",\"user_code\":\"ABCD-1234\",\"verification_uri\":\"https://github.com/login/device\",\"interval\":5,\"expires_in\":12}"
+				],
+				[
+					200,
+					"{\"error\":\"authorization_pending\"}"
+				],
+				[
+					200,
+					"{\"error\":\"authorization_pending\"}"
+				],
+				[
+					200,
+					"{\"error\":\"authorization_pending\"}"
+				]
+			],
+			"abortAt": null,
+			"hits": null,
+			"prompts": [
+				{
+					"type": "text",
+					"message": "GitHub Enterprise URL/domain (blank for github.com)",
+					"placeholder": "company.ghe.com",
+					"hasSignal": false
+				}
+			],
+			"events": [
+				{
+					"type": "device_code",
+					"userCode": "ABCD-1234",
+					"verificationUri": "https://github.com/login/device",
+					"intervalSeconds": 5,
+					"expiresInSeconds": 12
+				}
+			],
+			"requests": [
+				{
+					"at": 1767225600000,
+					"url": "https://github.com/login/device/code",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded",
+						"user-agent": "GitHubCopilotChat/0.35.0"
+					},
+					"body": "client_id=Iv1.b507a08c87ecfe98&scope=read%3Auser"
+				},
+				{
+					"at": 1767225605000,
+					"url": "https://github.com/login/oauth/access_token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded",
+						"user-agent": "GitHubCopilotChat/0.35.0"
+					},
+					"body": "client_id=Iv1.b507a08c87ecfe98&device_code=dc&grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code"
+				},
+				{
+					"at": 1767225610000,
+					"url": "https://github.com/login/oauth/access_token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded",
+						"user-agent": "GitHubCopilotChat/0.35.0"
+					},
+					"body": "client_id=Iv1.b507a08c87ecfe98&device_code=dc&grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code"
+				}
+			],
+			"callbackResponses": [],
+			"result": null,
+			"error": "Device flow timed out"
+		},
+		{
+			"name": "copilot prompt rejects",
+			"provider": "github-copilot",
+			"answers": [
+				{
+					"reject": "Login cancelled"
+				}
+			],
+			"responses": [],
+			"abortAt": null,
+			"hits": null,
+			"prompts": [
+				{
+					"type": "text",
+					"message": "GitHub Enterprise URL/domain (blank for github.com)",
+					"placeholder": "company.ghe.com",
+					"hasSignal": false
+				}
+			],
+			"events": [],
+			"requests": [],
+			"callbackResponses": [],
+			"result": null,
+			"error": "Login cancelled"
+		},
+		{
+			"name": "copilot cancelled while polling",
+			"provider": "github-copilot",
+			"answers": [
+				""
+			],
+			"responses": [
+				[
+					200,
+					"{\"device_code\":\"dc\",\"user_code\":\"ABCD-1234\",\"verification_uri\":\"https://github.com/login/device\",\"interval\":1,\"expires_in\":900}"
+				],
+				[
+					200,
+					"{\"error\":\"authorization_pending\"}"
+				]
+			],
+			"abortAt": 2,
+			"hits": null,
+			"prompts": [
+				{
+					"type": "text",
+					"message": "GitHub Enterprise URL/domain (blank for github.com)",
+					"placeholder": "company.ghe.com",
+					"hasSignal": false
+				}
+			],
+			"events": [
+				{
+					"type": "device_code",
+					"userCode": "ABCD-1234",
+					"verificationUri": "https://github.com/login/device",
+					"intervalSeconds": 1,
+					"expiresInSeconds": 900
+				}
+			],
+			"requests": [
+				{
+					"at": 1767225600000,
+					"url": "https://github.com/login/device/code",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded",
+						"user-agent": "GitHubCopilotChat/0.35.0"
+					},
+					"body": "client_id=Iv1.b507a08c87ecfe98&scope=read%3Auser"
+				},
+				{
+					"at": 1767225601000,
+					"url": "https://github.com/login/oauth/access_token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded",
+						"user-agent": "GitHubCopilotChat/0.35.0"
+					},
+					"body": "client_id=Iv1.b507a08c87ecfe98&device_code=dc&grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code"
+				}
+			],
+			"callbackResponses": [],
+			"result": null,
+			"error": "Login cancelled"
+		}
+	],
+	"pages": {
+		"success": "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n  <title>Authentication successful</title>\n  <style>\n    :root {\n      --text: #fafafa;\n      --text-dim: #a1a1aa;\n      --page-bg: #09090b;\n      --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\";\n      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace;\n    }\n    * { box-sizing: border-box; }\n    html { color-scheme: dark; }\n    body {\n      margin: 0;\n      min-height: 100vh;\n      display: flex;\n      align-items: center;\n      justify-content: center;\n      padding: 24px;\n      background: var(--page-bg);\n      color: var(--text);\n      font-family: var(--font-sans);\n      text-align: center;\n    }\n    main {\n      width: 100%;\n      max-width: 560px;\n      display: flex;\n      flex-direction: column;\n      align-items: center;\n      justify-content: center;\n    }\n    .logo {\n      width: 72px;\n      height: 72px;\n      display: block;\n      margin-bottom: 24px;\n    }\n    h1 {\n      margin: 0 0 10px;\n      font-size: 28px;\n      line-height: 1.15;\n      font-weight: 650;\n      color: var(--text);\n    }\n    p {\n      margin: 0;\n      line-height: 1.7;\n      color: var(--text-dim);\n      font-size: 15px;\n    }\n    .details {\n      margin-top: 16px;\n      font-family: var(--font-mono);\n      font-size: 13px;\n      color: var(--text-dim);\n      white-space: pre-wrap;\n      word-break: break-word;\n    }\n  </style>\n</head>\n<body>\n  <main>\n    <div class=\"logo\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 800 800\" aria-hidden=\"true\"><path fill=\"#fff\" fill-rule=\"evenodd\" d=\"M165.29 165.29 H517.36 V400 H400 V517.36 H282.65 V634.72 H165.29 Z M282.65 282.65 V400 H400 V282.65 Z\"/><path fill=\"#fff\" d=\"M517.36 400 H634.72 V634.72 H517.36 Z\"/></svg></div>\n    <h1>Authentication successful</h1>\n    <p>Done &lt;now&gt; &amp; &quot;then&quot; &#39;go&#39;</p>\n    \n  </main>\n</body>\n</html>",
+		"error": "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n  <title>Authentication failed</title>\n  <style>\n    :root {\n      --text: #fafafa;\n      --text-dim: #a1a1aa;\n      --page-bg: #09090b;\n      --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\";\n      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace;\n    }\n    * { box-sizing: border-box; }\n    html { color-scheme: dark; }\n    body {\n      margin: 0;\n      min-height: 100vh;\n      display: flex;\n      align-items: center;\n      justify-content: center;\n      padding: 24px;\n      background: var(--page-bg);\n      color: var(--text);\n      font-family: var(--font-sans);\n      text-align: center;\n    }\n    main {\n      width: 100%;\n      max-width: 560px;\n      display: flex;\n      flex-direction: column;\n      align-items: center;\n      justify-content: center;\n    }\n    .logo {\n      width: 72px;\n      height: 72px;\n      display: block;\n      margin-bottom: 24px;\n    }\n    h1 {\n      margin: 0 0 10px;\n      font-size: 28px;\n      line-height: 1.15;\n      font-weight: 650;\n      color: var(--text);\n    }\n    p {\n      margin: 0;\n      line-height: 1.7;\n      color: var(--text-dim);\n      font-size: 15px;\n    }\n    .details {\n      margin-top: 16px;\n      font-family: var(--font-mono);\n      font-size: 13px;\n      color: var(--text-dim);\n      white-space: pre-wrap;\n      word-break: break-word;\n    }\n  </style>\n</head>\n<body>\n  <main>\n    <div class=\"logo\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 800 800\" aria-hidden=\"true\"><path fill=\"#fff\" fill-rule=\"evenodd\" d=\"M165.29 165.29 H517.36 V400 H400 V517.36 H282.65 V634.72 H165.29 Z M282.65 282.65 V400 H400 V282.65 Z\"/><path fill=\"#fff\" d=\"M517.36 400 H634.72 V634.72 H517.36 Z\"/></svg></div>\n    <h1>Authentication failed</h1>\n    <p>Failed.</p>\n    <div class=\"details\">Error: &lt;x&gt;</div>\n  </main>\n</body>\n</html>",
+		"errorNoDetails": "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n  <title>Authentication failed</title>\n  <style>\n    :root {\n      --text: #fafafa;\n      --text-dim: #a1a1aa;\n      --page-bg: #09090b;\n      --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\";\n      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace;\n    }\n    * { box-sizing: border-box; }\n    html { color-scheme: dark; }\n    body {\n      margin: 0;\n      min-height: 100vh;\n      display: flex;\n      align-items: center;\n      justify-content: center;\n      padding: 24px;\n      background: var(--page-bg);\n      color: var(--text);\n      font-family: var(--font-sans);\n      text-align: center;\n    }\n    main {\n      width: 100%;\n      max-width: 560px;\n      display: flex;\n      flex-direction: column;\n      align-items: center;\n      justify-content: center;\n    }\n    .logo {\n      width: 72px;\n      height: 72px;\n      display: block;\n      margin-bottom: 24px;\n    }\n    h1 {\n      margin: 0 0 10px;\n      font-size: 28px;\n      line-height: 1.15;\n      font-weight: 650;\n      color: var(--text);\n    }\n    p {\n      margin: 0;\n      line-height: 1.7;\n      color: var(--text-dim);\n      font-size: 15px;\n    }\n    .details {\n      margin-top: 16px;\n      font-family: var(--font-mono);\n      font-size: 13px;\n      color: var(--text-dim);\n      white-space: pre-wrap;\n      word-break: break-word;\n    }\n  </style>\n</head>\n<body>\n  <main>\n    <div class=\"logo\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 800 800\" aria-hidden=\"true\"><path fill=\"#fff\" fill-rule=\"evenodd\" d=\"M165.29 165.29 H517.36 V400 H400 V517.36 H282.65 V634.72 H165.29 Z M282.65 282.65 V400 H400 V282.65 Z\"/><path fill=\"#fff\" d=\"M517.36 400 H634.72 V634.72 H517.36 Z\"/></svg></div>\n    <h1>Authentication failed</h1>\n    <p>Failed.</p>\n    \n  </main>\n</body>\n</html>"
+	}
+}

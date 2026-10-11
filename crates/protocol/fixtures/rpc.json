@@ -1,0 +1,135 @@
+{
+ "source": "packages/coding-agent/src/modes/rpc",
+ "commands": [
+  "{\"id\":\"1\",\"type\":\"prompt\",\"message\":\"hi there\",\"images\":[{\"type\":\"image\",\"data\":\"aGk=\",\"mimeType\":\"image/png\"}],\"streamingBehavior\":\"steer\"}\n",
+  "{\"type\":\"prompt\",\"message\":\"plain\"}\n",
+  "{\"type\":\"prompt\",\"message\":\"q\",\"streamingBehavior\":\"followUp\"}\n",
+  "{\"id\":\"s\",\"type\":\"steer\",\"message\":\"go\",\"images\":[]}\n",
+  "{\"type\":\"follow_up\",\"message\":\"later\"}\n",
+  "{\"type\":\"abort\"}\n",
+  "{\"id\":\"c\",\"type\":\"clear_queue\"}\n",
+  "{\"type\":\"new_session\",\"parentSession\":\"/tmp/p.jsonl\"}\n",
+  "{\"type\":\"new_session\"}\n",
+  "{\"type\":\"get_state\"}\n",
+  "{\"type\":\"set_model\",\"provider\":\"anthropic\",\"modelId\":\"claude\"}\n",
+  "{\"type\":\"cycle_model\"}\n",
+  "{\"type\":\"get_available_models\"}\n",
+  "{\"type\":\"set_thinking_level\",\"level\":\"high\"}\n",
+  "{\"type\":\"cycle_thinking_level\"}\n",
+  "{\"type\":\"get_available_thinking_levels\"}\n",
+  "{\"type\":\"set_steering_mode\",\"mode\":\"all\"}\n",
+  "{\"type\":\"set_follow_up_mode\",\"mode\":\"one-at-a-time\"}\n",
+  "{\"type\":\"compact\",\"customInstructions\":\"short\"}\n",
+  "{\"type\":\"compact\"}\n",
+  "{\"type\":\"set_auto_compaction\",\"enabled\":true}\n",
+  "{\"type\":\"set_auto_retry\",\"enabled\":false}\n",
+  "{\"type\":\"abort_retry\"}\n",
+  "{\"id\":\"b\",\"type\":\"bash\",\"command\":\"echo \\\"x\\\"\\ttab\",\"excludeFromContext\":true}\n",
+  "{\"type\":\"bash\",\"command\":\"ls\"}\n",
+  "{\"type\":\"abort_bash\"}\n",
+  "{\"type\":\"get_session_stats\"}\n",
+  "{\"type\":\"export_html\",\"outputPath\":\"/tmp/o.html\"}\n",
+  "{\"type\":\"export_html\"}\n",
+  "{\"type\":\"switch_session\",\"sessionPath\":\"/tmp/s.jsonl\"}\n",
+  "{\"type\":\"fork\",\"entryId\":\"e1\"}\n",
+  "{\"type\":\"clone\"}\n",
+  "{\"type\":\"get_fork_messages\"}\n",
+  "{\"type\":\"get_entries\",\"since\":\"e0\"}\n",
+  "{\"type\":\"get_entries\"}\n",
+  "{\"type\":\"get_tree\"}\n",
+  "{\"type\":\"get_last_assistant_text\"}\n",
+  "{\"type\":\"set_session_name\",\"name\":\"名前 \\u0001\"}\n",
+  "{\"type\":\"get_messages\"}\n",
+  "{\"type\":\"get_commands\"}\n"
+ ],
+ "responses": [
+  "{\"id\":\"1\",\"type\":\"response\",\"command\":\"prompt\",\"success\":true}\n",
+  "{\"type\":\"response\",\"command\":\"clear_queue\",\"success\":true,\"data\":{\"steering\":[\"a\"],\"followUp\":[]}}\n",
+  "{\"id\":\"x\",\"type\":\"response\",\"command\":\"fork\",\"success\":true,\"data\":{\"text\":\"t\",\"cancelled\":false}}\n",
+  "{\"id\":\"y\",\"type\":\"response\",\"command\":\"nope\",\"success\":false,\"error\":\"Unknown command: nope\"}\n",
+  "{\"type\":\"response\",\"command\":\"export_html\",\"success\":true,\"data\":{\"path\":\"/tmp/o.html\"}}\n"
+ ],
+ "uiResponses": [
+  "{\"type\":\"extension_ui_response\",\"id\":\"u1\",\"value\":\"picked\"}\n",
+  "{\"type\":\"extension_ui_response\",\"id\":\"u2\",\"confirmed\":true}\n",
+  "{\"type\":\"extension_ui_response\",\"id\":\"u3\",\"cancelled\":true}\n"
+ ],
+ "reader": [
+  {
+   "chunks": [
+    "7b2261223a317d0a7b2262223a327d0a"
+   ],
+   "lines": [
+    "{\"a\":1}",
+    "{\"b\":2}"
+   ]
+  },
+  {
+   "chunks": [
+    "7b2261223a317d0d0a",
+    "7461696c"
+   ],
+   "lines": [
+    "{\"a\":1}",
+    "tail"
+   ]
+  },
+  {
+   "chunks": [
+    "78e280a879e280a97a0a"
+   ],
+   "lines": [
+    "x y z"
+   ]
+  },
+  {
+   "chunks": [
+    "707265e2",
+    "82ac706f73740a"
+   ],
+   "lines": [
+    "pre€post"
+   ]
+  },
+  {
+   "chunks": [
+    "0a0a",
+    "0d0a"
+   ],
+   "lines": [
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "chunks": [
+    "6e6f206e65776c696e6520617420656e64"
+   ],
+   "lines": [
+    "no newline at end"
+   ]
+  },
+  {
+   "chunks": [
+    "610d620a"
+   ],
+   "lines": [
+    "a\rb"
+   ]
+  },
+  {
+   "chunks": [
+    "6f6b0aff0a"
+   ],
+   "lines": [
+    "ok",
+    "�"
+   ]
+  },
+  {
+   "chunks": [],
+   "lines": []
+  }
+ ]
+}

@@ -1,0 +1,77 @@
+{
+	"area": "hints",
+	"scenarios": [
+		{
+			"name": "mute, unmute, muted",
+			"cells": [
+				{
+					"code": "print(await hints.muted())",
+					"status": "ok",
+					"stdout": "[]\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "print(await hints.mute('stuck-loop'))",
+					"status": "ok",
+					"stdout": "['stuck-loop']\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "print(await hints.mute('stuck-loop', 'repeated-failure'))",
+					"status": "ok",
+					"stdout": "['repeated-failure', 'stuck-loop']\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "print(await hints.muted())",
+					"status": "ok",
+					"stdout": "['repeated-failure', 'stuck-loop']\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "print(await hints.unmute('stuck-loop'))",
+					"status": "ok",
+					"stdout": "['repeated-failure']\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "print(await hints.unmute('stuck-loop'))",
+					"status": "ok",
+					"stdout": "['repeated-failure']\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\ntry:\n    print(\"ok\", await hints.mute('bogus'))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    print(\"ok\", await hints.mute())\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    print(\"ok\", await hints.mute(''))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    print(\"ok\", await rlm.host_request('hints.mute', {'tags': []}))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    print(\"ok\", await rlm.host_request('hints.mute', {'tags': [1]}))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    print(\"ok\", await rlm.host_request('hints.nope', {}))\nexcept Exception as e:\n    print(type(e).__name__, e)",
+					"status": "ok",
+					"stdout": "RuntimeError Unknown hint tag \"bogus\"; tags: stuck-loop, job-detached, blocked-on-job, poll-loop, repeated-failure, repeated-cell, large-read, output-truncated\nTypeError hint tags must be one or more non-empty strings\nTypeError hint tags must be one or more non-empty strings\nRuntimeError hint tags must be one or more strings\nRuntimeError Unknown hint tag 1; tags: stuck-loop, job-detached, blocked-on-job, poll-loop, repeated-failure, repeated-cell, large-read, output-truncated\nRuntimeError hint tags must be one or more strings\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "print(repr(hints))",
+					"status": "ok",
+					"stdout": "hints (await hints.mute(tag), hints.unmute(tag), hints.muted())\n",
+					"result": "",
+					"error": null
+				}
+			],
+			"state": {
+				"version": 1,
+				"lanes": {
+					"main": {
+						"muted": [
+							"repeated-failure"
+						],
+						"fired": {}
+					}
+				}
+			}
+		}
+	]
+}

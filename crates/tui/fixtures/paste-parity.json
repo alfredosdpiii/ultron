@@ -1,0 +1,1119 @@
+{
+ "source": "oh-my-pi bracketed-paste.ts, enhanced-paste.ts, prompt/custom-editor.ts path helpers",
+ "bracketed": [
+  {
+   "chunks": [
+    "plain text"
+   ],
+   "limit": null,
+   "results": [
+    {
+     "handled": false
+    }
+   ]
+  },
+  {
+   "chunks": [
+    "\u001b[200~hello\u001b[201~"
+   ],
+   "limit": null,
+   "results": [
+    {
+     "handled": true,
+     "pasteContent": "hello",
+     "remaining": ""
+    }
+   ]
+  },
+  {
+   "chunks": [
+    "\u001b[200~hel",
+    "lo",
+    "\u001b[201~rest"
+   ],
+   "limit": null,
+   "results": [
+    {
+     "handled": true,
+     "remaining": ""
+    },
+    {
+     "handled": true,
+     "remaining": ""
+    },
+    {
+     "handled": true,
+     "pasteContent": "hello",
+     "remaining": "rest"
+    }
+   ]
+  },
+  {
+   "chunks": [
+    "a\u001b[200~b\u001b[201~c"
+   ],
+   "limit": null,
+   "results": [
+    {
+     "handled": true,
+     "pasteContent": "ab",
+     "remaining": "c"
+    }
+   ]
+  },
+  {
+   "chunks": [
+    "\u001b[200~x\u001b[201~\u001b[200~y\u001b[201~"
+   ],
+   "limit": null,
+   "results": [
+    {
+     "handled": true,
+     "pasteContent": "x",
+     "remaining": "\u001b[200~y\u001b[201~"
+    }
+   ]
+  },
+  {
+   "chunks": [
+    "\u001b[200~\u001b[200~nested\u001b[201~"
+   ],
+   "limit": null,
+   "results": [
+    {
+     "handled": true,
+     "pasteContent": "nested",
+     "remaining": ""
+    }
+   ]
+  },
+  {
+   "chunks": [
+    "\u001b[200~one",
+    "\u001b[200~two\u001b[201~"
+   ],
+   "limit": null,
+   "results": [
+    {
+     "handled": true,
+     "remaining": ""
+    },
+    {
+     "handled": true,
+     "pasteContent": "onetwo",
+     "remaining": ""
+    }
+   ]
+  },
+  {
+   "chunks": [
+    "before",
+    "\u001b[200~p\u001b[201~",
+    "after"
+   ],
+   "limit": null,
+   "results": [
+    {
+     "handled": false
+    },
+    {
+     "handled": true,
+     "pasteContent": "p",
+     "remaining": ""
+    },
+    {
+     "handled": false
+    }
+   ]
+  },
+  {
+   "chunks": [
+    "\u001b[200~multi\nline\r\n\u001b[201~"
+   ],
+   "limit": null,
+   "results": [
+    {
+     "handled": true,
+     "pasteContent": "multi\nline\r\n",
+     "remaining": ""
+    }
+   ]
+  },
+  {
+   "chunks": [
+    "\u001b[200~\u001b[201~"
+   ],
+   "limit": null,
+   "results": [
+    {
+     "handled": true,
+     "pasteContent": "",
+     "remaining": ""
+    }
+   ]
+  },
+  {
+   "chunks": [
+    "\u001b[200~é日本\u001b[201~tail"
+   ],
+   "limit": null,
+   "results": [
+    {
+     "handled": true,
+     "pasteContent": "é日本",
+     "remaining": "tail"
+    }
+   ]
+  }
+ ],
+ "bracketedLimit": [
+  {
+   "chunks": [
+    "\u001b[200~0123456789abcdef"
+   ],
+   "limit": 8,
+   "results": [
+    {
+     "handled": true,
+     "pasteContent": "0123456789abcdef",
+     "remaining": ""
+    }
+   ]
+  },
+  {
+   "chunks": [
+    "\u001b[200~0123",
+    "4567",
+    "89\u001b[201~"
+   ],
+   "limit": 8,
+   "results": [
+    {
+     "handled": true,
+     "remaining": ""
+    },
+    {
+     "handled": true,
+     "remaining": ""
+    },
+    {
+     "handled": true,
+     "pasteContent": "0123456789",
+     "remaining": ""
+    }
+   ]
+  }
+ ],
+ "reencoded": [
+  {
+   "input": "line1\u001b[106;5uline2",
+   "output": "line1\nline2"
+  },
+  {
+   "input": "a\u001b[27;5;106~b",
+   "output": "a\nb"
+  },
+  {
+   "input": "tab\u001b[105;5u\u001b[73;5u",
+   "output": "tab\t\t"
+  },
+  {
+   "input": "keep\u001b[49;5u\u001b[27;5;27~",
+   "output": "keep\u001b[49;5u\u001b[27;5;27~"
+  },
+  {
+   "input": "mixed\u001b[109;5u\u001b[27;5;77~end",
+   "output": "mixed\r\rend"
+  },
+  {
+   "input": "none",
+   "output": "none"
+  }
+ ],
+ "enhanced": {
+  "image_with_password": [
+   {
+    "input": "\u001b]5522;type=read:status=OK:pw=c2VjcmV0\u001b\\",
+    "handled": true,
+    "events": []
+   },
+   {
+    "input": "\u001b]5522;type=read:status=DATA:mime=dGV4dC9wbGFpbg==\u001b\\",
+    "handled": true,
+    "events": []
+   },
+   {
+    "input": "\u001b]5522;type=read:status=DATA:mime=aW1hZ2UvcG5n\u001b\\",
+    "handled": true,
+    "events": []
+   },
+   {
+    "input": "\u001b]5522;type=read:status=DONE\u001b\\",
+    "handled": true,
+    "events": [
+     [
+      "write",
+      "\u001b]5522;type=read:pw=c2VjcmV0:name=UGFzdGUgZXZlbnQ=:mime=aW1hZ2UvcG5n\u0007"
+     ]
+    ]
+   },
+   {
+    "input": "\u001b]5522;type=read:status=OK\u001b\\",
+    "handled": true,
+    "events": []
+   },
+   {
+    "input": "\u001b]5522;type=read:status=DATA:mime=aW1hZ2UvcG5n;aW1hZ2Ut\u001b\\",
+    "handled": true,
+    "events": []
+   },
+   {
+    "input": "\u001b]5522;type=read:status=DATA:mime=aW1hZ2UvcG5n;Ynl0ZXM=\u001b\\",
+    "handled": true,
+    "events": []
+   },
+   {
+    "input": "\u001b]5522;type=read:status=DONE\u001b\\",
+    "handled": true,
+    "events": [
+     [
+      "image",
+      "aW1hZ2UtYnl0ZXM=",
+      "image/png"
+     ]
+    ]
+   }
+  ],
+  "text_primary": [
+   {
+    "input": "plain text",
+    "handled": false,
+    "events": []
+   },
+   {
+    "input": "\u001b]5522;type=read:status=OK:loc=primary:pw=c2VjcmV0\u001b\\",
+    "handled": true,
+    "events": []
+   },
+   {
+    "input": "\u001b]5522;type=read:status=DATA:mime=dGV4dC9wbGFpbg==\u001b\\",
+    "handled": true,
+    "events": []
+   },
+   {
+    "input": "\u001b]5522;type=read:status=DONE\u001b\\",
+    "handled": true,
+    "events": [
+     [
+      "write",
+      "\u001b]5522;type=read:loc=primary:pw=c2VjcmV0:name=UGFzdGUgZXZlbnQ=:mime=dGV4dC9wbGFpbg==\u0007"
+     ]
+    ]
+   },
+   {
+    "input": "\u001b]5522;type=read:status=OK\u001b\\",
+    "handled": true,
+    "events": []
+   },
+   {
+    "input": "\u001b]5522;type=read:status=DATA:mime=dGV4dC9wbGFpbg==;aGVsbG8g\u001b\\",
+    "handled": true,
+    "events": []
+   },
+   {
+    "input": "\u001b]5522;type=read:status=DATA:mime=dGV4dC9wbGFpbg==;d29ybGQ=\u001b\\",
+    "handled": true,
+    "events": []
+   },
+   {
+    "input": "\u001b]5522;type=read:status=DONE\u0007",
+    "handled": true,
+    "events": [
+     [
+      "text",
+      "hello world"
+     ]
+    ]
+   }
+  ],
+  "unsupported": [
+   {
+    "input": "\u001b]5522;type=read:status=OK\u001b\\",
+    "handled": true,
+    "events": []
+   },
+   {
+    "input": "\u001b]5522;type=read:status=DATA:mime=dGV4dC9odG1s\u001b\\",
+    "handled": true,
+    "events": []
+   },
+   {
+    "input": "\u001b]5522;type=read:status=DONE\u001b\\",
+    "handled": true,
+    "events": [
+     [
+      "status",
+      "Clipboard paste has no supported text or image data"
+     ]
+    ]
+   }
+  ],
+  "kitty_dot_text": [
+   {
+    "input": "\u001b]5522;type=read:status=OK:pw=c2VjcmV0\u001b\\",
+    "handled": true,
+    "events": []
+   },
+   {
+    "input": "\u001b]5522;type=read:status=DATA:mime=Lg==:pw=c2VjcmV0;dGV4dC9wbGFpbgo=\u001b\\",
+    "handled": true,
+    "events": []
+   },
+   {
+    "input": "\u001b]5522;type=read:status=DONE:pw=c2VjcmV0\u001b\\",
+    "handled": true,
+    "events": [
+     [
+      "write",
+      "\u001b]5522;type=read:pw=c2VjcmV0:name=UGFzdGUgZXZlbnQ=;dGV4dC9wbGFpbg==\u0007"
+     ]
+    ]
+   },
+   {
+    "input": "\u001b]5522;type=read:status=OK\u001b\\",
+    "handled": true,
+    "events": []
+   },
+   {
+    "input": "\u001b]5522;type=read:status=DATA:mime=dGV4dC9wbGFpbg==;aGVsbG8=\u001b\\",
+    "handled": true,
+    "events": []
+   },
+   {
+    "input": "\u001b]5522;type=read:status=DATA:mime=dGV4dC9wbGFpbg==;IHdvcmxk\u001b\\",
+    "handled": true,
+    "events": []
+   },
+   {
+    "input": "\u001b]5522;type=read:status=DONE\u001b\\",
+    "handled": true,
+    "events": [
+     [
+      "text",
+      "hello world"
+     ]
+    ]
+   }
+  ],
+  "kitty_dot_prefers_image": [
+   {
+    "input": "\u001b]5522;type=read:status=OK\u001b\\",
+    "handled": true,
+    "events": []
+   },
+   {
+    "input": "\u001b]5522;type=read:status=DATA:mime=Lg==;dGV4dC9wbGFpbiBpbWFnZS9wbmcgdGV4dC9odG1sCg==\u001b\\",
+    "handled": true,
+    "events": []
+   },
+   {
+    "input": "\u001b]5522;type=read:status=DONE\u001b\\",
+    "handled": true,
+    "events": [
+     [
+      "write",
+      "\u001b]5522;type=read;aW1hZ2UvcG5n\u0007"
+     ]
+    ]
+   }
+  ],
+  "jpeg_over_text": [
+   {
+    "input": "\u001b]5522;type=read:status=OK\u001b\\",
+    "handled": true,
+    "events": []
+   },
+   {
+    "input": "\u001b]5522;type=read:status=DATA:mime=dGV4dC9wbGFpbg==\u001b\\",
+    "handled": true,
+    "events": []
+   },
+   {
+    "input": "\u001b]5522;type=read:status=DATA:mime=aW1hZ2UvanBlZw==\u001b\\",
+    "handled": true,
+    "events": []
+   },
+   {
+    "input": "\u001b]5522;type=read:status=DONE\u001b\\",
+    "handled": true,
+    "events": [
+     [
+      "write",
+      "\u001b]5522;type=read:mime=aW1hZ2UvanBlZw==\u0007"
+     ]
+    ]
+   },
+   {
+    "input": "\u001b]5522;type=read:status=OK\u001b\\",
+    "handled": true,
+    "events": []
+   },
+   {
+    "input": "\u001b]5522;type=read:status=DATA:mime=dGV4dC9wbGFpbg==;aWdub3JlZA==\u001b\\",
+    "handled": true,
+    "events": []
+   },
+   {
+    "input": "\u001b]5522;type=read:status=DATA:mime=aW1hZ2UvanBlZw==;w7/DmGpwZWc=\u001b\\",
+    "handled": true,
+    "events": []
+   },
+   {
+    "input": "\u001b]5522;type=read:status=DONE\u001b\\",
+    "handled": true,
+    "events": [
+     [
+      "image",
+      "w7/DmGpwZWc=",
+      "image/jpeg"
+     ]
+    ]
+   }
+  ],
+  "png_over_jpeg": [
+   {
+    "input": "\u001b]5522;type=read:status=OK\u001b\\",
+    "handled": true,
+    "events": []
+   },
+   {
+    "input": "\u001b]5522;type=read:status=DATA:mime=aW1hZ2UvanBlZw==\u001b\\",
+    "handled": true,
+    "events": []
+   },
+   {
+    "input": "\u001b]5522;type=read:status=DATA:mime=aW1hZ2UvcG5n\u001b\\",
+    "handled": true,
+    "events": []
+   },
+   {
+    "input": "\u001b]5522;type=read:status=DONE\u001b\\",
+    "handled": true,
+    "events": [
+     [
+      "write",
+      "\u001b]5522;type=read:mime=aW1hZ2UvcG5n\u0007"
+     ]
+    ]
+   }
+  ],
+  "empty_read": [
+   {
+    "input": "\u001b]5522;type=read:status=OK\u001b\\",
+    "handled": true,
+    "events": []
+   },
+   {
+    "input": "\u001b]5522;type=read:status=DATA:mime=dGV4dC9wbGFpbg==\u001b\\",
+    "handled": true,
+    "events": []
+   },
+   {
+    "input": "\u001b]5522;type=read:status=DONE\u001b\\",
+    "handled": true,
+    "events": [
+     [
+      "write",
+      "\u001b]5522;type=read:mime=dGV4dC9wbGFpbg==\u0007"
+     ]
+    ]
+   },
+   {
+    "input": "\u001b]5522;type=read:status=OK\u001b\\",
+    "handled": true,
+    "events": []
+   },
+   {
+    "input": "\u001b]5522;type=read:status=DONE\u001b\\",
+    "handled": true,
+    "events": [
+     [
+      "status",
+      "Clipboard paste was empty"
+     ]
+    ]
+   }
+  ],
+  "error_status": [
+   {
+    "input": "\u001b]5522;type=read:status=OK\u001b\\",
+    "handled": true,
+    "events": []
+   },
+   {
+    "input": "\u001b]5522;type=read:status=ENOSYS\u001b\\",
+    "handled": true,
+    "events": [
+     [
+      "status",
+      "Enhanced paste failed: ENOSYS"
+     ]
+    ]
+   },
+   {
+    "input": "\u001b]5522;type=read:status=DONE\u001b\\",
+    "handled": true,
+    "events": []
+   }
+  ],
+  "other_types": [
+   {
+    "input": "\u001b]5522;type=write:status=OK\u001b\\",
+    "handled": true,
+    "events": []
+   },
+   {
+    "input": "\u001b]5522;status=OK\u001b\\",
+    "handled": true,
+    "events": []
+   },
+   {
+    "input": "\u001b]5522;type=read\u001b\\",
+    "handled": true,
+    "events": []
+   },
+   {
+    "input": "\u001b]5522;type=read:status=OK",
+    "handled": false,
+    "events": []
+   }
+  ],
+  "dot_without_payload": [
+   {
+    "input": "\u001b]5522;type=read:status=OK\u001b\\",
+    "handled": true,
+    "events": []
+   },
+   {
+    "input": "\u001b]5522;type=read:status=DATA:mime=Lg==\u001b\\",
+    "handled": true,
+    "events": []
+   },
+   {
+    "input": "\u001b]5522;type=read:status=DATA:mime=dGV4dC9wbGFpbg==\u001b\\",
+    "handled": true,
+    "events": []
+   },
+   {
+    "input": "\u001b]5522;type=read:status=DONE\u001b\\",
+    "handled": true,
+    "events": [
+     [
+      "write",
+      "\u001b]5522;type=read:mime=dGV4dC9wbGFpbg==\u0007"
+     ]
+    ]
+   }
+  ],
+  "malformed_meta": [
+   {
+    "input": "\u001b]5522;type=read:status=OK:=x:noeq:loc=clipboard\u001b\\",
+    "handled": true,
+    "events": []
+   },
+   {
+    "input": "\u001b]5522;type=read:status=DATA:mime=dGV4dC9wbGFpbg==\u001b\\",
+    "handled": true,
+    "events": []
+   },
+   {
+    "input": "\u001b]5522;type=read:status=DONE\u001b\\",
+    "handled": true,
+    "events": [
+     [
+      "write",
+      "\u001b]5522;type=read:mime=dGV4dC9wbGFpbg==\u0007"
+     ]
+    ]
+   }
+  ]
+ },
+ "paths": [
+  {
+   "input": "/tmp/screenshot.png",
+   "paths": [
+    "/tmp/screenshot.png"
+   ],
+   "imagePaths": [
+    "/tmp/screenshot.png"
+   ],
+   "imagePath": "/tmp/screenshot.png",
+   "bracketed": [
+    "/tmp/screenshot.png"
+   ],
+   "bracketedImages": [
+    "/tmp/screenshot.png"
+   ]
+  },
+  {
+   "input": "/Users/me/Pictures/photo.jpeg",
+   "paths": [
+    "/Users/me/Pictures/photo.jpeg"
+   ],
+   "imagePaths": [
+    "/Users/me/Pictures/photo.jpeg"
+   ],
+   "imagePath": "/Users/me/Pictures/photo.jpeg",
+   "bracketed": [
+    "/Users/me/Pictures/photo.jpeg"
+   ],
+   "bracketedImages": [
+    "/Users/me/Pictures/photo.jpeg"
+   ]
+  },
+  {
+   "input": "C:\\Users\\me\\img.gif",
+   "paths": [
+    "C:\\Users\\me\\img.gif"
+   ],
+   "imagePaths": [
+    "C:\\Users\\me\\img.gif"
+   ],
+   "imagePath": "C:\\Users\\me\\img.gif",
+   "bracketed": [
+    "C:\\Users\\me\\img.gif"
+   ],
+   "bracketedImages": [
+    "C:\\Users\\me\\img.gif"
+   ]
+  },
+  {
+   "input": "/Users/me/Movies/launch.mp4",
+   "paths": [
+    "/Users/me/Movies/launch.mp4"
+   ],
+   "imagePaths": [
+    "/Users/me/Movies/launch.mp4"
+   ],
+   "imagePath": "/Users/me/Movies/launch.mp4",
+   "bracketed": [
+    "/Users/me/Movies/launch.mp4"
+   ],
+   "bracketedImages": [
+    "/Users/me/Movies/launch.mp4"
+   ]
+  },
+  {
+   "input": "  /tmp/photo.webp\n",
+   "paths": [
+    "/tmp/photo.webp"
+   ],
+   "imagePaths": [
+    "/tmp/photo.webp"
+   ],
+   "imagePath": "/tmp/photo.webp",
+   "bracketed": [
+    "/tmp/photo.webp"
+   ],
+   "bracketedImages": [
+    "/tmp/photo.webp"
+   ]
+  },
+  {
+   "input": "icon.png",
+   "paths": null,
+   "imagePaths": null,
+   "imagePath": null,
+   "bracketed": null,
+   "bracketedImages": null
+  },
+  {
+   "input": "/tmp/report.csv",
+   "paths": [
+    "/tmp/report.csv"
+   ],
+   "imagePaths": null,
+   "imagePath": null,
+   "bracketed": [
+    "/tmp/report.csv"
+   ],
+   "bracketedImages": null
+  },
+  {
+   "input": "/tmp/notes.txt",
+   "paths": [
+    "/tmp/notes.txt"
+   ],
+   "imagePaths": null,
+   "imagePath": null,
+   "bracketed": [
+    "/tmp/notes.txt"
+   ],
+   "bracketedImages": null
+  },
+  {
+   "input": "see /tmp/screenshot.png",
+   "paths": null,
+   "imagePaths": null,
+   "imagePath": null,
+   "bracketed": null,
+   "bracketedImages": null
+  },
+  {
+   "input": "/tmp/a.png /tmp/b.png",
+   "paths": [
+    "/tmp/a.png",
+    "/tmp/b.png"
+   ],
+   "imagePaths": [
+    "/tmp/a.png",
+    "/tmp/b.png"
+   ],
+   "imagePath": null,
+   "bracketed": [
+    "/tmp/a.png",
+    "/tmp/b.png"
+   ],
+   "bracketedImages": [
+    "/tmp/a.png",
+    "/tmp/b.png"
+   ]
+  },
+  {
+   "input": "",
+   "paths": null,
+   "imagePaths": null,
+   "imagePath": null,
+   "bracketed": null,
+   "bracketedImages": null
+  },
+  {
+   "input": "   ",
+   "paths": null,
+   "imagePaths": null,
+   "imagePath": null,
+   "bracketed": null,
+   "bracketedImages": null
+  },
+  {
+   "input": "file:///Users/me/Pictures/photo.png",
+   "paths": [
+    "/Users/me/Pictures/photo.png"
+   ],
+   "imagePaths": [
+    "/Users/me/Pictures/photo.png"
+   ],
+   "imagePath": "/Users/me/Pictures/photo.png",
+   "bracketed": [
+    "/Users/me/Pictures/photo.png"
+   ],
+   "bracketedImages": [
+    "/Users/me/Pictures/photo.png"
+   ]
+  },
+  {
+   "input": "file:///tmp/My%20Shot.png",
+   "paths": [
+    "/tmp/My Shot.png"
+   ],
+   "imagePaths": [
+    "/tmp/My Shot.png"
+   ],
+   "imagePath": "/tmp/My Shot.png",
+   "bracketed": [
+    "/tmp/My Shot.png"
+   ],
+   "bracketedImages": [
+    "/tmp/My Shot.png"
+   ]
+  },
+  {
+   "input": "/Users/me/Desktop/Screenshot 2026-06-25 at 1.23.45 PM.png",
+   "paths": null,
+   "imagePaths": [
+    "/Users/me/Desktop/Screenshot 2026-06-25 at 1.23.45 PM.png"
+   ],
+   "imagePath": "/Users/me/Desktop/Screenshot 2026-06-25 at 1.23.45 PM.png",
+   "bracketed": null,
+   "bracketedImages": [
+    "/Users/me/Desktop/Screenshot 2026-06-25 at 1.23.45 PM.png"
+   ]
+  },
+  {
+   "input": "~/Pictures/Cleanshot 2026-06-25 at 12.00.png",
+   "paths": null,
+   "imagePaths": [
+    "~/Pictures/Cleanshot 2026-06-25 at 12.00.png"
+   ],
+   "imagePath": "~/Pictures/Cleanshot 2026-06-25 at 12.00.png",
+   "bracketed": null,
+   "bracketedImages": [
+    "~/Pictures/Cleanshot 2026-06-25 at 12.00.png"
+   ]
+  },
+  {
+   "input": "C:\\Users\\me\\My Pictures\\img with space.jpg",
+   "paths": null,
+   "imagePaths": [
+    "C:\\Users\\me\\My Pictures\\img with space.jpg"
+   ],
+   "imagePath": "C:\\Users\\me\\My Pictures\\img with space.jpg",
+   "bracketed": null,
+   "bracketedImages": [
+    "C:\\Users\\me\\My Pictures\\img with space.jpg"
+   ]
+  },
+  {
+   "input": "/tmp/a.png /tmp/b shot.png",
+   "paths": null,
+   "imagePaths": null,
+   "imagePath": null,
+   "bracketed": null,
+   "bracketedImages": null
+  },
+  {
+   "input": "see /Users/me/Desktop/Screenshot 1.png",
+   "paths": null,
+   "imagePaths": null,
+   "imagePath": null,
+   "bracketed": null,
+   "bracketedImages": null
+  },
+  {
+   "input": "'/tmp/quoted file.png'",
+   "paths": [
+    "/tmp/quoted file.png"
+   ],
+   "imagePaths": [
+    "/tmp/quoted file.png"
+   ],
+   "imagePath": "/tmp/quoted file.png",
+   "bracketed": [
+    "/tmp/quoted file.png"
+   ],
+   "bracketedImages": [
+    "/tmp/quoted file.png"
+   ]
+  },
+  {
+   "input": "\"/tmp/dq.png\" \"/tmp/two.jpg\"",
+   "paths": [
+    "/tmp/dq.png",
+    "/tmp/two.jpg"
+   ],
+   "imagePaths": [
+    "/tmp/dq.png",
+    "/tmp/two.jpg"
+   ],
+   "imagePath": null,
+   "bracketed": [
+    "/tmp/dq.png",
+    "/tmp/two.jpg"
+   ],
+   "bracketedImages": [
+    "/tmp/dq.png",
+    "/tmp/two.jpg"
+   ]
+  },
+  {
+   "input": "/tmp/My\\ Photos/x.png",
+   "paths": [
+    "/tmp/My Photos/x.png"
+   ],
+   "imagePaths": [
+    "/tmp/My Photos/x.png"
+   ],
+   "imagePath": "/tmp/My Photos/x.png",
+   "bracketed": [
+    "/tmp/My Photos/x.png"
+   ],
+   "bracketedImages": [
+    "/tmp/My Photos/x.png"
+   ]
+  },
+  {
+   "input": "./rel/img.png ../up.gif",
+   "paths": [
+    "./rel/img.png",
+    "../up.gif"
+   ],
+   "imagePaths": [
+    "./rel/img.png",
+    "../up.gif"
+   ],
+   "imagePath": null,
+   "bracketed": [
+    "./rel/img.png",
+    "../up.gif"
+   ],
+   "bracketedImages": [
+    "./rel/img.png",
+    "../up.gif"
+   ]
+  },
+  {
+   "input": "https://example.com/a.png",
+   "paths": null,
+   "imagePaths": null,
+   "imagePath": null,
+   "bracketed": null,
+   "bracketedImages": null
+  },
+  {
+   "input": "dir/b shot.png",
+   "paths": null,
+   "imagePaths": null,
+   "imagePath": null,
+   "bracketed": null,
+   "bracketedImages": null
+  },
+  {
+   "input": "/tmp/a.png\n/tmp/b.png",
+   "paths": [
+    "/tmp/a.png",
+    "/tmp/b.png"
+   ],
+   "imagePaths": [
+    "/tmp/a.png",
+    "/tmp/b.png"
+   ],
+   "imagePath": null,
+   "bracketed": [
+    "/tmp/a.png",
+    "/tmp/b.png"
+   ],
+   "bracketedImages": [
+    "/tmp/a.png",
+    "/tmp/b.png"
+   ]
+  },
+  {
+   "input": "\\~/home.png",
+   "paths": [
+    "~/home.png"
+   ],
+   "imagePaths": [
+    "~/home.png"
+   ],
+   "imagePath": "~/home.png",
+   "bracketed": [
+    "~/home.png"
+   ],
+   "bracketedImages": [
+    "~/home.png"
+   ]
+  },
+  {
+   "input": "'/tmp/unterminated.png",
+   "paths": null,
+   "imagePaths": null,
+   "imagePath": null,
+   "bracketed": null,
+   "bracketedImages": null
+  },
+  {
+   "input": "/tmp/odd dir /sub/x.png",
+   "paths": null,
+   "imagePaths": null,
+   "imagePath": null,
+   "bracketed": null,
+   "bracketedImages": null
+  },
+  {
+   "input": "/tmp/x.PNG",
+   "paths": [
+    "/tmp/x.PNG"
+   ],
+   "imagePaths": [
+    "/tmp/x.PNG"
+   ],
+   "imagePath": "/tmp/x.PNG",
+   "bracketed": [
+    "/tmp/x.PNG"
+   ],
+   "bracketedImages": [
+    "/tmp/x.PNG"
+   ]
+  },
+  {
+   "input": "/tmp/clip.MOV",
+   "paths": [
+    "/tmp/clip.MOV"
+   ],
+   "imagePaths": [
+    "/tmp/clip.MOV"
+   ],
+   "imagePath": "/tmp/clip.MOV",
+   "bracketed": [
+    "/tmp/clip.MOV"
+   ],
+   "bracketedImages": [
+    "/tmp/clip.MOV"
+   ]
+  },
+  {
+   "input": "~/x.webp ./y.mkv",
+   "paths": [
+    "~/x.webp",
+    "./y.mkv"
+   ],
+   "imagePaths": [
+    "~/x.webp",
+    "./y.mkv"
+   ],
+   "imagePath": null,
+   "bracketed": [
+    "~/x.webp",
+    "./y.mkv"
+   ],
+   "bracketedImages": [
+    "~/x.webp",
+    "./y.mkv"
+   ]
+  },
+  {
+   "input": "\\\\server\\share\\pic.png",
+   "paths": [
+    "\\server\\share\\pic.png"
+   ],
+   "imagePaths": [
+    "\\server\\share\\pic.png"
+   ],
+   "imagePath": "\\server\\share\\pic.png",
+   "bracketed": [
+    "\\server\\share\\pic.png"
+   ],
+   "bracketedImages": [
+    "\\server\\share\\pic.png"
+   ]
+  },
+  {
+   "input": "/tmp/trailing\\",
+   "paths": null,
+   "imagePaths": null,
+   "imagePath": null,
+   "bracketed": null,
+   "bracketedImages": null
+  },
+  {
+   "input": "/tmp/My Dir\\ /x.png",
+   "paths": null,
+   "imagePaths": [
+    "/tmp/My Dir /x.png"
+   ],
+   "imagePath": "/tmp/My Dir /x.png",
+   "bracketed": null,
+   "bracketedImages": [
+    "/tmp/My Dir /x.png"
+   ]
+  },
+  {
+   "input": "/tmp/My Dir /x.png",
+   "paths": null,
+   "imagePaths": null,
+   "imagePath": null,
+   "bracketed": null,
+   "bracketedImages": null
+  }
+ ]
+}

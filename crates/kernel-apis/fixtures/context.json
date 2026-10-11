@@ -1,0 +1,902 @@
+{
+	"area": "context",
+	"scenarios": [
+		{
+			"name": "history, get, forget, pin, summarize, note, state",
+			"cells": [
+				{
+					"code": "import json as _json\nprint(_json.dumps(await ctx.history(), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"compacted\": false, \"items\": [{\"at\": 2, \"bytes\": 16, \"id\": \"u1\", \"kind\": \"user\", \"original_bytes\": 16, \"pinned\": false, \"preview\": \"first question\", \"protected\": false, \"state\": \"visible\"}, {\"at\": 3, \"bytes\": 190, \"id\": \"a1\", \"kind\": \"assistant\", \"original_bytes\": 190, \"pinned\": false, \"preview\": \"calling rlm({\\\"code\\\":\\\"run(\\\\\\\"c1\\\\\\\")\\\"}) rlm({\\\"code\\\":\\\"run(\\\\\\\"c2\\\\\\\")\\\"})\", \"protected\": false, \"state\": \"visible\"}, {\"at\": 4, \"bytes\": 347, \"id\": \"r1\", \"kind\": \"tool\", \"original_bytes\": 347, \"pinned\": false, \"preview\": \"BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE\\u2026\", \"protected\": false, \"state\": \"visible\", \"tool\": \"rlm\"}, {\"at\": 5, \"bytes\": 53, \"id\": \"r2\", \"kind\": \"tool\", \"original_bytes\": 53, \"pinned\": false, \"preview\": \"small two with spaces\", \"protected\": false, \"state\": \"visible\", \"tool\": \"rlm\"}, {\"at\": 6, \"bytes\": 58, \"id\": \"a2\", \"kind\": \"assistant\", \"original_bytes\": 58, \"pinned\": false, \"preview\": \"answer one \\u2014 \\u00fcn\\u00efc\\u00f6d\\u00e9 \\ud83d\\ude00\", \"protected\": false, \"state\": \"visible\"}, {\"at\": 7, \"bytes\": 19, \"id\": \"bs1\", \"kind\": \"summary\", \"original_bytes\": 19, \"pinned\": false, \"preview\": \"earlier branch work\", \"protected\": false, \"state\": \"visible\"}, {\"at\": 8, \"bytes\": 13, \"id\": \"cm1\", \"kind\": \"custom\", \"original_bytes\": 13, \"pinned\": false, \"preview\": \"custom text\", \"protected\": false, \"state\": \"visible\"}, {\"at\": 9, \"bytes\": 17, \"id\": \"u2\", \"kind\": \"user\", \"original_bytes\": 17, \"pinned\": false, \"preview\": \"second question\", \"protected\": true, \"state\": \"visible\"}, {\"at\": 10, \"bytes\": 112, \"id\": \"a3\", \"kind\": \"assistant\", \"original_bytes\": 112, \"pinned\": false, \"preview\": \"working rlm({\\\"code\\\":\\\"run(\\\\\\\"c3\\\\\\\")\\\"})\", \"protected\": true, \"state\": \"visible\"}], \"total\": 9, \"visible_bytes\": 825}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\ntry:\n    r = await ctx.history(limit=3, kinds=[\"tool\", \"user\"])\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await ctx.history(kinds=\"summary\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await ctx.history(kinds=[])\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await ctx.history(limit=0)\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await ctx.history(limit=201)\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await ctx.history(limit=2.5)\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await ctx.history(kinds=[\"bogus\"])\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await rlm.host_request(\"ctx.history\", {\"limit\": 5, \"kinds\": None})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await rlm.host_request(\"ctx.history\", {\"kinds\": \"user\"})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await rlm.host_request(\"ctx.history\", {\"bogus\": 1})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)",
+					"status": "ok",
+					"stdout": "ok {\"compacted\": false, \"items\": [{\"at\": 4, \"bytes\": 347, \"id\": \"r1\", \"kind\": \"tool\", \"original_bytes\": 347, \"pinned\": false, \"preview\": \"BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE\\u2026\", \"protected\": false, \"state\": \"visible\", \"tool\": \"rlm\"}, {\"at\": 5, \"bytes\": 53, \"id\": \"r2\", \"kind\": \"tool\", \"original_bytes\": 53, \"pinned\": false, \"preview\": \"small two with spaces\", \"protected\": false, \"state\": \"visible\", \"tool\": \"rlm\"}, {\"at\": 9, \"bytes\": 17, \"id\": \"u2\", \"kind\": \"user\", \"original_bytes\": 17, \"pinned\": false, \"preview\": \"second question\", \"protected\": true, \"state\": \"visible\"}], \"total\": 4, \"visible_bytes\": 433}\nok {\"compacted\": false, \"items\": [{\"at\": 7, \"bytes\": 19, \"id\": \"bs1\", \"kind\": \"summary\", \"original_bytes\": 19, \"pinned\": false, \"preview\": \"earlier branch work\", \"protected\": false, \"state\": \"visible\"}], \"total\": 1, \"visible_bytes\": 19}\nok {\"compacted\": false, \"items\": [], \"total\": 0, \"visible_bytes\": 0}\nRuntimeError limit must be an integer between 1 and 200\nRuntimeError limit must be an integer between 1 and 200\nRuntimeError limit must be an integer between 1 and 200\nRuntimeError kinds must be a list of: user, assistant, tool, custom, note, summary, compaction\nok {\"compacted\": false, \"items\": [{\"at\": 6, \"bytes\": 58, \"id\": \"a2\", \"kind\": \"assistant\", \"original_bytes\": 58, \"pinned\": false, \"preview\": \"answer one \\u2014 \\u00fcn\\u00efc\\u00f6d\\u00e9 \\ud83d\\ude00\", \"protected\": false, \"state\": \"visible\"}, {\"at\": 7, \"bytes\": 19, \"id\": \"bs1\", \"kind\": \"summary\", \"original_bytes\": 19, \"pinned\": false, \"preview\": \"earlier branch work\", \"protected\": false, \"state\": \"visible\"}, {\"at\": 8, \"bytes\": 13, \"id\": \"cm1\", \"kind\": \"custom\", \"original_bytes\": 13, \"pinned\": false, \"preview\": \"custom text\", \"protected\": false, \"state\": \"visible\"}, {\"at\": 9, \"bytes\": 17, \"id\": \"u2\", \"kind\": \"user\", \"original_bytes\": 17, \"pinned\": false, \"preview\": \"second question\", \"protected\": true, \"state\": \"visible\"}, {\"at\": 10, \"bytes\": 112, \"id\": \"a3\", \"kind\": \"assistant\", \"original_bytes\": 112, \"pinned\": false, \"preview\": \"working rlm({\\\"code\\\":\\\"run(\\\\\\\"c3\\\\\\\")\\\"})\", \"protected\": true, \"state\": \"visible\"}], \"total\": 9, \"visible_bytes\": 825}\nRuntimeError kinds must be a list of: user, assistant, tool, custom, note, summary, compaction\nRuntimeError Unknown payload field: bogus\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\ntry:\n    r = await ctx.get(\"r1\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await ctx.get(\"a1\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await ctx.get(\"cm1\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await ctx.get(\"bs1\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await ctx.get(\"m0\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await ctx.get(\"nope\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await ctx.get(\"\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)",
+					"status": "ok",
+					"stdout": "ok {\"at\": 4, \"bytes\": 347, \"id\": \"r1\", \"kind\": \"tool\", \"message\": {\"content\": [{\"text\": \"BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE \", \"type\": \"text\"}], \"isError\": false, \"role\": \"toolResult\", \"timestamp\": 0, \"toolCallId\": \"c1\", \"toolName\": \"rlm\"}, \"original_bytes\": 347, \"pinned\": false, \"preview\": \"BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE\\u2026\", \"protected\": false, \"state\": \"visible\", \"text\": \"BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE \", \"tool\": \"rlm\", \"visible_text\": \"BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE \"}\nok {\"at\": 3, \"bytes\": 190, \"id\": \"a1\", \"kind\": \"assistant\", \"message\": {\"api\": \"openai-completions\", \"content\": [{\"text\": \"calling\", \"type\": \"text\"}, {\"arguments\": {\"code\": \"run(\\\"c1\\\")\"}, \"id\": \"c1\", \"name\": \"rlm\", \"type\": \"toolCall\"}, {\"arguments\": {\"code\": \"run(\\\"c2\\\")\"}, \"id\": \"c2\", \"name\": \"rlm\", \"type\": \"toolCall\"}], \"model\": \"faux\", \"provider\": \"faux\", \"role\": \"assistant\", \"stopReason\": \"toolUse\", \"timestamp\": 0}, \"original_bytes\": 190, \"pinned\": false, \"preview\": \"calling rlm({\\\"code\\\":\\\"run(\\\\\\\"c1\\\\\\\")\\\"}) rlm({\\\"code\\\":\\\"run(\\\\\\\"c2\\\\\\\")\\\"})\", \"protected\": false, \"state\": \"visible\", \"text\": \"calling\\nrlm({\\\"code\\\":\\\"run(\\\\\\\"c1\\\\\\\")\\\"})\\nrlm({\\\"code\\\":\\\"run(\\\\\\\"c2\\\\\\\")\\\"})\", \"visible_text\": \"calling\\nrlm({\\\"code\\\":\\\"run(\\\\\\\"c1\\\\\\\")\\\"})\\nrlm({\\\"code\\\":\\\"run(\\\\\\\"c2\\\\\\\")\\\"})\"}\nok {\"at\": 8, \"bytes\": 13, \"id\": \"cm1\", \"kind\": \"custom\", \"message\": {\"content\": \"custom text\", \"customType\": \"x\", \"display\": true, \"role\": \"custom\", \"timestamp\": 0}, \"original_bytes\": 13, \"pinned\": false, \"preview\": \"custom text\", \"protected\": false, \"state\": \"visible\", \"text\": \"custom text\", \"visible_text\": \"custom text\"}\nok {\"at\": 7, \"bytes\": 19, \"id\": \"bs1\", \"kind\": \"summary\", \"original_bytes\": 19, \"pinned\": false, \"preview\": \"earlier branch work\", \"protected\": false, \"state\": \"visible\", \"text\": \"earlier branch work\", \"visible_text\": \"earlier branch work\"}\nRuntimeError Unknown context item: m0\nRuntimeError Unknown context item: nope\nRuntimeError id must be a nonempty string\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\ntry:\n    r = await ctx.forget(\"r1\", \"too big\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await ctx.forget([\"r1\"], \"again\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await ctx.forget([\"u2\"], \"x\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await ctx.forget([\"a3\"], \"x\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await ctx.forget([\"bs1\", \"nope\", \"u2\"], \"x\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await ctx.forget([\"m0\"], \"x\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await ctx.forget([], \"x\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await ctx.forget([\"r2\"], \"  \")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await ctx.forget([\"r2\", 3], \"x\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await ctx.forget([\"r2\"] * 201, \"x\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await ctx.get(\"r1\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)",
+					"status": "ok",
+					"stdout": "ok {\"already\": [], \"edit_id\": \"main-x1\", \"forgotten\": [\"r1\"], \"freed_bytes\": 285}\nok {\"already\": [\"r1\"], \"edit_id\": null, \"forgotten\": [], \"freed_bytes\": 0}\nRuntimeError Context edit refused: u2 belongs to the current user turn and cannot be edited\nRuntimeError Context edit refused: a3 belongs to the current user turn and cannot be edited\nRuntimeError Context edit refused: bs1 is a branch_summary entry and cannot be edited; nope is not in the model's context on this branch (unknown, or before the last compaction); u2 belongs to the current user turn and cannot be edited\nRuntimeError Context edit refused: m0 is a model_change entry and cannot be edited\nRuntimeError ids must be a nonempty list of item ids\nRuntimeError reason must be a nonempty string\nRuntimeError id must be a nonempty string\nRuntimeError at most 200 ids per edit\nok {\"at\": 4, \"bytes\": 62, \"id\": \"r1\", \"kind\": \"tool\", \"message\": {\"content\": [{\"text\": \"BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE \", \"type\": \"text\"}], \"isError\": false, \"role\": \"toolResult\", \"timestamp\": 0, \"toolCallId\": \"c1\", \"toolName\": \"rlm\"}, \"original_bytes\": 347, \"pinned\": false, \"preview\": \"BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE\\u2026\", \"protected\": false, \"state\": \"forgotten\", \"text\": \"BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE \", \"tool\": \"rlm\", \"visible_text\": null}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\n_h = await ctx.history()\nfor _i in _h[\"items\"]:\n    _i.pop(\"at\", None)\nprint(_json.dumps(_h, sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"compacted\": false, \"items\": [{\"bytes\": 16, \"id\": \"u1\", \"kind\": \"user\", \"original_bytes\": 16, \"pinned\": false, \"preview\": \"first question\", \"protected\": false, \"state\": \"visible\"}, {\"bytes\": 190, \"id\": \"a1\", \"kind\": \"assistant\", \"original_bytes\": 190, \"pinned\": false, \"preview\": \"calling rlm({\\\"code\\\":\\\"run(\\\\\\\"c1\\\\\\\")\\\"}) rlm({\\\"code\\\":\\\"run(\\\\\\\"c2\\\\\\\")\\\"})\", \"protected\": false, \"state\": \"visible\"}, {\"bytes\": 62, \"id\": \"r1\", \"kind\": \"tool\", \"original_bytes\": 347, \"pinned\": false, \"preview\": \"BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE\\u2026\", \"protected\": false, \"state\": \"forgotten\", \"tool\": \"rlm\"}, {\"bytes\": 53, \"id\": \"r2\", \"kind\": \"tool\", \"original_bytes\": 53, \"pinned\": false, \"preview\": \"small two with spaces\", \"protected\": false, \"state\": \"visible\", \"tool\": \"rlm\"}, {\"bytes\": 58, \"id\": \"a2\", \"kind\": \"assistant\", \"original_bytes\": 58, \"pinned\": false, \"preview\": \"answer one \\u2014 \\u00fcn\\u00efc\\u00f6d\\u00e9 \\ud83d\\ude00\", \"protected\": false, \"state\": \"visible\"}, {\"bytes\": 19, \"id\": \"bs1\", \"kind\": \"summary\", \"original_bytes\": 19, \"pinned\": false, \"preview\": \"earlier branch work\", \"protected\": false, \"state\": \"visible\"}, {\"bytes\": 13, \"id\": \"cm1\", \"kind\": \"custom\", \"original_bytes\": 13, \"pinned\": false, \"preview\": \"custom text\", \"protected\": false, \"state\": \"visible\"}, {\"bytes\": 17, \"id\": \"u2\", \"kind\": \"user\", \"original_bytes\": 17, \"pinned\": false, \"preview\": \"second question\", \"protected\": true, \"state\": \"visible\"}, {\"bytes\": 112, \"id\": \"a3\", \"kind\": \"assistant\", \"original_bytes\": 112, \"pinned\": false, \"preview\": \"working rlm({\\\"code\\\":\\\"run(\\\\\\\"c3\\\\\\\")\\\"})\", \"protected\": true, \"state\": \"visible\"}], \"total\": 9, \"visible_bytes\": 540}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\ntry:\n    r = await ctx.pin(\"a2\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await ctx.pin(\"a2\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await ctx.forget([\"a2\"], \"x\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await ctx.summarize([\"a2\"], \"x\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await ctx.pin(\"m0\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await ctx.pin(\"nope\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await ctx.unpin(\"cm1\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await rlm.host_request(\"ctx.state\", {})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)",
+					"status": "ok",
+					"stdout": "ok {\"changed\": true, \"id\": \"a2\", \"pinned\": true}\nok {\"changed\": false, \"id\": \"a2\", \"pinned\": true}\nRuntimeError Context edit refused: a2 is pinned (ctx.unpin it first)\nRuntimeError Context edit refused: a2 is pinned (ctx.unpin it first)\nRuntimeError Unknown context item: m0\nRuntimeError Unknown context item: nope\nok {\"changed\": false, \"id\": \"cm1\", \"pinned\": false}\nok {\"collapsedCount\": 0, \"forgotten\": [{\"id\": \"r1\", \"kind\": \"tool\", \"preview\": \"BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE\\u2026\", \"reason\": \"too big\", \"source\": \"ctx.forget\"}], \"forgottenCount\": 1, \"notes\": 0, \"pinned\": [{\"id\": \"a2\", \"kind\": \"assistant\", \"preview\": \"answer one \\u2014 \\u00fcn\\u00efc\\u00f6d\\u00e9 \\ud83d\\ude00\"}], \"pinnedCount\": 1}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\ntry:\n    r = await ctx.summarize([\"r2\"], \"the two calls printed numbers\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await ctx.summarize([\"cm1\"], \"x\" * 8001)\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await ctx.summarize(\"cm1\", \"custom said hello\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await ctx.get(\"a1\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await ctx.get(\"cm1\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)",
+					"status": "ok",
+					"stdout": "ok {\"edit_id\": \"main-x3\", \"freed_bytes\": 203, \"summarized\": [\"a1\", \"r1\", \"r2\"], \"summary_id\": \"a1\"}\nRuntimeError text exceeds 8000 characters\nok {\"edit_id\": \"main-x4\", \"freed_bytes\": 0, \"summarized\": [\"cm1\"], \"summary_id\": \"cm1\"}\nok {\"at\": 3, \"bytes\": 102, \"id\": \"a1\", \"kind\": \"assistant\", \"message\": {\"api\": \"openai-completions\", \"content\": [{\"text\": \"calling\", \"type\": \"text\"}, {\"arguments\": {\"code\": \"run(\\\"c1\\\")\"}, \"id\": \"c1\", \"name\": \"rlm\", \"type\": \"toolCall\"}, {\"arguments\": {\"code\": \"run(\\\"c2\\\")\"}, \"id\": \"c2\", \"name\": \"rlm\", \"type\": \"toolCall\"}], \"model\": \"faux\", \"provider\": \"faux\", \"role\": \"assistant\", \"stopReason\": \"toolUse\", \"timestamp\": 0}, \"original_bytes\": 190, \"pinned\": false, \"preview\": \"calling rlm({\\\"code\\\":\\\"run(\\\\\\\"c1\\\\\\\")\\\"}) rlm({\\\"code\\\":\\\"run(\\\\\\\"c2\\\\\\\")\\\"})\", \"protected\": false, \"state\": \"summarized\", \"text\": \"calling\\nrlm({\\\"code\\\":\\\"run(\\\\\\\"c1\\\\\\\")\\\"})\\nrlm({\\\"code\\\":\\\"run(\\\\\\\"c2\\\\\\\")\\\"})\", \"visible_text\": \"[Summary of 3 earlier items (ctx.summarize)]\\nthe two calls printed numbers\"}\nok {\"at\": 8, \"bytes\": 64, \"id\": \"cm1\", \"kind\": \"custom\", \"message\": {\"content\": \"custom text\", \"customType\": \"x\", \"display\": true, \"role\": \"custom\", \"timestamp\": 0}, \"original_bytes\": 13, \"pinned\": false, \"preview\": \"custom text\", \"protected\": false, \"state\": \"summarized\", \"text\": \"custom text\", \"visible_text\": \"[Summary of 1 earlier item (ctx.summarize)]\\ncustom said hello\"}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\n_h = await ctx.history(limit=50)\nfor _i in _h[\"items\"]:\n    _i.pop(\"at\", None)\nprint(_json.dumps(_h, sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"compacted\": false, \"items\": [{\"bytes\": 16, \"id\": \"u1\", \"kind\": \"user\", \"original_bytes\": 16, \"pinned\": false, \"preview\": \"first question\", \"protected\": false, \"state\": \"visible\"}, {\"bytes\": 102, \"id\": \"a1\", \"kind\": \"assistant\", \"original_bytes\": 190, \"pinned\": false, \"preview\": \"calling rlm({\\\"code\\\":\\\"run(\\\\\\\"c1\\\\\\\")\\\"}) rlm({\\\"code\\\":\\\"run(\\\\\\\"c2\\\\\\\")\\\"})\", \"protected\": false, \"state\": \"summarized\"}, {\"bytes\": 0, \"id\": \"r1\", \"kind\": \"tool\", \"original_bytes\": 347, \"pinned\": false, \"preview\": \"BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE\\u2026\", \"protected\": false, \"state\": \"summarized\", \"tool\": \"rlm\"}, {\"bytes\": 0, \"id\": \"r2\", \"kind\": \"tool\", \"original_bytes\": 53, \"pinned\": false, \"preview\": \"small two with spaces\", \"protected\": false, \"state\": \"summarized\", \"tool\": \"rlm\"}, {\"bytes\": 58, \"id\": \"a2\", \"kind\": \"assistant\", \"original_bytes\": 58, \"pinned\": true, \"preview\": \"answer one \\u2014 \\u00fcn\\u00efc\\u00f6d\\u00e9 \\ud83d\\ude00\", \"protected\": false, \"state\": \"visible\"}, {\"bytes\": 19, \"id\": \"bs1\", \"kind\": \"summary\", \"original_bytes\": 19, \"pinned\": false, \"preview\": \"earlier branch work\", \"protected\": false, \"state\": \"visible\"}, {\"bytes\": 64, \"id\": \"cm1\", \"kind\": \"custom\", \"original_bytes\": 13, \"pinned\": false, \"preview\": \"custom text\", \"protected\": false, \"state\": \"summarized\"}, {\"bytes\": 17, \"id\": \"u2\", \"kind\": \"user\", \"original_bytes\": 17, \"pinned\": false, \"preview\": \"second question\", \"protected\": true, \"state\": \"visible\"}, {\"bytes\": 112, \"id\": \"a3\", \"kind\": \"assistant\", \"original_bytes\": 112, \"pinned\": false, \"preview\": \"working rlm({\\\"code\\\":\\\"run(\\\\\\\"c3\\\\\\\")\\\"})\", \"protected\": true, \"state\": \"visible\"}], \"total\": 9, \"visible_bytes\": 388}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\ntry:\n    r = await ctx.note(\"remember: tests live in test/\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await ctx.note(\"y\" * 4001)\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await ctx.note(\"\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await ctx.history(kinds=[\"note\"])\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await ctx.get(\"main-x5\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await ctx.forget([\"main-x5\"], \"noise\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await ctx.unpin(\"a2\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await ctx.forget([\"a2\"], \"now allowed\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await rlm.host_request(\"ctx.state\", {})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await rlm.host_request(\"ctx.state\", {\"x\": 1})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await rlm.host_request(\"ctx.nope\", {})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)",
+					"status": "ok",
+					"stdout": "ok {\"id\": \"main-x5\"}\nRuntimeError note exceeds 4000 characters\nRuntimeError text must be a nonempty string\nok {\"compacted\": false, \"items\": [{\"at\": 17, \"bytes\": 29, \"id\": \"main-x5\", \"kind\": \"note\", \"original_bytes\": 29, \"pinned\": false, \"preview\": \"remember: tests live in test/\", \"protected\": false, \"state\": \"visible\"}], \"total\": 1, \"visible_bytes\": 29}\nok {\"at\": 17, \"bytes\": 29, \"id\": \"main-x5\", \"kind\": \"note\", \"original_bytes\": 29, \"pinned\": false, \"preview\": \"remember: tests live in test/\", \"protected\": false, \"state\": \"visible\", \"text\": \"remember: tests live in test/\", \"visible_text\": \"remember: tests live in test/\"}\nok {\"already\": [], \"edit_id\": \"main-x6\", \"forgotten\": [\"main-x5\"], \"freed_bytes\": 29}\nok {\"changed\": true, \"id\": \"a2\", \"pinned\": false}\nok {\"already\": [], \"edit_id\": \"main-x8\", \"forgotten\": [\"a2\"], \"freed_bytes\": 58}\nok {\"collapsedCount\": 0, \"forgotten\": [{\"id\": \"r1\", \"kind\": \"tool\", \"preview\": \"BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE\\u2026\", \"source\": \"ctx.summarize\"}, {\"id\": \"a1\", \"kind\": \"assistant\", \"preview\": \"calling rlm({\\\"code\\\":\\\"run(\\\\\\\"c1\\\\\\\")\\\"}) rlm({\\\"code\\\":\\\"run(\\\\\\\"c2\\\\\\\")\\\"})\", \"source\": \"ctx.summarize\"}, {\"id\": \"r2\", \"kind\": \"tool\", \"preview\": \"small two with spaces\", \"source\": \"ctx.summarize\"}, {\"id\": \"cm1\", \"kind\": \"custom\", \"preview\": \"custom text\", \"source\": \"ctx.summarize\"}, {\"id\": \"main-x5\", \"kind\": \"note\", \"preview\": \"remember: tests live in test/\", \"reason\": \"noise\", \"source\": \"ctx.forget\"}, {\"id\": \"a2\", \"kind\": \"assistant\", \"preview\": \"answer one \\u2014 \\u00fcn\\u00efc\\u00f6d\\u00e9 \\ud83d\\ude00\", \"reason\": \"now allowed\", \"source\": \"ctx.forget\"}], \"forgottenCount\": 6, \"notes\": 1, \"pinned\": [], \"pinnedCount\": 0}\nRuntimeError Unknown payload field: x\nRuntimeError Ultron RLM host request is not wired: ctx.nope\n",
+					"result": "",
+					"error": null
+				}
+			],
+			"state": {
+				"main": [
+					{
+						"id": "m0",
+						"parentId": null,
+						"seq": 1,
+						"timestamp": 1,
+						"type": "model_change",
+						"provider": "faux",
+						"modelId": "faux"
+					},
+					{
+						"id": "u1",
+						"parentId": null,
+						"seq": 2,
+						"timestamp": 2,
+						"type": "message",
+						"message": {
+							"role": "user",
+							"content": "first question",
+							"timestamp": 0
+						}
+					},
+					{
+						"id": "a1",
+						"parentId": null,
+						"seq": 3,
+						"timestamp": 3,
+						"type": "message",
+						"message": {
+							"role": "assistant",
+							"content": [
+								{
+									"type": "text",
+									"text": "calling"
+								},
+								{
+									"type": "toolCall",
+									"id": "c1",
+									"name": "rlm",
+									"arguments": {
+										"code": "run(\"c1\")"
+									}
+								},
+								{
+									"type": "toolCall",
+									"id": "c2",
+									"name": "rlm",
+									"arguments": {
+										"code": "run(\"c2\")"
+									}
+								}
+							],
+							"api": "openai-completions",
+							"provider": "faux",
+							"model": "faux",
+							"stopReason": "toolUse",
+							"timestamp": 0
+						}
+					},
+					{
+						"id": "r1",
+						"parentId": null,
+						"seq": 4,
+						"timestamp": 4,
+						"type": "message",
+						"message": {
+							"role": "toolResult",
+							"toolCallId": "c1",
+							"toolName": "rlm",
+							"content": [
+								{
+									"type": "text",
+									"text": "BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE "
+								}
+							],
+							"isError": false,
+							"timestamp": 0
+						}
+					},
+					{
+						"id": "r2",
+						"parentId": null,
+						"seq": 5,
+						"timestamp": 5,
+						"type": "message",
+						"message": {
+							"role": "toolResult",
+							"toolCallId": "c2",
+							"toolName": "rlm",
+							"content": [
+								{
+									"type": "text",
+									"text": "small two\n\twith   spaces"
+								}
+							],
+							"isError": false,
+							"timestamp": 0
+						}
+					},
+					{
+						"id": "a2",
+						"parentId": null,
+						"seq": 6,
+						"timestamp": 6,
+						"type": "message",
+						"message": {
+							"role": "assistant",
+							"content": [
+								{
+									"type": "text",
+									"text": "answer one — ünïcödé 😀"
+								}
+							],
+							"api": "openai-completions",
+							"provider": "faux",
+							"model": "faux",
+							"stopReason": "stop",
+							"timestamp": 0
+						}
+					},
+					{
+						"id": "bs1",
+						"parentId": null,
+						"seq": 7,
+						"timestamp": 7,
+						"type": "branch_summary",
+						"summary": "earlier branch work",
+						"fromId": "u1"
+					},
+					{
+						"id": "cm1",
+						"parentId": null,
+						"seq": 8,
+						"timestamp": 8,
+						"type": "message",
+						"message": {
+							"role": "custom",
+							"customType": "x",
+							"content": "custom text",
+							"display": true,
+							"timestamp": 0
+						}
+					},
+					{
+						"id": "u2",
+						"parentId": null,
+						"seq": 9,
+						"timestamp": 9,
+						"type": "message",
+						"message": {
+							"role": "user",
+							"content": "second question",
+							"timestamp": 0
+						}
+					},
+					{
+						"id": "a3",
+						"parentId": null,
+						"seq": 10,
+						"timestamp": 10,
+						"type": "message",
+						"message": {
+							"role": "assistant",
+							"content": [
+								{
+									"type": "text",
+									"text": "working"
+								},
+								{
+									"type": "toolCall",
+									"id": "c3",
+									"name": "rlm",
+									"arguments": {
+										"code": "run(\"c3\")"
+									}
+								}
+							],
+							"api": "openai-completions",
+							"provider": "faux",
+							"model": "faux",
+							"stopReason": "toolUse",
+							"timestamp": 0
+						}
+					},
+					{
+						"id": "main-x1",
+						"parentId": null,
+						"seq": 13,
+						"timestamp": 13,
+						"type": "custom",
+						"customType": "context_edit",
+						"data": {
+							"edits": [
+								{
+									"targetId": "r1",
+									"replacement": null
+								}
+							],
+							"source": "ctx.forget",
+							"reason": "too big"
+						}
+					},
+					{
+						"id": "main-x2",
+						"parentId": null,
+						"seq": 14,
+						"timestamp": 14,
+						"type": "custom",
+						"customType": "ultron:context-pin",
+						"data": {
+							"targetId": "a2",
+							"pinned": true
+						}
+					},
+					{
+						"id": "main-x3",
+						"parentId": null,
+						"seq": 15,
+						"timestamp": 15,
+						"type": "custom",
+						"customType": "context_edit",
+						"data": {
+							"edits": [
+								{
+									"targetId": "a1",
+									"replacement": {
+										"content": "[Summary of 3 earlier items (ctx.summarize)]\nthe two calls printed numbers"
+									}
+								},
+								{
+									"targetId": "r1",
+									"replacement": null
+								},
+								{
+									"targetId": "r2",
+									"replacement": null
+								}
+							],
+							"source": "ctx.summarize"
+						}
+					},
+					{
+						"id": "main-x4",
+						"parentId": null,
+						"seq": 16,
+						"timestamp": 16,
+						"type": "custom",
+						"customType": "context_edit",
+						"data": {
+							"edits": [
+								{
+									"targetId": "cm1",
+									"replacement": {
+										"content": "[Summary of 1 earlier item (ctx.summarize)]\ncustom said hello"
+									}
+								}
+							],
+							"source": "ctx.summarize"
+						}
+					},
+					{
+						"id": "main-x5",
+						"parentId": null,
+						"seq": 17,
+						"timestamp": 17,
+						"type": "custom",
+						"customType": "ultron:context-note",
+						"data": {
+							"text": "remember: tests live in test/"
+						}
+					},
+					{
+						"id": "main-x6",
+						"parentId": null,
+						"seq": 18,
+						"timestamp": 18,
+						"type": "custom",
+						"customType": "context_edit",
+						"data": {
+							"edits": [
+								{
+									"targetId": "main-x5",
+									"replacement": null
+								}
+							],
+							"source": "ctx.forget",
+							"reason": "noise"
+						}
+					},
+					{
+						"id": "main-x7",
+						"parentId": null,
+						"seq": 19,
+						"timestamp": 19,
+						"type": "custom",
+						"customType": "ultron:context-pin",
+						"data": {
+							"targetId": "a2",
+							"pinned": false
+						}
+					},
+					{
+						"id": "main-x8",
+						"parentId": null,
+						"seq": 20,
+						"timestamp": 20,
+						"type": "custom",
+						"customType": "context_edit",
+						"data": {
+							"edits": [
+								{
+									"targetId": "a2",
+									"replacement": null
+								}
+							],
+							"source": "ctx.forget",
+							"reason": "now allowed"
+						}
+					}
+				],
+				"lane-x": [
+					{
+						"id": "ux",
+						"parentId": null,
+						"seq": 11,
+						"timestamp": 11,
+						"type": "message",
+						"message": {
+							"role": "user",
+							"content": "child task",
+							"timestamp": 0
+						}
+					},
+					{
+						"id": "ax",
+						"parentId": null,
+						"seq": 12,
+						"timestamp": 12,
+						"type": "message",
+						"message": {
+							"role": "assistant",
+							"content": [
+								{
+									"type": "text",
+									"text": "child answer"
+								}
+							],
+							"api": "openai-completions",
+							"provider": "faux",
+							"model": "faux",
+							"stopReason": "stop",
+							"timestamp": 0
+						}
+					}
+				]
+			}
+		},
+		{
+			"name": "compaction window, pending entries, lanes",
+			"cells": [
+				{
+					"code": "import json as _json\ntry:\n    r = await ctx.pin(\"u1\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await ctx.note(\"before compaction\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await ctx.forget([\"r2\"], \"x\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)",
+					"status": "ok",
+					"stdout": "ok {\"changed\": true, \"id\": \"u1\", \"pinned\": true}\nok {\"id\": \"main-x2\"}\nok {\"already\": [], \"edit_id\": \"main-x3\", \"forgotten\": [\"r2\"], \"freed_bytes\": 0}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "await rlm.host_request(\"test.append\", {\"json\": \"{\\\"lane\\\":\\\"main\\\",\\\"id\\\":\\\"cp1\\\",\\\"entry\\\":{\\\"type\\\":\\\"compaction\\\",\\\"summary\\\":\\\"compacted: earlier work\\\",\\\"firstKeptEntryId\\\":\\\"u2\\\",\\\"tokensBefore\\\":1000}}\"})\nawait rlm.host_request(\"test.append\", {\"json\": \"{\\\"lane\\\":\\\"main\\\",\\\"id\\\":\\\"u3\\\",\\\"entry\\\":{\\\"type\\\":\\\"message\\\",\\\"message\\\":{\\\"role\\\":\\\"user\\\",\\\"content\\\":\\\"third question\\\",\\\"timestamp\\\":0}}}\"})\nawait rlm.host_request(\"test.append\", {\"json\": \"{\\\"lane\\\":\\\"main\\\",\\\"id\\\":\\\"a4\\\",\\\"entry\\\":{\\\"type\\\":\\\"message\\\",\\\"message\\\":{\\\"role\\\":\\\"assistant\\\",\\\"content\\\":[{\\\"type\\\":\\\"text\\\",\\\"text\\\":\\\"third answer\\\"},{\\\"type\\\":\\\"toolCall\\\",\\\"id\\\":\\\"c4\\\",\\\"name\\\":\\\"rlm\\\",\\\"arguments\\\":{\\\"code\\\":\\\"run(\\\\\\\"c4\\\\\\\")\\\"}}],\\\"api\\\":\\\"openai-completions\\\",\\\"provider\\\":\\\"faux\\\",\\\"model\\\":\\\"faux\\\",\\\"stopReason\\\":\\\"toolUse\\\",\\\"timestamp\\\":0}}}\"})\nawait rlm.host_request(\"test.append\", {\"json\": \"{\\\"lane\\\":\\\"main\\\",\\\"id\\\":\\\"r4\\\",\\\"entry\\\":{\\\"type\\\":\\\"message\\\",\\\"message\\\":{\\\"role\\\":\\\"toolResult\\\",\\\"toolCallId\\\":\\\"c4\\\",\\\"toolName\\\":\\\"rlm\\\",\\\"content\\\":[{\\\"type\\\":\\\"text\\\",\\\"text\\\":\\\"out\\\"}],\\\"isError\\\":false,\\\"timestamp\\\":0}}}\"})",
+					"status": "ok",
+					"stdout": "",
+					"result": "{'lane': 'main'}",
+					"error": null
+				},
+				{
+					"code": "import json as _json\ntry:\n    r = await ctx.history()\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await ctx.forget([\"u1\"], \"x\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await ctx.forget([\"cp1\"], \"x\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await ctx.get(\"cp1\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await ctx.forget([\"r4\"], \"x\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await ctx.forget([\"u3\"], \"x\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await rlm.host_request(\"ctx.state\", {})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)",
+					"status": "ok",
+					"stdout": "ok {\"compacted\": true, \"items\": [{\"at\": 17, \"bytes\": 16, \"id\": \"u3\", \"kind\": \"user\", \"original_bytes\": 16, \"pinned\": false, \"preview\": \"third question\", \"protected\": true, \"state\": \"visible\"}, {\"at\": 18, \"bytes\": 117, \"id\": \"a4\", \"kind\": \"assistant\", \"original_bytes\": 117, \"pinned\": false, \"preview\": \"third answer rlm({\\\"code\\\":\\\"run(\\\\\\\"c4\\\\\\\")\\\"})\", \"protected\": false, \"state\": \"visible\"}, {\"at\": 19, \"bytes\": 30, \"id\": \"r4\", \"kind\": \"tool\", \"original_bytes\": 30, \"pinned\": false, \"preview\": \"out\", \"protected\": false, \"state\": \"visible\", \"tool\": \"rlm\"}], \"total\": 3, \"visible_bytes\": 163}\nRuntimeError Context edit refused: u1 is not in the model's context on this branch (unknown, or before the last compaction)\nRuntimeError Context edit refused: cp1 is not in the model's context on this branch (unknown, or before the last compaction)\nRuntimeError Unknown context item: cp1\nok {\"already\": [], \"edit_id\": \"main-x4\", \"forgotten\": [\"r4\"], \"freed_bytes\": 0}\nRuntimeError Context edit refused: u3 belongs to the current user turn and cannot be edited\nok {\"collapsedCount\": 0, \"forgotten\": [{\"id\": \"r4\", \"kind\": \"tool\", \"preview\": \"out\", \"reason\": \"x\", \"source\": \"ctx.forget\"}], \"forgottenCount\": 1, \"notes\": 1, \"pinned\": [{\"id\": \"u1\"}], \"pinnedCount\": 1}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "await rlm.host_request(\"test.defer\", {\"on\": True})\nimport json as _json\ntry:\n    r = await ctx.note(\"while the turn runs\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await ctx.pin(\"a4\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)",
+					"status": "ok",
+					"stdout": "ok {\"id\": \"main-x5\"}\nok {\"changed\": true, \"id\": \"a4\", \"pinned\": true}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\n_h = await ctx.history()\nfor _i in _h[\"items\"]:\n    _i.pop(\"at\", None)\nprint(_json.dumps(_h, sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"compacted\": true, \"items\": [{\"bytes\": 16, \"id\": \"u3\", \"kind\": \"user\", \"original_bytes\": 16, \"pinned\": false, \"preview\": \"third question\", \"protected\": true, \"state\": \"visible\"}, {\"bytes\": 117, \"id\": \"a4\", \"kind\": \"assistant\", \"original_bytes\": 117, \"pinned\": true, \"preview\": \"third answer rlm({\\\"code\\\":\\\"run(\\\\\\\"c4\\\\\\\")\\\"})\", \"protected\": false, \"state\": \"visible\"}, {\"bytes\": 62, \"id\": \"r4\", \"kind\": \"tool\", \"original_bytes\": 30, \"pinned\": false, \"preview\": \"out\", \"protected\": false, \"state\": \"forgotten\", \"tool\": \"rlm\"}, {\"bytes\": 19, \"id\": \"main-x5\", \"kind\": \"note\", \"original_bytes\": 19, \"pinned\": false, \"preview\": \"while the turn runs\", \"protected\": false, \"state\": \"visible\"}], \"total\": 4, \"visible_bytes\": 214}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\ntry:\n    r = await ctx.forget([\"a4\"], \"x\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await rlm.host_request(\"ctx.state\", {})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)",
+					"status": "ok",
+					"stdout": "RuntimeError Context edit refused: a4 is pinned (ctx.unpin it first)\nok {\"collapsedCount\": 0, \"forgotten\": [{\"id\": \"r4\", \"kind\": \"tool\", \"preview\": \"out\", \"reason\": \"x\", \"source\": \"ctx.forget\"}], \"forgottenCount\": 1, \"notes\": 2, \"pinned\": [{\"id\": \"u1\"}, {\"id\": \"a4\", \"kind\": \"assistant\", \"preview\": \"third answer rlm({\\\"code\\\":\\\"run(\\\\\\\"c4\\\\\\\")\\\"})\"}], \"pinnedCount\": 2}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "await rlm.host_request(\"test.flush\", {})\nawait rlm.host_request(\"test.defer\", {\"on\": False})\nimport json as _json\n_h = await ctx.history()\nfor _i in _h[\"items\"]:\n    _i.pop(\"at\", None)\nprint(_json.dumps(_h, sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"compacted\": true, \"items\": [{\"bytes\": 16, \"id\": \"u3\", \"kind\": \"user\", \"original_bytes\": 16, \"pinned\": false, \"preview\": \"third question\", \"protected\": true, \"state\": \"visible\"}, {\"bytes\": 117, \"id\": \"a4\", \"kind\": \"assistant\", \"original_bytes\": 117, \"pinned\": true, \"preview\": \"third answer rlm({\\\"code\\\":\\\"run(\\\\\\\"c4\\\\\\\")\\\"})\", \"protected\": false, \"state\": \"visible\"}, {\"bytes\": 62, \"id\": \"r4\", \"kind\": \"tool\", \"original_bytes\": 30, \"pinned\": false, \"preview\": \"out\", \"protected\": false, \"state\": \"forgotten\", \"tool\": \"rlm\"}, {\"bytes\": 19, \"id\": \"main-x5\", \"kind\": \"note\", \"original_bytes\": 19, \"pinned\": false, \"preview\": \"while the turn runs\", \"protected\": false, \"state\": \"visible\"}], \"total\": 4, \"visible_bytes\": 214}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "await rlm.host_request(\"test.lane\", {\"lane\": \"lane-x\"})\nimport json as _json\ntry:\n    r = await ctx.history()\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await ctx.note(\"child note\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await ctx.forget([\"ax\"], \"x\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await ctx.get(\"u1\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await rlm.host_request(\"ctx.state\", {})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)",
+					"status": "ok",
+					"stdout": "ok {\"compacted\": false, \"items\": [{\"at\": 11, \"bytes\": 12, \"id\": \"ux\", \"kind\": \"user\", \"original_bytes\": 12, \"pinned\": false, \"preview\": \"child task\", \"protected\": true, \"state\": \"visible\"}, {\"at\": 12, \"bytes\": 39, \"id\": \"ax\", \"kind\": \"assistant\", \"original_bytes\": 39, \"pinned\": false, \"preview\": \"child answer\", \"protected\": false, \"state\": \"visible\"}], \"total\": 2, \"visible_bytes\": 51}\nok {\"id\": \"lane-x-x7\"}\nok {\"already\": [], \"edit_id\": \"lane-x-x8\", \"forgotten\": [\"ax\"], \"freed_bytes\": 39}\nRuntimeError Unknown context item: u1\nok {\"collapsedCount\": 0, \"forgotten\": [{\"id\": \"r4\", \"kind\": \"tool\", \"preview\": \"out\", \"reason\": \"x\", \"source\": \"ctx.forget\"}], \"forgottenCount\": 1, \"notes\": 2, \"pinned\": [{\"id\": \"u1\"}, {\"id\": \"a4\", \"kind\": \"assistant\", \"preview\": \"third answer rlm({\\\"code\\\":\\\"run(\\\\\\\"c4\\\\\\\")\\\"})\"}], \"pinnedCount\": 2}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "await rlm.host_request(\"test.lane\", {\"lane\": \"main\"})\nimport json as _json\ntry:\n    r = await ctx.forget([\"a4\"], \"drop the call\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await ctx.history()\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)",
+					"status": "ok",
+					"stdout": "RuntimeError Context edit refused: a4 is pinned (ctx.unpin it first)\nok {\"compacted\": true, \"items\": [{\"at\": 17, \"bytes\": 16, \"id\": \"u3\", \"kind\": \"user\", \"original_bytes\": 16, \"pinned\": false, \"preview\": \"third question\", \"protected\": true, \"state\": \"visible\"}, {\"at\": 18, \"bytes\": 117, \"id\": \"a4\", \"kind\": \"assistant\", \"original_bytes\": 117, \"pinned\": true, \"preview\": \"third answer rlm({\\\"code\\\":\\\"run(\\\\\\\"c4\\\\\\\")\\\"})\", \"protected\": false, \"state\": \"visible\"}, {\"at\": 19, \"bytes\": 62, \"id\": \"r4\", \"kind\": \"tool\", \"original_bytes\": 30, \"pinned\": false, \"preview\": \"out\", \"protected\": false, \"state\": \"forgotten\", \"tool\": \"rlm\"}, {\"at\": 21, \"bytes\": 19, \"id\": \"main-x5\", \"kind\": \"note\", \"original_bytes\": 19, \"pinned\": false, \"preview\": \"while the turn runs\", \"protected\": false, \"state\": \"visible\"}], \"total\": 4, \"visible_bytes\": 214}\n",
+					"result": "",
+					"error": null
+				}
+			],
+			"state": {
+				"main": [
+					{
+						"id": "m0",
+						"parentId": null,
+						"seq": 1,
+						"timestamp": 1,
+						"type": "model_change",
+						"provider": "faux",
+						"modelId": "faux"
+					},
+					{
+						"id": "u1",
+						"parentId": null,
+						"seq": 2,
+						"timestamp": 2,
+						"type": "message",
+						"message": {
+							"role": "user",
+							"content": "first question",
+							"timestamp": 0
+						}
+					},
+					{
+						"id": "a1",
+						"parentId": null,
+						"seq": 3,
+						"timestamp": 3,
+						"type": "message",
+						"message": {
+							"role": "assistant",
+							"content": [
+								{
+									"type": "text",
+									"text": "calling"
+								},
+								{
+									"type": "toolCall",
+									"id": "c1",
+									"name": "rlm",
+									"arguments": {
+										"code": "run(\"c1\")"
+									}
+								},
+								{
+									"type": "toolCall",
+									"id": "c2",
+									"name": "rlm",
+									"arguments": {
+										"code": "run(\"c2\")"
+									}
+								}
+							],
+							"api": "openai-completions",
+							"provider": "faux",
+							"model": "faux",
+							"stopReason": "toolUse",
+							"timestamp": 0
+						}
+					},
+					{
+						"id": "r1",
+						"parentId": null,
+						"seq": 4,
+						"timestamp": 4,
+						"type": "message",
+						"message": {
+							"role": "toolResult",
+							"toolCallId": "c1",
+							"toolName": "rlm",
+							"content": [
+								{
+									"type": "text",
+									"text": "BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE "
+								}
+							],
+							"isError": false,
+							"timestamp": 0
+						}
+					},
+					{
+						"id": "r2",
+						"parentId": null,
+						"seq": 5,
+						"timestamp": 5,
+						"type": "message",
+						"message": {
+							"role": "toolResult",
+							"toolCallId": "c2",
+							"toolName": "rlm",
+							"content": [
+								{
+									"type": "text",
+									"text": "small two\n\twith   spaces"
+								}
+							],
+							"isError": false,
+							"timestamp": 0
+						}
+					},
+					{
+						"id": "a2",
+						"parentId": null,
+						"seq": 6,
+						"timestamp": 6,
+						"type": "message",
+						"message": {
+							"role": "assistant",
+							"content": [
+								{
+									"type": "text",
+									"text": "answer one — ünïcödé 😀"
+								}
+							],
+							"api": "openai-completions",
+							"provider": "faux",
+							"model": "faux",
+							"stopReason": "stop",
+							"timestamp": 0
+						}
+					},
+					{
+						"id": "bs1",
+						"parentId": null,
+						"seq": 7,
+						"timestamp": 7,
+						"type": "branch_summary",
+						"summary": "earlier branch work",
+						"fromId": "u1"
+					},
+					{
+						"id": "cm1",
+						"parentId": null,
+						"seq": 8,
+						"timestamp": 8,
+						"type": "message",
+						"message": {
+							"role": "custom",
+							"customType": "x",
+							"content": "custom text",
+							"display": true,
+							"timestamp": 0
+						}
+					},
+					{
+						"id": "u2",
+						"parentId": null,
+						"seq": 9,
+						"timestamp": 9,
+						"type": "message",
+						"message": {
+							"role": "user",
+							"content": "second question",
+							"timestamp": 0
+						}
+					},
+					{
+						"id": "a3",
+						"parentId": null,
+						"seq": 10,
+						"timestamp": 10,
+						"type": "message",
+						"message": {
+							"role": "assistant",
+							"content": [
+								{
+									"type": "text",
+									"text": "working"
+								},
+								{
+									"type": "toolCall",
+									"id": "c3",
+									"name": "rlm",
+									"arguments": {
+										"code": "run(\"c3\")"
+									}
+								}
+							],
+							"api": "openai-completions",
+							"provider": "faux",
+							"model": "faux",
+							"stopReason": "toolUse",
+							"timestamp": 0
+						}
+					},
+					{
+						"id": "main-x1",
+						"parentId": null,
+						"seq": 13,
+						"timestamp": 13,
+						"type": "custom",
+						"customType": "ultron:context-pin",
+						"data": {
+							"targetId": "u1",
+							"pinned": true
+						}
+					},
+					{
+						"id": "main-x2",
+						"parentId": null,
+						"seq": 14,
+						"timestamp": 14,
+						"type": "custom",
+						"customType": "ultron:context-note",
+						"data": {
+							"text": "before compaction"
+						}
+					},
+					{
+						"id": "main-x3",
+						"parentId": null,
+						"seq": 15,
+						"timestamp": 15,
+						"type": "custom",
+						"customType": "context_edit",
+						"data": {
+							"edits": [
+								{
+									"targetId": "r2",
+									"replacement": null
+								}
+							],
+							"source": "ctx.forget",
+							"reason": "x"
+						}
+					},
+					{
+						"id": "cp1",
+						"parentId": null,
+						"seq": 16,
+						"timestamp": 16,
+						"type": "compaction",
+						"summary": "compacted: earlier work",
+						"firstKeptEntryId": "u2",
+						"tokensBefore": 1000
+					},
+					{
+						"id": "u3",
+						"parentId": null,
+						"seq": 17,
+						"timestamp": 17,
+						"type": "message",
+						"message": {
+							"role": "user",
+							"content": "third question",
+							"timestamp": 0
+						}
+					},
+					{
+						"id": "a4",
+						"parentId": null,
+						"seq": 18,
+						"timestamp": 18,
+						"type": "message",
+						"message": {
+							"role": "assistant",
+							"content": [
+								{
+									"type": "text",
+									"text": "third answer"
+								},
+								{
+									"type": "toolCall",
+									"id": "c4",
+									"name": "rlm",
+									"arguments": {
+										"code": "run(\"c4\")"
+									}
+								}
+							],
+							"api": "openai-completions",
+							"provider": "faux",
+							"model": "faux",
+							"stopReason": "toolUse",
+							"timestamp": 0
+						}
+					},
+					{
+						"id": "r4",
+						"parentId": null,
+						"seq": 19,
+						"timestamp": 19,
+						"type": "message",
+						"message": {
+							"role": "toolResult",
+							"toolCallId": "c4",
+							"toolName": "rlm",
+							"content": [
+								{
+									"type": "text",
+									"text": "out"
+								}
+							],
+							"isError": false,
+							"timestamp": 0
+						}
+					},
+					{
+						"id": "main-x4",
+						"parentId": null,
+						"seq": 20,
+						"timestamp": 20,
+						"type": "custom",
+						"customType": "context_edit",
+						"data": {
+							"edits": [
+								{
+									"targetId": "r4",
+									"replacement": null
+								}
+							],
+							"source": "ctx.forget",
+							"reason": "x"
+						}
+					},
+					{
+						"id": "main-x5",
+						"parentId": null,
+						"seq": 21,
+						"timestamp": 21,
+						"type": "custom",
+						"customType": "ultron:context-note",
+						"data": {
+							"text": "while the turn runs"
+						}
+					},
+					{
+						"id": "main-x6",
+						"parentId": null,
+						"seq": 22,
+						"timestamp": 22,
+						"type": "custom",
+						"customType": "ultron:context-pin",
+						"data": {
+							"targetId": "a4",
+							"pinned": true
+						}
+					}
+				],
+				"lane-x": [
+					{
+						"id": "ux",
+						"parentId": null,
+						"seq": 11,
+						"timestamp": 11,
+						"type": "message",
+						"message": {
+							"role": "user",
+							"content": "child task",
+							"timestamp": 0
+						}
+					},
+					{
+						"id": "ax",
+						"parentId": null,
+						"seq": 12,
+						"timestamp": 12,
+						"type": "message",
+						"message": {
+							"role": "assistant",
+							"content": [
+								{
+									"type": "text",
+									"text": "child answer"
+								}
+							],
+							"api": "openai-completions",
+							"provider": "faux",
+							"model": "faux",
+							"stopReason": "stop",
+							"timestamp": 0
+						}
+					},
+					{
+						"id": "lane-x-x7",
+						"parentId": null,
+						"seq": 23,
+						"timestamp": 23,
+						"type": "custom",
+						"customType": "ultron:context-note",
+						"data": {
+							"text": "child note"
+						}
+					},
+					{
+						"id": "lane-x-x8",
+						"parentId": null,
+						"seq": 24,
+						"timestamp": 24,
+						"type": "custom",
+						"customType": "context_edit",
+						"data": {
+							"edits": [
+								{
+									"targetId": "ax",
+									"replacement": null
+								}
+							],
+							"source": "ctx.forget",
+							"reason": "x"
+						}
+					}
+				]
+			}
+		}
+	]
+}

@@ -1,0 +1,359 @@
+{
+ "script": [
+  {
+   "op": "endpoint",
+   "name": "E1"
+  },
+  {
+   "op": "endpoint",
+   "name": "E2"
+  },
+  {
+   "op": "connect",
+   "name": "S1",
+   "to": "control"
+  },
+  {
+   "op": "send",
+   "name": "S1",
+   "line": {
+    "type": "register_server",
+    "protocol": 4,
+    "serverConnectionId": "s1",
+    "endpoint": "{TMP}/E1.sock"
+   }
+  },
+  {
+   "op": "expect",
+   "name": "S1",
+   "count": 1
+  },
+  {
+   "op": "connect",
+   "name": "W1",
+   "to": "control"
+  },
+  {
+   "op": "send",
+   "name": "W1",
+   "line": {
+    "type": "register_peer",
+    "protocol": 4,
+    "peerId": "w1"
+   }
+  },
+  {
+   "op": "expect",
+   "name": "W1",
+   "count": 1
+  },
+  {
+   "op": "expect",
+   "name": "S1",
+   "count": 2
+  },
+  {
+   "op": "send",
+   "name": "W1",
+   "line": {
+    "type": "send",
+    "to": "server",
+    "payload": {
+     "type": "worker_ready",
+     "n": 1.5,
+     "text": "é "
+    }
+   }
+  },
+  {
+   "op": "expect",
+   "name": "S1",
+   "count": 3
+  },
+  {
+   "op": "send",
+   "name": "S1",
+   "line": {
+    "type": "send",
+    "to": "w1",
+    "payload": {
+     "type": "shutdown"
+    }
+   }
+  },
+  {
+   "op": "expect",
+   "name": "W1",
+   "count": 2
+  },
+  {
+   "op": "send",
+   "name": "S1",
+   "line": {
+    "type": "send",
+    "to": "nobody",
+    "payload": 1
+   }
+  },
+  {
+   "op": "connect",
+   "name": "S2",
+   "to": "control"
+  },
+  {
+   "op": "send",
+   "name": "S2",
+   "line": {
+    "type": "register_server",
+    "protocol": 4,
+    "serverConnectionId": "s2",
+    "endpoint": "{TMP}/E2.sock"
+   }
+  },
+  {
+   "op": "expect",
+   "name": "S2",
+   "count": 1
+  },
+  {
+   "op": "expect",
+   "name": "W1",
+   "count": 3
+  },
+  {
+   "op": "send",
+   "name": "W1",
+   "line": {
+    "type": "send",
+    "to": "server",
+    "payload": {
+     "to": "newest"
+    }
+   }
+  },
+  {
+   "op": "expect",
+   "name": "S2",
+   "count": 2
+  },
+  {
+   "op": "send",
+   "name": "W1",
+   "line": {
+    "type": "send",
+    "to": "s1",
+    "payload": {
+     "to": "s1"
+    }
+   }
+  },
+  {
+   "op": "expect",
+   "name": "S1",
+   "count": 4
+  },
+  {
+   "op": "send",
+   "name": "S2",
+   "line": {
+    "type": "broadcast",
+    "payload": {
+     "type": "discover_workers"
+    }
+   }
+  },
+  {
+   "op": "expect",
+   "name": "W1",
+   "count": 4
+  },
+  {
+   "op": "connect",
+   "name": "P1",
+   "to": "public"
+  },
+  {
+   "op": "write",
+   "name": "P1",
+   "data": "ping"
+  },
+  {
+   "op": "expect",
+   "name": "E2",
+   "count": 1
+  },
+  {
+   "op": "expect",
+   "name": "P1",
+   "count": 1
+  },
+  {
+   "op": "connect",
+   "name": "X1",
+   "to": "control"
+  },
+  {
+   "op": "send",
+   "name": "X1",
+   "line": {
+    "type": "register_peer",
+    "protocol": 3,
+    "peerId": "x1"
+   }
+  },
+  {
+   "op": "expect",
+   "name": "X1",
+   "count": 0,
+   "closed": true
+  },
+  {
+   "op": "connect",
+   "name": "D1",
+   "to": "control"
+  },
+  {
+   "op": "send",
+   "name": "D1",
+   "line": {
+    "type": "register_server",
+    "protocol": 4,
+    "serverConnectionId": "s1",
+    "endpoint": "{TMP}/E1.sock"
+   }
+  },
+  {
+   "op": "expect",
+   "name": "D1",
+   "count": 0,
+   "closed": true
+  },
+  {
+   "op": "connect",
+   "name": "N1",
+   "to": "control"
+  },
+  {
+   "op": "send",
+   "name": "N1",
+   "line": {
+    "type": "hello"
+   }
+  },
+  {
+   "op": "expect",
+   "name": "N1",
+   "count": 0,
+   "closed": true
+  },
+  {
+   "op": "send",
+   "name": "W1",
+   "line": {
+    "type": "broadcast",
+    "payload": {}
+   }
+  },
+  {
+   "op": "expect",
+   "name": "W1",
+   "count": 4,
+   "closed": true
+  },
+  {
+   "op": "expect",
+   "name": "S1",
+   "count": 5
+  },
+  {
+   "op": "expect",
+   "name": "S2",
+   "count": 3
+  },
+  {
+   "op": "close",
+   "name": "S2"
+  },
+  {
+   "op": "close",
+   "name": "P1"
+  },
+  {
+   "op": "close",
+   "name": "S1"
+  },
+  {
+   "op": "exit"
+  }
+ ],
+ "received": {
+  "E1": {
+   "lines": [],
+   "closed": false
+  },
+  "E2": {
+   "lines": [
+    "ping"
+   ],
+   "closed": false
+  },
+  "S1": {
+   "lines": [
+    "{\"type\":\"server_registered\",\"serverConnectionId\":\"s1\",\"peers\":[]}\n",
+    "{\"type\":\"peer_connected\",\"peerId\":\"w1\"}\n",
+    "{\"type\":\"message\",\"from\":\"w1\",\"payload\":{\"type\":\"worker_ready\",\"n\":1.5,\"text\":\"é \"}}\n",
+    "{\"type\":\"message\",\"from\":\"w1\",\"payload\":{\"to\":\"s1\"}}\n",
+    "{\"type\":\"peer_disconnected\",\"peerId\":\"w1\"}\n"
+   ],
+   "closed": true
+  },
+  "W1": {
+   "lines": [
+    "{\"type\":\"peer_registered\",\"peerId\":\"w1\"}\n",
+    "{\"type\":\"message\",\"from\":\"s1\",\"payload\":{\"type\":\"shutdown\"}}\n",
+    "{\"type\":\"server_connected\",\"serverConnectionId\":\"s2\"}\n",
+    "{\"type\":\"message\",\"from\":\"s2\",\"payload\":{\"type\":\"discover_workers\"}}\n"
+   ],
+   "closed": true
+  },
+  "S2": {
+   "lines": [
+    "{\"type\":\"server_registered\",\"serverConnectionId\":\"s2\",\"peers\":[\"w1\"]}\n",
+    "{\"type\":\"message\",\"from\":\"w1\",\"payload\":{\"to\":\"newest\"}}\n",
+    "{\"type\":\"peer_disconnected\",\"peerId\":\"w1\"}\n"
+   ],
+   "closed": true
+  },
+  "P1": {
+   "lines": [
+    "pong:ping"
+   ],
+   "closed": true
+  },
+  "X1": {
+   "lines": [],
+   "closed": true
+  },
+  "D1": {
+   "lines": [],
+   "closed": true
+  },
+  "N1": {
+   "lines": [],
+   "closed": true
+  },
+  "exit": {
+   "lines": [
+    "0"
+   ],
+   "closed": null
+  },
+  "sockets": {
+   "lines": [
+    "false",
+    "false"
+   ],
+   "closed": null
+  }
+ }
+}

@@ -1,0 +1,1135 @@
+[
+	{
+		"name": "capacity evicts least recently used",
+		"options": {
+			"maxLive": 2,
+			"idleTtlMs": 1000
+		},
+		"snapshots": {},
+		"constructError": null,
+		"steps": [
+			{
+				"op": [
+					"acquire",
+					"a"
+				],
+				"result": "a"
+			},
+			{
+				"op": [
+					"tick",
+					5
+				],
+				"result": null
+			},
+			{
+				"op": [
+					"acquire",
+					"b"
+				],
+				"result": "b"
+			},
+			{
+				"op": [
+					"release",
+					0
+				],
+				"result": null
+			},
+			{
+				"op": [
+					"tick",
+					5
+				],
+				"result": null
+			},
+			{
+				"op": [
+					"release",
+					1
+				],
+				"result": null
+			},
+			{
+				"op": [
+					"tick",
+					5
+				],
+				"result": null
+			},
+			{
+				"op": [
+					"acquire",
+					"a"
+				],
+				"result": "a"
+			},
+			{
+				"op": [
+					"release",
+					2
+				],
+				"result": null
+			},
+			{
+				"op": [
+					"tick",
+					1
+				],
+				"result": null
+			},
+			{
+				"op": [
+					"acquire",
+					"c"
+				],
+				"result": "c"
+			},
+			{
+				"op": [
+					"stats"
+				],
+				"result": {
+					"live": 2,
+					"maxLive": 2,
+					"lanes": [
+						{
+							"lane": "a",
+							"running": 0,
+							"pinnedBy": [],
+							"idleMs": 1
+						},
+						{
+							"lane": "c",
+							"running": 1,
+							"pinnedBy": [],
+							"idleMs": 0
+						}
+					]
+				}
+			},
+			{
+				"op": [
+					"evictions"
+				],
+				"result": [
+					{
+						"lane": "b",
+						"reason": "capacity",
+						"at": 1016,
+						"evicted": true,
+						"restorable": "none",
+						"nonRestorable": []
+					}
+				]
+			}
+		],
+		"log": [
+			"create a",
+			"create b",
+			"shutdown b",
+			"create c"
+		]
+	},
+	{
+		"name": "capacity error when all running or pinned",
+		"options": {
+			"maxLive": 2,
+			"idleTtlMs": 1000
+		},
+		"snapshots": {},
+		"constructError": null,
+		"steps": [
+			{
+				"op": [
+					"acquire",
+					"a"
+				],
+				"result": "a"
+			},
+			{
+				"op": [
+					"acquire",
+					"b"
+				],
+				"result": "b"
+			},
+			{
+				"op": [
+					"acquire",
+					"c"
+				],
+				"error": "RLM kernel capacity exhausted: 2/2 kernels are running or pinned"
+			},
+			{
+				"op": [
+					"release",
+					1
+				],
+				"result": null
+			},
+			{
+				"op": [
+					"pin",
+					"b",
+					"holder"
+				],
+				"result": null
+			},
+			{
+				"op": [
+					"acquire",
+					"c"
+				],
+				"error": "RLM kernel capacity exhausted: 2/2 kernels are running or pinned"
+			},
+			{
+				"op": [
+					"unpin",
+					"b",
+					"holder"
+				],
+				"result": null
+			},
+			{
+				"op": [
+					"acquire",
+					"c"
+				],
+				"result": "c"
+			},
+			{
+				"op": [
+					"stats"
+				],
+				"result": {
+					"live": 2,
+					"maxLive": 2,
+					"lanes": [
+						{
+							"lane": "a",
+							"running": 1,
+							"pinnedBy": [],
+							"idleMs": 0
+						},
+						{
+							"lane": "c",
+							"running": 1,
+							"pinnedBy": [],
+							"idleMs": 0
+						}
+					]
+				}
+			},
+			{
+				"op": [
+					"evictions"
+				],
+				"result": [
+					{
+						"lane": "b",
+						"reason": "capacity",
+						"at": 1000,
+						"evicted": true,
+						"restorable": "none",
+						"nonRestorable": []
+					}
+				]
+			}
+		],
+		"log": [
+			"create a",
+			"create b",
+			"shutdown b",
+			"create c"
+		]
+	},
+	{
+		"name": "explicit refusals",
+		"options": {
+			"maxLive": 3,
+			"idleTtlMs": 1000
+		},
+		"snapshots": {},
+		"constructError": null,
+		"steps": [
+			{
+				"op": [
+					"evict",
+					"none"
+				],
+				"result": {
+					"lane": "none",
+					"reason": "explicit",
+					"at": 1000,
+					"evicted": false,
+					"refused": "absent",
+					"restorable": "none",
+					"nonRestorable": []
+				}
+			},
+			{
+				"op": [
+					"acquire",
+					"a"
+				],
+				"result": "a"
+			},
+			{
+				"op": [
+					"evict",
+					"a"
+				],
+				"result": {
+					"lane": "a",
+					"reason": "explicit",
+					"at": 1000,
+					"evicted": false,
+					"refused": "running",
+					"restorable": "none",
+					"nonRestorable": []
+				}
+			},
+			{
+				"op": [
+					"release",
+					0
+				],
+				"result": null
+			},
+			{
+				"op": [
+					"release",
+					0
+				],
+				"result": null
+			},
+			{
+				"op": [
+					"pin",
+					"a",
+					"x"
+				],
+				"result": null
+			},
+			{
+				"op": [
+					"pin",
+					"a",
+					"y"
+				],
+				"result": null
+			},
+			{
+				"op": [
+					"evict",
+					"a"
+				],
+				"result": {
+					"lane": "a",
+					"reason": "explicit",
+					"at": 1000,
+					"evicted": false,
+					"refused": "pinned",
+					"restorable": "none",
+					"nonRestorable": []
+				}
+			},
+			{
+				"op": [
+					"unpin",
+					"a",
+					"x"
+				],
+				"result": null
+			},
+			{
+				"op": [
+					"evict",
+					"a"
+				],
+				"result": {
+					"lane": "a",
+					"reason": "explicit",
+					"at": 1000,
+					"evicted": false,
+					"refused": "pinned",
+					"restorable": "none",
+					"nonRestorable": []
+				}
+			},
+			{
+				"op": [
+					"unpin",
+					"a",
+					"y"
+				],
+				"result": null
+			},
+			{
+				"op": [
+					"evict",
+					"a"
+				],
+				"result": {
+					"lane": "a",
+					"reason": "explicit",
+					"at": 1000,
+					"evicted": true,
+					"restorable": "none",
+					"nonRestorable": []
+				}
+			},
+			{
+				"op": [
+					"live",
+					"a"
+				],
+				"result": null
+			},
+			{
+				"op": [
+					"stats"
+				],
+				"result": {
+					"live": 0,
+					"maxLive": 3,
+					"lanes": []
+				}
+			}
+		],
+		"log": [
+			"create a",
+			"shutdown a"
+		]
+	},
+	{
+		"name": "sweep by idle ttl",
+		"options": {
+			"maxLive": 4,
+			"idleTtlMs": 100
+		},
+		"snapshots": {},
+		"constructError": null,
+		"steps": [
+			{
+				"op": [
+					"acquire",
+					"a"
+				],
+				"result": "a"
+			},
+			{
+				"op": [
+					"release",
+					0
+				],
+				"result": null
+			},
+			{
+				"op": [
+					"tick",
+					50
+				],
+				"result": null
+			},
+			{
+				"op": [
+					"acquire",
+					"b"
+				],
+				"result": "b"
+			},
+			{
+				"op": [
+					"release",
+					1
+				],
+				"result": null
+			},
+			{
+				"op": [
+					"acquire",
+					"c"
+				],
+				"result": "c"
+			},
+			{
+				"op": [
+					"pin",
+					"d",
+					"h"
+				],
+				"result": null
+			},
+			{
+				"op": [
+					"acquire",
+					"d"
+				],
+				"result": "d"
+			},
+			{
+				"op": [
+					"release",
+					3
+				],
+				"result": null
+			},
+			{
+				"op": [
+					"tick",
+					60
+				],
+				"result": null
+			},
+			{
+				"op": [
+					"sweep"
+				],
+				"result": [
+					{
+						"lane": "a",
+						"reason": "idle",
+						"at": 1110,
+						"evicted": true,
+						"restorable": "none",
+						"nonRestorable": []
+					}
+				]
+			},
+			{
+				"op": [
+					"tick",
+					50
+				],
+				"result": null
+			},
+			{
+				"op": [
+					"sweep"
+				],
+				"result": [
+					{
+						"lane": "b",
+						"reason": "idle",
+						"at": 1160,
+						"evicted": true,
+						"restorable": "none",
+						"nonRestorable": []
+					}
+				]
+			},
+			{
+				"op": [
+					"stats"
+				],
+				"result": {
+					"live": 2,
+					"maxLive": 4,
+					"lanes": [
+						{
+							"lane": "c",
+							"running": 1,
+							"pinnedBy": [],
+							"idleMs": 0
+						},
+						{
+							"lane": "d",
+							"running": 0,
+							"pinnedBy": [
+								"h"
+							],
+							"idleMs": 110
+						}
+					]
+				}
+			},
+			{
+				"op": [
+					"live",
+					"b"
+				],
+				"result": null
+			},
+			{
+				"op": [
+					"live",
+					"c"
+				],
+				"result": "c"
+			}
+		],
+		"log": [
+			"create a",
+			"create b",
+			"create c",
+			"create d",
+			"shutdown a",
+			"shutdown b"
+		]
+	},
+	{
+		"name": "snapshot before eviction",
+		"options": {
+			"maxLive": 4,
+			"idleTtlMs": 0,
+			"snapshot": true
+		},
+		"snapshots": {
+			"a": {
+				"skipped": []
+			},
+			"b": {
+				"skipped": [
+					"sock",
+					"lock"
+				]
+			},
+			"c": {
+				"error": "pickle failed"
+			},
+			"d": {
+				"throws": "kernel gone"
+			},
+			"e": {
+				"none": true
+			},
+			"f": {
+				"error": null
+			}
+		},
+		"constructError": null,
+		"steps": [
+			{
+				"op": [
+					"acquire",
+					"a"
+				],
+				"result": "a"
+			},
+			{
+				"op": [
+					"acquire",
+					"b"
+				],
+				"result": "b"
+			},
+			{
+				"op": [
+					"acquire",
+					"c"
+				],
+				"result": "c"
+			},
+			{
+				"op": [
+					"acquire",
+					"d"
+				],
+				"result": "d"
+			},
+			{
+				"op": [
+					"release",
+					0
+				],
+				"result": null
+			},
+			{
+				"op": [
+					"release",
+					1
+				],
+				"result": null
+			},
+			{
+				"op": [
+					"release",
+					2
+				],
+				"result": null
+			},
+			{
+				"op": [
+					"release",
+					3
+				],
+				"result": null
+			},
+			{
+				"op": [
+					"evict",
+					"a"
+				],
+				"result": {
+					"lane": "a",
+					"reason": "explicit",
+					"at": 1000,
+					"evicted": true,
+					"restorable": "full",
+					"nonRestorable": [],
+					"snapshotPath": "/snap/a.pkl"
+				}
+			},
+			{
+				"op": [
+					"evict",
+					"b"
+				],
+				"result": {
+					"lane": "b",
+					"reason": "explicit",
+					"at": 1000,
+					"evicted": true,
+					"restorable": "partial",
+					"nonRestorable": [
+						"sock",
+						"lock"
+					],
+					"snapshotPath": "/snap/b.pkl"
+				}
+			},
+			{
+				"op": [
+					"evict",
+					"c"
+				],
+				"result": {
+					"lane": "c",
+					"reason": "explicit",
+					"at": 1000,
+					"evicted": false,
+					"restorable": "none",
+					"nonRestorable": [],
+					"refused": "snapshot-failed",
+					"snapshotPath": "/snap/c.pkl",
+					"error": "pickle failed"
+				}
+			},
+			{
+				"op": [
+					"evict",
+					"d"
+				],
+				"result": {
+					"lane": "d",
+					"reason": "explicit",
+					"at": 1000,
+					"evicted": false,
+					"restorable": "none",
+					"nonRestorable": [],
+					"refused": "snapshot-failed",
+					"snapshotPath": "/snap/d.pkl",
+					"error": "kernel gone"
+				}
+			},
+			{
+				"op": [
+					"acquire",
+					"e"
+				],
+				"result": "e"
+			},
+			{
+				"op": [
+					"release",
+					4
+				],
+				"result": null
+			},
+			{
+				"op": [
+					"evict",
+					"e"
+				],
+				"result": {
+					"lane": "e",
+					"reason": "explicit",
+					"at": 1000,
+					"evicted": false,
+					"restorable": "none",
+					"nonRestorable": [],
+					"refused": "snapshot-failed",
+					"snapshotPath": "/snap/e.pkl",
+					"error": "snapshot returned no report"
+				}
+			},
+			{
+				"op": [
+					"acquire",
+					"f"
+				],
+				"result": "f"
+			},
+			{
+				"op": [
+					"release",
+					5
+				],
+				"result": null
+			},
+			{
+				"op": [
+					"sweep"
+				],
+				"result": [
+					{
+						"lane": "c",
+						"reason": "idle",
+						"at": 1000,
+						"evicted": false,
+						"restorable": "none",
+						"nonRestorable": [],
+						"refused": "snapshot-failed",
+						"snapshotPath": "/snap/c.pkl",
+						"error": "pickle failed"
+					},
+					{
+						"lane": "d",
+						"reason": "idle",
+						"at": 1000,
+						"evicted": false,
+						"restorable": "none",
+						"nonRestorable": [],
+						"refused": "snapshot-failed",
+						"snapshotPath": "/snap/d.pkl",
+						"error": "kernel gone"
+					},
+					{
+						"lane": "e",
+						"reason": "idle",
+						"at": 1000,
+						"evicted": false,
+						"restorable": "none",
+						"nonRestorable": [],
+						"refused": "snapshot-failed",
+						"snapshotPath": "/snap/e.pkl",
+						"error": "snapshot returned no report"
+					},
+					{
+						"lane": "f",
+						"reason": "idle",
+						"at": 1000,
+						"evicted": false,
+						"restorable": "none",
+						"nonRestorable": [],
+						"refused": "snapshot-failed",
+						"snapshotPath": "/snap/f.pkl",
+						"error": "snapshot failed"
+					}
+				]
+			},
+			{
+				"op": [
+					"stats"
+				],
+				"result": {
+					"live": 4,
+					"maxLive": 4,
+					"lanes": [
+						{
+							"lane": "c",
+							"running": 0,
+							"pinnedBy": [],
+							"idleMs": 0
+						},
+						{
+							"lane": "d",
+							"running": 0,
+							"pinnedBy": [],
+							"idleMs": 0
+						},
+						{
+							"lane": "e",
+							"running": 0,
+							"pinnedBy": [],
+							"idleMs": 0
+						},
+						{
+							"lane": "f",
+							"running": 0,
+							"pinnedBy": [],
+							"idleMs": 0
+						}
+					]
+				}
+			}
+		],
+		"log": [
+			"create a",
+			"create b",
+			"create c",
+			"create d",
+			"snapshot a /snap/a.pkl",
+			"shutdown a",
+			"snapshot b /snap/b.pkl",
+			"shutdown b",
+			"snapshot c /snap/c.pkl",
+			"snapshot d /snap/d.pkl",
+			"create e",
+			"snapshot e /snap/e.pkl",
+			"create f",
+			"snapshot c /snap/c.pkl",
+			"snapshot d /snap/d.pkl",
+			"snapshot e /snap/e.pkl",
+			"snapshot f /snap/f.pkl"
+		]
+	},
+	{
+		"name": "close snapshots idle, skips running, ignores pins and failures",
+		"options": {
+			"maxLive": 4,
+			"idleTtlMs": 0,
+			"snapshot": true
+		},
+		"snapshots": {
+			"a": {
+				"skipped": []
+			},
+			"b": {
+				"skipped": []
+			},
+			"c": {
+				"error": "bad"
+			}
+		},
+		"constructError": null,
+		"steps": [
+			{
+				"op": [
+					"acquire",
+					"a"
+				],
+				"result": "a"
+			},
+			{
+				"op": [
+					"acquire",
+					"b"
+				],
+				"result": "b"
+			},
+			{
+				"op": [
+					"acquire",
+					"c"
+				],
+				"result": "c"
+			},
+			{
+				"op": [
+					"release",
+					1
+				],
+				"result": null
+			},
+			{
+				"op": [
+					"release",
+					2
+				],
+				"result": null
+			},
+			{
+				"op": [
+					"pin",
+					"b",
+					"h"
+				],
+				"result": null
+			},
+			{
+				"op": [
+					"close"
+				],
+				"result": null
+			},
+			{
+				"op": [
+					"acquire",
+					"z"
+				],
+				"error": "RLM kernel pool is closed"
+			},
+			{
+				"op": [
+					"evictions"
+				],
+				"result": [
+					{
+						"lane": "a",
+						"reason": "close",
+						"at": 1000,
+						"evicted": true,
+						"restorable": "none",
+						"nonRestorable": [],
+						"error": "cell running at close; not snapshotted"
+					},
+					{
+						"lane": "b",
+						"reason": "close",
+						"at": 1000,
+						"evicted": true,
+						"restorable": "full",
+						"nonRestorable": [],
+						"snapshotPath": "/snap/b.pkl"
+					},
+					{
+						"lane": "c",
+						"reason": "close",
+						"at": 1000,
+						"evicted": true,
+						"restorable": "none",
+						"nonRestorable": [],
+						"snapshotPath": "/snap/c.pkl",
+						"error": "bad"
+					}
+				]
+			}
+		],
+		"log": [
+			"create a",
+			"create b",
+			"create c",
+			"shutdown a",
+			"snapshot b /snap/b.pkl",
+			"snapshot c /snap/c.pkl",
+			"shutdown b",
+			"shutdown c"
+		]
+	},
+	{
+		"name": "pin capacity",
+		"options": {
+			"maxLive": 3,
+			"idleTtlMs": 0,
+			"maxPinned": 1
+		},
+		"snapshots": {},
+		"constructError": null,
+		"steps": [
+			{
+				"op": [
+					"pin",
+					"a",
+					"h1"
+				],
+				"result": null
+			},
+			{
+				"op": [
+					"pin",
+					"a",
+					"h2"
+				],
+				"result": null
+			},
+			{
+				"op": [
+					"pin",
+					"b",
+					"h1"
+				],
+				"error": "RLM kernel capacity exhausted: 1/1 kernels are running or pinned"
+			},
+			{
+				"op": [
+					"unpin",
+					"a",
+					"h1"
+				],
+				"result": null
+			},
+			{
+				"op": [
+					"pin",
+					"b",
+					"h1"
+				],
+				"error": "RLM kernel capacity exhausted: 1/1 kernels are running or pinned"
+			},
+			{
+				"op": [
+					"unpin",
+					"a",
+					"h2"
+				],
+				"result": null
+			},
+			{
+				"op": [
+					"pin",
+					"b",
+					"h1"
+				],
+				"result": null
+			},
+			{
+				"op": [
+					"stats"
+				],
+				"result": {
+					"live": 0,
+					"maxLive": 3,
+					"lanes": []
+				}
+			}
+		],
+		"log": []
+	},
+	{
+		"name": "constructor validation",
+		"options": {
+			"maxLive": 0,
+			"idleTtlMs": 0
+		},
+		"snapshots": {},
+		"constructError": "maxLive must be a positive integer",
+		"steps": [],
+		"log": []
+	},
+	{
+		"name": "constructor ttl",
+		"options": {
+			"maxLive": 1,
+			"idleTtlMs": -1
+		},
+		"snapshots": {},
+		"constructError": "idleTtlMs must be a nonnegative number",
+		"steps": [],
+		"log": []
+	},
+	{
+		"name": "constructor pinned",
+		"options": {
+			"maxLive": 1,
+			"idleTtlMs": 0,
+			"maxPinned": 2
+		},
+		"snapshots": {},
+		"constructError": "maxPinned must be an integer between 0 and maxLive",
+		"steps": [],
+		"log": []
+	},
+	{
+		"name": "empty pin holder",
+		"options": {
+			"maxLive": 1,
+			"idleTtlMs": 0
+		},
+		"snapshots": {},
+		"constructError": null,
+		"steps": [
+			{
+				"op": [
+					"pin",
+					"a",
+					""
+				],
+				"error": "pin holder must be nonempty"
+			}
+		],
+		"log": []
+	}
+]

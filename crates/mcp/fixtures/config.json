@@ -1,0 +1,1405 @@
+{
+ "validate": [
+  {
+   "name": "fs",
+   "raw": {
+    "command": "npx",
+    "args": [
+     "-y",
+     "server"
+    ]
+   },
+   "result": {
+    "command": "npx",
+    "args": [
+     "-y",
+     "server"
+    ]
+   }
+  },
+  {
+   "name": "fs",
+   "raw": {
+    "command": "npx",
+    "args": [
+     "-y",
+     "server"
+    ],
+    "type": "stdio",
+    "env": {
+     "A": "${HOME}"
+    },
+    "cwd": "~/x",
+    "inheritEnv": false,
+    "enabled": false
+   },
+   "result": {
+    "command": "npx",
+    "args": [
+     "-y",
+     "server"
+    ],
+    "type": "stdio",
+    "env": {
+     "A": "${HOME}"
+    },
+    "cwd": "~/x",
+    "inheritEnv": false,
+    "enabled": false
+   }
+  },
+  {
+   "name": "bad name",
+   "raw": {
+    "command": "npx",
+    "args": [
+     "-y",
+     "server"
+    ]
+   },
+   "result": "invalid server name \"bad name\" (use letters, digits, \"_\" and \"-\")"
+  },
+  {
+   "name": "a.b",
+   "raw": {
+    "command": "npx",
+    "args": [
+     "-y",
+     "server"
+    ]
+   },
+   "result": "invalid server name \"a.b\" (use letters, digits, \"_\" and \"-\")"
+  },
+  {
+   "name": "fs",
+   "raw": "nope",
+   "result": "server \"fs\" must be an object"
+  },
+  {
+   "name": "fs",
+   "raw": null,
+   "result": "server \"fs\" must be an object"
+  },
+  {
+   "name": "fs",
+   "raw": [
+    1
+   ],
+   "result": "server \"fs\" must be an object"
+  },
+  {
+   "name": "fs",
+   "raw": {
+    "command": "npx",
+    "args": [
+     "-y",
+     "server"
+    ],
+    "lifecycle": "eager"
+   },
+   "result": {
+    "command": "npx",
+    "args": [
+     "-y",
+     "server"
+    ],
+    "lifecycle": "eager"
+   }
+  },
+  {
+   "name": "fs",
+   "raw": {
+    "command": "npx",
+    "args": [
+     "-y",
+     "server"
+    ],
+    "lifecycle": "sometimes"
+   },
+   "result": "server \"fs\": lifecycle must be one of \"lazy\", \"eager\", \"keep-alive\", \"lazy-keep-alive\""
+  },
+  {
+   "name": "fs",
+   "raw": {
+    "command": "npx",
+    "args": [
+     "-y",
+     "server"
+    ],
+    "exposure": "codemode-deferred",
+    "toolExposure": {
+     "a*": "codemode-deferred",
+     "b": "direct"
+    }
+   },
+   "result": {
+    "command": "npx",
+    "args": [
+     "-y",
+     "server"
+    ],
+    "exposure": "codemode",
+    "toolExposure": {
+     "a*": "codemode",
+     "b": "direct"
+    }
+   }
+  },
+  {
+   "name": "fs",
+   "raw": {
+    "command": "npx",
+    "args": [
+     "-y",
+     "server"
+    ],
+    "exposure": "loud"
+   },
+   "result": "server \"fs\": exposure must be one of \"codemode\", \"deferred\", \"direct\", \"hidden\""
+  },
+  {
+   "name": "fs",
+   "raw": {
+    "command": "npx",
+    "args": [
+     "-y",
+     "server"
+    ],
+    "toolExposure": []
+   },
+   "result": "server \"fs\": toolExposure must map tool names to exposures"
+  },
+  {
+   "name": "fs",
+   "raw": {
+    "command": "npx",
+    "args": [
+     "-y",
+     "server"
+    ],
+    "toolExposure": {
+     "x": "nope"
+    }
+   },
+   "result": "server \"fs\": toolExposure \"x\" must be one of \"codemode\", \"deferred\", \"direct\", \"hidden\""
+  },
+  {
+   "name": "fs",
+   "raw": {
+    "command": "npx",
+    "args": [
+     "-y",
+     "server"
+    ],
+    "enabled": "yes"
+   },
+   "result": "server \"fs\": enabled must be a boolean"
+  },
+  {
+   "name": "fs",
+   "raw": {
+    "command": "npx",
+    "args": [
+     "-y",
+     "server"
+    ],
+    "description": 3
+   },
+   "result": "server \"fs\": description must be a string"
+  },
+  {
+   "name": "fs",
+   "raw": {
+    "command": "npx",
+    "args": [
+     "-y",
+     "server"
+    ],
+    "description": "Files"
+   },
+   "result": {
+    "command": "npx",
+    "args": [
+     "-y",
+     "server"
+    ],
+    "description": "Files"
+   }
+  },
+  {
+   "name": "fs",
+   "raw": {
+    "command": "npx",
+    "args": [
+     "-y",
+     "server"
+    ],
+    "timeout": 0
+   },
+   "result": "server \"fs\": timeout must be a positive number of seconds"
+  },
+  {
+   "name": "fs",
+   "raw": {
+    "command": "npx",
+    "args": [
+     "-y",
+     "server"
+    ],
+    "timeout": -1
+   },
+   "result": "server \"fs\": timeout must be a positive number of seconds"
+  },
+  {
+   "name": "fs",
+   "raw": {
+    "command": "npx",
+    "args": [
+     "-y",
+     "server"
+    ],
+    "timeout": "5"
+   },
+   "result": "server \"fs\": timeout must be a positive number of seconds"
+  },
+  {
+   "name": "fs",
+   "raw": {
+    "command": "npx",
+    "args": [
+     "-y",
+     "server"
+    ],
+    "timeout": 2.5
+   },
+   "result": {
+    "command": "npx",
+    "args": [
+     "-y",
+     "server"
+    ],
+    "timeout": 2.5
+   }
+  },
+  {
+   "name": "fs",
+   "raw": {
+    "command": "npx",
+    "args": [
+     "-y",
+     "server"
+    ],
+    "type": "sse"
+   },
+   "result": "server \"fs\": legacy SSE transport is not supported; use the streamable HTTP URL"
+  },
+  {
+   "name": "fs",
+   "raw": {
+    "command": "npx",
+    "args": "x"
+   },
+   "result": "server \"fs\": args must be an array of strings"
+  },
+  {
+   "name": "fs",
+   "raw": {
+    "command": "npx",
+    "args": [
+     1
+    ]
+   },
+   "result": "server \"fs\": args must be an array of strings"
+  },
+  {
+   "name": "fs",
+   "raw": {
+    "command": "npx",
+    "args": [
+     "-y",
+     "server"
+    ],
+    "env": {
+     "A": 1
+    }
+   },
+   "result": "server \"fs\": env must map names to strings"
+  },
+  {
+   "name": "fs",
+   "raw": {
+    "command": "npx",
+    "args": [
+     "-y",
+     "server"
+    ],
+    "cwd": 1
+   },
+   "result": "server \"fs\": cwd must be a string"
+  },
+  {
+   "name": "fs",
+   "raw": {
+    "command": "npx",
+    "args": [
+     "-y",
+     "server"
+    ],
+    "inheritEnv": "no"
+   },
+   "result": "server \"fs\": inheritEnv must be a boolean"
+  },
+  {
+   "name": "fs",
+   "raw": {
+    "command": "npx",
+    "args": [
+     "-y",
+     "server"
+    ],
+    "type": "http"
+   },
+   "result": "server \"fs\" needs either \"command\" (stdio) or \"url\" (streamable HTTP)"
+  },
+  {
+   "name": "fs",
+   "raw": {},
+   "result": "server \"fs\" needs either \"command\" (stdio) or \"url\" (streamable HTTP)"
+  },
+  {
+   "name": "web",
+   "raw": {
+    "url": "https://example.com/mcp"
+   },
+   "result": {
+    "url": "https://example.com/mcp"
+   }
+  },
+  {
+   "name": "web",
+   "raw": {
+    "url": "https://example.com/mcp",
+    "type": "streamable-http",
+    "headers": {
+     "Authorization": "Bearer x"
+    }
+   },
+   "result": {
+    "url": "https://example.com/mcp",
+    "type": "streamable-http",
+    "headers": {
+     "Authorization": "Bearer x"
+    }
+   }
+  },
+  {
+   "name": "web",
+   "raw": {
+    "url": "ftp://example.com"
+   },
+   "result": "server \"web\": url must be an http or https URL"
+  },
+  {
+   "name": "web",
+   "raw": {
+    "url": "not a url"
+   },
+   "result": "server \"web\": url must be an http or https URL"
+  },
+  {
+   "name": "web",
+   "raw": {
+    "url": "http://[::1]:3000/mcp"
+   },
+   "result": {
+    "url": "http://[::1]:3000/mcp"
+   }
+  },
+  {
+   "name": "web",
+   "raw": {
+    "url": "https://example.com/mcp",
+    "headers": {
+     "A": 1
+    }
+   },
+   "result": "server \"web\": headers must map names to strings"
+  },
+  {
+   "name": "web",
+   "raw": {
+    "url": "https://example.com/mcp",
+    "headers": []
+   },
+   "result": "server \"web\": headers must map names to strings"
+  },
+  {
+   "name": "web",
+   "raw": {
+    "url": "https://example.com/mcp",
+    "oauth": "x"
+   },
+   "result": "server \"web\": oauth must be an object"
+  },
+  {
+   "name": "web",
+   "raw": {
+    "url": "https://example.com/mcp",
+    "oauth": {
+     "clientId": 1
+    }
+   },
+   "result": "server \"web\": oauth.clientId must be a string"
+  },
+  {
+   "name": "web",
+   "raw": {
+    "url": "https://example.com/mcp",
+    "oauth": {
+     "clientSecret": 1
+    }
+   },
+   "result": "server \"web\": oauth.clientSecret must be a string"
+  },
+  {
+   "name": "web",
+   "raw": {
+    "url": "https://example.com/mcp",
+    "oauth": {
+     "callbackPort": 0
+    }
+   },
+   "result": "server \"web\": oauth.callbackPort must be a port number"
+  },
+  {
+   "name": "web",
+   "raw": {
+    "url": "https://example.com/mcp",
+    "oauth": {
+     "callbackPort": 1.5
+    }
+   },
+   "result": "server \"web\": oauth.callbackPort must be a port number"
+  },
+  {
+   "name": "web",
+   "raw": {
+    "url": "https://example.com/mcp",
+    "oauth": {
+     "callbackPort": 65536
+    }
+   },
+   "result": "server \"web\": oauth.callbackPort must be a port number"
+  },
+  {
+   "name": "web",
+   "raw": {
+    "url": "https://example.com/mcp",
+    "oauth": {
+     "callbackPort": 8080,
+     "clientId": "c"
+    }
+   },
+   "result": {
+    "url": "https://example.com/mcp",
+    "oauth": {
+     "callbackPort": 8080,
+     "clientId": "c"
+    }
+   }
+  },
+  {
+   "name": "web",
+   "raw": {
+    "url": "https://example.com/mcp",
+    "oauth": {
+     "callbackUrl": "http://localhost:8080/oauth/callback"
+    }
+   },
+   "result": {
+    "url": "https://example.com/mcp",
+    "oauth": {
+     "callbackUrl": "http://localhost:8080/oauth/callback"
+    }
+   }
+  },
+  {
+   "name": "web",
+   "raw": {
+    "url": "https://example.com/mcp",
+    "oauth": {
+     "callbackUrl": "http://localhost:8080/cb",
+     "callbackPort": 9090
+    }
+   },
+   "result": "server \"web\": oauth.callbackUrl and oauth.callbackPort name different ports"
+  },
+  {
+   "name": "web",
+   "raw": {
+    "url": "https://example.com/mcp",
+    "oauth": {
+     "callbackUrl": "http://localhost/cb",
+     "callbackPort": 9090
+    }
+   },
+   "result": {
+    "url": "https://example.com/mcp",
+    "oauth": {
+     "callbackUrl": "http://localhost/cb",
+     "callbackPort": 9090
+    }
+   }
+  },
+  {
+   "name": "web",
+   "raw": {
+    "url": "https://example.com/mcp",
+    "oauth": {
+     "callbackUrl": "https://localhost/cb"
+    }
+   },
+   "result": "server \"web\": oauth.callbackUrl must be an http URI on localhost, 127.0.0.1, or [::1] without query or fragment"
+  },
+  {
+   "name": "web",
+   "raw": {
+    "url": "https://example.com/mcp",
+    "oauth": {
+     "callbackUrl": "http://example.com/cb"
+    }
+   },
+   "result": "server \"web\": oauth.callbackUrl must be an http URI on localhost, 127.0.0.1, or [::1] without query or fragment"
+  },
+  {
+   "name": "web",
+   "raw": {
+    "url": "https://example.com/mcp",
+    "oauth": {
+     "callbackUrl": "http://127.0.0.1/cb?x=1"
+    }
+   },
+   "result": "server \"web\": oauth.callbackUrl must be an http URI on localhost, 127.0.0.1, or [::1] without query or fragment"
+  },
+  {
+   "name": "web",
+   "raw": {
+    "url": "https://example.com/mcp",
+    "oauth": {
+     "callbackUrl": "http://[::1]/cb#f"
+    }
+   },
+   "result": "server \"web\": oauth.callbackUrl must be an http URI on localhost, 127.0.0.1, or [::1] without query or fragment"
+  },
+  {
+   "name": "web",
+   "raw": {
+    "url": "https://example.com/mcp",
+    "oauth": {
+     "callbackUrl": "http://[::1]/cb"
+    }
+   },
+   "result": {
+    "url": "https://example.com/mcp",
+    "oauth": {
+     "callbackUrl": "http://[::1]/cb"
+    }
+   }
+  },
+  {
+   "name": "web",
+   "raw": {
+    "url": "https://example.com/mcp",
+    "oauth": {
+     "scope": 1
+    }
+   },
+   "result": "server \"web\": oauth.scope must be a string"
+  },
+  {
+   "name": "web",
+   "raw": {
+    "url": "https://example.com/mcp",
+    "oauth": {
+     "clientName": " "
+    }
+   },
+   "result": "server \"web\": oauth.clientName must be a non-empty string"
+  },
+  {
+   "name": "web",
+   "raw": {
+    "url": "https://example.com/mcp",
+    "oauth": {
+     "clientName": "ultron"
+    }
+   },
+   "result": {
+    "url": "https://example.com/mcp",
+    "oauth": {
+     "clientName": "ultron"
+    }
+   }
+  },
+  {
+   "name": "web",
+   "raw": {
+    "url": "https://example.com/mcp",
+    "oauth": {
+     "authServerMetadataUrl": "http://example.com/x"
+    }
+   },
+   "result": "server \"web\": oauth.authServerMetadataUrl must be an https URL, or http on localhost, 127.0.0.1, or [::1]"
+  },
+  {
+   "name": "web",
+   "raw": {
+    "url": "https://example.com/mcp",
+    "oauth": {
+     "authServerMetadataUrl": "http://127.0.0.1:9/x"
+    }
+   },
+   "result": {
+    "url": "https://example.com/mcp",
+    "oauth": {
+     "authServerMetadataUrl": "http://127.0.0.1:9/x"
+    }
+   }
+  },
+  {
+   "name": "web",
+   "raw": {
+    "url": "https://example.com/mcp",
+    "oauth": {
+     "authServerMetadataUrl": "https://auth.example.com/.well-known/x"
+    }
+   },
+   "result": {
+    "url": "https://example.com/mcp",
+    "oauth": {
+     "authServerMetadataUrl": "https://auth.example.com/.well-known/x"
+    }
+   }
+  },
+  {
+   "name": "web",
+   "raw": {
+    "url": "https://example.com/mcp",
+    "oauth": {
+     "authServerMetadataUrl": "nope"
+    }
+   },
+   "result": "server \"web\": oauth.authServerMetadataUrl must be an https URL, or http on localhost, 127.0.0.1, or [::1]"
+  },
+  {
+   "name": "web",
+   "raw": {
+    "url": "https://example.com/mcp",
+    "auth": {
+     "provider": "github"
+    }
+   },
+   "result": {
+    "url": "https://example.com/mcp",
+    "auth": {
+     "provider": "github"
+    }
+   }
+  },
+  {
+   "name": "web",
+   "raw": {
+    "url": "https://example.com/mcp",
+    "auth": {
+     "provider": ""
+    }
+   },
+   "result": "server \"web\": auth.provider must be a provider name"
+  },
+  {
+   "name": "web",
+   "raw": {
+    "url": "https://example.com/mcp",
+    "auth": "x"
+   },
+   "result": "server \"web\": auth.provider must be a provider name"
+  },
+  {
+   "name": "web",
+   "raw": {
+    "url": "http://example.com/mcp",
+    "auth": {
+     "provider": "github"
+    }
+   },
+   "result": "server \"web\": auth requires an https URL, or http on localhost, 127.0.0.1, or [::1]"
+  },
+  {
+   "name": "web",
+   "raw": {
+    "url": "http://localhost:3/mcp",
+    "auth": {
+     "provider": "github"
+    }
+   },
+   "result": {
+    "url": "http://localhost:3/mcp",
+    "auth": {
+     "provider": "github"
+    }
+   }
+  },
+  {
+   "name": "web",
+   "raw": {
+    "url": "https://example.com/mcp",
+    "command": "x"
+   },
+   "result": {
+    "url": "https://example.com/mcp",
+    "command": "x"
+   }
+  },
+  {
+   "name": "both",
+   "raw": {
+    "url": 5,
+    "command": "x"
+   },
+   "result": {
+    "url": 5,
+    "command": "x"
+   }
+  }
+ ],
+ "normalize": [
+  {
+   "raw": {
+    "command": "npx",
+    "args": [
+     "-y",
+     "server"
+    ],
+    "disabled": true
+   },
+   "defaults": {},
+   "result": {
+    "command": "npx",
+    "args": [
+     "-y",
+     "server"
+    ],
+    "enabled": false
+   }
+  },
+  {
+   "raw": {
+    "command": "npx",
+    "args": [
+     "-y",
+     "server"
+    ],
+    "disabled": true,
+    "enabled": true
+   },
+   "defaults": {},
+   "result": {
+    "command": "npx",
+    "args": [
+     "-y",
+     "server"
+    ],
+    "enabled": true
+   }
+  },
+  {
+   "raw": {
+    "command": "npx",
+    "args": [
+     "-y",
+     "server"
+    ],
+    "requestTimeoutMs": 1500
+   },
+   "defaults": {},
+   "result": {
+    "command": "npx",
+    "args": [
+     "-y",
+     "server"
+    ],
+    "timeout": 1.5
+   }
+  },
+  {
+   "raw": {
+    "command": "npx",
+    "args": [
+     "-y",
+     "server"
+    ]
+   },
+   "defaults": {
+    "requestTimeoutMs": 2500
+   },
+   "result": {
+    "command": "npx",
+    "args": [
+     "-y",
+     "server"
+    ],
+    "timeout": 2.5
+   }
+  },
+  {
+   "raw": {
+    "command": "npx",
+    "args": [
+     "-y",
+     "server"
+    ],
+    "timeout": 9,
+    "requestTimeoutMs": 1500
+   },
+   "defaults": {},
+   "result": {
+    "command": "npx",
+    "args": [
+     "-y",
+     "server"
+    ],
+    "timeout": 9
+   }
+  },
+  {
+   "raw": {
+    "command": "npx",
+    "args": [
+     "-y",
+     "server"
+    ],
+    "requestTimeoutMs": 0
+   },
+   "defaults": {},
+   "result": {
+    "command": "npx",
+    "args": [
+     "-y",
+     "server"
+    ]
+   }
+  },
+  {
+   "raw": {
+    "url": "https://example.com/mcp",
+    "auth": "bearer",
+    "bearerToken": "tok"
+   },
+   "defaults": {},
+   "result": {
+    "url": "https://example.com/mcp",
+    "headers": {
+     "Authorization": "Bearer tok"
+    }
+   }
+  },
+  {
+   "raw": {
+    "url": "https://example.com/mcp",
+    "bearerTokenEnv": "TOKEN"
+   },
+   "defaults": {},
+   "result": {
+    "url": "https://example.com/mcp",
+    "headers": {
+     "Authorization": "Bearer ${TOKEN}"
+    }
+   }
+  },
+  {
+   "raw": {
+    "url": "https://example.com/mcp",
+    "bearerToken": "tok",
+    "headers": {
+     "authorization": "Basic x"
+    }
+   },
+   "defaults": {},
+   "result": {
+    "url": "https://example.com/mcp",
+    "headers": {
+     "authorization": "Basic x"
+    }
+   }
+  },
+  {
+   "raw": {
+    "url": "https://example.com/mcp",
+    "bearerToken": "!pass show x"
+   },
+   "defaults": {},
+   "result": {
+    "url": "https://example.com/mcp"
+   }
+  },
+  {
+   "raw": {
+    "command": "npx",
+    "args": [
+     "-y",
+     "server"
+    ],
+    "bearerToken": "tok"
+   },
+   "defaults": {},
+   "result": {
+    "command": "npx",
+    "args": [
+     "-y",
+     "server"
+    ]
+   }
+  },
+  {
+   "raw": {
+    "url": "https://example.com/mcp",
+    "bearerToken": "",
+    "bearerTokenEnv": "T",
+    "headers": {
+     "X": "y"
+    }
+   },
+   "defaults": {},
+   "result": {
+    "url": "https://example.com/mcp",
+    "headers": {
+     "X": "y",
+     "Authorization": "Bearer ${T}"
+    }
+   }
+  },
+  {
+   "raw": "raw",
+   "defaults": {},
+   "result": "raw"
+  }
+ ],
+ "exposure": [
+  {
+   "config": {
+    "command": "npx",
+    "args": [
+     "-y",
+     "server"
+    ]
+   },
+   "tool": "x",
+   "result": "codemode"
+  },
+  {
+   "config": {
+    "command": "npx",
+    "args": [
+     "-y",
+     "server"
+    ],
+    "exposure": "direct"
+   },
+   "tool": "x",
+   "result": "direct"
+  },
+  {
+   "config": {
+    "command": "npx",
+    "args": [
+     "-y",
+     "server"
+    ],
+    "exposure": "hidden",
+    "toolExposure": {
+     "read_*": "direct",
+     "read_secret": "hidden",
+     "*": "deferred"
+    }
+   },
+   "tool": "read_file",
+   "result": "direct"
+  },
+  {
+   "config": {
+    "command": "npx",
+    "args": [
+     "-y",
+     "server"
+    ],
+    "exposure": "hidden",
+    "toolExposure": {
+     "read_*": "direct",
+     "read_secret": "hidden"
+    }
+   },
+   "tool": "read_secret",
+   "result": "hidden"
+  },
+  {
+   "config": {
+    "command": "npx",
+    "args": [
+     "-y",
+     "server"
+    ],
+    "exposure": "hidden",
+    "toolExposure": {
+     "*": "deferred",
+     "read_*": "direct"
+    }
+   },
+   "tool": "read_file",
+   "result": "deferred"
+  },
+  {
+   "config": {
+    "command": "npx",
+    "args": [
+     "-y",
+     "server"
+    ],
+    "toolExposure": {
+     "a.b*": "direct"
+    }
+   },
+   "tool": "axb",
+   "result": "codemode"
+  },
+  {
+   "config": {
+    "command": "npx",
+    "args": [
+     "-y",
+     "server"
+    ],
+    "toolExposure": {
+     "a.b*": "direct"
+    }
+   },
+   "tool": "a.bc",
+   "result": "direct"
+  },
+  {
+   "config": {
+    "command": "npx",
+    "args": [
+     "-y",
+     "server"
+    ],
+    "toolExposure": {
+     "(x)*": "direct"
+    }
+   },
+   "tool": "(x)y",
+   "result": "direct"
+  },
+  {
+   "config": {
+    "command": "npx",
+    "args": [
+     "-y",
+     "server"
+    ],
+    "toolExposure": {
+     "read_*_x": "direct"
+    }
+   },
+   "tool": "read_a_xy",
+   "result": "codemode"
+  },
+  {
+   "config": {
+    "command": "npx",
+    "args": [
+     "-y",
+     "server"
+    ],
+    "toolExposure": {
+     "read_*_x": "direct"
+    }
+   },
+   "tool": "read_a_x",
+   "result": "direct"
+  }
+ ],
+ "namespace": [
+  {
+   "name": "fs",
+   "result": "mcp__fs"
+  },
+  {
+   "name": "my-server",
+   "result": "mcp__my_server"
+  },
+  {
+   "name": "a-b_c-",
+   "result": "mcp__a_b_c_"
+  }
+ ],
+ "loads": [
+  {
+   "global": {
+    "autoEnableCodemode": false,
+    "settings": {
+     "requestTimeoutMs": 4000
+    },
+    "mcpServers": {
+     "fs": {
+      "command": "npx",
+      "args": [
+       "fs"
+      ]
+     },
+     "my-server": {
+      "url": "https://a.example/mcp",
+      "auth": {
+       "provider": "github"
+      }
+     },
+     "my_server": {
+      "command": "x"
+     },
+     "broken": {
+      "url": 3
+     },
+     "web": {
+      "url": "https://b.example/mcp",
+      "disabled": true
+     }
+    }
+   },
+   "project": {
+    "autoEnableCodemode": "yes",
+    "mcpServers": {
+     "fs": {
+      "command": "uvx",
+      "args": [
+       "fs2"
+      ],
+      "description": "Project files"
+     },
+     "secret": {
+      "url": "https://c.example/mcp",
+      "auth": {
+       "provider": "github"
+      }
+     },
+     "bad name": {
+      "command": "x"
+     }
+    }
+   },
+   "trusted": true,
+   "result": {
+    "servers": [
+     {
+      "name": "fs",
+      "config": {
+       "command": "uvx",
+       "args": [
+        "fs2"
+       ],
+       "description": "Project files"
+      },
+      "source": "$ROOT/project/.pi/mcp.json",
+      "scope": "project"
+     },
+     {
+      "name": "my-server",
+      "config": {
+       "url": "https://a.example/mcp",
+       "auth": {
+        "provider": "github"
+       },
+       "timeout": 4
+      },
+      "source": "$ROOT/agent/mcp.json",
+      "scope": "global"
+     },
+     {
+      "name": "web",
+      "config": {
+       "url": "https://b.example/mcp",
+       "enabled": false,
+       "timeout": 4
+      },
+      "source": "$ROOT/agent/mcp.json",
+      "scope": "global"
+     }
+    ],
+    "autoEnableCodemode": false,
+    "errors": [
+     "$ROOT/agent/mcp.json: server \"my_server\" conflicts with \"my-server\"",
+     "$ROOT/agent/mcp.json: server \"broken\" needs either \"command\" (stdio) or \"url\" (streamable HTTP)",
+     "$ROOT/project/.pi/mcp.json: autoEnableCodemode must be a boolean",
+     "$ROOT/project/.pi/mcp.json: server \"secret\": auth is only allowed in the global mcp.json",
+     "$ROOT/project/.pi/mcp.json: invalid server name \"bad name\" (use letters, digits, \"_\" and \"-\")"
+    ]
+   }
+  },
+  {
+   "global": {
+    "autoEnableCodemode": false,
+    "settings": {
+     "requestTimeoutMs": 4000
+    },
+    "mcpServers": {
+     "fs": {
+      "command": "npx",
+      "args": [
+       "fs"
+      ]
+     },
+     "my-server": {
+      "url": "https://a.example/mcp",
+      "auth": {
+       "provider": "github"
+      }
+     },
+     "my_server": {
+      "command": "x"
+     },
+     "broken": {
+      "url": 3
+     },
+     "web": {
+      "url": "https://b.example/mcp",
+      "disabled": true
+     }
+    }
+   },
+   "project": {
+    "autoEnableCodemode": "yes",
+    "mcpServers": {
+     "fs": {
+      "command": "uvx",
+      "args": [
+       "fs2"
+      ],
+      "description": "Project files"
+     },
+     "secret": {
+      "url": "https://c.example/mcp",
+      "auth": {
+       "provider": "github"
+      }
+     },
+     "bad name": {
+      "command": "x"
+     }
+    }
+   },
+   "trusted": false,
+   "result": {
+    "servers": [
+     {
+      "name": "fs",
+      "config": {
+       "command": "npx",
+       "args": [
+        "fs"
+       ],
+       "timeout": 4
+      },
+      "source": "$ROOT/agent/mcp.json",
+      "scope": "global"
+     },
+     {
+      "name": "my-server",
+      "config": {
+       "url": "https://a.example/mcp",
+       "auth": {
+        "provider": "github"
+       },
+       "timeout": 4
+      },
+      "source": "$ROOT/agent/mcp.json",
+      "scope": "global"
+     },
+     {
+      "name": "web",
+      "config": {
+       "url": "https://b.example/mcp",
+       "enabled": false,
+       "timeout": 4
+      },
+      "source": "$ROOT/agent/mcp.json",
+      "scope": "global"
+     }
+    ],
+    "autoEnableCodemode": false,
+    "errors": [
+     "$ROOT/agent/mcp.json: server \"my_server\" conflicts with \"my-server\"",
+     "$ROOT/agent/mcp.json: server \"broken\" needs either \"command\" (stdio) or \"url\" (streamable HTTP)"
+    ]
+   }
+  },
+  {
+   "global": {
+    "mcpServers": []
+   },
+   "project": {
+    "mcpServers": {
+     "a": {
+      "command": "a"
+     }
+    },
+    "autoEnableCodemode": true
+   },
+   "trusted": true,
+   "result": {
+    "servers": [
+     {
+      "name": "a",
+      "config": {
+       "command": "a"
+      },
+      "source": "$ROOT/project/.pi/mcp.json",
+      "scope": "project"
+     }
+    ],
+    "autoEnableCodemode": true,
+    "errors": [
+     "$ROOT/agent/mcp.json: expected an object with an \"mcpServers\" object"
+    ]
+   }
+  },
+  {
+   "global": [
+    1
+   ],
+   "project": "text",
+   "trusted": true,
+   "result": {
+    "servers": [],
+    "errors": [
+     "$ROOT/agent/mcp.json: expected an object with an \"mcpServers\" object",
+     "$ROOT/project/.pi/mcp.json: expected an object with an \"mcpServers\" object"
+    ]
+   }
+  },
+  {
+   "global": {
+    "other": 1
+   },
+   "trusted": true,
+   "result": {
+    "servers": [],
+    "errors": []
+   }
+  },
+  {
+   "trusted": true,
+   "result": {
+    "servers": [],
+    "errors": []
+   }
+  }
+ ]
+}

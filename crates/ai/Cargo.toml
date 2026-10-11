@@ -1,0 +1,26 @@
+[package]
+name = "ai"
+version = "0.1.0"
+description = "Provider layer of packages/ai: message model, streaming events, every API implementation (Anthropic, OpenAI completions/responses/codex, Azure, Google, Vertex, Mistral, Bedrock, pi-messages, Claude Code CLI), provider auth and every OAuth flow, the Models runtime, images API, model catalog, user models.json, env API keys"
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+config = { path = "../config" }
+crc32fast = "=1.5.2"
+getrandom = "=0.4.3"
+indexmap = { version = "=2.14.2", features = ["serde"] }
+reqwest = { version = "=0.13.5", default-features = false, features = ["rustls", "http2", "system-proxy"] }
+serde = { version = "=1.0.229", features = ["derive"] }
+serde_json = { version = "=1.0.151", features = ["float_roundtrip", "preserve_order"] }
+sha2 = "=0.10.9"
+tokio = { version = "=1.53.2", features = ["sync", "time", "macros", "rt", "net", "io-util"] }
+
+[dev-dependencies]
+tempfile = "=3.27.0"
+reqwest = { version = "=0.13.5", default-features = false, features = ["rustls", "http2", "system-proxy"] }
+tokio = { version = "=1.53.2", features = ["sync", "time", "macros", "rt", "rt-multi-thread", "net", "io-util", "test-util"] }
+
+[lints]
+workspace = true

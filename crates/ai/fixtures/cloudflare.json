@@ -1,0 +1,2056 @@
+{
+	"generator": "crates/ai/fixtures/generate-rest.mjs",
+	"now": 1767225600000,
+	"scenarios": [
+		{
+			"name": "cloudflare/workers-ai",
+			"fn": "stream",
+			"model": {
+				"id": "@cf/meta/llama",
+				"name": "Test Model",
+				"api": "openai-completions",
+				"provider": "cloudflare-workers-ai",
+				"baseUrl": "https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/v1",
+				"reasoning": false,
+				"input": [
+					"text",
+					"image"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "system",
+						"content": "sys",
+						"timestamp": 1,
+						"toolsAdded": [
+							{
+								"name": "read",
+								"description": "Read a file",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"path": {
+											"type": "string"
+										},
+										"limit": {
+											"type": "number"
+										}
+									},
+									"required": [
+										"path"
+									]
+								}
+							},
+							{
+								"name": "bash",
+								"description": "Run a command",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"command": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"command"
+									]
+								},
+								"constrainedSampling": {
+									"type": "json_schema",
+									"strict": "prefer"
+								}
+							}
+						]
+					},
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"apiKey": "cf-key",
+				"env": {
+					"CLOUDFLARE_ACCOUNT_ID": "acct",
+					"CLOUDFLARE_GATEWAY_ID": "gw"
+				}
+			},
+			"responses": [
+				{
+					"chunks": [
+						"data: {\"id\":\"c1\",\"object\":\"chat.completion.chunk\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"ok\"},\"finish_reason\":null}]}\n\n",
+						"data: {\"id\":\"c1\",\"object\":\"chat.completion.chunk\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"stop\"}]}\n\n",
+						"data: [DONE]\n\n"
+					]
+				}
+			],
+			"abortOn": null,
+			"result": {
+				"role": "assistant",
+				"content": [
+					{
+						"type": "text",
+						"text": "ok"
+					}
+				],
+				"api": "openai-completions",
+				"provider": "cloudflare-workers-ai",
+				"model": "@cf/meta/llama",
+				"usage": {
+					"input": 0,
+					"output": 0,
+					"cacheRead": 0,
+					"cacheWrite": 0,
+					"totalTokens": 0,
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"total": 0
+					}
+				},
+				"stopReason": "stop",
+				"timestamp": 1767225600000,
+				"responseId": "c1",
+				"rawStopReason": "stop"
+			},
+			"thrown": null,
+			"events": [
+				{
+					"type": "start",
+					"partial": {
+						"role": "assistant",
+						"content": [],
+						"api": "openai-completions",
+						"provider": "cloudflare-workers-ai",
+						"model": "@cf/meta/llama",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "text_start",
+					"contentIndex": 0,
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": ""
+							}
+						],
+						"api": "openai-completions",
+						"provider": "cloudflare-workers-ai",
+						"model": "@cf/meta/llama",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000,
+						"responseId": "c1"
+					}
+				},
+				{
+					"type": "text_delta",
+					"contentIndex": 0,
+					"delta": "ok",
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "ok"
+							}
+						],
+						"api": "openai-completions",
+						"provider": "cloudflare-workers-ai",
+						"model": "@cf/meta/llama",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000,
+						"responseId": "c1"
+					}
+				},
+				{
+					"type": "text_end",
+					"contentIndex": 0,
+					"content": "ok",
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "ok"
+							}
+						],
+						"api": "openai-completions",
+						"provider": "cloudflare-workers-ai",
+						"model": "@cf/meta/llama",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "stop",
+						"timestamp": 1767225600000,
+						"responseId": "c1",
+						"rawStopReason": "stop"
+					}
+				},
+				{
+					"type": "done",
+					"reason": "stop",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "ok"
+							}
+						],
+						"api": "openai-completions",
+						"provider": "cloudflare-workers-ai",
+						"model": "@cf/meta/llama",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "stop",
+						"timestamp": 1767225600000,
+						"responseId": "c1",
+						"rawStopReason": "stop"
+					}
+				}
+			],
+			"requests": [
+				{
+					"url": "https://api.cloudflare.com/client/v4/accounts/acct/ai/v1/chat/completions",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"authorization": "Bearer cf-key",
+						"content-type": "application/json",
+						"user-agent": "<pi-user-agent>"
+					},
+					"body": {
+						"model": "@cf/meta/llama",
+						"messages": [
+							{
+								"role": "system",
+								"content": "sys"
+							},
+							{
+								"role": "user",
+								"content": "hi"
+							}
+						],
+						"stream": true,
+						"stream_options": {
+							"include_usage": true
+						},
+						"tools": [
+							{
+								"type": "function",
+								"function": {
+									"name": "read",
+									"description": "Read a file",
+									"parameters": {
+										"type": "object",
+										"properties": {
+											"path": {
+												"type": "string"
+											},
+											"limit": {
+												"type": "number"
+											}
+										},
+										"required": [
+											"path"
+										]
+									}
+								}
+							},
+							{
+								"type": "function",
+								"function": {
+									"name": "bash",
+									"description": "Run a command",
+									"parameters": {
+										"type": "object",
+										"properties": {
+											"command": {
+												"type": "string"
+											}
+										},
+										"required": [
+											"command"
+										]
+									}
+								}
+							}
+						]
+					}
+				}
+			],
+			"wrapper": "cloudflare"
+		},
+		{
+			"name": "cloudflare/workers-ai-no-env",
+			"fn": "stream",
+			"model": {
+				"id": "@cf/meta/llama",
+				"name": "Test Model",
+				"api": "openai-completions",
+				"provider": "cloudflare-workers-ai",
+				"baseUrl": "https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/v1",
+				"reasoning": false,
+				"input": [
+					"text",
+					"image"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "system",
+						"content": "sys",
+						"timestamp": 1,
+						"toolsAdded": [
+							{
+								"name": "read",
+								"description": "Read a file",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"path": {
+											"type": "string"
+										},
+										"limit": {
+											"type": "number"
+										}
+									},
+									"required": [
+										"path"
+									]
+								}
+							},
+							{
+								"name": "bash",
+								"description": "Run a command",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"command": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"command"
+									]
+								},
+								"constrainedSampling": {
+									"type": "json_schema",
+									"strict": "prefer"
+								}
+							}
+						]
+					},
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"apiKey": "cf-key"
+			},
+			"responses": [
+				{
+					"chunks": [
+						"data: {\"id\":\"c1\",\"object\":\"chat.completion.chunk\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"ok\"},\"finish_reason\":null}]}\n\n",
+						"data: {\"id\":\"c1\",\"object\":\"chat.completion.chunk\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"stop\"}]}\n\n",
+						"data: [DONE]\n\n"
+					]
+				}
+			],
+			"abortOn": null,
+			"result": {
+				"role": "assistant",
+				"content": [
+					{
+						"type": "text",
+						"text": "ok"
+					}
+				],
+				"api": "openai-completions",
+				"provider": "cloudflare-workers-ai",
+				"model": "@cf/meta/llama",
+				"usage": {
+					"input": 0,
+					"output": 0,
+					"cacheRead": 0,
+					"cacheWrite": 0,
+					"totalTokens": 0,
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"total": 0
+					}
+				},
+				"stopReason": "stop",
+				"timestamp": 1767225600000,
+				"responseId": "c1",
+				"rawStopReason": "stop"
+			},
+			"thrown": null,
+			"events": [
+				{
+					"type": "start",
+					"partial": {
+						"role": "assistant",
+						"content": [],
+						"api": "openai-completions",
+						"provider": "cloudflare-workers-ai",
+						"model": "@cf/meta/llama",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "text_start",
+					"contentIndex": 0,
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": ""
+							}
+						],
+						"api": "openai-completions",
+						"provider": "cloudflare-workers-ai",
+						"model": "@cf/meta/llama",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000,
+						"responseId": "c1"
+					}
+				},
+				{
+					"type": "text_delta",
+					"contentIndex": 0,
+					"delta": "ok",
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "ok"
+							}
+						],
+						"api": "openai-completions",
+						"provider": "cloudflare-workers-ai",
+						"model": "@cf/meta/llama",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000,
+						"responseId": "c1"
+					}
+				},
+				{
+					"type": "text_end",
+					"contentIndex": 0,
+					"content": "ok",
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "ok"
+							}
+						],
+						"api": "openai-completions",
+						"provider": "cloudflare-workers-ai",
+						"model": "@cf/meta/llama",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "stop",
+						"timestamp": 1767225600000,
+						"responseId": "c1",
+						"rawStopReason": "stop"
+					}
+				},
+				{
+					"type": "done",
+					"reason": "stop",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "ok"
+							}
+						],
+						"api": "openai-completions",
+						"provider": "cloudflare-workers-ai",
+						"model": "@cf/meta/llama",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "stop",
+						"timestamp": 1767225600000,
+						"responseId": "c1",
+						"rawStopReason": "stop"
+					}
+				}
+			],
+			"requests": [
+				{
+					"url": "https://api.cloudflare.com/client/v4/accounts/%7BCLOUDFLARE_ACCOUNT_ID%7D/ai/v1/chat/completions",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"authorization": "Bearer cf-key",
+						"content-type": "application/json",
+						"user-agent": "<pi-user-agent>"
+					},
+					"body": {
+						"model": "@cf/meta/llama",
+						"messages": [
+							{
+								"role": "system",
+								"content": "sys"
+							},
+							{
+								"role": "user",
+								"content": "hi"
+							}
+						],
+						"stream": true,
+						"stream_options": {
+							"include_usage": true
+						},
+						"tools": [
+							{
+								"type": "function",
+								"function": {
+									"name": "read",
+									"description": "Read a file",
+									"parameters": {
+										"type": "object",
+										"properties": {
+											"path": {
+												"type": "string"
+											},
+											"limit": {
+												"type": "number"
+											}
+										},
+										"required": [
+											"path"
+										]
+									}
+								}
+							},
+							{
+								"type": "function",
+								"function": {
+									"name": "bash",
+									"description": "Run a command",
+									"parameters": {
+										"type": "object",
+										"properties": {
+											"command": {
+												"type": "string"
+											}
+										},
+										"required": [
+											"command"
+										]
+									}
+								}
+							}
+						]
+					}
+				}
+			],
+			"wrapper": "cloudflare"
+		},
+		{
+			"name": "cloudflare/gateway-compat-missing-gateway",
+			"fn": "stream",
+			"model": {
+				"id": "x/model",
+				"name": "Test Model",
+				"api": "openai-completions",
+				"provider": "cloudflare-ai-gateway",
+				"baseUrl": "https://gateway.ai.cloudflare.com/v1/{CLOUDFLARE_ACCOUNT_ID}/{CLOUDFLARE_GATEWAY_ID}/compat",
+				"reasoning": true,
+				"input": [
+					"text",
+					"image"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "system",
+						"content": "sys",
+						"timestamp": 1,
+						"toolsAdded": [
+							{
+								"name": "read",
+								"description": "Read a file",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"path": {
+											"type": "string"
+										},
+										"limit": {
+											"type": "number"
+										}
+									},
+									"required": [
+										"path"
+									]
+								}
+							},
+							{
+								"name": "bash",
+								"description": "Run a command",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"command": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"command"
+									]
+								},
+								"constrainedSampling": {
+									"type": "json_schema",
+									"strict": "prefer"
+								}
+							}
+						]
+					},
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"headers": {
+					"cf-aig-authorization": "Bearer cf-key",
+					"Authorization": null,
+					"x-api-key": null
+				},
+				"env": {
+					"CLOUDFLARE_ACCOUNT_ID": "acct",
+					"CLOUDFLARE_GATEWAY_ID": ""
+				}
+			},
+			"responses": [
+				{
+					"chunks": [
+						"data: {\"id\":\"c1\",\"object\":\"chat.completion.chunk\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"ok\"},\"finish_reason\":null}]}\n\n",
+						"data: {\"id\":\"c1\",\"object\":\"chat.completion.chunk\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"stop\"}]}\n\n",
+						"data: [DONE]\n\n"
+					]
+				}
+			],
+			"abortOn": null,
+			"result": {
+				"role": "assistant",
+				"content": [
+					{
+						"type": "text",
+						"text": "ok"
+					}
+				],
+				"api": "openai-completions",
+				"provider": "cloudflare-ai-gateway",
+				"model": "x/model",
+				"usage": {
+					"input": 0,
+					"output": 0,
+					"cacheRead": 0,
+					"cacheWrite": 0,
+					"totalTokens": 0,
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"total": 0
+					}
+				},
+				"stopReason": "stop",
+				"timestamp": 1767225600000,
+				"responseId": "c1",
+				"rawStopReason": "stop"
+			},
+			"thrown": null,
+			"events": [
+				{
+					"type": "start",
+					"partial": {
+						"role": "assistant",
+						"content": [],
+						"api": "openai-completions",
+						"provider": "cloudflare-ai-gateway",
+						"model": "x/model",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "text_start",
+					"contentIndex": 0,
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": ""
+							}
+						],
+						"api": "openai-completions",
+						"provider": "cloudflare-ai-gateway",
+						"model": "x/model",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000,
+						"responseId": "c1"
+					}
+				},
+				{
+					"type": "text_delta",
+					"contentIndex": 0,
+					"delta": "ok",
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "ok"
+							}
+						],
+						"api": "openai-completions",
+						"provider": "cloudflare-ai-gateway",
+						"model": "x/model",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000,
+						"responseId": "c1"
+					}
+				},
+				{
+					"type": "text_end",
+					"contentIndex": 0,
+					"content": "ok",
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "ok"
+							}
+						],
+						"api": "openai-completions",
+						"provider": "cloudflare-ai-gateway",
+						"model": "x/model",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "stop",
+						"timestamp": 1767225600000,
+						"responseId": "c1",
+						"rawStopReason": "stop"
+					}
+				},
+				{
+					"type": "done",
+					"reason": "stop",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "ok"
+							}
+						],
+						"api": "openai-completions",
+						"provider": "cloudflare-ai-gateway",
+						"model": "x/model",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "stop",
+						"timestamp": 1767225600000,
+						"responseId": "c1",
+						"rawStopReason": "stop"
+					}
+				}
+			],
+			"requests": [
+				{
+					"url": "https://gateway.ai.cloudflare.com/v1/acct//compat/chat/completions",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"cf-aig-authorization": "Bearer cf-key",
+						"content-type": "application/json",
+						"user-agent": "<pi-user-agent>"
+					},
+					"body": {
+						"model": "x/model",
+						"messages": [
+							{
+								"role": "system",
+								"content": "sys"
+							},
+							{
+								"role": "user",
+								"content": "hi"
+							}
+						],
+						"stream": true,
+						"stream_options": {
+							"include_usage": true
+						},
+						"tools": [
+							{
+								"type": "function",
+								"function": {
+									"name": "read",
+									"description": "Read a file",
+									"parameters": {
+										"type": "object",
+										"properties": {
+											"path": {
+												"type": "string"
+											},
+											"limit": {
+												"type": "number"
+											}
+										},
+										"required": [
+											"path"
+										]
+									}
+								}
+							},
+							{
+								"type": "function",
+								"function": {
+									"name": "bash",
+									"description": "Run a command",
+									"parameters": {
+										"type": "object",
+										"properties": {
+											"command": {
+												"type": "string"
+											}
+										},
+										"required": [
+											"command"
+										]
+									}
+								}
+							}
+						]
+					}
+				}
+			],
+			"wrapper": "cloudflare"
+		},
+		{
+			"name": "cloudflare/gateway-openai-responses",
+			"fn": "stream",
+			"model": {
+				"id": "x/model",
+				"name": "Test Model",
+				"api": "openai-responses",
+				"provider": "cloudflare-ai-gateway",
+				"baseUrl": "https://gateway.ai.cloudflare.com/v1/{CLOUDFLARE_ACCOUNT_ID}/{CLOUDFLARE_GATEWAY_ID}/openai",
+				"reasoning": true,
+				"input": [
+					"text",
+					"image"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "system",
+						"content": "sys",
+						"timestamp": 1,
+						"toolsAdded": [
+							{
+								"name": "read",
+								"description": "Read a file",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"path": {
+											"type": "string"
+										},
+										"limit": {
+											"type": "number"
+										}
+									},
+									"required": [
+										"path"
+									]
+								}
+							},
+							{
+								"name": "bash",
+								"description": "Run a command",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"command": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"command"
+									]
+								},
+								"constrainedSampling": {
+									"type": "json_schema",
+									"strict": "prefer"
+								}
+							}
+						]
+					},
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"headers": {
+					"cf-aig-authorization": "Bearer cf-key",
+					"Authorization": null,
+					"x-api-key": null
+				},
+				"env": {
+					"CLOUDFLARE_ACCOUNT_ID": "acct",
+					"CLOUDFLARE_GATEWAY_ID": "gw"
+				}
+			},
+			"responses": [
+				{
+					"chunks": [
+						"data: {\"type\":\"response.output_item.added\",\"output_index\":0,\"item\":{\"type\":\"message\",\"id\":\"msg_3\",\"role\":\"assistant\",\"content\":[]}}\n\n",
+						"data: {\"type\":\"response.output_text.delta\",\"output_index\":0,\"delta\":\"ok\"}\n\n",
+						"data: {\"type\":\"response.output_item.done\",\"output_index\":0,\"item\":{\"type\":\"message\",\"id\":\"msg_3\",\"role\":\"assistant\",\"status\":\"completed\",\"content\":[{\"type\":\"output_text\",\"text\":\"ok\",\"annotations\":[]}]}}\n\n",
+						"data: {\"type\":\"response.completed\",\"response\":{\"id\":\"resp_1\",\"object\":\"response\",\"status\":\"completed\",\"output\":[],\"usage\":{\"input_tokens\":200,\"output_tokens\":50,\"total_tokens\":250,\"input_tokens_details\":{\"cached_tokens\":80},\"output_tokens_details\":{\"reasoning_tokens\":20}}}}\n\n"
+					]
+				}
+			],
+			"abortOn": null,
+			"result": {
+				"role": "assistant",
+				"content": [
+					{
+						"type": "text",
+						"text": "ok",
+						"textSignature": "{\"v\":1,\"id\":\"msg_3\"}"
+					}
+				],
+				"api": "openai-responses",
+				"provider": "cloudflare-ai-gateway",
+				"model": "x/model",
+				"usage": {
+					"input": 120,
+					"output": 50,
+					"cacheRead": 80,
+					"cacheWrite": 0,
+					"reasoning": 20,
+					"totalTokens": 250,
+					"cost": {
+						"input": 0.00036,
+						"output": 0.00075,
+						"cacheRead": 0.000024,
+						"cacheWrite": 0,
+						"total": 0.001134
+					}
+				},
+				"stopReason": "stop",
+				"timestamp": 1767225600000,
+				"responseId": "resp_1",
+				"rawStopReason": "completed"
+			},
+			"thrown": null,
+			"events": [
+				{
+					"type": "start",
+					"partial": {
+						"role": "assistant",
+						"content": [],
+						"api": "openai-responses",
+						"provider": "cloudflare-ai-gateway",
+						"model": "x/model",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "text_start",
+					"contentIndex": 0,
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": ""
+							}
+						],
+						"api": "openai-responses",
+						"provider": "cloudflare-ai-gateway",
+						"model": "x/model",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "text_delta",
+					"contentIndex": 0,
+					"delta": "ok",
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "ok"
+							}
+						],
+						"api": "openai-responses",
+						"provider": "cloudflare-ai-gateway",
+						"model": "x/model",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "text_end",
+					"contentIndex": 0,
+					"content": "ok",
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "ok",
+								"textSignature": "{\"v\":1,\"id\":\"msg_3\"}"
+							}
+						],
+						"api": "openai-responses",
+						"provider": "cloudflare-ai-gateway",
+						"model": "x/model",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "done",
+					"reason": "stop",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "ok",
+								"textSignature": "{\"v\":1,\"id\":\"msg_3\"}"
+							}
+						],
+						"api": "openai-responses",
+						"provider": "cloudflare-ai-gateway",
+						"model": "x/model",
+						"usage": {
+							"input": 120,
+							"output": 50,
+							"cacheRead": 80,
+							"cacheWrite": 0,
+							"reasoning": 20,
+							"totalTokens": 250,
+							"cost": {
+								"input": 0.00036,
+								"output": 0.00075,
+								"cacheRead": 0.000024,
+								"cacheWrite": 0,
+								"total": 0.001134
+							}
+						},
+						"stopReason": "stop",
+						"timestamp": 1767225600000,
+						"responseId": "resp_1",
+						"rawStopReason": "completed"
+					}
+				}
+			],
+			"requests": [
+				{
+					"url": "https://gateway.ai.cloudflare.com/v1/acct/gw/openai/responses",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"cf-aig-authorization": "Bearer cf-key",
+						"content-type": "application/json",
+						"user-agent": "<pi-user-agent>"
+					},
+					"body": {
+						"model": "x/model",
+						"input": [
+							{
+								"role": "developer",
+								"content": "sys"
+							},
+							{
+								"role": "user",
+								"content": [
+									{
+										"type": "input_text",
+										"text": "hi"
+									}
+								]
+							}
+						],
+						"stream": true,
+						"store": false,
+						"tools": [
+							{
+								"type": "function",
+								"name": "read",
+								"description": "Read a file",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"path": {
+											"type": "string"
+										},
+										"limit": {
+											"type": "number"
+										}
+									},
+									"required": [
+										"path"
+									]
+								}
+							},
+							{
+								"type": "function",
+								"name": "bash",
+								"description": "Run a command",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"command": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"command"
+									]
+								}
+							}
+						],
+						"reasoning": {
+							"effort": "none"
+						}
+					}
+				}
+			],
+			"wrapper": "cloudflare"
+		},
+		{
+			"name": "cloudflare/gateway-anthropic",
+			"fn": "stream",
+			"model": {
+				"id": "x/model",
+				"name": "Test Model",
+				"api": "anthropic-messages",
+				"provider": "cloudflare-ai-gateway",
+				"baseUrl": "https://gateway.ai.cloudflare.com/v1/{CLOUDFLARE_ACCOUNT_ID}/{CLOUDFLARE_GATEWAY_ID}/anthropic",
+				"reasoning": true,
+				"input": [
+					"text",
+					"image"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "system",
+						"content": "sys",
+						"timestamp": 1,
+						"toolsAdded": [
+							{
+								"name": "read",
+								"description": "Read a file",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"path": {
+											"type": "string"
+										},
+										"limit": {
+											"type": "number"
+										}
+									},
+									"required": [
+										"path"
+									]
+								}
+							},
+							{
+								"name": "bash",
+								"description": "Run a command",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"command": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"command"
+									]
+								},
+								"constrainedSampling": {
+									"type": "json_schema",
+									"strict": "prefer"
+								}
+							}
+						]
+					},
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"headers": {
+					"cf-aig-authorization": "Bearer cf-key",
+					"Authorization": null,
+					"x-api-key": null
+				},
+				"env": {
+					"CLOUDFLARE_ACCOUNT_ID": "acct",
+					"CLOUDFLARE_GATEWAY_ID": "gw"
+				}
+			},
+			"responses": [
+				{
+					"status": 400,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"nope\"}}"
+					]
+				}
+			],
+			"abortOn": null,
+			"result": {
+				"role": "assistant",
+				"content": [],
+				"api": "anthropic-messages",
+				"provider": "cloudflare-ai-gateway",
+				"model": "x/model",
+				"usage": {
+					"input": 0,
+					"output": 0,
+					"cacheRead": 0,
+					"cacheWrite": 0,
+					"totalTokens": 0,
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"total": 0
+					}
+				},
+				"stopReason": "error",
+				"timestamp": 1767225600000,
+				"errorMessage": "400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"nope\"}}"
+			},
+			"thrown": null,
+			"events": [
+				{
+					"type": "error",
+					"reason": "error",
+					"error": {
+						"role": "assistant",
+						"content": [],
+						"api": "anthropic-messages",
+						"provider": "cloudflare-ai-gateway",
+						"model": "x/model",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "error",
+						"timestamp": 1767225600000,
+						"errorMessage": "400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"nope\"}}"
+					}
+				}
+			],
+			"requests": [
+				{
+					"url": "https://gateway.ai.cloudflare.com/v1/acct/gw/anthropic/v1/messages?beta=true",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"anthropic-dangerous-direct-browser-access": "true",
+						"anthropic-version": "2023-06-01",
+						"cf-aig-authorization": "Bearer cf-key",
+						"content-type": "application/json",
+						"user-agent": "<pi-user-agent>"
+					},
+					"body": {
+						"model": "x/model",
+						"messages": [
+							{
+								"role": "user",
+								"content": [
+									{
+										"type": "text",
+										"text": "hi",
+										"cache_control": {
+											"type": "ephemeral"
+										}
+									}
+								]
+							}
+						],
+						"max_tokens": 32000,
+						"stream": true,
+						"system": [
+							{
+								"type": "text",
+								"text": "sys",
+								"cache_control": {
+									"type": "ephemeral"
+								}
+							}
+						],
+						"tools": [
+							{
+								"name": "read",
+								"description": "Read a file",
+								"eager_input_streaming": true,
+								"input_schema": {
+									"type": "object",
+									"properties": {
+										"path": {
+											"type": "string"
+										},
+										"limit": {
+											"type": "number"
+										}
+									},
+									"required": [
+										"path"
+									]
+								}
+							},
+							{
+								"name": "bash",
+								"description": "Run a command",
+								"eager_input_streaming": true,
+								"input_schema": {
+									"type": "object",
+									"properties": {
+										"command": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"command"
+									]
+								},
+								"cache_control": {
+									"type": "ephemeral"
+								}
+							}
+						]
+					}
+				}
+			],
+			"wrapper": "cloudflare"
+		},
+		{
+			"name": "cloudflare/binding-route-simple",
+			"fn": "streamSimple",
+			"model": {
+				"id": "x/model",
+				"name": "Test Model",
+				"api": "openai-completions",
+				"provider": "cloudflare-ai-gateway",
+				"baseUrl": "https://workers-binding.ai/ai-gateway/gateways/gw/compat",
+				"reasoning": true,
+				"input": [
+					"text",
+					"image"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "system",
+						"content": "sys",
+						"timestamp": 1,
+						"toolsAdded": [
+							{
+								"name": "read",
+								"description": "Read a file",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"path": {
+											"type": "string"
+										},
+										"limit": {
+											"type": "number"
+										}
+									},
+									"required": [
+										"path"
+									]
+								}
+							},
+							{
+								"name": "bash",
+								"description": "Run a command",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"command": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"command"
+									]
+								},
+								"constrainedSampling": {
+									"type": "json_schema",
+									"strict": "prefer"
+								}
+							}
+						]
+					},
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"headers": {
+					"cf-aig-authorization": "Bearer cloudflare-gateway-binding",
+					"Authorization": null
+				},
+				"env": {
+					"CLOUDFLARE_ACCOUNT_ID": "acct",
+					"CLOUDFLARE_GATEWAY_ID": "gw"
+				}
+			},
+			"responses": [
+				{
+					"chunks": [
+						"data: {\"id\":\"c1\",\"object\":\"chat.completion.chunk\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"ok\"},\"finish_reason\":null}]}\n\n",
+						"data: {\"id\":\"c1\",\"object\":\"chat.completion.chunk\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"stop\"}]}\n\n",
+						"data: [DONE]\n\n"
+					]
+				}
+			],
+			"abortOn": null,
+			"result": {
+				"role": "assistant",
+				"content": [
+					{
+						"type": "text",
+						"text": "ok"
+					}
+				],
+				"api": "openai-completions",
+				"provider": "cloudflare-ai-gateway",
+				"model": "x/model",
+				"usage": {
+					"input": 0,
+					"output": 0,
+					"cacheRead": 0,
+					"cacheWrite": 0,
+					"totalTokens": 0,
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"total": 0
+					}
+				},
+				"stopReason": "stop",
+				"timestamp": 1767225600000,
+				"responseId": "c1",
+				"rawStopReason": "stop"
+			},
+			"thrown": null,
+			"events": [
+				{
+					"type": "start",
+					"partial": {
+						"role": "assistant",
+						"content": [],
+						"api": "openai-completions",
+						"provider": "cloudflare-ai-gateway",
+						"model": "x/model",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "text_start",
+					"contentIndex": 0,
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": ""
+							}
+						],
+						"api": "openai-completions",
+						"provider": "cloudflare-ai-gateway",
+						"model": "x/model",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000,
+						"responseId": "c1"
+					}
+				},
+				{
+					"type": "text_delta",
+					"contentIndex": 0,
+					"delta": "ok",
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "ok"
+							}
+						],
+						"api": "openai-completions",
+						"provider": "cloudflare-ai-gateway",
+						"model": "x/model",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000,
+						"responseId": "c1"
+					}
+				},
+				{
+					"type": "text_end",
+					"contentIndex": 0,
+					"content": "ok",
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "ok"
+							}
+						],
+						"api": "openai-completions",
+						"provider": "cloudflare-ai-gateway",
+						"model": "x/model",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "stop",
+						"timestamp": 1767225600000,
+						"responseId": "c1",
+						"rawStopReason": "stop"
+					}
+				},
+				{
+					"type": "done",
+					"reason": "stop",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "ok"
+							}
+						],
+						"api": "openai-completions",
+						"provider": "cloudflare-ai-gateway",
+						"model": "x/model",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "stop",
+						"timestamp": 1767225600000,
+						"responseId": "c1",
+						"rawStopReason": "stop"
+					}
+				}
+			],
+			"requests": [
+				{
+					"url": "https://workers-binding.ai/ai-gateway/gateways/gw/compat/chat/completions",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"cf-aig-authorization": "Bearer cloudflare-gateway-binding",
+						"content-type": "application/json",
+						"user-agent": "<pi-user-agent>"
+					},
+					"body": {
+						"model": "x/model",
+						"messages": [
+							{
+								"role": "system",
+								"content": "sys"
+							},
+							{
+								"role": "user",
+								"content": "hi"
+							}
+						],
+						"stream": true,
+						"stream_options": {
+							"include_usage": true
+						},
+						"max_tokens": 32000,
+						"tools": [
+							{
+								"type": "function",
+								"function": {
+									"name": "read",
+									"description": "Read a file",
+									"parameters": {
+										"type": "object",
+										"properties": {
+											"path": {
+												"type": "string"
+											},
+											"limit": {
+												"type": "number"
+											}
+										},
+										"required": [
+											"path"
+										]
+									}
+								}
+							},
+							{
+								"type": "function",
+								"function": {
+									"name": "bash",
+									"description": "Run a command",
+									"parameters": {
+										"type": "object",
+										"properties": {
+											"command": {
+												"type": "string"
+											}
+										},
+										"required": [
+											"command"
+										]
+									}
+								}
+							}
+						]
+					}
+				}
+			],
+			"wrapper": "cloudflare"
+		}
+	]
+}

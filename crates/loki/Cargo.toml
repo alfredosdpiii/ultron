@@ -1,0 +1,25 @@
+[package]
+name = "loki"
+version = "0.1.0"
+description = "Loki write-time guardrails: Rust port of the loki.py engine"
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "loki"
+path = "src/main.rs"
+
+[dependencies]
+fancy-regex = "=0.19.2"
+regex = "=1.13.1"
+sha2 = "=0.10.9"
+serde_json = { version = "=1.0.151", features = ["preserve_order"] }
+tempfile = "=3.27.0"
+toml = { version = "=0.9.12", default-features = false, features = ["parse", "serde", "std"] }
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+tempfile = "=3.27.0"

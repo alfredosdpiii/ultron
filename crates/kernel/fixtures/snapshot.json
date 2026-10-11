@@ -1,0 +1,721 @@
+{
+ "source": "packages/coding-agent/src/ultron/rlm/kernel.ts, snapshot-auth.ts",
+ "key": "0707070707070707070707070707070707070707070707070707070707070707",
+ "otherKey": "0909090909090909090909090909090909090909090909090909090909090909",
+ "sign": [
+  {
+   "content": "",
+   "signed": "{\"format\":\"ultron-rlm-snapshot-signature\",\"version\":1,\"alg\":\"HMAC-SHA256\",\"hmac\":\"9dac6a74401b46ed9b489d0e19d68d1b13cc6b5090352fdcfa5bd74df4e69d87\"}\n"
+  },
+  {
+   "content": "abc\n",
+   "signed": "{\"format\":\"ultron-rlm-snapshot-signature\",\"version\":1,\"alg\":\"HMAC-SHA256\",\"hmac\":\"e68a2651ddc32990f03d2fdc3f2fb108c83dee136909fc438119762f57971283\"}\nabc\n"
+  },
+  {
+   "content": "header\n{\"names\":{}}",
+   "signed": "{\"format\":\"ultron-rlm-snapshot-signature\",\"version\":1,\"alg\":\"HMAC-SHA256\",\"hmac\":\"fbb27663c7934862d91ccfd3e355ca08a583f986ec05c7bd14a663f69d1d6818\"}\nheader\n{\"names\":{}}"
+  },
+  {
+   "content": "é ☃ \u0000 bytes",
+   "signed": "{\"format\":\"ultron-rlm-snapshot-signature\",\"version\":1,\"alg\":\"HMAC-SHA256\",\"hmac\":\"58fa1c726793bb00c1d2eef4fda30a9e2ba4d56694e5bca89d90729f55c82a0c\"}\né ☃ \u0000 bytes"
+  }
+ ],
+ "verify": [
+  {
+   "input": "{\"format\":\"ultron-rlm-snapshot-signature\",\"version\":1,\"alg\":\"HMAC-SHA256\",\"hmac\":\"0a05f0f4c6313e863bb0421ba9d5613f1d6cfdd854aea540b763abadf9ec0507\"}\n{\"format\":\"ultron-rlm-snapshot\"}\nbody",
+   "ok": "2a50353a3b1bce79459934c58a0f5f2aac3044ebd4e1ef4ecab37ef5fd6f4d0f"
+  },
+  {
+   "input": "{\"format\":\"ultron-rlm-snapshot-signature\",\"version\":1,\"alg\":\"HMAC-SHA256\",\"hmac\":\"0a05f0f4c6313e863bb0421ba9d5613f1d6cfdd854aea540b763abadf9ec0507\"}\nbodY",
+   "error": "snapshot integrity check failed: HMAC signature mismatch (the snapshot was modified or signed with another profile's key)",
+   "name": "SnapshotIntegrityError"
+  },
+  {
+   "input": "{\"format\":\"ultron-rlm-snapshot\"}\nbody",
+   "error": "snapshot integrity check failed: missing host signature (unsigned snapshots, including ones written before snapshots were signed, are refused)",
+   "name": "SnapshotIntegrityError"
+  },
+  {
+   "input": "",
+   "error": "snapshot integrity check failed: missing host signature (unsigned snapshots, including ones written before snapshots were signed, are refused)",
+   "name": "SnapshotIntegrityError"
+  },
+  {
+   "input": "no newline at all",
+   "error": "snapshot integrity check failed: missing host signature (unsigned snapshots, including ones written before snapshots were signed, are refused)",
+   "name": "SnapshotIntegrityError"
+  },
+  {
+   "input": "not json\n{\"format\":\"ultron-rlm-snapshot\"}\nbody",
+   "error": "snapshot integrity check failed: missing host signature (unsigned snapshots, including ones written before snapshots were signed, are refused)",
+   "name": "SnapshotIntegrityError"
+  },
+  {
+   "input": "{\"format\":\"ultron-rlm-snapshot-signature\",\"version\":2,\"alg\":\"HMAC-SHA256\",\"hmac\":\"0a05f0f4c6313e863bb0421ba9d5613f1d6cfdd854aea540b763abadf9ec0507\"}\n{\"format\":\"ultron-rlm-snapshot\"}\nbody",
+   "error": "snapshot integrity check failed: unsupported host signature",
+   "name": "SnapshotIntegrityError"
+  },
+  {
+   "input": "{\"format\":\"ultron-rlm-snapshot-signature\",\"version\":1,\"alg\":\"HMAC-SHA512\",\"hmac\":\"0a05f0f4c6313e863bb0421ba9d5613f1d6cfdd854aea540b763abadf9ec0507\"}\n{\"format\":\"ultron-rlm-snapshot\"}\nbody",
+   "error": "snapshot integrity check failed: unsupported host signature",
+   "name": "SnapshotIntegrityError"
+  },
+  {
+   "input": "{\"format\":\"ultron-rlm-snapshot-signature\",\"version\":1,\"alg\":\"HMAC-SHA256\",\"hmac\":7}\n{\"format\":\"ultron-rlm-snapshot\"}\nbody",
+   "error": "snapshot integrity check failed: unsupported host signature",
+   "name": "SnapshotIntegrityError"
+  },
+  {
+   "input": "{\"format\":\"ultron-rlm-snapshot-signature\",\"version\":1,\"alg\":\"HMAC-SHA256\",\"hmac\":\"0A05F0F4C6313E863BB0421BA9D5613F1D6CFDD854AEA540B763ABADF9EC0507\"}\n{\"format\":\"ultron-rlm-snapshot\"}\nbody",
+   "error": "snapshot integrity check failed: HMAC signature mismatch (the snapshot was modified or signed with another profile's key)",
+   "name": "SnapshotIntegrityError"
+  },
+  {
+   "input": "{\"format\":\"ultron-rlm-snapshot-signature\",\"version\":1,\"alg\":\"HMAC-SHA256\",\"hmac\":\"05f0f4c6313e863bb0421ba9d5613f1d6cfdd854aea540b763abadf9ec0507\"}\n{\"format\":\"ultron-rlm-snapshot\"}\nbody",
+   "error": "snapshot integrity check failed: HMAC signature mismatch (the snapshot was modified or signed with another profile's key)",
+   "name": "SnapshotIntegrityError"
+  },
+  {
+   "input": "{\"format\":\"other\",\"version\":1,\"alg\":\"HMAC-SHA256\",\"hmac\":\"0a05f0f4c6313e863bb0421ba9d5613f1d6cfdd854aea540b763abadf9ec0507\"}\n{\"format\":\"ultron-rlm-snapshot\"}\nbody",
+   "error": "snapshot integrity check failed: missing host signature (unsigned snapshots, including ones written before snapshots were signed, are refused)",
+   "name": "SnapshotIntegrityError"
+  },
+  {
+   "input": "[1]\n{\"format\":\"ultron-rlm-snapshot\"}\nbody",
+   "error": "snapshot integrity check failed: missing host signature (unsigned snapshots, including ones written before snapshots were signed, are refused)",
+   "name": "SnapshotIntegrityError"
+  },
+  {
+   "input": "{\"format\":\"ultron-rlm-snapshot-signature\",\"version\":1,\"alg\":\"HMAC-SHA256\",\"hmac\":\"0f9e3b8d5e1da34e62bd1af692e18cc8106922c5395f6d1d112244312b1be6b0\"}\n{\"format\":\"ultron-rlm-snapshot\"}\nbody",
+   "error": "snapshot integrity check failed: HMAC signature mismatch (the snapshot was modified or signed with another profile's key)",
+   "name": "SnapshotIntegrityError"
+  }
+ ],
+ "kernels": [
+  {
+   "name": "source",
+   "snapshotPath": null,
+   "steps": [
+    {
+     "step": [
+      "execute",
+      "\nplain = {\n    \"none\": None, \"flag\": True, \"count\": -7, \"ratio\": 0.25, \"text\": \"héllo \\u2603\",\n    \"items\": [1, [2, (3, 4)], {\"k\": b\"raw\"}],\n}\npair = (1, \"two\", (3.0, None))\ntags = {\"a\", \"b\"}\nfrozen = frozenset({1, 2})\nblob = b\"\\x00\\xffbytes\"\nmutable_blob = bytearray(b\"abc\")\nby_number = {1: \"one\", (2, 3): \"tuple key\", None: \"none key\"}\nstate[\"counter\"] = 3\n"
+     ],
+     "ok": {
+      "status": "ok",
+      "stdout": "",
+      "stderr": "",
+      "result": ""
+     }
+    },
+    {
+     "step": [
+      "execute",
+      "\nimport math, socket, tempfile, enum\ndef function(x):\n    return x + 1\nlambda_value = lambda x: x * 2\ngenerator = (n for n in range(3))\nopen_file = tempfile.TemporaryFile()\nsock = socket.socket()\nclass Point:\n    def __init__(self, x):\n        self.x = x\ninstance = Point(1)\nmodule = math\nclass Color(str, enum.Enum):\n    RED = \"red\"\nstr_subclass = Color.RED\ncyclic = [1]\ncyclic.append(cyclic)\nshared_a = [1, 2]\nshared_b = shared_a\nhuge = 10 ** 5000\n"
+     ],
+     "ok": {
+      "status": "ok",
+      "stdout": "",
+      "stderr": "",
+      "result": ""
+     }
+    },
+    {
+     "step": [
+      "snapshot",
+      "main"
+     ],
+     "ok": {
+      "status": "ok",
+      "stdout": "",
+      "stderr": "",
+      "snapshot": {
+       "saved": [
+        "blob",
+        "by_number",
+        "frozen",
+        "mutable_blob",
+        "pair",
+        "plain",
+        "state",
+        "tags"
+       ],
+       "skipped": [
+        "Color",
+        "Point",
+        "cyclic",
+        "enum",
+        "function",
+        "generator",
+        "huge",
+        "instance",
+        "lambda_value",
+        "math",
+        "module",
+        "open_file",
+        "shared_a",
+        "shared_b",
+        "sock",
+        "socket",
+        "str_subclass",
+        "tempfile"
+       ],
+       "reasons": {
+        "math": "unsupported type builtins.module",
+        "socket": "unsupported type builtins.module",
+        "tempfile": "unsupported type builtins.module",
+        "enum": "unsupported type builtins.module",
+        "function": "unsupported type builtins.function",
+        "lambda_value": "unsupported type builtins.function",
+        "generator": "unsupported type builtins.generator",
+        "open_file": "unsupported type _io.BufferedRandom",
+        "sock": "unsupported type socket.socket",
+        "Point": "unsupported type builtins.type",
+        "instance": "unsupported type __main__.Point",
+        "module": "unsupported type builtins.module",
+        "Color": "unsupported type enum.EnumType",
+        "str_subclass": "unsupported type __main__.Color",
+        "cyclic": "shared or cyclic mutable reference",
+        "shared_b": "aliases mutable data of shared_a",
+        "shared_a": "aliases mutable data of shared_b",
+        "huge": "not encodable: ValueError"
+       },
+       "sha256": "e66e0a135b97048236f6aa17b82173111c1a3c9fe727692c36746fcf38d1c121",
+       "contentSha256": "9ebb66e87c137ec6cd73ee74e1b44d34bb3e381d2a97991891dbd34e933aabc4"
+      }
+     }
+    },
+    {
+     "step": [
+      "read",
+      "main"
+     ],
+     "file": "{\"format\":\"ultron-rlm-snapshot-signature\",\"version\":1,\"alg\":\"HMAC-SHA256\",\"hmac\":\"632c95f49d23db2759a798be00fa5de18bfba5595460e5743e8481c6c372aae1\"}\n{\"format\":\"ultron-rlm-snapshot\",\"version\":2,\"sha256\":\"e66e0a135b97048236f6aa17b82173111c1a3c9fe727692c36746fcf38d1c121\",\"bytes\":1491}\n{\"names\":{\"state\":{\"$dict\":[[\"counter\",3]]},\"plain\":{\"$dict\":[[\"none\",null],[\"flag\",true],[\"count\",-7],[\"ratio\",0.25],[\"text\",\"h\\u00e9llo \\u2603\"],[\"items\",[1,[2,{\"$tuple\":[3,4]}],{\"$dict\":[[\"k\",{\"$bytes\":\"cmF3\"}]]}]]]},\"pair\":{\"$tuple\":[1,\"two\",{\"$tuple\":[3.0,null]}]},\"tags\":{\"$set\":[\"a\",\"b\"]},\"frozen\":{\"$frozenset\":[1,2]},\"blob\":{\"$bytes\":\"AP9ieXRlcw==\"},\"mutable_blob\":{\"$bytearray\":\"YWJj\"},\"by_number\":{\"$dict\":[[1,\"one\"],[{\"$tuple\":[2,3]},\"tuple key\"],[null,\"none key\"]]}},\"skipped\":[\"Color\",\"Point\",\"cyclic\",\"enum\",\"function\",\"generator\",\"huge\",\"instance\",\"lambda_value\",\"math\",\"module\",\"open_file\",\"shared_a\",\"shared_b\",\"sock\",\"socket\",\"str_subclass\",\"tempfile\"],\"reasons\":{\"math\":\"unsupported type builtins.module\",\"socket\":\"unsupported type builtins.module\",\"tempfile\":\"unsupported type builtins.module\",\"enum\":\"unsupported type builtins.module\",\"function\":\"unsupported type builtins.function\",\"lambda_value\":\"unsupported type builtins.function\",\"generator\":\"unsupported type builtins.generator\",\"open_file\":\"unsupported type _io.BufferedRandom\",\"sock\":\"unsupported type socket.socket\",\"Point\":\"unsupported type builtins.type\",\"instance\":\"unsupported type __main__.Point\",\"module\":\"unsupported type builtins.module\",\"Color\":\"unsupported type enum.EnumType\",\"str_subclass\":\"unsupported type __main__.Color\",\"cyclic\":\"shared or cyclic mutable reference\",\"shared_b\":\"aliases mutable data of shared_a\",\"shared_a\":\"aliases mutable data of shared_b\",\"huge\":\"not encodable: ValueError\"}}"
+    },
+    {
+     "step": [
+      "execute",
+      "balance = 100"
+     ],
+     "ok": {
+      "status": "ok",
+      "stdout": "",
+      "stderr": "",
+      "result": ""
+     }
+    },
+    {
+     "step": [
+      "snapshot",
+      "main"
+     ],
+     "ok": {
+      "status": "ok",
+      "stdout": "",
+      "stderr": "",
+      "snapshot": {
+       "saved": [
+        "balance",
+        "blob",
+        "by_number",
+        "frozen",
+        "mutable_blob",
+        "pair",
+        "plain",
+        "state",
+        "tags"
+       ],
+       "skipped": [
+        "Color",
+        "Point",
+        "cyclic",
+        "enum",
+        "function",
+        "generator",
+        "huge",
+        "instance",
+        "lambda_value",
+        "math",
+        "module",
+        "open_file",
+        "shared_a",
+        "shared_b",
+        "sock",
+        "socket",
+        "str_subclass",
+        "tempfile"
+       ],
+       "reasons": {
+        "math": "unsupported type builtins.module",
+        "socket": "unsupported type builtins.module",
+        "tempfile": "unsupported type builtins.module",
+        "enum": "unsupported type builtins.module",
+        "function": "unsupported type builtins.function",
+        "lambda_value": "unsupported type builtins.function",
+        "generator": "unsupported type builtins.generator",
+        "open_file": "unsupported type _io.BufferedRandom",
+        "sock": "unsupported type socket.socket",
+        "Point": "unsupported type builtins.type",
+        "instance": "unsupported type __main__.Point",
+        "module": "unsupported type builtins.module",
+        "Color": "unsupported type enum.EnumType",
+        "str_subclass": "unsupported type __main__.Color",
+        "cyclic": "shared or cyclic mutable reference",
+        "shared_b": "aliases mutable data of shared_a",
+        "shared_a": "aliases mutable data of shared_b",
+        "huge": "not encodable: ValueError"
+       },
+       "sha256": "63d015c5450510c2092f7c42f4623be59402ab862ed03477628fc9b0860c076c",
+       "contentSha256": "0d06367a4e4ae4640c1b4f92c25e871085cc724a30abf72f7bd6744a71260240"
+      }
+     }
+    },
+    {
+     "step": [
+      "read",
+      "main"
+     ],
+     "file": "{\"format\":\"ultron-rlm-snapshot-signature\",\"version\":1,\"alg\":\"HMAC-SHA256\",\"hmac\":\"8169c003ed09c0cca548e171bb9047f38f2c6a84bed94d5255d298e3d8e4cad7\"}\n{\"format\":\"ultron-rlm-snapshot\",\"version\":2,\"sha256\":\"63d015c5450510c2092f7c42f4623be59402ab862ed03477628fc9b0860c076c\",\"bytes\":1505}\n{\"names\":{\"state\":{\"$dict\":[[\"counter\",3]]},\"plain\":{\"$dict\":[[\"none\",null],[\"flag\",true],[\"count\",-7],[\"ratio\",0.25],[\"text\",\"h\\u00e9llo \\u2603\"],[\"items\",[1,[2,{\"$tuple\":[3,4]}],{\"$dict\":[[\"k\",{\"$bytes\":\"cmF3\"}]]}]]]},\"pair\":{\"$tuple\":[1,\"two\",{\"$tuple\":[3.0,null]}]},\"tags\":{\"$set\":[\"a\",\"b\"]},\"frozen\":{\"$frozenset\":[1,2]},\"blob\":{\"$bytes\":\"AP9ieXRlcw==\"},\"mutable_blob\":{\"$bytearray\":\"YWJj\"},\"by_number\":{\"$dict\":[[1,\"one\"],[{\"$tuple\":[2,3]},\"tuple key\"],[null,\"none key\"]]},\"balance\":100},\"skipped\":[\"Color\",\"Point\",\"cyclic\",\"enum\",\"function\",\"generator\",\"huge\",\"instance\",\"lambda_value\",\"math\",\"module\",\"open_file\",\"shared_a\",\"shared_b\",\"sock\",\"socket\",\"str_subclass\",\"tempfile\"],\"reasons\":{\"math\":\"unsupported type builtins.module\",\"socket\":\"unsupported type builtins.module\",\"tempfile\":\"unsupported type builtins.module\",\"enum\":\"unsupported type builtins.module\",\"function\":\"unsupported type builtins.function\",\"lambda_value\":\"unsupported type builtins.function\",\"generator\":\"unsupported type builtins.generator\",\"open_file\":\"unsupported type _io.BufferedRandom\",\"sock\":\"unsupported type socket.socket\",\"Point\":\"unsupported type builtins.type\",\"instance\":\"unsupported type __main__.Point\",\"module\":\"unsupported type builtins.module\",\"Color\":\"unsupported type enum.EnumType\",\"str_subclass\":\"unsupported type __main__.Color\",\"cyclic\":\"shared or cyclic mutable reference\",\"shared_b\":\"aliases mutable data of shared_a\",\"shared_a\":\"aliases mutable data of shared_b\",\"huge\":\"not encodable: ValueError\"}}"
+    }
+   ],
+   "wire": {
+    "h2k": [
+     "{\"request\":\"execute\",\"code\":\"\\nplain = {\\n    \\\"none\\\": None, \\\"flag\\\": True, \\\"count\\\": -7, \\\"ratio\\\": 0.25, \\\"text\\\": \\\"héllo \\\\u2603\\\",\\n    \\\"items\\\": [1, [2, (3, 4)], {\\\"k\\\": b\\\"raw\\\"}],\\n}\\npair = (1, \\\"two\\\", (3.0, None))\\ntags = {\\\"a\\\", \\\"b\\\"}\\nfrozen = frozenset({1, 2})\\nblob = b\\\"\\\\x00\\\\xffbytes\\\"\\nmutable_blob = bytearray(b\\\"abc\\\")\\nby_number = {1: \\\"one\\\", (2, 3): \\\"tuple key\\\", None: \\\"none key\\\"}\\nstate[\\\"counter\\\"] = 3\\n\",\"id\":\"req-1\"}",
+     "{\"request\":\"execute\",\"code\":\"\\nimport math, socket, tempfile, enum\\ndef function(x):\\n    return x + 1\\nlambda_value = lambda x: x * 2\\ngenerator = (n for n in range(3))\\nopen_file = tempfile.TemporaryFile()\\nsock = socket.socket()\\nclass Point:\\n    def __init__(self, x):\\n        self.x = x\\ninstance = Point(1)\\nmodule = math\\nclass Color(str, enum.Enum):\\n    RED = \\\"red\\\"\\nstr_subclass = Color.RED\\ncyclic = [1]\\ncyclic.append(cyclic)\\nshared_a = [1, 2]\\nshared_b = shared_a\\nhuge = 10 ** 5000\\n\",\"id\":\"req-2\"}",
+     "{\"request\":\"snapshot\",\"path\":\"<dir>/.main.snapshot.req-3.unsigned\",\"id\":\"req-4\"}",
+     "{\"request\":\"execute\",\"code\":\"balance = 100\",\"id\":\"req-5\"}",
+     "{\"request\":\"snapshot\",\"path\":\"<dir>/.main.snapshot.req-6.unsigned\",\"id\":\"req-7\"}"
+    ],
+    "k2h": [
+     "{\"event\":\"ready\",\"protocol\":1,\"pid\":0}",
+     "{\"event\":\"stdout\",\"id\":\"req-1\",\"text\":\"\"}",
+     "{\"event\":\"stderr\",\"id\":\"req-1\",\"text\":\"\"}",
+     "{\"event\":\"result\",\"id\":\"req-1\",\"result\":\"\"}",
+     "{\"event\":\"done\",\"id\":\"req-1\",\"status\":\"ok\",\"flush\":{\"stdout\":true,\"stderr\":true}}",
+     "{\"event\":\"stdout\",\"id\":\"req-2\",\"text\":\"\"}",
+     "{\"event\":\"stderr\",\"id\":\"req-2\",\"text\":\"\"}",
+     "{\"event\":\"result\",\"id\":\"req-2\",\"result\":\"\"}",
+     "{\"event\":\"done\",\"id\":\"req-2\",\"status\":\"ok\",\"flush\":{\"stdout\":true,\"stderr\":true}}",
+     "{\"event\":\"done\",\"id\":\"req-4\",\"status\":\"ok\",\"snapshot\":{\"saved\":[\"blob\",\"by_number\",\"frozen\",\"mutable_blob\",\"pair\",\"plain\",\"state\",\"tags\"],\"skipped\":[\"Color\",\"Point\",\"cyclic\",\"enum\",\"function\",\"generator\",\"huge\",\"instance\",\"lambda_value\",\"math\",\"module\",\"open_file\",\"shared_a\",\"shared_b\",\"sock\",\"socket\",\"str_subclass\",\"tempfile\"],\"reasons\":{\"math\":\"unsupported type builtins.module\",\"socket\":\"unsupported type builtins.module\",\"tempfile\":\"unsupported type builtins.module\",\"enum\":\"unsupported type builtins.module\",\"function\":\"unsupported type builtins.function\",\"lambda_value\":\"unsupported type builtins.function\",\"generator\":\"unsupported type builtins.generator\",\"open_file\":\"unsupported type _io.BufferedRandom\",\"sock\":\"unsupported type socket.socket\",\"Point\":\"unsupported type builtins.type\",\"instance\":\"unsupported type __main__.Point\",\"module\":\"unsupported type builtins.module\",\"Color\":\"unsupported type enum.EnumType\",\"str_subclass\":\"unsupported type __main__.Color\",\"cyclic\":\"shared or cyclic mutable reference\",\"shared_b\":\"aliases mutable data of shared_a\",\"shared_a\":\"aliases mutable data of shared_b\",\"huge\":\"not encodable: ValueError\"},\"serializer\":\"json\",\"sha256\":\"e66e0a135b97048236f6aa17b82173111c1a3c9fe727692c36746fcf38d1c121\",\"content_sha256\":\"9ebb66e87c137ec6cd73ee74e1b44d34bb3e381d2a97991891dbd34e933aabc4\"}}",
+     "{\"event\":\"stdout\",\"id\":\"req-5\",\"text\":\"\"}",
+     "{\"event\":\"stderr\",\"id\":\"req-5\",\"text\":\"\"}",
+     "{\"event\":\"result\",\"id\":\"req-5\",\"result\":\"\"}",
+     "{\"event\":\"done\",\"id\":\"req-5\",\"status\":\"ok\",\"flush\":{\"stdout\":true,\"stderr\":true}}",
+     "{\"event\":\"done\",\"id\":\"req-7\",\"status\":\"ok\",\"snapshot\":{\"saved\":[\"balance\",\"blob\",\"by_number\",\"frozen\",\"mutable_blob\",\"pair\",\"plain\",\"state\",\"tags\"],\"skipped\":[\"Color\",\"Point\",\"cyclic\",\"enum\",\"function\",\"generator\",\"huge\",\"instance\",\"lambda_value\",\"math\",\"module\",\"open_file\",\"shared_a\",\"shared_b\",\"sock\",\"socket\",\"str_subclass\",\"tempfile\"],\"reasons\":{\"math\":\"unsupported type builtins.module\",\"socket\":\"unsupported type builtins.module\",\"tempfile\":\"unsupported type builtins.module\",\"enum\":\"unsupported type builtins.module\",\"function\":\"unsupported type builtins.function\",\"lambda_value\":\"unsupported type builtins.function\",\"generator\":\"unsupported type builtins.generator\",\"open_file\":\"unsupported type _io.BufferedRandom\",\"sock\":\"unsupported type socket.socket\",\"Point\":\"unsupported type builtins.type\",\"instance\":\"unsupported type __main__.Point\",\"module\":\"unsupported type builtins.module\",\"Color\":\"unsupported type enum.EnumType\",\"str_subclass\":\"unsupported type __main__.Color\",\"cyclic\":\"shared or cyclic mutable reference\",\"shared_b\":\"aliases mutable data of shared_a\",\"shared_a\":\"aliases mutable data of shared_b\",\"huge\":\"not encodable: ValueError\"},\"serializer\":\"json\",\"sha256\":\"63d015c5450510c2092f7c42f4623be59402ab862ed03477628fc9b0860c076c\",\"content_sha256\":\"0d06367a4e4ae4640c1b4f92c25e871085cc724a30abf72f7bd6744a71260240\"}}"
+    ]
+   }
+  },
+  {
+   "name": "explicit restore",
+   "snapshotPath": null,
+   "steps": [
+    {
+     "step": [
+      "execute",
+      "marker = 'kept'"
+     ],
+     "ok": {
+      "status": "ok",
+      "stdout": "",
+      "stderr": "",
+      "result": ""
+     }
+    },
+    {
+     "step": [
+      "restore",
+      "missing"
+     ],
+     "ok": {
+      "status": "ok",
+      "stdout": "",
+      "stderr": "",
+      "restore": {
+       "restored": [],
+       "missing": true,
+       "skipped": [],
+       "reasons": {}
+      }
+     }
+    },
+    {
+     "step": [
+      "copy",
+      "main",
+      "tampered",
+      [
+       [
+        "\"$dict\"",
+        "\"$dicT\""
+       ],
+       [
+        "-7",
+        "-8"
+       ]
+      ]
+     ]
+    },
+    {
+     "step": [
+      "restore",
+      "tampered"
+     ],
+     "ok": {
+      "status": "error",
+      "stdout": "",
+      "stderr": "",
+      "error": {
+       "ename": "SnapshotIntegrityError",
+       "evalue": "snapshot integrity check failed: HMAC signature mismatch (the snapshot was modified or signed with another profile's key)",
+       "traceback": []
+      }
+     }
+    },
+    {
+     "step": [
+      "unsign",
+      "main",
+      "unsigned"
+     ]
+    },
+    {
+     "step": [
+      "restore",
+      "unsigned"
+     ],
+     "ok": {
+      "status": "error",
+      "stdout": "",
+      "stderr": "",
+      "error": {
+       "ename": "SnapshotIntegrityError",
+       "evalue": "snapshot integrity check failed: missing host signature (unsigned snapshots, including ones written before snapshots were signed, are refused)",
+       "traceback": []
+      }
+     }
+    },
+    {
+     "step": [
+      "write",
+      "garbage",
+      "\u0004cos\nsystem\n"
+     ]
+    },
+    {
+     "step": [
+      "restore",
+      "garbage"
+     ],
+     "ok": {
+      "status": "error",
+      "stdout": "",
+      "stderr": "",
+      "error": {
+       "ename": "SnapshotIntegrityError",
+       "evalue": "snapshot integrity check failed: missing host signature (unsigned snapshots, including ones written before snapshots were signed, are refused)",
+       "traceback": []
+      }
+     }
+    },
+    {
+     "step": [
+      "foreign",
+      "main",
+      "foreign"
+     ]
+    },
+    {
+     "step": [
+      "restore",
+      "foreign"
+     ],
+     "ok": {
+      "status": "error",
+      "stdout": "",
+      "stderr": "",
+      "error": {
+       "ename": "SnapshotIntegrityError",
+       "evalue": "snapshot integrity check failed: HMAC signature mismatch (the snapshot was modified or signed with another profile's key)",
+       "traceback": []
+      }
+     }
+    },
+    {
+     "step": [
+      "execute",
+      "(marker, 'plain' in globals())"
+     ],
+     "ok": {
+      "status": "ok",
+      "stdout": "",
+      "stderr": "",
+      "result": "('kept', False)"
+     }
+    },
+    {
+     "step": [
+      "restore",
+      "main"
+     ],
+     "ok": {
+      "status": "ok",
+      "stdout": "",
+      "stderr": "",
+      "restore": {
+       "restored": [
+        "balance",
+        "blob",
+        "by_number",
+        "frozen",
+        "mutable_blob",
+        "pair",
+        "plain",
+        "state",
+        "tags"
+       ],
+       "missing": false,
+       "skipped": [
+        "Color",
+        "Point",
+        "cyclic",
+        "enum",
+        "function",
+        "generator",
+        "huge",
+        "instance",
+        "lambda_value",
+        "math",
+        "module",
+        "open_file",
+        "shared_a",
+        "shared_b",
+        "sock",
+        "socket",
+        "str_subclass",
+        "tempfile"
+       ],
+       "reasons": {
+        "math": "unsupported type builtins.module",
+        "socket": "unsupported type builtins.module",
+        "tempfile": "unsupported type builtins.module",
+        "enum": "unsupported type builtins.module",
+        "function": "unsupported type builtins.function",
+        "lambda_value": "unsupported type builtins.function",
+        "generator": "unsupported type builtins.generator",
+        "open_file": "unsupported type _io.BufferedRandom",
+        "sock": "unsupported type socket.socket",
+        "Point": "unsupported type builtins.type",
+        "instance": "unsupported type __main__.Point",
+        "module": "unsupported type builtins.module",
+        "Color": "unsupported type enum.EnumType",
+        "str_subclass": "unsupported type __main__.Color",
+        "cyclic": "shared or cyclic mutable reference",
+        "shared_b": "aliases mutable data of shared_a",
+        "shared_a": "aliases mutable data of shared_b",
+        "huge": "not encodable: ValueError"
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "execute",
+      "\n\nexpected_plain = {\n    \"none\": None, \"flag\": True, \"count\": -7, \"ratio\": 0.25, \"text\": \"héllo \\u2603\",\n    \"items\": [1, [2, (3, 4)], {\"k\": b\"raw\"}],\n}\nexpected_pair = (1, \"two\", (3.0, None))\nexpected_tags = {\"a\", \"b\"}\nexpected_frozen = frozenset({1, 2})\nexpected_blob = b\"\\x00\\xffbytes\"\nexpected_mutable_blob = bytearray(b\"abc\")\nexpected_by_number = {1: \"one\", (2, 3): \"tuple key\", None: \"none key\"}\n\n\ndef same(left, right):\n    if type(left) is not type(right):\n        return False\n    if isinstance(left, (list, tuple)):\n        return len(left) == len(right) and all(same(a, b) for a, b in zip(left, right))\n    if isinstance(left, dict):\n        return left.keys() == right.keys() and all(same(left[k], right[k]) for k in left)\n    return left == right\n[name for name in [\"blob\",\"by_number\",\"frozen\",\"mutable_blob\",\"pair\",\"plain\",\"tags\"] if not same(globals()[name], globals()[\"expected_\" + name])] + ([] if state == {\"counter\": 3} else [\"state\"])\n"
+     ],
+     "ok": {
+      "status": "ok",
+      "stdout": "",
+      "stderr": "",
+      "result": "[]"
+     }
+    },
+    {
+     "step": [
+      "execute",
+      "(marker, 'sock' in globals(), balance)"
+     ],
+     "ok": {
+      "status": "ok",
+      "stdout": "",
+      "stderr": "",
+      "result": "('kept', False, 100)"
+     }
+    }
+   ],
+   "wire": {
+    "h2k": [
+     "{\"request\":\"execute\",\"code\":\"marker = 'kept'\",\"id\":\"req-1\"}",
+     "{\"request\":\"restore\",\"path\":\"<dir>/missing.snapshot\",\"id\":\"req-2\"}",
+     "{\"request\":\"execute\",\"code\":\"(marker, 'plain' in globals())\",\"id\":\"req-3\"}",
+     "{\"request\":\"restore\",\"path\":\"<dir>/main.snapshot\",\"content_sha256\":\"0d06367a4e4ae4640c1b4f92c25e871085cc724a30abf72f7bd6744a71260240\",\"id\":\"req-4\"}",
+     "{\"request\":\"execute\",\"code\":\"\\n\\nexpected_plain = {\\n    \\\"none\\\": None, \\\"flag\\\": True, \\\"count\\\": -7, \\\"ratio\\\": 0.25, \\\"text\\\": \\\"héllo \\\\u2603\\\",\\n    \\\"items\\\": [1, [2, (3, 4)], {\\\"k\\\": b\\\"raw\\\"}],\\n}\\nexpected_pair = (1, \\\"two\\\", (3.0, None))\\nexpected_tags = {\\\"a\\\", \\\"b\\\"}\\nexpected_frozen = frozenset({1, 2})\\nexpected_blob = b\\\"\\\\x00\\\\xffbytes\\\"\\nexpected_mutable_blob = bytearray(b\\\"abc\\\")\\nexpected_by_number = {1: \\\"one\\\", (2, 3): \\\"tuple key\\\", None: \\\"none key\\\"}\\n\\n\\ndef same(left, right):\\n    if type(left) is not type(right):\\n        return False\\n    if isinstance(left, (list, tuple)):\\n        return len(left) == len(right) and all(same(a, b) for a, b in zip(left, right))\\n    if isinstance(left, dict):\\n        return left.keys() == right.keys() and all(same(left[k], right[k]) for k in left)\\n    return left == right\\n[name for name in [\\\"blob\\\",\\\"by_number\\\",\\\"frozen\\\",\\\"mutable_blob\\\",\\\"pair\\\",\\\"plain\\\",\\\"tags\\\"] if not same(globals()[name], globals()[\\\"expected_\\\" + name])] + ([] if state == {\\\"counter\\\": 3} else [\\\"state\\\"])\\n\",\"id\":\"req-5\"}",
+     "{\"request\":\"execute\",\"code\":\"(marker, 'sock' in globals(), balance)\",\"id\":\"req-6\"}"
+    ],
+    "k2h": [
+     "{\"event\":\"ready\",\"protocol\":1,\"pid\":0}",
+     "{\"event\":\"stdout\",\"id\":\"req-1\",\"text\":\"\"}",
+     "{\"event\":\"stderr\",\"id\":\"req-1\",\"text\":\"\"}",
+     "{\"event\":\"result\",\"id\":\"req-1\",\"result\":\"\"}",
+     "{\"event\":\"done\",\"id\":\"req-1\",\"status\":\"ok\",\"flush\":{\"stdout\":true,\"stderr\":true}}",
+     "{\"event\":\"done\",\"id\":\"req-2\",\"status\":\"ok\",\"restore\":{\"restored\":[],\"missing\":true,\"skipped\":[],\"reasons\":{}}}",
+     "{\"event\":\"stdout\",\"id\":\"req-3\",\"text\":\"\"}",
+     "{\"event\":\"stderr\",\"id\":\"req-3\",\"text\":\"\"}",
+     "{\"event\":\"result\",\"id\":\"req-3\",\"result\":\"('kept', False)\"}",
+     "{\"event\":\"done\",\"id\":\"req-3\",\"status\":\"ok\",\"flush\":{\"stdout\":true,\"stderr\":true}}",
+     "{\"event\":\"done\",\"id\":\"req-4\",\"status\":\"ok\",\"restore\":{\"restored\":[\"balance\",\"blob\",\"by_number\",\"frozen\",\"mutable_blob\",\"pair\",\"plain\",\"state\",\"tags\"],\"missing\":false,\"skipped\":[\"Color\",\"Point\",\"cyclic\",\"enum\",\"function\",\"generator\",\"huge\",\"instance\",\"lambda_value\",\"math\",\"module\",\"open_file\",\"shared_a\",\"shared_b\",\"sock\",\"socket\",\"str_subclass\",\"tempfile\"],\"reasons\":{\"math\":\"unsupported type builtins.module\",\"socket\":\"unsupported type builtins.module\",\"tempfile\":\"unsupported type builtins.module\",\"enum\":\"unsupported type builtins.module\",\"function\":\"unsupported type builtins.function\",\"lambda_value\":\"unsupported type builtins.function\",\"generator\":\"unsupported type builtins.generator\",\"open_file\":\"unsupported type _io.BufferedRandom\",\"sock\":\"unsupported type socket.socket\",\"Point\":\"unsupported type builtins.type\",\"instance\":\"unsupported type __main__.Point\",\"module\":\"unsupported type builtins.module\",\"Color\":\"unsupported type enum.EnumType\",\"str_subclass\":\"unsupported type __main__.Color\",\"cyclic\":\"shared or cyclic mutable reference\",\"shared_b\":\"aliases mutable data of shared_a\",\"shared_a\":\"aliases mutable data of shared_b\",\"huge\":\"not encodable: ValueError\"}}}",
+     "{\"event\":\"stdout\",\"id\":\"req-5\",\"text\":\"\"}",
+     "{\"event\":\"stderr\",\"id\":\"req-5\",\"text\":\"\"}",
+     "{\"event\":\"result\",\"id\":\"req-5\",\"result\":\"[]\"}",
+     "{\"event\":\"done\",\"id\":\"req-5\",\"status\":\"ok\",\"flush\":{\"stdout\":true,\"stderr\":true}}",
+     "{\"event\":\"stdout\",\"id\":\"req-6\",\"text\":\"\"}",
+     "{\"event\":\"stderr\",\"id\":\"req-6\",\"text\":\"\"}",
+     "{\"event\":\"result\",\"id\":\"req-6\",\"result\":\"('kept', False, 100)\"}",
+     "{\"event\":\"done\",\"id\":\"req-6\",\"status\":\"ok\",\"flush\":{\"stdout\":true,\"stderr\":true}}"
+    ]
+   }
+  },
+  {
+   "name": "startup restore",
+   "snapshotPath": "main",
+   "steps": [
+    {
+     "step": [
+      "execute",
+      "\n\nexpected_plain = {\n    \"none\": None, \"flag\": True, \"count\": -7, \"ratio\": 0.25, \"text\": \"héllo \\u2603\",\n    \"items\": [1, [2, (3, 4)], {\"k\": b\"raw\"}],\n}\nexpected_pair = (1, \"two\", (3.0, None))\nexpected_tags = {\"a\", \"b\"}\nexpected_frozen = frozenset({1, 2})\nexpected_blob = b\"\\x00\\xffbytes\"\nexpected_mutable_blob = bytearray(b\"abc\")\nexpected_by_number = {1: \"one\", (2, 3): \"tuple key\", None: \"none key\"}\n\n\ndef same(left, right):\n    if type(left) is not type(right):\n        return False\n    if isinstance(left, (list, tuple)):\n        return len(left) == len(right) and all(same(a, b) for a, b in zip(left, right))\n    if isinstance(left, dict):\n        return left.keys() == right.keys() and all(same(left[k], right[k]) for k in left)\n    return left == right\n[name for name in [\"blob\",\"by_number\",\"frozen\",\"mutable_blob\",\"pair\",\"plain\",\"tags\"] if not same(globals()[name], globals()[\"expected_\" + name])] + ([] if state == {\"counter\": 3} else [\"state\"])\n"
+     ],
+     "ok": {
+      "status": "ok",
+      "stdout": "",
+      "stderr": "",
+      "result": "[]"
+     }
+    },
+    {
+     "step": [
+      "execute",
+      "'function' in globals(), balance"
+     ],
+     "ok": {
+      "status": "ok",
+      "stdout": "",
+      "stderr": "",
+      "result": "(False, 100)"
+     }
+    }
+   ],
+   "wire": {
+    "h2k": [
+     "{\"request\":\"restore\",\"path\":\"<dir>/main.snapshot\",\"content_sha256\":\"0d06367a4e4ae4640c1b4f92c25e871085cc724a30abf72f7bd6744a71260240\",\"id\":\"req-1\"}",
+     "{\"request\":\"execute\",\"code\":\"\\n\\nexpected_plain = {\\n    \\\"none\\\": None, \\\"flag\\\": True, \\\"count\\\": -7, \\\"ratio\\\": 0.25, \\\"text\\\": \\\"héllo \\\\u2603\\\",\\n    \\\"items\\\": [1, [2, (3, 4)], {\\\"k\\\": b\\\"raw\\\"}],\\n}\\nexpected_pair = (1, \\\"two\\\", (3.0, None))\\nexpected_tags = {\\\"a\\\", \\\"b\\\"}\\nexpected_frozen = frozenset({1, 2})\\nexpected_blob = b\\\"\\\\x00\\\\xffbytes\\\"\\nexpected_mutable_blob = bytearray(b\\\"abc\\\")\\nexpected_by_number = {1: \\\"one\\\", (2, 3): \\\"tuple key\\\", None: \\\"none key\\\"}\\n\\n\\ndef same(left, right):\\n    if type(left) is not type(right):\\n        return False\\n    if isinstance(left, (list, tuple)):\\n        return len(left) == len(right) and all(same(a, b) for a, b in zip(left, right))\\n    if isinstance(left, dict):\\n        return left.keys() == right.keys() and all(same(left[k], right[k]) for k in left)\\n    return left == right\\n[name for name in [\\\"blob\\\",\\\"by_number\\\",\\\"frozen\\\",\\\"mutable_blob\\\",\\\"pair\\\",\\\"plain\\\",\\\"tags\\\"] if not same(globals()[name], globals()[\\\"expected_\\\" + name])] + ([] if state == {\\\"counter\\\": 3} else [\\\"state\\\"])\\n\",\"id\":\"req-2\"}",
+     "{\"request\":\"execute\",\"code\":\"'function' in globals(), balance\",\"id\":\"req-3\"}"
+    ],
+    "k2h": [
+     "{\"event\":\"ready\",\"protocol\":1,\"pid\":0}",
+     "{\"event\":\"done\",\"id\":\"req-1\",\"status\":\"ok\",\"restore\":{\"restored\":[\"balance\",\"blob\",\"by_number\",\"frozen\",\"mutable_blob\",\"pair\",\"plain\",\"state\",\"tags\"],\"missing\":false,\"skipped\":[\"Color\",\"Point\",\"cyclic\",\"enum\",\"function\",\"generator\",\"huge\",\"instance\",\"lambda_value\",\"math\",\"module\",\"open_file\",\"shared_a\",\"shared_b\",\"sock\",\"socket\",\"str_subclass\",\"tempfile\"],\"reasons\":{\"math\":\"unsupported type builtins.module\",\"socket\":\"unsupported type builtins.module\",\"tempfile\":\"unsupported type builtins.module\",\"enum\":\"unsupported type builtins.module\",\"function\":\"unsupported type builtins.function\",\"lambda_value\":\"unsupported type builtins.function\",\"generator\":\"unsupported type builtins.generator\",\"open_file\":\"unsupported type _io.BufferedRandom\",\"sock\":\"unsupported type socket.socket\",\"Point\":\"unsupported type builtins.type\",\"instance\":\"unsupported type __main__.Point\",\"module\":\"unsupported type builtins.module\",\"Color\":\"unsupported type enum.EnumType\",\"str_subclass\":\"unsupported type __main__.Color\",\"cyclic\":\"shared or cyclic mutable reference\",\"shared_b\":\"aliases mutable data of shared_a\",\"shared_a\":\"aliases mutable data of shared_b\",\"huge\":\"not encodable: ValueError\"}}}",
+     "{\"event\":\"stdout\",\"id\":\"req-2\",\"text\":\"\"}",
+     "{\"event\":\"stderr\",\"id\":\"req-2\",\"text\":\"\"}",
+     "{\"event\":\"result\",\"id\":\"req-2\",\"result\":\"[]\"}",
+     "{\"event\":\"done\",\"id\":\"req-2\",\"status\":\"ok\",\"flush\":{\"stdout\":true,\"stderr\":true}}",
+     "{\"event\":\"stdout\",\"id\":\"req-3\",\"text\":\"\"}",
+     "{\"event\":\"stderr\",\"id\":\"req-3\",\"text\":\"\"}",
+     "{\"event\":\"result\",\"id\":\"req-3\",\"result\":\"(False, 100)\"}",
+     "{\"event\":\"done\",\"id\":\"req-3\",\"status\":\"ok\",\"flush\":{\"stdout\":true,\"stderr\":true}}"
+    ]
+   }
+  },
+  {
+   "name": "startup restore refused",
+   "snapshotPath": "tampered",
+   "steps": [
+    {
+     "step": [
+      "execute",
+      "state"
+     ],
+     "error": "RLM kernel startup restore failed: snapshot integrity check failed: HMAC signature mismatch (the snapshot was modified or signed with another profile's key)"
+    },
+    {
+     "step": [
+      "execute",
+      "state"
+     ],
+     "error": "RLM kernel startup restore failed: snapshot integrity check failed: HMAC signature mismatch (the snapshot was modified or signed with another profile's key)"
+    },
+    {
+     "step": [
+      "restore",
+      "tampered"
+     ],
+     "ok": {
+      "status": "error",
+      "stdout": "",
+      "stderr": "",
+      "error": {
+       "ename": "SnapshotIntegrityError",
+       "evalue": "snapshot integrity check failed: HMAC signature mismatch (the snapshot was modified or signed with another profile's key)",
+       "traceback": []
+      }
+     }
+    },
+    {
+     "step": [
+      "execute",
+      "('plain' in globals(), state)"
+     ],
+     "ok": {
+      "status": "ok",
+      "stdout": "",
+      "stderr": "",
+      "result": "(False, {})"
+     }
+    }
+   ],
+   "wire": {
+    "h2k": [
+     "{\"request\":\"execute\",\"code\":\"('plain' in globals(), state)\",\"id\":\"req-1\"}"
+    ],
+    "k2h": [
+     "{\"event\":\"ready\",\"protocol\":1,\"pid\":0}",
+     "{\"event\":\"ready\",\"protocol\":1,\"pid\":0}",
+     "{\"event\":\"ready\",\"protocol\":1,\"pid\":0}",
+     "{\"event\":\"stdout\",\"id\":\"req-1\",\"text\":\"\"}",
+     "{\"event\":\"stderr\",\"id\":\"req-1\",\"text\":\"\"}",
+     "{\"event\":\"result\",\"id\":\"req-1\",\"result\":\"(False, {})\"}",
+     "{\"event\":\"done\",\"id\":\"req-1\",\"status\":\"ok\",\"flush\":{\"stdout\":true,\"stderr\":true}}"
+    ]
+   }
+  },
+  {
+   "name": "startup restore missing",
+   "snapshotPath": "missing",
+   "steps": [
+    {
+     "step": [
+      "execute",
+      "'plain' in globals()"
+     ],
+     "ok": {
+      "status": "ok",
+      "stdout": "",
+      "stderr": "",
+      "result": "False"
+     }
+    }
+   ],
+   "wire": {
+    "h2k": [
+     "{\"request\":\"restore\",\"path\":\"<dir>/missing.snapshot\",\"id\":\"req-1\"}",
+     "{\"request\":\"execute\",\"code\":\"'plain' in globals()\",\"id\":\"req-2\"}"
+    ],
+    "k2h": [
+     "{\"event\":\"ready\",\"protocol\":1,\"pid\":0}",
+     "{\"event\":\"done\",\"id\":\"req-1\",\"status\":\"ok\",\"restore\":{\"restored\":[],\"missing\":true,\"skipped\":[],\"reasons\":{}}}",
+     "{\"event\":\"stdout\",\"id\":\"req-2\",\"text\":\"\"}",
+     "{\"event\":\"stderr\",\"id\":\"req-2\",\"text\":\"\"}",
+     "{\"event\":\"result\",\"id\":\"req-2\",\"result\":\"False\"}",
+     "{\"event\":\"done\",\"id\":\"req-2\",\"status\":\"ok\",\"flush\":{\"stdout\":true,\"stderr\":true}}"
+    ]
+   }
+  }
+ ]
+}

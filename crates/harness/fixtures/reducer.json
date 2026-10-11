@@ -1,0 +1,8843 @@
+{
+	"source": "packages/agent/src/harness/runtime/reducer.ts",
+	"lane": {
+		"ordinary_run": [
+			{
+				"start": {
+					"lane": "main",
+					"transcript": [],
+					"tipId": null,
+					"configuration": {
+						"model": {
+							"provider": "faux",
+							"modelId": "faux-1"
+						},
+						"thinkingLevel": "off",
+						"activeToolNames": []
+					},
+					"stats": {
+						"messageCount": 0,
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						}
+					},
+					"operation": null,
+					"queues": [],
+					"faulted": false
+				},
+				"events": [
+					{
+						"type": "run_start",
+						"runId": "00000000-0000-7000-8000-000000000000",
+						"startedAt": 1700000000003,
+						"lane": "main"
+					},
+					{
+						"type": "message_start",
+						"lane": "main",
+						"runId": "00000000-0000-7000-8000-000000000000",
+						"message": {
+							"role": "user",
+							"content": [
+								{
+									"type": "text",
+									"text": "question"
+								}
+							],
+							"timestamp": 1700000000003
+						}
+					},
+					{
+						"type": "message_end",
+						"lane": "main",
+						"runId": "00000000-0000-7000-8000-000000000000",
+						"message": {
+							"role": "user",
+							"content": [
+								{
+									"type": "text",
+									"text": "question"
+								}
+							],
+							"timestamp": 1700000000003
+						},
+						"entryId": "00000000-0000-7000-8000-000000000001"
+					},
+					{
+						"type": "entry_added",
+						"lane": "main",
+						"entry": {
+							"id": "00000000-0000-7000-8000-000000000001",
+							"parentId": null,
+							"type": "message",
+							"message": {
+								"role": "user",
+								"content": [
+									{
+										"type": "text",
+										"text": "question"
+									}
+								],
+								"timestamp": 1700000000003
+							},
+							"seq": 4,
+							"timestamp": 1700000000004
+						}
+					},
+					{
+						"type": "turn_start",
+						"lane": "main",
+						"runId": "00000000-0000-7000-8000-000000000000",
+						"turnId": "00000000-0000-7000-8000-000000000002"
+					},
+					{
+						"type": "message_start",
+						"lane": "main",
+						"runId": "00000000-0000-7000-8000-000000000000",
+						"message": {
+							"role": "assistant",
+							"content": [],
+							"api": "faux:1700000000000:0011r5knz6ioho",
+							"provider": "faux",
+							"model": "faux-1",
+							"usage": {
+								"input": 4,
+								"output": 2,
+								"cacheRead": 0,
+								"cacheWrite": 4,
+								"totalTokens": 10,
+								"cost": {
+									"input": 0,
+									"output": 0,
+									"cacheRead": 0,
+									"cacheWrite": 0,
+									"total": 0
+								}
+							},
+							"stopReason": "pending",
+							"timestamp": 1700000000002
+						}
+					},
+					{
+						"type": "message_update",
+						"lane": "main",
+						"runId": "00000000-0000-7000-8000-000000000000",
+						"message": {
+							"role": "assistant",
+							"content": [
+								{
+									"type": "text",
+									"text": "answer"
+								}
+							],
+							"api": "faux:1700000000000:0011r5knz6ioho",
+							"provider": "faux",
+							"model": "faux-1",
+							"usage": {
+								"input": 4,
+								"output": 2,
+								"cacheRead": 0,
+								"cacheWrite": 4,
+								"totalTokens": 10,
+								"cost": {
+									"input": 0,
+									"output": 0,
+									"cacheRead": 0,
+									"cacheWrite": 0,
+									"total": 0
+								}
+							},
+							"stopReason": "pending",
+							"timestamp": 1700000000002
+						},
+						"event": {
+							"type": "text_start",
+							"contentIndex": 0,
+							"partial": {
+								"role": "assistant",
+								"content": [
+									{
+										"type": "text",
+										"text": "answer"
+									}
+								],
+								"api": "faux:1700000000000:0011r5knz6ioho",
+								"provider": "faux",
+								"model": "faux-1",
+								"usage": {
+									"input": 4,
+									"output": 2,
+									"cacheRead": 0,
+									"cacheWrite": 4,
+									"totalTokens": 10,
+									"cost": {
+										"input": 0,
+										"output": 0,
+										"cacheRead": 0,
+										"cacheWrite": 0,
+										"total": 0
+									}
+								},
+								"stopReason": "pending",
+								"timestamp": 1700000000002
+							}
+						},
+						"frame": {
+							"type": "text_start",
+							"contentIndex": 0,
+							"content": {
+								"type": "text",
+								"text": "answer"
+							}
+						}
+					},
+					{
+						"type": "message_update",
+						"lane": "main",
+						"runId": "00000000-0000-7000-8000-000000000000",
+						"message": {
+							"role": "assistant",
+							"content": [
+								{
+									"type": "text",
+									"text": "answer"
+								}
+							],
+							"api": "faux:1700000000000:0011r5knz6ioho",
+							"provider": "faux",
+							"model": "faux-1",
+							"usage": {
+								"input": 4,
+								"output": 2,
+								"cacheRead": 0,
+								"cacheWrite": 4,
+								"totalTokens": 10,
+								"cost": {
+									"input": 0,
+									"output": 0,
+									"cacheRead": 0,
+									"cacheWrite": 0,
+									"total": 0
+								}
+							},
+							"stopReason": "pending",
+							"timestamp": 1700000000002
+						},
+						"event": {
+							"type": "text_delta",
+							"contentIndex": 0,
+							"delta": "answer",
+							"partial": {
+								"role": "assistant",
+								"content": [
+									{
+										"type": "text",
+										"text": "answer"
+									}
+								],
+								"api": "faux:1700000000000:0011r5knz6ioho",
+								"provider": "faux",
+								"model": "faux-1",
+								"usage": {
+									"input": 4,
+									"output": 2,
+									"cacheRead": 0,
+									"cacheWrite": 4,
+									"totalTokens": 10,
+									"cost": {
+										"input": 0,
+										"output": 0,
+										"cacheRead": 0,
+										"cacheWrite": 0,
+										"total": 0
+									}
+								},
+								"stopReason": "pending",
+								"timestamp": 1700000000002
+							}
+						}
+					},
+					{
+						"type": "message_update",
+						"lane": "main",
+						"runId": "00000000-0000-7000-8000-000000000000",
+						"message": {
+							"role": "assistant",
+							"content": [
+								{
+									"type": "text",
+									"text": "answer"
+								}
+							],
+							"api": "faux:1700000000000:0011r5knz6ioho",
+							"provider": "faux",
+							"model": "faux-1",
+							"usage": {
+								"input": 4,
+								"output": 2,
+								"cacheRead": 0,
+								"cacheWrite": 4,
+								"totalTokens": 10,
+								"cost": {
+									"input": 0,
+									"output": 0,
+									"cacheRead": 0,
+									"cacheWrite": 0,
+									"total": 0
+								}
+							},
+							"stopReason": "pending",
+							"timestamp": 1700000000002
+						},
+						"event": {
+							"type": "text_end",
+							"contentIndex": 0,
+							"content": "answer",
+							"partial": {
+								"role": "assistant",
+								"content": [
+									{
+										"type": "text",
+										"text": "answer"
+									}
+								],
+								"api": "faux:1700000000000:0011r5knz6ioho",
+								"provider": "faux",
+								"model": "faux-1",
+								"usage": {
+									"input": 4,
+									"output": 2,
+									"cacheRead": 0,
+									"cacheWrite": 4,
+									"totalTokens": 10,
+									"cost": {
+										"input": 0,
+										"output": 0,
+										"cacheRead": 0,
+										"cacheWrite": 0,
+										"total": 0
+									}
+								},
+								"stopReason": "pending",
+								"timestamp": 1700000000002
+							}
+						},
+						"frame": {
+							"type": "text_end",
+							"contentIndex": 0,
+							"content": "answer"
+						}
+					},
+					{
+						"type": "message_end",
+						"lane": "main",
+						"runId": "00000000-0000-7000-8000-000000000000",
+						"message": {
+							"role": "assistant",
+							"content": [
+								{
+									"type": "text",
+									"text": "answer"
+								}
+							],
+							"api": "faux:1700000000000:0011r5knz6ioho",
+							"provider": "faux",
+							"model": "faux-1",
+							"usage": {
+								"input": 4,
+								"output": 2,
+								"cacheRead": 0,
+								"cacheWrite": 4,
+								"totalTokens": 10,
+								"cost": {
+									"input": 0,
+									"output": 0,
+									"cacheRead": 0,
+									"cacheWrite": 0,
+									"total": 0
+								}
+							},
+							"stopReason": "stop",
+							"timestamp": 1700000000002
+						},
+						"entryId": "00000000-0000-7000-8000-000000000003"
+					},
+					{
+						"type": "entry_added",
+						"lane": "main",
+						"entry": {
+							"id": "00000000-0000-7000-8000-000000000003",
+							"parentId": "00000000-0000-7000-8000-000000000001",
+							"type": "message",
+							"message": {
+								"role": "assistant",
+								"content": [
+									{
+										"type": "text",
+										"text": "answer"
+									}
+								],
+								"api": "faux:1700000000000:0011r5knz6ioho",
+								"provider": "faux",
+								"model": "faux-1",
+								"usage": {
+									"input": 4,
+									"output": 2,
+									"cacheRead": 0,
+									"cacheWrite": 4,
+									"totalTokens": 10,
+									"cost": {
+										"input": 0,
+										"output": 0,
+										"cacheRead": 0,
+										"cacheWrite": 0,
+										"total": 0
+									}
+								},
+								"stopReason": "stop",
+								"timestamp": 1700000000002
+							},
+							"seq": 16,
+							"timestamp": 1700000000013
+						}
+					},
+					{
+						"type": "usage",
+						"lane": "main",
+						"row": {
+							"id": "00000000-0000-7000-8000-000000000004",
+							"usage": {
+								"input": 4,
+								"output": 2,
+								"cacheRead": 0,
+								"cacheWrite": 4,
+								"totalTokens": 10,
+								"cost": {
+									"input": 0,
+									"output": 0,
+									"cacheRead": 0,
+									"cacheWrite": 0,
+									"total": 0
+								}
+							},
+							"entryId": "00000000-0000-7000-8000-000000000003",
+							"adjustment": false,
+							"seq": 17
+						},
+						"totals": {
+							"input": 4,
+							"output": 2,
+							"cacheRead": 0,
+							"cacheWrite": 4,
+							"totalTokens": 10,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						}
+					},
+					{
+						"type": "turn_end",
+						"lane": "main",
+						"runId": "00000000-0000-7000-8000-000000000000",
+						"turnId": "00000000-0000-7000-8000-000000000002",
+						"message": {
+							"role": "assistant",
+							"content": [
+								{
+									"type": "text",
+									"text": "answer"
+								}
+							],
+							"api": "faux:1700000000000:0011r5knz6ioho",
+							"provider": "faux",
+							"model": "faux-1",
+							"usage": {
+								"input": 4,
+								"output": 2,
+								"cacheRead": 0,
+								"cacheWrite": 4,
+								"totalTokens": 10,
+								"cost": {
+									"input": 0,
+									"output": 0,
+									"cacheRead": 0,
+									"cacheWrite": 0,
+									"total": 0
+								}
+							},
+							"stopReason": "stop",
+							"timestamp": 1700000000002
+						},
+						"toolResults": []
+					},
+					{
+						"type": "run_end",
+						"lane": "main",
+						"runId": "00000000-0000-7000-8000-000000000000",
+						"status": "completed",
+						"fromTipId": null,
+						"tipId": "00000000-0000-7000-8000-000000000003",
+						"endedAt": 1700000000014
+					}
+				],
+				"reductions": [
+					null,
+					null,
+					null,
+					null,
+					null,
+					null,
+					null,
+					null,
+					null,
+					null,
+					null,
+					null,
+					null,
+					null
+				],
+				"folded": {
+					"lane": "main",
+					"transcript": [
+						{
+							"id": "00000000-0000-7000-8000-000000000001",
+							"parentId": null,
+							"type": "message",
+							"message": {
+								"role": "user",
+								"content": [
+									{
+										"type": "text",
+										"text": "question"
+									}
+								],
+								"timestamp": 1700000000003
+							},
+							"seq": 4,
+							"timestamp": 1700000000004
+						},
+						{
+							"id": "00000000-0000-7000-8000-000000000003",
+							"parentId": "00000000-0000-7000-8000-000000000001",
+							"type": "message",
+							"message": {
+								"role": "assistant",
+								"content": [
+									{
+										"type": "text",
+										"text": "answer"
+									}
+								],
+								"api": "faux:1700000000000:0011r5knz6ioho",
+								"provider": "faux",
+								"model": "faux-1",
+								"usage": {
+									"input": 4,
+									"output": 2,
+									"cacheRead": 0,
+									"cacheWrite": 4,
+									"totalTokens": 10,
+									"cost": {
+										"input": 0,
+										"output": 0,
+										"cacheRead": 0,
+										"cacheWrite": 0,
+										"total": 0
+									}
+								},
+								"stopReason": "stop",
+								"timestamp": 1700000000002
+							},
+							"seq": 16,
+							"timestamp": 1700000000013
+						}
+					],
+					"tipId": "00000000-0000-7000-8000-000000000003",
+					"configuration": {
+						"model": {
+							"provider": "faux",
+							"modelId": "faux-1"
+						},
+						"thinkingLevel": "off",
+						"activeToolNames": []
+					},
+					"stats": {
+						"messageCount": 2,
+						"usage": {
+							"input": 4,
+							"output": 2,
+							"cacheRead": 0,
+							"cacheWrite": 4,
+							"totalTokens": 10,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						}
+					},
+					"operation": null,
+					"queues": [],
+					"faulted": false,
+					"lastResult": {
+						"operationId": "00000000-0000-7000-8000-000000000000",
+						"kind": "run",
+						"status": "completed",
+						"fromTipId": null,
+						"tipId": "00000000-0000-7000-8000-000000000003",
+						"startedAt": 1700000000003,
+						"endedAt": 1700000000014
+					}
+				},
+				"resnapshot": {
+					"lane": "main",
+					"transcript": [
+						{
+							"id": "00000000-0000-7000-8000-000000000001",
+							"parentId": null,
+							"type": "message",
+							"message": {
+								"role": "user",
+								"content": [
+									{
+										"type": "text",
+										"text": "question"
+									}
+								],
+								"timestamp": 1700000000003
+							},
+							"seq": 4,
+							"timestamp": 1700000000004
+						},
+						{
+							"id": "00000000-0000-7000-8000-000000000003",
+							"parentId": "00000000-0000-7000-8000-000000000001",
+							"type": "message",
+							"message": {
+								"role": "assistant",
+								"content": [
+									{
+										"type": "text",
+										"text": "answer"
+									}
+								],
+								"api": "faux:1700000000000:0011r5knz6ioho",
+								"provider": "faux",
+								"model": "faux-1",
+								"usage": {
+									"input": 4,
+									"output": 2,
+									"cacheRead": 0,
+									"cacheWrite": 4,
+									"totalTokens": 10,
+									"cost": {
+										"input": 0,
+										"output": 0,
+										"cacheRead": 0,
+										"cacheWrite": 0,
+										"total": 0
+									}
+								},
+								"stopReason": "stop",
+								"timestamp": 1700000000002
+							},
+							"seq": 16,
+							"timestamp": 1700000000013
+						}
+					],
+					"tipId": "00000000-0000-7000-8000-000000000003",
+					"lastResult": {
+						"operationId": "00000000-0000-7000-8000-000000000000",
+						"kind": "run",
+						"status": "completed",
+						"fromTipId": null,
+						"tipId": "00000000-0000-7000-8000-000000000003",
+						"startedAt": 1700000000003,
+						"endedAt": 1700000000014
+					},
+					"configuration": {
+						"model": {
+							"provider": "faux",
+							"modelId": "faux-1"
+						},
+						"thinkingLevel": "off",
+						"activeToolNames": []
+					},
+					"stats": {
+						"messageCount": 2,
+						"usage": {
+							"input": 4,
+							"output": 2,
+							"cacheRead": 0,
+							"cacheWrite": 4,
+							"totalTokens": 10,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						}
+					},
+					"operation": null,
+					"queues": [],
+					"faulted": false
+				},
+				"outcome": {
+					"ok": true,
+					"value": {
+						"operationId": "00000000-0000-7000-8000-000000000000",
+						"kind": "run",
+						"status": "completed",
+						"fromTipId": null,
+						"tipId": "00000000-0000-7000-8000-000000000003",
+						"startedAt": 1700000000003,
+						"endedAt": 1700000000014
+					}
+				}
+			}
+		],
+		"suspend_resume": [
+			{
+				"start": {
+					"lane": "main",
+					"transcript": [],
+					"tipId": null,
+					"configuration": {
+						"model": {
+							"provider": "faux",
+							"modelId": "faux-1"
+						},
+						"thinkingLevel": "off",
+						"activeToolNames": []
+					},
+					"stats": {
+						"messageCount": 0,
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						}
+					},
+					"operation": null,
+					"queues": [],
+					"faulted": false
+				},
+				"events": [
+					{
+						"type": "run_start",
+						"runId": "00000000-0000-7000-8000-000000000005",
+						"startedAt": 1700000000019,
+						"lane": "main"
+					},
+					{
+						"type": "message_start",
+						"lane": "main",
+						"runId": "00000000-0000-7000-8000-000000000005",
+						"message": {
+							"role": "user",
+							"content": [
+								{
+									"type": "text",
+									"text": "question"
+								}
+							],
+							"timestamp": 1700000000019
+						}
+					},
+					{
+						"type": "message_end",
+						"lane": "main",
+						"runId": "00000000-0000-7000-8000-000000000005",
+						"message": {
+							"role": "user",
+							"content": [
+								{
+									"type": "text",
+									"text": "question"
+								}
+							],
+							"timestamp": 1700000000019
+						},
+						"entryId": "00000000-0000-7000-8000-000000000006"
+					},
+					{
+						"type": "entry_added",
+						"lane": "main",
+						"entry": {
+							"id": "00000000-0000-7000-8000-000000000006",
+							"parentId": null,
+							"type": "message",
+							"message": {
+								"role": "user",
+								"content": [
+									{
+										"type": "text",
+										"text": "question"
+									}
+								],
+								"timestamp": 1700000000019
+							},
+							"seq": 4,
+							"timestamp": 1700000000020
+						}
+					},
+					{
+						"type": "turn_start",
+						"lane": "main",
+						"runId": "00000000-0000-7000-8000-000000000005",
+						"turnId": "00000000-0000-7000-8000-000000000007"
+					},
+					{
+						"type": "message_start",
+						"lane": "main",
+						"runId": "00000000-0000-7000-8000-000000000005",
+						"message": {
+							"role": "assistant",
+							"content": [],
+							"api": "faux:1700000000016:lncpggyng1",
+							"provider": "faux",
+							"model": "faux-1",
+							"usage": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"totalTokens": 0,
+								"cost": {
+									"input": 0,
+									"output": 0,
+									"cacheRead": 0,
+									"cacheWrite": 0,
+									"total": 0
+								}
+							},
+							"stopReason": "pending",
+							"deferred": {
+								"provider": "faux",
+								"modelId": "faux-1",
+								"api": "faux:1700000000016:lncpggyng1",
+								"id": "deferred:1700000000026:w3j0keikmv"
+							},
+							"timestamp": 1700000000027
+						}
+					},
+					{
+						"type": "message_end",
+						"lane": "main",
+						"runId": "00000000-0000-7000-8000-000000000005",
+						"message": {
+							"role": "assistant",
+							"content": [],
+							"api": "faux:1700000000016:lncpggyng1",
+							"provider": "faux",
+							"model": "faux-1",
+							"usage": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"totalTokens": 0,
+								"cost": {
+									"input": 0,
+									"output": 0,
+									"cacheRead": 0,
+									"cacheWrite": 0,
+									"total": 0
+								}
+							},
+							"stopReason": "deferred",
+							"deferred": {
+								"provider": "faux",
+								"modelId": "faux-1",
+								"api": "faux:1700000000016:lncpggyng1",
+								"id": "deferred:1700000000026:w3j0keikmv"
+							},
+							"timestamp": 1700000000027
+						},
+						"entryId": "00000000-0000-7000-8000-000000000008"
+					},
+					{
+						"type": "entry_added",
+						"lane": "main",
+						"entry": {
+							"id": "00000000-0000-7000-8000-000000000008",
+							"parentId": "00000000-0000-7000-8000-000000000006",
+							"type": "message",
+							"message": {
+								"role": "assistant",
+								"content": [],
+								"api": "faux:1700000000016:lncpggyng1",
+								"provider": "faux",
+								"model": "faux-1",
+								"usage": {
+									"input": 0,
+									"output": 0,
+									"cacheRead": 0,
+									"cacheWrite": 0,
+									"totalTokens": 0,
+									"cost": {
+										"input": 0,
+										"output": 0,
+										"cacheRead": 0,
+										"cacheWrite": 0,
+										"total": 0
+									}
+								},
+								"stopReason": "deferred",
+								"deferred": {
+									"provider": "faux",
+									"modelId": "faux-1",
+									"api": "faux:1700000000016:lncpggyng1",
+									"id": "deferred:1700000000026:w3j0keikmv"
+								},
+								"timestamp": 1700000000027
+							},
+							"seq": 14,
+							"timestamp": 1700000000029
+						}
+					},
+					{
+						"type": "usage",
+						"lane": "main",
+						"row": {
+							"id": "00000000-0000-7000-8000-000000000009",
+							"usage": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"totalTokens": 0,
+								"cost": {
+									"input": 0,
+									"output": 0,
+									"cacheRead": 0,
+									"cacheWrite": 0,
+									"total": 0
+								}
+							},
+							"entryId": "00000000-0000-7000-8000-000000000008",
+							"adjustment": false,
+							"seq": 15
+						},
+						"totals": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						}
+					},
+					{
+						"type": "turn_end",
+						"lane": "main",
+						"runId": "00000000-0000-7000-8000-000000000005",
+						"turnId": "00000000-0000-7000-8000-000000000007",
+						"message": {
+							"role": "assistant",
+							"content": [],
+							"api": "faux:1700000000016:lncpggyng1",
+							"provider": "faux",
+							"model": "faux-1",
+							"usage": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"totalTokens": 0,
+								"cost": {
+									"input": 0,
+									"output": 0,
+									"cacheRead": 0,
+									"cacheWrite": 0,
+									"total": 0
+								}
+							},
+							"stopReason": "deferred",
+							"deferred": {
+								"provider": "faux",
+								"modelId": "faux-1",
+								"api": "faux:1700000000016:lncpggyng1",
+								"id": "deferred:1700000000026:w3j0keikmv"
+							},
+							"timestamp": 1700000000027
+						},
+						"toolResults": []
+					},
+					{
+						"type": "run_suspend",
+						"lane": "main",
+						"runId": "00000000-0000-7000-8000-000000000005",
+						"reason": "deferred",
+						"deferred": {
+							"provider": "faux",
+							"modelId": "faux-1",
+							"api": "faux:1700000000016:lncpggyng1",
+							"id": "deferred:1700000000026:w3j0keikmv"
+						},
+						"poll": 0
+					}
+				],
+				"reductions": [
+					null,
+					null,
+					null,
+					null,
+					null,
+					null,
+					null,
+					null,
+					null,
+					null,
+					null
+				],
+				"folded": {
+					"lane": "main",
+					"transcript": [
+						{
+							"id": "00000000-0000-7000-8000-000000000006",
+							"parentId": null,
+							"type": "message",
+							"message": {
+								"role": "user",
+								"content": [
+									{
+										"type": "text",
+										"text": "question"
+									}
+								],
+								"timestamp": 1700000000019
+							},
+							"seq": 4,
+							"timestamp": 1700000000020
+						},
+						{
+							"id": "00000000-0000-7000-8000-000000000008",
+							"parentId": "00000000-0000-7000-8000-000000000006",
+							"type": "message",
+							"message": {
+								"role": "assistant",
+								"content": [],
+								"api": "faux:1700000000016:lncpggyng1",
+								"provider": "faux",
+								"model": "faux-1",
+								"usage": {
+									"input": 0,
+									"output": 0,
+									"cacheRead": 0,
+									"cacheWrite": 0,
+									"totalTokens": 0,
+									"cost": {
+										"input": 0,
+										"output": 0,
+										"cacheRead": 0,
+										"cacheWrite": 0,
+										"total": 0
+									}
+								},
+								"stopReason": "deferred",
+								"deferred": {
+									"provider": "faux",
+									"modelId": "faux-1",
+									"api": "faux:1700000000016:lncpggyng1",
+									"id": "deferred:1700000000026:w3j0keikmv"
+								},
+								"timestamp": 1700000000027
+							},
+							"seq": 14,
+							"timestamp": 1700000000029
+						}
+					],
+					"tipId": "00000000-0000-7000-8000-000000000008",
+					"configuration": {
+						"model": {
+							"provider": "faux",
+							"modelId": "faux-1"
+						},
+						"thinkingLevel": "off",
+						"activeToolNames": []
+					},
+					"stats": {
+						"messageCount": 2,
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						}
+					},
+					"operation": {
+						"id": "00000000-0000-7000-8000-000000000005",
+						"kind": "run",
+						"startedAt": 1700000000019,
+						"fromTipId": null,
+						"status": "open",
+						"runningTools": [],
+						"deferred": {
+							"handle": {
+								"provider": "faux",
+								"modelId": "faux-1",
+								"api": "faux:1700000000016:lncpggyng1",
+								"id": "deferred:1700000000026:w3j0keikmv"
+							},
+							"poll": 0
+						}
+					},
+					"queues": [],
+					"faulted": false
+				},
+				"resnapshot": {
+					"lane": "main",
+					"transcript": [
+						{
+							"id": "00000000-0000-7000-8000-000000000006",
+							"parentId": null,
+							"type": "message",
+							"message": {
+								"role": "user",
+								"content": [
+									{
+										"type": "text",
+										"text": "question"
+									}
+								],
+								"timestamp": 1700000000019
+							},
+							"seq": 4,
+							"timestamp": 1700000000020
+						},
+						{
+							"id": "00000000-0000-7000-8000-000000000008",
+							"parentId": "00000000-0000-7000-8000-000000000006",
+							"type": "message",
+							"message": {
+								"role": "assistant",
+								"content": [],
+								"api": "faux:1700000000016:lncpggyng1",
+								"provider": "faux",
+								"model": "faux-1",
+								"usage": {
+									"input": 0,
+									"output": 0,
+									"cacheRead": 0,
+									"cacheWrite": 0,
+									"totalTokens": 0,
+									"cost": {
+										"input": 0,
+										"output": 0,
+										"cacheRead": 0,
+										"cacheWrite": 0,
+										"total": 0
+									}
+								},
+								"stopReason": "deferred",
+								"deferred": {
+									"provider": "faux",
+									"modelId": "faux-1",
+									"api": "faux:1700000000016:lncpggyng1",
+									"id": "deferred:1700000000026:w3j0keikmv"
+								},
+								"timestamp": 1700000000027
+							},
+							"seq": 14,
+							"timestamp": 1700000000029
+						}
+					],
+					"tipId": "00000000-0000-7000-8000-000000000008",
+					"configuration": {
+						"model": {
+							"provider": "faux",
+							"modelId": "faux-1"
+						},
+						"thinkingLevel": "off",
+						"activeToolNames": []
+					},
+					"stats": {
+						"messageCount": 2,
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						}
+					},
+					"operation": {
+						"id": "00000000-0000-7000-8000-000000000005",
+						"kind": "run",
+						"startedAt": 1700000000019,
+						"fromTipId": null,
+						"status": "open",
+						"deferred": {
+							"handle": {
+								"provider": "faux",
+								"modelId": "faux-1",
+								"api": "faux:1700000000016:lncpggyng1",
+								"id": "deferred:1700000000026:w3j0keikmv"
+							},
+							"poll": 0
+						},
+						"runningTools": []
+					},
+					"queues": [],
+					"faulted": false
+				},
+				"outcome": {
+					"ok": true,
+					"value": {
+						"operationId": "00000000-0000-7000-8000-000000000005",
+						"status": "suspended",
+						"deferred": {
+							"provider": "faux",
+							"modelId": "faux-1",
+							"api": "faux:1700000000016:lncpggyng1",
+							"id": "deferred:1700000000026:w3j0keikmv"
+						}
+					}
+				}
+			},
+			{
+				"start": {
+					"lane": "main",
+					"transcript": [
+						{
+							"id": "00000000-0000-7000-8000-000000000006",
+							"parentId": null,
+							"type": "message",
+							"message": {
+								"role": "user",
+								"content": [
+									{
+										"type": "text",
+										"text": "question"
+									}
+								],
+								"timestamp": 1700000000019
+							},
+							"seq": 4,
+							"timestamp": 1700000000020
+						},
+						{
+							"id": "00000000-0000-7000-8000-000000000008",
+							"parentId": "00000000-0000-7000-8000-000000000006",
+							"type": "message",
+							"message": {
+								"role": "assistant",
+								"content": [],
+								"api": "faux:1700000000016:lncpggyng1",
+								"provider": "faux",
+								"model": "faux-1",
+								"usage": {
+									"input": 0,
+									"output": 0,
+									"cacheRead": 0,
+									"cacheWrite": 0,
+									"totalTokens": 0,
+									"cost": {
+										"input": 0,
+										"output": 0,
+										"cacheRead": 0,
+										"cacheWrite": 0,
+										"total": 0
+									}
+								},
+								"stopReason": "deferred",
+								"deferred": {
+									"provider": "faux",
+									"modelId": "faux-1",
+									"api": "faux:1700000000016:lncpggyng1",
+									"id": "deferred:1700000000026:w3j0keikmv"
+								},
+								"timestamp": 1700000000027
+							},
+							"seq": 14,
+							"timestamp": 1700000000029
+						}
+					],
+					"tipId": "00000000-0000-7000-8000-000000000008",
+					"configuration": {
+						"model": {
+							"provider": "faux",
+							"modelId": "faux-1"
+						},
+						"thinkingLevel": "off",
+						"activeToolNames": []
+					},
+					"stats": {
+						"messageCount": 2,
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						}
+					},
+					"operation": {
+						"id": "00000000-0000-7000-8000-000000000005",
+						"kind": "run",
+						"startedAt": 1700000000019,
+						"fromTipId": null,
+						"status": "open",
+						"runningTools": [],
+						"deferred": {
+							"handle": {
+								"provider": "faux",
+								"modelId": "faux-1",
+								"api": "faux:1700000000016:lncpggyng1",
+								"id": "deferred:1700000000026:w3j0keikmv"
+							},
+							"poll": 0
+						}
+					},
+					"queues": [],
+					"faulted": false
+				},
+				"events": [
+					{
+						"type": "run_resume",
+						"lane": "main",
+						"runId": "00000000-0000-7000-8000-000000000005"
+					},
+					{
+						"type": "turn_start",
+						"lane": "main",
+						"runId": "00000000-0000-7000-8000-000000000005",
+						"turnId": "00000000-0000-7000-8000-000000000007:poll:1"
+					},
+					{
+						"type": "message_start",
+						"lane": "main",
+						"runId": "00000000-0000-7000-8000-000000000005",
+						"message": {
+							"role": "assistant",
+							"content": [],
+							"api": "faux:1700000000016:lncpggyng1",
+							"provider": "faux",
+							"model": "faux-1",
+							"usage": {
+								"input": 4,
+								"output": 2,
+								"cacheRead": 0,
+								"cacheWrite": 4,
+								"totalTokens": 10,
+								"cost": {
+									"input": 0,
+									"output": 0,
+									"cacheRead": 0,
+									"cacheWrite": 0,
+									"total": 0
+								}
+							},
+							"stopReason": "pending",
+							"timestamp": 1700000000018
+						}
+					},
+					{
+						"type": "message_update",
+						"lane": "main",
+						"runId": "00000000-0000-7000-8000-000000000005",
+						"message": {
+							"role": "assistant",
+							"content": [
+								{
+									"type": "text",
+									"text": "answer"
+								}
+							],
+							"api": "faux:1700000000016:lncpggyng1",
+							"provider": "faux",
+							"model": "faux-1",
+							"usage": {
+								"input": 4,
+								"output": 2,
+								"cacheRead": 0,
+								"cacheWrite": 4,
+								"totalTokens": 10,
+								"cost": {
+									"input": 0,
+									"output": 0,
+									"cacheRead": 0,
+									"cacheWrite": 0,
+									"total": 0
+								}
+							},
+							"stopReason": "pending",
+							"timestamp": 1700000000018
+						},
+						"event": {
+							"type": "text_start",
+							"contentIndex": 0,
+							"partial": {
+								"role": "assistant",
+								"content": [
+									{
+										"type": "text",
+										"text": "answer"
+									}
+								],
+								"api": "faux:1700000000016:lncpggyng1",
+								"provider": "faux",
+								"model": "faux-1",
+								"usage": {
+									"input": 4,
+									"output": 2,
+									"cacheRead": 0,
+									"cacheWrite": 4,
+									"totalTokens": 10,
+									"cost": {
+										"input": 0,
+										"output": 0,
+										"cacheRead": 0,
+										"cacheWrite": 0,
+										"total": 0
+									}
+								},
+								"stopReason": "pending",
+								"timestamp": 1700000000018
+							}
+						},
+						"frame": {
+							"type": "text_start",
+							"contentIndex": 0,
+							"content": {
+								"type": "text",
+								"text": "answer"
+							}
+						}
+					},
+					{
+						"type": "message_update",
+						"lane": "main",
+						"runId": "00000000-0000-7000-8000-000000000005",
+						"message": {
+							"role": "assistant",
+							"content": [
+								{
+									"type": "text",
+									"text": "answer"
+								}
+							],
+							"api": "faux:1700000000016:lncpggyng1",
+							"provider": "faux",
+							"model": "faux-1",
+							"usage": {
+								"input": 4,
+								"output": 2,
+								"cacheRead": 0,
+								"cacheWrite": 4,
+								"totalTokens": 10,
+								"cost": {
+									"input": 0,
+									"output": 0,
+									"cacheRead": 0,
+									"cacheWrite": 0,
+									"total": 0
+								}
+							},
+							"stopReason": "pending",
+							"timestamp": 1700000000018
+						},
+						"event": {
+							"type": "text_delta",
+							"contentIndex": 0,
+							"delta": "answer",
+							"partial": {
+								"role": "assistant",
+								"content": [
+									{
+										"type": "text",
+										"text": "answer"
+									}
+								],
+								"api": "faux:1700000000016:lncpggyng1",
+								"provider": "faux",
+								"model": "faux-1",
+								"usage": {
+									"input": 4,
+									"output": 2,
+									"cacheRead": 0,
+									"cacheWrite": 4,
+									"totalTokens": 10,
+									"cost": {
+										"input": 0,
+										"output": 0,
+										"cacheRead": 0,
+										"cacheWrite": 0,
+										"total": 0
+									}
+								},
+								"stopReason": "pending",
+								"timestamp": 1700000000018
+							}
+						}
+					},
+					{
+						"type": "message_update",
+						"lane": "main",
+						"runId": "00000000-0000-7000-8000-000000000005",
+						"message": {
+							"role": "assistant",
+							"content": [
+								{
+									"type": "text",
+									"text": "answer"
+								}
+							],
+							"api": "faux:1700000000016:lncpggyng1",
+							"provider": "faux",
+							"model": "faux-1",
+							"usage": {
+								"input": 4,
+								"output": 2,
+								"cacheRead": 0,
+								"cacheWrite": 4,
+								"totalTokens": 10,
+								"cost": {
+									"input": 0,
+									"output": 0,
+									"cacheRead": 0,
+									"cacheWrite": 0,
+									"total": 0
+								}
+							},
+							"stopReason": "pending",
+							"timestamp": 1700000000018
+						},
+						"event": {
+							"type": "text_end",
+							"contentIndex": 0,
+							"content": "answer",
+							"partial": {
+								"role": "assistant",
+								"content": [
+									{
+										"type": "text",
+										"text": "answer"
+									}
+								],
+								"api": "faux:1700000000016:lncpggyng1",
+								"provider": "faux",
+								"model": "faux-1",
+								"usage": {
+									"input": 4,
+									"output": 2,
+									"cacheRead": 0,
+									"cacheWrite": 4,
+									"totalTokens": 10,
+									"cost": {
+										"input": 0,
+										"output": 0,
+										"cacheRead": 0,
+										"cacheWrite": 0,
+										"total": 0
+									}
+								},
+								"stopReason": "pending",
+								"timestamp": 1700000000018
+							}
+						},
+						"frame": {
+							"type": "text_end",
+							"contentIndex": 0,
+							"content": "answer"
+						}
+					},
+					{
+						"type": "message_end",
+						"lane": "main",
+						"runId": "00000000-0000-7000-8000-000000000005",
+						"message": {
+							"role": "assistant",
+							"content": [
+								{
+									"type": "text",
+									"text": "answer"
+								}
+							],
+							"api": "faux:1700000000016:lncpggyng1",
+							"provider": "faux",
+							"model": "faux-1",
+							"usage": {
+								"input": 4,
+								"output": 2,
+								"cacheRead": 0,
+								"cacheWrite": 4,
+								"totalTokens": 10,
+								"cost": {
+									"input": 0,
+									"output": 0,
+									"cacheRead": 0,
+									"cacheWrite": 0,
+									"total": 0
+								}
+							},
+							"stopReason": "stop",
+							"timestamp": 1700000000018
+						},
+						"entryId": "00000000-0000-7000-8000-000000000010"
+					},
+					{
+						"type": "entry_added",
+						"lane": "main",
+						"entry": {
+							"id": "00000000-0000-7000-8000-000000000010",
+							"parentId": "00000000-0000-7000-8000-000000000008",
+							"type": "message",
+							"message": {
+								"role": "assistant",
+								"content": [
+									{
+										"type": "text",
+										"text": "answer"
+									}
+								],
+								"api": "faux:1700000000016:lncpggyng1",
+								"provider": "faux",
+								"model": "faux-1",
+								"usage": {
+									"input": 4,
+									"output": 2,
+									"cacheRead": 0,
+									"cacheWrite": 4,
+									"totalTokens": 10,
+									"cost": {
+										"input": 0,
+										"output": 0,
+										"cacheRead": 0,
+										"cacheWrite": 0,
+										"total": 0
+									}
+								},
+								"stopReason": "stop",
+								"timestamp": 1700000000018
+							},
+							"seq": 23,
+							"timestamp": 1700000000035
+						}
+					},
+					{
+						"type": "usage",
+						"lane": "main",
+						"row": {
+							"id": "00000000-0000-7000-8000-000000000011",
+							"usage": {
+								"input": 4,
+								"output": 2,
+								"cacheRead": 0,
+								"cacheWrite": 4,
+								"totalTokens": 10,
+								"cost": {
+									"input": 0,
+									"output": 0,
+									"cacheRead": 0,
+									"cacheWrite": 0,
+									"total": 0
+								}
+							},
+							"entryId": "00000000-0000-7000-8000-000000000010",
+							"adjustment": false,
+							"seq": 24
+						},
+						"totals": {
+							"input": 4,
+							"output": 2,
+							"cacheRead": 0,
+							"cacheWrite": 4,
+							"totalTokens": 10,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						}
+					},
+					{
+						"type": "turn_end",
+						"lane": "main",
+						"runId": "00000000-0000-7000-8000-000000000005",
+						"turnId": "00000000-0000-7000-8000-000000000007:poll:1",
+						"message": {
+							"role": "assistant",
+							"content": [
+								{
+									"type": "text",
+									"text": "answer"
+								}
+							],
+							"api": "faux:1700000000016:lncpggyng1",
+							"provider": "faux",
+							"model": "faux-1",
+							"usage": {
+								"input": 4,
+								"output": 2,
+								"cacheRead": 0,
+								"cacheWrite": 4,
+								"totalTokens": 10,
+								"cost": {
+									"input": 0,
+									"output": 0,
+									"cacheRead": 0,
+									"cacheWrite": 0,
+									"total": 0
+								}
+							},
+							"stopReason": "stop",
+							"timestamp": 1700000000018
+						},
+						"toolResults": []
+					},
+					{
+						"type": "run_end",
+						"lane": "main",
+						"runId": "00000000-0000-7000-8000-000000000005",
+						"status": "completed",
+						"fromTipId": null,
+						"tipId": "00000000-0000-7000-8000-000000000010",
+						"endedAt": 1700000000036
+					}
+				],
+				"reductions": [
+					null,
+					null,
+					null,
+					null,
+					null,
+					null,
+					null,
+					null,
+					null,
+					null,
+					null
+				],
+				"folded": {
+					"lane": "main",
+					"transcript": [
+						{
+							"id": "00000000-0000-7000-8000-000000000006",
+							"parentId": null,
+							"type": "message",
+							"message": {
+								"role": "user",
+								"content": [
+									{
+										"type": "text",
+										"text": "question"
+									}
+								],
+								"timestamp": 1700000000019
+							},
+							"seq": 4,
+							"timestamp": 1700000000020
+						},
+						{
+							"id": "00000000-0000-7000-8000-000000000008",
+							"parentId": "00000000-0000-7000-8000-000000000006",
+							"type": "message",
+							"message": {
+								"role": "assistant",
+								"content": [],
+								"api": "faux:1700000000016:lncpggyng1",
+								"provider": "faux",
+								"model": "faux-1",
+								"usage": {
+									"input": 0,
+									"output": 0,
+									"cacheRead": 0,
+									"cacheWrite": 0,
+									"totalTokens": 0,
+									"cost": {
+										"input": 0,
+										"output": 0,
+										"cacheRead": 0,
+										"cacheWrite": 0,
+										"total": 0
+									}
+								},
+								"stopReason": "deferred",
+								"deferred": {
+									"provider": "faux",
+									"modelId": "faux-1",
+									"api": "faux:1700000000016:lncpggyng1",
+									"id": "deferred:1700000000026:w3j0keikmv"
+								},
+								"timestamp": 1700000000027
+							},
+							"seq": 14,
+							"timestamp": 1700000000029
+						},
+						{
+							"id": "00000000-0000-7000-8000-000000000010",
+							"parentId": "00000000-0000-7000-8000-000000000008",
+							"type": "message",
+							"message": {
+								"role": "assistant",
+								"content": [
+									{
+										"type": "text",
+										"text": "answer"
+									}
+								],
+								"api": "faux:1700000000016:lncpggyng1",
+								"provider": "faux",
+								"model": "faux-1",
+								"usage": {
+									"input": 4,
+									"output": 2,
+									"cacheRead": 0,
+									"cacheWrite": 4,
+									"totalTokens": 10,
+									"cost": {
+										"input": 0,
+										"output": 0,
+										"cacheRead": 0,
+										"cacheWrite": 0,
+										"total": 0
+									}
+								},
+								"stopReason": "stop",
+								"timestamp": 1700000000018
+							},
+							"seq": 23,
+							"timestamp": 1700000000035
+						}
+					],
+					"tipId": "00000000-0000-7000-8000-000000000010",
+					"configuration": {
+						"model": {
+							"provider": "faux",
+							"modelId": "faux-1"
+						},
+						"thinkingLevel": "off",
+						"activeToolNames": []
+					},
+					"stats": {
+						"messageCount": 3,
+						"usage": {
+							"input": 4,
+							"output": 2,
+							"cacheRead": 0,
+							"cacheWrite": 4,
+							"totalTokens": 10,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						}
+					},
+					"operation": null,
+					"queues": [],
+					"faulted": false,
+					"lastResult": {
+						"operationId": "00000000-0000-7000-8000-000000000005",
+						"kind": "run",
+						"status": "completed",
+						"fromTipId": null,
+						"tipId": "00000000-0000-7000-8000-000000000010",
+						"startedAt": 1700000000019,
+						"endedAt": 1700000000036
+					}
+				},
+				"resnapshot": {
+					"lane": "main",
+					"transcript": [
+						{
+							"id": "00000000-0000-7000-8000-000000000006",
+							"parentId": null,
+							"type": "message",
+							"message": {
+								"role": "user",
+								"content": [
+									{
+										"type": "text",
+										"text": "question"
+									}
+								],
+								"timestamp": 1700000000019
+							},
+							"seq": 4,
+							"timestamp": 1700000000020
+						},
+						{
+							"id": "00000000-0000-7000-8000-000000000008",
+							"parentId": "00000000-0000-7000-8000-000000000006",
+							"type": "message",
+							"message": {
+								"role": "assistant",
+								"content": [],
+								"api": "faux:1700000000016:lncpggyng1",
+								"provider": "faux",
+								"model": "faux-1",
+								"usage": {
+									"input": 0,
+									"output": 0,
+									"cacheRead": 0,
+									"cacheWrite": 0,
+									"totalTokens": 0,
+									"cost": {
+										"input": 0,
+										"output": 0,
+										"cacheRead": 0,
+										"cacheWrite": 0,
+										"total": 0
+									}
+								},
+								"stopReason": "deferred",
+								"deferred": {
+									"provider": "faux",
+									"modelId": "faux-1",
+									"api": "faux:1700000000016:lncpggyng1",
+									"id": "deferred:1700000000026:w3j0keikmv"
+								},
+								"timestamp": 1700000000027
+							},
+							"seq": 14,
+							"timestamp": 1700000000029
+						},
+						{
+							"id": "00000000-0000-7000-8000-000000000010",
+							"parentId": "00000000-0000-7000-8000-000000000008",
+							"type": "message",
+							"message": {
+								"role": "assistant",
+								"content": [
+									{
+										"type": "text",
+										"text": "answer"
+									}
+								],
+								"api": "faux:1700000000016:lncpggyng1",
+								"provider": "faux",
+								"model": "faux-1",
+								"usage": {
+									"input": 4,
+									"output": 2,
+									"cacheRead": 0,
+									"cacheWrite": 4,
+									"totalTokens": 10,
+									"cost": {
+										"input": 0,
+										"output": 0,
+										"cacheRead": 0,
+										"cacheWrite": 0,
+										"total": 0
+									}
+								},
+								"stopReason": "stop",
+								"timestamp": 1700000000018
+							},
+							"seq": 23,
+							"timestamp": 1700000000035
+						}
+					],
+					"tipId": "00000000-0000-7000-8000-000000000010",
+					"lastResult": {
+						"operationId": "00000000-0000-7000-8000-000000000005",
+						"kind": "run",
+						"status": "completed",
+						"fromTipId": null,
+						"tipId": "00000000-0000-7000-8000-000000000010",
+						"startedAt": 1700000000019,
+						"endedAt": 1700000000036
+					},
+					"configuration": {
+						"model": {
+							"provider": "faux",
+							"modelId": "faux-1"
+						},
+						"thinkingLevel": "off",
+						"activeToolNames": []
+					},
+					"stats": {
+						"messageCount": 3,
+						"usage": {
+							"input": 4,
+							"output": 2,
+							"cacheRead": 0,
+							"cacheWrite": 4,
+							"totalTokens": 10,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						}
+					},
+					"operation": null,
+					"queues": [],
+					"faulted": false
+				},
+				"outcome": {
+					"ok": true,
+					"value": {
+						"operationId": "00000000-0000-7000-8000-000000000005",
+						"kind": "run",
+						"status": "completed",
+						"fromTipId": null,
+						"tipId": "00000000-0000-7000-8000-000000000010",
+						"startedAt": 1700000000019,
+						"endedAt": 1700000000036
+					}
+				}
+			}
+		],
+		"standalone_compaction": [
+			{
+				"start": {
+					"lane": "main",
+					"transcript": [
+						{
+							"id": "00000000-0000-7000-8000-000000000012",
+							"parentId": null,
+							"type": "message",
+							"message": {
+								"role": "user",
+								"content": "history",
+								"timestamp": 1
+							},
+							"seq": 4,
+							"timestamp": 1700000000041
+						}
+					],
+					"tipId": "00000000-0000-7000-8000-000000000012",
+					"configuration": {
+						"model": {
+							"provider": "faux",
+							"modelId": "faux-1"
+						},
+						"thinkingLevel": "off",
+						"activeToolNames": []
+					},
+					"stats": {
+						"messageCount": 1,
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						}
+					},
+					"operation": null,
+					"queues": [],
+					"faulted": false
+				},
+				"events": [
+					{
+						"type": "compaction_start",
+						"lane": "main",
+						"runId": "00000000-0000-7000-8000-000000000013",
+						"reason": "manual",
+						"startedAt": 1700000000043
+					},
+					{
+						"type": "usage",
+						"lane": "main",
+						"row": {
+							"id": "00000000-0000-7000-8000-000000000014",
+							"usage": {
+								"input": 309,
+								"output": 2,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"totalTokens": 311,
+								"cost": {
+									"input": 0,
+									"output": 0,
+									"cacheRead": 0,
+									"cacheWrite": 0,
+									"total": 0
+								}
+							},
+							"adjustment": false,
+							"seq": 14
+						},
+						"totals": {
+							"input": 309,
+							"output": 2,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 311,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						}
+					},
+					{
+						"type": "entry_added",
+						"lane": "main",
+						"entry": {
+							"id": "00000000-0000-7000-8000-000000000015",
+							"parentId": "00000000-0000-7000-8000-000000000012",
+							"type": "compaction",
+							"summary": "summary",
+							"retainedTail": [
+								{
+									"role": "user",
+									"content": "history",
+									"timestamp": 1
+								}
+							],
+							"tokensBefore": 2,
+							"details": {
+								"readFiles": [],
+								"modifiedFiles": []
+							},
+							"usage": {
+								"input": 309,
+								"output": 2,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"totalTokens": 311,
+								"cost": {
+									"input": 0,
+									"output": 0,
+									"cacheRead": 0,
+									"cacheWrite": 0,
+									"total": 0
+								}
+							},
+							"fromHook": false,
+							"seq": 16,
+							"timestamp": 1700000000054
+						}
+					},
+					{
+						"type": "compaction_end",
+						"lane": "main",
+						"runId": "00000000-0000-7000-8000-000000000013",
+						"reason": "manual",
+						"status": "completed",
+						"entryId": "00000000-0000-7000-8000-000000000015",
+						"endedAt": 1700000000053
+					}
+				],
+				"reductions": [
+					null,
+					null,
+					null,
+					null
+				],
+				"folded": {
+					"lane": "main",
+					"transcript": [
+						{
+							"id": "00000000-0000-7000-8000-000000000015",
+							"parentId": "00000000-0000-7000-8000-000000000012",
+							"type": "compaction",
+							"summary": "summary",
+							"retainedTail": [
+								{
+									"role": "user",
+									"content": "history",
+									"timestamp": 1
+								}
+							],
+							"tokensBefore": 2,
+							"details": {
+								"readFiles": [],
+								"modifiedFiles": []
+							},
+							"usage": {
+								"input": 309,
+								"output": 2,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"totalTokens": 311,
+								"cost": {
+									"input": 0,
+									"output": 0,
+									"cacheRead": 0,
+									"cacheWrite": 0,
+									"total": 0
+								}
+							},
+							"fromHook": false,
+							"seq": 16,
+							"timestamp": 1700000000054
+						}
+					],
+					"tipId": "00000000-0000-7000-8000-000000000015",
+					"configuration": {
+						"model": {
+							"provider": "faux",
+							"modelId": "faux-1"
+						},
+						"thinkingLevel": "off",
+						"activeToolNames": []
+					},
+					"stats": {
+						"messageCount": 1,
+						"usage": {
+							"input": 309,
+							"output": 2,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 311,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						}
+					},
+					"operation": null,
+					"queues": [],
+					"faulted": false,
+					"lastResult": {
+						"operationId": "00000000-0000-7000-8000-000000000013",
+						"kind": "compaction",
+						"status": "completed",
+						"fromTipId": "00000000-0000-7000-8000-000000000012",
+						"tipId": "00000000-0000-7000-8000-000000000015",
+						"startedAt": 1700000000043,
+						"endedAt": 1700000000053
+					}
+				},
+				"resnapshot": {
+					"lane": "main",
+					"transcript": [
+						{
+							"id": "00000000-0000-7000-8000-000000000015",
+							"parentId": "00000000-0000-7000-8000-000000000012",
+							"type": "compaction",
+							"summary": "summary",
+							"retainedTail": [
+								{
+									"role": "user",
+									"content": "history",
+									"timestamp": 1
+								}
+							],
+							"tokensBefore": 2,
+							"details": {
+								"readFiles": [],
+								"modifiedFiles": []
+							},
+							"usage": {
+								"input": 309,
+								"output": 2,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"totalTokens": 311,
+								"cost": {
+									"input": 0,
+									"output": 0,
+									"cacheRead": 0,
+									"cacheWrite": 0,
+									"total": 0
+								}
+							},
+							"fromHook": false,
+							"seq": 16,
+							"timestamp": 1700000000054
+						}
+					],
+					"tipId": "00000000-0000-7000-8000-000000000015",
+					"lastResult": {
+						"operationId": "00000000-0000-7000-8000-000000000013",
+						"kind": "compaction",
+						"status": "completed",
+						"fromTipId": "00000000-0000-7000-8000-000000000012",
+						"tipId": "00000000-0000-7000-8000-000000000015",
+						"startedAt": 1700000000043,
+						"endedAt": 1700000000053
+					},
+					"configuration": {
+						"model": {
+							"provider": "faux",
+							"modelId": "faux-1"
+						},
+						"thinkingLevel": "off",
+						"activeToolNames": []
+					},
+					"stats": {
+						"messageCount": 1,
+						"usage": {
+							"input": 309,
+							"output": 2,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 311,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						}
+					},
+					"operation": null,
+					"queues": [],
+					"faulted": false
+				},
+				"outcome": {
+					"ok": true,
+					"value": {
+						"compaction": {
+							"operationId": "00000000-0000-7000-8000-000000000013",
+							"kind": "compaction",
+							"status": "completed",
+							"fromTipId": "00000000-0000-7000-8000-000000000012",
+							"tipId": "00000000-0000-7000-8000-000000000015",
+							"startedAt": 1700000000043,
+							"endedAt": 1700000000053
+						}
+					}
+				}
+			}
+		],
+		"queue_changes": [
+			{
+				"start": {
+					"lane": "main",
+					"transcript": [],
+					"tipId": null,
+					"configuration": {
+						"model": {
+							"provider": "faux",
+							"modelId": "faux-1"
+						},
+						"thinkingLevel": "off",
+						"activeToolNames": []
+					},
+					"stats": {
+						"messageCount": 0,
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						}
+					},
+					"operation": null,
+					"queues": [],
+					"faulted": false
+				},
+				"events": [
+					{
+						"type": "queue_update",
+						"queues": [
+							{
+								"entryId": "00000000-0000-7000-8000-000000000016",
+								"kind": "nextRun",
+								"type": "message",
+								"message": {
+									"role": "user",
+									"content": [
+										{
+											"type": "text",
+											"text": "next"
+										}
+									],
+									"timestamp": 1700000000058
+								}
+							}
+						],
+						"lane": "main"
+					},
+					{
+						"type": "queue_update",
+						"queues": [
+							{
+								"entryId": "00000000-0000-7000-8000-000000000016",
+								"kind": "nextRun",
+								"type": "message",
+								"message": {
+									"role": "user",
+									"content": [
+										{
+											"type": "text",
+											"text": "next"
+										}
+									],
+									"timestamp": 1700000000058
+								}
+							},
+							{
+								"entryId": "00000000-0000-7000-8000-000000000017",
+								"kind": "steer",
+								"type": "message",
+								"message": {
+									"role": "user",
+									"content": [
+										{
+											"type": "text",
+											"text": "steer"
+										}
+									],
+									"timestamp": 1700000000060
+								}
+							}
+						],
+						"lane": "main"
+					},
+					{
+						"type": "queue_update",
+						"queues": [
+							{
+								"entryId": "00000000-0000-7000-8000-000000000016",
+								"kind": "nextRun",
+								"type": "message",
+								"message": {
+									"role": "user",
+									"content": [
+										{
+											"type": "text",
+											"text": "next"
+										}
+									],
+									"timestamp": 1700000000058
+								}
+							},
+							{
+								"entryId": "00000000-0000-7000-8000-000000000017",
+								"kind": "steer",
+								"type": "message",
+								"message": {
+									"role": "user",
+									"content": [
+										{
+											"type": "text",
+											"text": "steer"
+										}
+									],
+									"timestamp": 1700000000060
+								}
+							},
+							{
+								"entryId": "00000000-0000-7000-8000-000000000018",
+								"kind": "followUp",
+								"type": "message",
+								"message": {
+									"role": "user",
+									"content": [
+										{
+											"type": "text",
+											"text": "follow"
+										}
+									],
+									"timestamp": 1700000000062
+								}
+							}
+						],
+						"lane": "main"
+					},
+					{
+						"type": "queue_update",
+						"queues": [
+							{
+								"entryId": "00000000-0000-7000-8000-000000000016",
+								"kind": "nextRun",
+								"type": "message",
+								"message": {
+									"role": "user",
+									"content": [
+										{
+											"type": "text",
+											"text": "next"
+										}
+									],
+									"timestamp": 1700000000058
+								}
+							},
+							{
+								"entryId": "00000000-0000-7000-8000-000000000018",
+								"kind": "followUp",
+								"type": "message",
+								"message": {
+									"role": "user",
+									"content": [
+										{
+											"type": "text",
+											"text": "follow"
+										}
+									],
+									"timestamp": 1700000000062
+								}
+							}
+						],
+						"lane": "main"
+					}
+				],
+				"reductions": [
+					null,
+					null,
+					null,
+					null
+				],
+				"folded": {
+					"lane": "main",
+					"transcript": [],
+					"tipId": null,
+					"configuration": {
+						"model": {
+							"provider": "faux",
+							"modelId": "faux-1"
+						},
+						"thinkingLevel": "off",
+						"activeToolNames": []
+					},
+					"stats": {
+						"messageCount": 0,
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						}
+					},
+					"operation": null,
+					"queues": [
+						{
+							"entryId": "00000000-0000-7000-8000-000000000016",
+							"kind": "nextRun",
+							"type": "message",
+							"message": {
+								"role": "user",
+								"content": [
+									{
+										"type": "text",
+										"text": "next"
+									}
+								],
+								"timestamp": 1700000000058
+							}
+						},
+						{
+							"entryId": "00000000-0000-7000-8000-000000000018",
+							"kind": "followUp",
+							"type": "message",
+							"message": {
+								"role": "user",
+								"content": [
+									{
+										"type": "text",
+										"text": "follow"
+									}
+								],
+								"timestamp": 1700000000062
+							}
+						}
+					],
+					"faulted": false
+				},
+				"resnapshot": {
+					"lane": "main",
+					"transcript": [],
+					"tipId": null,
+					"configuration": {
+						"model": {
+							"provider": "faux",
+							"modelId": "faux-1"
+						},
+						"thinkingLevel": "off",
+						"activeToolNames": []
+					},
+					"stats": {
+						"messageCount": 0,
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						}
+					},
+					"operation": null,
+					"queues": [
+						{
+							"entryId": "00000000-0000-7000-8000-000000000016",
+							"kind": "nextRun",
+							"type": "message",
+							"message": {
+								"role": "user",
+								"content": [
+									{
+										"type": "text",
+										"text": "next"
+									}
+								],
+								"timestamp": 1700000000058
+							}
+						},
+						{
+							"entryId": "00000000-0000-7000-8000-000000000018",
+							"kind": "followUp",
+							"type": "message",
+							"message": {
+								"role": "user",
+								"content": [
+									{
+										"type": "text",
+										"text": "follow"
+									}
+								],
+								"timestamp": 1700000000062
+							}
+						}
+					],
+					"faulted": false
+				},
+				"outcome": null
+			}
+		],
+		"two_runs_and_config": [
+			{
+				"start": {
+					"lane": "main",
+					"transcript": [],
+					"tipId": null,
+					"configuration": {
+						"model": {
+							"provider": "faux",
+							"modelId": "faux-1"
+						},
+						"thinkingLevel": "off",
+						"activeToolNames": []
+					},
+					"stats": {
+						"messageCount": 0,
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						}
+					},
+					"operation": null,
+					"queues": [],
+					"faulted": false
+				},
+				"events": [
+					{
+						"type": "run_start",
+						"runId": "00000000-0000-7000-8000-000000000019",
+						"startedAt": 1700000000069,
+						"lane": "main"
+					},
+					{
+						"type": "message_start",
+						"lane": "main",
+						"runId": "00000000-0000-7000-8000-000000000019",
+						"message": {
+							"role": "user",
+							"content": [
+								{
+									"type": "text",
+									"text": "one"
+								}
+							],
+							"timestamp": 1700000000069
+						}
+					},
+					{
+						"type": "message_end",
+						"lane": "main",
+						"runId": "00000000-0000-7000-8000-000000000019",
+						"message": {
+							"role": "user",
+							"content": [
+								{
+									"type": "text",
+									"text": "one"
+								}
+							],
+							"timestamp": 1700000000069
+						},
+						"entryId": "00000000-0000-7000-8000-000000000020"
+					},
+					{
+						"type": "entry_added",
+						"lane": "main",
+						"entry": {
+							"id": "00000000-0000-7000-8000-000000000020",
+							"parentId": null,
+							"type": "message",
+							"message": {
+								"role": "user",
+								"content": [
+									{
+										"type": "text",
+										"text": "one"
+									}
+								],
+								"timestamp": 1700000000069
+							},
+							"seq": 4,
+							"timestamp": 1700000000070
+						}
+					},
+					{
+						"type": "turn_start",
+						"lane": "main",
+						"runId": "00000000-0000-7000-8000-000000000019",
+						"turnId": "00000000-0000-7000-8000-000000000021"
+					},
+					{
+						"type": "message_start",
+						"lane": "main",
+						"runId": "00000000-0000-7000-8000-000000000019",
+						"message": {
+							"role": "assistant",
+							"content": [],
+							"api": "faux:1700000000065:9gq5egz743",
+							"provider": "faux",
+							"model": "faux-1",
+							"usage": {
+								"input": 2,
+								"output": 2,
+								"cacheRead": 0,
+								"cacheWrite": 2,
+								"totalTokens": 6,
+								"cost": {
+									"input": 0,
+									"output": 0,
+									"cacheRead": 0,
+									"cacheWrite": 0,
+									"total": 0
+								}
+							},
+							"stopReason": "pending",
+							"timestamp": 1700000000067
+						}
+					},
+					{
+						"type": "message_update",
+						"lane": "main",
+						"runId": "00000000-0000-7000-8000-000000000019",
+						"message": {
+							"role": "assistant",
+							"content": [
+								{
+									"type": "text",
+									"text": "first"
+								}
+							],
+							"api": "faux:1700000000065:9gq5egz743",
+							"provider": "faux",
+							"model": "faux-1",
+							"usage": {
+								"input": 2,
+								"output": 2,
+								"cacheRead": 0,
+								"cacheWrite": 2,
+								"totalTokens": 6,
+								"cost": {
+									"input": 0,
+									"output": 0,
+									"cacheRead": 0,
+									"cacheWrite": 0,
+									"total": 0
+								}
+							},
+							"stopReason": "pending",
+							"timestamp": 1700000000067
+						},
+						"event": {
+							"type": "text_start",
+							"contentIndex": 0,
+							"partial": {
+								"role": "assistant",
+								"content": [
+									{
+										"type": "text",
+										"text": "first"
+									}
+								],
+								"api": "faux:1700000000065:9gq5egz743",
+								"provider": "faux",
+								"model": "faux-1",
+								"usage": {
+									"input": 2,
+									"output": 2,
+									"cacheRead": 0,
+									"cacheWrite": 2,
+									"totalTokens": 6,
+									"cost": {
+										"input": 0,
+										"output": 0,
+										"cacheRead": 0,
+										"cacheWrite": 0,
+										"total": 0
+									}
+								},
+								"stopReason": "pending",
+								"timestamp": 1700000000067
+							}
+						},
+						"frame": {
+							"type": "text_start",
+							"contentIndex": 0,
+							"content": {
+								"type": "text",
+								"text": "first"
+							}
+						}
+					},
+					{
+						"type": "message_update",
+						"lane": "main",
+						"runId": "00000000-0000-7000-8000-000000000019",
+						"message": {
+							"role": "assistant",
+							"content": [
+								{
+									"type": "text",
+									"text": "first"
+								}
+							],
+							"api": "faux:1700000000065:9gq5egz743",
+							"provider": "faux",
+							"model": "faux-1",
+							"usage": {
+								"input": 2,
+								"output": 2,
+								"cacheRead": 0,
+								"cacheWrite": 2,
+								"totalTokens": 6,
+								"cost": {
+									"input": 0,
+									"output": 0,
+									"cacheRead": 0,
+									"cacheWrite": 0,
+									"total": 0
+								}
+							},
+							"stopReason": "pending",
+							"timestamp": 1700000000067
+						},
+						"event": {
+							"type": "text_delta",
+							"contentIndex": 0,
+							"delta": "first",
+							"partial": {
+								"role": "assistant",
+								"content": [
+									{
+										"type": "text",
+										"text": "first"
+									}
+								],
+								"api": "faux:1700000000065:9gq5egz743",
+								"provider": "faux",
+								"model": "faux-1",
+								"usage": {
+									"input": 2,
+									"output": 2,
+									"cacheRead": 0,
+									"cacheWrite": 2,
+									"totalTokens": 6,
+									"cost": {
+										"input": 0,
+										"output": 0,
+										"cacheRead": 0,
+										"cacheWrite": 0,
+										"total": 0
+									}
+								},
+								"stopReason": "pending",
+								"timestamp": 1700000000067
+							}
+						}
+					},
+					{
+						"type": "message_update",
+						"lane": "main",
+						"runId": "00000000-0000-7000-8000-000000000019",
+						"message": {
+							"role": "assistant",
+							"content": [
+								{
+									"type": "text",
+									"text": "first"
+								}
+							],
+							"api": "faux:1700000000065:9gq5egz743",
+							"provider": "faux",
+							"model": "faux-1",
+							"usage": {
+								"input": 2,
+								"output": 2,
+								"cacheRead": 0,
+								"cacheWrite": 2,
+								"totalTokens": 6,
+								"cost": {
+									"input": 0,
+									"output": 0,
+									"cacheRead": 0,
+									"cacheWrite": 0,
+									"total": 0
+								}
+							},
+							"stopReason": "pending",
+							"timestamp": 1700000000067
+						},
+						"event": {
+							"type": "text_end",
+							"contentIndex": 0,
+							"content": "first",
+							"partial": {
+								"role": "assistant",
+								"content": [
+									{
+										"type": "text",
+										"text": "first"
+									}
+								],
+								"api": "faux:1700000000065:9gq5egz743",
+								"provider": "faux",
+								"model": "faux-1",
+								"usage": {
+									"input": 2,
+									"output": 2,
+									"cacheRead": 0,
+									"cacheWrite": 2,
+									"totalTokens": 6,
+									"cost": {
+										"input": 0,
+										"output": 0,
+										"cacheRead": 0,
+										"cacheWrite": 0,
+										"total": 0
+									}
+								},
+								"stopReason": "pending",
+								"timestamp": 1700000000067
+							}
+						},
+						"frame": {
+							"type": "text_end",
+							"contentIndex": 0,
+							"content": "first"
+						}
+					},
+					{
+						"type": "message_end",
+						"lane": "main",
+						"runId": "00000000-0000-7000-8000-000000000019",
+						"message": {
+							"role": "assistant",
+							"content": [
+								{
+									"type": "text",
+									"text": "first"
+								}
+							],
+							"api": "faux:1700000000065:9gq5egz743",
+							"provider": "faux",
+							"model": "faux-1",
+							"usage": {
+								"input": 2,
+								"output": 2,
+								"cacheRead": 0,
+								"cacheWrite": 2,
+								"totalTokens": 6,
+								"cost": {
+									"input": 0,
+									"output": 0,
+									"cacheRead": 0,
+									"cacheWrite": 0,
+									"total": 0
+								}
+							},
+							"stopReason": "stop",
+							"timestamp": 1700000000067
+						},
+						"entryId": "00000000-0000-7000-8000-000000000022"
+					},
+					{
+						"type": "entry_added",
+						"lane": "main",
+						"entry": {
+							"id": "00000000-0000-7000-8000-000000000022",
+							"parentId": "00000000-0000-7000-8000-000000000020",
+							"type": "message",
+							"message": {
+								"role": "assistant",
+								"content": [
+									{
+										"type": "text",
+										"text": "first"
+									}
+								],
+								"api": "faux:1700000000065:9gq5egz743",
+								"provider": "faux",
+								"model": "faux-1",
+								"usage": {
+									"input": 2,
+									"output": 2,
+									"cacheRead": 0,
+									"cacheWrite": 2,
+									"totalTokens": 6,
+									"cost": {
+										"input": 0,
+										"output": 0,
+										"cacheRead": 0,
+										"cacheWrite": 0,
+										"total": 0
+									}
+								},
+								"stopReason": "stop",
+								"timestamp": 1700000000067
+							},
+							"seq": 16,
+							"timestamp": 1700000000079
+						}
+					},
+					{
+						"type": "usage",
+						"lane": "main",
+						"row": {
+							"id": "00000000-0000-7000-8000-000000000023",
+							"usage": {
+								"input": 2,
+								"output": 2,
+								"cacheRead": 0,
+								"cacheWrite": 2,
+								"totalTokens": 6,
+								"cost": {
+									"input": 0,
+									"output": 0,
+									"cacheRead": 0,
+									"cacheWrite": 0,
+									"total": 0
+								}
+							},
+							"entryId": "00000000-0000-7000-8000-000000000022",
+							"adjustment": false,
+							"seq": 17
+						},
+						"totals": {
+							"input": 2,
+							"output": 2,
+							"cacheRead": 0,
+							"cacheWrite": 2,
+							"totalTokens": 6,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						}
+					},
+					{
+						"type": "turn_end",
+						"lane": "main",
+						"runId": "00000000-0000-7000-8000-000000000019",
+						"turnId": "00000000-0000-7000-8000-000000000021",
+						"message": {
+							"role": "assistant",
+							"content": [
+								{
+									"type": "text",
+									"text": "first"
+								}
+							],
+							"api": "faux:1700000000065:9gq5egz743",
+							"provider": "faux",
+							"model": "faux-1",
+							"usage": {
+								"input": 2,
+								"output": 2,
+								"cacheRead": 0,
+								"cacheWrite": 2,
+								"totalTokens": 6,
+								"cost": {
+									"input": 0,
+									"output": 0,
+									"cacheRead": 0,
+									"cacheWrite": 0,
+									"total": 0
+								}
+							},
+							"stopReason": "stop",
+							"timestamp": 1700000000067
+						},
+						"toolResults": []
+					},
+					{
+						"type": "run_end",
+						"lane": "main",
+						"runId": "00000000-0000-7000-8000-000000000019",
+						"status": "completed",
+						"fromTipId": null,
+						"tipId": "00000000-0000-7000-8000-000000000022",
+						"endedAt": 1700000000080
+					}
+				],
+				"reductions": [
+					null,
+					null,
+					null,
+					null,
+					null,
+					null,
+					null,
+					null,
+					null,
+					null,
+					null,
+					null,
+					null,
+					null
+				],
+				"folded": {
+					"lane": "main",
+					"transcript": [
+						{
+							"id": "00000000-0000-7000-8000-000000000020",
+							"parentId": null,
+							"type": "message",
+							"message": {
+								"role": "user",
+								"content": [
+									{
+										"type": "text",
+										"text": "one"
+									}
+								],
+								"timestamp": 1700000000069
+							},
+							"seq": 4,
+							"timestamp": 1700000000070
+						},
+						{
+							"id": "00000000-0000-7000-8000-000000000022",
+							"parentId": "00000000-0000-7000-8000-000000000020",
+							"type": "message",
+							"message": {
+								"role": "assistant",
+								"content": [
+									{
+										"type": "text",
+										"text": "first"
+									}
+								],
+								"api": "faux:1700000000065:9gq5egz743",
+								"provider": "faux",
+								"model": "faux-1",
+								"usage": {
+									"input": 2,
+									"output": 2,
+									"cacheRead": 0,
+									"cacheWrite": 2,
+									"totalTokens": 6,
+									"cost": {
+										"input": 0,
+										"output": 0,
+										"cacheRead": 0,
+										"cacheWrite": 0,
+										"total": 0
+									}
+								},
+								"stopReason": "stop",
+								"timestamp": 1700000000067
+							},
+							"seq": 16,
+							"timestamp": 1700000000079
+						}
+					],
+					"tipId": "00000000-0000-7000-8000-000000000022",
+					"configuration": {
+						"model": {
+							"provider": "faux",
+							"modelId": "faux-1"
+						},
+						"thinkingLevel": "off",
+						"activeToolNames": []
+					},
+					"stats": {
+						"messageCount": 2,
+						"usage": {
+							"input": 2,
+							"output": 2,
+							"cacheRead": 0,
+							"cacheWrite": 2,
+							"totalTokens": 6,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						}
+					},
+					"operation": null,
+					"queues": [],
+					"faulted": false,
+					"lastResult": {
+						"operationId": "00000000-0000-7000-8000-000000000019",
+						"kind": "run",
+						"status": "completed",
+						"fromTipId": null,
+						"tipId": "00000000-0000-7000-8000-000000000022",
+						"startedAt": 1700000000069,
+						"endedAt": 1700000000080
+					}
+				},
+				"resnapshot": {
+					"lane": "main",
+					"transcript": [
+						{
+							"id": "00000000-0000-7000-8000-000000000020",
+							"parentId": null,
+							"type": "message",
+							"message": {
+								"role": "user",
+								"content": [
+									{
+										"type": "text",
+										"text": "one"
+									}
+								],
+								"timestamp": 1700000000069
+							},
+							"seq": 4,
+							"timestamp": 1700000000070
+						},
+						{
+							"id": "00000000-0000-7000-8000-000000000022",
+							"parentId": "00000000-0000-7000-8000-000000000020",
+							"type": "message",
+							"message": {
+								"role": "assistant",
+								"content": [
+									{
+										"type": "text",
+										"text": "first"
+									}
+								],
+								"api": "faux:1700000000065:9gq5egz743",
+								"provider": "faux",
+								"model": "faux-1",
+								"usage": {
+									"input": 2,
+									"output": 2,
+									"cacheRead": 0,
+									"cacheWrite": 2,
+									"totalTokens": 6,
+									"cost": {
+										"input": 0,
+										"output": 0,
+										"cacheRead": 0,
+										"cacheWrite": 0,
+										"total": 0
+									}
+								},
+								"stopReason": "stop",
+								"timestamp": 1700000000067
+							},
+							"seq": 16,
+							"timestamp": 1700000000079
+						}
+					],
+					"tipId": "00000000-0000-7000-8000-000000000022",
+					"lastResult": {
+						"operationId": "00000000-0000-7000-8000-000000000019",
+						"kind": "run",
+						"status": "completed",
+						"fromTipId": null,
+						"tipId": "00000000-0000-7000-8000-000000000022",
+						"startedAt": 1700000000069,
+						"endedAt": 1700000000080
+					},
+					"configuration": {
+						"model": {
+							"provider": "faux",
+							"modelId": "faux-1"
+						},
+						"thinkingLevel": "off",
+						"activeToolNames": []
+					},
+					"stats": {
+						"messageCount": 2,
+						"usage": {
+							"input": 2,
+							"output": 2,
+							"cacheRead": 0,
+							"cacheWrite": 2,
+							"totalTokens": 6,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						}
+					},
+					"operation": null,
+					"queues": [],
+					"faulted": false
+				},
+				"outcome": {
+					"ok": true,
+					"value": {
+						"operationId": "00000000-0000-7000-8000-000000000019",
+						"kind": "run",
+						"status": "completed",
+						"fromTipId": null,
+						"tipId": "00000000-0000-7000-8000-000000000022",
+						"startedAt": 1700000000069,
+						"endedAt": 1700000000080
+					}
+				}
+			},
+			{
+				"start": {
+					"lane": "main",
+					"transcript": [
+						{
+							"id": "00000000-0000-7000-8000-000000000020",
+							"parentId": null,
+							"type": "message",
+							"message": {
+								"role": "user",
+								"content": [
+									{
+										"type": "text",
+										"text": "one"
+									}
+								],
+								"timestamp": 1700000000069
+							},
+							"seq": 4,
+							"timestamp": 1700000000070
+						},
+						{
+							"id": "00000000-0000-7000-8000-000000000022",
+							"parentId": "00000000-0000-7000-8000-000000000020",
+							"type": "message",
+							"message": {
+								"role": "assistant",
+								"content": [
+									{
+										"type": "text",
+										"text": "first"
+									}
+								],
+								"api": "faux:1700000000065:9gq5egz743",
+								"provider": "faux",
+								"model": "faux-1",
+								"usage": {
+									"input": 2,
+									"output": 2,
+									"cacheRead": 0,
+									"cacheWrite": 2,
+									"totalTokens": 6,
+									"cost": {
+										"input": 0,
+										"output": 0,
+										"cacheRead": 0,
+										"cacheWrite": 0,
+										"total": 0
+									}
+								},
+								"stopReason": "stop",
+								"timestamp": 1700000000067
+							},
+							"seq": 16,
+							"timestamp": 1700000000079
+						}
+					],
+					"tipId": "00000000-0000-7000-8000-000000000022",
+					"configuration": {
+						"model": {
+							"provider": "faux",
+							"modelId": "faux-1"
+						},
+						"thinkingLevel": "off",
+						"activeToolNames": []
+					},
+					"stats": {
+						"messageCount": 2,
+						"usage": {
+							"input": 2,
+							"output": 2,
+							"cacheRead": 0,
+							"cacheWrite": 2,
+							"totalTokens": 6,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						}
+					},
+					"operation": null,
+					"queues": [],
+					"faulted": false,
+					"lastResult": {
+						"operationId": "00000000-0000-7000-8000-000000000019",
+						"kind": "run",
+						"status": "completed",
+						"fromTipId": null,
+						"tipId": "00000000-0000-7000-8000-000000000022",
+						"startedAt": 1700000000069,
+						"endedAt": 1700000000080
+					}
+				},
+				"events": [
+					{
+						"type": "config_update",
+						"property": "thinkingLevel",
+						"previous": "off",
+						"value": "high",
+						"lane": "main"
+					},
+					{
+						"type": "config_update",
+						"property": "activeTools",
+						"previous": [],
+						"value": [],
+						"lane": "main"
+					},
+					{
+						"type": "run_start",
+						"runId": "00000000-0000-7000-8000-000000000024",
+						"startedAt": 1700000000084,
+						"lane": "main"
+					},
+					{
+						"type": "message_start",
+						"lane": "main",
+						"runId": "00000000-0000-7000-8000-000000000024",
+						"message": {
+							"role": "user",
+							"content": [
+								{
+									"type": "text",
+									"text": "two"
+								}
+							],
+							"timestamp": 1700000000084
+						}
+					},
+					{
+						"type": "message_end",
+						"lane": "main",
+						"runId": "00000000-0000-7000-8000-000000000024",
+						"message": {
+							"role": "user",
+							"content": [
+								{
+									"type": "text",
+									"text": "two"
+								}
+							],
+							"timestamp": 1700000000084
+						},
+						"entryId": "00000000-0000-7000-8000-000000000025"
+					},
+					{
+						"type": "entry_added",
+						"lane": "main",
+						"entry": {
+							"id": "00000000-0000-7000-8000-000000000025",
+							"parentId": "00000000-0000-7000-8000-000000000022",
+							"type": "message",
+							"message": {
+								"role": "user",
+								"content": [
+									{
+										"type": "text",
+										"text": "two"
+									}
+								],
+								"timestamp": 1700000000084
+							},
+							"seq": 27,
+							"timestamp": 1700000000085
+						}
+					},
+					{
+						"type": "turn_start",
+						"lane": "main",
+						"runId": "00000000-0000-7000-8000-000000000024",
+						"turnId": "00000000-0000-7000-8000-000000000026"
+					},
+					{
+						"type": "message_start",
+						"lane": "main",
+						"runId": "00000000-0000-7000-8000-000000000024",
+						"message": {
+							"role": "assistant",
+							"content": [],
+							"api": "faux:1700000000065:9gq5egz743",
+							"provider": "faux",
+							"model": "faux-1",
+							"usage": {
+								"input": 7,
+								"output": 2,
+								"cacheRead": 2,
+								"cacheWrite": 7,
+								"totalTokens": 18,
+								"cost": {
+									"input": 0,
+									"output": 0,
+									"cacheRead": 0,
+									"cacheWrite": 0,
+									"total": 0
+								}
+							},
+							"stopReason": "pending",
+							"timestamp": 1700000000068
+						}
+					},
+					{
+						"type": "message_update",
+						"lane": "main",
+						"runId": "00000000-0000-7000-8000-000000000024",
+						"message": {
+							"role": "assistant",
+							"content": [
+								{
+									"type": "text",
+									"text": "second"
+								}
+							],
+							"api": "faux:1700000000065:9gq5egz743",
+							"provider": "faux",
+							"model": "faux-1",
+							"usage": {
+								"input": 7,
+								"output": 2,
+								"cacheRead": 2,
+								"cacheWrite": 7,
+								"totalTokens": 18,
+								"cost": {
+									"input": 0,
+									"output": 0,
+									"cacheRead": 0,
+									"cacheWrite": 0,
+									"total": 0
+								}
+							},
+							"stopReason": "pending",
+							"timestamp": 1700000000068
+						},
+						"event": {
+							"type": "text_start",
+							"contentIndex": 0,
+							"partial": {
+								"role": "assistant",
+								"content": [
+									{
+										"type": "text",
+										"text": "second"
+									}
+								],
+								"api": "faux:1700000000065:9gq5egz743",
+								"provider": "faux",
+								"model": "faux-1",
+								"usage": {
+									"input": 7,
+									"output": 2,
+									"cacheRead": 2,
+									"cacheWrite": 7,
+									"totalTokens": 18,
+									"cost": {
+										"input": 0,
+										"output": 0,
+										"cacheRead": 0,
+										"cacheWrite": 0,
+										"total": 0
+									}
+								},
+								"stopReason": "pending",
+								"timestamp": 1700000000068
+							}
+						},
+						"frame": {
+							"type": "text_start",
+							"contentIndex": 0,
+							"content": {
+								"type": "text",
+								"text": "second"
+							}
+						}
+					},
+					{
+						"type": "message_update",
+						"lane": "main",
+						"runId": "00000000-0000-7000-8000-000000000024",
+						"message": {
+							"role": "assistant",
+							"content": [
+								{
+									"type": "text",
+									"text": "second"
+								}
+							],
+							"api": "faux:1700000000065:9gq5egz743",
+							"provider": "faux",
+							"model": "faux-1",
+							"usage": {
+								"input": 7,
+								"output": 2,
+								"cacheRead": 2,
+								"cacheWrite": 7,
+								"totalTokens": 18,
+								"cost": {
+									"input": 0,
+									"output": 0,
+									"cacheRead": 0,
+									"cacheWrite": 0,
+									"total": 0
+								}
+							},
+							"stopReason": "pending",
+							"timestamp": 1700000000068
+						},
+						"event": {
+							"type": "text_delta",
+							"contentIndex": 0,
+							"delta": "second",
+							"partial": {
+								"role": "assistant",
+								"content": [
+									{
+										"type": "text",
+										"text": "second"
+									}
+								],
+								"api": "faux:1700000000065:9gq5egz743",
+								"provider": "faux",
+								"model": "faux-1",
+								"usage": {
+									"input": 7,
+									"output": 2,
+									"cacheRead": 2,
+									"cacheWrite": 7,
+									"totalTokens": 18,
+									"cost": {
+										"input": 0,
+										"output": 0,
+										"cacheRead": 0,
+										"cacheWrite": 0,
+										"total": 0
+									}
+								},
+								"stopReason": "pending",
+								"timestamp": 1700000000068
+							}
+						}
+					},
+					{
+						"type": "message_update",
+						"lane": "main",
+						"runId": "00000000-0000-7000-8000-000000000024",
+						"message": {
+							"role": "assistant",
+							"content": [
+								{
+									"type": "text",
+									"text": "second"
+								}
+							],
+							"api": "faux:1700000000065:9gq5egz743",
+							"provider": "faux",
+							"model": "faux-1",
+							"usage": {
+								"input": 7,
+								"output": 2,
+								"cacheRead": 2,
+								"cacheWrite": 7,
+								"totalTokens": 18,
+								"cost": {
+									"input": 0,
+									"output": 0,
+									"cacheRead": 0,
+									"cacheWrite": 0,
+									"total": 0
+								}
+							},
+							"stopReason": "pending",
+							"timestamp": 1700000000068
+						},
+						"event": {
+							"type": "text_end",
+							"contentIndex": 0,
+							"content": "second",
+							"partial": {
+								"role": "assistant",
+								"content": [
+									{
+										"type": "text",
+										"text": "second"
+									}
+								],
+								"api": "faux:1700000000065:9gq5egz743",
+								"provider": "faux",
+								"model": "faux-1",
+								"usage": {
+									"input": 7,
+									"output": 2,
+									"cacheRead": 2,
+									"cacheWrite": 7,
+									"totalTokens": 18,
+									"cost": {
+										"input": 0,
+										"output": 0,
+										"cacheRead": 0,
+										"cacheWrite": 0,
+										"total": 0
+									}
+								},
+								"stopReason": "pending",
+								"timestamp": 1700000000068
+							}
+						},
+						"frame": {
+							"type": "text_end",
+							"contentIndex": 0,
+							"content": "second"
+						}
+					},
+					{
+						"type": "message_end",
+						"lane": "main",
+						"runId": "00000000-0000-7000-8000-000000000024",
+						"message": {
+							"role": "assistant",
+							"content": [
+								{
+									"type": "text",
+									"text": "second"
+								}
+							],
+							"api": "faux:1700000000065:9gq5egz743",
+							"provider": "faux",
+							"model": "faux-1",
+							"usage": {
+								"input": 7,
+								"output": 2,
+								"cacheRead": 2,
+								"cacheWrite": 7,
+								"totalTokens": 18,
+								"cost": {
+									"input": 0,
+									"output": 0,
+									"cacheRead": 0,
+									"cacheWrite": 0,
+									"total": 0
+								}
+							},
+							"stopReason": "stop",
+							"timestamp": 1700000000068
+						},
+						"entryId": "00000000-0000-7000-8000-000000000027"
+					},
+					{
+						"type": "entry_added",
+						"lane": "main",
+						"entry": {
+							"id": "00000000-0000-7000-8000-000000000027",
+							"parentId": "00000000-0000-7000-8000-000000000025",
+							"type": "message",
+							"message": {
+								"role": "assistant",
+								"content": [
+									{
+										"type": "text",
+										"text": "second"
+									}
+								],
+								"api": "faux:1700000000065:9gq5egz743",
+								"provider": "faux",
+								"model": "faux-1",
+								"usage": {
+									"input": 7,
+									"output": 2,
+									"cacheRead": 2,
+									"cacheWrite": 7,
+									"totalTokens": 18,
+									"cost": {
+										"input": 0,
+										"output": 0,
+										"cacheRead": 0,
+										"cacheWrite": 0,
+										"total": 0
+									}
+								},
+								"stopReason": "stop",
+								"timestamp": 1700000000068
+							},
+							"seq": 39,
+							"timestamp": 1700000000094
+						}
+					},
+					{
+						"type": "usage",
+						"lane": "main",
+						"row": {
+							"id": "00000000-0000-7000-8000-000000000028",
+							"usage": {
+								"input": 7,
+								"output": 2,
+								"cacheRead": 2,
+								"cacheWrite": 7,
+								"totalTokens": 18,
+								"cost": {
+									"input": 0,
+									"output": 0,
+									"cacheRead": 0,
+									"cacheWrite": 0,
+									"total": 0
+								}
+							},
+							"entryId": "00000000-0000-7000-8000-000000000027",
+							"adjustment": false,
+							"seq": 40
+						},
+						"totals": {
+							"input": 9,
+							"output": 4,
+							"cacheRead": 2,
+							"cacheWrite": 9,
+							"totalTokens": 24,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						}
+					},
+					{
+						"type": "turn_end",
+						"lane": "main",
+						"runId": "00000000-0000-7000-8000-000000000024",
+						"turnId": "00000000-0000-7000-8000-000000000026",
+						"message": {
+							"role": "assistant",
+							"content": [
+								{
+									"type": "text",
+									"text": "second"
+								}
+							],
+							"api": "faux:1700000000065:9gq5egz743",
+							"provider": "faux",
+							"model": "faux-1",
+							"usage": {
+								"input": 7,
+								"output": 2,
+								"cacheRead": 2,
+								"cacheWrite": 7,
+								"totalTokens": 18,
+								"cost": {
+									"input": 0,
+									"output": 0,
+									"cacheRead": 0,
+									"cacheWrite": 0,
+									"total": 0
+								}
+							},
+							"stopReason": "stop",
+							"timestamp": 1700000000068
+						},
+						"toolResults": []
+					},
+					{
+						"type": "run_end",
+						"lane": "main",
+						"runId": "00000000-0000-7000-8000-000000000024",
+						"status": "completed",
+						"fromTipId": "00000000-0000-7000-8000-000000000022",
+						"tipId": "00000000-0000-7000-8000-000000000027",
+						"endedAt": 1700000000095
+					}
+				],
+				"reductions": [
+					null,
+					null,
+					null,
+					null,
+					null,
+					null,
+					null,
+					null,
+					null,
+					null,
+					null,
+					null,
+					null,
+					null,
+					null,
+					null
+				],
+				"folded": {
+					"lane": "main",
+					"transcript": [
+						{
+							"id": "00000000-0000-7000-8000-000000000020",
+							"parentId": null,
+							"type": "message",
+							"message": {
+								"role": "user",
+								"content": [
+									{
+										"type": "text",
+										"text": "one"
+									}
+								],
+								"timestamp": 1700000000069
+							},
+							"seq": 4,
+							"timestamp": 1700000000070
+						},
+						{
+							"id": "00000000-0000-7000-8000-000000000022",
+							"parentId": "00000000-0000-7000-8000-000000000020",
+							"type": "message",
+							"message": {
+								"role": "assistant",
+								"content": [
+									{
+										"type": "text",
+										"text": "first"
+									}
+								],
+								"api": "faux:1700000000065:9gq5egz743",
+								"provider": "faux",
+								"model": "faux-1",
+								"usage": {
+									"input": 2,
+									"output": 2,
+									"cacheRead": 0,
+									"cacheWrite": 2,
+									"totalTokens": 6,
+									"cost": {
+										"input": 0,
+										"output": 0,
+										"cacheRead": 0,
+										"cacheWrite": 0,
+										"total": 0
+									}
+								},
+								"stopReason": "stop",
+								"timestamp": 1700000000067
+							},
+							"seq": 16,
+							"timestamp": 1700000000079
+						},
+						{
+							"id": "00000000-0000-7000-8000-000000000025",
+							"parentId": "00000000-0000-7000-8000-000000000022",
+							"type": "message",
+							"message": {
+								"role": "user",
+								"content": [
+									{
+										"type": "text",
+										"text": "two"
+									}
+								],
+								"timestamp": 1700000000084
+							},
+							"seq": 27,
+							"timestamp": 1700000000085
+						},
+						{
+							"id": "00000000-0000-7000-8000-000000000027",
+							"parentId": "00000000-0000-7000-8000-000000000025",
+							"type": "message",
+							"message": {
+								"role": "assistant",
+								"content": [
+									{
+										"type": "text",
+										"text": "second"
+									}
+								],
+								"api": "faux:1700000000065:9gq5egz743",
+								"provider": "faux",
+								"model": "faux-1",
+								"usage": {
+									"input": 7,
+									"output": 2,
+									"cacheRead": 2,
+									"cacheWrite": 7,
+									"totalTokens": 18,
+									"cost": {
+										"input": 0,
+										"output": 0,
+										"cacheRead": 0,
+										"cacheWrite": 0,
+										"total": 0
+									}
+								},
+								"stopReason": "stop",
+								"timestamp": 1700000000068
+							},
+							"seq": 39,
+							"timestamp": 1700000000094
+						}
+					],
+					"tipId": "00000000-0000-7000-8000-000000000027",
+					"configuration": {
+						"model": {
+							"provider": "faux",
+							"modelId": "faux-1"
+						},
+						"thinkingLevel": "high",
+						"activeToolNames": []
+					},
+					"stats": {
+						"messageCount": 4,
+						"usage": {
+							"input": 9,
+							"output": 4,
+							"cacheRead": 2,
+							"cacheWrite": 9,
+							"totalTokens": 24,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						}
+					},
+					"operation": null,
+					"queues": [],
+					"faulted": false,
+					"lastResult": {
+						"operationId": "00000000-0000-7000-8000-000000000024",
+						"kind": "run",
+						"status": "completed",
+						"fromTipId": "00000000-0000-7000-8000-000000000022",
+						"tipId": "00000000-0000-7000-8000-000000000027",
+						"startedAt": 1700000000084,
+						"endedAt": 1700000000095
+					}
+				},
+				"resnapshot": {
+					"lane": "main",
+					"transcript": [
+						{
+							"id": "00000000-0000-7000-8000-000000000020",
+							"parentId": null,
+							"type": "message",
+							"message": {
+								"role": "user",
+								"content": [
+									{
+										"type": "text",
+										"text": "one"
+									}
+								],
+								"timestamp": 1700000000069
+							},
+							"seq": 4,
+							"timestamp": 1700000000070
+						},
+						{
+							"id": "00000000-0000-7000-8000-000000000022",
+							"parentId": "00000000-0000-7000-8000-000000000020",
+							"type": "message",
+							"message": {
+								"role": "assistant",
+								"content": [
+									{
+										"type": "text",
+										"text": "first"
+									}
+								],
+								"api": "faux:1700000000065:9gq5egz743",
+								"provider": "faux",
+								"model": "faux-1",
+								"usage": {
+									"input": 2,
+									"output": 2,
+									"cacheRead": 0,
+									"cacheWrite": 2,
+									"totalTokens": 6,
+									"cost": {
+										"input": 0,
+										"output": 0,
+										"cacheRead": 0,
+										"cacheWrite": 0,
+										"total": 0
+									}
+								},
+								"stopReason": "stop",
+								"timestamp": 1700000000067
+							},
+							"seq": 16,
+							"timestamp": 1700000000079
+						},
+						{
+							"id": "00000000-0000-7000-8000-000000000025",
+							"parentId": "00000000-0000-7000-8000-000000000022",
+							"type": "message",
+							"message": {
+								"role": "user",
+								"content": [
+									{
+										"type": "text",
+										"text": "two"
+									}
+								],
+								"timestamp": 1700000000084
+							},
+							"seq": 27,
+							"timestamp": 1700000000085
+						},
+						{
+							"id": "00000000-0000-7000-8000-000000000027",
+							"parentId": "00000000-0000-7000-8000-000000000025",
+							"type": "message",
+							"message": {
+								"role": "assistant",
+								"content": [
+									{
+										"type": "text",
+										"text": "second"
+									}
+								],
+								"api": "faux:1700000000065:9gq5egz743",
+								"provider": "faux",
+								"model": "faux-1",
+								"usage": {
+									"input": 7,
+									"output": 2,
+									"cacheRead": 2,
+									"cacheWrite": 7,
+									"totalTokens": 18,
+									"cost": {
+										"input": 0,
+										"output": 0,
+										"cacheRead": 0,
+										"cacheWrite": 0,
+										"total": 0
+									}
+								},
+								"stopReason": "stop",
+								"timestamp": 1700000000068
+							},
+							"seq": 39,
+							"timestamp": 1700000000094
+						}
+					],
+					"tipId": "00000000-0000-7000-8000-000000000027",
+					"lastResult": {
+						"operationId": "00000000-0000-7000-8000-000000000024",
+						"kind": "run",
+						"status": "completed",
+						"fromTipId": "00000000-0000-7000-8000-000000000022",
+						"tipId": "00000000-0000-7000-8000-000000000027",
+						"startedAt": 1700000000084,
+						"endedAt": 1700000000095
+					},
+					"configuration": {
+						"model": {
+							"provider": "faux",
+							"modelId": "faux-1"
+						},
+						"thinkingLevel": "high",
+						"activeToolNames": []
+					},
+					"stats": {
+						"messageCount": 4,
+						"usage": {
+							"input": 9,
+							"output": 4,
+							"cacheRead": 2,
+							"cacheWrite": 9,
+							"totalTokens": 24,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						}
+					},
+					"operation": null,
+					"queues": [],
+					"faulted": false
+				},
+				"outcome": {
+					"ok": true,
+					"value": {
+						"operationId": "00000000-0000-7000-8000-000000000024",
+						"kind": "run",
+						"status": "completed",
+						"fromTipId": "00000000-0000-7000-8000-000000000022",
+						"tipId": "00000000-0000-7000-8000-000000000027",
+						"startedAt": 1700000000084,
+						"endedAt": 1700000000095
+					}
+				}
+			}
+		]
+	},
+	"synthetic": {
+		"in_run_compaction": {
+			"snapshot": {
+				"lane": "main",
+				"tipId": null,
+				"transcript": [],
+				"configuration": {
+					"model": {
+						"provider": "p",
+						"modelId": "m"
+					},
+					"thinkingLevel": "off",
+					"activeToolNames": [
+						"a"
+					]
+				},
+				"queues": [],
+				"operation": {
+					"id": "run",
+					"kind": "run",
+					"startedAt": 1,
+					"fromTipId": null,
+					"status": "open",
+					"runningTools": []
+				},
+				"stats": {
+					"messageCount": 0,
+					"usage": {
+						"input": 0
+					}
+				},
+				"faulted": false
+			},
+			"steps": [
+				{
+					"event": {
+						"type": "compaction_start",
+						"lane": "main",
+						"runId": "run",
+						"reason": "threshold",
+						"startedAt": 2
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": null,
+						"transcript": [],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [],
+						"operation": {
+							"id": "run",
+							"kind": "run",
+							"startedAt": 1,
+							"fromTipId": null,
+							"status": "open",
+							"runningTools": []
+						},
+						"stats": {
+							"messageCount": 0,
+							"usage": {
+								"input": 0
+							}
+						},
+						"faulted": false
+					}
+				},
+				{
+					"event": {
+						"type": "compaction_end",
+						"lane": "main",
+						"runId": "run",
+						"reason": "threshold",
+						"status": "declined",
+						"endedAt": 3
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": null,
+						"transcript": [],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [],
+						"operation": {
+							"id": "run",
+							"kind": "run",
+							"startedAt": 1,
+							"fromTipId": null,
+							"status": "open",
+							"runningTools": []
+						},
+						"stats": {
+							"messageCount": 0,
+							"usage": {
+								"input": 0
+							}
+						},
+						"faulted": false
+					}
+				}
+			]
+		},
+		"parallel_tools": {
+			"snapshot": {
+				"lane": "main",
+				"tipId": null,
+				"transcript": [],
+				"configuration": {
+					"model": {
+						"provider": "p",
+						"modelId": "m"
+					},
+					"thinkingLevel": "off",
+					"activeToolNames": [
+						"a"
+					]
+				},
+				"queues": [],
+				"operation": {
+					"id": "run",
+					"kind": "run",
+					"startedAt": 1,
+					"fromTipId": null,
+					"status": "open",
+					"runningTools": []
+				},
+				"stats": {
+					"messageCount": 0,
+					"usage": {
+						"input": 0
+					}
+				},
+				"faulted": false
+			},
+			"steps": [
+				{
+					"event": {
+						"type": "tool_start",
+						"lane": "main",
+						"runId": "run",
+						"turnId": "turn",
+						"toolCallId": "call-0",
+						"toolName": "tool-0",
+						"args": {
+							"index": 0
+						}
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": null,
+						"transcript": [],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [],
+						"operation": {
+							"id": "run",
+							"kind": "run",
+							"startedAt": 1,
+							"fromTipId": null,
+							"status": "open",
+							"runningTools": [
+								{
+									"status": "running",
+									"toolCallId": "call-0",
+									"toolName": "tool-0",
+									"args": {
+										"index": 0
+									}
+								}
+							]
+						},
+						"stats": {
+							"messageCount": 0,
+							"usage": {
+								"input": 0
+							}
+						},
+						"faulted": false
+					}
+				},
+				{
+					"event": {
+						"type": "tool_start",
+						"lane": "main",
+						"runId": "run",
+						"turnId": "turn",
+						"toolCallId": "call-1",
+						"toolName": "tool-1",
+						"args": {
+							"index": 1
+						}
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": null,
+						"transcript": [],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [],
+						"operation": {
+							"id": "run",
+							"kind": "run",
+							"startedAt": 1,
+							"fromTipId": null,
+							"status": "open",
+							"runningTools": [
+								{
+									"status": "running",
+									"toolCallId": "call-0",
+									"toolName": "tool-0",
+									"args": {
+										"index": 0
+									}
+								},
+								{
+									"status": "running",
+									"toolCallId": "call-1",
+									"toolName": "tool-1",
+									"args": {
+										"index": 1
+									}
+								}
+							]
+						},
+						"stats": {
+							"messageCount": 0,
+							"usage": {
+								"input": 0
+							}
+						},
+						"faulted": false
+					}
+				},
+				{
+					"event": {
+						"type": "tool_start",
+						"lane": "main",
+						"runId": "run",
+						"turnId": "turn",
+						"toolCallId": "call-2",
+						"toolName": "tool-2",
+						"args": {
+							"index": 2
+						}
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": null,
+						"transcript": [],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [],
+						"operation": {
+							"id": "run",
+							"kind": "run",
+							"startedAt": 1,
+							"fromTipId": null,
+							"status": "open",
+							"runningTools": [
+								{
+									"status": "running",
+									"toolCallId": "call-0",
+									"toolName": "tool-0",
+									"args": {
+										"index": 0
+									}
+								},
+								{
+									"status": "running",
+									"toolCallId": "call-1",
+									"toolName": "tool-1",
+									"args": {
+										"index": 1
+									}
+								},
+								{
+									"status": "running",
+									"toolCallId": "call-2",
+									"toolName": "tool-2",
+									"args": {
+										"index": 2
+									}
+								}
+							]
+						},
+						"stats": {
+							"messageCount": 0,
+							"usage": {
+								"input": 0
+							}
+						},
+						"faulted": false
+					}
+				},
+				{
+					"event": {
+						"type": "tool_start",
+						"lane": "main",
+						"runId": "run",
+						"turnId": "turn",
+						"toolCallId": "call-0",
+						"toolName": "tool-0",
+						"args": {
+							"index": 0
+						}
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": null,
+						"transcript": [],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [],
+						"operation": {
+							"id": "run",
+							"kind": "run",
+							"startedAt": 1,
+							"fromTipId": null,
+							"status": "open",
+							"runningTools": [
+								{
+									"status": "running",
+									"toolCallId": "call-0",
+									"toolName": "tool-0",
+									"args": {
+										"index": 0
+									}
+								},
+								{
+									"status": "running",
+									"toolCallId": "call-1",
+									"toolName": "tool-1",
+									"args": {
+										"index": 1
+									}
+								},
+								{
+									"status": "running",
+									"toolCallId": "call-2",
+									"toolName": "tool-2",
+									"args": {
+										"index": 2
+									}
+								}
+							]
+						},
+						"stats": {
+							"messageCount": 0,
+							"usage": {
+								"input": 0
+							}
+						},
+						"faulted": false
+					}
+				},
+				{
+					"event": {
+						"type": "tool_update",
+						"lane": "main",
+						"runId": "stale",
+						"turnId": "turn",
+						"toolCallId": "call-1",
+						"toolName": "tool-1",
+						"partialResult": {
+							"content": [
+								{
+									"type": "text",
+									"text": "stale"
+								}
+							],
+							"details": {
+								"text": "stale"
+							}
+						}
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": null,
+						"transcript": [],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [],
+						"operation": {
+							"id": "run",
+							"kind": "run",
+							"startedAt": 1,
+							"fromTipId": null,
+							"status": "open",
+							"runningTools": [
+								{
+									"status": "running",
+									"toolCallId": "call-0",
+									"toolName": "tool-0",
+									"args": {
+										"index": 0
+									}
+								},
+								{
+									"status": "running",
+									"toolCallId": "call-1",
+									"toolName": "tool-1",
+									"args": {
+										"index": 1
+									}
+								},
+								{
+									"status": "running",
+									"toolCallId": "call-2",
+									"toolName": "tool-2",
+									"args": {
+										"index": 2
+									}
+								}
+							]
+						},
+						"stats": {
+							"messageCount": 0,
+							"usage": {
+								"input": 0
+							}
+						},
+						"faulted": false
+					}
+				},
+				{
+					"event": {
+						"type": "tool_update",
+						"lane": "main",
+						"runId": "run",
+						"turnId": "turn",
+						"toolCallId": "call-1",
+						"toolName": "tool-1",
+						"partialResult": {
+							"content": [
+								{
+									"type": "text",
+									"text": "partial"
+								}
+							],
+							"details": {
+								"text": "partial"
+							}
+						}
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": null,
+						"transcript": [],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [],
+						"operation": {
+							"id": "run",
+							"kind": "run",
+							"startedAt": 1,
+							"fromTipId": null,
+							"status": "open",
+							"runningTools": [
+								{
+									"status": "running",
+									"toolCallId": "call-0",
+									"toolName": "tool-0",
+									"args": {
+										"index": 0
+									}
+								},
+								{
+									"status": "running",
+									"toolCallId": "call-1",
+									"toolName": "tool-1",
+									"args": {
+										"index": 1
+									},
+									"result": {
+										"content": [
+											{
+												"type": "text",
+												"text": "partial"
+											}
+										],
+										"details": {
+											"text": "partial"
+										}
+									}
+								},
+								{
+									"status": "running",
+									"toolCallId": "call-2",
+									"toolName": "tool-2",
+									"args": {
+										"index": 2
+									}
+								}
+							]
+						},
+						"stats": {
+							"messageCount": 0,
+							"usage": {
+								"input": 0
+							}
+						},
+						"faulted": false
+					}
+				},
+				{
+					"event": {
+						"type": "tool_end",
+						"lane": "main",
+						"runId": "run",
+						"turnId": "turn",
+						"toolCallId": "call-2",
+						"toolName": "tool-2",
+						"result": {
+							"content": [
+								{
+									"type": "text",
+									"text": "done-2"
+								}
+							],
+							"details": {
+								"text": "done-2"
+							}
+						},
+						"isError": false,
+						"terminate": false
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": null,
+						"transcript": [],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [],
+						"operation": {
+							"id": "run",
+							"kind": "run",
+							"startedAt": 1,
+							"fromTipId": null,
+							"status": "open",
+							"runningTools": [
+								{
+									"status": "running",
+									"toolCallId": "call-0",
+									"toolName": "tool-0",
+									"args": {
+										"index": 0
+									}
+								},
+								{
+									"status": "running",
+									"toolCallId": "call-1",
+									"toolName": "tool-1",
+									"args": {
+										"index": 1
+									},
+									"result": {
+										"content": [
+											{
+												"type": "text",
+												"text": "partial"
+											}
+										],
+										"details": {
+											"text": "partial"
+										}
+									}
+								},
+								{
+									"status": "settled",
+									"toolCallId": "call-2",
+									"toolName": "tool-2",
+									"args": {
+										"index": 2
+									},
+									"result": {
+										"content": [
+											{
+												"type": "text",
+												"text": "done-2"
+											}
+										],
+										"details": {
+											"text": "done-2"
+										}
+									},
+									"isError": false
+								}
+							]
+						},
+						"stats": {
+							"messageCount": 0,
+							"usage": {
+								"input": 0
+							}
+						},
+						"faulted": false
+					}
+				},
+				{
+					"event": {
+						"type": "tool_update",
+						"lane": "main",
+						"runId": "run",
+						"turnId": "turn",
+						"toolCallId": "call-2",
+						"toolName": "tool-2",
+						"partialResult": {
+							"content": [
+								{
+									"type": "text",
+									"text": "after-end"
+								}
+							],
+							"details": {
+								"text": "after-end"
+							}
+						}
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": null,
+						"transcript": [],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [],
+						"operation": {
+							"id": "run",
+							"kind": "run",
+							"startedAt": 1,
+							"fromTipId": null,
+							"status": "open",
+							"runningTools": [
+								{
+									"status": "running",
+									"toolCallId": "call-0",
+									"toolName": "tool-0",
+									"args": {
+										"index": 0
+									}
+								},
+								{
+									"status": "running",
+									"toolCallId": "call-1",
+									"toolName": "tool-1",
+									"args": {
+										"index": 1
+									},
+									"result": {
+										"content": [
+											{
+												"type": "text",
+												"text": "partial"
+											}
+										],
+										"details": {
+											"text": "partial"
+										}
+									}
+								},
+								{
+									"status": "settled",
+									"toolCallId": "call-2",
+									"toolName": "tool-2",
+									"args": {
+										"index": 2
+									},
+									"result": {
+										"content": [
+											{
+												"type": "text",
+												"text": "done-2"
+											}
+										],
+										"details": {
+											"text": "done-2"
+										}
+									},
+									"isError": false
+								}
+							]
+						},
+						"stats": {
+							"messageCount": 0,
+							"usage": {
+								"input": 0
+							}
+						},
+						"faulted": false
+					}
+				},
+				{
+					"event": {
+						"type": "tool_end",
+						"lane": "main",
+						"runId": "run",
+						"turnId": "turn",
+						"toolCallId": "call-0",
+						"toolName": "tool-0",
+						"result": {
+							"content": [
+								{
+									"type": "text",
+									"text": "done-0"
+								}
+							],
+							"details": {
+								"text": "done-0"
+							}
+						},
+						"isError": false,
+						"terminate": false
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": null,
+						"transcript": [],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [],
+						"operation": {
+							"id": "run",
+							"kind": "run",
+							"startedAt": 1,
+							"fromTipId": null,
+							"status": "open",
+							"runningTools": [
+								{
+									"status": "settled",
+									"toolCallId": "call-0",
+									"toolName": "tool-0",
+									"args": {
+										"index": 0
+									},
+									"result": {
+										"content": [
+											{
+												"type": "text",
+												"text": "done-0"
+											}
+										],
+										"details": {
+											"text": "done-0"
+										}
+									},
+									"isError": false
+								},
+								{
+									"status": "running",
+									"toolCallId": "call-1",
+									"toolName": "tool-1",
+									"args": {
+										"index": 1
+									},
+									"result": {
+										"content": [
+											{
+												"type": "text",
+												"text": "partial"
+											}
+										],
+										"details": {
+											"text": "partial"
+										}
+									}
+								},
+								{
+									"status": "settled",
+									"toolCallId": "call-2",
+									"toolName": "tool-2",
+									"args": {
+										"index": 2
+									},
+									"result": {
+										"content": [
+											{
+												"type": "text",
+												"text": "done-2"
+											}
+										],
+										"details": {
+											"text": "done-2"
+										}
+									},
+									"isError": false
+								}
+							]
+						},
+						"stats": {
+							"messageCount": 0,
+							"usage": {
+								"input": 0
+							}
+						},
+						"faulted": false
+					}
+				},
+				{
+					"event": {
+						"type": "entry_added",
+						"lane": "main",
+						"entry": {
+							"id": "result-0",
+							"parentId": null,
+							"seq": 1,
+							"timestamp": 1,
+							"type": "message",
+							"message": {
+								"role": "toolResult",
+								"toolCallId": "call-0",
+								"toolName": "tool-0",
+								"content": [
+									{
+										"type": "text",
+										"text": "done-0"
+									}
+								],
+								"isError": false,
+								"timestamp": 1
+							}
+						}
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": "result-0",
+						"transcript": [
+							{
+								"id": "result-0",
+								"parentId": null,
+								"seq": 1,
+								"timestamp": 1,
+								"type": "message",
+								"message": {
+									"role": "toolResult",
+									"toolCallId": "call-0",
+									"toolName": "tool-0",
+									"content": [
+										{
+											"type": "text",
+											"text": "done-0"
+										}
+									],
+									"isError": false,
+									"timestamp": 1
+								}
+							}
+						],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [],
+						"operation": {
+							"id": "run",
+							"kind": "run",
+							"startedAt": 1,
+							"fromTipId": null,
+							"status": "open",
+							"runningTools": [
+								{
+									"status": "running",
+									"toolCallId": "call-1",
+									"toolName": "tool-1",
+									"args": {
+										"index": 1
+									},
+									"result": {
+										"content": [
+											{
+												"type": "text",
+												"text": "partial"
+											}
+										],
+										"details": {
+											"text": "partial"
+										}
+									}
+								},
+								{
+									"status": "settled",
+									"toolCallId": "call-2",
+									"toolName": "tool-2",
+									"args": {
+										"index": 2
+									},
+									"result": {
+										"content": [
+											{
+												"type": "text",
+												"text": "done-2"
+											}
+										],
+										"details": {
+											"text": "done-2"
+										}
+									},
+									"isError": false
+								}
+							]
+						},
+						"stats": {
+							"messageCount": 1,
+							"usage": {
+								"input": 0
+							}
+						},
+						"faulted": false
+					}
+				},
+				{
+					"event": {
+						"type": "tool_end",
+						"lane": "main",
+						"runId": "run",
+						"turnId": "turn",
+						"toolCallId": "call-1",
+						"toolName": "tool-1",
+						"result": {
+							"content": [
+								{
+									"type": "text",
+									"text": "done-1"
+								}
+							],
+							"details": {
+								"text": "done-1"
+							}
+						},
+						"isError": true,
+						"terminate": false
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": "result-0",
+						"transcript": [
+							{
+								"id": "result-0",
+								"parentId": null,
+								"seq": 1,
+								"timestamp": 1,
+								"type": "message",
+								"message": {
+									"role": "toolResult",
+									"toolCallId": "call-0",
+									"toolName": "tool-0",
+									"content": [
+										{
+											"type": "text",
+											"text": "done-0"
+										}
+									],
+									"isError": false,
+									"timestamp": 1
+								}
+							}
+						],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [],
+						"operation": {
+							"id": "run",
+							"kind": "run",
+							"startedAt": 1,
+							"fromTipId": null,
+							"status": "open",
+							"runningTools": [
+								{
+									"status": "settled",
+									"toolCallId": "call-1",
+									"toolName": "tool-1",
+									"args": {
+										"index": 1
+									},
+									"result": {
+										"content": [
+											{
+												"type": "text",
+												"text": "done-1"
+											}
+										],
+										"details": {
+											"text": "done-1"
+										}
+									},
+									"isError": true
+								},
+								{
+									"status": "settled",
+									"toolCallId": "call-2",
+									"toolName": "tool-2",
+									"args": {
+										"index": 2
+									},
+									"result": {
+										"content": [
+											{
+												"type": "text",
+												"text": "done-2"
+											}
+										],
+										"details": {
+											"text": "done-2"
+										}
+									},
+									"isError": false
+								}
+							]
+						},
+						"stats": {
+							"messageCount": 1,
+							"usage": {
+								"input": 0
+							}
+						},
+						"faulted": false
+					}
+				},
+				{
+					"event": {
+						"type": "entry_added",
+						"lane": "main",
+						"entry": {
+							"id": "result-1",
+							"parentId": "result-0",
+							"seq": 2,
+							"timestamp": 2,
+							"type": "message",
+							"message": {
+								"role": "toolResult",
+								"toolCallId": "call-1",
+								"toolName": "tool-1",
+								"content": [
+									{
+										"type": "text",
+										"text": "done-1"
+									}
+								],
+								"isError": false,
+								"timestamp": 2
+							}
+						}
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": "result-1",
+						"transcript": [
+							{
+								"id": "result-0",
+								"parentId": null,
+								"seq": 1,
+								"timestamp": 1,
+								"type": "message",
+								"message": {
+									"role": "toolResult",
+									"toolCallId": "call-0",
+									"toolName": "tool-0",
+									"content": [
+										{
+											"type": "text",
+											"text": "done-0"
+										}
+									],
+									"isError": false,
+									"timestamp": 1
+								}
+							},
+							{
+								"id": "result-1",
+								"parentId": "result-0",
+								"seq": 2,
+								"timestamp": 2,
+								"type": "message",
+								"message": {
+									"role": "toolResult",
+									"toolCallId": "call-1",
+									"toolName": "tool-1",
+									"content": [
+										{
+											"type": "text",
+											"text": "done-1"
+										}
+									],
+									"isError": false,
+									"timestamp": 2
+								}
+							}
+						],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [],
+						"operation": {
+							"id": "run",
+							"kind": "run",
+							"startedAt": 1,
+							"fromTipId": null,
+							"status": "open",
+							"runningTools": [
+								{
+									"status": "settled",
+									"toolCallId": "call-2",
+									"toolName": "tool-2",
+									"args": {
+										"index": 2
+									},
+									"result": {
+										"content": [
+											{
+												"type": "text",
+												"text": "done-2"
+											}
+										],
+										"details": {
+											"text": "done-2"
+										}
+									},
+									"isError": false
+								}
+							]
+						},
+						"stats": {
+							"messageCount": 2,
+							"usage": {
+								"input": 0
+							}
+						},
+						"faulted": false
+					}
+				},
+				{
+					"event": {
+						"type": "entry_added",
+						"lane": "main",
+						"entry": {
+							"id": "result-2",
+							"parentId": "result-1",
+							"seq": 3,
+							"timestamp": 3,
+							"type": "message",
+							"message": {
+								"role": "toolResult",
+								"toolCallId": "call-2",
+								"toolName": "tool-2",
+								"content": [
+									{
+										"type": "text",
+										"text": "done-2"
+									}
+								],
+								"isError": false,
+								"timestamp": 3
+							}
+						}
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": "result-2",
+						"transcript": [
+							{
+								"id": "result-0",
+								"parentId": null,
+								"seq": 1,
+								"timestamp": 1,
+								"type": "message",
+								"message": {
+									"role": "toolResult",
+									"toolCallId": "call-0",
+									"toolName": "tool-0",
+									"content": [
+										{
+											"type": "text",
+											"text": "done-0"
+										}
+									],
+									"isError": false,
+									"timestamp": 1
+								}
+							},
+							{
+								"id": "result-1",
+								"parentId": "result-0",
+								"seq": 2,
+								"timestamp": 2,
+								"type": "message",
+								"message": {
+									"role": "toolResult",
+									"toolCallId": "call-1",
+									"toolName": "tool-1",
+									"content": [
+										{
+											"type": "text",
+											"text": "done-1"
+										}
+									],
+									"isError": false,
+									"timestamp": 2
+								}
+							},
+							{
+								"id": "result-2",
+								"parentId": "result-1",
+								"seq": 3,
+								"timestamp": 3,
+								"type": "message",
+								"message": {
+									"role": "toolResult",
+									"toolCallId": "call-2",
+									"toolName": "tool-2",
+									"content": [
+										{
+											"type": "text",
+											"text": "done-2"
+										}
+									],
+									"isError": false,
+									"timestamp": 3
+								}
+							}
+						],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [],
+						"operation": {
+							"id": "run",
+							"kind": "run",
+							"startedAt": 1,
+							"fromTipId": null,
+							"status": "open",
+							"runningTools": []
+						},
+						"stats": {
+							"messageCount": 3,
+							"usage": {
+								"input": 0
+							}
+						},
+						"faulted": false
+					}
+				},
+				{
+					"event": {
+						"type": "tool_end",
+						"lane": "main",
+						"runId": "run",
+						"turnId": "turn",
+						"toolCallId": "call-3",
+						"toolName": "tool-3",
+						"result": {
+							"content": [
+								{
+									"type": "text",
+									"text": "done-3"
+								}
+							],
+							"details": {
+								"text": "done-3"
+							}
+						},
+						"isError": false,
+						"terminate": false
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": "result-2",
+						"transcript": [
+							{
+								"id": "result-0",
+								"parentId": null,
+								"seq": 1,
+								"timestamp": 1,
+								"type": "message",
+								"message": {
+									"role": "toolResult",
+									"toolCallId": "call-0",
+									"toolName": "tool-0",
+									"content": [
+										{
+											"type": "text",
+											"text": "done-0"
+										}
+									],
+									"isError": false,
+									"timestamp": 1
+								}
+							},
+							{
+								"id": "result-1",
+								"parentId": "result-0",
+								"seq": 2,
+								"timestamp": 2,
+								"type": "message",
+								"message": {
+									"role": "toolResult",
+									"toolCallId": "call-1",
+									"toolName": "tool-1",
+									"content": [
+										{
+											"type": "text",
+											"text": "done-1"
+										}
+									],
+									"isError": false,
+									"timestamp": 2
+								}
+							},
+							{
+								"id": "result-2",
+								"parentId": "result-1",
+								"seq": 3,
+								"timestamp": 3,
+								"type": "message",
+								"message": {
+									"role": "toolResult",
+									"toolCallId": "call-2",
+									"toolName": "tool-2",
+									"content": [
+										{
+											"type": "text",
+											"text": "done-2"
+										}
+									],
+									"isError": false,
+									"timestamp": 3
+								}
+							}
+						],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [],
+						"operation": {
+							"id": "run",
+							"kind": "run",
+							"startedAt": 1,
+							"fromTipId": null,
+							"status": "open",
+							"runningTools": []
+						},
+						"stats": {
+							"messageCount": 3,
+							"usage": {
+								"input": 0
+							}
+						},
+						"faulted": false
+					}
+				},
+				{
+					"event": {
+						"type": "tool_start",
+						"lane": "main",
+						"runId": "other",
+						"turnId": "turn",
+						"toolCallId": "call-4",
+						"toolName": "tool-4",
+						"args": {
+							"index": 4
+						}
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": "result-2",
+						"transcript": [
+							{
+								"id": "result-0",
+								"parentId": null,
+								"seq": 1,
+								"timestamp": 1,
+								"type": "message",
+								"message": {
+									"role": "toolResult",
+									"toolCallId": "call-0",
+									"toolName": "tool-0",
+									"content": [
+										{
+											"type": "text",
+											"text": "done-0"
+										}
+									],
+									"isError": false,
+									"timestamp": 1
+								}
+							},
+							{
+								"id": "result-1",
+								"parentId": "result-0",
+								"seq": 2,
+								"timestamp": 2,
+								"type": "message",
+								"message": {
+									"role": "toolResult",
+									"toolCallId": "call-1",
+									"toolName": "tool-1",
+									"content": [
+										{
+											"type": "text",
+											"text": "done-1"
+										}
+									],
+									"isError": false,
+									"timestamp": 2
+								}
+							},
+							{
+								"id": "result-2",
+								"parentId": "result-1",
+								"seq": 3,
+								"timestamp": 3,
+								"type": "message",
+								"message": {
+									"role": "toolResult",
+									"toolCallId": "call-2",
+									"toolName": "tool-2",
+									"content": [
+										{
+											"type": "text",
+											"text": "done-2"
+										}
+									],
+									"isError": false,
+									"timestamp": 3
+								}
+							}
+						],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [],
+						"operation": {
+							"id": "run",
+							"kind": "run",
+							"startedAt": 1,
+							"fromTipId": null,
+							"status": "open",
+							"runningTools": []
+						},
+						"stats": {
+							"messageCount": 3,
+							"usage": {
+								"input": 0
+							}
+						},
+						"faulted": false
+					}
+				},
+				{
+					"event": {
+						"type": "tool_start",
+						"lane": "side",
+						"runId": "run",
+						"turnId": "turn",
+						"toolCallId": "call-5",
+						"toolName": "tool-5",
+						"args": {
+							"index": 5
+						}
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": "result-2",
+						"transcript": [
+							{
+								"id": "result-0",
+								"parentId": null,
+								"seq": 1,
+								"timestamp": 1,
+								"type": "message",
+								"message": {
+									"role": "toolResult",
+									"toolCallId": "call-0",
+									"toolName": "tool-0",
+									"content": [
+										{
+											"type": "text",
+											"text": "done-0"
+										}
+									],
+									"isError": false,
+									"timestamp": 1
+								}
+							},
+							{
+								"id": "result-1",
+								"parentId": "result-0",
+								"seq": 2,
+								"timestamp": 2,
+								"type": "message",
+								"message": {
+									"role": "toolResult",
+									"toolCallId": "call-1",
+									"toolName": "tool-1",
+									"content": [
+										{
+											"type": "text",
+											"text": "done-1"
+										}
+									],
+									"isError": false,
+									"timestamp": 2
+								}
+							},
+							{
+								"id": "result-2",
+								"parentId": "result-1",
+								"seq": 3,
+								"timestamp": 3,
+								"type": "message",
+								"message": {
+									"role": "toolResult",
+									"toolCallId": "call-2",
+									"toolName": "tool-2",
+									"content": [
+										{
+											"type": "text",
+											"text": "done-2"
+										}
+									],
+									"isError": false,
+									"timestamp": 3
+								}
+							}
+						],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [],
+						"operation": {
+							"id": "run",
+							"kind": "run",
+							"startedAt": 1,
+							"fromTipId": null,
+							"status": "open",
+							"runningTools": []
+						},
+						"stats": {
+							"messageCount": 3,
+							"usage": {
+								"input": 0
+							}
+						},
+						"faulted": false
+					}
+				}
+			]
+		},
+		"navigation": {
+			"snapshot": {
+				"lane": "main",
+				"tipId": null,
+				"transcript": [],
+				"configuration": {
+					"model": {
+						"provider": "p",
+						"modelId": "m"
+					},
+					"thinkingLevel": "off",
+					"activeToolNames": [
+						"a"
+					]
+				},
+				"queues": [],
+				"operation": null,
+				"stats": {
+					"messageCount": 0,
+					"usage": {
+						"input": 0
+					}
+				},
+				"faulted": false
+			},
+			"steps": [
+				{
+					"event": {
+						"type": "navigation_start",
+						"lane": "main",
+						"runId": "nav",
+						"startedAt": 4
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": null,
+						"transcript": [],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [],
+						"operation": {
+							"id": "nav",
+							"kind": "navigation",
+							"startedAt": 4,
+							"fromTipId": null,
+							"status": "open",
+							"runningTools": []
+						},
+						"stats": {
+							"messageCount": 0,
+							"usage": {
+								"input": 0
+							}
+						},
+						"faulted": false
+					}
+				},
+				{
+					"event": {
+						"type": "operation_abort",
+						"lane": "main",
+						"operationId": "other"
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": null,
+						"transcript": [],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [],
+						"operation": {
+							"id": "nav",
+							"kind": "navigation",
+							"startedAt": 4,
+							"fromTipId": null,
+							"status": "open",
+							"runningTools": []
+						},
+						"stats": {
+							"messageCount": 0,
+							"usage": {
+								"input": 0
+							}
+						},
+						"faulted": false
+					}
+				},
+				{
+					"event": {
+						"type": "operation_abort",
+						"lane": "main",
+						"operationId": "nav"
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": null,
+						"transcript": [],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [],
+						"operation": {
+							"id": "nav",
+							"kind": "navigation",
+							"startedAt": 4,
+							"fromTipId": null,
+							"status": "aborting",
+							"runningTools": []
+						},
+						"stats": {
+							"messageCount": 0,
+							"usage": {
+								"input": 0
+							}
+						},
+						"faulted": false
+					}
+				},
+				{
+					"event": {
+						"type": "navigation_end",
+						"lane": "main",
+						"runId": "nav",
+						"status": "completed",
+						"fromTipId": null,
+						"tipId": "target",
+						"endedAt": 5
+					},
+					"reduction": "rebase",
+					"snapshot": {
+						"lane": "main",
+						"tipId": null,
+						"transcript": [],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [],
+						"operation": {
+							"id": "nav",
+							"kind": "navigation",
+							"startedAt": 4,
+							"fromTipId": null,
+							"status": "aborting",
+							"runningTools": []
+						},
+						"stats": {
+							"messageCount": 0,
+							"usage": {
+								"input": 0
+							}
+						},
+						"faulted": false
+					}
+				}
+			]
+		},
+		"run_lifecycle": {
+			"snapshot": {
+				"lane": "main",
+				"tipId": "t0",
+				"transcript": [],
+				"configuration": {
+					"model": {
+						"provider": "p",
+						"modelId": "m"
+					},
+					"thinkingLevel": "off",
+					"activeToolNames": [
+						"a"
+					]
+				},
+				"queues": [],
+				"operation": null,
+				"stats": {
+					"messageCount": 0,
+					"usage": {
+						"input": 0
+					}
+				},
+				"faulted": false
+			},
+			"steps": [
+				{
+					"event": {
+						"type": "run_start",
+						"lane": "main",
+						"runId": "r1",
+						"startedAt": 10
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": "t0",
+						"transcript": [],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [],
+						"operation": {
+							"id": "r1",
+							"kind": "run",
+							"startedAt": 10,
+							"fromTipId": "t0",
+							"status": "open",
+							"runningTools": []
+						},
+						"stats": {
+							"messageCount": 0,
+							"usage": {
+								"input": 0
+							}
+						},
+						"faulted": false
+					}
+				},
+				{
+					"event": {
+						"type": "retry_scheduled",
+						"lane": "main",
+						"runId": "r1",
+						"attempt": 1,
+						"maxAttempts": 3,
+						"notBefore": 99
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": "t0",
+						"transcript": [],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [],
+						"operation": {
+							"id": "r1",
+							"kind": "run",
+							"startedAt": 10,
+							"fromTipId": "t0",
+							"status": "open",
+							"runningTools": [],
+							"retry": {
+								"attempt": 1,
+								"maxAttempts": 3,
+								"nextAttemptAt": 99
+							}
+						},
+						"stats": {
+							"messageCount": 0,
+							"usage": {
+								"input": 0
+							}
+						},
+						"faulted": false
+					}
+				},
+				{
+					"event": {
+						"type": "retry_scheduled",
+						"lane": "main",
+						"runId": "zz",
+						"attempt": 2,
+						"maxAttempts": 3,
+						"notBefore": 100
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": "t0",
+						"transcript": [],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [],
+						"operation": {
+							"id": "r1",
+							"kind": "run",
+							"startedAt": 10,
+							"fromTipId": "t0",
+							"status": "open",
+							"runningTools": [],
+							"retry": {
+								"attempt": 1,
+								"maxAttempts": 3,
+								"nextAttemptAt": 99
+							}
+						},
+						"stats": {
+							"messageCount": 0,
+							"usage": {
+								"input": 0
+							}
+						},
+						"faulted": false
+					}
+				},
+				{
+					"event": {
+						"type": "retry_start",
+						"lane": "main",
+						"runId": "r1"
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": "t0",
+						"transcript": [],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [],
+						"operation": {
+							"id": "r1",
+							"kind": "run",
+							"startedAt": 10,
+							"fromTipId": "t0",
+							"status": "open",
+							"runningTools": []
+						},
+						"stats": {
+							"messageCount": 0,
+							"usage": {
+								"input": 0
+							}
+						},
+						"faulted": false
+					}
+				},
+				{
+					"event": {
+						"type": "retry_scheduled",
+						"lane": "main",
+						"runId": "r1",
+						"attempt": 2,
+						"maxAttempts": 3,
+						"notBefore": 101
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": "t0",
+						"transcript": [],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [],
+						"operation": {
+							"id": "r1",
+							"kind": "run",
+							"startedAt": 10,
+							"fromTipId": "t0",
+							"status": "open",
+							"runningTools": [],
+							"retry": {
+								"attempt": 2,
+								"maxAttempts": 3,
+								"nextAttemptAt": 101
+							}
+						},
+						"stats": {
+							"messageCount": 0,
+							"usage": {
+								"input": 0
+							}
+						},
+						"faulted": false
+					}
+				},
+				{
+					"event": {
+						"type": "retry_end",
+						"lane": "main",
+						"runId": "r1"
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": "t0",
+						"transcript": [],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [],
+						"operation": {
+							"id": "r1",
+							"kind": "run",
+							"startedAt": 10,
+							"fromTipId": "t0",
+							"status": "open",
+							"runningTools": []
+						},
+						"stats": {
+							"messageCount": 0,
+							"usage": {
+								"input": 0
+							}
+						},
+						"faulted": false
+					}
+				},
+				{
+					"event": {
+						"type": "message_start",
+						"lane": "main",
+						"runId": "r1",
+						"message": {
+							"role": "assistant",
+							"content": [
+								{
+									"type": "text",
+									"text": "hi"
+								}
+							],
+							"stopReason": "pending",
+							"timestamp": 5
+						}
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": "t0",
+						"transcript": [],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [],
+						"operation": {
+							"id": "r1",
+							"kind": "run",
+							"startedAt": 10,
+							"fromTipId": "t0",
+							"status": "open",
+							"runningTools": [],
+							"streamingMessage": {
+								"role": "assistant",
+								"content": [
+									{
+										"type": "text",
+										"text": "hi"
+									}
+								],
+								"stopReason": "pending",
+								"timestamp": 5
+							}
+						},
+						"stats": {
+							"messageCount": 0,
+							"usage": {
+								"input": 0
+							}
+						},
+						"faulted": false
+					}
+				},
+				{
+					"event": {
+						"type": "message_update",
+						"lane": "main",
+						"runId": "r1",
+						"message": {
+							"role": "assistant",
+							"content": [
+								{
+									"type": "text",
+									"text": "hi there"
+								}
+							],
+							"stopReason": "pending",
+							"timestamp": 5
+						}
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": "t0",
+						"transcript": [],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [],
+						"operation": {
+							"id": "r1",
+							"kind": "run",
+							"startedAt": 10,
+							"fromTipId": "t0",
+							"status": "open",
+							"runningTools": [],
+							"streamingMessage": {
+								"role": "assistant",
+								"content": [
+									{
+										"type": "text",
+										"text": "hi there"
+									}
+								],
+								"stopReason": "pending",
+								"timestamp": 5
+							}
+						},
+						"stats": {
+							"messageCount": 0,
+							"usage": {
+								"input": 0
+							}
+						},
+						"faulted": false
+					}
+				},
+				{
+					"event": {
+						"type": "message_update",
+						"lane": "main",
+						"runId": "r1",
+						"message": {
+							"role": "user",
+							"content": "x",
+							"timestamp": 1
+						}
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": "t0",
+						"transcript": [],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [],
+						"operation": {
+							"id": "r1",
+							"kind": "run",
+							"startedAt": 10,
+							"fromTipId": "t0",
+							"status": "open",
+							"runningTools": [],
+							"streamingMessage": {
+								"role": "assistant",
+								"content": [
+									{
+										"type": "text",
+										"text": "hi there"
+									}
+								],
+								"stopReason": "pending",
+								"timestamp": 5
+							}
+						},
+						"stats": {
+							"messageCount": 0,
+							"usage": {
+								"input": 0
+							}
+						},
+						"faulted": false
+					}
+				},
+				{
+					"event": {
+						"type": "run_suspend",
+						"lane": "main",
+						"runId": "r1",
+						"deferred": {
+							"id": "d"
+						},
+						"poll": 2
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": "t0",
+						"transcript": [],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [],
+						"operation": {
+							"id": "r1",
+							"kind": "run",
+							"startedAt": 10,
+							"fromTipId": "t0",
+							"status": "open",
+							"runningTools": [],
+							"deferred": {
+								"handle": {
+									"id": "d"
+								},
+								"poll": 2
+							}
+						},
+						"stats": {
+							"messageCount": 0,
+							"usage": {
+								"input": 0
+							}
+						},
+						"faulted": false
+					}
+				},
+				{
+					"event": {
+						"type": "run_resume",
+						"lane": "main",
+						"runId": "r1"
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": "t0",
+						"transcript": [],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [],
+						"operation": {
+							"id": "r1",
+							"kind": "run",
+							"startedAt": 10,
+							"fromTipId": "t0",
+							"status": "open",
+							"runningTools": []
+						},
+						"stats": {
+							"messageCount": 0,
+							"usage": {
+								"input": 0
+							}
+						},
+						"faulted": false
+					}
+				},
+				{
+					"event": {
+						"type": "message_start",
+						"lane": "main",
+						"runId": "r1",
+						"message": {
+							"role": "assistant",
+							"content": [
+								{
+									"type": "text",
+									"text": "hi"
+								}
+							],
+							"stopReason": "stop",
+							"timestamp": 5
+						}
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": "t0",
+						"transcript": [],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [],
+						"operation": {
+							"id": "r1",
+							"kind": "run",
+							"startedAt": 10,
+							"fromTipId": "t0",
+							"status": "open",
+							"runningTools": []
+						},
+						"stats": {
+							"messageCount": 0,
+							"usage": {
+								"input": 0
+							}
+						},
+						"faulted": false
+					}
+				},
+				{
+					"event": {
+						"type": "message_start",
+						"lane": "main",
+						"message": {
+							"role": "assistant",
+							"content": [
+								{
+									"type": "text",
+									"text": "hi"
+								}
+							],
+							"stopReason": "pending",
+							"timestamp": 5
+						}
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": "t0",
+						"transcript": [],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [],
+						"operation": {
+							"id": "r1",
+							"kind": "run",
+							"startedAt": 10,
+							"fromTipId": "t0",
+							"status": "open",
+							"runningTools": []
+						},
+						"stats": {
+							"messageCount": 0,
+							"usage": {
+								"input": 0
+							}
+						},
+						"faulted": false
+					}
+				},
+				{
+					"event": {
+						"type": "message_start",
+						"lane": "main",
+						"runId": "r1",
+						"message": {
+							"role": "user",
+							"content": "u",
+							"stopReason": "pending",
+							"timestamp": 1
+						}
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": "t0",
+						"transcript": [],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [],
+						"operation": {
+							"id": "r1",
+							"kind": "run",
+							"startedAt": 10,
+							"fromTipId": "t0",
+							"status": "open",
+							"runningTools": []
+						},
+						"stats": {
+							"messageCount": 0,
+							"usage": {
+								"input": 0
+							}
+						},
+						"faulted": false
+					}
+				},
+				{
+					"event": {
+						"type": "message_end",
+						"lane": "main",
+						"message": {
+							"role": "assistant",
+							"content": [
+								{
+									"type": "text",
+									"text": "hi"
+								}
+							],
+							"stopReason": "stop",
+							"timestamp": 5
+						}
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": "t0",
+						"transcript": [],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [],
+						"operation": {
+							"id": "r1",
+							"kind": "run",
+							"startedAt": 10,
+							"fromTipId": "t0",
+							"status": "open",
+							"runningTools": []
+						},
+						"stats": {
+							"messageCount": 0,
+							"usage": {
+								"input": 0
+							}
+						},
+						"faulted": false
+					}
+				},
+				{
+					"event": {
+						"type": "message_end",
+						"lane": "main",
+						"runId": "r1",
+						"message": {
+							"role": "assistant",
+							"content": [
+								{
+									"type": "text",
+									"text": "hi"
+								}
+							],
+							"stopReason": "stop",
+							"timestamp": 5
+						}
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": "t0",
+						"transcript": [],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [],
+						"operation": {
+							"id": "r1",
+							"kind": "run",
+							"startedAt": 10,
+							"fromTipId": "t0",
+							"status": "open",
+							"runningTools": []
+						},
+						"stats": {
+							"messageCount": 0,
+							"usage": {
+								"input": 0
+							}
+						},
+						"faulted": false
+					}
+				},
+				{
+					"event": {
+						"type": "entry_added",
+						"lane": "main",
+						"entry": {
+							"id": "e1",
+							"parentId": "t0",
+							"seq": 1,
+							"timestamp": 1,
+							"type": "message",
+							"message": {
+								"role": "assistant",
+								"content": [
+									{
+										"type": "text",
+										"text": "hi"
+									}
+								],
+								"stopReason": "stop",
+								"timestamp": 5
+							}
+						}
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": "e1",
+						"transcript": [
+							{
+								"id": "e1",
+								"parentId": "t0",
+								"seq": 1,
+								"timestamp": 1,
+								"type": "message",
+								"message": {
+									"role": "assistant",
+									"content": [
+										{
+											"type": "text",
+											"text": "hi"
+										}
+									],
+									"stopReason": "stop",
+									"timestamp": 5
+								}
+							}
+						],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [],
+						"operation": {
+							"id": "r1",
+							"kind": "run",
+							"startedAt": 10,
+							"fromTipId": "t0",
+							"status": "open",
+							"runningTools": []
+						},
+						"stats": {
+							"messageCount": 1,
+							"usage": {
+								"input": 0
+							}
+						},
+						"faulted": false
+					}
+				},
+				{
+					"event": {
+						"type": "entry_added",
+						"lane": "main",
+						"entry": {
+							"id": "c1",
+							"parentId": "e1",
+							"seq": 2,
+							"timestamp": 2,
+							"type": "custom",
+							"customType": "x"
+						}
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": "c1",
+						"transcript": [
+							{
+								"id": "e1",
+								"parentId": "t0",
+								"seq": 1,
+								"timestamp": 1,
+								"type": "message",
+								"message": {
+									"role": "assistant",
+									"content": [
+										{
+											"type": "text",
+											"text": "hi"
+										}
+									],
+									"stopReason": "stop",
+									"timestamp": 5
+								}
+							},
+							{
+								"id": "c1",
+								"parentId": "e1",
+								"seq": 2,
+								"timestamp": 2,
+								"type": "custom",
+								"customType": "x"
+							}
+						],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [],
+						"operation": {
+							"id": "r1",
+							"kind": "run",
+							"startedAt": 10,
+							"fromTipId": "t0",
+							"status": "open",
+							"runningTools": []
+						},
+						"stats": {
+							"messageCount": 1,
+							"usage": {
+								"input": 0
+							}
+						},
+						"faulted": false
+					}
+				},
+				{
+					"event": {
+						"type": "compaction_start",
+						"lane": "main",
+						"runId": "r1",
+						"reason": "threshold",
+						"startedAt": 11
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": "c1",
+						"transcript": [
+							{
+								"id": "e1",
+								"parentId": "t0",
+								"seq": 1,
+								"timestamp": 1,
+								"type": "message",
+								"message": {
+									"role": "assistant",
+									"content": [
+										{
+											"type": "text",
+											"text": "hi"
+										}
+									],
+									"stopReason": "stop",
+									"timestamp": 5
+								}
+							},
+							{
+								"id": "c1",
+								"parentId": "e1",
+								"seq": 2,
+								"timestamp": 2,
+								"type": "custom",
+								"customType": "x"
+							}
+						],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [],
+						"operation": {
+							"id": "r1",
+							"kind": "run",
+							"startedAt": 10,
+							"fromTipId": "t0",
+							"status": "open",
+							"runningTools": []
+						},
+						"stats": {
+							"messageCount": 1,
+							"usage": {
+								"input": 0
+							}
+						},
+						"faulted": false
+					}
+				},
+				{
+					"event": {
+						"type": "run_end",
+						"lane": "main",
+						"runId": "other",
+						"status": "completed",
+						"fromTipId": "t0",
+						"tipId": "zz",
+						"endedAt": 12
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": "c1",
+						"transcript": [
+							{
+								"id": "e1",
+								"parentId": "t0",
+								"seq": 1,
+								"timestamp": 1,
+								"type": "message",
+								"message": {
+									"role": "assistant",
+									"content": [
+										{
+											"type": "text",
+											"text": "hi"
+										}
+									],
+									"stopReason": "stop",
+									"timestamp": 5
+								}
+							},
+							{
+								"id": "c1",
+								"parentId": "e1",
+								"seq": 2,
+								"timestamp": 2,
+								"type": "custom",
+								"customType": "x"
+							}
+						],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [],
+						"operation": {
+							"id": "r1",
+							"kind": "run",
+							"startedAt": 10,
+							"fromTipId": "t0",
+							"status": "open",
+							"runningTools": []
+						},
+						"stats": {
+							"messageCount": 1,
+							"usage": {
+								"input": 0
+							}
+						},
+						"faulted": false
+					}
+				},
+				{
+					"event": {
+						"type": "run_end",
+						"lane": "main",
+						"runId": "r1",
+						"status": "failed",
+						"error": "boom",
+						"fromTipId": "t0",
+						"tipId": "c1",
+						"endedAt": 13
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": "c1",
+						"transcript": [
+							{
+								"id": "e1",
+								"parentId": "t0",
+								"seq": 1,
+								"timestamp": 1,
+								"type": "message",
+								"message": {
+									"role": "assistant",
+									"content": [
+										{
+											"type": "text",
+											"text": "hi"
+										}
+									],
+									"stopReason": "stop",
+									"timestamp": 5
+								}
+							},
+							{
+								"id": "c1",
+								"parentId": "e1",
+								"seq": 2,
+								"timestamp": 2,
+								"type": "custom",
+								"customType": "x"
+							}
+						],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [],
+						"operation": null,
+						"stats": {
+							"messageCount": 1,
+							"usage": {
+								"input": 0
+							}
+						},
+						"faulted": false,
+						"lastResult": {
+							"operationId": "r1",
+							"kind": "run",
+							"status": "failed",
+							"error": "boom",
+							"fromTipId": "t0",
+							"tipId": "c1",
+							"startedAt": 10,
+							"endedAt": 13
+						}
+					}
+				},
+				{
+					"event": {
+						"type": "run_start",
+						"lane": "main",
+						"runId": "r2",
+						"startedAt": 14
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": "c1",
+						"transcript": [
+							{
+								"id": "e1",
+								"parentId": "t0",
+								"seq": 1,
+								"timestamp": 1,
+								"type": "message",
+								"message": {
+									"role": "assistant",
+									"content": [
+										{
+											"type": "text",
+											"text": "hi"
+										}
+									],
+									"stopReason": "stop",
+									"timestamp": 5
+								}
+							},
+							{
+								"id": "c1",
+								"parentId": "e1",
+								"seq": 2,
+								"timestamp": 2,
+								"type": "custom",
+								"customType": "x"
+							}
+						],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [],
+						"operation": {
+							"id": "r2",
+							"kind": "run",
+							"startedAt": 14,
+							"fromTipId": "c1",
+							"status": "open",
+							"runningTools": []
+						},
+						"stats": {
+							"messageCount": 1,
+							"usage": {
+								"input": 0
+							}
+						},
+						"faulted": false,
+						"lastResult": {
+							"operationId": "r1",
+							"kind": "run",
+							"status": "failed",
+							"error": "boom",
+							"fromTipId": "t0",
+							"tipId": "c1",
+							"startedAt": 10,
+							"endedAt": 13
+						}
+					}
+				},
+				{
+					"event": {
+						"type": "run_end",
+						"lane": "main",
+						"runId": "r2",
+						"status": "completed",
+						"error": "ignored",
+						"fromTipId": "c1",
+						"tipId": "c9",
+						"endedAt": 15
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": "c9",
+						"transcript": [
+							{
+								"id": "e1",
+								"parentId": "t0",
+								"seq": 1,
+								"timestamp": 1,
+								"type": "message",
+								"message": {
+									"role": "assistant",
+									"content": [
+										{
+											"type": "text",
+											"text": "hi"
+										}
+									],
+									"stopReason": "stop",
+									"timestamp": 5
+								}
+							},
+							{
+								"id": "c1",
+								"parentId": "e1",
+								"seq": 2,
+								"timestamp": 2,
+								"type": "custom",
+								"customType": "x"
+							}
+						],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [],
+						"operation": null,
+						"stats": {
+							"messageCount": 1,
+							"usage": {
+								"input": 0
+							}
+						},
+						"faulted": false,
+						"lastResult": {
+							"operationId": "r2",
+							"kind": "run",
+							"status": "completed",
+							"fromTipId": "c1",
+							"tipId": "c9",
+							"startedAt": 14,
+							"endedAt": 15
+						}
+					}
+				}
+			]
+		},
+		"compaction_lifecycle": {
+			"snapshot": {
+				"lane": "main",
+				"tipId": "t0",
+				"transcript": [
+					{
+						"id": "t0",
+						"parentId": null,
+						"seq": 1,
+						"timestamp": 1,
+						"type": "message",
+						"message": {
+							"role": "user",
+							"content": "x",
+							"timestamp": 1
+						}
+					}
+				],
+				"configuration": {
+					"model": {
+						"provider": "p",
+						"modelId": "m"
+					},
+					"thinkingLevel": "off",
+					"activeToolNames": [
+						"a"
+					]
+				},
+				"queues": [],
+				"operation": null,
+				"stats": {
+					"messageCount": 0,
+					"usage": {
+						"input": 0
+					}
+				},
+				"faulted": false
+			},
+			"steps": [
+				{
+					"event": {
+						"type": "compaction_start",
+						"lane": "main",
+						"runId": "k1",
+						"reason": "manual",
+						"startedAt": 20
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": "t0",
+						"transcript": [
+							{
+								"id": "t0",
+								"parentId": null,
+								"seq": 1,
+								"timestamp": 1,
+								"type": "message",
+								"message": {
+									"role": "user",
+									"content": "x",
+									"timestamp": 1
+								}
+							}
+						],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [],
+						"operation": {
+							"id": "k1",
+							"kind": "compaction",
+							"startedAt": 20,
+							"fromTipId": "t0",
+							"status": "open",
+							"runningTools": []
+						},
+						"stats": {
+							"messageCount": 0,
+							"usage": {
+								"input": 0
+							}
+						},
+						"faulted": false
+					}
+				},
+				{
+					"event": {
+						"type": "compaction_start",
+						"lane": "main",
+						"runId": "k2",
+						"reason": "manual",
+						"startedAt": 21
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": "t0",
+						"transcript": [
+							{
+								"id": "t0",
+								"parentId": null,
+								"seq": 1,
+								"timestamp": 1,
+								"type": "message",
+								"message": {
+									"role": "user",
+									"content": "x",
+									"timestamp": 1
+								}
+							}
+						],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [],
+						"operation": {
+							"id": "k1",
+							"kind": "compaction",
+							"startedAt": 20,
+							"fromTipId": "t0",
+							"status": "open",
+							"runningTools": []
+						},
+						"stats": {
+							"messageCount": 0,
+							"usage": {
+								"input": 0
+							}
+						},
+						"faulted": false
+					}
+				},
+				{
+					"event": {
+						"type": "entry_added",
+						"lane": "main",
+						"entry": {
+							"id": "s1",
+							"parentId": "t0",
+							"seq": 2,
+							"timestamp": 2,
+							"type": "compaction",
+							"summary": "sum"
+						}
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": "s1",
+						"transcript": [
+							{
+								"id": "s1",
+								"parentId": "t0",
+								"seq": 2,
+								"timestamp": 2,
+								"type": "compaction",
+								"summary": "sum"
+							}
+						],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [],
+						"operation": {
+							"id": "k1",
+							"kind": "compaction",
+							"startedAt": 20,
+							"fromTipId": "t0",
+							"status": "open",
+							"runningTools": []
+						},
+						"stats": {
+							"messageCount": 0,
+							"usage": {
+								"input": 0
+							}
+						},
+						"faulted": false
+					}
+				},
+				{
+					"event": {
+						"type": "run_end",
+						"lane": "main",
+						"runId": "k1",
+						"status": "completed",
+						"fromTipId": "t0",
+						"tipId": "zz",
+						"endedAt": 22
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": "s1",
+						"transcript": [
+							{
+								"id": "s1",
+								"parentId": "t0",
+								"seq": 2,
+								"timestamp": 2,
+								"type": "compaction",
+								"summary": "sum"
+							}
+						],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [],
+						"operation": {
+							"id": "k1",
+							"kind": "compaction",
+							"startedAt": 20,
+							"fromTipId": "t0",
+							"status": "open",
+							"runningTools": []
+						},
+						"stats": {
+							"messageCount": 0,
+							"usage": {
+								"input": 0
+							}
+						},
+						"faulted": false
+					}
+				},
+				{
+					"event": {
+						"type": "compaction_end",
+						"lane": "main",
+						"runId": "k1",
+						"reason": "manual",
+						"status": "failed",
+						"error": "nope",
+						"endedAt": 23
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": "s1",
+						"transcript": [
+							{
+								"id": "s1",
+								"parentId": "t0",
+								"seq": 2,
+								"timestamp": 2,
+								"type": "compaction",
+								"summary": "sum"
+							}
+						],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [],
+						"operation": null,
+						"stats": {
+							"messageCount": 0,
+							"usage": {
+								"input": 0
+							}
+						},
+						"faulted": false,
+						"lastResult": {
+							"operationId": "k1",
+							"kind": "compaction",
+							"status": "failed",
+							"error": "nope",
+							"fromTipId": "t0",
+							"tipId": "s1",
+							"startedAt": 20,
+							"endedAt": 23
+						}
+					}
+				},
+				{
+					"event": {
+						"type": "compaction_start",
+						"lane": "main",
+						"runId": "k3",
+						"reason": "manual",
+						"startedAt": 24
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": "s1",
+						"transcript": [
+							{
+								"id": "s1",
+								"parentId": "t0",
+								"seq": 2,
+								"timestamp": 2,
+								"type": "compaction",
+								"summary": "sum"
+							}
+						],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [],
+						"operation": {
+							"id": "k3",
+							"kind": "compaction",
+							"startedAt": 24,
+							"fromTipId": "s1",
+							"status": "open",
+							"runningTools": []
+						},
+						"stats": {
+							"messageCount": 0,
+							"usage": {
+								"input": 0
+							}
+						},
+						"faulted": false,
+						"lastResult": {
+							"operationId": "k1",
+							"kind": "compaction",
+							"status": "failed",
+							"error": "nope",
+							"fromTipId": "t0",
+							"tipId": "s1",
+							"startedAt": 20,
+							"endedAt": 23
+						}
+					}
+				},
+				{
+					"event": {
+						"type": "compaction_end",
+						"lane": "main",
+						"runId": "k3",
+						"reason": "manual",
+						"status": "completed",
+						"error": "dropped",
+						"endedAt": 25
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": "s1",
+						"transcript": [
+							{
+								"id": "s1",
+								"parentId": "t0",
+								"seq": 2,
+								"timestamp": 2,
+								"type": "compaction",
+								"summary": "sum"
+							}
+						],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [],
+						"operation": null,
+						"stats": {
+							"messageCount": 0,
+							"usage": {
+								"input": 0
+							}
+						},
+						"faulted": false,
+						"lastResult": {
+							"operationId": "k3",
+							"kind": "compaction",
+							"status": "completed",
+							"fromTipId": "s1",
+							"tipId": "s1",
+							"startedAt": 24,
+							"endedAt": 25
+						}
+					}
+				}
+			]
+		},
+		"lanes_config_and_misc": {
+			"snapshot": {
+				"lane": "main",
+				"tipId": null,
+				"transcript": [],
+				"configuration": {
+					"model": {
+						"provider": "p",
+						"modelId": "m"
+					},
+					"thinkingLevel": "off",
+					"activeToolNames": [
+						"a"
+					]
+				},
+				"queues": [],
+				"operation": {
+					"id": "run",
+					"kind": "run",
+					"startedAt": 1,
+					"fromTipId": null,
+					"status": "open",
+					"runningTools": []
+				},
+				"stats": {
+					"messageCount": 0,
+					"usage": {
+						"input": 0
+					}
+				},
+				"faulted": false
+			},
+			"steps": [
+				{
+					"event": {
+						"type": "run_start",
+						"lane": "side",
+						"runId": "x",
+						"startedAt": 1
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": null,
+						"transcript": [],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [],
+						"operation": {
+							"id": "run",
+							"kind": "run",
+							"startedAt": 1,
+							"fromTipId": null,
+							"status": "open",
+							"runningTools": []
+						},
+						"stats": {
+							"messageCount": 0,
+							"usage": {
+								"input": 0
+							}
+						},
+						"faulted": false
+					}
+				},
+				{
+					"event": {
+						"type": "usage",
+						"lane": "side",
+						"totals": {
+							"input": 7
+						}
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": null,
+						"transcript": [],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [],
+						"operation": {
+							"id": "run",
+							"kind": "run",
+							"startedAt": 1,
+							"fromTipId": null,
+							"status": "open",
+							"runningTools": []
+						},
+						"stats": {
+							"messageCount": 0,
+							"usage": {
+								"input": 7
+							}
+						},
+						"faulted": false
+					}
+				},
+				{
+					"event": {
+						"type": "usage",
+						"totals": {
+							"input": 9
+						}
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": null,
+						"transcript": [],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [],
+						"operation": {
+							"id": "run",
+							"kind": "run",
+							"startedAt": 1,
+							"fromTipId": null,
+							"status": "open",
+							"runningTools": []
+						},
+						"stats": {
+							"messageCount": 0,
+							"usage": {
+								"input": 9
+							}
+						},
+						"faulted": false
+					}
+				},
+				{
+					"event": {
+						"type": "queue_update",
+						"lane": "main",
+						"queues": [
+							{
+								"kind": "steer",
+								"entryId": "q1"
+							}
+						]
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": null,
+						"transcript": [],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [
+							{
+								"kind": "steer",
+								"entryId": "q1"
+							}
+						],
+						"operation": {
+							"id": "run",
+							"kind": "run",
+							"startedAt": 1,
+							"fromTipId": null,
+							"status": "open",
+							"runningTools": []
+						},
+						"stats": {
+							"messageCount": 0,
+							"usage": {
+								"input": 9
+							}
+						},
+						"faulted": false
+					}
+				},
+				{
+					"event": {
+						"type": "queue_update",
+						"lane": "side",
+						"queues": []
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": null,
+						"transcript": [],
+						"configuration": {
+							"model": {
+								"provider": "p",
+								"modelId": "m"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [
+							{
+								"kind": "steer",
+								"entryId": "q1"
+							}
+						],
+						"operation": {
+							"id": "run",
+							"kind": "run",
+							"startedAt": 1,
+							"fromTipId": null,
+							"status": "open",
+							"runningTools": []
+						},
+						"stats": {
+							"messageCount": 0,
+							"usage": {
+								"input": 9
+							}
+						},
+						"faulted": false
+					}
+				},
+				{
+					"event": {
+						"type": "config_update",
+						"lane": "main",
+						"property": "model",
+						"value": {
+							"provider": "q",
+							"modelId": "n"
+						}
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": null,
+						"transcript": [],
+						"configuration": {
+							"model": {
+								"provider": "q",
+								"modelId": "n"
+							},
+							"thinkingLevel": "off",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [
+							{
+								"kind": "steer",
+								"entryId": "q1"
+							}
+						],
+						"operation": {
+							"id": "run",
+							"kind": "run",
+							"startedAt": 1,
+							"fromTipId": null,
+							"status": "open",
+							"runningTools": []
+						},
+						"stats": {
+							"messageCount": 0,
+							"usage": {
+								"input": 9
+							}
+						},
+						"faulted": false
+					}
+				},
+				{
+					"event": {
+						"type": "config_update",
+						"lane": "main",
+						"property": "thinkingLevel",
+						"value": "high"
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": null,
+						"transcript": [],
+						"configuration": {
+							"model": {
+								"provider": "q",
+								"modelId": "n"
+							},
+							"thinkingLevel": "high",
+							"activeToolNames": [
+								"a"
+							]
+						},
+						"queues": [
+							{
+								"kind": "steer",
+								"entryId": "q1"
+							}
+						],
+						"operation": {
+							"id": "run",
+							"kind": "run",
+							"startedAt": 1,
+							"fromTipId": null,
+							"status": "open",
+							"runningTools": []
+						},
+						"stats": {
+							"messageCount": 0,
+							"usage": {
+								"input": 9
+							}
+						},
+						"faulted": false
+					}
+				},
+				{
+					"event": {
+						"type": "config_update",
+						"lane": "main",
+						"property": "activeTools",
+						"value": [
+							"b",
+							"c"
+						]
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": null,
+						"transcript": [],
+						"configuration": {
+							"model": {
+								"provider": "q",
+								"modelId": "n"
+							},
+							"thinkingLevel": "high",
+							"activeToolNames": [
+								"b",
+								"c"
+							]
+						},
+						"queues": [
+							{
+								"kind": "steer",
+								"entryId": "q1"
+							}
+						],
+						"operation": {
+							"id": "run",
+							"kind": "run",
+							"startedAt": 1,
+							"fromTipId": null,
+							"status": "open",
+							"runningTools": []
+						},
+						"stats": {
+							"messageCount": 0,
+							"usage": {
+								"input": 9
+							}
+						},
+						"faulted": false
+					}
+				},
+				{
+					"event": {
+						"type": "config_update",
+						"lane": "main",
+						"property": "unknown",
+						"value": 1
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": null,
+						"transcript": [],
+						"configuration": {
+							"model": {
+								"provider": "q",
+								"modelId": "n"
+							},
+							"thinkingLevel": "high",
+							"activeToolNames": [
+								"b",
+								"c"
+							]
+						},
+						"queues": [
+							{
+								"kind": "steer",
+								"entryId": "q1"
+							}
+						],
+						"operation": {
+							"id": "run",
+							"kind": "run",
+							"startedAt": 1,
+							"fromTipId": null,
+							"status": "open",
+							"runningTools": []
+						},
+						"stats": {
+							"messageCount": 0,
+							"usage": {
+								"input": 9
+							}
+						},
+						"faulted": false
+					}
+				},
+				{
+					"event": {
+						"type": "config_update",
+						"lane": "side",
+						"property": "thinkingLevel",
+						"value": "low"
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": null,
+						"transcript": [],
+						"configuration": {
+							"model": {
+								"provider": "q",
+								"modelId": "n"
+							},
+							"thinkingLevel": "high",
+							"activeToolNames": [
+								"b",
+								"c"
+							]
+						},
+						"queues": [
+							{
+								"kind": "steer",
+								"entryId": "q1"
+							}
+						],
+						"operation": {
+							"id": "run",
+							"kind": "run",
+							"startedAt": 1,
+							"fromTipId": null,
+							"status": "open",
+							"runningTools": []
+						},
+						"stats": {
+							"messageCount": 0,
+							"usage": {
+								"input": 9
+							}
+						},
+						"faulted": false
+					}
+				},
+				{
+					"event": {
+						"type": "config_update",
+						"property": "thinkingLevel",
+						"value": "minimal"
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": null,
+						"transcript": [],
+						"configuration": {
+							"model": {
+								"provider": "q",
+								"modelId": "n"
+							},
+							"thinkingLevel": "high",
+							"activeToolNames": [
+								"b",
+								"c"
+							]
+						},
+						"queues": [
+							{
+								"kind": "steer",
+								"entryId": "q1"
+							}
+						],
+						"operation": {
+							"id": "run",
+							"kind": "run",
+							"startedAt": 1,
+							"fromTipId": null,
+							"status": "open",
+							"runningTools": []
+						},
+						"stats": {
+							"messageCount": 0,
+							"usage": {
+								"input": 9
+							}
+						},
+						"faulted": false
+					}
+				},
+				{
+					"event": {
+						"type": "fault",
+						"lane": "main",
+						"error": "x"
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": null,
+						"transcript": [],
+						"configuration": {
+							"model": {
+								"provider": "q",
+								"modelId": "n"
+							},
+							"thinkingLevel": "high",
+							"activeToolNames": [
+								"b",
+								"c"
+							]
+						},
+						"queues": [
+							{
+								"kind": "steer",
+								"entryId": "q1"
+							}
+						],
+						"operation": {
+							"id": "run",
+							"kind": "run",
+							"startedAt": 1,
+							"fromTipId": null,
+							"status": "open",
+							"runningTools": []
+						},
+						"stats": {
+							"messageCount": 0,
+							"usage": {
+								"input": 9
+							}
+						},
+						"faulted": true
+					}
+				},
+				{
+					"event": {
+						"type": "handler_error",
+						"lane": "main"
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": null,
+						"transcript": [],
+						"configuration": {
+							"model": {
+								"provider": "q",
+								"modelId": "n"
+							},
+							"thinkingLevel": "high",
+							"activeToolNames": [
+								"b",
+								"c"
+							]
+						},
+						"queues": [
+							{
+								"kind": "steer",
+								"entryId": "q1"
+							}
+						],
+						"operation": {
+							"id": "run",
+							"kind": "run",
+							"startedAt": 1,
+							"fromTipId": null,
+							"status": "open",
+							"runningTools": []
+						},
+						"stats": {
+							"messageCount": 0,
+							"usage": {
+								"input": 9
+							}
+						},
+						"faulted": true
+					}
+				},
+				{
+					"event": {
+						"type": "turn_start",
+						"lane": "main",
+						"runId": "run"
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": null,
+						"transcript": [],
+						"configuration": {
+							"model": {
+								"provider": "q",
+								"modelId": "n"
+							},
+							"thinkingLevel": "high",
+							"activeToolNames": [
+								"b",
+								"c"
+							]
+						},
+						"queues": [
+							{
+								"kind": "steer",
+								"entryId": "q1"
+							}
+						],
+						"operation": {
+							"id": "run",
+							"kind": "run",
+							"startedAt": 1,
+							"fromTipId": null,
+							"status": "open",
+							"runningTools": []
+						},
+						"stats": {
+							"messageCount": 0,
+							"usage": {
+								"input": 9
+							}
+						},
+						"faulted": true
+					}
+				},
+				{
+					"event": {
+						"type": "turn_end",
+						"lane": "main",
+						"runId": "run"
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": null,
+						"transcript": [],
+						"configuration": {
+							"model": {
+								"provider": "q",
+								"modelId": "n"
+							},
+							"thinkingLevel": "high",
+							"activeToolNames": [
+								"b",
+								"c"
+							]
+						},
+						"queues": [
+							{
+								"kind": "steer",
+								"entryId": "q1"
+							}
+						],
+						"operation": {
+							"id": "run",
+							"kind": "run",
+							"startedAt": 1,
+							"fromTipId": null,
+							"status": "open",
+							"runningTools": []
+						},
+						"stats": {
+							"messageCount": 0,
+							"usage": {
+								"input": 9
+							}
+						},
+						"faulted": true
+					}
+				},
+				{
+					"event": {
+						"type": "value_update",
+						"lane": "main"
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": null,
+						"transcript": [],
+						"configuration": {
+							"model": {
+								"provider": "q",
+								"modelId": "n"
+							},
+							"thinkingLevel": "high",
+							"activeToolNames": [
+								"b",
+								"c"
+							]
+						},
+						"queues": [
+							{
+								"kind": "steer",
+								"entryId": "q1"
+							}
+						],
+						"operation": {
+							"id": "run",
+							"kind": "run",
+							"startedAt": 1,
+							"fromTipId": null,
+							"status": "open",
+							"runningTools": []
+						},
+						"stats": {
+							"messageCount": 0,
+							"usage": {
+								"input": 9
+							}
+						},
+						"faulted": true
+					}
+				},
+				{
+					"event": {
+						"type": "lane_created",
+						"lane": "main"
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": null,
+						"transcript": [],
+						"configuration": {
+							"model": {
+								"provider": "q",
+								"modelId": "n"
+							},
+							"thinkingLevel": "high",
+							"activeToolNames": [
+								"b",
+								"c"
+							]
+						},
+						"queues": [
+							{
+								"kind": "steer",
+								"entryId": "q1"
+							}
+						],
+						"operation": {
+							"id": "run",
+							"kind": "run",
+							"startedAt": 1,
+							"fromTipId": null,
+							"status": "open",
+							"runningTools": []
+						},
+						"stats": {
+							"messageCount": 0,
+							"usage": {
+								"input": 9
+							}
+						},
+						"faulted": true
+					}
+				},
+				{
+					"event": {
+						"type": "entry_added",
+						"entry": {
+							"id": "free",
+							"parentId": null,
+							"seq": 1,
+							"timestamp": 1,
+							"type": "message",
+							"message": {
+								"role": "toolResult",
+								"toolCallId": "none",
+								"toolName": "t",
+								"content": [],
+								"isError": false,
+								"timestamp": 1
+							}
+						}
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": "free",
+						"transcript": [
+							{
+								"id": "free",
+								"parentId": null,
+								"seq": 1,
+								"timestamp": 1,
+								"type": "message",
+								"message": {
+									"role": "toolResult",
+									"toolCallId": "none",
+									"toolName": "t",
+									"content": [],
+									"isError": false,
+									"timestamp": 1
+								}
+							}
+						],
+						"configuration": {
+							"model": {
+								"provider": "q",
+								"modelId": "n"
+							},
+							"thinkingLevel": "high",
+							"activeToolNames": [
+								"b",
+								"c"
+							]
+						},
+						"queues": [
+							{
+								"kind": "steer",
+								"entryId": "q1"
+							}
+						],
+						"operation": {
+							"id": "run",
+							"kind": "run",
+							"startedAt": 1,
+							"fromTipId": null,
+							"status": "open",
+							"runningTools": []
+						},
+						"stats": {
+							"messageCount": 1,
+							"usage": {
+								"input": 9
+							}
+						},
+						"faulted": true
+					}
+				},
+				{
+					"event": {
+						"type": "run_start",
+						"runId": "lane-less",
+						"startedAt": 30
+					},
+					"reduction": null,
+					"snapshot": {
+						"lane": "main",
+						"tipId": "free",
+						"transcript": [
+							{
+								"id": "free",
+								"parentId": null,
+								"seq": 1,
+								"timestamp": 1,
+								"type": "message",
+								"message": {
+									"role": "toolResult",
+									"toolCallId": "none",
+									"toolName": "t",
+									"content": [],
+									"isError": false,
+									"timestamp": 1
+								}
+							}
+						],
+						"configuration": {
+							"model": {
+								"provider": "q",
+								"modelId": "n"
+							},
+							"thinkingLevel": "high",
+							"activeToolNames": [
+								"b",
+								"c"
+							]
+						},
+						"queues": [
+							{
+								"kind": "steer",
+								"entryId": "q1"
+							}
+						],
+						"operation": {
+							"id": "lane-less",
+							"kind": "run",
+							"startedAt": 30,
+							"fromTipId": "free",
+							"status": "open",
+							"runningTools": []
+						},
+						"stats": {
+							"messageCount": 1,
+							"usage": {
+								"input": 9
+							}
+						},
+						"faulted": true
+					}
+				}
+			]
+		}
+	}
+}

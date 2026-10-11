@@ -1,0 +1,41 @@
+//! Rust port of packages/tui: ANSI-aware text measurement, key parsing, stdin sequence splitting,
+//! basic components and the main-screen differential renderer.
+
+pub mod attachments;
+pub mod autocomplete;
+pub mod autocomplete_sources;
+pub mod clipboard;
+pub mod collate;
+pub mod components;
+pub mod editing;
+pub mod editor;
+pub mod fuzzy;
+pub mod highlight;
+pub mod image;
+pub mod input;
+pub mod keybindings;
+pub mod keys;
+pub mod latex;
+pub mod markdown;
+pub mod marked;
+pub mod mouse;
+pub mod notify;
+pub mod outline;
+pub mod overlay;
+pub mod qol_keys;
+pub mod renderer;
+pub mod screen;
+pub mod select;
+pub mod sgr_mouse;
+pub mod status_git;
+pub mod status_line;
+pub mod stdin_buffer;
+mod tables;
+pub mod terminal;
+pub mod theme;
+pub mod transcript_search;
+pub mod tty_writer;
+pub mod utils;
+pub mod viewport;
+pub mod vim;
+pub mod vim_editor;

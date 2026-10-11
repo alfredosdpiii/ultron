@@ -1,0 +1,30 @@
+[package]
+name = "acceptance"
+version = "0.1.0"
+description = "Rust evidence for Ultron acceptance rows A01-A56: process-level tests through the Rust kernel, host, inference, harness and the ultron binary"
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# The `ultron` composition root (crates/cli/src/main.rs) built from this package, so its tests can run the real binary
+# as a subprocess (`CARGO_BIN_EXE_ultron-acceptance`). Same source, same library code, same docs/runtime.py paths.
+[[bin]]
+name = "ultron-acceptance"
+path = "../cli/src/main.rs"
+test = false
+doc = false
+
+[dependencies]
+cli = { path = "../cli" }
+config = { path = "../config" }
+daemon = { path = "../daemon" }
+
+[dev-dependencies]
+harness = { path = "../harness" }
+host = { path = "../host" }
+kernel = { path = "../kernel" }
+serde_json = { version = "=1.0.151", features = ["preserve_order"] }
+tempfile = "=3.27.0"
+
+[lints]
+workspace = true

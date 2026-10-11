@@ -109,7 +109,7 @@ class RLMNamespace:
     reading files); `await rlm.collect([h])` waits for results; a subagent ends with `rlm.finish(...)`;
     `worktree=True` gives a child its own Git worktree and `await rlm.merge(hs)` brings the work back
     (`help(rlm.merge)`, `rlm.worktrees`); `rlm.list_subagents()`, `rlm.delete_subagent(id)`. `rlm.load`, `rlm.open`, `rlm.infer`, `rlm.map` and `rlm.frames` are the
-    bounded-inference API (`help(rlm.map)`). `rlm.jobs()` / `rlm.job(id)` recover shell jobs.
+    bounded-inference API (`help(rlm.map)`). `rlm.jobs()` / `rlm.job(id)` recover shell jobs. `rlm.results()` never waits; `rlm.lanes()`, `rlm.lane`, `rlm.cells()`, `rlm.cell`, `rlm.recovery()`: REPL lanes (`help(rlm.lane)`).
 
     Search before delegating, over many files or a large input: search the concept and its synonyms in code,
     print one compact line per candidate, read the deciding passages of the unclear ones yourself, and use
@@ -257,15 +257,15 @@ class RLMNamespace:
         return result.get("subagents", []) if isinstance(result, dict) else []
 
     async def collect(self, selectors: list[str] | None = None, timeout_ms: int = 0) -> list[dict[str, Any]]:
-        """Wait for subagents (SpawnHandles or ids; all of yours when empty) and return their results:
+        """Results of subagents (SpawnHandles or ids; all of yours when empty):
         `[{"id": ..., "result": {"status": ..., "value" | "error": ..., "verdict": ..., "check": ...}}]`
-        (`help(rlm.spawn)`)."""
-        if isinstance(selectors, (str, SpawnHandle)):
-            selectors = [selectors]
-        # A SpawnHandle from rlm.spawn selects its child by id.
-        selectors = [s.rlm_child_id if isinstance(s, SpawnHandle) else s for s in (selectors or [])]
+        (`help(rlm.spawn)`). It waits for them, except where the host waits for children itself: there, with every
+        selected child ended it returns their results, and otherwise raises RuntimeError naming the children still
+        running (each end arrives as a `child_done` event: do other work or end your turn, then collect again).
+        `rlm.results()` never waits: it returns the results of children that ended and the ids of those still
+        running."""
         result = await self._bridge.request("rlm.collect", {
-            "selectors": selectors,
+            "selectors": child_selectors(selectors),
             "timeout_ms": timeout_ms,
         })
         return result.get("results", []) if isinstance(result, dict) else []
@@ -2025,6 +2025,17 @@ def _error_preview(error: BaseException) -> dict[str, Any]:
 
 
 _STATE = RuntimeState()
+
+# The lane API, `ext` and the swarm API are installed here, after everything above, so the line numbers that recorded tracebacks
+# and the feature inventory name stay put.
+from ext_api import install as install_extensions  # noqa: E402
+from lanes_api import child_selectors, install as install_lanes  # noqa: E402
+from swarm_api import install as install_swarm  # noqa: E402
+
+install_lanes(RLMNamespace)
+install_extensions(_STATE.namespace, _STATE.bridge)
+install_swarm(RLMNamespace, _STATE.namespace, _STATE.bridge)
+_STATE.bindings = {name: value for name, value in _STATE.namespace.items() if name != "state"}
 
 
 async def execute_cell(request_id: str, source: str) -> None:

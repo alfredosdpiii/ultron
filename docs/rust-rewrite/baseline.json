@@ -1,0 +1,1178 @@
+{
+  "status": "framing-only; Rust implementation has not started",
+  "ultron": {
+    "revision": "16c41aa882f0d6c6fb7622d71102b85957021436",
+    "packages": {
+      "packages/agent": {
+        "source_files": 125,
+        "source_lines": 38092,
+        "test_files": 78
+      },
+      "packages/ai": {
+        "source_files": 189,
+        "source_lines": 26619,
+        "test_files": 151
+      },
+      "packages/chord": {
+        "source_files": 27,
+        "source_lines": 7663,
+        "test_files": 16
+      },
+      "packages/client": {
+        "source_files": 8,
+        "source_lines": 1130,
+        "test_files": 3
+      },
+      "packages/coding-agent": {
+        "source_files": 451,
+        "source_lines": 160992,
+        "test_files": 444
+      },
+      "packages/durable": {
+        "source_files": 8,
+        "source_lines": 2087,
+        "test_files": 6
+      },
+      "packages/evals": {
+        "source_files": 5,
+        "source_lines": 1446,
+        "test_files": 6
+      },
+      "packages/mcp": {
+        "source_files": 18,
+        "source_lines": 3128,
+        "test_files": 5
+      },
+      "packages/protocol": {
+        "source_files": 8,
+        "source_lines": 869,
+        "test_files": 3
+      },
+      "packages/server": {
+        "source_files": 16,
+        "source_lines": 1966,
+        "test_files": 6
+      },
+      "packages/session-backends/sqlite-node": {
+        "source_files": 15,
+        "source_lines": 1981,
+        "test_files": 6
+      },
+      "packages/telemetry": {
+        "source_files": 6,
+        "source_lines": 935,
+        "test_files": 2
+      },
+      "packages/tui": {
+        "source_files": 46,
+        "source_lines": 19170,
+        "test_files": 39
+      }
+    },
+    "counting_rule": "Tracked files under packages/**/src with suffix .ts, .tsx, .js, .mjs, .py, .rs, .c, .h or .zig; source_lines counts splitlines(), including comments and generated sources. Tests count tracked files under test or tests matching .test., .spec., *_test.py or test_*. These are scope counts, not implementation effort estimates."
+  },
+  "pi_durable": {
+    "repository": "https://github.com/earendil-works/pi",
+    "revision": "42a3497d03ad17e308a2299fa824727894f2c0ec",
+    "package": "@earendil-works/pi-durable",
+    "version": "1.1.0",
+    "path": "packages/durable",
+    "source_typescript_files": 73,
+    "test_files": 57,
+    "license": "MIT"
+  },
+  "acceptance": [
+    {
+      "id": "A01",
+      "behavior": "Direct/graph/RLM invocation shares one definition and result contract",
+      "reference_evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-a01-invocation-parity.test.ts",
+          "tests": [
+            "the same definition yields the same validated result and durable task record on all three paths",
+            "schema-invalid output fails identically on all three paths and is never recorded as success",
+            "invalid input is rejected before admission on all three paths with the same error"
+          ]
+        }
+      ],
+      "rust_status": "not_implemented"
+    },
+    {
+      "id": "A02",
+      "behavior": "Large input stays outside active context; full data remains usable",
+      "reference_evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-a02-large-data.test.ts",
+          "tests": [
+            "the rlm tool computes exact aggregates over all rows while its result stays bounded",
+            "the request after the rlm call carries the aggregate, not the dataset"
+          ]
+        }
+      ],
+      "rust_status": "not_implemented"
+    },
+    {
+      "id": "A03",
+      "behavior": "Invalid result triggers bounded repair or typed failure",
+      "reference_evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-a03-bounded-repair.test.ts",
+          "tests": [
+            "predict repairs a semantically invalid result within maxRepairs and reports the repair",
+            "predict stops after maxRepairs and fails typed without returning the malformed answer",
+            "maxRepairs 0 makes exactly one attempt, and more than 2 repairs cannot be registered",
+            "non-JSON and throwing predict adapters fail typed",
+            "rlm malformed JSON and schema-invalid output fail typed after one bounded attempt"
+          ]
+        },
+        {
+          "file": "packages/coding-agent/test/ultron-predict-adapter.test.ts",
+          "tests": [
+            "one call per attempt, repair with the validation error, no lane or kernel",
+            "exhausted repairs fail typed instead of claiming success"
+          ]
+        }
+      ],
+      "rust_status": "not_implemented"
+    },
+    {
+      "id": "A04",
+      "behavior": "Root pin and explicit child model are preserved",
+      "reference_evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-a04-model-pinning.test.ts",
+          "tests": [
+            "an explicit child model reaches only the child lane; the root lane's model is never changed"
+          ]
+        }
+      ],
+      "rust_status": "not_implemented"
+    },
+    {
+      "id": "A05",
+      "behavior": "Cancellation terminates owned work and rejects late success",
+      "reference_evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-a05-cancellation-process-tree.test.ts",
+          "tests": [
+            "cancelling a running cell kills its whole process tree, including a setsid grandchild",
+            "shutdown also terminates the owned tree of a cell blocked in synchronous code",
+            "cancelling a native task aborts its lane, kills the lane kernel's process tree, and keeps the durable cancelled result",
+            "a delayed provider success after cancellation never overwrites the durable cancelled result",
+            "racing cancellation against provider success always yields one durable, consistent terminal result"
+          ]
+        },
+        {
+          "file": "packages/coding-agent/test/ultron-native-host.test.ts",
+          "tests": [
+            "runs an explicit background job through the same durable task host",
+            "runs deterministic agents and preserves durable task records",
+            "concurrent idempotent invokes share the same live promise",
+            "cancellation commits a terminal result without waiting for a stuck lane",
+            "parent cancellation before admission does not start a task",
+            "timeout has a bounded range and commits cancellation",
+            "reopened invoke returns the durable result, not undefined",
+            "only a completed prompt at its returned tip can succeed",
+            "validates every workflow node, normalizes missing dependencies, and skips failed dependencies",
+            "rejects malformed reviewer output instead of claiming success"
+          ]
+        }
+      ],
+      "rust_status": "not_implemented"
+    },
+    {
+      "id": "A06",
+      "behavior": "Output, artifact, wall-time, concurrency, and process limits hold",
+      "reference_evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-a06-limits.test.ts",
+          "tests": [
+            "stdout, stderr, and result previews stay bounded under a 50 MB flood",
+            "raw writes that bypass Python's stdout are bounded output, not protocol",
+            "oversize artifacts and quota overflow are rejected without being stored",
+            "an artifact larger than the RPC frame never reaches the service from Python",
+            "a task past its timeout is cancelled with a durable cancelled result",
+            "the root wall deadline caps task timeouts and rejects work after it passes",
+            "an interrupted runaway cell stops, and the kernel serves the next cell",
+            "interrupting a cell kills its child and grandchild processes",
+            "shutting down the kernel kills the whole process tree"
+          ]
+        },
+        {
+          "file": "packages/coding-agent/test/ultron-kernel-long-session.test.ts",
+          "tests": [
+            "200 cells of 64 KB output keep the same kernel generation and its variables",
+            "bridge requests totalling far over 4 MiB keep the same kernel generation",
+            "a single output over the 1 MiB frame is cut in the cell, not by killing the kernel",
+            "raw fd 1 output across many cells (far over 4 MiB in total) keeps the same kernel generation",
+            "the host bounds a cell's accumulated output without failing the kernel"
+          ]
+        },
+        {
+          "file": "packages/coding-agent/test/ultron-kernel-raw-output.test.ts",
+          "tests": [
+            "raw output over the 4 MiB per-cell limit keeps its head and tail with a marker",
+            "os.system, an uncaptured subprocess and sys.__stdout__ write into the cell",
+            "writes to fd 2 land in the cell's stderr",
+            "processes the kernel starts cannot reach the protocol descriptors"
+          ]
+        }
+      ],
+      "rust_status": "not_implemented"
+    },
+    {
+      "id": "A07",
+      "behavior": "Branch/fork/resume restores matching state; no abandoned lesson leak",
+      "reference_evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-a07-branch-fork-resume.test.ts",
+          "tests": [
+            "resume after restart restores tasks, definitions, lessons, progress, memory and usage from real session values",
+            "a fork starts from the source state, then lessons written on either side never leak to the other across restarts",
+            "rolling back a lesson on one branch before a restart does not resurrect it, and the other branch keeps its own"
+          ]
+        },
+        {
+          "file": "packages/coding-agent/test/ultron-a07-lesson-branches.test.ts",
+          "tests": [
+            "a lesson from an abandoned branch never applies after navigating away, and each branch keeps its own"
+          ]
+        }
+      ],
+      "rust_status": "not_implemented"
+    },
+    {
+      "id": "A08",
+      "behavior": "Unsupported Python state reports non-restorable, never silently correct",
+      "reference_evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-a08-snapshot-restorability.test.ts",
+          "tests": [
+            "snapshot type matrix saves plain data and reports every unsupported name with a reason",
+            "restore brings back equal values of the same types and reports the non-restorable names as absent",
+            "startup restore from a configured snapshot reports the same non-restorable names",
+            "a tampered snapshot body is rejected and leaves the namespace untouched",
+            "snapshots without a valid header or with a forged digest over malformed data are rejected",
+            "a kernel configured with a tampered snapshot fails startup instead of starting with wrong state"
+          ]
+        }
+      ],
+      "rust_status": "not_implemented"
+    },
+    {
+      "id": "A09",
+      "behavior": "Concurrent calls/retries cannot bypass tree budget admission",
+      "reference_evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-a09-budget-admission.test.ts",
+          "tests": [
+            "a burst of concurrent spawns admits exactly the limit and rejects the rest",
+            "nested children spawned from child lanes share the root tree budget",
+            "idempotent retries neither consume a slot nor release the live original's slot",
+            "the root wall deadline caps child deadlines and refuses admission once spent",
+            "missing usage and unknown pricing stay unknown, never zero",
+            "direct ledger reservations race to exactly the limit"
+          ]
+        },
+        {
+          "file": "packages/coding-agent/test/ultron-usage-deadline.test.ts",
+          "tests": [
+            "later tasks with the default timeout are capped to the remaining root budget, not refused"
+          ]
+        }
+      ],
+      "rust_status": "not_implemented"
+    },
+    {
+      "id": "A10",
+      "behavior": "Worker receives no ambient credentials or unauthorized host capability",
+      "reference_evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-worker-isolation.test.ts",
+          "tests": [
+            "model-written Python sees no ambient credentials or worker control channel",
+            "explicit allow-list passes a named variable through"
+          ]
+        }
+      ],
+      "rust_status": "not_implemented"
+    },
+    {
+      "id": "A11",
+      "behavior": "Approval binds scope/revision/policy and is rechecked",
+      "reference_evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-grants.test.ts",
+          "tests": [
+            "issues a grant owned by the calling lane and allows a matching check",
+            "revocation denies later checks, and only the owner lineage may revoke",
+            "expiry is rechecked against the clock on every check",
+            "a changed base, policy, scope, or action is denied",
+            "descendants of the owner may use a grant; siblings and the root may not",
+            "rejects a forged owner and other unknown or malformed fields",
+            "enforce defaults to false and is reported; opting in reports true",
+            "grants and revocations survive a new module instance",
+            "checkGrant is a pure evaluation that reports every failing binding"
+          ]
+        }
+      ],
+      "rust_status": "not_implemented"
+    },
+    {
+      "id": "A12",
+      "behavior": "Graph validates before effects; routes/skips/fan-in/cycles are explicit",
+      "reference_evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-a12-graph-contract.test.ts",
+          "tests": [
+            "every validation error is raised before any task is admitted or any node runs",
+            "a node whose definition cannot execute is rejected before effects",
+            "fan-in receives every dependency's result, keyed by dependency ID",
+            "a failed dependency yields explicit, transitive skip records while independent siblings complete",
+            "conditional routes are explicit: the matching branch runs, the other is skipped with a reason",
+            "a bound input that fails the node's schema is an explicit failed node, with nothing spawned for it",
+            "refused admission is an explicit failed node and does not abort running siblings"
+          ]
+        }
+      ],
+      "rust_status": "not_implemented"
+    },
+    {
+      "id": "A13",
+      "behavior": "Agent admission does not satisfy a graph dependency",
+      "reference_evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-a13-admission-not-dependency.test.ts",
+          "tests": [
+            "a dependent is not admitted or started until the slow dependency's result is durable",
+            "agents.spawn confirms admission only; the result is not available until the task ends",
+            "a dependency that ends unsuccessfully skips its dependent, and a late valid result cannot revive it"
+          ]
+        }
+      ],
+      "rust_status": "not_implemented"
+    },
+    {
+      "id": "A14",
+      "behavior": "No checks/incomplete review/stale receipt cannot imply verified completion",
+      "reference_evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-a14-no-false-verification.test.ts",
+          "tests": [
+            "every task result path is unverified, and a stored 'verified' result is refused",
+            "reviewer output missing required fields fails; an incomplete review verifies nothing",
+            "a progress completion claim is verified only by a host-run verifier that returns passed: true",
+            "a goal with no required checks, or a check without an explicit pass, is never achieved",
+            "a release gate blocks on a missing required check or a stale fixture",
+            "a receipt for a stale revision is denied"
+          ]
+        }
+      ],
+      "rust_status": "not_implemented"
+    },
+    {
+      "id": "A15",
+      "behavior": "Baseline versus candidate is recorded; required regressions block",
+      "reference_evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-release-gate.test.ts",
+          "tests": [
+            "passes when every required check passes in the candidate",
+            "a required regression blocks",
+            "an optional regression is reported but does not block",
+            "a required check missing or failed in the candidate blocks even without a baseline pass",
+            "a gate definition is frozen once defined",
+            "a fixture mismatch blocks with a reason",
+            "every attempt, blocked or passed, is recorded in history",
+            "rejects unknown fields and unknown gates",
+            "gates and attempts survive a new module instance, and tampered definitions are refused"
+          ]
+        }
+      ],
+      "rust_status": "not_implemented"
+    },
+    {
+      "id": "A16",
+      "behavior": "Memory skip causes no retrieval; scopes survive consolidation",
+      "reference_evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-a16-memory-skip-scope.test.ts",
+          "tests": [
+            "a skip decision sends no request of any kind to Hindsight, for every scope; a secret is refused before any request",
+            "scope tags are pinned through retain, correction and Hindsight consolidation; a cross-scope merge is refused"
+          ]
+        },
+        {
+          "file": "packages/coding-agent/test/ultron-a16-live-hindsight.test.ts",
+          "tests": [
+            "recall after a real consolidation returns only items carrying exactly the requested scope's tags"
+          ]
+        }
+      ],
+      "rust_status": "not_implemented"
+    },
+    {
+      "id": "A17",
+      "behavior": "Correction supersedes stale claims; hypotheses remain distinguishable",
+      "reference_evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-a17-correction-supersedes.test.ts",
+          "tests": [
+            "a corrected Pi launcher path is current and the stale claim superseded in later fresh sessions",
+            "hypotheses, user statements, tool evidence and verified conclusions stay distinct and validated"
+          ]
+        }
+      ],
+      "rust_status": "not_implemented"
+    },
+    {
+      "id": "A18",
+      "behavior": "Ingestion acceptance is distinct from completed retention; forgetting persists",
+      "reference_evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-a18-retention-forget.test.ts",
+          "tests": [
+            "accepted-but-pending stays distinct from stored through receipt, backend failure and restart",
+            "a crash during dispatch reopens as unknown with no replay",
+            "forget persists across restart and outranks a backend that still returns the item",
+            "a forget whose delete fails is unknown, not forgotten, and still withholds the item after restart"
+          ]
+        }
+      ],
+      "rust_status": "not_implemented"
+    },
+    {
+      "id": "A19",
+      "behavior": "Refiner cannot alter policy, grants, or acceptance tests",
+      "reference_evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-a19-refiner-protected.test.ts",
+          "tests": [
+            "proposals targeting policy, grants, acceptance tests, the instrument lock or trusted instructions are rejected",
+            "content that requests tools, grants, models, budgets or permissions is rejected at proposal and activation",
+            "escalation prose inside an allowed instruction is inert data: grants and other state are unchanged"
+          ]
+        }
+      ],
+      "rust_status": "not_implemented"
+    },
+    {
+      "id": "A20",
+      "behavior": "Versioned refinement changes later behavior and can roll back",
+      "reference_evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-a20-refinement-behavior.test.ts",
+          "tests": [
+            "activation reaches later model runs, a new version supersedes it, and rollback removes it"
+          ]
+        }
+      ],
+      "rust_status": "not_implemented"
+    },
+    {
+      "id": "A21",
+      "behavior": "Replay does not duplicate external effects; uncertainty stays explicit",
+      "reference_evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-a21-lost-response-replay.test.ts",
+          "tests": [
+            "a lost response followed by an owner crash is not replayed, and the same key returns the durable interrupted result",
+            "crashes before launch, after the effect's response, and after commit never duplicate the effect"
+          ]
+        }
+      ],
+      "rust_status": "not_implemented"
+    },
+    {
+      "id": "A22",
+      "behavior": "Detached work and retained children survive UI loss",
+      "reference_evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-a22-detached-work.test.ts",
+          "tests": [
+            "a background child keeps running after its client quits and a new client reattaches to it",
+            "detached work finishes with no client attached, retires, and stays durable for a later client",
+            "quitting with no active work leaves no processes behind"
+          ]
+        }
+      ],
+      "rust_status": "not_implemented"
+    },
+    {
+      "id": "A23",
+      "behavior": "Schedules/goals/verification compose within budgets",
+      "reference_evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-schedules.test.ts",
+          "tests": [
+            "duplicate and concurrent ticks in the same slot run the slot once",
+            "a restart on the same stores does not re-run a completed or claimed slot",
+            "missed ticks coalesce into one run for the latest slot and record the skipped count",
+            "max_runs completes a schedule and pause stops firings",
+            "a paused goal stops attached schedule firings and resume re-enables them",
+            "required gate: achieved only when every required check succeeds with passed === true",
+            "max_tasks caps schedule firings, verification, and attachments",
+            "admission failure from the usage budget is recorded once per slot without a retry storm",
+            "the background timer fires due slots and stops on close",
+            "rejects unknown payload fields and forged identity"
+          ]
+        }
+      ],
+      "rust_status": "not_implemented"
+    },
+    {
+      "id": "A24",
+      "behavior": "Costs, task transitions, and inspection agree on one record",
+      "reference_evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-a24-accounting-reconciliation.test.ts",
+          "tests": [
+            "reconstructs a mixed run from the journal, ledger, progress and schedule records and matches agents.status",
+            "a crashed owner's open work reconciles as interrupted and unknown after restart, and tampering is detected"
+          ]
+        }
+      ],
+      "rust_status": "not_implemented"
+    },
+    {
+      "id": "A25",
+      "behavior": "Existing Pi capabilities and data survive migration and rollback",
+      "reference_evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-migration.test.ts",
+          "tests": [
+            "imports every entry of the linear fixture, with nothing skipped, and resumes at the Pi leaf",
+            "imports the whole tree with labels, model history, usage, context edits, and unknown types",
+            "applies a context edit that only some branches carry on those branches only",
+            "matches Pi's context at every leaf with nested, competing, compacted, and omitting branch-local edits",
+            "imports Pi-reported usage into the usage ledger as a marked historical root",
+            "refuses to re-import the same Pi session",
+            "removes a partial import when an entry cannot be written, so a retry is possible",
+            "rejects files that are not Pi sessions",
+            "round-trips Pi -> native -> Pi with the same active-branch messages and context",
+            "round-trips the whole tree: identical getTree, contexts at every leaf, labels, and name",
+            "exports native changes made after import: new entries, labels, name, model, and thinking level",
+            "resumes Pi at the native tip when the tip is not the newest entry",
+            "backs up the profile privately with a manifest and excludes sessions",
+            "rehearses restore: every profile file comes back byte-identical and sessions are untouched",
+            "refuses a tampered backup without touching the profile",
+            "refuses backups with unlisted files or unsafe manifest paths",
+            "ignores non-migrate commands",
+            "prints usage and rejects bad arguments",
+            "runs import, export, backup, and restore end to end without printing secrets"
+          ]
+        },
+        {
+          "file": "packages/coding-agent/test/ultron-native-rpc.test.ts",
+          "tests": [
+            "reconstructs Pi turn and agent boundaries from lane events",
+            "runs prompts, bash, and session commands through the native worker"
+          ]
+        }
+      ],
+      "rust_status": "not_implemented"
+    },
+    {
+      "id": "A26",
+      "behavior": "Component changes cannot pass merely by weakening tests",
+      "reference_evidence": [],
+      "rust_status": "not_implemented"
+    },
+    {
+      "id": "A27",
+      "behavior": "RLM handles a self-contained task without graph/delegation/memory/refinement",
+      "reference_evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-a27-self-contained-rlm.test.ts",
+          "tests": [
+            "a real kernel parses and aggregates data with zero host dispatches",
+            "the task completes when every optional service rejects, and a service call fails explicitly",
+            "the rlm tool over a native host without optional services completes with no dispatches and no tasks"
+          ]
+        }
+      ],
+      "rust_status": "not_implemented"
+    },
+    {
+      "id": "A28",
+      "behavior": "Retrieval explanation/query/scope match the executed search; rewrite cannot widen access",
+      "reference_evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-a28-retrieval-decision.test.ts",
+          "tests": [
+            "the recorded decision equals the request the backend received",
+            "a gate that tries to rewrite the query or escalate scope cannot change the executed search",
+            "gate or rewrite failure reports memory unavailable without searching",
+            "an unauthorized scope is denied before the gate or backend, and the denial is recorded",
+            "a compatible repeat reuses the recorded decision; refresh, changed input and mutation re-query"
+          ]
+        }
+      ],
+      "rust_status": "not_implemented"
+    },
+    {
+      "id": "A29",
+      "behavior": "Memory inspector shows actual injected evidence without a new search or hidden-scope disclosure",
+      "reference_evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-memory-inspection.test.ts",
+          "tests": [
+            "why shows the evidence that was injected, with no new search and no other task's scope",
+            "the inspector refuses requests that would search or change state"
+          ]
+        }
+      ],
+      "rust_status": "not_implemented"
+    },
+    {
+      "id": "A30",
+      "behavior": "Correction/deletion propagates to managed memory views/exports without changing trusted instructions",
+      "reference_evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-a30-forget.test.ts",
+          "tests": [
+            "forgotten and corrected memories leave every view; AGENTS.md is untouched",
+            "a lagging backend index cannot re-inject a forgotten memory",
+            "forgetting persists across a new service instance on the same store"
+          ]
+        }
+      ],
+      "rust_status": "not_implemented"
+    },
+    {
+      "id": "A31",
+      "behavior": "Skill selection is version-pinned, explainable, and cannot grant capabilities",
+      "reference_evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-skills.test.ts",
+          "tests": [
+            "lists skills with content-hash versions and invocability",
+            "select explains each candidate, ranks deterministically, and records the decision",
+            "why returns the original decision after the catalog changes",
+            "version-pinned load succeeds and a stale version is rejected",
+            "capability-granting frontmatter is reported and never reaches the spawned child",
+            "invoke through the real host keeps the child's model and tools and links the parent",
+            "concurrent loads, selects, and invokes each observe one catalog snapshot while content changes",
+            "disableModelInvocation skills are listed but cannot be invoked",
+            "rejects unknown payload fields, forged identity, and malformed arguments",
+            "durable state survives a new module instance and records catalog changes across restarts"
+          ]
+        }
+      ],
+      "rust_status": "not_implemented"
+    },
+    {
+      "id": "A32",
+      "behavior": "Skill proposals require evidence, validation, and applicable approval; rejection/rollback holds",
+      "reference_evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-a32-skill-proposals.test.ts",
+          "tests": [
+            "a repeated-procedure proposal activates only with evidence and records that approval is disabled",
+            "an equivalent pending or active proposal is a duplicate; a real change is not",
+            "invalid skill content fails validation, and enabled approval cannot override it",
+            "rejection and rollback hold across restart; a declined proposal needs new evidence to resurface"
+          ]
+        },
+        {
+          "file": "packages/coding-agent/test/ultron-a32-production-validation.test.ts",
+          "tests": [
+            "the worker's refinement service refuses malformed skills and accepts a loadable SKILL.md"
+          ]
+        }
+      ],
+      "rust_status": "not_implemented"
+    },
+    {
+      "id": "A33",
+      "behavior": "Experiment history includes all attempts and variants do not contaminate each other",
+      "reference_evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-a33-experiment-history.test.ts",
+          "tests": [
+            "every attempt, including crashed, failed and incomplete ones, is recorded against the frozen fixture",
+            "variants with isolated memory and refinement state never see each other's writes",
+            "per-variant usage, including failed and incomplete attempts, reconciles with independent metering"
+          ]
+        }
+      ],
+      "rust_status": "not_implemented"
+    },
+    {
+      "id": "A34",
+      "behavior": "Optional-service failure preserves RLM operation without bypassing required checks or replaying effects",
+      "reference_evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-a34-optional-service-outage.test.ts",
+          "tests": [
+            "combined Hindsight, refinement, module, and workflow outage in one real RLM kernel run"
+          ]
+        }
+      ],
+      "rust_status": "not_implemented"
+    },
+    {
+      "id": "A35",
+      "behavior": "Deterministic/predict/rlm methods share policy, validation, accounting, and task semantics",
+      "reference_evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-a35-strategy-parity.test.ts",
+          "tests": [
+            "only rlm launches a lane; predict and deterministic never start an iterative kernel",
+            "the same validation and result contract applies to every strategy",
+            "idempotency keys behave identically across strategies",
+            "timeout and cancellation commit the same cancelled result and abort the work for every strategy",
+            "usage reservations and durable journal transitions match across strategies"
+          ]
+        }
+      ],
+      "rust_status": "not_implemented"
+    },
+    {
+      "id": "A36",
+      "behavior": "Invocation scratch is isolated while declared instance state persists",
+      "reference_evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-instances.test.ts",
+          "tests": [
+            "continue on the same lane with fresh scratch, and never rewrite the earlier result",
+            "reject concurrent use, closed instances, non-parents, and laneless tasks",
+            "an instance survives an owner restart and keeps its lane",
+            "reset clears scratch and restores bindings while declared state persists"
+          ]
+        }
+      ],
+      "rust_status": "not_implemented"
+    },
+    {
+      "id": "A37",
+      "behavior": "Bounded preview preserves full values and does not execute unsafe introspection on the host",
+      "reference_evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-a37-bounded-preview.test.ts",
+          "tests": [
+            "large values get a bounded preview while the full value stays usable in later cells",
+            "cyclic and deeply nested objects render without infinite recursion",
+            "a raising __repr__ does not fail the cell and the value remains usable",
+            "a sleeping __repr__ cannot hang the protocol; the kernel stays usable",
+            "enormous repr/str output and protocol-looking text stay bounded and inert",
+            "hostile exception __str__ (huge, raising, sleeping) yields a bounded error report",
+            "range reads return exact byte ranges, including ranges that split multibyte characters"
+          ]
+        }
+      ],
+      "rust_status": "not_implemented"
+    },
+    {
+      "id": "A38",
+      "behavior": "Nested context excludes unauthorized and contaminating history",
+      "reference_evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-a38-reviewer-context.test.ts",
+          "tests": [
+            "reviewer and RLM child lanes receive only their own prompt, not root history",
+            "each lane gets its own Python kernel, so root variables do not leak into a child"
+          ]
+        },
+        {
+          "file": "packages/coding-agent/test/ultron-a38-query-scope.test.ts",
+          "tests": [
+            "a child lane sees its own subtree only; siblings are indistinguishable from missing"
+          ]
+        }
+      ],
+      "rust_status": "not_implemented"
+    },
+    {
+      "id": "A39",
+      "behavior": "Configured models can use the actual typed RLM interface",
+      "reference_evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-a39-live-capabilities.test.ts",
+          "tests": [
+            "uses the typed RLM interface"
+          ]
+        }
+      ],
+      "rust_status": "not_implemented"
+    },
+    {
+      "id": "A40",
+      "behavior": "Retained instances accept new invocations without rewriting old terminal outcomes",
+      "reference_evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-instances.test.ts",
+          "tests": [
+            "continue on the same lane with fresh scratch, and never rewrite the earlier result",
+            "reject concurrent use, closed instances, non-parents, and laneless tasks",
+            "an instance survives an owner restart and keeps its lane",
+            "reset clears scratch and restores bindings while declared state persists"
+          ]
+        }
+      ],
+      "rust_status": "not_implemented"
+    },
+    {
+      "id": "A41",
+      "behavior": "Family messages enforce identity, scope, deduplication, expiry, and safe delivery",
+      "reference_evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-family.test.ts",
+          "tests": [
+            "rejects forged sender fields and takes the sender from the calling lane",
+            "delivers between parent and child in both directions, including root",
+            "rejects siblings, grandchildren, and other families",
+            "replays a keyed send idempotently and rejects conflicting content under the same key",
+            "never delivers expired messages and reports them as expired",
+            "rejects sends to a full inbox and oversized messages instead of dropping",
+            "receive is at-most-once and respects limit and FIFO order",
+            "steers a live receiver through the host and falls back to the inbox otherwise",
+            "isolates verifiers to their direct parent and never steers them",
+            "validates payloads strictly",
+            "durable state survives a new module instance on the same store",
+            "serializes concurrent sends against the inbox cap",
+            "derives identity from real task lanes and steers a live child lane"
+          ]
+        }
+      ],
+      "rust_status": "not_implemented"
+    },
+    {
+      "id": "A42",
+      "behavior": "Human child intervention and subtree stop preserve unrelated work",
+      "reference_evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-a42-intervention-subtree-stop.test.ts",
+          "tests": [
+            "inspect, correct, and stop one child's subtree while the sibling continues and completes",
+            "stopping a finished child still stops its live descendants and leaves siblings alone"
+          ]
+        }
+      ],
+      "rust_status": "not_implemented"
+    },
+    {
+      "id": "A43",
+      "behavior": "Resource release/eviction respects live references, evidence retention, and quotas",
+      "reference_evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-a43-resource-release.test.ts",
+          "tests": [
+            "idle eviction skips a running cell and a pinned lane, and evicts idle unpinned kernels after the TTL",
+            "capacity evicts the least recently used idle kernel and otherwise fails with a typed result",
+            "snapshot-before-evict records non-restorable names and a recreated kernel restores the rest",
+            "a failed snapshot refuses eviction and keeps the live kernel and its state",
+            "a pinned checkpoint artifact survives delete and reclaim; unpinned artifacts are reclaimed explicitly",
+            "quota failures are explicit and never evict artifacts to make room"
+          ]
+        },
+        {
+          "file": "packages/coding-agent/test/ultron-a43-kernel-pool-wired.test.ts",
+          "tests": [
+            "a second lane evicts the idle first one after a snapshot, and the first lane's state comes back"
+          ]
+        }
+      ],
+      "rust_status": "not_implemented"
+    },
+    {
+      "id": "A44",
+      "behavior": "Progress and reassessment use evidence and cannot extend budgets or declare unsupported success",
+      "reference_evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-progress.test.ts",
+          "tests": [
+            "classifies stalled, progressing, busy, and finished from recorded evidence",
+            "takes the reporter from the lane and rejects reports for unrelated tasks",
+            "validates payloads strictly and bounds evidence and receipts",
+            "always denies budget extension and records the reason",
+            "never verifies a completion claim without a passing verifier",
+            "persists receipts and decisions across module instances and settles interrupted verifications",
+            "rejects a corrupt stored document"
+          ]
+        }
+      ],
+      "rust_status": "not_implemented"
+    },
+    {
+      "id": "A45",
+      "behavior": "Saturated nested recursion makes progress or returns bounded capacity failure, never deadlock",
+      "reference_evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-a45-saturated-recursion.test.ts",
+          "tests": [
+            "a parent awaiting children at saturation gets bounded capacity failures and still completes",
+            "cancelling a saturated parent cancels its waiting children and releases every slot"
+          ]
+        }
+      ],
+      "rust_status": "not_implemented"
+    },
+    {
+      "id": "A46",
+      "behavior": "The combined system performs the full demonstration without manual state repair",
+      "reference_evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-a46-demo.test.ts",
+          "tests": [
+            "aborting mid-invoke cancels the child and the session keeps working",
+            "fix, review, retain, and improve with real runtime effects",
+            "failure variants never become verified completion"
+          ]
+        },
+        {
+          "file": "packages/coding-agent/test/ultron-a46-live-demo.test.ts",
+          "tests": [
+            "fixes, reviews, retains, and improves through the typed RLM API"
+          ]
+        }
+      ],
+      "rust_status": "not_implemented"
+    },
+    {
+      "id": "A47",
+      "behavior": "An input larger than the model's context window is processed to the exact answer through bounded inference frames; no request exceeds the window and the root transcript never contains the input",
+      "reference_evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-a47-large-input.test.ts",
+          "tests": [
+            "exact answer, no request above the window, and the root never sees the input"
+          ]
+        },
+        {
+          "file": "packages/coding-agent/test/ultron-a47-a50-bounded-inference.test.ts",
+          "tests": [
+            "handles never render content; views, search, lines and chunks slice it; reopen by digest",
+            "the frame sees only its task and views under its own system prompt, with no tools"
+          ]
+        }
+      ],
+      "rust_status": "not_implemented"
+    },
+    {
+      "id": "A48",
+      "behavior": "Contract repair: a malformed frame answer is re-asked within budget and returns a valid value; exhaustion yields an Incomplete with evidence and the root turn continues",
+      "reference_evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-a47-a50-bounded-inference.test.ts",
+          "tests": [
+            "a frame that first answers malformed JSON is re-asked and returns a valid value",
+            "exhausted repairs yield an Incomplete with status, spent and remaining budget, trace id and outputs",
+            "running out of calls mid-repair is an Incomplete, not an exception"
+          ]
+        },
+        {
+          "file": "packages/coding-agent/test/ultron-a47-large-input.test.ts",
+          "tests": [
+            "A48 end to end: repair returns a valid value, exhaustion is an Incomplete, and the root turn continues"
+          ]
+        }
+      ],
+      "rust_status": "not_implemented"
+    },
+    {
+      "id": "A49",
+      "behavior": "Budget subtree: a map of 8 frames under calls=6 runs 6 and marks 2 incomplete; tranches never oversubscribe the token pool; provider failures are refunded",
+      "reference_evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-a47-a50-bounded-inference.test.ts",
+          "tests": [
+            "a map of 8 frames under calls=6 runs 6 and marks 2 incomplete, in order",
+            "concurrent siblings hold tranches that never oversubscribe the token pool",
+            "when the pool cannot cover a request the frame is incomplete and nothing is sent",
+            "a provider failure refunds its tranche; cache reads are discounted",
+            "nested frames draw on their parent's pool and one level less depth"
+          ]
+        }
+      ],
+      "rust_status": "not_implemented"
+    },
+    {
+      "id": "A50",
+      "behavior": "Cancellation: aborting the root cancels every running inference frame within 2 s",
+      "reference_evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-a47-a50-bounded-inference.test.ts",
+          "tests": [
+            "all in-flight frames are cancelled within 2 s and the map returns per-item errors"
+          ]
+        },
+        {
+          "file": "packages/coding-agent/test/ultron-a47-large-input.test.ts",
+          "tests": [
+            "A50 end to end: aborting the root turn cancels every running frame within 2 s"
+          ]
+        }
+      ],
+      "rust_status": "not_implemented"
+    },
+    {
+      "id": "A51",
+      "behavior": "After 20 completed tasks the root's next request stays bounded (results collapse on return by context edit) while agents.result still returns full values",
+      "reference_evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-a51-collapse-on-return.test.ts",
+          "tests": [
+            "20 completed tasks: bounded next request, full values through agents.result"
+          ]
+        },
+        {
+          "file": "packages/coding-agent/test/ultron-context-control.test.ts",
+          "tests": [
+            "omitting an assistant message omits the results of its calls",
+            "an omitted result whose call stays visible becomes a stub, keeping the pair",
+            "one line per task with definition, key, status, cost and handle; random keys are hidden"
+          ]
+        }
+      ],
+      "rust_status": "not_implemented"
+    },
+    {
+      "id": "A52",
+      "behavior": "ctx.forget never removes the current user turn or pinned items, an extension can observe the edit, and compaction keeps notes and pins",
+      "reference_evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-a52-context-guards.test.ts",
+          "tests": [
+            "forget spares the current turn and pins, extensions observe it, compaction keeps notes and pins"
+          ]
+        },
+        {
+          "file": "packages/coding-agent/test/ultron-context-control.test.ts",
+          "tests": [
+            "history, summarize, guards, pin, note, and state follow the branch"
+          ]
+        }
+      ],
+      "rust_status": "not_implemented"
+    },
+    {
+      "id": "A53",
+      "behavior": "A proposed code skill whose test fails is never importable; a passing one is, survives worker restart, and rolls back cleanly",
+      "reference_evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-a53-code-skills.test.ts",
+          "tests": [
+            "a proposed skill whose test fails is never importable",
+            "the test runs in a fresh isolated kernel without host capabilities",
+            "a passing skill is importable in every kernel, listed with its docstring, and survives worker restart",
+            "rollback follows refinement semantics and never leaves a stale import",
+            "a proposal holding a secret is refused before anything is written; a clean one proceeds",
+            "policy skills store any plan function with a test, filterable by task family"
+          ]
+        }
+      ],
+      "rust_status": "not_implemented"
+    },
+    {
+      "id": "A54",
+      "behavior": "On a repeated task the second run uses the saved skill (tool use and skill import observed) and costs less than the first",
+      "reference_evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-a54-skill-reuse.test.ts",
+          "tests": [
+            "the second run imports the skill in its kernel and makes fewer, cheaper model calls"
+          ]
+        }
+      ],
+      "rust_status": "not_implemented"
+    },
+    {
+      "id": "A55",
+      "behavior": "An agent class defined in a cell is invokable typed end to end, its state persists across cells and snapshots, and a bad return is rejected with the schema error",
+      "reference_evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-a55-agent-classes.test.ts",
+          "tests": [
+            "a class defined in a cell is invokable typed end to end, keeps state across cells, and rejects a bad return with the schema error"
+          ]
+        },
+        {
+          "file": "packages/coding-agent/test/ultron-agent-classes.test.ts",
+          "tests": [
+            "annotations become JSON schemas the host accepts",
+            "a model-driven method is one typed agents.invoke: docstrings are the prompt, arguments and fields are data",
+            "large arguments reach the model as bounded previews with a file holding the full value",
+            "a bad return is rejected with the schema error and never recorded as success (A14)",
+            "fields persist across cells and reset_scratch; assignments are type-checked",
+            "the class, its generation, and instance fields survive a snapshot and restore into a new kernel",
+            "redefinition makes a new generation; older generations stay invokable and roll back"
+          ]
+        }
+      ],
+      "rust_status": "not_implemented"
+    },
+    {
+      "id": "A56",
+      "behavior": "Long-running work does not block the turn and completion is delivered without polling",
+      "reference_evidence": [
+        {
+          "file": "packages/coding-agent/test/ultron-shell-jobs.test.ts",
+          "tests": [
+            "yield_after returns a running handle that outlives the cell; result() waits and reports once",
+            "an unawaited job reports its end once, with a bounded summary; a quick one finishes inline",
+            "a job survives a kernel restart and is recovered by id; rlm.jobs() lists it",
+            "cancel() stops the process tree; timeout= reports timed_out; wait= returns a running snapshot",
+            "output is bounded: head and tail with a marker, the rest readable, retention capped",
+            "an aborted root turn cancels its jobs and announces nothing; other roots' jobs keep running",
+            "a child lane sees only its own jobs; plain bash still blocks and returns a string",
+            "the journal stays small and survives a worker restart: finished jobs keep their text, running ones read as interrupted",
+            "plain bash auto-detaches a slow command: a running string with its job and a note, then one event",
+            "plain bash that finishes within the window returns the whole output and announces nothing",
+            "yield_after=None and ULTRON_BASH_YIELD_AFTER=off block until the command ends; no job is made"
+          ]
+        },
+        {
+          "file": "packages/coding-agent/test/ultron-async-events.test.ts",
+          "tests": [
+            "an idle root is re-invoked once per coalesced batch, charged to the root that started the work",
+            "a mid-turn event is steered to the next boundary and never starts a second run",
+            "a steer that the run did not consume (it ended first) is taken back and re-invokes the idle root",
+            "the turn budget, cost cap and chain cap turn re-invocation into quiet delivery",
+            "after an abort, the root never restarts: its jobs stop and later completions wait quietly",
+            "children's events go to their own lane, which is steered when running and never re-invoked",
+            "ULTRON_ASYNC_EVENTS=off disables events",
+            "the event text is one bounded, escaped line per completion"
+          ]
+        },
+        {
+          "file": "packages/coding-agent/test/ultron-async-cli.test.ts",
+          "tests": [
+            "a slow job started with yield_after=0 does not block the turn; its completion event re-invokes the model",
+            "a plain bash that runs past ULTRON_BASH_YIELD_AFTER detaches with a hint; its completion event re-invokes the model",
+            "print mode (-p) follows the run a completion event starts and prints its answer",
+            "prompt-cache prefix: each root request extends the previous one byte for byte, events included",
+            "collapse on return rewrites only the newest cell output, so the cached prefix before it survives",
+            "a completion during a running turn is delivered at the next boundary, without a second run",
+            "a subagent's completion arrives as a child_done event that re-invokes the idle root",
+            "a spent turn budget turns the re-invocation into quiet delivery with the next prompt",
+            "Esc on the turn stops its job and the completion never restarts the model"
+          ]
+        },
+        {
+          "file": "packages/coding-agent/test/ultron-hints.test.ts",
+          "tests": [
+            "job-detached: a plain bash that came back running",
+            "blocked-on-job: over 60 s awaiting job.result / background.result while events are on",
+            "poll-loop: repeated status calls in a cell or across cells, or sleeping in a loop around a check"
+          ]
+        },
+        {
+          "file": "packages/coding-agent/test/ultron-extension-tools.test.ts",
+          "tests": [
+            "aborting the cell cancels a call it is waiting on, and nothing is announced",
+            "a slow call detaches after the yield time; its end is reported for a completion event",
+            "yield_after returns a handle: result() waits, cancel() stops, a root abort cancels"
+          ]
+        },
+        {
+          "file": "packages/coding-agent/test/ultron-extension-tools-cli.test.ts",
+          "tests": [
+            "a wait that outlives ULTRON_TOOL_YIELD_AFTER detaches, and its tool_done event re-invokes the model"
+          ]
+        }
+      ],
+      "rust_status": "not_implemented"
+    }
+  ]
+}

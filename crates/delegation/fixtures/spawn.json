@@ -1,0 +1,2589 @@
+[
+	{
+		"name": "spawn, finish, collect",
+		"env": {},
+		"children": [
+			{
+				"calls": [
+					[
+						"rlm.finish",
+						{
+							"status": "passed",
+							"summary": "did it",
+							"evidence": [
+								"cargo test: exit 0, 4 passed"
+							],
+							"changed_files": []
+						}
+					]
+				],
+				"text": "done"
+			},
+			{
+				"calls": [],
+				"text": "plain reply"
+			},
+			{
+				"calls": [
+					[
+						"rlm.finish",
+						{
+							"status": "failed",
+							"summary": "  could not  "
+						}
+					]
+				],
+				"text": ""
+			}
+		],
+		"steps": [
+			{
+				"op": [
+					"call",
+					"rlm.spawn",
+					{
+						"prompt": "brief one",
+						"kwargs": {
+							"name": "one"
+						}
+					}
+				],
+				"result": {
+					"rlm_child_id": "ultron-task-#0",
+					"name": "one",
+					"session_dir": "",
+					"model": "",
+					"timeout_ms": 1800000,
+					"parent_branch_anchor": "",
+					"worktree": null
+				}
+			},
+			{
+				"op": [
+					"settle"
+				]
+			},
+			{
+				"op": [
+					"call",
+					"rlm.spawn",
+					{
+						"prompt": "brief two",
+						"kwargs": {
+							"name": "two",
+							"model": "faux/m",
+							"timeout_ms": 5000,
+							"thinking": "low"
+						}
+					}
+				],
+				"result": {
+					"rlm_child_id": "ultron-task-#1",
+					"name": "two",
+					"session_dir": "",
+					"model": "faux/m",
+					"timeout_ms": 5000,
+					"parent_branch_anchor": "",
+					"worktree": null
+				}
+			},
+			{
+				"op": [
+					"settle"
+				]
+			},
+			{
+				"op": [
+					"call",
+					"rlm.spawn",
+					{
+						"prompt": "brief three",
+						"kwargs": {
+							"name": "three"
+						}
+					}
+				],
+				"result": {
+					"rlm_child_id": "ultron-task-#2",
+					"name": "three",
+					"session_dir": "",
+					"model": "",
+					"timeout_ms": 1800000,
+					"parent_branch_anchor": "",
+					"worktree": null
+				}
+			},
+			{
+				"op": [
+					"settle"
+				]
+			},
+			{
+				"op": [
+					"call",
+					"rlm.collect",
+					{}
+				],
+				"result": {
+					"results": [
+						{
+							"id": "ultron-task-#0",
+							"result": {
+								"status": "succeeded",
+								"value": "done",
+								"verification": "unverified",
+								"verdict": {
+									"status": "passed",
+									"summary": "did it",
+									"outputs": {},
+									"evidence": [
+										"cargo test: exit 0, 4 passed"
+									],
+									"changed_files": []
+								},
+								"check": {
+									"outcome": "unchecked",
+									"unobserved": [],
+									"unreported": [],
+									"unlisted": [],
+									"concurrent": [],
+									"reason": "no workspace to compare"
+								}
+							}
+						},
+						{
+							"id": "ultron-task-#1",
+							"result": {
+								"status": "succeeded",
+								"value": "plain reply",
+								"verification": "unverified",
+								"verdict": null,
+								"unverified": true
+							}
+						},
+						{
+							"id": "ultron-task-#2",
+							"result": {
+								"status": "succeeded",
+								"value": "could not",
+								"verification": "unverified",
+								"verdict": {
+									"status": "failed",
+									"summary": "could not",
+									"outputs": {},
+									"evidence": [],
+									"changed_files": []
+								},
+								"check": {
+									"outcome": "unchecked",
+									"unobserved": [],
+									"unreported": [],
+									"unlisted": [],
+									"concurrent": [
+										"ultron-task-#0",
+										"ultron-task-#1"
+									],
+									"reason": "no workspace to compare"
+								}
+							}
+						}
+					]
+				}
+			},
+			{
+				"op": [
+					"call",
+					"rlm.list_subagents",
+					{}
+				],
+				"result": {
+					"subagents": [
+						{
+							"id": "ultron-task-#0",
+							"definition": "rlm-child@1",
+							"state": "completed",
+							"result": {
+								"status": "succeeded",
+								"value": "done",
+								"verification": "unverified",
+								"verdict": {
+									"status": "passed",
+									"summary": "did it",
+									"outputs": {},
+									"evidence": [
+										"cargo test: exit 0, 4 passed"
+									],
+									"changed_files": []
+								},
+								"check": {
+									"outcome": "unchecked",
+									"unobserved": [],
+									"unreported": [],
+									"unlisted": [],
+									"concurrent": [],
+									"reason": "no workspace to compare"
+								}
+							}
+						},
+						{
+							"id": "ultron-task-#1",
+							"definition": "rlm-child@1",
+							"state": "completed",
+							"result": {
+								"status": "succeeded",
+								"value": "plain reply",
+								"verification": "unverified",
+								"verdict": null,
+								"unverified": true
+							}
+						},
+						{
+							"id": "ultron-task-#2",
+							"definition": "rlm-child@1",
+							"state": "completed",
+							"result": {
+								"status": "succeeded",
+								"value": "could not",
+								"verification": "unverified",
+								"verdict": {
+									"status": "failed",
+									"summary": "could not",
+									"outputs": {},
+									"evidence": [],
+									"changed_files": []
+								},
+								"check": {
+									"outcome": "unchecked",
+									"unobserved": [],
+									"unreported": [],
+									"unlisted": [],
+									"concurrent": [
+										"ultron-task-#0",
+										"ultron-task-#1"
+									],
+									"reason": "no workspace to compare"
+								}
+							}
+						}
+					]
+				}
+			}
+		],
+		"runs": [
+			{
+				"index": 0,
+				"taskId": "ultron-task-#0",
+				"laneName": "ultron.rlm-child.ultron-task-#0",
+				"prompt": "brief one",
+				"level": 1,
+				"allowance": 0,
+				"model": null,
+				"timeoutMs": 1800000,
+				"calls": [
+					{
+						"type": "rlm.finish",
+						"result": {
+							"recorded": true,
+							"status": "passed",
+							"next": "End your turn now with a short reply; the host checks changed_files against the files that changed while you ran."
+						}
+					}
+				]
+			},
+			{
+				"index": 1,
+				"taskId": "ultron-task-#1",
+				"laneName": "ultron.rlm-child.ultron-task-#1",
+				"prompt": "brief two",
+				"level": 1,
+				"allowance": 0,
+				"model": "faux/m",
+				"timeoutMs": 5000,
+				"calls": []
+			},
+			{
+				"index": 2,
+				"taskId": "ultron-task-#2",
+				"laneName": "ultron.rlm-child.ultron-task-#2",
+				"prompt": "brief three",
+				"level": 1,
+				"allowance": 0,
+				"model": null,
+				"timeoutMs": 1800000,
+				"calls": [
+					{
+						"type": "rlm.finish",
+						"result": {
+							"recorded": true,
+							"status": "failed",
+							"next": "End your turn now with a short reply; the host checks changed_files against the files that changed while you ran."
+						}
+					}
+				]
+			}
+		],
+		"events": [
+			{
+				"task": {
+					"id": "ultron-task-#0",
+					"key": "key-#0",
+					"fingerprint": "4194661524b074b8c17ae4211f5394b6c384ffec8feb19c2103472752a93bd93",
+					"definition": "rlm-child@1",
+					"state": "completed",
+					"result": {
+						"status": "succeeded",
+						"value": "done",
+						"verification": "unverified",
+						"verdict": {
+							"status": "passed",
+							"summary": "did it",
+							"outputs": {},
+							"evidence": [
+								"cargo test: exit 0, 4 passed"
+							],
+							"changed_files": []
+						},
+						"check": {
+							"outcome": "unchecked",
+							"unobserved": [],
+							"unreported": [],
+							"unlisted": [],
+							"concurrent": [],
+							"reason": "no workspace to compare"
+						}
+					}
+				},
+				"kind": "child_done",
+				"ownerLane": "main",
+				"awaited": false,
+				"fetch": "await rlm.collect([\"ultron-task-#0\"])"
+			},
+			{
+				"task": {
+					"id": "ultron-task-#1",
+					"key": "key-#1",
+					"fingerprint": "f276ce52bb8796218c058d5902cce5e6b31245b8df7a5975b4ad595436366ceb",
+					"definition": "rlm-child@1",
+					"state": "completed",
+					"result": {
+						"status": "succeeded",
+						"value": "plain reply",
+						"verification": "unverified",
+						"verdict": null,
+						"unverified": true
+					}
+				},
+				"kind": "child_done",
+				"ownerLane": "main",
+				"awaited": false,
+				"fetch": "await rlm.collect([\"ultron-task-#1\"])"
+			},
+			{
+				"task": {
+					"id": "ultron-task-#2",
+					"key": "key-#2",
+					"fingerprint": "9e617332dda4a59e3e5a4d561c28f6b7bd370224f12fafe885fbf4659c912903",
+					"definition": "rlm-child@1",
+					"state": "completed",
+					"result": {
+						"status": "succeeded",
+						"value": "could not",
+						"verification": "unverified",
+						"verdict": {
+							"status": "failed",
+							"summary": "could not",
+							"outputs": {},
+							"evidence": [],
+							"changed_files": []
+						},
+						"check": {
+							"outcome": "unchecked",
+							"unobserved": [],
+							"unreported": [],
+							"unlisted": [],
+							"concurrent": [
+								"ultron-task-#0",
+								"ultron-task-#1"
+							],
+							"reason": "no workspace to compare"
+						}
+					}
+				},
+				"kind": "child_done",
+				"ownerLane": "main",
+				"awaited": false,
+				"fetch": "await rlm.collect([\"ultron-task-#2\"])"
+			}
+		],
+		"journal": {
+			"version": 1,
+			"tasks": [
+				{
+					"id": "ultron-task-#0",
+					"definition": "rlm-child@1",
+					"fingerprint": "4194661524b074b8c17ae4211f5394b6c384ffec8feb19c2103472752a93bd93",
+					"key": "key-#0",
+					"state": "completed",
+					"result": {
+						"status": "succeeded",
+						"value": "done",
+						"verification": "unverified",
+						"verdict": {
+							"status": "passed",
+							"summary": "did it",
+							"outputs": {},
+							"evidence": [
+								"cargo test: exit 0, 4 passed"
+							],
+							"changed_files": []
+						},
+						"check": {
+							"outcome": "unchecked",
+							"unobserved": [],
+							"unreported": [],
+							"unlisted": [],
+							"concurrent": [],
+							"reason": "no workspace to compare"
+						}
+					}
+				},
+				{
+					"id": "ultron-task-#1",
+					"definition": "rlm-child@1",
+					"fingerprint": "f276ce52bb8796218c058d5902cce5e6b31245b8df7a5975b4ad595436366ceb",
+					"key": "key-#1",
+					"state": "completed",
+					"result": {
+						"status": "succeeded",
+						"value": "plain reply",
+						"verification": "unverified",
+						"verdict": null,
+						"unverified": true
+					}
+				},
+				{
+					"id": "ultron-task-#2",
+					"definition": "rlm-child@1",
+					"fingerprint": "9e617332dda4a59e3e5a4d561c28f6b7bd370224f12fafe885fbf4659c912903",
+					"key": "key-#2",
+					"state": "completed",
+					"result": {
+						"status": "succeeded",
+						"value": "could not",
+						"verification": "unverified",
+						"verdict": {
+							"status": "failed",
+							"summary": "could not",
+							"outputs": {},
+							"evidence": [],
+							"changed_files": []
+						},
+						"check": {
+							"outcome": "unchecked",
+							"unobserved": [],
+							"unreported": [],
+							"unlisted": [],
+							"concurrent": [
+								"ultron-task-#0",
+								"ultron-task-#1"
+							],
+							"reason": "no workspace to compare"
+						}
+					}
+				}
+			]
+		}
+	},
+	{
+		"name": "spawn validation",
+		"env": {},
+		"children": [],
+		"steps": [
+			{
+				"op": [
+					"call",
+					"rlm.spawn",
+					{
+						"prompt": "",
+						"kwargs": {
+							"name": "x"
+						}
+					}
+				],
+				"error": "prompt must be a nonempty string"
+			},
+			{
+				"op": [
+					"call",
+					"rlm.spawn",
+					{
+						"prompt": "p",
+						"kwargs": {}
+					}
+				],
+				"error": "name must be a nonempty string"
+			},
+			{
+				"op": [
+					"call",
+					"rlm.spawn",
+					{
+						"prompt": "p",
+						"kwargs": {
+							"name": "  "
+						}
+					}
+				],
+				"error": "name must be a nonempty string"
+			},
+			{
+				"op": [
+					"call",
+					"rlm.spawn",
+					{
+						"prompt": "p",
+						"kwargs": {
+							"name": "x",
+							"bogus": 1
+						}
+					}
+				],
+				"error": "Unknown payload field: bogus"
+			},
+			{
+				"op": [
+					"call",
+					"rlm.spawn",
+					{
+						"prompt": "p",
+						"extra": 1
+					}
+				],
+				"error": "Unknown payload field: extra"
+			},
+			{
+				"op": [
+					"call",
+					"rlm.spawn",
+					{
+						"prompt": "p",
+						"kwargs": {
+							"name": "x",
+							"fork": "yes"
+						}
+					}
+				],
+				"error": "fork must be True or False"
+			},
+			{
+				"op": [
+					"call",
+					"rlm.spawn",
+					{
+						"prompt": "p",
+						"kwargs": {
+							"name": "x",
+							"fork": true
+						}
+					}
+				],
+				"error": "rlm.spawn fork=True is not available when subagents run as external processes"
+			},
+			{
+				"op": [
+					"call",
+					"rlm.spawn",
+					{
+						"prompt": "p",
+						"kwargs": {
+							"name": "x",
+							"worktree": "maybe"
+						}
+					}
+				],
+				"error": "worktree must be True, False or \"auto\" (each worktree child gets its own private worktree)"
+			},
+			{
+				"op": [
+					"call",
+					"rlm.spawn",
+					{
+						"prompt": "p",
+						"kwargs": {
+							"name": "x",
+							"worktree_setup": {
+								"link": [
+									"a"
+								]
+							}
+						}
+					}
+				],
+				"error": "worktree_setup needs worktree=True"
+			},
+			{
+				"op": [
+					"call",
+					"rlm.spawn",
+					{
+						"prompt": "p",
+						"kwargs": {
+							"name": "x",
+							"depth": -1
+						}
+					}
+				],
+				"error": "depth must be a non-negative integer"
+			},
+			{
+				"op": [
+					"call",
+					"rlm.spawn",
+					{
+						"prompt": "p",
+						"kwargs": {
+							"name": "x",
+							"depth": 1.5
+						}
+					}
+				],
+				"error": "depth must be a non-negative integer"
+			},
+			{
+				"op": [
+					"call",
+					"rlm.spawn",
+					{
+						"prompt": "p",
+						"kwargs": {
+							"name": "x",
+							"depth": 3
+						}
+					}
+				],
+				"error": "rlm.spawn depth=3 is too deep here: at most 2 (ULTRON_SPAWN_DEPTH=3 levels in all)."
+			},
+			{
+				"op": [
+					"call",
+					"rlm.spawn",
+					{
+						"prompt": "p",
+						"kwargs": {
+							"name": "x",
+							"timeout_ms": 0
+						}
+					}
+				],
+				"error": "timeout_ms must be an integer between 1 and 3600000"
+			},
+			{
+				"op": [
+					"call",
+					"rlm.spawn",
+					{
+						"prompt": "p",
+						"kwargs": {
+							"name": "x",
+							"timeout_ms": 3600001
+						}
+					}
+				],
+				"error": "timeout_ms must be an integer between 1 and 3600000"
+			},
+			{
+				"op": [
+					"call",
+					"rlm.spawn",
+					{
+						"prompt": "p",
+						"kwargs": {
+							"name": "x",
+							"timeout_ms": 1.5
+						}
+					}
+				],
+				"error": "timeout_ms must be an integer between 1 and 3600000"
+			},
+			{
+				"op": [
+					"call",
+					"rlm.spawn",
+					{
+						"prompt": "p",
+						"kwargs": {
+							"name": "x",
+							"thinking": "huge"
+						}
+					}
+				],
+				"error": "thinking must be one of off, minimal, low, medium, high, xhigh, max"
+			},
+			{
+				"op": [
+					"call",
+					"rlm.spawn",
+					{
+						"prompt": "p",
+						"kwargs": "nope"
+					}
+				],
+				"error": "agent input must be a JSON object"
+			},
+			{
+				"op": [
+					"call",
+					"rlm.finish",
+					{
+						"status": "passed",
+						"summary": "did it",
+						"evidence": [
+							"cargo test: exit 0, 4 passed"
+						],
+						"changed_files": []
+					}
+				],
+				"error": "rlm.finish is for subagents started with rlm.spawn; here, answer in your reply"
+			},
+			{
+				"op": [
+					"call",
+					"rlm.collect",
+					{
+						"selectors": [
+							""
+						]
+					}
+				],
+				"error": "selector must be a nonempty string"
+			},
+			{
+				"op": [
+					"call",
+					"rlm.collect",
+					{
+						"other": 1
+					}
+				],
+				"error": "Unknown payload field: other"
+			},
+			{
+				"op": [
+					"call",
+					"rlm.delete_subagent",
+					{
+						"selector": "missing"
+					}
+				],
+				"error": "Unknown RLM child"
+			},
+			{
+				"op": [
+					"call",
+					"rlm.collect",
+					{}
+				],
+				"result": {
+					"results": []
+				}
+			}
+		],
+		"runs": [],
+		"events": [],
+		"journal": null
+	},
+	{
+		"name": "verdict rejections",
+		"env": {},
+		"children": [
+			{
+				"calls": [
+					[
+						"rlm.finish",
+						{
+							"status": "passed",
+							"summary": "x"
+						}
+					],
+					[
+						"rlm.finish",
+						{
+							"status": "maybe",
+							"summary": "",
+							"extra": 1
+						}
+					],
+					[
+						"rlm.finish",
+						{
+							"status": "passed",
+							"summary": "ok",
+							"evidence": [
+								"looks good"
+							]
+						}
+					],
+					[
+						"rlm.finish",
+						{
+							"status": "passed",
+							"summary": "did it",
+							"evidence": [
+								"cargo test: exit 0, 4 passed"
+							],
+							"changed_files": []
+						}
+					]
+				],
+				"text": "reply"
+			},
+			{
+				"calls": [
+					[
+						"rlm.finish",
+						{
+							"status": "passed",
+							"summary": "x"
+						}
+					],
+					[
+						"rlm.finish",
+						{
+							"status": "passed",
+							"summary": "did it",
+							"evidence": [
+								"cargo test: exit 0, 4 passed"
+							],
+							"changed_files": []
+						}
+					],
+					[
+						"rlm.finish",
+						{
+							"status": "bad"
+						}
+					],
+					[
+						"rlm.finish",
+						{
+							"status": "bad"
+						}
+					],
+					[
+						"rlm.finish",
+						{
+							"status": "passed",
+							"summary": "did it",
+							"evidence": [
+								"cargo test: exit 0, 4 passed"
+							],
+							"changed_files": []
+						}
+					]
+				],
+				"text": "second"
+			},
+			{
+				"calls": [
+					[
+						"rlm.finish",
+						{
+							"status": "passed",
+							"summary": "did it",
+							"evidence": [
+								"cargo test: exit 0, 4 passed"
+							],
+							"changed_files": []
+						}
+					],
+					[
+						"rlm.finish",
+						{
+							"status": "failed",
+							"summary": "changed my mind"
+						}
+					]
+				],
+				"text": ""
+			}
+		],
+		"steps": [
+			{
+				"op": [
+					"call",
+					"rlm.spawn",
+					{
+						"prompt": "a",
+						"kwargs": {
+							"name": "a"
+						}
+					}
+				],
+				"result": {
+					"rlm_child_id": "ultron-task-#3",
+					"name": "a",
+					"session_dir": "",
+					"model": "",
+					"timeout_ms": 1800000,
+					"parent_branch_anchor": "",
+					"worktree": null
+				}
+			},
+			{
+				"op": [
+					"settle"
+				]
+			},
+			{
+				"op": [
+					"call",
+					"rlm.spawn",
+					{
+						"prompt": "b",
+						"kwargs": {
+							"name": "b"
+						}
+					}
+				],
+				"result": {
+					"rlm_child_id": "ultron-task-#4",
+					"name": "b",
+					"session_dir": "",
+					"model": "",
+					"timeout_ms": 1800000,
+					"parent_branch_anchor": "",
+					"worktree": null
+				}
+			},
+			{
+				"op": [
+					"settle"
+				]
+			},
+			{
+				"op": [
+					"call",
+					"rlm.spawn",
+					{
+						"prompt": "c",
+						"kwargs": {
+							"name": "c"
+						}
+					}
+				],
+				"result": {
+					"rlm_child_id": "ultron-task-#5",
+					"name": "c",
+					"session_dir": "",
+					"model": "",
+					"timeout_ms": 1800000,
+					"parent_branch_anchor": "",
+					"worktree": null
+				}
+			},
+			{
+				"op": [
+					"settle"
+				]
+			},
+			{
+				"op": [
+					"call",
+					"rlm.collect",
+					{}
+				],
+				"result": {
+					"results": [
+						{
+							"id": "ultron-task-#3",
+							"result": {
+								"status": "succeeded",
+								"value": "reply",
+								"verification": "unverified",
+								"verdict": null,
+								"check": {
+									"outcome": "invalid",
+									"unobserved": [],
+									"unreported": [],
+									"unlisted": [],
+									"concurrent": [],
+									"reason": "no workspace to compare",
+									"problems": [
+										"\"passed\" evidence must be concrete, and none of it is: name a command with its outcome (\"npm test: exit 0, 42 passed\") or a file with lines (\"src/app.ts:40-52 handles the empty case\"), not \"looks good\""
+									]
+								},
+								"unverified": true
+							}
+						},
+						{
+							"id": "ultron-task-#4",
+							"result": {
+								"status": "succeeded",
+								"value": "second",
+								"verification": "unverified",
+								"verdict": {
+									"status": "passed",
+									"summary": "did it",
+									"outputs": {},
+									"evidence": [
+										"cargo test: exit 0, 4 passed"
+									],
+									"changed_files": []
+								},
+								"check": {
+									"outcome": "unchecked",
+									"unobserved": [],
+									"unreported": [],
+									"unlisted": [],
+									"concurrent": [
+										"ultron-task-#3"
+									],
+									"reason": "no workspace to compare"
+								}
+							}
+						},
+						{
+							"id": "ultron-task-#5",
+							"result": {
+								"status": "succeeded",
+								"value": "changed my mind",
+								"verification": "unverified",
+								"verdict": {
+									"status": "failed",
+									"summary": "changed my mind",
+									"outputs": {},
+									"evidence": [],
+									"changed_files": []
+								},
+								"check": {
+									"outcome": "unchecked",
+									"unobserved": [],
+									"unreported": [],
+									"unlisted": [],
+									"concurrent": [
+										"ultron-task-#3",
+										"ultron-task-#4"
+									],
+									"reason": "no workspace to compare"
+								}
+							}
+						}
+					]
+				}
+			}
+		],
+		"runs": [
+			{
+				"index": 0,
+				"taskId": "ultron-task-#3",
+				"laneName": "ultron.rlm-child.ultron-task-#3",
+				"prompt": "a",
+				"level": 1,
+				"allowance": 0,
+				"model": null,
+				"timeoutMs": 1800000,
+				"calls": [
+					{
+						"type": "rlm.finish",
+						"error": "rlm.finish rejected:\n- \"passed\" needs evidence: the commands you ran with their exit codes or counts, and the files (with lines) that show the result\nFix these and call rlm.finish again (2 attempts left)."
+					},
+					{
+						"type": "rlm.finish",
+						"error": "rlm.finish rejected:\n- unknown field \"extra\" (use status, summary, outputs, evidence, changed_files)\n- status must be \"passed\", \"failed\" or \"blocked\", not \"maybe\"\n- summary must say in a sentence or two what was done, or what blocked it\nFix these and call rlm.finish again (1 attempt left)."
+					},
+					{
+						"type": "rlm.finish",
+						"error": "rlm.finish rejected:\n- \"passed\" evidence must be concrete, and none of it is: name a command with its outcome (\"npm test: exit 0, 42 passed\") or a file with lines (\"src/app.ts:40-52 handles the empty case\"), not \"looks good\"\nNo attempts left: end your turn; your reply is returned unverified, with these problems."
+					},
+					{
+						"type": "rlm.finish",
+						"error": "rlm.finish: no attempts left; end your turn, your reply is returned unverified"
+					}
+				]
+			},
+			{
+				"index": 1,
+				"taskId": "ultron-task-#4",
+				"laneName": "ultron.rlm-child.ultron-task-#4",
+				"prompt": "b",
+				"level": 1,
+				"allowance": 0,
+				"model": null,
+				"timeoutMs": 1800000,
+				"calls": [
+					{
+						"type": "rlm.finish",
+						"error": "rlm.finish rejected:\n- \"passed\" needs evidence: the commands you ran with their exit codes or counts, and the files (with lines) that show the result\nFix these and call rlm.finish again (2 attempts left)."
+					},
+					{
+						"type": "rlm.finish",
+						"result": {
+							"recorded": true,
+							"status": "passed",
+							"next": "End your turn now with a short reply; the host checks changed_files against the files that changed while you ran."
+						}
+					},
+					{
+						"type": "rlm.finish",
+						"error": "rlm.finish rejected:\n- status must be \"passed\", \"failed\" or \"blocked\", not \"bad\"\n- summary must say in a sentence or two what was done, or what blocked it\nFix these and call rlm.finish again; your earlier verdict stands until then."
+					},
+					{
+						"type": "rlm.finish",
+						"error": "rlm.finish rejected:\n- status must be \"passed\", \"failed\" or \"blocked\", not \"bad\"\n- summary must say in a sentence or two what was done, or what blocked it\nFix these and call rlm.finish again; your earlier verdict stands until then."
+					},
+					{
+						"type": "rlm.finish",
+						"result": {
+							"recorded": true,
+							"status": "passed",
+							"next": "End your turn now with a short reply; the host checks changed_files against the files that changed while you ran."
+						}
+					}
+				]
+			},
+			{
+				"index": 2,
+				"taskId": "ultron-task-#5",
+				"laneName": "ultron.rlm-child.ultron-task-#5",
+				"prompt": "c",
+				"level": 1,
+				"allowance": 0,
+				"model": null,
+				"timeoutMs": 1800000,
+				"calls": [
+					{
+						"type": "rlm.finish",
+						"result": {
+							"recorded": true,
+							"status": "passed",
+							"next": "End your turn now with a short reply; the host checks changed_files against the files that changed while you ran."
+						}
+					},
+					{
+						"type": "rlm.finish",
+						"result": {
+							"recorded": true,
+							"status": "failed",
+							"next": "End your turn now with a short reply; the host checks changed_files against the files that changed while you ran."
+						}
+					}
+				]
+			}
+		],
+		"events": [
+			{
+				"task": {
+					"id": "ultron-task-#3",
+					"key": "key-#3",
+					"fingerprint": "44e198cc34b8e97d20a9ea71fa1255a6f30aadc5e61af1981f001bb8de641082",
+					"definition": "rlm-child@1",
+					"state": "completed",
+					"result": {
+						"status": "succeeded",
+						"value": "reply",
+						"verification": "unverified",
+						"verdict": null,
+						"check": {
+							"outcome": "invalid",
+							"unobserved": [],
+							"unreported": [],
+							"unlisted": [],
+							"concurrent": [],
+							"reason": "no workspace to compare",
+							"problems": [
+								"\"passed\" evidence must be concrete, and none of it is: name a command with its outcome (\"npm test: exit 0, 42 passed\") or a file with lines (\"src/app.ts:40-52 handles the empty case\"), not \"looks good\""
+							]
+						},
+						"unverified": true
+					}
+				},
+				"kind": "child_done",
+				"ownerLane": "main",
+				"awaited": false,
+				"fetch": "await rlm.collect([\"ultron-task-#3\"])"
+			},
+			{
+				"task": {
+					"id": "ultron-task-#4",
+					"key": "key-#4",
+					"fingerprint": "287b678c9da8100e0590b704c3253b3c92c5611b713b5c41a16bda876d3b00c6",
+					"definition": "rlm-child@1",
+					"state": "completed",
+					"result": {
+						"status": "succeeded",
+						"value": "second",
+						"verification": "unverified",
+						"verdict": {
+							"status": "passed",
+							"summary": "did it",
+							"outputs": {},
+							"evidence": [
+								"cargo test: exit 0, 4 passed"
+							],
+							"changed_files": []
+						},
+						"check": {
+							"outcome": "unchecked",
+							"unobserved": [],
+							"unreported": [],
+							"unlisted": [],
+							"concurrent": [
+								"ultron-task-#3"
+							],
+							"reason": "no workspace to compare"
+						}
+					}
+				},
+				"kind": "child_done",
+				"ownerLane": "main",
+				"awaited": false,
+				"fetch": "await rlm.collect([\"ultron-task-#4\"])"
+			},
+			{
+				"task": {
+					"id": "ultron-task-#5",
+					"key": "key-#5",
+					"fingerprint": "6d0f5a98dfdcadd3af5aa456c6cbf953e18677748f20784499a71f4989369ba1",
+					"definition": "rlm-child@1",
+					"state": "completed",
+					"result": {
+						"status": "succeeded",
+						"value": "changed my mind",
+						"verification": "unverified",
+						"verdict": {
+							"status": "failed",
+							"summary": "changed my mind",
+							"outputs": {},
+							"evidence": [],
+							"changed_files": []
+						},
+						"check": {
+							"outcome": "unchecked",
+							"unobserved": [],
+							"unreported": [],
+							"unlisted": [],
+							"concurrent": [
+								"ultron-task-#3",
+								"ultron-task-#4"
+							],
+							"reason": "no workspace to compare"
+						}
+					}
+				},
+				"kind": "child_done",
+				"ownerLane": "main",
+				"awaited": false,
+				"fetch": "await rlm.collect([\"ultron-task-#5\"])"
+			}
+		],
+		"journal": {
+			"version": 1,
+			"tasks": [
+				{
+					"id": "ultron-task-#3",
+					"definition": "rlm-child@1",
+					"fingerprint": "44e198cc34b8e97d20a9ea71fa1255a6f30aadc5e61af1981f001bb8de641082",
+					"key": "key-#3",
+					"state": "completed",
+					"result": {
+						"status": "succeeded",
+						"value": "reply",
+						"verification": "unverified",
+						"verdict": null,
+						"check": {
+							"outcome": "invalid",
+							"unobserved": [],
+							"unreported": [],
+							"unlisted": [],
+							"concurrent": [],
+							"reason": "no workspace to compare",
+							"problems": [
+								"\"passed\" evidence must be concrete, and none of it is: name a command with its outcome (\"npm test: exit 0, 42 passed\") or a file with lines (\"src/app.ts:40-52 handles the empty case\"), not \"looks good\""
+							]
+						},
+						"unverified": true
+					}
+				},
+				{
+					"id": "ultron-task-#4",
+					"definition": "rlm-child@1",
+					"fingerprint": "287b678c9da8100e0590b704c3253b3c92c5611b713b5c41a16bda876d3b00c6",
+					"key": "key-#4",
+					"state": "completed",
+					"result": {
+						"status": "succeeded",
+						"value": "second",
+						"verification": "unverified",
+						"verdict": {
+							"status": "passed",
+							"summary": "did it",
+							"outputs": {},
+							"evidence": [
+								"cargo test: exit 0, 4 passed"
+							],
+							"changed_files": []
+						},
+						"check": {
+							"outcome": "unchecked",
+							"unobserved": [],
+							"unreported": [],
+							"unlisted": [],
+							"concurrent": [
+								"ultron-task-#3"
+							],
+							"reason": "no workspace to compare"
+						}
+					}
+				},
+				{
+					"id": "ultron-task-#5",
+					"definition": "rlm-child@1",
+					"fingerprint": "6d0f5a98dfdcadd3af5aa456c6cbf953e18677748f20784499a71f4989369ba1",
+					"key": "key-#5",
+					"state": "completed",
+					"result": {
+						"status": "succeeded",
+						"value": "changed my mind",
+						"verification": "unverified",
+						"verdict": {
+							"status": "failed",
+							"summary": "changed my mind",
+							"outputs": {},
+							"evidence": [],
+							"changed_files": []
+						},
+						"check": {
+							"outcome": "unchecked",
+							"unobserved": [],
+							"unreported": [],
+							"unlisted": [],
+							"concurrent": [
+								"ultron-task-#3",
+								"ultron-task-#4"
+							],
+							"reason": "no workspace to compare"
+						}
+					}
+				}
+			]
+		}
+	},
+	{
+		"name": "nesting depth",
+		"env": {
+			"ULTRON_SPAWN_DEPTH": "3"
+		},
+		"children": [
+			{
+				"calls": [
+					[
+						"rlm.spawn",
+						{
+							"prompt": "grandchild",
+							"kwargs": {
+								"name": "g"
+							}
+						}
+					]
+				],
+				"text": "child0"
+			},
+			{
+				"calls": [
+					[
+						"rlm.spawn",
+						{
+							"prompt": "grandchild",
+							"kwargs": {
+								"name": "g",
+								"depth": 1
+							}
+						}
+					],
+					[
+						"rlm.spawn",
+						{
+							"prompt": "grandchild",
+							"kwargs": {
+								"name": "g2"
+							}
+						}
+					]
+				],
+				"gate": true,
+				"text": "child1"
+			},
+			{
+				"calls": [
+					[
+						"rlm.spawn",
+						{
+							"prompt": "great",
+							"kwargs": {
+								"name": "gg"
+							}
+						}
+					],
+					[
+						"rlm.list_subagents",
+						{}
+					]
+				],
+				"gate": "before",
+				"text": "grandchild1"
+			},
+			{
+				"calls": [
+					[
+						"rlm.collect",
+						{}
+					]
+				],
+				"text": "grandchild2"
+			},
+			{
+				"calls": [
+					[
+						"rlm.spawn",
+						{
+							"prompt": "too deep",
+							"kwargs": {
+								"name": "z"
+							}
+						}
+					]
+				],
+				"gate": "before",
+				"text": "great"
+			}
+		],
+		"steps": [
+			{
+				"op": [
+					"call",
+					"rlm.spawn",
+					{
+						"prompt": "c0",
+						"kwargs": {
+							"name": "c0"
+						}
+					}
+				],
+				"result": {
+					"rlm_child_id": "ultron-task-#6",
+					"name": "c0",
+					"session_dir": "",
+					"model": "",
+					"timeout_ms": 1800000,
+					"parent_branch_anchor": "",
+					"worktree": null
+				}
+			},
+			{
+				"op": [
+					"settle"
+				]
+			},
+			{
+				"op": [
+					"call",
+					"rlm.spawn",
+					{
+						"prompt": "c1",
+						"kwargs": {
+							"name": "c1",
+							"depth": 2
+						}
+					}
+				],
+				"result": {
+					"rlm_child_id": "ultron-task-#7",
+					"name": "c1",
+					"session_dir": "",
+					"model": "",
+					"timeout_ms": 1800000,
+					"parent_branch_anchor": "",
+					"worktree": null
+				}
+			},
+			{
+				"op": [
+					"call",
+					"rlm.spawn",
+					{
+						"prompt": "deep",
+						"kwargs": {
+							"name": "d",
+							"depth": 3
+						}
+					}
+				],
+				"error": "rlm.spawn depth=3 is too deep here: at most 2 (ULTRON_SPAWN_DEPTH=3 levels in all)."
+			},
+			{
+				"op": [
+					"settle"
+				]
+			},
+			{
+				"op": [
+					"release",
+					2
+				]
+			},
+			{
+				"op": [
+					"settle"
+				]
+			},
+			{
+				"op": [
+					"release",
+					4
+				]
+			},
+			{
+				"op": [
+					"settle"
+				]
+			},
+			{
+				"op": [
+					"release",
+					1
+				]
+			},
+			{
+				"op": [
+					"settle"
+				]
+			},
+			{
+				"op": [
+					"call",
+					"rlm.collect",
+					{}
+				],
+				"result": {
+					"results": [
+						{
+							"id": "ultron-task-#6",
+							"result": {
+								"status": "succeeded",
+								"value": "child0",
+								"verification": "unverified",
+								"verdict": null,
+								"unverified": true
+							}
+						},
+						{
+							"id": "ultron-task-#7",
+							"result": {
+								"status": "succeeded",
+								"value": "child1",
+								"verification": "unverified",
+								"verdict": null,
+								"unverified": true
+							}
+						},
+						{
+							"id": "ultron-task-#8",
+							"result": {
+								"status": "succeeded",
+								"value": "grandchild1",
+								"verification": "unverified",
+								"verdict": null,
+								"unverified": true
+							}
+						},
+						{
+							"id": "ultron-task-#9",
+							"result": {
+								"status": "succeeded",
+								"value": "grandchild2",
+								"verification": "unverified",
+								"verdict": null,
+								"unverified": true
+							}
+						},
+						{
+							"id": "ultron-task-#10",
+							"result": {
+								"status": "succeeded",
+								"value": "great",
+								"verification": "unverified",
+								"verdict": null,
+								"unverified": true
+							}
+						}
+					]
+				}
+			}
+		],
+		"runs": [
+			{
+				"index": 0,
+				"taskId": "ultron-task-#6",
+				"laneName": "ultron.rlm-child.ultron-task-#6",
+				"prompt": "c0",
+				"level": 1,
+				"allowance": 0,
+				"model": null,
+				"timeoutMs": 1800000,
+				"calls": [
+					{
+						"type": "rlm.spawn",
+						"error": "rlm.spawn refused: this subagent was started with depth=0, so it does its brief itself. A parent that wants nested delegation passes rlm.spawn(brief, name=..., depth=N)."
+					}
+				]
+			},
+			{
+				"index": 1,
+				"taskId": "ultron-task-#7",
+				"laneName": "ultron.rlm-child.ultron-task-#7",
+				"prompt": "c1",
+				"level": 1,
+				"allowance": 2,
+				"model": null,
+				"timeoutMs": 1800000,
+				"calls": [
+					{
+						"type": "rlm.spawn",
+						"result": {
+							"rlm_child_id": "ultron-task-#8",
+							"name": "g",
+							"session_dir": "",
+							"model": "",
+							"timeout_ms": 1800000,
+							"parent_branch_anchor": "",
+							"worktree": null
+						}
+					},
+					{
+						"type": "rlm.spawn",
+						"result": {
+							"rlm_child_id": "ultron-task-#9",
+							"name": "g2",
+							"session_dir": "",
+							"model": "",
+							"timeout_ms": 1800000,
+							"parent_branch_anchor": "",
+							"worktree": null
+						}
+					}
+				]
+			},
+			{
+				"index": 2,
+				"taskId": "ultron-task-#8",
+				"laneName": "ultron.rlm-child.ultron-task-#8",
+				"prompt": "grandchild",
+				"level": 2,
+				"allowance": 1,
+				"model": null,
+				"timeoutMs": 1800000,
+				"calls": [
+					{
+						"type": "rlm.spawn",
+						"result": {
+							"rlm_child_id": "ultron-task-#10",
+							"name": "gg",
+							"session_dir": "",
+							"model": "",
+							"timeout_ms": 1800000,
+							"parent_branch_anchor": "",
+							"worktree": null
+						}
+					},
+					{
+						"type": "rlm.list_subagents",
+						"result": {
+							"subagents": [
+								{
+									"id": "ultron-task-#10",
+									"definition": "rlm-child@1",
+									"state": "running",
+									"parentId": "ultron-task-#8"
+								}
+							]
+						}
+					}
+				]
+			},
+			{
+				"index": 3,
+				"taskId": "ultron-task-#9",
+				"laneName": "ultron.rlm-child.ultron-task-#9",
+				"prompt": "grandchild",
+				"level": 2,
+				"allowance": 0,
+				"model": null,
+				"timeoutMs": 1800000,
+				"calls": [
+					{
+						"type": "rlm.collect",
+						"result": {
+							"results": []
+						}
+					}
+				]
+			},
+			{
+				"index": 4,
+				"taskId": "ultron-task-#10",
+				"laneName": "ultron.rlm-child.ultron-task-#10",
+				"prompt": "great",
+				"level": 3,
+				"allowance": 0,
+				"model": null,
+				"timeoutMs": 1800000,
+				"calls": [
+					{
+						"type": "rlm.spawn",
+						"error": "rlm.spawn refused: subagents nest at most 3 level(s) deep (ULTRON_SPAWN_DEPTH). Do this part yourself: narrow with code, read the candidates, and use rlm.map for passages you cannot settle."
+					}
+				]
+			}
+		],
+		"events": [
+			{
+				"task": {
+					"id": "ultron-task-#6",
+					"key": "key-#6",
+					"fingerprint": "6b0e7c0817f17ee2d28bccaf8f485d613ad917c30ac8c6e7d0271f881da4166f",
+					"definition": "rlm-child@1",
+					"state": "completed",
+					"result": {
+						"status": "succeeded",
+						"value": "child0",
+						"verification": "unverified",
+						"verdict": null,
+						"unverified": true
+					}
+				},
+				"kind": "child_done",
+				"ownerLane": "main",
+				"awaited": false,
+				"fetch": "await rlm.collect([\"ultron-task-#6\"])"
+			},
+			{
+				"task": {
+					"id": "ultron-task-#9",
+					"key": "key-#7",
+					"fingerprint": "e8a92cb79221a785c2fd0936f983d992be63eac8c1d527053f4da614f18fd8c0",
+					"definition": "rlm-child@1",
+					"state": "completed",
+					"result": {
+						"status": "succeeded",
+						"value": "grandchild2",
+						"verification": "unverified",
+						"verdict": null,
+						"unverified": true
+					},
+					"parentId": "ultron-task-#7"
+				},
+				"kind": "child_done",
+				"ownerLane": "ultron.rlm-child.ultron-task-#7",
+				"awaited": false,
+				"fetch": "await rlm.collect([\"ultron-task-#9\"])"
+			},
+			{
+				"task": {
+					"id": "ultron-task-#8",
+					"key": "key-#8",
+					"fingerprint": "e8a92cb79221a785c2fd0936f983d992be63eac8c1d527053f4da614f18fd8c0",
+					"definition": "rlm-child@1",
+					"state": "completed",
+					"result": {
+						"status": "succeeded",
+						"value": "grandchild1",
+						"verification": "unverified",
+						"verdict": null,
+						"unverified": true
+					},
+					"parentId": "ultron-task-#7"
+				},
+				"kind": "child_done",
+				"ownerLane": "ultron.rlm-child.ultron-task-#7",
+				"awaited": false,
+				"fetch": "await rlm.collect([\"ultron-task-#8\"])"
+			},
+			{
+				"task": {
+					"id": "ultron-task-#10",
+					"key": "key-#9",
+					"fingerprint": "23ce2a7d611ac6e169cd1b3d212a48b256b2876503b0843d8a2db373b6349fe2",
+					"definition": "rlm-child@1",
+					"state": "completed",
+					"result": {
+						"status": "succeeded",
+						"value": "great",
+						"verification": "unverified",
+						"verdict": null,
+						"unverified": true
+					},
+					"parentId": "ultron-task-#8"
+				},
+				"kind": "child_done",
+				"ownerLane": "ultron.rlm-child.ultron-task-#8",
+				"awaited": false,
+				"fetch": "await rlm.collect([\"ultron-task-#10\"])"
+			},
+			{
+				"task": {
+					"id": "ultron-task-#7",
+					"key": "key-#10",
+					"fingerprint": "9f1d5a20bec1e2e84db1cdd3393a95ce21b728f9dfc3d517c7142c13fe04b936",
+					"definition": "rlm-child@1",
+					"state": "completed",
+					"result": {
+						"status": "succeeded",
+						"value": "child1",
+						"verification": "unverified",
+						"verdict": null,
+						"unverified": true
+					}
+				},
+				"kind": "child_done",
+				"ownerLane": "main",
+				"awaited": false,
+				"fetch": "await rlm.collect([\"ultron-task-#7\"])"
+			}
+		],
+		"journal": {
+			"version": 1,
+			"tasks": [
+				{
+					"id": "ultron-task-#6",
+					"definition": "rlm-child@1",
+					"fingerprint": "6b0e7c0817f17ee2d28bccaf8f485d613ad917c30ac8c6e7d0271f881da4166f",
+					"key": "key-#6",
+					"state": "completed",
+					"result": {
+						"status": "succeeded",
+						"value": "child0",
+						"verification": "unverified",
+						"verdict": null,
+						"unverified": true
+					}
+				},
+				{
+					"id": "ultron-task-#7",
+					"definition": "rlm-child@1",
+					"fingerprint": "9f1d5a20bec1e2e84db1cdd3393a95ce21b728f9dfc3d517c7142c13fe04b936",
+					"key": "key-#10",
+					"state": "completed",
+					"result": {
+						"status": "succeeded",
+						"value": "child1",
+						"verification": "unverified",
+						"verdict": null,
+						"unverified": true
+					}
+				},
+				{
+					"id": "ultron-task-#8",
+					"definition": "rlm-child@1",
+					"fingerprint": "e8a92cb79221a785c2fd0936f983d992be63eac8c1d527053f4da614f18fd8c0",
+					"key": "key-#8",
+					"state": "completed",
+					"parentId": "ultron-task-#7",
+					"result": {
+						"status": "succeeded",
+						"value": "grandchild1",
+						"verification": "unverified",
+						"verdict": null,
+						"unverified": true
+					}
+				},
+				{
+					"id": "ultron-task-#9",
+					"definition": "rlm-child@1",
+					"fingerprint": "e8a92cb79221a785c2fd0936f983d992be63eac8c1d527053f4da614f18fd8c0",
+					"key": "key-#7",
+					"state": "completed",
+					"parentId": "ultron-task-#7",
+					"result": {
+						"status": "succeeded",
+						"value": "grandchild2",
+						"verification": "unverified",
+						"verdict": null,
+						"unverified": true
+					}
+				},
+				{
+					"id": "ultron-task-#10",
+					"definition": "rlm-child@1",
+					"fingerprint": "23ce2a7d611ac6e169cd1b3d212a48b256b2876503b0843d8a2db373b6349fe2",
+					"key": "key-#9",
+					"state": "completed",
+					"parentId": "ultron-task-#8",
+					"result": {
+						"status": "succeeded",
+						"value": "great",
+						"verification": "unverified",
+						"verdict": null,
+						"unverified": true
+					}
+				}
+			]
+		}
+	},
+	{
+		"name": "depth ceiling zero means none",
+		"env": {
+			"ULTRON_SPAWN_DEPTH": "0"
+		},
+		"children": [
+			{
+				"calls": [],
+				"text": "deep ok"
+			}
+		],
+		"steps": [
+			{
+				"op": [
+					"call",
+					"rlm.spawn",
+					{
+						"prompt": "c",
+						"kwargs": {
+							"name": "c",
+							"depth": 7
+						}
+					}
+				],
+				"result": {
+					"rlm_child_id": "ultron-task-#11",
+					"name": "c",
+					"session_dir": "",
+					"model": "",
+					"timeout_ms": 1800000,
+					"parent_branch_anchor": "",
+					"worktree": null
+				}
+			},
+			{
+				"op": [
+					"settle"
+				]
+			},
+			{
+				"op": [
+					"call",
+					"rlm.collect",
+					{}
+				],
+				"result": {
+					"results": [
+						{
+							"id": "ultron-task-#11",
+							"result": {
+								"status": "succeeded",
+								"value": "deep ok",
+								"verification": "unverified",
+								"verdict": null,
+								"unverified": true
+							}
+						}
+					]
+				}
+			}
+		],
+		"runs": [
+			{
+				"index": 0,
+				"taskId": "ultron-task-#11",
+				"laneName": "ultron.rlm-child.ultron-task-#11",
+				"prompt": "c",
+				"level": 1,
+				"allowance": 7,
+				"model": null,
+				"timeoutMs": 1800000,
+				"calls": []
+			}
+		],
+		"events": [
+			{
+				"task": {
+					"id": "ultron-task-#11",
+					"key": "key-#11",
+					"fingerprint": "6d0f5a98dfdcadd3af5aa456c6cbf953e18677748f20784499a71f4989369ba1",
+					"definition": "rlm-child@1",
+					"state": "completed",
+					"result": {
+						"status": "succeeded",
+						"value": "deep ok",
+						"verification": "unverified",
+						"verdict": null,
+						"unverified": true
+					}
+				},
+				"kind": "child_done",
+				"ownerLane": "main",
+				"awaited": false,
+				"fetch": "await rlm.collect([\"ultron-task-#11\"])"
+			}
+		],
+		"journal": {
+			"version": 1,
+			"tasks": [
+				{
+					"id": "ultron-task-#11",
+					"definition": "rlm-child@1",
+					"fingerprint": "6d0f5a98dfdcadd3af5aa456c6cbf953e18677748f20784499a71f4989369ba1",
+					"key": "key-#11",
+					"state": "completed",
+					"result": {
+						"status": "succeeded",
+						"value": "deep ok",
+						"verification": "unverified",
+						"verdict": null,
+						"unverified": true
+					}
+				}
+			]
+		}
+	},
+	{
+		"name": "awaited vs detached, failure, delete",
+		"env": {},
+		"children": [
+			{
+				"calls": [],
+				"gate": true,
+				"text": "waited for"
+			},
+			{
+				"calls": [],
+				"gate": true,
+				"throws": "model exploded"
+			},
+			{
+				"calls": [],
+				"gate": true,
+				"text": "never"
+			},
+			{
+				"calls": [],
+				"text": ""
+			}
+		],
+		"steps": [
+			{
+				"op": [
+					"call",
+					"rlm.spawn",
+					{
+						"prompt": "w",
+						"kwargs": {
+							"name": "w"
+						}
+					}
+				],
+				"result": {
+					"rlm_child_id": "ultron-task-#12",
+					"name": "w",
+					"session_dir": "",
+					"model": "",
+					"timeout_ms": 1800000,
+					"parent_branch_anchor": "",
+					"worktree": null
+				}
+			},
+			{
+				"op": [
+					"call",
+					"rlm.spawn",
+					{
+						"prompt": "f",
+						"kwargs": {
+							"name": "f"
+						}
+					}
+				],
+				"result": {
+					"rlm_child_id": "ultron-task-#13",
+					"name": "f",
+					"session_dir": "",
+					"model": "",
+					"timeout_ms": 1800000,
+					"parent_branch_anchor": "",
+					"worktree": null
+				}
+			},
+			{
+				"op": [
+					"call",
+					"rlm.spawn",
+					{
+						"prompt": "d",
+						"kwargs": {
+							"name": "d"
+						}
+					}
+				],
+				"result": {
+					"rlm_child_id": "ultron-task-#14",
+					"name": "d",
+					"session_dir": "",
+					"model": "",
+					"timeout_ms": 1800000,
+					"parent_branch_anchor": "",
+					"worktree": null
+				}
+			},
+			{
+				"op": [
+					"settle"
+				]
+			},
+			{
+				"op": [
+					"async",
+					"rlm.collect",
+					{
+						"selectors": [
+							"$0"
+						]
+					}
+				]
+			},
+			{
+				"op": [
+					"settle"
+				]
+			},
+			{
+				"op": [
+					"release",
+					0
+				]
+			},
+			{
+				"op": [
+					"join",
+					0
+				],
+				"result": {
+					"results": [
+						{
+							"id": "ultron-task-#12",
+							"result": {
+								"status": "succeeded",
+								"value": "waited for",
+								"verification": "unverified",
+								"verdict": null,
+								"unverified": true
+							}
+						}
+					]
+				}
+			},
+			{
+				"op": [
+					"release",
+					1
+				]
+			},
+			{
+				"op": [
+					"settle"
+				]
+			},
+			{
+				"op": [
+					"call",
+					"rlm.delete_subagent",
+					{
+						"selector": "$2"
+					}
+				],
+				"result": {
+					"deleted": true
+				}
+			},
+			{
+				"op": [
+					"call",
+					"rlm.delete_subagent",
+					{
+						"selector": "$2"
+					}
+				],
+				"result": {
+					"deleted": true
+				}
+			},
+			{
+				"op": [
+					"release",
+					2
+				]
+			},
+			{
+				"op": [
+					"settle"
+				]
+			},
+			{
+				"op": [
+					"call",
+					"rlm.spawn",
+					{
+						"prompt": "empty",
+						"kwargs": {
+							"name": "e"
+						}
+					}
+				],
+				"result": {
+					"rlm_child_id": "ultron-task-#15",
+					"name": "e",
+					"session_dir": "",
+					"model": "",
+					"timeout_ms": 1800000,
+					"parent_branch_anchor": "",
+					"worktree": null
+				}
+			},
+			{
+				"op": [
+					"settle"
+				]
+			},
+			{
+				"op": [
+					"call",
+					"rlm.collect",
+					{}
+				],
+				"result": {
+					"results": [
+						{
+							"id": "ultron-task-#12",
+							"result": {
+								"status": "succeeded",
+								"value": "waited for",
+								"verification": "unverified",
+								"verdict": null,
+								"unverified": true
+							}
+						},
+						{
+							"id": "ultron-task-#13",
+							"result": {
+								"status": "failed",
+								"error": "model exploded",
+								"verification": "unverified"
+							}
+						},
+						{
+							"id": "ultron-task-#14",
+							"result": {
+								"status": "cancelled",
+								"error": "RLM child deleted",
+								"verification": "unverified"
+							}
+						},
+						{
+							"id": "ultron-task-#15",
+							"result": {
+								"status": "failed",
+								"error": "Agent produced no assistant result at the completed tip",
+								"verification": "unverified"
+							}
+						}
+					]
+				}
+			}
+		],
+		"runs": [
+			{
+				"index": 0,
+				"taskId": "ultron-task-#12",
+				"laneName": "ultron.rlm-child.ultron-task-#12",
+				"prompt": "w",
+				"level": 1,
+				"allowance": 0,
+				"model": null,
+				"timeoutMs": 1800000,
+				"calls": []
+			},
+			{
+				"index": 1,
+				"taskId": "ultron-task-#13",
+				"laneName": "ultron.rlm-child.ultron-task-#13",
+				"prompt": "f",
+				"level": 1,
+				"allowance": 0,
+				"model": null,
+				"timeoutMs": 1800000,
+				"calls": []
+			},
+			{
+				"index": 2,
+				"taskId": "ultron-task-#14",
+				"laneName": "ultron.rlm-child.ultron-task-#14",
+				"prompt": "d",
+				"level": 1,
+				"allowance": 0,
+				"model": null,
+				"timeoutMs": 1800000,
+				"calls": []
+			},
+			{
+				"index": 3,
+				"taskId": "ultron-task-#15",
+				"laneName": "ultron.rlm-child.ultron-task-#15",
+				"prompt": "empty",
+				"level": 1,
+				"allowance": 0,
+				"model": null,
+				"timeoutMs": 1800000,
+				"calls": []
+			}
+		],
+		"events": [
+			{
+				"task": {
+					"id": "ultron-task-#12",
+					"key": "key-#12",
+					"fingerprint": "f2d3ce444852927f36ae09d7c00ce8f0a9620c4642d3448777e7e03ad4547e41",
+					"definition": "rlm-child@1",
+					"state": "completed",
+					"result": {
+						"status": "succeeded",
+						"value": "waited for",
+						"verification": "unverified",
+						"verdict": null,
+						"unverified": true
+					}
+				},
+				"kind": "child_done",
+				"ownerLane": "main",
+				"awaited": true,
+				"fetch": "await rlm.collect([\"ultron-task-#12\"])"
+			},
+			{
+				"task": {
+					"id": "ultron-task-#13",
+					"key": "key-#13",
+					"fingerprint": "2b99043bd28d70cb120bedc44b6b41a1e88ce9d0bd48b33ea9eb4a65159bac86",
+					"definition": "rlm-child@1",
+					"state": "failed",
+					"result": {
+						"status": "failed",
+						"error": "model exploded",
+						"verification": "unverified"
+					}
+				},
+				"kind": "child_done",
+				"ownerLane": "main",
+				"awaited": false,
+				"fetch": "await rlm.collect([\"ultron-task-#13\"])"
+			},
+			{
+				"task": {
+					"id": "ultron-task-#14",
+					"key": "key-#14",
+					"fingerprint": "ae179b5e008229de8b7c75d78e0f537b78d47cbbb3a035faedda61b442ad685d",
+					"definition": "rlm-child@1",
+					"state": "cancelled",
+					"result": {
+						"status": "cancelled",
+						"error": "RLM child deleted",
+						"verification": "unverified"
+					}
+				},
+				"kind": "child_done",
+				"ownerLane": "main",
+				"awaited": false,
+				"fetch": "await rlm.collect([\"ultron-task-#14\"])"
+			},
+			{
+				"task": {
+					"id": "ultron-task-#15",
+					"key": "key-#15",
+					"fingerprint": "51fb203629cfcde2d071001d60a48a18f8cb519af2bea8267c06422c6cf7cfb7",
+					"definition": "rlm-child@1",
+					"state": "failed",
+					"result": {
+						"status": "failed",
+						"error": "Agent produced no assistant result at the completed tip",
+						"verification": "unverified"
+					}
+				},
+				"kind": "child_done",
+				"ownerLane": "main",
+				"awaited": false,
+				"fetch": "await rlm.collect([\"ultron-task-#15\"])"
+			}
+		],
+		"journal": {
+			"version": 1,
+			"tasks": [
+				{
+					"id": "ultron-task-#12",
+					"definition": "rlm-child@1",
+					"fingerprint": "f2d3ce444852927f36ae09d7c00ce8f0a9620c4642d3448777e7e03ad4547e41",
+					"key": "key-#12",
+					"state": "completed",
+					"result": {
+						"status": "succeeded",
+						"value": "waited for",
+						"verification": "unverified",
+						"verdict": null,
+						"unverified": true
+					}
+				},
+				{
+					"id": "ultron-task-#13",
+					"definition": "rlm-child@1",
+					"fingerprint": "2b99043bd28d70cb120bedc44b6b41a1e88ce9d0bd48b33ea9eb4a65159bac86",
+					"key": "key-#13",
+					"state": "failed",
+					"result": {
+						"status": "failed",
+						"error": "model exploded",
+						"verification": "unverified"
+					}
+				},
+				{
+					"id": "ultron-task-#14",
+					"definition": "rlm-child@1",
+					"fingerprint": "ae179b5e008229de8b7c75d78e0f537b78d47cbbb3a035faedda61b442ad685d",
+					"key": "key-#14",
+					"state": "cancelled",
+					"result": {
+						"status": "cancelled",
+						"error": "RLM child deleted",
+						"verification": "unverified"
+					}
+				},
+				{
+					"id": "ultron-task-#15",
+					"definition": "rlm-child@1",
+					"fingerprint": "51fb203629cfcde2d071001d60a48a18f8cb519af2bea8267c06422c6cf7cfb7",
+					"key": "key-#15",
+					"state": "failed",
+					"result": {
+						"status": "failed",
+						"error": "Agent produced no assistant result at the completed tip",
+						"verification": "unverified"
+					}
+				}
+			]
+		}
+	},
+	{
+		"name": "timeout",
+		"env": {},
+		"children": [
+			{
+				"calls": [],
+				"gate": true,
+				"text": "late"
+			}
+		],
+		"steps": [
+			{
+				"op": [
+					"call",
+					"rlm.spawn",
+					{
+						"prompt": "slow",
+						"kwargs": {
+							"name": "s",
+							"timeout_ms": 30
+						}
+					}
+				],
+				"result": {
+					"rlm_child_id": "ultron-task-#16",
+					"name": "s",
+					"session_dir": "",
+					"model": "",
+					"timeout_ms": 30,
+					"parent_branch_anchor": "",
+					"worktree": null
+				}
+			},
+			{
+				"op": [
+					"sleep",
+					120
+				]
+			},
+			{
+				"op": [
+					"call",
+					"rlm.collect",
+					{}
+				],
+				"result": {
+					"results": [
+						{
+							"id": "ultron-task-#16",
+							"result": {
+								"status": "cancelled",
+								"error": "Ultron task exceeded 30ms timeout",
+								"verification": "unverified"
+							}
+						}
+					]
+				}
+			}
+		],
+		"runs": [
+			{
+				"index": 0,
+				"taskId": "ultron-task-#16",
+				"laneName": "ultron.rlm-child.ultron-task-#16",
+				"prompt": "slow",
+				"level": 1,
+				"allowance": 0,
+				"model": null,
+				"timeoutMs": 30,
+				"calls": []
+			}
+		],
+		"events": [
+			{
+				"task": {
+					"id": "ultron-task-#16",
+					"key": "key-#16",
+					"fingerprint": "378aba9ea7004ae63aed0eaa736b470205a681872555ee9cd84c37a15300290c",
+					"definition": "rlm-child@1",
+					"state": "cancelled",
+					"result": {
+						"status": "cancelled",
+						"error": "Ultron task exceeded 30ms timeout",
+						"verification": "unverified"
+					}
+				},
+				"kind": "child_done",
+				"ownerLane": "main",
+				"awaited": false,
+				"fetch": "await rlm.collect([\"ultron-task-#16\"])"
+			}
+		],
+		"journal": {
+			"version": 1,
+			"tasks": [
+				{
+					"id": "ultron-task-#16",
+					"definition": "rlm-child@1",
+					"fingerprint": "378aba9ea7004ae63aed0eaa736b470205a681872555ee9cd84c37a15300290c",
+					"key": "key-#16",
+					"state": "cancelled",
+					"result": {
+						"status": "cancelled",
+						"error": "Ultron task exceeded 30ms timeout",
+						"verification": "unverified"
+					}
+				}
+			]
+		}
+	}
+]

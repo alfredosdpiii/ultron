@@ -1,0 +1,2502 @@
+{
+	"engine": "packages/coding-agent/src/ultron/loki-engine/loki.py",
+	"cases": [
+		{
+			"name": "shell-git-status",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "git status"
+				}
+			},
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "shell-git-diff-output",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "git diff --output=x"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: shell Git option requires review\n"
+			}
+		},
+		{
+			"name": "shell-git-log-exec",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "git log --exec=x"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: shell Git option requires review\n"
+			}
+		},
+		{
+			"name": "shell-pwd",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "pwd"
+				}
+			},
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "shell-pwd-args",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "pwd -P"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: invalid shell input: git: fatal: not a git repository (or any parent up to mount point /)\nStopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).\n"
+			}
+		},
+		{
+			"name": "shell-echo",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "echo hi there"
+				}
+			},
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "shell-printf",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "printf '%s' x"
+				}
+			},
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "shell-git-reset-hard",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "git reset --hard HEAD~1"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: shell syntax unsupported: redirects, substitutions and compound commands or expansions require review\n"
+			}
+		},
+		{
+			"name": "shell-git-reset-keep",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "git reset --keep HEAD"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: blocked destructive Git command `git reset --keep HEAD`: it can discard uncommitted work or rewrite history; ask the user to run it\n"
+			}
+		},
+		{
+			"name": "shell-git-reset-soft",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "git reset --soft HEAD"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: shell command requires review; use verified file tools for writes\n"
+			}
+		},
+		{
+			"name": "shell-git-clean-fdx",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "git clean -fdx"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: blocked destructive Git command `git clean -fdx`: it can discard uncommitted work or rewrite history; ask the user to run it\n"
+			}
+		},
+		{
+			"name": "shell-git-clean-dry",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "git clean -n"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: shell command requires review; use verified file tools for writes\n"
+			}
+		},
+		{
+			"name": "shell-git-clean-force",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "git clean --force"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: blocked destructive Git command `git clean --force`: it can discard uncommitted work or rewrite history; ask the user to run it\n"
+			}
+		},
+		{
+			"name": "shell-git-push-force",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "git push --force origin main"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: blocked destructive Git command `git push --force origin`: it can discard uncommitted work or rewrite history; ask the user to run it\n"
+			}
+		},
+		{
+			"name": "shell-git-push-plus",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "git push origin +main"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: blocked destructive Git command `git push origin +main`: it can discard uncommitted work or rewrite history; ask the user to run it\n"
+			}
+		},
+		{
+			"name": "shell-git-push-delete-colon",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "git push origin :old"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: blocked destructive Git command `git push origin :old`: it can discard uncommitted work or rewrite history; ask the user to run it\n"
+			}
+		},
+		{
+			"name": "shell-git-push-plain",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "git push origin main"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: shell command requires review; use verified file tools for writes\n"
+			}
+		},
+		{
+			"name": "shell-git-branch-D",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "git branch -D old"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: blocked destructive Git command `git branch -D old`: it can discard uncommitted work or rewrite history; ask the user to run it\n"
+			}
+		},
+		{
+			"name": "shell-git-branch-delete-force",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "git branch --delete --force old"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: blocked destructive Git command `git branch --delete --force`: it can discard uncommitted work or rewrite history; ask the user to run it\n"
+			}
+		},
+		{
+			"name": "shell-git-branch-delete",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "git branch --delete old"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: shell command requires review; use verified file tools for writes\n"
+			}
+		},
+		{
+			"name": "shell-git-stash-drop",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "git stash drop"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: blocked destructive Git command `git stash drop`: it can discard uncommitted work or rewrite history; ask the user to run it\n"
+			}
+		},
+		{
+			"name": "shell-git-checkout-dot",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "git checkout ."
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: blocked destructive Git command `git checkout .`: it can discard uncommitted work or rewrite history; ask the user to run it\n"
+			}
+		},
+		{
+			"name": "shell-git-checkout-branch",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "git checkout main"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: shell command requires review; use verified file tools for writes\n"
+			}
+		},
+		{
+			"name": "shell-git-restore",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "git restore a.txt"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: blocked destructive Git command `git restore a.txt`: it can discard uncommitted work or rewrite history; ask the user to run it\n"
+			}
+		},
+		{
+			"name": "shell-git-rebase-long",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "git rebase -i HEAD~3 --autosquash x"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: shell syntax unsupported: redirects, substitutions and compound commands or expansions require review\n"
+			}
+		},
+		{
+			"name": "shell-git-commit",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "git commit -m x"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: shell command requires review; use verified file tools for writes\n"
+			}
+		},
+		{
+			"name": "shell-pipe",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "cat a | grep b"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: shell syntax unsupported: redirects, substitutions and compound commands or expansions require review\n"
+			}
+		},
+		{
+			"name": "shell-subst",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "echo $(id)"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: shell syntax unsupported: redirects, substitutions and compound commands or expansions require review\n"
+			}
+		},
+		{
+			"name": "shell-glob",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "ls *.txt"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: shell syntax unsupported: redirects, substitutions and compound commands or expansions require review\n"
+			}
+		},
+		{
+			"name": "shell-control-char",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "echo a\tb"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "shell command is too long or contains control characters\n"
+			}
+		},
+		{
+			"name": "shell-too-long",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "echo aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "shell command is too long or contains control characters\n"
+			}
+		},
+		{
+			"name": "shell-empty",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "   "
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "shell command must be a nonempty string\n"
+			}
+		},
+		{
+			"name": "shell-not-string",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": 5
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "shell command must be a nonempty string\n"
+			}
+		},
+		{
+			"name": "shell-unclosed-quote",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "echo 'a"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "No closing quotation\n"
+			}
+		},
+		{
+			"name": "shell-path-exe",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "./run.sh"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "shell command requires a plain executable name\n"
+			}
+		},
+		{
+			"name": "shell-assign-exe",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "A=1 make"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "shell command requires a plain executable name\n"
+			}
+		},
+		{
+			"name": "shell-redirect-notes",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "echo hi > notes.md"
+				}
+			},
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "shell-redirect-append-log",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "printf x >> build.log"
+				}
+			},
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "shell-redirect-source",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "echo x > main.py"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: shell redirect into main.py bypasses write checks; use file edit tools for source and configuration files\n"
+			}
+		},
+		{
+			"name": "shell-redirect-hidden",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "echo x > .env.txt"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: shell redirect into .env.txt bypasses write checks; use file edit tools for source and configuration files\n"
+			}
+		},
+		{
+			"name": "shell-redirect-hidden-dir",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "echo x > .cache/a.txt"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: shell redirect into .cache/a.txt bypasses write checks; use file edit tools for source and configuration files\n"
+			}
+		},
+		{
+			"name": "shell-redirect-outside",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "echo x > ../out.txt"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: shell redirect target escapes the repository root\n"
+			}
+		},
+		{
+			"name": "shell-redirect-absolute-outside",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "echo x > /tmp/loki-out.txt"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: shell redirect target escapes the repository root\n"
+			}
+		},
+		{
+			"name": "shell-redirect-protected",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "echo x > .loki/notes.md"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: protected file: .loki/notes.md (set LOKI_ALLOW_PROTECTED=1 to override)\n"
+			}
+		},
+		{
+			"name": "shell-redirect-dir",
+			"files": {
+				"d.md/keep": ""
+			},
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "echo x > d.md"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: directory target is not a file: <ROOT>/d.md\n"
+			}
+		},
+		{
+			"name": "shell-redirect-symlink",
+			"files": {
+				"real.md": "",
+				"link.md": {
+					"symlink": "real.md"
+				}
+			},
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "echo x > link.md"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: shell redirect target escapes the repository root\n"
+			}
+		},
+		{
+			"name": "shell-redirect-cat",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "cat a > b.txt"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: shell redirect from a command other than echo/printf requires review; use file edit tools for writes\n"
+			}
+		},
+		{
+			"name": "shell-redirect-two-ops",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "echo a > b.txt; echo c"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: shell syntax unsupported: redirects, substitutions and compound commands or expansions require review\n"
+			}
+		},
+		{
+			"name": "shell-redirect-quoted-target",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "echo hi > 'my notes.txt'"
+				}
+			},
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "shell-redirect-comment",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "echo hi > n.txt # done"
+				}
+			},
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "shell-redirect-subdir-cwd",
+			"files": {
+				"sub/keep": ""
+			},
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>/sub",
+				"tool_input": {
+					"command": "echo x > ../top.md"
+				}
+			},
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "shell-redirect-invalid-config",
+			"files": {
+				".loki/loki.json": "{\"zeta\":1}"
+			},
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "echo x > a.md"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: shell redirect from a command other than echo/printf requires review; use file edit tools for writes\n"
+			}
+		},
+		{
+			"name": "shell-factory-name",
+			"args": [
+				"shell",
+				"--harness",
+				"factory"
+			],
+			"stdin": {
+				"tool_name": "Execute",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "pwd"
+				}
+			},
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "shell-pi-name",
+			"args": [
+				"shell",
+				"--harness",
+				"pi"
+			],
+			"stdin": {
+				"tool_name": "bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "pwd"
+				}
+			},
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "shell-wrong-name",
+			"args": [
+				"shell",
+				"--harness",
+				"factory"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "pwd"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: invalid shell input: unexpected shell tool name\n"
+			}
+		},
+		{
+			"name": "shell-extra-field",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "pwd",
+					"env": {}
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: invalid shell input: unsupported shell input fields\n"
+			}
+		},
+		{
+			"name": "shell-meta-fields",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "pwd",
+					"description": "d",
+					"timeout": 5
+				}
+			},
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "shell-cwd-missing",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"tool_input": {
+					"command": "pwd"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: invalid shell input: shell cwd must be an absolute directory\n"
+			}
+		},
+		{
+			"name": "shell-cwd-relative",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "sub",
+				"tool_input": {
+					"command": "pwd"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: invalid shell input: shell cwd must be a non-symlinked directory inside the root\n"
+			}
+		},
+		{
+			"name": "shell-cwd-outside",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "/",
+				"tool_input": {
+					"command": "pwd"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: invalid shell input: shell cwd must be a non-symlinked directory inside the root\n"
+			}
+		},
+		{
+			"name": "shell-cwd-dotdot",
+			"files": {
+				"sub/keep": ""
+			},
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>/sub/..",
+				"tool_input": {
+					"command": "pwd"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: invalid shell input: shell cwd must be a non-symlinked directory inside the root\n"
+			}
+		},
+		{
+			"name": "shell-cwd-dot",
+			"files": {
+				"sub/keep": ""
+			},
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>/./sub/",
+				"tool_input": {
+					"command": "pwd"
+				}
+			},
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "shell-cwd-symlink",
+			"files": {
+				"real/keep": "",
+				"link": {
+					"symlink": "real"
+				}
+			},
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>/link",
+				"tool_input": {
+					"command": "pwd"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: invalid shell input: shell cwd must be a non-symlinked directory inside the root\n"
+			}
+		},
+		{
+			"name": "shell-cwd-not-dir",
+			"files": {
+				"f.txt": ""
+			},
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>/f.txt",
+				"tool_input": {
+					"command": "pwd"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: invalid shell input: shell cwd must be a non-symlinked directory inside the root\n"
+			}
+		},
+		{
+			"name": "shell-tool-input-not-object",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": "pwd"
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: invalid shell input: invalid shell envelope\n"
+			}
+		},
+		{
+			"name": "shell-envelope-list",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": [],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: invalid shell input: invalid shell envelope\n"
+			}
+		},
+		{
+			"name": "shell-grant-no-repo",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "make check"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: invalid shell input: git: fatal: not a git repository (or any parent up to mount point /)\nStopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).\n"
+			}
+		},
+		{
+			"name": "shell-grant-allowed",
+			"files": {
+				".loki/loki.json": "{\"shell_commands\":[{\"command\":\"make check\",\"cwd\":\".\",\"inputs\":[\"Makefile\"]}]}",
+				"Makefile": "check:\n\ttrue\n"
+			},
+			"git": true,
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "make check"
+				}
+			},
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "shell-grant-other-command",
+			"files": {
+				".loki/loki.json": "{\"shell_commands\":[{\"command\":\"make check\",\"cwd\":\".\",\"inputs\":[\"Makefile\"]}]}",
+				"Makefile": "check:\n\ttrue\n"
+			},
+			"git": true,
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "make all"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: no committed permission for this exact shell command and cwd\n"
+			}
+		},
+		{
+			"name": "shell-grant-wrong-cwd",
+			"files": {
+				".loki/loki.json": "{\"shell_commands\":[{\"command\":\"make check\",\"cwd\":\".\",\"inputs\":[\"Makefile\"]}]}",
+				"Makefile": "check:\n\ttrue\n",
+				"sub/keep": ""
+			},
+			"git": true,
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>/sub",
+				"tool_input": {
+					"command": "make check"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: no committed permission for this exact shell command and cwd\n"
+			}
+		},
+		{
+			"name": "shell-grant-subdir-cwd",
+			"files": {
+				".loki/loki.json": "{\"shell_commands\":[{\"command\":\"make\",\"cwd\":\"sub\",\"inputs\":[\"sub/Makefile\"]}]}",
+				"sub/Makefile": "all:\n"
+			},
+			"git": true,
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>/sub",
+				"tool_input": {
+					"command": "make"
+				}
+			},
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "shell-grant-input-changed",
+			"files": {
+				".loki/loki.json": "{\"shell_commands\":[{\"command\":\"make check\",\"cwd\":\".\",\"inputs\":[\"Makefile\"]}]}",
+				"Makefile": "check:\n\ttrue\n"
+			},
+			"git": true,
+			"after": {
+				"Makefile": "check:\n\trm -rf /\n"
+			},
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "make check"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: shell permission input differs from base: Makefile\n"
+			}
+		},
+		{
+			"name": "shell-grant-policy-changed",
+			"files": {
+				".loki/loki.json": "{\"shell_commands\":[{\"command\":\"make check\",\"cwd\":\".\",\"inputs\":[\"Makefile\"]}]}",
+				"Makefile": "check:\n\ttrue\n"
+			},
+			"git": true,
+			"after": {
+				".loki/loki.json": "{\"shell_commands\":[{\"command\":\"make check\",\"cwd\":\".\",\"inputs\":[\"Makefile\",\"x\"]}]}"
+			},
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "make check"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: shell permission input differs from base: .loki/loki.json\n"
+			}
+		},
+		{
+			"name": "shell-grant-input-deleted",
+			"files": {
+				".loki/loki.json": "{\"shell_commands\":[{\"command\":\"make check\",\"cwd\":\".\",\"inputs\":[\"Makefile\"]}]}",
+				"Makefile": "check:\n\ttrue\n"
+			},
+			"git": true,
+			"after": {
+				"Makefile": null
+			},
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "make check"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: shell permission input differs from base: Makefile\n"
+			}
+		},
+		{
+			"name": "shell-grant-input-mode",
+			"files": {
+				".loki/loki.json": "{\"shell_commands\":[{\"command\":\"make check\",\"cwd\":\".\",\"inputs\":[\"Makefile\"]}]}",
+				"Makefile": "check:\n\ttrue\n"
+			},
+			"git": true,
+			"chmod": {
+				"Makefile": 493
+			},
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "make check"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: shell permission input differs from base: Makefile\n"
+			}
+		},
+		{
+			"name": "shell-grant-uncommitted-input",
+			"files": {
+				".loki/loki.json": "{\"shell_commands\":[{\"command\":\"make check\",\"cwd\":\".\",\"inputs\":[\"Makefile\",\"extra.mk\"]}]}",
+				"Makefile": ""
+			},
+			"git": true,
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "make check"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: invalid shell input: shell permission inputs must be committed regular files\n"
+			}
+		},
+		{
+			"name": "shell-grant-uncommitted-policy",
+			"files": {
+				"Makefile": ""
+			},
+			"git": true,
+			"after": {
+				".loki/loki.json": "{\"shell_commands\":[{\"command\":\"make check\",\"cwd\":\".\",\"inputs\":[\"Makefile\"]}]}"
+			},
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "make check"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: no committed permission for this exact shell command and cwd\n"
+			}
+		},
+		{
+			"name": "shell-grant-input-is-dir",
+			"files": {
+				".loki/loki.json": "{\"shell_commands\":[{\"command\":\"make check\",\"cwd\":\".\",\"inputs\":[\"src\"]}]}",
+				"src/a": ""
+			},
+			"git": true,
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "make check"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: invalid shell input: shell permission inputs must be committed regular files\n"
+			}
+		},
+		{
+			"name": "shell-grant-quoted-command",
+			"files": {
+				".loki/loki.json": "{\"shell_commands\":[{\"command\":\"make \\\"check all\\\"\",\"cwd\":\".\",\"inputs\":[\"Makefile\"]}]}",
+				"Makefile": ""
+			},
+			"git": true,
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "make \"check all\""
+				}
+			},
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "shell-grant-quoted-differs",
+			"files": {
+				".loki/loki.json": "{\"shell_commands\":[{\"command\":\"make \\\"check all\\\"\",\"cwd\":\".\",\"inputs\":[\"Makefile\"]}]}",
+				"Makefile": ""
+			},
+			"git": true,
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "make 'check all'"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: no committed permission for this exact shell command and cwd\n"
+			}
+		},
+		{
+			"name": "shell-grant-root-not-toplevel",
+			"files": {
+				"inner/keep": ""
+			},
+			"git": true,
+			"rootSub": "inner",
+			"args": [
+				"shell",
+				"--harness",
+				"claude"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "make check"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: invalid shell input: shell permissions require the repository root\n"
+			}
+		},
+		{
+			"name": "writes-plain",
+			"args": [
+				"shell-writes"
+			],
+			"stdin": {
+				"command": "ls -la",
+				"cwd": "<ROOT>"
+			},
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "writes-redirect-source",
+			"args": [
+				"shell-writes"
+			],
+			"stdin": {
+				"command": "echo x > src/main.rs",
+				"cwd": "<ROOT>"
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: `redirect` into src/main.rs would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "writes-redirect-notes",
+			"args": [
+				"shell-writes"
+			],
+			"stdin": {
+				"command": "echo x > notes.md",
+				"cwd": "<ROOT>"
+			},
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "writes-redirect-log-hidden",
+			"args": [
+				"shell-writes"
+			],
+			"stdin": {
+				"command": "echo x > .cache/run.log",
+				"cwd": "<ROOT>"
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: `redirect` into .cache/run.log would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "writes-redirect-dev-null",
+			"args": [
+				"shell-writes"
+			],
+			"stdin": {
+				"command": "make 2> /dev/null",
+				"cwd": "<ROOT>"
+			},
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "writes-fd-dup",
+			"args": [
+				"shell-writes"
+			],
+			"stdin": {
+				"command": "make 2>&1 | cat",
+				"cwd": "<ROOT>"
+			},
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "writes-amp-redirect",
+			"args": [
+				"shell-writes"
+			],
+			"stdin": {
+				"command": "make &> build.ts",
+				"cwd": "<ROOT>"
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: `redirect` into build.ts would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "writes-clobber",
+			"args": [
+				"shell-writes"
+			],
+			"stdin": {
+				"command": "echo x >| a.py",
+				"cwd": "<ROOT>"
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: `redirect` into a.py would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "writes-semicolon-redirect",
+			"args": [
+				"shell-writes"
+			],
+			"stdin": {
+				"command": "true;> a.py",
+				"cwd": "<ROOT>"
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: `redirect` into a.py would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "writes-tee",
+			"args": [
+				"shell-writes"
+			],
+			"stdin": {
+				"command": "make | tee -a out.log src/x.ts",
+				"cwd": "<ROOT>"
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: `tee` into src/x.ts would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "writes-sed-inplace",
+			"args": [
+				"shell-writes"
+			],
+			"stdin": {
+				"command": "sed -i 's/a/b/' app.py",
+				"cwd": "<ROOT>"
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: `sed -i` into app.py would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "writes-sed-script",
+			"args": [
+				"shell-writes"
+			],
+			"stdin": {
+				"command": "sed -i.bak -e 's/a/b/' app.py notes.md",
+				"cwd": "<ROOT>"
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: `sed -i` into app.py would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "writes-sed-not-inplace",
+			"args": [
+				"shell-writes"
+			],
+			"stdin": {
+				"command": "sed 's/a/b/' app.py",
+				"cwd": "<ROOT>"
+			},
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "writes-perl-inplace",
+			"args": [
+				"shell-writes"
+			],
+			"stdin": {
+				"command": "perl -pi -e 's/a/b/' lib.pm",
+				"cwd": "<ROOT>"
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: `perl -i` into lib.pm would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "writes-cp",
+			"args": [
+				"shell-writes"
+			],
+			"stdin": {
+				"command": "cp a.txt b.py",
+				"cwd": "<ROOT>"
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: `cp` into b.py would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "writes-mv-dir-slash",
+			"args": [
+				"shell-writes"
+			],
+			"stdin": {
+				"command": "mv a.py b.py src/",
+				"cwd": "<ROOT>"
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: `mv` into src/a.py would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "writes-cp-existing-dir",
+			"files": {
+				"lib/keep": ""
+			},
+			"args": [
+				"shell-writes"
+			],
+			"stdin": {
+				"command": "cp x/a.py lib",
+				"cwd": "<ROOT>"
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: `cp` into lib/a.py would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "writes-install-t",
+			"args": [
+				"shell-writes"
+			],
+			"stdin": {
+				"command": "install -t bin tool.sh",
+				"cwd": "<ROOT>"
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: `install` into bin/tool.sh would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "writes-dd",
+			"args": [
+				"shell-writes"
+			],
+			"stdin": {
+				"command": "dd if=/dev/zero of=disk.img bs=1",
+				"cwd": "<ROOT>"
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: `dd` into disk.img would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "writes-env-prefix",
+			"args": [
+				"shell-writes"
+			],
+			"stdin": {
+				"command": "sudo env A=1 tee config.yaml",
+				"cwd": "<ROOT>"
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: `tee` into config.yaml would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "writes-heredoc",
+			"args": [
+				"shell-writes"
+			],
+			"stdin": {
+				"command": "cat > gen.py <<'EOF'\nprint(1) > x\nEOF\necho done",
+				"cwd": "<ROOT>"
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: `redirect` into gen.py would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "writes-heredoc-body-only",
+			"args": [
+				"shell-writes"
+			],
+			"stdin": {
+				"command": "cat <<EOF\n> a.py\nEOF",
+				"cwd": "<ROOT>"
+			},
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "writes-outside-root",
+			"args": [
+				"shell-writes"
+			],
+			"stdin": {
+				"command": "echo x > /tmp/elsewhere.py",
+				"cwd": "<ROOT>"
+			},
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "writes-variable-target",
+			"args": [
+				"shell-writes"
+			],
+			"stdin": {
+				"command": "echo x > $OUT",
+				"cwd": "<ROOT>"
+			},
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "writes-glob-target",
+			"args": [
+				"shell-writes"
+			],
+			"stdin": {
+				"command": "cp a *.py",
+				"cwd": "<ROOT>"
+			},
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "writes-protected",
+			"args": [
+				"shell-writes"
+			],
+			"stdin": {
+				"command": "echo x > .ruff.toml",
+				"cwd": "<ROOT>"
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: protected file: .ruff.toml (set LOKI_ALLOW_PROTECTED=1 to override)\n"
+			}
+		},
+		{
+			"name": "writes-protected-loki",
+			"args": [
+				"shell-writes"
+			],
+			"stdin": {
+				"command": "tee .loki/loki.json",
+				"cwd": "<ROOT>"
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: protected file: .loki/loki.json (set LOKI_ALLOW_PROTECTED=1 to override)\n"
+			}
+		},
+		{
+			"name": "writes-gitignored",
+			"files": {
+				".gitignore": "dist/\n"
+			},
+			"git": true,
+			"args": [
+				"shell-writes"
+			],
+			"stdin": {
+				"command": "echo x > dist/out.js",
+				"cwd": "<ROOT>"
+			},
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "writes-not-ignored-in-repo",
+			"files": {
+				".gitignore": "dist/\n"
+			},
+			"git": true,
+			"args": [
+				"shell-writes"
+			],
+			"stdin": {
+				"command": "echo x > src/out.js",
+				"cwd": "<ROOT>"
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: `redirect` into src/out.js would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "writes-cwd-subdir",
+			"files": {
+				"sub/keep": ""
+			},
+			"args": [
+				"shell-writes"
+			],
+			"stdin": {
+				"command": "echo x > a.py",
+				"cwd": "<ROOT>/sub"
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: `redirect` into sub/a.py would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "writes-cwd-relative",
+			"files": {
+				"sub/keep": ""
+			},
+			"args": [
+				"shell-writes"
+			],
+			"stdin": {
+				"command": "echo x > a.py",
+				"cwd": "sub"
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: `redirect` into sub/a.py would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "writes-unparseable",
+			"args": [
+				"shell-writes"
+			],
+			"stdin": {
+				"command": "echo 'x > a.py",
+				"cwd": "<ROOT>"
+			},
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "writes-empty",
+			"args": [
+				"shell-writes"
+			],
+			"stdin": {
+				"command": "  ",
+				"cwd": "<ROOT>"
+			},
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "writes-not-string",
+			"args": [
+				"shell-writes"
+			],
+			"stdin": {
+				"command": [
+					"x"
+				]
+			},
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "writes-not-object",
+			"args": [
+				"shell-writes"
+			],
+			"stdin": "x",
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: invalid shell input: invalid shell envelope\n"
+			}
+		},
+		{
+			"name": "writes-digit-redirect",
+			"args": [
+				"shell-writes"
+			],
+			"stdin": {
+				"command": "make 1> out.ts",
+				"cwd": "<ROOT>"
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: `redirect` into out.ts would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "writes-uppercase-suffix",
+			"args": [
+				"shell-writes"
+			],
+			"stdin": {
+				"command": "echo x > README.MD",
+				"cwd": "<ROOT>"
+			},
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "writes-patch",
+			"args": [
+				"shell-writes"
+			],
+			"stdin": {
+				"command": "git diff > fix.patch",
+				"cwd": "<ROOT>"
+			},
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "writes-invalid-config",
+			"files": {
+				".loki/loki.json": "{\"rule_packs\":\"core\"}"
+			},
+			"args": [
+				"shell-writes"
+			],
+			"stdin": {
+				"command": "echo x > a.py",
+				"cwd": "<ROOT>"
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: invalid shell input: loki: rule_packs must contain known rule-pack names\n"
+			}
+		},
+		{
+			"name": "writes-harness-flag",
+			"args": [
+				"shell-writes",
+				"--harness",
+				"ultron"
+			],
+			"stdin": {
+				"command": "echo x > a.py"
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: `redirect` into a.py would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "explain-empty",
+			"args": [
+				"explain"
+			],
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "explain-events",
+			"events": [
+				"{\"time\": 2, \"operation\": \"hook\", \"b\": [1, {\"z\": 1, \"a\": 2}]}",
+				"{\"é\": \"ü\", \"A\": null}"
+			],
+			"args": [
+				"explain"
+			],
+			"expected": {
+				"status": 0,
+				"stdout": "{\"b\": [1, {\"a\": 2, \"z\": 1}], \"operation\": \"hook\", \"time\": 2}\n{\"A\": null, \"\\u00e9\": \"\\u00fc\"}\n",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "explain-limit",
+			"events": [
+				"{\"n\": 1}",
+				"{\"n\": 2}",
+				"{\"n\": 3}"
+			],
+			"args": [
+				"explain",
+				"--limit",
+				"2"
+			],
+			"expected": {
+				"status": 0,
+				"stdout": "{\"n\": 2}\n{\"n\": 3}\n",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "explain-limit-zero",
+			"args": [
+				"explain",
+				"--limit",
+				"0"
+			],
+			"expected": {
+				"status": 1,
+				"stdout": "",
+				"stderr": "loki: limit must be between 1 and 1000\n"
+			}
+		},
+		{
+			"name": "explain-limit-max",
+			"events": [
+				"{\"n\": 1}"
+			],
+			"args": [
+				"explain",
+				"--limit",
+				"1000"
+			],
+			"expected": {
+				"status": 0,
+				"stdout": "{\"n\": 1}\n",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "explain-limit-high",
+			"args": [
+				"explain",
+				"--limit=1001"
+			],
+			"expected": {
+				"status": 1,
+				"stdout": "",
+				"stderr": "loki: limit must be between 1 and 1000\n"
+			}
+		},
+		{
+			"name": "args-shell-no-harness",
+			"args": [
+				"shell"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "usage: loki shell [-h] --harness {claude,factory,omp,pi} [--record]\nloki shell: error: the following arguments are required: --harness\n"
+			}
+		},
+		{
+			"name": "args-shell-bad-harness",
+			"args": [
+				"shell",
+				"--harness",
+				"codex"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "usage: loki shell [-h] --harness {claude,factory,omp,pi} [--record]\nloki shell: error: argument --harness: invalid choice: 'codex' (choose from 'claude', 'factory', 'omp', 'pi')\n"
+			}
+		},
+		{
+			"name": "args-writes-bad-harness",
+			"args": [
+				"shell-writes",
+				"--harness",
+				"pi"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "usage: loki shell-writes [-h] [--harness {ultron}]\nloki shell-writes: error: argument --harness: invalid choice: 'pi' (choose from 'ultron')\n"
+			}
+		},
+		{
+			"name": "args-explain-bad-limit",
+			"args": [
+				"explain",
+				"--limit",
+				"x"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "usage: loki explain [-h] [--limit LIMIT]\nloki explain: error: argument --limit: invalid int value: 'x'\n"
+			}
+		},
+		{
+			"name": "args-shell-unknown",
+			"args": [
+				"shell",
+				"--harness",
+				"claude",
+				"--bogus"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "usage: loki [-h] [--version] [--root ROOT]\n            {verify-installation,explain,context,elixir,apply,shell,shell-writes,protect,hook,scan,slop,daemon,init} ...\nloki: error: unrecognized arguments: --bogus\n"
+			}
+		}
+	]
+}

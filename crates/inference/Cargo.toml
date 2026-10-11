@@ -1,0 +1,21 @@
+[package]
+name = "inference"
+version = "0.1.0"
+description = "Host side of rlm.infer (and rlm.load): budgets, contract validation with bounded re-asks, Incomplete results"
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+ai = { path = "../ai" }
+getrandom = "=0.4.3"
+kernel = { path = "../kernel" }
+serde_json = { version = "=1.0.151", features = ["preserve_order"] }
+tokio = { version = "=1.53.2", features = ["rt", "time"] }
+
+[dev-dependencies]
+host = { path = "../host" }
+tempfile = "=3.27.0"
+
+[lints]
+workspace = true

@@ -1,0 +1,894 @@
+{
+	"model": {
+		"provider": "fake",
+		"id": "frame-model",
+		"api": "openai-completions",
+		"contextWindow": 32000,
+		"maxTokens": 8192
+	},
+	"inferencePrompt": "Large inputs stay out of your context as handles; examples: `help(rlm.load)`, `help(rlm.map)`.\n- `h = await rlm.load(path_or_text)`: `h.search(regex)`, `h.count(regex)`, `h.lines(a, b)`, `h.chunks(n)`; views print their text.\n- `await rlm.infer(task, context=[views], contract=T, budget=Budget(calls, tokens, depth))`: one private sub-model call (no transcript, no tools), contract-validated and re-asked; running out returns a falsy `Incomplete`.\n- `await rlm.map(task, items, contract=T)`: one frame per item, in order, under one shared budget (default 500,000 tokens; `budget=Budget(tokens=...)` for more).\n- Every frame is a model request: filter with code first, give each frame only the passage it must judge, and compute exact numbers in Python.",
+	"cells": [
+		{
+			"code": "r = await rlm.map(\"Classify\", [\"a\", \"b\", \"c\"], concurrency=1)\nprint(r)\nprint(r.spent, r.budget, r.remaining)\nfor x in r: print(type(x).__name__, repr(x))",
+			"replies": [
+				{
+					"text": "A",
+					"usage": {
+						"input": 100,
+						"output": 5,
+						"cacheRead": 0
+					}
+				},
+				{
+					"text": "B",
+					"usage": {
+						"input": 110,
+						"output": 6,
+						"cacheRead": 0
+					}
+				},
+				{
+					"text": "C",
+					"usage": {
+						"input": 120,
+						"output": 7,
+						"cacheRead": 50
+					}
+				}
+			],
+			"ok": {
+				"status": "ok",
+				"stdout": "[rlm.map] 3 frames: 3 complete, 0 incomplete, 0 failed; spent 3 calls, 353 tokens of 500,000\n['A', 'B', 'C']\n{'calls': 3, 'tokens': 353} {'calls': None, 'tokens': 500000} {'calls': None, 'tokens': 499647, 'depth': 1}\nstr 'A'\nstr 'B'\nstr 'C'\n",
+				"result": "",
+				"error": null
+			},
+			"calls": [
+				{
+					"system": "You are an inference frame inside Ultron: a private, bounded sub-call made by a program. You see only the task and the context views in the user message; there is no earlier conversation and no files. Answer from the views alone and never invent content that is not in them. When a contract (JSON schema) is given, reply with exactly one JSON value that satisfies it: no prose, no code fences. Without a contract, reply with the answer only. You have no tools.",
+					"messages": [
+						{
+							"role": "user",
+							"content": "Task:\nClassify\n\n--- view 1: literal (1 chars) ---\na\n--- end of view 1 ---"
+						}
+					],
+					"max_tokens": 8192
+				},
+				{
+					"system": "You are an inference frame inside Ultron: a private, bounded sub-call made by a program. You see only the task and the context views in the user message; there is no earlier conversation and no files. Answer from the views alone and never invent content that is not in them. When a contract (JSON schema) is given, reply with exactly one JSON value that satisfies it: no prose, no code fences. Without a contract, reply with the answer only. You have no tools.",
+					"messages": [
+						{
+							"role": "user",
+							"content": "Task:\nClassify\n\n--- view 1: literal (1 chars) ---\nb\n--- end of view 1 ---"
+						}
+					],
+					"max_tokens": 8192
+				},
+				{
+					"system": "You are an inference frame inside Ultron: a private, bounded sub-call made by a program. You see only the task and the context views in the user message; there is no earlier conversation and no files. Answer from the views alone and never invent content that is not in them. When a contract (JSON schema) is given, reply with exactly one JSON value that satisfies it: no prose, no code fences. Without a contract, reply with the answer only. You have no tools.",
+					"messages": [
+						{
+							"role": "user",
+							"content": "Task:\nClassify\n\n--- view 1: literal (1 chars) ---\nc\n--- end of view 1 ---"
+						}
+					],
+					"max_tokens": 8192
+				}
+			]
+		},
+		{
+			"code": "r = await rlm.map(\"Same\", [\"a\", \"a\", \"a\"], budget=Budget(tokens=3000))\nprint(r)\nprint(r.spent, r.budget, r.remaining)\nfor x in r: print(type(x).__name__, repr(x))\nprint(r.usage)",
+			"replies": [
+				{
+					"text": "S",
+					"usage": {
+						"input": 100,
+						"output": 5,
+						"cacheRead": 0
+					},
+					"gather": 3
+				},
+				{
+					"text": "S",
+					"usage": {
+						"input": 100,
+						"output": 5,
+						"cacheRead": 0
+					},
+					"gather": 3
+				},
+				{
+					"text": "S",
+					"usage": {
+						"input": 100,
+						"output": 5,
+						"cacheRead": 0
+					},
+					"gather": 3
+				}
+			],
+			"ok": {
+				"status": "ok",
+				"stdout": "[rlm.map] 3 frames: 3 complete, 0 incomplete, 0 failed; spent 3 calls, 315 tokens of 3,000\n['S', 'S', 'S']\n{'calls': 3, 'tokens': 315} {'calls': None, 'tokens': 3000} {'calls': None, 'tokens': 2685, 'depth': 1}\nstr 'S'\nstr 'S'\nstr 'S'\n{'input_tokens': 300, 'output_tokens': 15, 'cost': 0}\n",
+				"result": "",
+				"error": null
+			},
+			"calls": [
+				{
+					"system": "You are an inference frame inside Ultron: a private, bounded sub-call made by a program. You see only the task and the context views in the user message; there is no earlier conversation and no files. Answer from the views alone and never invent content that is not in them. When a contract (JSON schema) is given, reply with exactly one JSON value that satisfies it: no prose, no code fences. Without a contract, reply with the answer only. You have no tools.",
+					"messages": [
+						{
+							"role": "user",
+							"content": "Task:\nSame\n\n--- view 1: literal (1 chars) ---\na\n--- end of view 1 ---"
+						}
+					],
+					"max_tokens": 750
+				},
+				{
+					"system": "You are an inference frame inside Ultron: a private, bounded sub-call made by a program. You see only the task and the context views in the user message; there is no earlier conversation and no files. Answer from the views alone and never invent content that is not in them. When a contract (JSON schema) is given, reply with exactly one JSON value that satisfies it: no prose, no code fences. Without a contract, reply with the answer only. You have no tools.",
+					"messages": [
+						{
+							"role": "user",
+							"content": "Task:\nSame\n\n--- view 1: literal (1 chars) ---\na\n--- end of view 1 ---"
+						}
+					],
+					"max_tokens": 502
+				},
+				{
+					"system": "You are an inference frame inside Ultron: a private, bounded sub-call made by a program. You see only the task and the context views in the user message; there is no earlier conversation and no files. Answer from the views alone and never invent content that is not in them. When a contract (JSON schema) is given, reply with exactly one JSON value that satisfies it: no prose, no code fences. Without a contract, reply with the answer only. You have no tools.",
+					"messages": [
+						{
+							"role": "user",
+							"content": "Task:\nSame\n\n--- view 1: literal (1 chars) ---\na\n--- end of view 1 ---"
+						}
+					],
+					"max_tokens": 316
+				}
+			]
+		},
+		{
+			"code": "r = await rlm.map(\"Count\", [\"x\", \"yy\"], contract=int, concurrency=1)\nprint(r)\nprint(r.spent, r.budget, r.remaining)\nfor x in r: print(type(x).__name__, repr(x))",
+			"replies": [
+				{
+					"text": "1",
+					"usage": {
+						"input": 50,
+						"output": 1,
+						"cacheRead": 0
+					}
+				},
+				{
+					"text": "two",
+					"usage": {
+						"input": 50,
+						"output": 1,
+						"cacheRead": 0
+					}
+				},
+				{
+					"text": "2",
+					"usage": {
+						"input": 50,
+						"output": 1,
+						"cacheRead": 0
+					}
+				}
+			],
+			"ok": {
+				"status": "ok",
+				"stdout": "[rlm.map] 2 frames: 2 complete, 0 incomplete, 0 failed; spent 3 calls, 153 tokens of 500,000\n[1, 2]\n{'calls': 3, 'tokens': 153} {'calls': None, 'tokens': 500000} {'calls': None, 'tokens': 499847, 'depth': 1}\nint 1\nint 2\n",
+				"result": "",
+				"error": null
+			},
+			"calls": [
+				{
+					"system": "You are an inference frame inside Ultron: a private, bounded sub-call made by a program. You see only the task and the context views in the user message; there is no earlier conversation and no files. Answer from the views alone and never invent content that is not in them. When a contract (JSON schema) is given, reply with exactly one JSON value that satisfies it: no prose, no code fences. Without a contract, reply with the answer only. You have no tools.",
+					"messages": [
+						{
+							"role": "user",
+							"content": "Task:\nCount\n\n--- view 1: literal (1 chars) ---\nx\n--- end of view 1 ---\n\nContract (JSON schema): {\"type\":\"integer\"}\nReply with only a JSON value that satisfies the contract."
+						}
+					],
+					"max_tokens": 8192
+				},
+				{
+					"system": "You are an inference frame inside Ultron: a private, bounded sub-call made by a program. You see only the task and the context views in the user message; there is no earlier conversation and no files. Answer from the views alone and never invent content that is not in them. When a contract (JSON schema) is given, reply with exactly one JSON value that satisfies it: no prose, no code fences. Without a contract, reply with the answer only. You have no tools.",
+					"messages": [
+						{
+							"role": "user",
+							"content": "Task:\nCount\n\n--- view 1: literal (2 chars) ---\nyy\n--- end of view 1 ---\n\nContract (JSON schema): {\"type\":\"integer\"}\nReply with only a JSON value that satisfies the contract."
+						}
+					],
+					"max_tokens": 8192
+				},
+				{
+					"system": "You are an inference frame inside Ultron: a private, bounded sub-call made by a program. You see only the task and the context views in the user message; there is no earlier conversation and no files. Answer from the views alone and never invent content that is not in them. When a contract (JSON schema) is given, reply with exactly one JSON value that satisfies it: no prose, no code fences. Without a contract, reply with the answer only. You have no tools.",
+					"messages": [
+						{
+							"role": "user",
+							"content": "Task:\nCount\n\n--- view 1: literal (2 chars) ---\nyy\n--- end of view 1 ---\n\nContract (JSON schema): {\"type\":\"integer\"}\nReply with only a JSON value that satisfies the contract."
+						},
+						{
+							"role": "assistant",
+							"content": "two"
+						},
+						{
+							"role": "user",
+							"content": "Your reply does not satisfy the contract: the reply is not JSON.\nReply again with only a JSON value that satisfies this schema: {\"type\":\"integer\"}"
+						}
+					],
+					"max_tokens": 8192
+				}
+			]
+		},
+		{
+			"code": "r = await rlm.map(\"Pick\", [\"a\", \"b\", \"c\"], budget=Budget(calls=2), concurrency=1)\nprint(r)\nprint(r.spent, r.budget, r.remaining)\nfor x in r: print(type(x).__name__, repr(x))\nprint([x.detail for x in r if isinstance(x, Incomplete)])",
+			"replies": [
+				{
+					"text": "one",
+					"usage": {
+						"input": 10,
+						"output": 1,
+						"cacheRead": 0
+					}
+				},
+				{
+					"text": "two",
+					"usage": {
+						"input": 10,
+						"output": 1,
+						"cacheRead": 0
+					}
+				}
+			],
+			"ok": {
+				"status": "ok",
+				"stdout": "[rlm.map] 3 frames: 2 complete, 1 incomplete, 0 failed; spent 2 calls, 22 tokens of 500,000\n['one', 'two', Incomplete(status='budget_exhausted', spent={'calls': 0, 'tokens': 0}, remaining={'calls': 0, 'tokens': 499978, 'depth': 1}, trace_id='frame-ID', last_output=None)]\n{'calls': 2, 'tokens': 22} {'calls': 2, 'tokens': 500000} {'calls': 0, 'tokens': 499978, 'depth': 1}\nstr 'one'\nstr 'two'\nIncomplete Incomplete(status='budget_exhausted', spent={'calls': 0, 'tokens': 0}, remaining={'calls': 0, 'tokens': 499978, 'depth': 1}, trace_id='frame-ID', last_output=None)\n[\"no call left in the budget for this frame (rlm.map's default budget is 500000 tokens; pass budget=Budget(tokens=...) to allow more)\"]\n",
+				"result": "",
+				"error": null
+			},
+			"calls": [
+				{
+					"system": "You are an inference frame inside Ultron: a private, bounded sub-call made by a program. You see only the task and the context views in the user message; there is no earlier conversation and no files. Answer from the views alone and never invent content that is not in them. When a contract (JSON schema) is given, reply with exactly one JSON value that satisfies it: no prose, no code fences. Without a contract, reply with the answer only. You have no tools.",
+					"messages": [
+						{
+							"role": "user",
+							"content": "Task:\nPick\n\n--- view 1: literal (1 chars) ---\na\n--- end of view 1 ---"
+						}
+					],
+					"max_tokens": 8192
+				},
+				{
+					"system": "You are an inference frame inside Ultron: a private, bounded sub-call made by a program. You see only the task and the context views in the user message; there is no earlier conversation and no files. Answer from the views alone and never invent content that is not in them. When a contract (JSON schema) is given, reply with exactly one JSON value that satisfies it: no prose, no code fences. Without a contract, reply with the answer only. You have no tools.",
+					"messages": [
+						{
+							"role": "user",
+							"content": "Task:\nPick\n\n--- view 1: literal (1 chars) ---\nb\n--- end of view 1 ---"
+						}
+					],
+					"max_tokens": 8192
+				}
+			]
+		},
+		{
+			"code": "r = await rlm.map(\"Pick\", [\"a\", \"b\", \"c\"], budget=Budget(tokens=1500), concurrency=1)\nprint(r)\nprint(r.spent, r.budget, r.remaining)\nfor x in r: print(type(x).__name__, repr(x))\nprint([(x.detail, x.last_outputs) for x in r if isinstance(x, Incomplete)])",
+			"replies": [
+				{
+					"text": "one",
+					"usage": {
+						"input": 600,
+						"output": 20,
+						"cacheRead": 0
+					}
+				},
+				{
+					"text": "two",
+					"usage": {
+						"input": 500,
+						"output": 20,
+						"cacheRead": 0
+					}
+				},
+				{
+					"text": "three",
+					"usage": {
+						"input": 30,
+						"output": 5,
+						"cacheRead": 0
+					}
+				}
+			],
+			"ok": {
+				"status": "ok",
+				"stdout": "[rlm.map] 3 frames: 3 complete, 0 incomplete, 0 failed; spent 3 calls, 1,175 tokens of 1,500\n['one', 'two', 'three']\n{'calls': 3, 'tokens': 1175} {'calls': None, 'tokens': 1500} {'calls': None, 'tokens': 325, 'depth': 1}\nstr 'one'\nstr 'two'\nstr 'three'\n[]\n",
+				"result": "",
+				"error": null
+			},
+			"calls": [
+				{
+					"system": "You are an inference frame inside Ultron: a private, bounded sub-call made by a program. You see only the task and the context views in the user message; there is no earlier conversation and no files. Answer from the views alone and never invent content that is not in them. When a contract (JSON schema) is given, reply with exactly one JSON value that satisfies it: no prose, no code fences. Without a contract, reply with the answer only. You have no tools.",
+					"messages": [
+						{
+							"role": "user",
+							"content": "Task:\nPick\n\n--- view 1: literal (1 chars) ---\na\n--- end of view 1 ---"
+						}
+					],
+					"max_tokens": 375
+				},
+				{
+					"system": "You are an inference frame inside Ultron: a private, bounded sub-call made by a program. You see only the task and the context views in the user message; there is no earlier conversation and no files. Answer from the views alone and never invent content that is not in them. When a contract (JSON schema) is given, reply with exactly one JSON value that satisfies it: no prose, no code fences. Without a contract, reply with the answer only. You have no tools.",
+					"messages": [
+						{
+							"role": "user",
+							"content": "Task:\nPick\n\n--- view 1: literal (1 chars) ---\nb\n--- end of view 1 ---"
+						}
+					],
+					"max_tokens": 220
+				},
+				{
+					"system": "You are an inference frame inside Ultron: a private, bounded sub-call made by a program. You see only the task and the context views in the user message; there is no earlier conversation and no files. Answer from the views alone and never invent content that is not in them. When a contract (JSON schema) is given, reply with exactly one JSON value that satisfies it: no prose, no code fences. Without a contract, reply with the answer only. You have no tools.",
+					"messages": [
+						{
+							"role": "user",
+							"content": "Task:\nPick\n\n--- view 1: literal (1 chars) ---\nc\n--- end of view 1 ---"
+						}
+					],
+					"max_tokens": 90
+				}
+			]
+		},
+		{
+			"code": "r = await rlm.map([\"Task one\", \"Task two\"], context=[\"shared\"], concurrency=1)\nprint(r)\nprint(r.spent, r.budget, r.remaining)\nfor x in r: print(type(x).__name__, repr(x))",
+			"replies": [
+				{
+					"text": "first",
+					"usage": {
+						"input": 10,
+						"output": 1,
+						"cacheRead": 0
+					}
+				},
+				{
+					"text": "second",
+					"usage": {
+						"input": 10,
+						"output": 1,
+						"cacheRead": 0
+					}
+				}
+			],
+			"ok": {
+				"status": "ok",
+				"stdout": "[rlm.map] 2 frames: 2 complete, 0 incomplete, 0 failed; spent 2 calls, 22 tokens of 500,000\n['first', 'second']\n{'calls': 2, 'tokens': 22} {'calls': None, 'tokens': 500000} {'calls': None, 'tokens': 499978, 'depth': 1}\nstr 'first'\nstr 'second'\n",
+				"result": "",
+				"error": null
+			},
+			"calls": [
+				{
+					"system": "You are an inference frame inside Ultron: a private, bounded sub-call made by a program. You see only the task and the context views in the user message; there is no earlier conversation and no files. Answer from the views alone and never invent content that is not in them. When a contract (JSON schema) is given, reply with exactly one JSON value that satisfies it: no prose, no code fences. Without a contract, reply with the answer only. You have no tools.",
+					"messages": [
+						{
+							"role": "user",
+							"content": "Task:\nTask one\n\n--- view 1: literal (6 chars) ---\nshared\n--- end of view 1 ---"
+						}
+					],
+					"max_tokens": 8192
+				},
+				{
+					"system": "You are an inference frame inside Ultron: a private, bounded sub-call made by a program. You see only the task and the context views in the user message; there is no earlier conversation and no files. Answer from the views alone and never invent content that is not in them. When a contract (JSON schema) is given, reply with exactly one JSON value that satisfies it: no prose, no code fences. Without a contract, reply with the answer only. You have no tools.",
+					"messages": [
+						{
+							"role": "user",
+							"content": "Task:\nTask two\n\n--- view 1: literal (6 chars) ---\nshared\n--- end of view 1 ---"
+						}
+					],
+					"max_tokens": 8192
+				}
+			]
+		},
+		{
+			"code": "r = await rlm.map([\"T1\", \"T2\"], [[\"i1\", \"j1\"], \"i2\"], contract={\"ok\": bool}, max_repairs=0, concurrency=1)\nprint(r)\nprint(r.spent, r.budget, r.remaining)\nfor x in r: print(type(x).__name__, repr(x))",
+			"replies": [
+				{
+					"text": "{\"ok\": true}",
+					"usage": {
+						"input": 10,
+						"output": 1,
+						"cacheRead": 0
+					}
+				},
+				{
+					"text": "nope",
+					"usage": {
+						"input": 10,
+						"output": 1,
+						"cacheRead": 0
+					}
+				}
+			],
+			"ok": {
+				"status": "ok",
+				"stdout": "[rlm.map] 2 frames: 1 complete, 1 incomplete, 0 failed; spent 2 calls, 22 tokens of 500,000\n[{'ok': True}, Incomplete(status='contract_unmet', spent={'calls': 1, 'tokens': 11}, remaining={'calls': None, 'tokens': 499978, 'depth': 1}, trace_id='frame-ID', last_output='nope')]\n{'calls': 2, 'tokens': 22} {'calls': None, 'tokens': 500000} {'calls': None, 'tokens': 499978, 'depth': 1}\ndict {'ok': True}\nIncomplete Incomplete(status='contract_unmet', spent={'calls': 1, 'tokens': 11}, remaining={'calls': None, 'tokens': 499978, 'depth': 1}, trace_id='frame-ID', last_output='nope')\n",
+				"result": "",
+				"error": null
+			},
+			"calls": [
+				{
+					"system": "You are an inference frame inside Ultron: a private, bounded sub-call made by a program. You see only the task and the context views in the user message; there is no earlier conversation and no files. Answer from the views alone and never invent content that is not in them. When a contract (JSON schema) is given, reply with exactly one JSON value that satisfies it: no prose, no code fences. Without a contract, reply with the answer only. You have no tools.",
+					"messages": [
+						{
+							"role": "user",
+							"content": "Task:\nT1\n\n--- view 1: literal (2 chars) ---\ni1\n--- end of view 1 ---\n\n--- view 2: literal (2 chars) ---\nj1\n--- end of view 2 ---\n\nContract (JSON schema): {\"type\":\"object\",\"properties\":{\"ok\":{\"type\":\"boolean\"}},\"required\":[\"ok\"]}\nReply with only a JSON value that satisfies the contract."
+						}
+					],
+					"max_tokens": 8192
+				},
+				{
+					"system": "You are an inference frame inside Ultron: a private, bounded sub-call made by a program. You see only the task and the context views in the user message; there is no earlier conversation and no files. Answer from the views alone and never invent content that is not in them. When a contract (JSON schema) is given, reply with exactly one JSON value that satisfies it: no prose, no code fences. Without a contract, reply with the answer only. You have no tools.",
+					"messages": [
+						{
+							"role": "user",
+							"content": "Task:\nT2\n\n--- view 1: literal (2 chars) ---\ni2\n--- end of view 1 ---\n\nContract (JSON schema): {\"type\":\"object\",\"properties\":{\"ok\":{\"type\":\"boolean\"}},\"required\":[\"ok\"]}\nReply with only a JSON value that satisfies the contract."
+						}
+					],
+					"max_tokens": 8192
+				}
+			]
+		},
+		{
+			"code": "r = await rlm.map(\"Fail\", [\"a\", \"b\"], budget=Budget(calls=2, tokens=1000), concurrency=1)\nprint(r)\nprint(r.spent, r.budget, r.remaining)\nfor x in r: print(type(x).__name__, repr(x))\nprint([x.error for x in r if isinstance(x, FrameError)])",
+			"replies": [
+				{
+					"fail": true
+				},
+				{
+					"fail": true
+				}
+			],
+			"noKey": true,
+			"ok": {
+				"status": "ok",
+				"stdout": "[rlm.map] 2 frames: 0 complete, 0 incomplete, 2 failed; spent 0 calls, 0 tokens of 1,000\n[FrameError('frame request failed: \"No API key for provider: fake\"', trace_id='frame-ID'), FrameError('frame request failed: \"No API key for provider: fake\"', trace_id='frame-ID')]\n{'calls': 0, 'tokens': 0} {'calls': 2, 'tokens': 1000} {'calls': 2, 'tokens': 1000, 'depth': 1}\nFrameError FrameError('frame request failed: \"No API key for provider: fake\"', trace_id='frame-ID')\nFrameError FrameError('frame request failed: \"No API key for provider: fake\"', trace_id='frame-ID')\n['frame request failed: \"No API key for provider: fake\"', 'frame request failed: \"No API key for provider: fake\"']\n",
+				"result": "",
+				"error": null
+			},
+			"calls": []
+		},
+		{
+			"code": "r = await rlm.map(\"None\", [])\nprint(r)\nprint(r.spent, r.budget, r.remaining)\nfor x in r: print(type(x).__name__, repr(x))",
+			"replies": [],
+			"ok": {
+				"status": "ok",
+				"stdout": "[rlm.map] 0 frames: 0 complete, 0 incomplete, 0 failed; spent 0 calls, 0 tokens of 500,000\n[]\n{'calls': 0, 'tokens': 0} {'calls': None, 'tokens': 500000} {'calls': None, 'tokens': 500000, 'depth': 1}\n",
+				"result": "",
+				"error": null
+			},
+			"calls": []
+		},
+		{
+			"code": "for args, kwargs in [(('t', ['a']), dict(concurrency=0)), (('t', ['a']), dict(concurrency=17)), (('', ['a']), {}),\n                     (('t', None), {}), ((['a', 'b'], ['x']), {}), (('t', ['a']), dict(contract={'type': 'wat'})),\n                     (('t', ['a']), dict(model='bad')), (('t', ['a']), dict(thinking='lots')), (('t', ['a']), dict(timeout_ms=0)),\n                     (('t', ['a']), dict(budget={'calls': -1})), (('t', ['a']), dict(max_repairs=9)), (('x' * 70000, ['a']), {}),\n                     (('t', ['a']), dict(budget={'tokens': 2**60}))]:\n    try:\n        await rlm.map(*args, **kwargs)\n    except Exception as error:\n        print(type(error).__name__, str(error)[:200])",
+			"replies": [],
+			"ok": {
+				"status": "ok",
+				"stdout": "RuntimeError concurrency must be an integer between 1 and 16\nRuntimeError concurrency must be an integer between 1 and 16\nRuntimeError task must be a nonempty string\nValueError rlm.map(task, items): items is required with a single task\nValueError rlm.map(tasks, items): tasks and items must have the same length\nRuntimeError Invalid JSON schema at $.contract.type: contains an unknown type\nRuntimeError model must be provider/model\nRuntimeError thinking must be one of off, minimal, low, medium, high, xhigh, max\nRuntimeError timeout_ms must be an integer between 1 and 3600000\nValueError Budget.calls must be a nonnegative int or None\nRuntimeError max_repairs must be an integer between 0 and 8\nRuntimeError task exceeds 65536 characters; pass data as context\nRuntimeError budget.tokens must be an integer between 0 and 9007199254740991\n",
+				"result": "",
+				"error": null
+			},
+			"calls": []
+		},
+		{
+			"code": "r = await rlm.map(\"Pick\", [\"a\", \"b\"], budget=Budget(calls=1, tokens=5000), model=\"fake/frame-model\", timeout_ms=1000, thinking=\"low\", max_repairs=1, concurrency=2)\nprint(r)\nprint(r.remaining)",
+			"replies": [
+				{
+					"text": "only",
+					"usage": {
+						"input": 10,
+						"output": 1,
+						"cacheRead": 0
+					}
+				}
+			],
+			"ok": {
+				"status": "ok",
+				"stdout": "[rlm.map] 2 frames: 1 complete, 1 incomplete, 0 failed; spent 1 calls, 11 tokens of 5,000\n['only', Incomplete(status='budget_exhausted', spent={'calls': 0, 'tokens': 0}, remaining={'calls': 0, 'tokens': 4989, 'depth': 1}, trace_id='frame-ID', last_output=None)]\n{'calls': 0, 'tokens': 4989, 'depth': 1}\n",
+				"result": "",
+				"error": null
+			},
+			"calls": [
+				{
+					"system": "You are an inference frame inside Ultron: a private, bounded sub-call made by a program. You see only the task and the context views in the user message; there is no earlier conversation and no files. Answer from the views alone and never invent content that is not in them. When a contract (JSON schema) is given, reply with exactly one JSON value that satisfies it: no prose, no code fences. Without a contract, reply with the answer only. You have no tools.",
+					"messages": [
+						{
+							"role": "user",
+							"content": "Task:\nPick\n\n--- view 1: literal (1 chars) ---\na\n--- end of view 1 ---"
+						}
+					],
+					"max_tokens": 1250
+				}
+			]
+		},
+		{
+			"code": "print(await rlm._models())\nprint(await rlm.infer(\"Hi\"))\nr = await rlm.map(\"Each\", [\"a\"])\nprint(r)",
+			"replies": [
+				{
+					"text": "hello",
+					"usage": {
+						"input": 10,
+						"output": 1,
+						"cacheRead": 0
+					}
+				},
+				{
+					"text": "each",
+					"usage": {
+						"input": 10,
+						"output": 1,
+						"cacheRead": 0
+					}
+				}
+			],
+			"env": {
+				"ULTRON_RLM_FRAME_MODEL": " fake/frame-model "
+			},
+			"settings": {
+				"rlm": {
+					"frameModel": "other/model",
+					"frameThinking": "high",
+					"childModel": "kid/model"
+				},
+				"reviewModel": "rev/model"
+			},
+			"ok": {
+				"status": "ok",
+				"stdout": "{'frame': {'model': 'fake/frame-model', 'source': 'env', 'env': 'ULTRON_RLM_FRAME_MODEL'}, 'review': {'model': 'rev/model', 'source': 'setting'}, 'child': {'model': 'kid/model', 'source': 'setting'}, 'frameThinking': 'high'}\nhello\n[rlm.map] 1 frames: 1 complete, 0 incomplete, 0 failed; spent 1 calls, 11 tokens of 500,000\n['each']\n",
+				"result": "",
+				"error": null
+			},
+			"calls": [
+				{
+					"system": "You are an inference frame inside Ultron: a private, bounded sub-call made by a program. You see only the task and the context views in the user message; there is no earlier conversation and no files. Answer from the views alone and never invent content that is not in them. When a contract (JSON schema) is given, reply with exactly one JSON value that satisfies it: no prose, no code fences. Without a contract, reply with the answer only. You have no tools.",
+					"messages": [
+						{
+							"role": "user",
+							"content": "Task:\nHi\n\nContext: none."
+						}
+					],
+					"max_tokens": 8192
+				},
+				{
+					"system": "You are an inference frame inside Ultron: a private, bounded sub-call made by a program. You see only the task and the context views in the user message; there is no earlier conversation and no files. Answer from the views alone and never invent content that is not in them. When a contract (JSON schema) is given, reply with exactly one JSON value that satisfies it: no prose, no code fences. Without a contract, reply with the answer only. You have no tools.",
+					"messages": [
+						{
+							"role": "user",
+							"content": "Task:\nEach\n\n--- view 1: literal (1 chars) ---\na\n--- end of view 1 ---"
+						}
+					],
+					"max_tokens": 8192
+				}
+			]
+		},
+		{
+			"code": "print(await rlm._models())",
+			"replies": [],
+			"env": {
+				"ULTRON_RLM_FRAME_MODEL": "not-a-ref",
+				"ULTRON_REVIEW_MODEL": "env/review"
+			},
+			"settings": {
+				"rlm": {
+					"frameModel": "set/frame"
+				}
+			},
+			"ok": {
+				"status": "ok",
+				"stdout": "{'frame': {'model': 'set/frame', 'source': 'setting'}, 'review': {'model': 'env/review', 'source': 'env', 'env': 'ULTRON_REVIEW_MODEL'}, 'child': {'source': 'session'}, 'frameThinking': None}\n",
+				"result": "",
+				"error": null
+			},
+			"calls": []
+		},
+		{
+			"code": "print(await rlm._models())",
+			"replies": [],
+			"env": {},
+			"settings": {
+				"rlm": {
+					"frameModel": "set/frame"
+				}
+			},
+			"ok": {
+				"status": "ok",
+				"stdout": "{'frame': {'model': 'set/frame', 'source': 'setting'}, 'review': {'model': 'set/frame', 'source': 'frame'}, 'child': {'source': 'session'}, 'frameThinking': None}\n",
+				"result": "",
+				"error": null
+			},
+			"calls": []
+		},
+		{
+			"code": "print(await rlm._models())",
+			"replies": [],
+			"env": {},
+			"settings": {
+				"rlm": {}
+			},
+			"ok": {
+				"status": "ok",
+				"stdout": "{'frame': {'source': 'session'}, 'review': {'source': 'session'}, 'child': {'source': 'session'}, 'frameThinking': None}\n",
+				"result": "",
+				"error": null
+			},
+			"calls": []
+		},
+		{
+			"code": "r = await rlm.map(\"Use\", [\"a\", \"b\"], concurrency=1)\nprint(r.usage)\nr = await rlm.map(\"None\", [])\nprint(r.usage)",
+			"replies": [
+				{
+					"text": "x",
+					"usage": {
+						"input": 100,
+						"output": 5,
+						"cacheRead": 0
+					}
+				},
+				{
+					"text": "y",
+					"usage": {
+						"input": 30,
+						"output": 2,
+						"cacheRead": 10
+					}
+				}
+			],
+			"ok": {
+				"status": "ok",
+				"stdout": "[rlm.map] 2 frames: 2 complete, 0 incomplete, 0 failed; spent 2 calls, 138 tokens of 500,000\n{'input_tokens': 130, 'output_tokens': 7, 'cost': 0}\n[rlm.map] 0 frames: 0 complete, 0 incomplete, 0 failed; spent 0 calls, 0 tokens of 500,000\n{'input_tokens': 0, 'output_tokens': 0, 'cost': 0}\n",
+				"result": "",
+				"error": null
+			},
+			"calls": [
+				{
+					"system": "You are an inference frame inside Ultron: a private, bounded sub-call made by a program. You see only the task and the context views in the user message; there is no earlier conversation and no files. Answer from the views alone and never invent content that is not in them. When a contract (JSON schema) is given, reply with exactly one JSON value that satisfies it: no prose, no code fences. Without a contract, reply with the answer only. You have no tools.",
+					"messages": [
+						{
+							"role": "user",
+							"content": "Task:\nUse\n\n--- view 1: literal (1 chars) ---\na\n--- end of view 1 ---"
+						}
+					],
+					"max_tokens": 8192
+				},
+				{
+					"system": "You are an inference frame inside Ultron: a private, bounded sub-call made by a program. You see only the task and the context views in the user message; there is no earlier conversation and no files. Answer from the views alone and never invent content that is not in them. When a contract (JSON schema) is given, reply with exactly one JSON value that satisfies it: no prose, no code fences. Without a contract, reply with the answer only. You have no tools.",
+					"messages": [
+						{
+							"role": "user",
+							"content": "Task:\nUse\n\n--- view 1: literal (1 chars) ---\nb\n--- end of view 1 ---"
+						}
+					],
+					"max_tokens": 8192
+				}
+			]
+		},
+		{
+			"code": "try:\n    await rlm.infer(\"Slow\", timeout_ms=50)\nexcept InferenceError as e:\n    print(repr(e), e.spent, e.last_outputs)",
+			"replies": [
+				{
+					"hang": true
+				}
+			],
+			"ok": {
+				"status": "ok",
+				"stdout": "FrameError('cancelled', trace_id='frame-ID') {'calls': 0, 'tokens': 0} []\n",
+				"result": "",
+				"error": null
+			},
+			"calls": [
+				{
+					"system": "You are an inference frame inside Ultron: a private, bounded sub-call made by a program. You see only the task and the context views in the user message; there is no earlier conversation and no files. Answer from the views alone and never invent content that is not in them. When a contract (JSON schema) is given, reply with exactly one JSON value that satisfies it: no prose, no code fences. Without a contract, reply with the answer only. You have no tools.",
+					"messages": [
+						{
+							"role": "user",
+							"content": "Task:\nSlow\n\nContext: none."
+						}
+					],
+					"max_tokens": 8192
+				}
+			]
+		},
+		{
+			"code": "r = await rlm.map(\"Slow\", [\"a\", \"b\"], budget=Budget(calls=2, tokens=2000), timeout_ms=50, concurrency=1)\nprint(r)\nprint(r.spent, r.budget, r.remaining)\nfor x in r: print(type(x).__name__, repr(x))\nprint([x.error for x in r if isinstance(x, FrameError)])",
+			"replies": [
+				{
+					"hang": true
+				},
+				{
+					"text": "fast",
+					"usage": {
+						"input": 10,
+						"output": 1,
+						"cacheRead": 0
+					}
+				}
+			],
+			"ok": {
+				"status": "ok",
+				"stdout": "[rlm.map] 2 frames: 1 complete, 0 incomplete, 1 failed; spent 1 calls, 11 tokens of 2,000\n[FrameError('cancelled', trace_id='frame-ID'), 'fast']\n{'calls': 1, 'tokens': 11} {'calls': 2, 'tokens': 2000} {'calls': 1, 'tokens': 1989, 'depth': 1}\nFrameError FrameError('cancelled', trace_id='frame-ID')\nstr 'fast'\n['cancelled']\n",
+				"result": "",
+				"error": null
+			},
+			"calls": [
+				{
+					"system": "You are an inference frame inside Ultron: a private, bounded sub-call made by a program. You see only the task and the context views in the user message; there is no earlier conversation and no files. Answer from the views alone and never invent content that is not in them. When a contract (JSON schema) is given, reply with exactly one JSON value that satisfies it: no prose, no code fences. Without a contract, reply with the answer only. You have no tools.",
+					"messages": [
+						{
+							"role": "user",
+							"content": "Task:\nSlow\n\n--- view 1: literal (1 chars) ---\na\n--- end of view 1 ---"
+						}
+					],
+					"max_tokens": 500
+				},
+				{
+					"system": "You are an inference frame inside Ultron: a private, bounded sub-call made by a program. You see only the task and the context views in the user message; there is no earlier conversation and no files. Answer from the views alone and never invent content that is not in them. When a contract (JSON schema) is given, reply with exactly one JSON value that satisfies it: no prose, no code fences. Without a contract, reply with the answer only. You have no tools.",
+					"messages": [
+						{
+							"role": "user",
+							"content": "Task:\nSlow\n\n--- view 1: literal (1 chars) ---\nb\n--- end of view 1 ---"
+						}
+					],
+					"max_tokens": 500
+				}
+			]
+		},
+		{
+			"code": "try:\n    await rlm.infer(\"Count\", contract=int, timeout_ms=50)\nexcept InferenceError as e:\n    print(repr(e), e.spent, e.last_outputs)",
+			"replies": [
+				{
+					"text": "many",
+					"usage": {
+						"input": 40,
+						"output": 2,
+						"cacheRead": 0
+					}
+				},
+				{
+					"hang": true
+				}
+			],
+			"ok": {
+				"status": "ok",
+				"stdout": "FrameError('cancelled', trace_id='frame-ID') {'calls': 1, 'tokens': 42} ['many']\n",
+				"result": "",
+				"error": null
+			},
+			"calls": [
+				{
+					"system": "You are an inference frame inside Ultron: a private, bounded sub-call made by a program. You see only the task and the context views in the user message; there is no earlier conversation and no files. Answer from the views alone and never invent content that is not in them. When a contract (JSON schema) is given, reply with exactly one JSON value that satisfies it: no prose, no code fences. Without a contract, reply with the answer only. You have no tools.",
+					"messages": [
+						{
+							"role": "user",
+							"content": "Task:\nCount\n\nContext: none.\n\nContract (JSON schema): {\"type\":\"integer\"}\nReply with only a JSON value that satisfies the contract."
+						}
+					],
+					"max_tokens": 8192
+				},
+				{
+					"system": "You are an inference frame inside Ultron: a private, bounded sub-call made by a program. You see only the task and the context views in the user message; there is no earlier conversation and no files. Answer from the views alone and never invent content that is not in them. When a contract (JSON schema) is given, reply with exactly one JSON value that satisfies it: no prose, no code fences. Without a contract, reply with the answer only. You have no tools.",
+					"messages": [
+						{
+							"role": "user",
+							"content": "Task:\nCount\n\nContext: none.\n\nContract (JSON schema): {\"type\":\"integer\"}\nReply with only a JSON value that satisfies the contract."
+						},
+						{
+							"role": "assistant",
+							"content": "many"
+						},
+						{
+							"role": "user",
+							"content": "Your reply does not satisfy the contract: the reply is not JSON.\nReply again with only a JSON value that satisfies this schema: {\"type\":\"integer\"}"
+						}
+					],
+					"max_tokens": 8192
+				}
+			]
+		},
+		{
+			"code": "a = await rlm.infer(\"First\", context=[\"ctx\"])\nr = await rlm.map(\"Pick\", [\"a\", \"b\", \"c\"], contract=int, max_repairs=0, budget=Budget(calls=2), concurrency=1)\nskip = ('taskId', 'lane', 'startedAt', 'endedAt')\nlisted = await rlm.frames()\nfor f in listed['frames']: print({k: v for k, v in f.items() if k not in skip}, type(f['startedAt']).__name__, type(f['endedAt']).__name__)\nprint([f['task'] for f in (await rlm.frames(limit=2))['frames']])\nfor f in listed['frames']:\n    t = await rlm.frames(f['id'])\n    t['attempts'] = [{k: v for k, v in a.items() if k != 'at'} for a in t['attempts']]\n    t['requests'] = [{k: v for k, v in q.items() if k != 'at'} for q in t['requests']]\n    print({k: v for k, v in t.items() if k not in skip})\nfor bad in [dict(trace_id='nope'), dict(trace_id='frame-0'), dict(limit=0), dict(limit=201)]:\n    try:\n        await rlm.frames(**bad)\n    except Exception as error:\n        print(type(error).__name__, error)",
+			"replies": [
+				{
+					"text": "a",
+					"usage": {
+						"input": 10,
+						"output": 1,
+						"cacheRead": 0
+					}
+				},
+				{
+					"text": "7",
+					"usage": {
+						"input": 20,
+						"output": 1,
+						"cacheRead": 0
+					}
+				},
+				{
+					"text": "x",
+					"usage": {
+						"input": 20,
+						"output": 1,
+						"cacheRead": 0
+					}
+				}
+			],
+			"ok": {
+				"status": "ok",
+				"stdout": "[rlm.map] 3 frames: 1 complete, 2 incomplete, 0 failed; spent 2 calls, 42 tokens of 500,000\n{'id': 'frame-ID', 'status': 'incomplete', 'reason': 'budget_exhausted', 'task': 'Pick', 'views': 1, 'spent': {'calls': 0, 'tokens': 0}, 'parentFrame': None, 'kind': 'map', 'batch': 3, 'callerTaskId': None, 'budget': {'id': 'budget-ID', 'calls': 2, 'tokens': 500000, 'depth': 1}} int int\n{'id': 'frame-ID', 'status': 'incomplete', 'reason': 'contract_unmet', 'task': 'Pick', 'views': 1, 'spent': {'calls': 1, 'tokens': 21}, 'parentFrame': None, 'kind': 'map', 'batch': 3, 'callerTaskId': None, 'budget': {'id': 'budget-ID', 'calls': 2, 'tokens': 500000, 'depth': 1}} int int\n{'id': 'frame-ID', 'status': 'complete', 'task': 'Pick', 'views': 1, 'spent': {'calls': 1, 'tokens': 21}, 'parentFrame': None, 'kind': 'map', 'batch': 3, 'callerTaskId': None, 'budget': {'id': 'budget-ID', 'calls': 2, 'tokens': 500000, 'depth': 1}} int int\n{'id': 'frame-ID', 'status': 'complete', 'task': 'First', 'views': 1, 'spent': {'calls': 1, 'tokens': 11}, 'parentFrame': None, 'kind': 'infer', 'batch': 1, 'callerTaskId': None, 'budget': {'id': 'budget-ID', 'calls': None, 'tokens': None, 'depth': 1}} int int\n['Pick', 'Pick']\n{'version': 1, 'id': 'frame-ID', 'status': 'incomplete', 'reason': 'budget_exhausted', 'detail': 'no call left in the budget for this frame', 'task': 'Pick', 'views': [{'label': 'literal', 'chars': 1, 'byReference': False}], 'contract': {'type': 'integer'}, 'maxRepairs': 0, 'depth': 1, 'budget': {'id': 'budget-ID', 'parent': None, 'depth': 1, 'limits': {'calls': 2, 'tokens': 500000}, 'spent': {'calls': 2, 'tokens': 42}}, 'spent': {'calls': 0, 'tokens': 0}, 'remaining': {'calls': 0, 'tokens': 499958, 'depth': 1}, 'callerTaskId': None, 'parentFrame': None, 'model': None, 'attempts': [], 'requests': []}\n{'version': 1, 'id': 'frame-ID', 'status': 'incomplete', 'reason': 'contract_unmet', 'detail': 'no valid answer after 1 attempt(s): the reply is not JSON', 'task': 'Pick', 'views': [{'label': 'literal', 'chars': 1, 'byReference': False}], 'contract': {'type': 'integer'}, 'maxRepairs': 0, 'depth': 1, 'budget': {'id': 'budget-ID', 'parent': None, 'depth': 1, 'limits': {'calls': 2, 'tokens': 500000}, 'spent': {'calls': 2, 'tokens': 42}}, 'spent': {'calls': 1, 'tokens': 21}, 'remaining': {'calls': 0, 'tokens': 499958, 'depth': 1}, 'callerTaskId': None, 'parentFrame': None, 'model': 'fake/frame-model', 'attempts': [{'attempt': 0, 'output': 'x', 'error': 'the reply is not JSON'}], 'requests': [{'tranche': 8192, 'held': 8467, 'charged': 21, 'status': 'stop'}]}\n{'version': 1, 'id': 'frame-ID', 'status': 'complete', 'value': '7', 'task': 'Pick', 'views': [{'label': 'literal', 'chars': 1, 'byReference': False}], 'contract': {'type': 'integer'}, 'maxRepairs': 0, 'depth': 1, 'budget': {'id': 'budget-ID', 'parent': None, 'depth': 1, 'limits': {'calls': 2, 'tokens': 500000}, 'spent': {'calls': 1, 'tokens': 21}}, 'spent': {'calls': 1, 'tokens': 21}, 'remaining': {'calls': 0, 'tokens': 499979, 'depth': 1}, 'callerTaskId': None, 'parentFrame': None, 'model': 'fake/frame-model', 'attempts': [{'attempt': 0, 'output': '7'}], 'requests': [{'tranche': 8192, 'held': 8467, 'charged': 21, 'status': 'stop'}]}\n{'version': 1, 'id': 'frame-ID', 'status': 'complete', 'value': '\"a\"', 'task': 'First', 'views': [{'label': 'literal', 'chars': 3, 'byReference': False}], 'contract': None, 'maxRepairs': 2, 'depth': 1, 'budget': {'id': 'budget-ID', 'parent': None, 'depth': 1, 'limits': {'calls': None, 'tokens': None}, 'spent': {'calls': 1, 'tokens': 11}}, 'spent': {'calls': 1, 'tokens': 11}, 'remaining': {'calls': None, 'tokens': None, 'depth': 1}, 'callerTaskId': None, 'parentFrame': None, 'model': 'fake/frame-model', 'attempts': [{'attempt': 0, 'output': 'a'}], 'requests': [{'tranche': 8192, 'held': 8434, 'charged': 11, 'status': 'stop'}]}\nRuntimeError id must be a frame id\nRuntimeError Unknown frame frame-0\nRuntimeError limit must be an integer between 1 and 200\nRuntimeError limit must be an integer between 1 and 200\n",
+				"result": "",
+				"error": null
+			},
+			"calls": [
+				{
+					"system": "You are an inference frame inside Ultron: a private, bounded sub-call made by a program. You see only the task and the context views in the user message; there is no earlier conversation and no files. Answer from the views alone and never invent content that is not in them. When a contract (JSON schema) is given, reply with exactly one JSON value that satisfies it: no prose, no code fences. Without a contract, reply with the answer only. You have no tools.",
+					"messages": [
+						{
+							"role": "user",
+							"content": "Task:\nFirst\n\n--- view 1: literal (3 chars) ---\nctx\n--- end of view 1 ---"
+						}
+					],
+					"max_tokens": 8192
+				},
+				{
+					"system": "You are an inference frame inside Ultron: a private, bounded sub-call made by a program. You see only the task and the context views in the user message; there is no earlier conversation and no files. Answer from the views alone and never invent content that is not in them. When a contract (JSON schema) is given, reply with exactly one JSON value that satisfies it: no prose, no code fences. Without a contract, reply with the answer only. You have no tools.",
+					"messages": [
+						{
+							"role": "user",
+							"content": "Task:\nPick\n\n--- view 1: literal (1 chars) ---\na\n--- end of view 1 ---\n\nContract (JSON schema): {\"type\":\"integer\"}\nReply with only a JSON value that satisfies the contract."
+						}
+					],
+					"max_tokens": 8192
+				},
+				{
+					"system": "You are an inference frame inside Ultron: a private, bounded sub-call made by a program. You see only the task and the context views in the user message; there is no earlier conversation and no files. Answer from the views alone and never invent content that is not in them. When a contract (JSON schema) is given, reply with exactly one JSON value that satisfies it: no prose, no code fences. Without a contract, reply with the answer only. You have no tools.",
+					"messages": [
+						{
+							"role": "user",
+							"content": "Task:\nPick\n\n--- view 1: literal (1 chars) ---\nb\n--- end of view 1 ---\n\nContract (JSON schema): {\"type\":\"integer\"}\nReply with only a JSON value that satisfies the contract."
+						}
+					],
+					"max_tokens": 8192
+				}
+			]
+		},
+		{
+			"code": "r = await rlm.map(\"Pick\", [\"a\", \"b\"], concurrency=1)\nprint(r)\nprint(r.spent, r.budget, r.remaining)\nfor x in r: print(type(x).__name__, repr(x))\nprint([x.detail for x in r if isinstance(x, Incomplete)])",
+			"replies": [
+				{
+					"text": "one",
+					"usage": {
+						"input": 19900,
+						"output": 10,
+						"cacheRead": 0
+					}
+				}
+			],
+			"env": {
+				"ULTRON_RLM_MAP_TOKENS": " 20000 "
+			},
+			"ok": {
+				"status": "ok",
+				"stdout": "[rlm.map] 2 frames: 1 complete, 1 incomplete, 0 failed; spent 1 calls, 19,910 tokens of 20,000\n['one', Incomplete(status='budget_exhausted', spent={'calls': 0, 'tokens': 0}, remaining={'calls': None, 'tokens': 90, 'depth': 1}, trace_id='frame-ID', last_output=None)]\n{'calls': 1, 'tokens': 19910} {'calls': None, 'tokens': 20000} {'calls': None, 'tokens': 90, 'depth': 1}\nstr 'one'\nIncomplete Incomplete(status='budget_exhausted', spent={'calls': 0, 'tokens': 0}, remaining={'calls': None, 'tokens': 90, 'depth': 1}, trace_id='frame-ID', last_output=None)\n[\"the budget cannot cover the first request (rlm.map's default budget is 20000 tokens; pass budget=Budget(tokens=...) to allow more)\"]\n",
+				"result": "",
+				"error": null
+			},
+			"calls": [
+				{
+					"system": "You are an inference frame inside Ultron: a private, bounded sub-call made by a program. You see only the task and the context views in the user message; there is no earlier conversation and no files. Answer from the views alone and never invent content that is not in them. When a contract (JSON schema) is given, reply with exactly one JSON value that satisfies it: no prose, no code fences. Without a contract, reply with the answer only. You have no tools.",
+					"messages": [
+						{
+							"role": "user",
+							"content": "Task:\nPick\n\n--- view 1: literal (1 chars) ---\na\n--- end of view 1 ---"
+						}
+					],
+					"max_tokens": 5000
+				}
+			]
+		}
+	]
+}

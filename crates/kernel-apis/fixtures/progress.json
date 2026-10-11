@@ -1,0 +1,4671 @@
+{
+	"area": "progress",
+	"scenarios": [
+		{
+			"name": "report, assess, stall",
+			"cells": [
+				{
+					"code": "import json as _json\nprint(_json.dumps(await progress.report(\"started\", [{\"kind\": \"file\", \"ref\": \"a.py\"}], task_id=\"task-a\"), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"at\": 1760000000000, \"evidence\": [{\"kind\": \"file\", \"ref\": \"a.py\"}], \"id\": \"progress-receipt-<uuid>\", \"new_evidence\": [\"file:a.py\"], \"reporter_task_id\": null, \"summary\": \"started\", \"task_id\": \"task-a\"}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nprint(_json.dumps(await progress.assess(\"task-a\"), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"assessed_at\": 1760000000000, \"classification\": \"progressing\", \"reasons\": [\"Receipt progress-receipt-<uuid> added new or changed evidence: file:a.py\"], \"receipts\": [\"progress-receipt-<uuid>\"], \"stall_after_ms\": 600000, \"task_id\": \"task-a\", \"task_state\": \"running\", \"verification\": \"unverified\"}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nprint(_json.dumps([await progress.report(\"again\", [{\"kind\": \"file\", \"ref\": \"a.py\"}], task_id=\"task-a\"), await progress.report(\"hashed\", [{\"kind\": \"file\", \"ref\": \"a.py\", \"sha256\": \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}], task_id=\"task-a\"), await progress.report(\"same hash\", [{\"kind\": \"file\", \"ref\": \"a.py\", \"sha256\": \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}, {\"kind\": \"test\", \"ref\": \"t1\", \"sha256\": None}], task_id=\"task-a\"), await progress.report(\"new hash\", [{\"kind\": \"file\", \"ref\": \"a.py\", \"sha256\": \"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"}, {\"kind\": \"file\", \"ref\": \"a.py\"}], task_id=\"task-a\", metrics={\"tests\": 3, \"ratio\": 0.5})], sort_keys=True))",
+					"status": "ok",
+					"stdout": "[{\"at\": 1760000000000, \"evidence\": [{\"kind\": \"file\", \"ref\": \"a.py\"}], \"id\": \"progress-receipt-<uuid>\", \"new_evidence\": [], \"reporter_task_id\": null, \"summary\": \"again\", \"task_id\": \"task-a\"}, {\"at\": 1760000000000, \"evidence\": [{\"kind\": \"file\", \"ref\": \"a.py\", \"sha256\": \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}], \"id\": \"progress-receipt-<uuid>\", \"new_evidence\": [\"file:a.py\"], \"reporter_task_id\": null, \"summary\": \"hashed\", \"task_id\": \"task-a\"}, {\"at\": 1760000000000, \"evidence\": [{\"kind\": \"file\", \"ref\": \"a.py\", \"sha256\": \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}, {\"kind\": \"test\", \"ref\": \"t1\"}], \"id\": \"progress-receipt-<uuid>\", \"new_evidence\": [\"test:t1\"], \"reporter_task_id\": null, \"summary\": \"same hash\", \"task_id\": \"task-a\"}, {\"at\": 1760000000000, \"evidence\": [{\"kind\": \"file\", \"ref\": \"a.py\", \"sha256\": \"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"}, {\"kind\": \"file\", \"ref\": \"a.py\"}], \"id\": \"progress-receipt-<uuid>\", \"metrics\": {\"ratio\": 0.5, \"tests\": 3}, \"new_evidence\": [\"file:a.py\"], \"reporter_task_id\": null, \"summary\": \"new hash\", \"task_id\": \"task-a\"}]\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "await rlm.host_request(\"test.clock\", {\"ms\": 660000})\nimport json as _json\nprint(_json.dumps([await progress.report(\"repeat\", [{\"kind\": \"file\", \"ref\": \"a.py\"}], task_id=\"task-a\"), await progress.assess(\"task-a\")], sort_keys=True))",
+					"status": "ok",
+					"stdout": "[{\"at\": 1760000660000, \"evidence\": [{\"kind\": \"file\", \"ref\": \"a.py\"}], \"id\": \"progress-receipt-<uuid>\", \"new_evidence\": [], \"reporter_task_id\": null, \"summary\": \"repeat\", \"task_id\": \"task-a\"}, {\"assessed_at\": 1760000660000, \"classification\": \"busy\", \"reasons\": [\"1 receipt(s) within 600000ms repeated previously seen evidence; activity is not progress\"], \"receipts\": [\"progress-receipt-<uuid>\"], \"stall_after_ms\": 600000, \"task_id\": \"task-a\", \"task_state\": \"running\", \"verification\": \"unverified\"}]\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "await rlm.host_request(\"test.clock\", {\"ms\": 600000})\nimport json as _json\nprint(_json.dumps(await progress.assess(\"task-a\"), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"assessed_at\": 1760001260000, \"classification\": \"busy\", \"reasons\": [\"1 receipt(s) within 600000ms repeated previously seen evidence; activity is not progress\"], \"receipts\": [\"progress-receipt-<uuid>\"], \"stall_after_ms\": 600000, \"task_id\": \"task-a\", \"task_state\": \"running\", \"verification\": \"unverified\"}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "await rlm.host_request(\"test.clock\", {\"ms\": 60000})\nimport json as _json\nprint(_json.dumps(await progress.assess(\"task-a\"), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"assessed_at\": 1760001320000, \"classification\": \"stalled\", \"reasons\": [\"Task is running and its last receipt is 660000ms old, beyond the 600000ms window\"], \"receipts\": [\"progress-receipt-<uuid>\"], \"stall_after_ms\": 600000, \"task_id\": \"task-a\", \"task_state\": \"running\", \"verification\": \"unverified\"}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nfor i in range(256):\n    await progress.report(\"tick\", [{\"kind\": \"tick\", \"ref\": \"r\"}], task_id=\"task-idle\")\ntry:\n    r = await progress.report(\"one more\", [{\"kind\": \"tick\", \"ref\": \"r\"}], task_id=\"task-idle\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)",
+					"status": "ok",
+					"stdout": "RuntimeError Task task-idle already has the maximum of 256 progress receipts\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nprint(_json.dumps([await progress.assess(\"task-idle\"), await progress.assess(\"task-done\"), await progress.assess(\"task-failed\")], sort_keys=True))",
+					"status": "ok",
+					"stdout": "[{\"assessed_at\": 1760001320000, \"classification\": \"progressing\", \"reasons\": [\"Receipt progress-receipt-<uuid> added new or changed evidence: tick:r\"], \"receipts\": [\"progress-receipt-<uuid>\"], \"stall_after_ms\": 600000, \"task_id\": \"task-idle\", \"task_state\": \"admitted\", \"verification\": \"unverified\"}, {\"assessed_at\": 1760001320000, \"classification\": \"finished\", \"reasons\": [\"Task is completed with result succeeded\", \"A terminal state is not verification; only a passing verifier can verify completion\"], \"receipts\": [], \"result_status\": \"succeeded\", \"stall_after_ms\": 600000, \"task_id\": \"task-done\", \"task_state\": \"completed\", \"verification\": \"unverified\"}, {\"assessed_at\": 1760001320000, \"classification\": \"finished\", \"reasons\": [\"Task is failed with result failed\", \"A terminal state is not verification; only a passing verifier can verify completion\"], \"receipts\": [], \"result_status\": \"failed\", \"stall_after_ms\": 600000, \"task_id\": \"task-failed\", \"task_state\": \"failed\", \"verification\": \"unverified\"}]\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\ntry:\n    r = await progress.report(\"x\", [{\"kind\": \"file\", \"ref\": \"a\"}])\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await progress.report(\"\", [{\"kind\": \"file\", \"ref\": \"a\"}], task_id=\"task-a\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await progress.report(\"x\" * 4097, [{\"kind\": \"file\", \"ref\": \"a\"}], task_id=\"task-a\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await progress.report(\"x\", [], task_id=\"task-a\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await progress.report(\"x\", [{\"kind\": \"f\", \"ref\": str(i)} for i in range(33)], task_id=\"task-a\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await progress.report(\"x\", [\"a\"], task_id=\"task-a\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await progress.report(\"x\", [{\"kind\": \"File\", \"ref\": \"a\"}], task_id=\"task-a\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await progress.report(\"x\", [{\"kind\": \"file\", \"ref\": \" \"}], task_id=\"task-a\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await progress.report(\"x\", [{\"kind\": \"file\", \"ref\": \"r\" * 1025}], task_id=\"task-a\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await progress.report(\"x\", [{\"kind\": \"file\", \"ref\": \"a\", \"sha256\": \"A\" * 64}], task_id=\"task-a\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await progress.report(\"x\", [{\"kind\": \"file\", \"ref\": \"a\", \"extra\": 1}], task_id=\"task-a\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await progress.report(\"x\", [{\"kind\": \"file\", \"ref\": \"a\"}], task_id=\"task-a\", metrics=[1])\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await progress.report(\"x\", [{\"kind\": \"file\", \"ref\": \"a\"}], task_id=\"task-a\", metrics={\"\": 1})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await progress.report(\"x\", [{\"kind\": \"file\", \"ref\": \"a\"}], task_id=\"task-a\", metrics={\"m\": \"x\"})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await progress.report(\"x\", [{\"kind\": \"file\", \"ref\": \"a\"}], task_id=\"task-a\", metrics={str(i): i for i in range(33)})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await progress.report(\"x\", [{\"kind\": \"file\", \"ref\": \"a\"}], task_id=\"nope\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await progress.report(\"x\", [{\"kind\": \"file\", \"ref\": \"a\"}], task_id=\"task-b\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await progress.report(\"x\", [{\"kind\": \"file\", \"ref\": \"a\"}], task_id=\" \")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await progress.assess(\"\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await progress.assess(\"nope\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await rlm.host_request(\"progress.report\", {\"summary\": \"x\", \"evidence\": [], \"who\": 1})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await rlm.host_request(\"progress.assess\", {\"task_id\": \"task-a\", \"x\": 1})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await rlm.host_request(\"progress.nope\", {})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)",
+					"status": "ok",
+					"stdout": "RuntimeError The root agent must name the task_id it reports for\nRuntimeError summary must be a nonempty string of at most 4096 characters\nRuntimeError summary must be a nonempty string of at most 4096 characters\nRuntimeError evidence must be a list of 1 to 32 entries\nRuntimeError evidence must be a list of 1 to 32 entries\nRuntimeError evidence[0] must be a JSON object\nRuntimeError evidence[0].kind must be a short lowercase identifier\nRuntimeError evidence[0].ref must be a nonempty string of at most 1024 characters\nRuntimeError evidence[0].ref must be a nonempty string of at most 1024 characters\nRuntimeError evidence[0].sha256 must be a lowercase SHA-256 hex string\nRuntimeError Unknown payload field: extra\nRuntimeError metrics must be a JSON object\nRuntimeError metric names must be 1 to 64 characters\nRuntimeError metric m must be a finite number\nRuntimeError metrics may hold at most 32 entries\nRuntimeError Unknown Ultron task\nRuntimeError Caller may only report progress for itself or its direct children\nRuntimeError task_id must be a nonempty string\nRuntimeError task_id must be a nonempty string\nRuntimeError Unknown Ultron task\nRuntimeError Unknown payload field: who\nRuntimeError Unknown payload field: x\nRuntimeError Unknown progress request: progress.nope\n",
+					"result": "",
+					"error": null
+				}
+			],
+			"state": {
+				"document": {
+					"version": 1,
+					"receipts": [
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-a",
+							"reporter_task_id": null,
+							"at": 1760000000000,
+							"summary": "started",
+							"evidence": [
+								{
+									"kind": "file",
+									"ref": "a.py"
+								}
+							],
+							"new_evidence": [
+								"file:a.py"
+							]
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-a",
+							"reporter_task_id": null,
+							"at": 1760000000000,
+							"summary": "again",
+							"evidence": [
+								{
+									"kind": "file",
+									"ref": "a.py"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-a",
+							"reporter_task_id": null,
+							"at": 1760000000000,
+							"summary": "hashed",
+							"evidence": [
+								{
+									"kind": "file",
+									"ref": "a.py",
+									"sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+								}
+							],
+							"new_evidence": [
+								"file:a.py"
+							]
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-a",
+							"reporter_task_id": null,
+							"at": 1760000000000,
+							"summary": "same hash",
+							"evidence": [
+								{
+									"kind": "file",
+									"ref": "a.py",
+									"sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+								},
+								{
+									"kind": "test",
+									"ref": "t1"
+								}
+							],
+							"new_evidence": [
+								"test:t1"
+							]
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-a",
+							"reporter_task_id": null,
+							"at": 1760000000000,
+							"summary": "new hash",
+							"evidence": [
+								{
+									"kind": "file",
+									"ref": "a.py",
+									"sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+								},
+								{
+									"kind": "file",
+									"ref": "a.py"
+								}
+							],
+							"metrics": {
+								"tests": 3,
+								"ratio": 0.5
+							},
+							"new_evidence": [
+								"file:a.py"
+							]
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-a",
+							"reporter_task_id": null,
+							"at": 1760000660000,
+							"summary": "repeat",
+							"evidence": [
+								{
+									"kind": "file",
+									"ref": "a.py"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": [
+								"tick:r"
+							]
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-idle",
+							"reporter_task_id": null,
+							"at": 1760001320000,
+							"summary": "tick",
+							"evidence": [
+								{
+									"kind": "tick",
+									"ref": "r"
+								}
+							],
+							"new_evidence": []
+						}
+					],
+					"decisions": []
+				},
+				"log": []
+			}
+		},
+		{
+			"name": "callers",
+			"cells": [
+				{
+					"code": "await rlm.host_request(\"test.caller\", {\"id\": \"task-a\"})\nimport json as _json\nprint(_json.dumps([await progress.report(\"self\", [{\"kind\": \"log\", \"ref\": \"l1\"}]), await progress.report(\"child\", [{\"kind\": \"log\", \"ref\": \"l2\"}], task_id=\"task-b\")], sort_keys=True))",
+					"status": "ok",
+					"stdout": "[{\"at\": 1760000000000, \"evidence\": [{\"kind\": \"log\", \"ref\": \"l1\"}], \"id\": \"progress-receipt-<uuid>\", \"new_evidence\": [\"log:l1\"], \"reporter_task_id\": \"task-a\", \"summary\": \"self\", \"task_id\": \"task-a\"}, {\"at\": 1760000000000, \"evidence\": [{\"kind\": \"log\", \"ref\": \"l2\"}], \"id\": \"progress-receipt-<uuid>\", \"new_evidence\": [\"log:l2\"], \"reporter_task_id\": \"task-a\", \"summary\": \"child\", \"task_id\": \"task-b\"}]\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\ntry:\n    r = await progress.report(\"grandchild\", [{\"kind\": \"log\", \"ref\": \"l3\"}], task_id=\"task-c\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await progress.assess(\"task-c\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await progress.history(\"task-b\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await progress.assess(\"task-idle\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)",
+					"status": "ok",
+					"stdout": "RuntimeError Caller may only report progress for itself or its direct children\nok {\"assessed_at\": 1760000000000, \"classification\": \"stalled\", \"reasons\": [\"Task is running and has never reported progress\"], \"receipts\": [], \"stall_after_ms\": 600000, \"task_id\": \"task-c\", \"task_state\": \"running\", \"verification\": \"unverified\"}\nok {\"decisions\": [], \"receipts\": [{\"at\": 1760000000000, \"evidence\": [{\"kind\": \"log\", \"ref\": \"l2\"}], \"id\": \"progress-receipt-<uuid>\", \"new_evidence\": [\"log:l2\"], \"reporter_task_id\": \"task-a\", \"summary\": \"child\", \"task_id\": \"task-b\"}], \"task_id\": \"task-b\"}\nRuntimeError Caller may only access its own progress or that of its descendants\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "await rlm.host_request(\"test.caller\", {\"id\": \"task-b\"})\nimport json as _json\ntry:\n    r = await progress.assess(\"task-a\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await progress.history(\"task-a\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await progress.reassess(\"task-a\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await progress.assess(\"task-b\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await progress.report(\"up\", [{\"kind\": \"log\", \"ref\": \"x\"}], task_id=\"task-a\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)",
+					"status": "ok",
+					"stdout": "RuntimeError Caller may only access its own progress or that of its descendants\nRuntimeError Caller may only access its own progress or that of its descendants\nRuntimeError Caller may only access its own progress or that of its descendants\nok {\"assessed_at\": 1760000000000, \"classification\": \"progressing\", \"reasons\": [\"Receipt progress-receipt-<uuid> added new or changed evidence: log:l2\"], \"receipts\": [\"progress-receipt-<uuid>\"], \"stall_after_ms\": 600000, \"task_id\": \"task-b\", \"task_state\": \"running\", \"verification\": \"unverified\"}\nRuntimeError Caller may only report progress for itself or its direct children\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "await rlm.host_request(\"test.caller\", {\"id\": None})\nimport json as _json\nprint(_json.dumps(await progress.history(\"task-a\"), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"decisions\": [], \"receipts\": [{\"at\": 1760000000000, \"evidence\": [{\"kind\": \"log\", \"ref\": \"l1\"}], \"id\": \"progress-receipt-<uuid>\", \"new_evidence\": [\"log:l1\"], \"reporter_task_id\": \"task-a\", \"summary\": \"self\", \"task_id\": \"task-a\"}], \"task_id\": \"task-a\"}\n",
+					"result": "",
+					"error": null
+				}
+			],
+			"state": {
+				"document": {
+					"version": 1,
+					"receipts": [
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-a",
+							"reporter_task_id": "task-a",
+							"at": 1760000000000,
+							"summary": "self",
+							"evidence": [
+								{
+									"kind": "log",
+									"ref": "l1"
+								}
+							],
+							"new_evidence": [
+								"log:l1"
+							]
+						},
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-b",
+							"reporter_task_id": "task-a",
+							"at": 1760000000000,
+							"summary": "child",
+							"evidence": [
+								{
+									"kind": "log",
+									"ref": "l2"
+								}
+							],
+							"new_evidence": [
+								"log:l2"
+							]
+						}
+					],
+					"decisions": []
+				},
+				"log": []
+			}
+		},
+		{
+			"name": "reassess and claims",
+			"cells": [
+				{
+					"code": "import json as _json\nprint(_json.dumps(await progress.report(\"built\", [{\"kind\": \"build\", \"ref\": \"out/app\", \"sha256\": \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}], task_id=\"task-done\"), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"at\": 1760000000000, \"evidence\": [{\"kind\": \"build\", \"ref\": \"out/app\", \"sha256\": \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}], \"id\": \"progress-receipt-<uuid>\", \"new_evidence\": [\"build:out/app\"], \"reporter_task_id\": null, \"summary\": \"built\", \"task_id\": \"task-done\"}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nprint(_json.dumps([await progress.reassess(\"task-a\"), await progress.reassess(\"task-a\", extend_budget=True), await progress.reassess(\"task-a\", extend_budget={\"tokens\": 100}), await progress.reassess(\"task-a\", extend_budget=False)], sort_keys=True))",
+					"status": "ok",
+					"stdout": "[{\"assessment\": {\"classification\": \"stalled\", \"reasons\": [\"Task is running and has never reported progress\"], \"receipts\": []}, \"at\": 1760000000000, \"id\": \"progress-decision-<uuid>\", \"requester_task_id\": null, \"task_id\": \"task-a\"}, {\"assessment\": {\"classification\": \"stalled\", \"reasons\": [\"Task is running and has never reported progress\"], \"receipts\": []}, \"at\": 1760000000000, \"budget\": {\"decision\": \"denied\", \"reason\": \"Budgets are fixed at admission; progress reassessment cannot extend them\", \"requested\": true}, \"id\": \"progress-decision-<uuid>\", \"requester_task_id\": null, \"task_id\": \"task-a\"}, {\"assessment\": {\"classification\": \"stalled\", \"reasons\": [\"Task is running and has never reported progress\"], \"receipts\": []}, \"at\": 1760000000000, \"budget\": {\"decision\": \"denied\", \"reason\": \"Budgets are fixed at admission; progress reassessment cannot extend them\", \"requested\": {\"tokens\": 100}}, \"id\": \"progress-decision-<uuid>\", \"requester_task_id\": null, \"task_id\": \"task-a\"}, {\"assessment\": {\"classification\": \"stalled\", \"reasons\": [\"Task is running and has never reported progress\"], \"receipts\": []}, \"at\": 1760000000000, \"id\": \"progress-decision-<uuid>\", \"requester_task_id\": null, \"task_id\": \"task-a\"}]\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nprint(_json.dumps([await progress.reassess(\"task-a\", claim=\"complete\"), await progress.reassess(\"task-failed\", claim=\"complete\"), await progress.reassess(\"task-done\", claim=\"complete\")], sort_keys=True))",
+					"status": "ok",
+					"stdout": "[{\"assessment\": {\"classification\": \"stalled\", \"reasons\": [\"Task is running and has never reported progress\"], \"receipts\": []}, \"at\": 1760000000000, \"claim\": {\"claim\": \"complete\", \"decision\": \"rejected\", \"reason\": \"Task is running; only a succeeded task can be claimed complete\"}, \"id\": \"progress-decision-<uuid>\", \"requester_task_id\": null, \"task_id\": \"task-a\"}, {\"assessment\": {\"classification\": \"finished\", \"reasons\": [\"Task is failed with result failed\", \"A terminal state is not verification; only a passing verifier can verify completion\"], \"receipts\": []}, \"at\": 1760000000000, \"claim\": {\"claim\": \"complete\", \"decision\": \"rejected\", \"reason\": \"Task is failed; only a succeeded task can be claimed complete\"}, \"id\": \"progress-decision-<uuid>\", \"requester_task_id\": null, \"task_id\": \"task-failed\"}, {\"assessment\": {\"classification\": \"finished\", \"reasons\": [\"Task is completed with result succeeded\", \"A terminal state is not verification; only a passing verifier can verify completion\"], \"receipts\": [\"progress-receipt-<uuid>\"]}, \"at\": 1760000000000, \"claim\": {\"claim\": \"complete\", \"decision\": \"unverified\", \"reason\": \"No verifier was named; a task result alone is not verification\"}, \"id\": \"progress-decision-<uuid>\", \"requester_task_id\": null, \"task_id\": \"task-done\"}]\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nprint(_json.dumps(await progress.reassess(\"task-done\", claim=\"complete\", verifier=\"verify-pass@1\"), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"assessment\": {\"classification\": \"finished\", \"reasons\": [\"Task is completed with result succeeded\", \"A terminal state is not verification; only a passing verifier can verify completion\"], \"receipts\": [\"progress-receipt-<uuid>\"]}, \"at\": 1760000000000, \"claim\": {\"claim\": \"complete\", \"decision\": \"verified\", \"reason\": \"Verifier verify-pass@1 passed for task task-done\", \"verifier\": \"verify-pass@1\", \"verifier_status\": \"succeeded\", \"verifier_task_id\": \"spawned-1\"}, \"id\": \"progress-decision-<uuid>\", \"requester_task_id\": null, \"task_id\": \"task-done\"}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nprint(_json.dumps([await progress.reassess(\"task-done\", claim=\"complete\", verifier=v) for v in [\"verify-fail@1\", \"verify-odd@1\", \"verify-error@1\", \"verify-nostart@1\", \"verify-noresult@1\"]], sort_keys=True))",
+					"status": "ok",
+					"stdout": "[{\"assessment\": {\"classification\": \"finished\", \"reasons\": [\"Task is completed with result succeeded\", \"A terminal state is not verification; only a passing verifier can verify completion\"], \"receipts\": [\"progress-receipt-<uuid>\"]}, \"at\": 1760000000000, \"claim\": {\"claim\": \"complete\", \"decision\": \"unverified\", \"reason\": \"Verifier verify-fail@1 did not pass\", \"verifier\": \"verify-fail@1\", \"verifier_status\": \"succeeded\", \"verifier_task_id\": \"spawned-2\"}, \"id\": \"progress-decision-<uuid>\", \"requester_task_id\": null, \"task_id\": \"task-done\"}, {\"assessment\": {\"classification\": \"finished\", \"reasons\": [\"Task is completed with result succeeded\", \"A terminal state is not verification; only a passing verifier can verify completion\"], \"receipts\": [\"progress-receipt-<uuid>\"]}, \"at\": 1760000000000, \"claim\": {\"claim\": \"complete\", \"decision\": \"unverified\", \"reason\": \"Verifier output has no boolean passed field\", \"verifier\": \"verify-odd@1\", \"verifier_status\": \"succeeded\", \"verifier_task_id\": \"spawned-3\"}, \"id\": \"progress-decision-<uuid>\", \"requester_task_id\": null, \"task_id\": \"task-done\"}, {\"assessment\": {\"classification\": \"finished\", \"reasons\": [\"Task is completed with result succeeded\", \"A terminal state is not verification; only a passing verifier can verify completion\"], \"receipts\": [\"progress-receipt-<uuid>\"]}, \"at\": 1760000000000, \"claim\": {\"claim\": \"complete\", \"decision\": \"unverified\", \"reason\": \"Verifier failed: verifier crashed\", \"verifier\": \"verify-error@1\", \"verifier_status\": \"failed\", \"verifier_task_id\": \"spawned-4\"}, \"id\": \"progress-decision-<uuid>\", \"requester_task_id\": null, \"task_id\": \"task-done\"}, {\"assessment\": {\"classification\": \"finished\", \"reasons\": [\"Task is completed with result succeeded\", \"A terminal state is not verification; only a passing verifier can verify completion\"], \"receipts\": [\"progress-receipt-<uuid>\"]}, \"at\": 1760000000000, \"claim\": {\"claim\": \"complete\", \"decision\": \"unverified\", \"reason\": \"Verifier could not be started: Admission refused: budget exhausted\", \"verifier\": \"verify-nostart@1\"}, \"id\": \"progress-decision-<uuid>\", \"requester_task_id\": null, \"task_id\": \"task-done\"}, {\"assessment\": {\"classification\": \"finished\", \"reasons\": [\"Task is completed with result succeeded\", \"A terminal state is not verification; only a passing verifier can verify completion\"], \"receipts\": [\"progress-receipt-<uuid>\"]}, \"at\": 1760000000000, \"claim\": {\"claim\": \"complete\", \"decision\": \"unverified\", \"reason\": \"Verifier result is unavailable: result lost\", \"verifier\": \"verify-noresult@1\", \"verifier_task_id\": \"spawned-5\"}, \"id\": \"progress-decision-<uuid>\", \"requester_task_id\": null, \"task_id\": \"task-done\"}]\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nprint(_json.dumps(await progress.reassess(\"task-done\", claim=\"complete\", verifier=\"verify-pass@1\", verifier_input={\"x\": 1}, extend_budget={\"calls\": 2}), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"assessment\": {\"classification\": \"finished\", \"reasons\": [\"Task is completed with result succeeded\", \"A terminal state is not verification; only a passing verifier can verify completion\"], \"receipts\": [\"progress-receipt-<uuid>\"]}, \"at\": 1760000000000, \"budget\": {\"decision\": \"denied\", \"reason\": \"Budgets are fixed at admission; progress reassessment cannot extend them\", \"requested\": {\"calls\": 2}}, \"claim\": {\"claim\": \"complete\", \"decision\": \"verified\", \"reason\": \"Verifier verify-pass@1 passed for task task-done\", \"verifier\": \"verify-pass@1\", \"verifier_status\": \"succeeded\", \"verifier_task_id\": \"spawned-6\"}, \"id\": \"progress-decision-<uuid>\", \"requester_task_id\": null, \"task_id\": \"task-done\"}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\ntry:\n    r = await progress.reassess(\"task-done\", claim=\"done\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await progress.reassess(\"task-done\", claim=\"complete\", verifier=\"bad\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await progress.reassess(\"task-done\", claim=\"complete\", verifier=\"Verify@1\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await progress.reassess(\"task-done\", verifier=\"verify-pass@1\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await progress.reassess(\"task-done\", verifier_input={\"x\": 1})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await progress.reassess(\"task-done\", extend_budget=\"yes\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await progress.reassess(\"task-done\", extend_budget=[1])\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await progress.reassess(\"nope\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await progress.reassess(\"\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await rlm.host_request(\"progress.reassess\", {\"task_id\": \"task-done\", \"claim\": None, \"extend_budget\": None})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)",
+					"status": "ok",
+					"stdout": "RuntimeError claim must be \"complete\"\nRuntimeError verifier must be id@version\nRuntimeError verifier must be id@version\nRuntimeError verifier and verifier_input require claim\nRuntimeError verifier and verifier_input require claim\nRuntimeError extend_budget must be a boolean or a JSON object\nRuntimeError extend_budget must be a boolean or a JSON object\nRuntimeError Unknown Ultron task\nRuntimeError task_id must be a nonempty string\nok {\"assessment\": {\"classification\": \"finished\", \"reasons\": [\"Task is completed with result succeeded\", \"A terminal state is not verification; only a passing verifier can verify completion\"], \"receipts\": [\"progress-receipt-<uuid>\"]}, \"at\": 1760000000000, \"id\": \"progress-decision-<uuid>\", \"requester_task_id\": null, \"task_id\": \"task-done\"}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nprint(_json.dumps(await progress.history(\"task-done\"), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"decisions\": [{\"assessment\": {\"classification\": \"finished\", \"reasons\": [\"Task is completed with result succeeded\", \"A terminal state is not verification; only a passing verifier can verify completion\"], \"receipts\": [\"progress-receipt-<uuid>\"]}, \"at\": 1760000000000, \"claim\": {\"claim\": \"complete\", \"decision\": \"unverified\", \"reason\": \"No verifier was named; a task result alone is not verification\"}, \"id\": \"progress-decision-<uuid>\", \"requester_task_id\": null, \"task_id\": \"task-done\"}, {\"assessment\": {\"classification\": \"finished\", \"reasons\": [\"Task is completed with result succeeded\", \"A terminal state is not verification; only a passing verifier can verify completion\"], \"receipts\": [\"progress-receipt-<uuid>\"]}, \"at\": 1760000000000, \"claim\": {\"claim\": \"complete\", \"decision\": \"verified\", \"reason\": \"Verifier verify-pass@1 passed for task task-done\", \"verifier\": \"verify-pass@1\", \"verifier_status\": \"succeeded\", \"verifier_task_id\": \"spawned-1\"}, \"id\": \"progress-decision-<uuid>\", \"requester_task_id\": null, \"task_id\": \"task-done\"}, {\"assessment\": {\"classification\": \"finished\", \"reasons\": [\"Task is completed with result succeeded\", \"A terminal state is not verification; only a passing verifier can verify completion\"], \"receipts\": [\"progress-receipt-<uuid>\"]}, \"at\": 1760000000000, \"claim\": {\"claim\": \"complete\", \"decision\": \"unverified\", \"reason\": \"Verifier verify-fail@1 did not pass\", \"verifier\": \"verify-fail@1\", \"verifier_status\": \"succeeded\", \"verifier_task_id\": \"spawned-2\"}, \"id\": \"progress-decision-<uuid>\", \"requester_task_id\": null, \"task_id\": \"task-done\"}, {\"assessment\": {\"classification\": \"finished\", \"reasons\": [\"Task is completed with result succeeded\", \"A terminal state is not verification; only a passing verifier can verify completion\"], \"receipts\": [\"progress-receipt-<uuid>\"]}, \"at\": 1760000000000, \"claim\": {\"claim\": \"complete\", \"decision\": \"unverified\", \"reason\": \"Verifier output has no boolean passed field\", \"verifier\": \"verify-odd@1\", \"verifier_status\": \"succeeded\", \"verifier_task_id\": \"spawned-3\"}, \"id\": \"progress-decision-<uuid>\", \"requester_task_id\": null, \"task_id\": \"task-done\"}, {\"assessment\": {\"classification\": \"finished\", \"reasons\": [\"Task is completed with result succeeded\", \"A terminal state is not verification; only a passing verifier can verify completion\"], \"receipts\": [\"progress-receipt-<uuid>\"]}, \"at\": 1760000000000, \"claim\": {\"claim\": \"complete\", \"decision\": \"unverified\", \"reason\": \"Verifier failed: verifier crashed\", \"verifier\": \"verify-error@1\", \"verifier_status\": \"failed\", \"verifier_task_id\": \"spawned-4\"}, \"id\": \"progress-decision-<uuid>\", \"requester_task_id\": null, \"task_id\": \"task-done\"}, {\"assessment\": {\"classification\": \"finished\", \"reasons\": [\"Task is completed with result succeeded\", \"A terminal state is not verification; only a passing verifier can verify completion\"], \"receipts\": [\"progress-receipt-<uuid>\"]}, \"at\": 1760000000000, \"claim\": {\"claim\": \"complete\", \"decision\": \"unverified\", \"reason\": \"Verifier could not be started: Admission refused: budget exhausted\", \"verifier\": \"verify-nostart@1\"}, \"id\": \"progress-decision-<uuid>\", \"requester_task_id\": null, \"task_id\": \"task-done\"}, {\"assessment\": {\"classification\": \"finished\", \"reasons\": [\"Task is completed with result succeeded\", \"A terminal state is not verification; only a passing verifier can verify completion\"], \"receipts\": [\"progress-receipt-<uuid>\"]}, \"at\": 1760000000000, \"claim\": {\"claim\": \"complete\", \"decision\": \"unverified\", \"reason\": \"Verifier result is unavailable: result lost\", \"verifier\": \"verify-noresult@1\", \"verifier_task_id\": \"spawned-5\"}, \"id\": \"progress-decision-<uuid>\", \"requester_task_id\": null, \"task_id\": \"task-done\"}, {\"assessment\": {\"classification\": \"finished\", \"reasons\": [\"Task is completed with result succeeded\", \"A terminal state is not verification; only a passing verifier can verify completion\"], \"receipts\": [\"progress-receipt-<uuid>\"]}, \"at\": 1760000000000, \"budget\": {\"decision\": \"denied\", \"reason\": \"Budgets are fixed at admission; progress reassessment cannot extend them\", \"requested\": {\"calls\": 2}}, \"claim\": {\"claim\": \"complete\", \"decision\": \"verified\", \"reason\": \"Verifier verify-pass@1 passed for task task-done\", \"verifier\": \"verify-pass@1\", \"verifier_status\": \"succeeded\", \"verifier_task_id\": \"spawned-6\"}, \"id\": \"progress-decision-<uuid>\", \"requester_task_id\": null, \"task_id\": \"task-done\"}, {\"assessment\": {\"classification\": \"finished\", \"reasons\": [\"Task is completed with result succeeded\", \"A terminal state is not verification; only a passing verifier can verify completion\"], \"receipts\": [\"progress-receipt-<uuid>\"]}, \"at\": 1760000000000, \"id\": \"progress-decision-<uuid>\", \"requester_task_id\": null, \"task_id\": \"task-done\"}], \"receipts\": [{\"at\": 1760000000000, \"evidence\": [{\"kind\": \"build\", \"ref\": \"out/app\", \"sha256\": \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}], \"id\": \"progress-receipt-<uuid>\", \"new_evidence\": [\"build:out/app\"], \"reporter_task_id\": null, \"summary\": \"built\", \"task_id\": \"task-done\"}], \"task_id\": \"task-done\"}\n",
+					"result": "",
+					"error": null
+				}
+			],
+			"state": {
+				"document": {
+					"version": 1,
+					"receipts": [
+						{
+							"id": "progress-receipt-<uuid>",
+							"task_id": "task-done",
+							"reporter_task_id": null,
+							"at": 1760000000000,
+							"summary": "built",
+							"evidence": [
+								{
+									"kind": "build",
+									"ref": "out/app",
+									"sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+								}
+							],
+							"new_evidence": [
+								"build:out/app"
+							]
+						}
+					],
+					"decisions": [
+						{
+							"id": "progress-decision-<uuid>",
+							"task_id": "task-a",
+							"requester_task_id": null,
+							"at": 1760000000000,
+							"assessment": {
+								"classification": "stalled",
+								"reasons": [
+									"Task is running and has never reported progress"
+								],
+								"receipts": []
+							}
+						},
+						{
+							"id": "progress-decision-<uuid>",
+							"task_id": "task-a",
+							"requester_task_id": null,
+							"at": 1760000000000,
+							"assessment": {
+								"classification": "stalled",
+								"reasons": [
+									"Task is running and has never reported progress"
+								],
+								"receipts": []
+							},
+							"budget": {
+								"requested": true,
+								"decision": "denied",
+								"reason": "Budgets are fixed at admission; progress reassessment cannot extend them"
+							}
+						},
+						{
+							"id": "progress-decision-<uuid>",
+							"task_id": "task-a",
+							"requester_task_id": null,
+							"at": 1760000000000,
+							"assessment": {
+								"classification": "stalled",
+								"reasons": [
+									"Task is running and has never reported progress"
+								],
+								"receipts": []
+							},
+							"budget": {
+								"requested": {
+									"tokens": 100
+								},
+								"decision": "denied",
+								"reason": "Budgets are fixed at admission; progress reassessment cannot extend them"
+							}
+						},
+						{
+							"id": "progress-decision-<uuid>",
+							"task_id": "task-a",
+							"requester_task_id": null,
+							"at": 1760000000000,
+							"assessment": {
+								"classification": "stalled",
+								"reasons": [
+									"Task is running and has never reported progress"
+								],
+								"receipts": []
+							}
+						},
+						{
+							"id": "progress-decision-<uuid>",
+							"task_id": "task-a",
+							"requester_task_id": null,
+							"at": 1760000000000,
+							"assessment": {
+								"classification": "stalled",
+								"reasons": [
+									"Task is running and has never reported progress"
+								],
+								"receipts": []
+							},
+							"claim": {
+								"claim": "complete",
+								"decision": "rejected",
+								"reason": "Task is running; only a succeeded task can be claimed complete"
+							}
+						},
+						{
+							"id": "progress-decision-<uuid>",
+							"task_id": "task-failed",
+							"requester_task_id": null,
+							"at": 1760000000000,
+							"assessment": {
+								"classification": "finished",
+								"reasons": [
+									"Task is failed with result failed",
+									"A terminal state is not verification; only a passing verifier can verify completion"
+								],
+								"receipts": []
+							},
+							"claim": {
+								"claim": "complete",
+								"decision": "rejected",
+								"reason": "Task is failed; only a succeeded task can be claimed complete"
+							}
+						},
+						{
+							"id": "progress-decision-<uuid>",
+							"task_id": "task-done",
+							"requester_task_id": null,
+							"at": 1760000000000,
+							"assessment": {
+								"classification": "finished",
+								"reasons": [
+									"Task is completed with result succeeded",
+									"A terminal state is not verification; only a passing verifier can verify completion"
+								],
+								"receipts": [
+									"progress-receipt-<uuid>"
+								]
+							},
+							"claim": {
+								"claim": "complete",
+								"decision": "unverified",
+								"reason": "No verifier was named; a task result alone is not verification"
+							}
+						},
+						{
+							"id": "progress-decision-<uuid>",
+							"task_id": "task-done",
+							"requester_task_id": null,
+							"at": 1760000000000,
+							"assessment": {
+								"classification": "finished",
+								"reasons": [
+									"Task is completed with result succeeded",
+									"A terminal state is not verification; only a passing verifier can verify completion"
+								],
+								"receipts": [
+									"progress-receipt-<uuid>"
+								]
+							},
+							"claim": {
+								"claim": "complete",
+								"verifier": "verify-pass@1",
+								"verifier_task_id": "spawned-1",
+								"verifier_status": "succeeded",
+								"decision": "verified",
+								"reason": "Verifier verify-pass@1 passed for task task-done"
+							}
+						},
+						{
+							"id": "progress-decision-<uuid>",
+							"task_id": "task-done",
+							"requester_task_id": null,
+							"at": 1760000000000,
+							"assessment": {
+								"classification": "finished",
+								"reasons": [
+									"Task is completed with result succeeded",
+									"A terminal state is not verification; only a passing verifier can verify completion"
+								],
+								"receipts": [
+									"progress-receipt-<uuid>"
+								]
+							},
+							"claim": {
+								"claim": "complete",
+								"verifier": "verify-fail@1",
+								"verifier_task_id": "spawned-2",
+								"verifier_status": "succeeded",
+								"decision": "unverified",
+								"reason": "Verifier verify-fail@1 did not pass"
+							}
+						},
+						{
+							"id": "progress-decision-<uuid>",
+							"task_id": "task-done",
+							"requester_task_id": null,
+							"at": 1760000000000,
+							"assessment": {
+								"classification": "finished",
+								"reasons": [
+									"Task is completed with result succeeded",
+									"A terminal state is not verification; only a passing verifier can verify completion"
+								],
+								"receipts": [
+									"progress-receipt-<uuid>"
+								]
+							},
+							"claim": {
+								"claim": "complete",
+								"verifier": "verify-odd@1",
+								"verifier_task_id": "spawned-3",
+								"verifier_status": "succeeded",
+								"decision": "unverified",
+								"reason": "Verifier output has no boolean passed field"
+							}
+						},
+						{
+							"id": "progress-decision-<uuid>",
+							"task_id": "task-done",
+							"requester_task_id": null,
+							"at": 1760000000000,
+							"assessment": {
+								"classification": "finished",
+								"reasons": [
+									"Task is completed with result succeeded",
+									"A terminal state is not verification; only a passing verifier can verify completion"
+								],
+								"receipts": [
+									"progress-receipt-<uuid>"
+								]
+							},
+							"claim": {
+								"claim": "complete",
+								"verifier": "verify-error@1",
+								"verifier_task_id": "spawned-4",
+								"verifier_status": "failed",
+								"decision": "unverified",
+								"reason": "Verifier failed: verifier crashed"
+							}
+						},
+						{
+							"id": "progress-decision-<uuid>",
+							"task_id": "task-done",
+							"requester_task_id": null,
+							"at": 1760000000000,
+							"assessment": {
+								"classification": "finished",
+								"reasons": [
+									"Task is completed with result succeeded",
+									"A terminal state is not verification; only a passing verifier can verify completion"
+								],
+								"receipts": [
+									"progress-receipt-<uuid>"
+								]
+							},
+							"claim": {
+								"claim": "complete",
+								"verifier": "verify-nostart@1",
+								"decision": "unverified",
+								"reason": "Verifier could not be started: Admission refused: budget exhausted"
+							}
+						},
+						{
+							"id": "progress-decision-<uuid>",
+							"task_id": "task-done",
+							"requester_task_id": null,
+							"at": 1760000000000,
+							"assessment": {
+								"classification": "finished",
+								"reasons": [
+									"Task is completed with result succeeded",
+									"A terminal state is not verification; only a passing verifier can verify completion"
+								],
+								"receipts": [
+									"progress-receipt-<uuid>"
+								]
+							},
+							"claim": {
+								"claim": "complete",
+								"verifier": "verify-noresult@1",
+								"verifier_task_id": "spawned-5",
+								"decision": "unverified",
+								"reason": "Verifier result is unavailable: result lost"
+							}
+						},
+						{
+							"id": "progress-decision-<uuid>",
+							"task_id": "task-done",
+							"requester_task_id": null,
+							"at": 1760000000000,
+							"assessment": {
+								"classification": "finished",
+								"reasons": [
+									"Task is completed with result succeeded",
+									"A terminal state is not verification; only a passing verifier can verify completion"
+								],
+								"receipts": [
+									"progress-receipt-<uuid>"
+								]
+							},
+							"budget": {
+								"requested": {
+									"calls": 2
+								},
+								"decision": "denied",
+								"reason": "Budgets are fixed at admission; progress reassessment cannot extend them"
+							},
+							"claim": {
+								"claim": "complete",
+								"verifier": "verify-pass@1",
+								"verifier_task_id": "spawned-6",
+								"verifier_status": "succeeded",
+								"decision": "verified",
+								"reason": "Verifier verify-pass@1 passed for task task-done"
+							}
+						},
+						{
+							"id": "progress-decision-<uuid>",
+							"task_id": "task-done",
+							"requester_task_id": null,
+							"at": 1760000000000,
+							"assessment": {
+								"classification": "finished",
+								"reasons": [
+									"Task is completed with result succeeded",
+									"A terminal state is not verification; only a passing verifier can verify completion"
+								],
+								"receipts": [
+									"progress-receipt-<uuid>"
+								]
+							}
+						}
+					]
+				},
+				"log": [
+					[
+						"spawn",
+						{
+							"definition": "verify-pass@1",
+							"input": {
+								"task_id": "task-done",
+								"result": {
+									"answer": 42
+								},
+								"evidence": [
+									{
+										"kind": "build",
+										"ref": "out/app",
+										"sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+									}
+								]
+							}
+						},
+						null
+					],
+					[
+						"result",
+						"spawned-1"
+					],
+					[
+						"spawn",
+						{
+							"definition": "verify-fail@1",
+							"input": {
+								"task_id": "task-done",
+								"result": {
+									"answer": 42
+								},
+								"evidence": [
+									{
+										"kind": "build",
+										"ref": "out/app",
+										"sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+									}
+								]
+							}
+						},
+						null
+					],
+					[
+						"result",
+						"spawned-2"
+					],
+					[
+						"spawn",
+						{
+							"definition": "verify-odd@1",
+							"input": {
+								"task_id": "task-done",
+								"result": {
+									"answer": 42
+								},
+								"evidence": [
+									{
+										"kind": "build",
+										"ref": "out/app",
+										"sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+									}
+								]
+							}
+						},
+						null
+					],
+					[
+						"result",
+						"spawned-3"
+					],
+					[
+						"spawn",
+						{
+							"definition": "verify-error@1",
+							"input": {
+								"task_id": "task-done",
+								"result": {
+									"answer": 42
+								},
+								"evidence": [
+									{
+										"kind": "build",
+										"ref": "out/app",
+										"sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+									}
+								]
+							}
+						},
+						null
+					],
+					[
+						"result",
+						"spawned-4"
+					],
+					[
+						"spawn",
+						{
+							"definition": "verify-nostart@1",
+							"input": {
+								"task_id": "task-done",
+								"result": {
+									"answer": 42
+								},
+								"evidence": [
+									{
+										"kind": "build",
+										"ref": "out/app",
+										"sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+									}
+								]
+							}
+						},
+						null
+					],
+					[
+						"spawn",
+						{
+							"definition": "verify-noresult@1",
+							"input": {
+								"task_id": "task-done",
+								"result": {
+									"answer": 42
+								},
+								"evidence": [
+									{
+										"kind": "build",
+										"ref": "out/app",
+										"sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+									}
+								]
+							}
+						},
+						null
+					],
+					[
+						"result",
+						"spawned-5"
+					],
+					[
+						"spawn",
+						{
+							"definition": "verify-pass@1",
+							"input": {
+								"x": 1
+							}
+						},
+						null
+					],
+					[
+						"result",
+						"spawned-6"
+					]
+				]
+			}
+		}
+	],
+	"reload": [
+		{
+			"input": {
+				"receipts": [],
+				"decisions": [
+					{
+						"id": "d1",
+						"task_id": "t1",
+						"requester_task_id": null,
+						"at": 5,
+						"assessment": {
+							"classification": "finished",
+							"reasons": [
+								"r"
+							],
+							"receipts": []
+						},
+						"claim": {
+							"claim": "complete",
+							"decision": "pending",
+							"reason": "Verifier running",
+							"verifier": "v@1"
+						}
+					},
+					{
+						"id": "d1",
+						"task_id": "t1",
+						"requester_task_id": null,
+						"at": 5,
+						"assessment": {
+							"classification": "finished",
+							"reasons": [
+								"r"
+							],
+							"receipts": []
+						}
+					}
+				]
+			},
+			"document": {
+				"receipts": [],
+				"decisions": [
+					{
+						"id": "d1",
+						"task_id": "t1",
+						"requester_task_id": null,
+						"at": 5,
+						"assessment": {
+							"classification": "finished",
+							"reasons": [
+								"r"
+							],
+							"receipts": []
+						},
+						"claim": {
+							"claim": "complete",
+							"decision": "unverified",
+							"reason": "Owner ended before the verifier returned",
+							"verifier": "v@1"
+						}
+					},
+					{
+						"id": "d1",
+						"task_id": "t1",
+						"requester_task_id": null,
+						"at": 5,
+						"assessment": {
+							"classification": "finished",
+							"reasons": [
+								"r"
+							],
+							"receipts": []
+						}
+					}
+				],
+				"version": 1
+			}
+		},
+		{
+			"input": {
+				"version": 1,
+				"receipts": [],
+				"decisions": [
+					{
+						"id": "d1",
+						"task_id": "t1",
+						"requester_task_id": null,
+						"at": 5,
+						"assessment": {
+							"classification": "finished",
+							"reasons": [
+								"r"
+							],
+							"receipts": []
+						},
+						"claim": {
+							"claim": "complete",
+							"decision": "verified",
+							"reason": "ok"
+						}
+					}
+				]
+			},
+			"document": {
+				"version": 1,
+				"receipts": [],
+				"decisions": [
+					{
+						"id": "d1",
+						"task_id": "t1",
+						"requester_task_id": null,
+						"at": 5,
+						"assessment": {
+							"classification": "finished",
+							"reasons": [
+								"r"
+							],
+							"receipts": []
+						},
+						"claim": {
+							"claim": "complete",
+							"decision": "verified",
+							"reason": "ok"
+						}
+					}
+				]
+			}
+		},
+		{
+			"input": {
+				"version": 1,
+				"receipts": [
+					{
+						"id": "r",
+						"task_id": "t",
+						"reporter_task_id": null,
+						"at": 1,
+						"summary": "s",
+						"evidence": [
+							{
+								"kind": "k",
+								"ref": "r",
+								"sha256": "x"
+							}
+						],
+						"metrics": {
+							"m": 1
+						},
+						"new_evidence": []
+					}
+				],
+				"decisions": []
+			},
+			"document": {
+				"version": 1,
+				"receipts": [
+					{
+						"id": "r",
+						"task_id": "t",
+						"reporter_task_id": null,
+						"at": 1,
+						"summary": "s",
+						"evidence": [
+							{
+								"kind": "k",
+								"ref": "r",
+								"sha256": "x"
+							}
+						],
+						"metrics": {
+							"m": 1
+						},
+						"new_evidence": []
+					}
+				],
+				"decisions": []
+			}
+		},
+		{
+			"input": {
+				"version": 1,
+				"receipts": [],
+				"decisions": [],
+				"extra": 1
+			},
+			"error": "Invalid progress document"
+		},
+		{
+			"input": {
+				"version": 1,
+				"receipts": [
+					{
+						"id": "",
+						"task_id": "t",
+						"reporter_task_id": null,
+						"at": 1,
+						"summary": "s",
+						"evidence": [],
+						"new_evidence": []
+					}
+				],
+				"decisions": []
+			},
+			"error": "Invalid progress document"
+		},
+		{
+			"input": {
+				"version": 1,
+				"receipts": [],
+				"decisions": [
+					{
+						"id": "d1",
+						"task_id": "t1",
+						"requester_task_id": null,
+						"at": 5,
+						"assessment": {
+							"classification": "odd",
+							"reasons": [],
+							"receipts": []
+						}
+					}
+				]
+			},
+			"error": "Invalid progress document"
+		},
+		{
+			"input": {
+				"version": 1,
+				"receipts": [],
+				"decisions": [
+					{
+						"id": "d1",
+						"task_id": "t1",
+						"requester_task_id": null,
+						"at": 5,
+						"assessment": {
+							"classification": "finished",
+							"reasons": [
+								"r"
+							],
+							"receipts": []
+						},
+						"budget": {
+							"requested": 1,
+							"decision": "granted",
+							"reason": "r"
+						}
+					}
+				]
+			},
+			"error": "Invalid progress document"
+		},
+		{
+			"input": {
+				"version": 2,
+				"receipts": [],
+				"decisions": []
+			},
+			"error": "Cannot resume: session value ultron.module/progress has format version 2, but this Ultron reads only format version 1. It was left unchanged; open the session with the Ultron version that wrote it, or upgrade."
+		},
+		{
+			"input": {
+				"version": 1,
+				"receipts": {},
+				"decisions": []
+			},
+			"error": "Invalid progress document"
+		}
+	]
+}

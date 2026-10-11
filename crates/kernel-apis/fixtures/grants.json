@@ -1,0 +1,100 @@
+{
+	"area": "grants",
+	"scenarios": [
+		{
+			"name": "issue, list, check, revoke",
+			"cells": [
+				{
+					"code": "import json as _json\nprint(_json.dumps(await grants.list(), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"enforced\": false, \"grants\": []}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nprint(_json.dumps(await grants.issue(\"repo:/work/ultron\", \"abc123\", \"deploy-policy@1\", \"deploy\", 60000), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"action\": \"deploy\", \"expires_at\": 1760000060000, \"id\": \"grant-<uuid>\", \"issued_at\": 1760000000000, \"owner_task_id\": null, \"policy\": \"deploy-policy@1\", \"revision\": \"abc123\", \"revoked_at\": null, \"revoked_by\": null, \"scope\": \"repo:/work/ultron\"}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\ng = (await grants.list())['grants'][0]\nprint(_json.dumps(await grants.check(g['id'], 'repo:/work/ultron', 'abc123', 'deploy-policy@1', 'deploy'), sort_keys=True))\nprint(_json.dumps(await grants.check(g['id'], 'task:other', 'def', 'deploy-policy@2', 'push'), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"allowed\": true, \"checked_at\": 1760000000000, \"enforced\": false, \"grant_id\": \"grant-<uuid>\", \"reasons\": []}\n{\"allowed\": false, \"checked_at\": 1760000000000, \"enforced\": false, \"grant_id\": \"grant-<uuid>\", \"reasons\": [\"Base changed: grant was approved against abc123, request is for def\", \"Policy changed: grant was issued under deploy-policy@1, request is under deploy-policy@2\", \"Scope differs: grant covers repo:/work/ultron, request is for task:other\", \"Action differs: grant covers deploy, request is for push\"]}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nawait rlm.host_request('test.clock', {'ms': 60000})\ng = (await grants.list())['grants'][0]\nprint(_json.dumps(await grants.check(g['id'], 'repo:/work/ultron', 'abc123', 'deploy-policy@1', 'deploy'), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"allowed\": false, \"checked_at\": 1760000060000, \"enforced\": false, \"grant_id\": \"grant-<uuid>\", \"reasons\": [\"Grant expired at 1760000060000\"]}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\ng = await grants.issue('task:t1', 'sha256:ff', 'p.x@v1', 'merge.pr', 1000)\nprint(_json.dumps(await grants.revoke(g['id']), sort_keys=True))\nawait rlm.host_request('test.clock', {'ms': 5})\nprint(_json.dumps(await grants.revoke(g['id']), sort_keys=True))\nprint(_json.dumps(await grants.check(g['id'], 'task:t1', 'sha256:ff', 'p.x@v1', 'merge.pr'), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"action\": \"merge.pr\", \"expires_at\": 1760000061000, \"id\": \"grant-<uuid>\", \"issued_at\": 1760000060000, \"owner_task_id\": null, \"policy\": \"p.x@v1\", \"revision\": \"sha256:ff\", \"revoked_at\": 1760000060000, \"revoked_by\": \"root\", \"scope\": \"task:t1\"}\n{\"action\": \"merge.pr\", \"expires_at\": 1760000061000, \"id\": \"grant-<uuid>\", \"issued_at\": 1760000060000, \"owner_task_id\": null, \"policy\": \"p.x@v1\", \"revision\": \"sha256:ff\", \"revoked_at\": 1760000060000, \"revoked_by\": \"root\", \"scope\": \"task:t1\"}\n{\"allowed\": false, \"checked_at\": 1760000060005, \"enforced\": false, \"grant_id\": \"grant-<uuid>\", \"reasons\": [\"Grant was revoked at 1760000060000\"]}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\ntry:\n    r = await grants.issue('', 'r', 'p@1', 'a', 1)\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await grants.issue('Repo:x', 'r', 'p@1', 'a', 1)\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await grants.issue('a' * 33 + ':x', 'r', 'p@1', 'a', 1)\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await grants.issue('repo: x', 'r', 'p@1', 'a', 1)\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await grants.issue('repo:' + 'x' * 1024, 'r', 'p@1', 'a', 1)\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await grants.issue('repo:' + 'x' * 1025, 'r', 'p@1', 'a', 1)\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await grants.issue('repo:x', 'r', 'p@1', 'a', 0)\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await grants.issue('repo:x', 'r', 'p@1', 'a', 1.5)\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await grants.issue('repo:x', 'r', 'p@1', 'a', 30 * 24 * 3600 * 1000 + 1)\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await grants.issue('repo:x', 'r', 'p@1', 'a', True)\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await grants.issue('repo:x', 'r' * 257, 'p@1', 'a', 1)\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await grants.issue('repo:x', 'r r', 'p@1', 'a', 1)\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await grants.issue('repo:x', 'r', 'p', 'a', 1)\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await grants.issue('repo:x', 'r', 'P@1', 'a', 1)\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await grants.issue('repo:x', 'r', 'p@1', 'a b', 1)\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await grants.issue('repo:x', 'r', 'p@1', 'A', 1)\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await grants.revoke('nope')\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await grants.revoke('')\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await grants.revoke(' ')\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await grants.check('nope', 'repo:x', 'r', 'p@1', 'a')\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await grants.check('nope', 'repo:x', 'r', 'p', 'a')\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await rlm.host_request('grants.list', {'x': 1})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await rlm.host_request('grants.issue', {'scope': 'repo:x', 'revision': 'r', 'policy': 'p@1', 'action': 'a', 'ttl_ms': 5, 'owner': 'me'})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await rlm.host_request('grants.nope', {})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)",
+					"status": "ok",
+					"stdout": "RuntimeError scope must be kind:target, such as repo:/path\nRuntimeError scope must be kind:target, such as repo:/path\nRuntimeError scope must be kind:target, such as repo:/path\nRuntimeError scope must be kind:target, such as repo:/path\nok {\"action\": \"a\", \"expires_at\": 1760000060006, \"id\": \"grant-<uuid>\", \"issued_at\": 1760000060005, \"owner_task_id\": null, \"policy\": \"p@1\", \"revision\": \"r\", \"revoked_at\": null, \"revoked_by\": null, \"scope\": \"repo:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\"}\nRuntimeError scope must be kind:target, such as repo:/path\nRuntimeError ttl_ms must be an integer from 1 to 2592000000\nRuntimeError ttl_ms must be an integer from 1 to 2592000000\nRuntimeError ttl_ms must be an integer from 1 to 2592000000\nRuntimeError ttl_ms must be an integer from 1 to 2592000000\nRuntimeError revision must be a commit, content hash, or other base identifier\nRuntimeError revision must be a commit, content hash, or other base identifier\nRuntimeError policy must be id@version\nRuntimeError policy must be id@version\nRuntimeError action must be a short lowercase identifier\nRuntimeError action must be a short lowercase identifier\nRuntimeError Unknown grant\nRuntimeError id must be a nonempty string\nRuntimeError id must be a nonempty string\nok {\"allowed\": false, \"checked_at\": 1760000060005, \"enforced\": false, \"grant_id\": \"nope\", \"reasons\": [\"Unknown grant\"]}\nRuntimeError policy must be id@version\nRuntimeError Unknown payload field: x\nRuntimeError Unknown payload field: owner\nRuntimeError Unknown grants request: grants.nope\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nprint(_json.dumps(await grants.list(), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"enforced\": false, \"grants\": [{\"action\": \"deploy\", \"expires_at\": 1760000060000, \"id\": \"grant-<uuid>\", \"issued_at\": 1760000000000, \"owner_task_id\": null, \"policy\": \"deploy-policy@1\", \"revision\": \"abc123\", \"revoked_at\": null, \"revoked_by\": null, \"scope\": \"repo:/work/ultron\"}, {\"action\": \"merge.pr\", \"expires_at\": 1760000061000, \"id\": \"grant-<uuid>\", \"issued_at\": 1760000060000, \"owner_task_id\": null, \"policy\": \"p.x@v1\", \"revision\": \"sha256:ff\", \"revoked_at\": 1760000060000, \"revoked_by\": \"root\", \"scope\": \"task:t1\"}, {\"action\": \"a\", \"expires_at\": 1760000060006, \"id\": \"grant-<uuid>\", \"issued_at\": 1760000060005, \"owner_task_id\": null, \"policy\": \"p@1\", \"revision\": \"r\", \"revoked_at\": null, \"revoked_by\": null, \"scope\": \"repo:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\"}]}\n",
+					"result": "",
+					"error": null
+				}
+			],
+			"state": {
+				"version": 1,
+				"grants": [
+					{
+						"id": "grant-<uuid>",
+						"scope": "repo:/work/ultron",
+						"revision": "abc123",
+						"policy": "deploy-policy@1",
+						"action": "deploy",
+						"owner_task_id": null,
+						"issued_at": 1760000000000,
+						"expires_at": 1760000060000,
+						"revoked_at": null,
+						"revoked_by": null
+					},
+					{
+						"id": "grant-<uuid>",
+						"scope": "task:t1",
+						"revision": "sha256:ff",
+						"policy": "p.x@v1",
+						"action": "merge.pr",
+						"owner_task_id": null,
+						"issued_at": 1760000060000,
+						"expires_at": 1760000061000,
+						"revoked_at": 1760000060000,
+						"revoked_by": "root"
+					},
+					{
+						"id": "grant-<uuid>",
+						"scope": "repo:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+						"revision": "r",
+						"policy": "p@1",
+						"action": "a",
+						"owner_task_id": null,
+						"issued_at": 1760000060005,
+						"expires_at": 1760000060006,
+						"revoked_at": null,
+						"revoked_by": null
+					}
+				]
+			}
+		}
+	]
+}

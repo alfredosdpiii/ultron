@@ -1,0 +1,1049 @@
+{
+	"area": "goal",
+	"scenarios": [
+		{
+			"name": "command, check, complete, block",
+			"cells": [
+				{
+					"code": "import json as _json\nprint(_json.dumps(await goal.get(), sort_keys=True))",
+					"status": "ok",
+					"stdout": "null\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\ntry:\n    r = await goal.check()\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await goal.complete(1, 's', ['e'])\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await goal.blocked(1, 'r')\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)",
+					"status": "ok",
+					"stdout": "RuntimeError There is no session goal\nRuntimeError There is no session goal\nRuntimeError There is no session goal\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "print((await rlm.host_request(\"test.goal.command\", {\"args\": \"\"}))[\"text\"])",
+					"status": "ok",
+					"stdout": "No goal. Set one with /goal <objective>.\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "print((await rlm.host_request(\"test.goal.command\", {\"args\": \"  ship the parser  \"}))[\"text\"])",
+					"status": "ok",
+					"stdout": "Goal (revision 1, active): ship the parser\nCheck: none (completion is unverified). Runs: 1. Checks: 0.\nJob: task-1 (running).\nAdd the check that decides when it is done: /goal check <command>.\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nprint(_json.dumps(await goal.get(), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"check\": null, \"checks\": 0, \"completion\": null, \"id\": \"goal-ID\", \"last_check\": null, \"objective\": \"ship the parser\", \"reason\": null, \"revision\": 1, \"runs\": 1, \"status\": \"active\", \"stuck\": 0}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\ntry:\n    r = await goal.check()\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)",
+					"status": "ok",
+					"stdout": "RuntimeError This goal has no check command (the user sets one with /goal check)\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "print((await rlm.host_request(\"test.goal.command\", {\"args\": \"check pytest -q\"}))[\"text\"])",
+					"status": "ok",
+					"stdout": "Goal (revision 2, active): ship the parser\nCheck: pytest -q. Runs: 1. Checks: 0.\nJob: task-1 (running).\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\ntry:\n    r = await goal.complete(1, 's', ['e'])\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await goal.complete('2', 's', ['e'])\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await goal.complete(2, '  ', ['e'])\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await goal.complete(2, 's', [])\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await goal.complete(2, 's', 'e')\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await goal.complete(2, 's', ['ok', ' '])\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await goal.complete(2, 's', ['pytest: exit 0'])\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await goal.blocked(2, 'no access')\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await goal.check()\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await goal.blocked(2, '')\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await goal.blocked(2, 'no access to the CI runner')\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await goal.complete(2, 's', ['e'])\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await goal.check()\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)",
+					"status": "ok",
+					"stdout": "RuntimeError The goal is at revision 2 (the user changed it): read it with goal.get() and work on that\nRuntimeError The goal is at revision 2 (the user changed it): read it with goal.get() and work on that\nRuntimeError summary must be a non-empty string\nRuntimeError evidence must be a non-empty list of strings: commands with their outcome (\"npm test: exit 0\") or files with lines\nok {\"check\": {\"at\": 1760000000000, \"command\": \"pytest -q\", \"exit_code\": 1, \"output\": \"1 failed in 0.31s\", \"passed\": false, \"timed_out\": false}, \"complete\": false, \"message\": \"The check failed, so the goal is not complete: fix the cause and call goal.complete again.\", \"status\": \"active\"}\nRuntimeError every evidence item must be a non-empty string\nok {\"check\": {\"at\": 1760000000000, \"command\": \"pytest -q\", \"exit_code\": 1, \"output\": \"1 failed in 0.31s\", \"passed\": false, \"timed_out\": false}, \"complete\": false, \"message\": \"The check failed, so the goal is not complete: fix the cause and call goal.complete again.\", \"status\": \"active\"}\nRuntimeError goal.blocked is accepted after 3 checks (2 so far): keep working, test with goal.check(), and try another approach\nok {\"at\": 1760000000000, \"command\": \"pytest -q\", \"exit_code\": 1, \"output\": \"2 failed in 0.40s\", \"passed\": false, \"paused\": false, \"timed_out\": false}\nRuntimeError reason must be a non-empty string\nok {\"reason\": \"no access to the CI runner\", \"status\": \"blocked\"}\nRuntimeError The session goal is blocked, not active\nok {\"at\": 1760000000000, \"command\": \"pytest -q\", \"exit_code\": 0, \"output\": \"3 passed in 0.12s\", \"passed\": true, \"paused\": false, \"timed_out\": false}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "print((await rlm.host_request(\"test.goal.command\", {\"args\": \"status\"}))[\"text\"])",
+					"status": "ok",
+					"stdout": "Goal (revision 2, blocked: no access to the CI runner): ship the parser\nCheck: pytest -q. Runs: 1. Checks: 4.\nJob: task-1 (running).\nLast check: passed (pytest -q).\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "print((await rlm.host_request(\"test.goal.command\", {\"args\": \"resume\"}))[\"text\"])",
+					"status": "ok",
+					"stdout": "Goal (revision 2, active): ship the parser\nCheck: pytest -q. Runs: 2. Checks: 4.\nJob: task-2 (running).\nLast check: passed (pytest -q).\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "print((await rlm.host_request(\"test.goal.command\", {\"args\": \"pause\"}))[\"text\"])",
+					"status": "ok",
+					"stdout": "Goal (revision 2, paused: paused by you; /goal resume continues): ship the parser\nCheck: pytest -q. Runs: 2. Checks: 4.\nLast check: passed (pytest -q).\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "print((await rlm.host_request(\"test.goal.command\", {\"args\": \"pause\"}))[\"text\"])",
+					"status": "ok",
+					"stdout": "Goal (revision 2, paused: paused by you; /goal resume continues): ship the parser\nCheck: pytest -q. Runs: 2. Checks: 4.\nLast check: passed (pytest -q).\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "print((await rlm.host_request(\"test.goal.command\", {\"args\": \"resume\"}))[\"text\"])",
+					"status": "ok",
+					"stdout": "Goal (revision 2, active): ship the parser\nCheck: pytest -q. Runs: 3. Checks: 4.\nJob: task-3 (running).\nLast check: passed (pytest -q).\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\ntry:\n    r = await rlm.host_request(\"test.goal.as\", {\"lane\": \"ultron.background-job.task-1\", \"type\": \"goal.check\", \"payload\": {}})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await rlm.host_request(\"test.goal.as\", {\"lane\": \"ultron.child.x\", \"type\": \"goal.get\", \"payload\": {}})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await rlm.host_request(\"test.goal.as\", {\"lane\": \"ultron.background-job.task-3\", \"type\": \"goal.complete\", \"payload\": {\"revision\": 2, \"summary\": \"parser shipped\", \"evidence\": [\"pytest -q: exit 0\", \"src/parser.py:1-80\"]}})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)",
+					"status": "ok",
+					"stdout": "RuntimeError Only the goal's job or the root agent works the session goal; subagents report to it\nok {\"check\": \"pytest -q\", \"checks\": 4, \"completion\": null, \"id\": \"goal-ID\", \"last_check\": {\"at\": 1760000000000, \"command\": \"pytest -q\", \"exit_code\": 0, \"output\": \"3 passed in 0.12s\", \"passed\": true, \"timed_out\": false}, \"objective\": \"ship the parser\", \"reason\": null, \"revision\": 2, \"runs\": 3, \"status\": \"active\", \"stuck\": 0}\nok {\"check\": {\"at\": 1760000000000, \"command\": \"pytest -q\", \"exit_code\": 0, \"output\": \"3 passed in 0.12s\", \"passed\": true, \"timed_out\": false}, \"complete\": true, \"status\": \"complete\", \"verified\": true}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "print((await rlm.host_request(\"test.goal.command\", {\"args\": \"resume\"}))[\"text\"])",
+					"status": "ok",
+					"stdout": "Goal (revision 2, complete): ship the parser\nCheck: pytest -q. Runs: 3. Checks: 5.\nJob: task-3 (running).\nLast check: passed (pytest -q).\nCompleted (check passed): parser shipped\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "print((await rlm.host_request(\"test.goal.command\", {\"args\": \"\"}))[\"text\"])",
+					"status": "ok",
+					"stdout": "Goal (revision 2, complete): ship the parser\nCheck: pytest -q. Runs: 3. Checks: 5.\nJob: task-3 (running).\nLast check: passed (pytest -q).\nCompleted (check passed): parser shipped\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\ntry:\n    r = await rlm.host_request(\"goal.get\", {\"x\": 1})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await rlm.host_request(\"goal.check\", {\"x\": 1})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await rlm.host_request(\"goal.nope\", {})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)",
+					"status": "ok",
+					"stdout": "RuntimeError Unknown payload field: x\nRuntimeError Unknown payload field: x\nRuntimeError Ultron RLM host request is not wired: goal.nope\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "print(repr(goal))",
+					"status": "ok",
+					"stdout": "goal (await goal.get(), goal.check(), goal.complete(revision, summary, evidence), goal.blocked(revision, reason))\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "print((await rlm.host_request(\"test.goal.command\", {\"args\": \"clear\"}))[\"text\"])",
+					"status": "ok",
+					"stdout": "Goal cleared.\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "print((await rlm.host_request(\"test.goal.command\", {\"args\": \"clear\"}))[\"text\"])",
+					"status": "ok",
+					"stdout": "No goal to clear.\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "print((await rlm.host_request(\"test.goal.command\", {\"args\": \"pause\"}))[\"text\"])",
+					"status": "ok",
+					"stdout": "No goal. Set one with /goal <objective>.\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "print((await rlm.host_request(\"test.goal.command\", {\"args\": \"resume\"}))[\"text\"])",
+					"status": "ok",
+					"stdout": "No goal. Set one with /goal <objective>.\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "print((await rlm.host_request(\"test.goal.command\", {\"args\": \"check x\"}))[\"text\"])",
+					"status": "ok",
+					"stdout": "Set a goal first: /goal <objective>.\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nprint(_json.dumps(await goal.get(), sort_keys=True))",
+					"status": "ok",
+					"stdout": "null\n",
+					"result": "",
+					"error": null
+				}
+			],
+			"state": {
+				"document": {
+					"version": 1,
+					"goal": null
+				},
+				"calls": [
+					[
+						"start",
+						"goal-ID:1",
+						"goal:goal-ID",
+						"You are working on the session goal (revision 1) on your own, as a background job: nobody is waiting on your turns, and nothing limits your time.\n\nObjective: ship the parser\n\nThere is no check command: when you call goal.complete, give concrete evidence (it is recorded as unverified).\n\nWork in your REPL: keep what you tried and learned in Python (`state['goal']`), change the code, test, and use the result to choose the next step. Delegate independent attempts with `rlm.spawn(brief, name=..., worktree=True)` and `await rlm.merge(...)` the one that works.\n\nKeep going until `await goal.complete(1, summary, evidence=[...])` succeeds. Only if something outside you blocks the goal after real attempts: `await goal.blocked(1, reason)`. Ten identical failing checks in a row pause the goal, so change your approach when a check keeps failing the same way. The user may change the goal: `await goal.get()` shows the current revision."
+					],
+					[
+						"check",
+						"pytest -q",
+						600
+					],
+					[
+						"check",
+						"pytest -q",
+						600
+					],
+					[
+						"check",
+						"pytest -q",
+						600
+					],
+					[
+						"check",
+						"pytest -q",
+						600
+					],
+					[
+						"start",
+						"goal-ID:2",
+						"goal:goal-ID",
+						"You are working on the session goal (revision 2) on your own, as a background job: nobody is waiting on your turns, and nothing limits your time.\n\nObjective: ship the parser\n\nCheck: `pytest -q`. `await goal.check()` runs it on the host and returns {passed, exit_code, output}; goal.complete runs it again and succeeds only if it exits 0.\n\nWork in your REPL: keep what you tried and learned in Python (`state['goal']`), change the code, test, and use the result to choose the next step. Delegate independent attempts with `rlm.spawn(brief, name=..., worktree=True)` and `await rlm.merge(...)` the one that works.\n\nKeep going until `await goal.complete(2, summary, evidence=[...])` succeeds. Only if something outside you blocks the goal after real attempts: `await goal.blocked(2, reason)`. Ten identical failing checks in a row pause the goal, so change your approach when a check keeps failing the same way. The user may change the goal: `await goal.get()` shows the current revision."
+					],
+					[
+						"stop",
+						"task-2",
+						"goal paused"
+					],
+					[
+						"start",
+						"goal-ID:3",
+						"goal:goal-ID",
+						"You are working on the session goal (revision 2) on your own, as a background job: nobody is waiting on your turns, and nothing limits your time.\n\nObjective: ship the parser\n\nCheck: `pytest -q`. `await goal.check()` runs it on the host and returns {passed, exit_code, output}; goal.complete runs it again and succeeds only if it exits 0.\n\nWork in your REPL: keep what you tried and learned in Python (`state['goal']`), change the code, test, and use the result to choose the next step. Delegate independent attempts with `rlm.spawn(brief, name=..., worktree=True)` and `await rlm.merge(...)` the one that works.\n\nKeep going until `await goal.complete(2, summary, evidence=[...])` succeeds. Only if something outside you blocks the goal after real attempts: `await goal.blocked(2, reason)`. Ten identical failing checks in a row pause the goal, so change your approach when a check keeps failing the same way. The user may change the goal: `await goal.get()` shows the current revision."
+					],
+					[
+						"check",
+						"pytest -q",
+						600
+					],
+					[
+						"stop",
+						"task-3",
+						"goal cleared"
+					]
+				]
+			}
+		},
+		{
+			"name": "stuck checks, task ends, replacement",
+			"cells": [
+				{
+					"code": "print((await rlm.host_request(\"test.goal.command\", {\"args\": \"make it fast\"}))[\"text\"])",
+					"status": "ok",
+					"stdout": "Goal (revision 1, active): make it fast\nCheck: none (completion is unverified). Runs: 1. Checks: 0.\nJob: task-1 (running).\nAdd the check that decides when it is done: /goal check <command>.\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "print((await rlm.host_request(\"test.goal.command\", {\"args\": \"check bench\"}))[\"text\"])",
+					"status": "ok",
+					"stdout": "Goal (revision 2, active): make it fast\nCheck: bench. Runs: 1. Checks: 0.\nJob: task-1 (running).\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nfor i in range(10):\n    r = await goal.check()\n    print(i, r['passed'], r['paused'], r.get('reason'))\nprint(_json.dumps(r, sort_keys=True))",
+					"status": "ok",
+					"stdout": "0 False False None\n1 False False None\n2 False False None\n3 False False None\n4 False False None\n5 False False None\n6 False False None\n7 False False None\n8 False False None\n9 False True 10 failing checks in a row gave the same result; /goal resume continues\n{\"at\": 1760000000000, \"command\": \"bench\", \"exit_code\": 1, \"output\": \"slow: 812ms at 0x7f3a\", \"passed\": false, \"paused\": true, \"reason\": \"10 failing checks in a row gave the same result; /goal resume continues\", \"timed_out\": false}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import time\ntime.sleep(0.3)",
+					"status": "ok",
+					"stdout": "",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nprint(_json.dumps(await goal.get(), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"check\": \"bench\", \"checks\": 10, \"completion\": null, \"id\": \"goal-ID\", \"last_check\": {\"at\": 1760000000000, \"command\": \"bench\", \"exit_code\": 1, \"output\": \"slow: 812ms at 0x7f3a\", \"passed\": false, \"timed_out\": false}, \"objective\": \"make it fast\", \"reason\": \"10 failing checks in a row gave the same result; /goal resume continues\", \"revision\": 2, \"runs\": 1, \"status\": \"paused\", \"stuck\": 10}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "print((await rlm.host_request(\"test.goal.command\", {\"args\": \"resume\"}))[\"text\"])",
+					"status": "ok",
+					"stdout": "Goal (revision 2, active): make it fast\nCheck: bench. Runs: 2. Checks: 10.\nJob: task-2 (running).\nLast check: exit 1 (bench).\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "await rlm.host_request(\"test.goal.ended\", {\"id\": \"task-99\", \"result\": {\"status\": \"succeeded\", \"value\": \"other\"}})",
+					"status": "ok",
+					"stdout": "",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "await rlm.host_request(\"test.goal.ended\", {\"id\": \"task-2\", \"result\": {\"status\": \"succeeded\", \"value\": \"no luck\"}})",
+					"status": "ok",
+					"stdout": "",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nprint(_json.dumps(await goal.get(), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"check\": \"bench\", \"checks\": 10, \"completion\": null, \"id\": \"goal-ID\", \"last_check\": {\"at\": 1760000000000, \"command\": \"bench\", \"exit_code\": 1, \"output\": \"slow: 812ms at 0x7f3a\", \"passed\": false, \"timed_out\": false}, \"objective\": \"make it fast\", \"reason\": \"the goal job ended without progress; /goal resume continues\", \"revision\": 2, \"runs\": 2, \"status\": \"paused\", \"stuck\": 0}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "print((await rlm.host_request(\"test.goal.command\", {\"args\": \"resume\"}))[\"text\"])",
+					"status": "ok",
+					"stdout": "Goal (revision 2, active): make it fast\nCheck: bench. Runs: 3. Checks: 10.\nJob: task-3 (running).\nLast check: exit 1 (bench).\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nprint(_json.dumps(await goal.check(), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"at\": 1760000000000, \"command\": \"bench\", \"exit_code\": 1, \"output\": \"slow: 640ms\", \"passed\": false, \"paused\": false, \"timed_out\": false}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "await rlm.host_request(\"test.goal.ended\", {\"id\": \"task-3\", \"result\": {\"status\": \"succeeded\", \"value\": \"zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz\"}})",
+					"status": "ok",
+					"stdout": "",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nprint(_json.dumps(await goal.get(), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"check\": \"bench\", \"checks\": 11, \"completion\": null, \"id\": \"goal-ID\", \"last_check\": {\"at\": 1760000000000, \"command\": \"bench\", \"exit_code\": 1, \"output\": \"slow: 640ms\", \"passed\": false, \"timed_out\": false}, \"objective\": \"make it fast\", \"reason\": null, \"revision\": 2, \"runs\": 4, \"status\": \"active\", \"stuck\": 1}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "print((await rlm.host_request(\"test.goal.command\", {\"args\": \"\"}))[\"text\"])",
+					"status": "ok",
+					"stdout": "Goal (revision 2, active): make it fast\nCheck: bench. Runs: 4. Checks: 11.\nJob: task-4 (running).\nLast check: exit 1 (bench).\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "await rlm.host_request(\"test.goal.ended\", {\"id\": \"task-4\", \"result\": {\"status\": \"failed\", \"error\": {\"message\": \"boom\"}}})",
+					"status": "ok",
+					"stdout": "",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "print((await rlm.host_request(\"test.goal.command\", {\"args\": \"\"}))[\"text\"])",
+					"status": "ok",
+					"stdout": "Goal (revision 2, paused: the goal job ended without progress; /goal resume continues): make it fast\nCheck: bench. Runs: 4. Checks: 11.\nLast check: exit 1 (bench).\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "print((await rlm.host_request(\"test.goal.command\", {\"args\": \"check\"}))[\"text\"])",
+					"status": "ok",
+					"stdout": "Goal (revision 3, paused: the goal job ended without progress; /goal resume continues): make it fast\nCheck: none (completion is unverified). Runs: 4. Checks: 11.\nLast check: exit 1 (bench).\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "print((await rlm.host_request(\"test.goal.command\", {\"args\": \"resume\"}))[\"text\"])",
+					"status": "ok",
+					"stdout": "Goal (revision 3, active): make it fast\nCheck: none (completion is unverified). Runs: 5. Checks: 11.\nJob: task-5 (running).\nLast check: exit 1 (bench).\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\ntry:\n    r = await goal.blocked((await goal.get())['revision'], 'the API is down')\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)",
+					"status": "ok",
+					"stdout": "ok {\"reason\": \"the API is down\", \"status\": \"blocked\"}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "print((await rlm.host_request(\"test.goal.command\", {\"args\": \"resume\"}))[\"text\"])",
+					"status": "ok",
+					"stdout": "Goal (revision 3, active): make it fast\nCheck: none (completion is unverified). Runs: 6. Checks: 11.\nJob: task-6 (running).\nLast check: exit 1 (bench).\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "print((await rlm.host_request(\"test.goal.command\", {\"args\": \"check long-output\"}))[\"text\"])",
+					"status": "ok",
+					"stdout": "Goal (revision 4, active): make it fast\nCheck: long-output. Runs: 6. Checks: 11.\nJob: task-6 (running).\nLast check: exit 1 (bench).\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nprint(_json.dumps(await goal.check(), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"at\": 1760000000000, \"command\": \"long-output\", \"exit_code\": 2, \"output\": \"\\u2026yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy\\u00e9 end\", \"passed\": false, \"paused\": false, \"timed_out\": false}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "print((await rlm.host_request(\"test.goal.command\", {\"args\": \"check hang\"}))[\"text\"])",
+					"status": "ok",
+					"stdout": "Goal (revision 5, active): make it fast\nCheck: hang. Runs: 6. Checks: 12.\nJob: task-6 (running).\nLast check: exit 2 (long-output).\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nprint(_json.dumps(await goal.check(), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"at\": 1760000000000, \"command\": \"hang\", \"exit_code\": null, \"output\": \"\", \"passed\": false, \"paused\": false, \"timed_out\": true}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "print((await rlm.host_request(\"test.goal.command\", {\"args\": \"second goal xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\"}))[\"text\"])",
+					"status": "ok",
+					"stdout": "Goal (revision 6, active): second goal xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nCheck: none (completion is unverified). Runs: 1. Checks: 0.\nJob: task-7 (running).\nAdd the check that decides when it is done: /goal check <command>.\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "g = await goal.get()\nprint(g['revision'], len(g['objective']), g['status'], g['runs'])",
+					"status": "ok",
+					"stdout": "6 4000 active 1\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "print((await rlm.host_request(\"test.goal.command\", {\"args\": \"unstartable goal\"}))[\"text\"])",
+					"status": "ok",
+					"stdout": "Goal (revision 7, paused: the goal job could not start: no capacity for a background job): unstartable goal\nCheck: none (completion is unverified). Runs: 1. Checks: 0.\nAdd the check that decides when it is done: /goal check <command>.\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "print((await rlm.host_request(\"test.goal.command\", {\"args\": \"resume\"}))[\"text\"])",
+					"status": "ok",
+					"stdout": "Goal (revision 7, paused: the goal job could not start: no capacity for a background job): unstartable goal\nCheck: none (completion is unverified). Runs: 2. Checks: 0.\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nprint(_json.dumps(await goal.get(), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"check\": null, \"checks\": 0, \"completion\": null, \"id\": \"goal-ID\", \"last_check\": null, \"objective\": \"unstartable goal\", \"reason\": \"the goal job could not start: no capacity for a background job\", \"revision\": 7, \"runs\": 2, \"status\": \"paused\", \"stuck\": 0}\n",
+					"result": "",
+					"error": null
+				}
+			],
+			"state": {
+				"document": {
+					"version": 1,
+					"goal": {
+						"id": "goal-ID",
+						"revision": 7,
+						"objective": "unstartable goal",
+						"check": null,
+						"status": "paused",
+						"reason": "the goal job could not start: no capacity for a background job",
+						"job": null,
+						"runs": 2,
+						"checks": 0,
+						"stuck": 0,
+						"last_signature": null,
+						"run_progress": false,
+						"last_check": null,
+						"last_answer": null,
+						"created_at": 1760000000000,
+						"updated_at": 1760000000000,
+						"completion": null
+					}
+				},
+				"calls": [
+					[
+						"start",
+						"goal-ID:1",
+						"goal:goal-ID",
+						"You are working on the session goal (revision 1) on your own, as a background job: nobody is waiting on your turns, and nothing limits your time.\n\nObjective: make it fast\n\nThere is no check command: when you call goal.complete, give concrete evidence (it is recorded as unverified).\n\nWork in your REPL: keep what you tried and learned in Python (`state['goal']`), change the code, test, and use the result to choose the next step. Delegate independent attempts with `rlm.spawn(brief, name=..., worktree=True)` and `await rlm.merge(...)` the one that works.\n\nKeep going until `await goal.complete(1, summary, evidence=[...])` succeeds. Only if something outside you blocks the goal after real attempts: `await goal.blocked(1, reason)`. Ten identical failing checks in a row pause the goal, so change your approach when a check keeps failing the same way. The user may change the goal: `await goal.get()` shows the current revision."
+					],
+					[
+						"check",
+						"bench",
+						600
+					],
+					[
+						"check",
+						"bench",
+						600
+					],
+					[
+						"check",
+						"bench",
+						600
+					],
+					[
+						"check",
+						"bench",
+						600
+					],
+					[
+						"check",
+						"bench",
+						600
+					],
+					[
+						"check",
+						"bench",
+						600
+					],
+					[
+						"check",
+						"bench",
+						600
+					],
+					[
+						"check",
+						"bench",
+						600
+					],
+					[
+						"check",
+						"bench",
+						600
+					],
+					[
+						"check",
+						"bench",
+						600
+					],
+					[
+						"stop",
+						"task-1",
+						"goal stuck"
+					],
+					[
+						"start",
+						"goal-ID:2",
+						"goal:goal-ID",
+						"You are working on the session goal (revision 2) on your own, as a background job: nobody is waiting on your turns, and nothing limits your time.\n\nObjective: make it fast\n\nCheck: `bench`. `await goal.check()` runs it on the host and returns {passed, exit_code, output}; goal.complete runs it again and succeeds only if it exits 0.\n\nWork in your REPL: keep what you tried and learned in Python (`state['goal']`), change the code, test, and use the result to choose the next step. Delegate independent attempts with `rlm.spawn(brief, name=..., worktree=True)` and `await rlm.merge(...)` the one that works.\n\nKeep going until `await goal.complete(2, summary, evidence=[...])` succeeds. Only if something outside you blocks the goal after real attempts: `await goal.blocked(2, reason)`. Ten identical failing checks in a row pause the goal, so change your approach when a check keeps failing the same way. The user may change the goal: `await goal.get()` shows the current revision."
+					],
+					[
+						"start",
+						"goal-ID:3",
+						"goal:goal-ID",
+						"You are working on the session goal (revision 2) on your own, as a background job: nobody is waiting on your turns, and nothing limits your time.\n\nObjective: make it fast\n\nCheck: `bench`. `await goal.check()` runs it on the host and returns {passed, exit_code, output}; goal.complete runs it again and succeeds only if it exits 0.\n\nWork in your REPL: keep what you tried and learned in Python (`state['goal']`), change the code, test, and use the result to choose the next step. Delegate independent attempts with `rlm.spawn(brief, name=..., worktree=True)` and `await rlm.merge(...)` the one that works.\n\nKeep going until `await goal.complete(2, summary, evidence=[...])` succeeds. Only if something outside you blocks the goal after real attempts: `await goal.blocked(2, reason)`. Ten identical failing checks in a row pause the goal, so change your approach when a check keeps failing the same way. The user may change the goal: `await goal.get()` shows the current revision.\n\nThe previous run on this goal ended with: no luck"
+					],
+					[
+						"check",
+						"bench",
+						600
+					],
+					[
+						"start",
+						"goal-ID:4",
+						"goal:goal-ID",
+						"You are working on the session goal (revision 2) on your own, as a background job: nobody is waiting on your turns, and nothing limits your time.\n\nObjective: make it fast\n\nCheck: `bench`. `await goal.check()` runs it on the host and returns {passed, exit_code, output}; goal.complete runs it again and succeeds only if it exits 0.\n\nWork in your REPL: keep what you tried and learned in Python (`state['goal']`), change the code, test, and use the result to choose the next step. Delegate independent attempts with `rlm.spawn(brief, name=..., worktree=True)` and `await rlm.merge(...)` the one that works.\n\nKeep going until `await goal.complete(2, summary, evidence=[...])` succeeds. Only if something outside you blocks the goal after real attempts: `await goal.blocked(2, reason)`. Ten identical failing checks in a row pause the goal, so change your approach when a check keeps failing the same way. The user may change the goal: `await goal.get()` shows the current revision.\n\nThe previous run on this goal ended with: zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz…"
+					],
+					[
+						"start",
+						"goal-ID:5",
+						"goal:goal-ID",
+						"You are working on the session goal (revision 3) on your own, as a background job: nobody is waiting on your turns, and nothing limits your time.\n\nObjective: make it fast\n\nThere is no check command: when you call goal.complete, give concrete evidence (it is recorded as unverified).\n\nWork in your REPL: keep what you tried and learned in Python (`state['goal']`), change the code, test, and use the result to choose the next step. Delegate independent attempts with `rlm.spawn(brief, name=..., worktree=True)` and `await rlm.merge(...)` the one that works.\n\nKeep going until `await goal.complete(3, summary, evidence=[...])` succeeds. Only if something outside you blocks the goal after real attempts: `await goal.blocked(3, reason)`. Ten identical failing checks in a row pause the goal, so change your approach when a check keeps failing the same way. The user may change the goal: `await goal.get()` shows the current revision.\n\nThe previous run on this goal ended with: [object Object]"
+					],
+					[
+						"start",
+						"goal-ID:6",
+						"goal:goal-ID",
+						"You are working on the session goal (revision 3) on your own, as a background job: nobody is waiting on your turns, and nothing limits your time.\n\nObjective: make it fast\n\nThere is no check command: when you call goal.complete, give concrete evidence (it is recorded as unverified).\n\nWork in your REPL: keep what you tried and learned in Python (`state['goal']`), change the code, test, and use the result to choose the next step. Delegate independent attempts with `rlm.spawn(brief, name=..., worktree=True)` and `await rlm.merge(...)` the one that works.\n\nKeep going until `await goal.complete(3, summary, evidence=[...])` succeeds. Only if something outside you blocks the goal after real attempts: `await goal.blocked(3, reason)`. Ten identical failing checks in a row pause the goal, so change your approach when a check keeps failing the same way. The user may change the goal: `await goal.get()` shows the current revision.\n\nThe previous run on this goal ended with: [object Object]"
+					],
+					[
+						"check",
+						"long-output",
+						600
+					],
+					[
+						"check",
+						"hang",
+						600
+					],
+					[
+						"stop",
+						"task-6",
+						"goal replaced"
+					],
+					[
+						"start",
+						"goal-ID:1",
+						"goal:goal-ID",
+						"You are working on the session goal (revision 6) on your own, as a background job: nobody is waiting on your turns, and nothing limits your time.\n\nObjective: second goal xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n\nThere is no check command: when you call goal.complete, give concrete evidence (it is recorded as unverified).\n\nWork in your REPL: keep what you tried and learned in Python (`state['goal']`), change the code, test, and use the result to choose the next step. Delegate independent attempts with `rlm.spawn(brief, name=..., worktree=True)` and `await rlm.merge(...)` the one that works.\n\nKeep going until `await goal.complete(6, summary, evidence=[...])` succeeds. Only if something outside you blocks the goal after real attempts: `await goal.blocked(6, reason)`. Ten identical failing checks in a row pause the goal, so change your approach when a check keeps failing the same way. The user may change the goal: `await goal.get()` shows the current revision."
+					],
+					[
+						"stop",
+						"task-7",
+						"goal replaced"
+					],
+					[
+						"start",
+						"goal-ID:1",
+						"goal:goal-ID",
+						"You are working on the session goal (revision 7) on your own, as a background job: nobody is waiting on your turns, and nothing limits your time.\n\nObjective: unstartable goal\n\nThere is no check command: when you call goal.complete, give concrete evidence (it is recorded as unverified).\n\nWork in your REPL: keep what you tried and learned in Python (`state['goal']`), change the code, test, and use the result to choose the next step. Delegate independent attempts with `rlm.spawn(brief, name=..., worktree=True)` and `await rlm.merge(...)` the one that works.\n\nKeep going until `await goal.complete(7, summary, evidence=[...])` succeeds. Only if something outside you blocks the goal after real attempts: `await goal.blocked(7, reason)`. Ten identical failing checks in a row pause the goal, so change your approach when a check keeps failing the same way. The user may change the goal: `await goal.get()` shows the current revision."
+					],
+					[
+						"start",
+						"goal-ID:2",
+						"goal:goal-ID",
+						"You are working on the session goal (revision 7) on your own, as a background job: nobody is waiting on your turns, and nothing limits your time.\n\nObjective: unstartable goal\n\nThere is no check command: when you call goal.complete, give concrete evidence (it is recorded as unverified).\n\nWork in your REPL: keep what you tried and learned in Python (`state['goal']`), change the code, test, and use the result to choose the next step. Delegate independent attempts with `rlm.spawn(brief, name=..., worktree=True)` and `await rlm.merge(...)` the one that works.\n\nKeep going until `await goal.complete(7, summary, evidence=[...])` succeeds. Only if something outside you blocks the goal after real attempts: `await goal.blocked(7, reason)`. Ten identical failing checks in a row pause the goal, so change your approach when a check keeps failing the same way. The user may change the goal: `await goal.get()` shows the current revision."
+					]
+				]
+			}
+		}
+	],
+	"pure": {
+		"signatures": [
+			{
+				"result": {
+					"exit_code": 1,
+					"timed_out": false,
+					"output": "1 failed in 0.31s"
+				},
+				"signature": "2301b39f80dd26ca"
+			},
+			{
+				"result": {
+					"exit_code": 0,
+					"timed_out": false,
+					"output": "3 passed in 0.12s"
+				},
+				"signature": "16032bf6020d5a9c"
+			},
+			{
+				"result": {
+					"exit_code": 1,
+					"timed_out": false,
+					"output": "1 failed in 0.31s at 0x7f00"
+				},
+				"signature": "40916b6ffd767eed"
+			},
+			{
+				"result": {
+					"exit_code": 1,
+					"timed_out": false,
+					"output": "1 failed in 12.5s at 0x1234"
+				},
+				"signature": "40916b6ffd767eed"
+			},
+			{
+				"result": {
+					"exit_code": 1,
+					"timed_out": false,
+					"output": "1 failed"
+				},
+				"signature": "8fadba7f18a942f1"
+			},
+			{
+				"result": {
+					"exit_code": 1,
+					"timed_out": false,
+					"output": "2 failed"
+				},
+				"signature": "234c918bb9dfea81"
+			},
+			{
+				"result": {
+					"exit_code": 2,
+					"timed_out": false,
+					"output": "1 failed in 0.31s"
+				},
+				"signature": "9bad213245e5fa25"
+			},
+			{
+				"result": {
+					"exit_code": null,
+					"timed_out": true,
+					"output": ""
+				},
+				"signature": "7ed6120912d915f6"
+			},
+			{
+				"result": {
+					"exit_code": 0,
+					"timed_out": true,
+					"output": "x"
+				},
+				"signature": "a36adf11ca0af28f"
+			},
+			{
+				"result": {
+					"exit_code": 1,
+					"timed_out": false,
+					"output": "  a\t\n b 5 seconds 3sec 4secs 7 ms 9msx 0XFF "
+				},
+				"signature": "c8722304b2e91ed3"
+			},
+			{
+				"result": {
+					"exit_code": 1,
+					"timed_out": false,
+					"output": "qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq tail"
+				},
+				"signature": "d505378a81a3a04d"
+			},
+			{
+				"result": {
+					"exit_code": 1,
+					"timed_out": false,
+					"output": "x5s 5s_ é 5s"
+				},
+				"signature": "1623511c033f46b9"
+			}
+		],
+		"briefs": [
+			{
+				"goal": {
+					"id": "goal-ID",
+					"revision": 3,
+					"objective": "ship it",
+					"check": null,
+					"status": "active",
+					"reason": null,
+					"job": null,
+					"runs": 0,
+					"checks": 0,
+					"stuck": 0,
+					"last_signature": null,
+					"run_progress": false,
+					"last_check": null,
+					"last_answer": null,
+					"created_at": 0,
+					"updated_at": 0,
+					"completion": null
+				},
+				"brief": "You are working on the session goal (revision 3) on your own, as a background job: nobody is waiting on your turns, and nothing limits your time.\n\nObjective: ship it\n\nThere is no check command: when you call goal.complete, give concrete evidence (it is recorded as unverified).\n\nWork in your REPL: keep what you tried and learned in Python (`state['goal']`), change the code, test, and use the result to choose the next step. Delegate independent attempts with `rlm.spawn(brief, name=..., worktree=True)` and `await rlm.merge(...)` the one that works.\n\nKeep going until `await goal.complete(3, summary, evidence=[...])` succeeds. Only if something outside you blocks the goal after real attempts: `await goal.blocked(3, reason)`. Ten identical failing checks in a row pause the goal, so change your approach when a check keeps failing the same way. The user may change the goal: `await goal.get()` shows the current revision."
+			},
+			{
+				"goal": {
+					"id": "goal-ID",
+					"revision": 3,
+					"objective": "ship it",
+					"check": "npm test",
+					"status": "paused",
+					"reason": "paused by you",
+					"job": "task-7",
+					"runs": 2,
+					"checks": 4,
+					"stuck": 3,
+					"last_signature": null,
+					"run_progress": false,
+					"last_check": null,
+					"last_answer": "tried caching",
+					"created_at": 0,
+					"updated_at": 0,
+					"completion": null
+				},
+				"brief": "You are working on the session goal (revision 3) on your own, as a background job: nobody is waiting on your turns, and nothing limits your time.\n\nObjective: ship it\n\nCheck: `npm test`. `await goal.check()` runs it on the host and returns {passed, exit_code, output}; goal.complete runs it again and succeeds only if it exits 0.\n\nWork in your REPL: keep what you tried and learned in Python (`state['goal']`), change the code, test, and use the result to choose the next step. Delegate independent attempts with `rlm.spawn(brief, name=..., worktree=True)` and `await rlm.merge(...)` the one that works.\n\nKeep going until `await goal.complete(3, summary, evidence=[...])` succeeds. Only if something outside you blocks the goal after real attempts: `await goal.blocked(3, reason)`. Ten identical failing checks in a row pause the goal, so change your approach when a check keeps failing the same way. The user may change the goal: `await goal.get()` shows the current revision.\n\nThe previous run on this goal ended with: tried caching"
+			},
+			{
+				"goal": {
+					"id": "goal-ID",
+					"revision": 3,
+					"objective": "ship it",
+					"check": "npm test",
+					"status": "active",
+					"reason": null,
+					"job": null,
+					"runs": 0,
+					"checks": 0,
+					"stuck": 1,
+					"last_signature": null,
+					"run_progress": false,
+					"last_check": {
+						"command": "npm test",
+						"passed": false,
+						"exit_code": 1,
+						"timed_out": false,
+						"output": "",
+						"at": 0
+					},
+					"last_answer": null,
+					"created_at": 0,
+					"updated_at": 0,
+					"completion": null
+				},
+				"brief": "You are working on the session goal (revision 3) on your own, as a background job: nobody is waiting on your turns, and nothing limits your time.\n\nObjective: ship it\n\nCheck: `npm test`. `await goal.check()` runs it on the host and returns {passed, exit_code, output}; goal.complete runs it again and succeeds only if it exits 0.\n\nWork in your REPL: keep what you tried and learned in Python (`state['goal']`), change the code, test, and use the result to choose the next step. Delegate independent attempts with `rlm.spawn(brief, name=..., worktree=True)` and `await rlm.merge(...)` the one that works.\n\nKeep going until `await goal.complete(3, summary, evidence=[...])` succeeds. Only if something outside you blocks the goal after real attempts: `await goal.blocked(3, reason)`. Ten identical failing checks in a row pause the goal, so change your approach when a check keeps failing the same way. The user may change the goal: `await goal.get()` shows the current revision."
+			},
+			{
+				"goal": {
+					"id": "goal-ID",
+					"revision": 3,
+					"objective": "ship it",
+					"check": "npm test",
+					"status": "active",
+					"reason": null,
+					"job": null,
+					"runs": 0,
+					"checks": 0,
+					"stuck": 0,
+					"last_signature": null,
+					"run_progress": false,
+					"last_check": {
+						"command": "npm test",
+						"passed": false,
+						"exit_code": null,
+						"timed_out": true,
+						"output": "",
+						"at": 0
+					},
+					"last_answer": null,
+					"created_at": 0,
+					"updated_at": 0,
+					"completion": null
+				},
+				"brief": "You are working on the session goal (revision 3) on your own, as a background job: nobody is waiting on your turns, and nothing limits your time.\n\nObjective: ship it\n\nCheck: `npm test`. `await goal.check()` runs it on the host and returns {passed, exit_code, output}; goal.complete runs it again and succeeds only if it exits 0.\n\nWork in your REPL: keep what you tried and learned in Python (`state['goal']`), change the code, test, and use the result to choose the next step. Delegate independent attempts with `rlm.spawn(brief, name=..., worktree=True)` and `await rlm.merge(...)` the one that works.\n\nKeep going until `await goal.complete(3, summary, evidence=[...])` succeeds. Only if something outside you blocks the goal after real attempts: `await goal.blocked(3, reason)`. Ten identical failing checks in a row pause the goal, so change your approach when a check keeps failing the same way. The user may change the goal: `await goal.get()` shows the current revision."
+			},
+			{
+				"goal": {
+					"id": "goal-ID",
+					"revision": 3,
+					"objective": "ship it",
+					"check": null,
+					"status": "complete",
+					"reason": null,
+					"job": null,
+					"runs": 0,
+					"checks": 0,
+					"stuck": 0,
+					"last_signature": null,
+					"run_progress": false,
+					"last_check": {
+						"command": "c",
+						"passed": true,
+						"exit_code": 0,
+						"timed_out": false,
+						"output": "",
+						"at": 0
+					},
+					"last_answer": null,
+					"created_at": 0,
+					"updated_at": 0,
+					"completion": {
+						"summary": "done",
+						"evidence": [
+							"e"
+						],
+						"verified": true,
+						"at": 0
+					}
+				},
+				"brief": "You are working on the session goal (revision 3) on your own, as a background job: nobody is waiting on your turns, and nothing limits your time.\n\nObjective: ship it\n\nThere is no check command: when you call goal.complete, give concrete evidence (it is recorded as unverified).\n\nWork in your REPL: keep what you tried and learned in Python (`state['goal']`), change the code, test, and use the result to choose the next step. Delegate independent attempts with `rlm.spawn(brief, name=..., worktree=True)` and `await rlm.merge(...)` the one that works.\n\nKeep going until `await goal.complete(3, summary, evidence=[...])` succeeds. Only if something outside you blocks the goal after real attempts: `await goal.blocked(3, reason)`. Ten identical failing checks in a row pause the goal, so change your approach when a check keeps failing the same way. The user may change the goal: `await goal.get()` shows the current revision."
+			},
+			{
+				"goal": {
+					"id": "goal-ID",
+					"revision": 3,
+					"objective": "ship it",
+					"check": null,
+					"status": "complete",
+					"reason": null,
+					"job": null,
+					"runs": 0,
+					"checks": 0,
+					"stuck": 0,
+					"last_signature": null,
+					"run_progress": false,
+					"last_check": null,
+					"last_answer": null,
+					"created_at": 0,
+					"updated_at": 0,
+					"completion": {
+						"summary": "done anyway",
+						"evidence": [
+							"e"
+						],
+						"verified": false,
+						"at": 0
+					}
+				},
+				"brief": "You are working on the session goal (revision 3) on your own, as a background job: nobody is waiting on your turns, and nothing limits your time.\n\nObjective: ship it\n\nThere is no check command: when you call goal.complete, give concrete evidence (it is recorded as unverified).\n\nWork in your REPL: keep what you tried and learned in Python (`state['goal']`), change the code, test, and use the result to choose the next step. Delegate independent attempts with `rlm.spawn(brief, name=..., worktree=True)` and `await rlm.merge(...)` the one that works.\n\nKeep going until `await goal.complete(3, summary, evidence=[...])` succeeds. Only if something outside you blocks the goal after real attempts: `await goal.blocked(3, reason)`. Ten identical failing checks in a row pause the goal, so change your approach when a check keeps failing the same way. The user may change the goal: `await goal.get()` shows the current revision."
+			}
+		],
+		"statuses": [
+			{
+				"goal": null,
+				"text": "No goal. Set one with /goal <objective>."
+			},
+			{
+				"goal": {
+					"id": "goal-ID",
+					"revision": 3,
+					"objective": "ship it",
+					"check": null,
+					"status": "active",
+					"reason": null,
+					"job": null,
+					"runs": 0,
+					"checks": 0,
+					"stuck": 0,
+					"last_signature": null,
+					"run_progress": false,
+					"last_check": null,
+					"last_answer": null,
+					"created_at": 0,
+					"updated_at": 0,
+					"completion": null
+				},
+				"text": "Goal (revision 3, active): ship it\nCheck: none (completion is unverified). Runs: 0. Checks: 0."
+			},
+			{
+				"goal": {
+					"id": "goal-ID",
+					"revision": 3,
+					"objective": "ship it",
+					"check": "npm test",
+					"status": "paused",
+					"reason": "paused by you",
+					"job": "task-7",
+					"runs": 2,
+					"checks": 4,
+					"stuck": 3,
+					"last_signature": null,
+					"run_progress": false,
+					"last_check": null,
+					"last_answer": "tried caching",
+					"created_at": 0,
+					"updated_at": 0,
+					"completion": null
+				},
+				"text": "Goal (revision 3, paused: paused by you): ship it\nCheck: npm test. Runs: 2. Checks: 4 (3 identical failures in a row).\nJob: task-7 (running)."
+			},
+			{
+				"goal": {
+					"id": "goal-ID",
+					"revision": 3,
+					"objective": "ship it",
+					"check": "npm test",
+					"status": "active",
+					"reason": null,
+					"job": null,
+					"runs": 0,
+					"checks": 0,
+					"stuck": 1,
+					"last_signature": null,
+					"run_progress": false,
+					"last_check": {
+						"command": "npm test",
+						"passed": false,
+						"exit_code": 1,
+						"timed_out": false,
+						"output": "",
+						"at": 0
+					},
+					"last_answer": null,
+					"created_at": 0,
+					"updated_at": 0,
+					"completion": null
+				},
+				"text": "Goal (revision 3, active): ship it\nCheck: npm test. Runs: 0. Checks: 0.\nLast check: exit 1 (npm test)."
+			},
+			{
+				"goal": {
+					"id": "goal-ID",
+					"revision": 3,
+					"objective": "ship it",
+					"check": "npm test",
+					"status": "active",
+					"reason": null,
+					"job": null,
+					"runs": 0,
+					"checks": 0,
+					"stuck": 0,
+					"last_signature": null,
+					"run_progress": false,
+					"last_check": {
+						"command": "npm test",
+						"passed": false,
+						"exit_code": null,
+						"timed_out": true,
+						"output": "",
+						"at": 0
+					},
+					"last_answer": null,
+					"created_at": 0,
+					"updated_at": 0,
+					"completion": null
+				},
+				"text": "Goal (revision 3, active): ship it\nCheck: npm test. Runs: 0. Checks: 0.\nLast check: timed out (npm test)."
+			},
+			{
+				"goal": {
+					"id": "goal-ID",
+					"revision": 3,
+					"objective": "ship it",
+					"check": null,
+					"status": "complete",
+					"reason": null,
+					"job": null,
+					"runs": 0,
+					"checks": 0,
+					"stuck": 0,
+					"last_signature": null,
+					"run_progress": false,
+					"last_check": {
+						"command": "c",
+						"passed": true,
+						"exit_code": 0,
+						"timed_out": false,
+						"output": "",
+						"at": 0
+					},
+					"last_answer": null,
+					"created_at": 0,
+					"updated_at": 0,
+					"completion": {
+						"summary": "done",
+						"evidence": [
+							"e"
+						],
+						"verified": true,
+						"at": 0
+					}
+				},
+				"text": "Goal (revision 3, complete): ship it\nCheck: none (completion is unverified). Runs: 0. Checks: 0.\nLast check: passed (c).\nCompleted (check passed): done"
+			},
+			{
+				"goal": {
+					"id": "goal-ID",
+					"revision": 3,
+					"objective": "ship it",
+					"check": null,
+					"status": "complete",
+					"reason": null,
+					"job": null,
+					"runs": 0,
+					"checks": 0,
+					"stuck": 0,
+					"last_signature": null,
+					"run_progress": false,
+					"last_check": null,
+					"last_answer": null,
+					"created_at": 0,
+					"updated_at": 0,
+					"completion": {
+						"summary": "done anyway",
+						"evidence": [
+							"e"
+						],
+						"verified": false,
+						"at": 0
+					}
+				},
+				"text": "Goal (revision 3, complete): ship it\nCheck: none (completion is unverified). Runs: 0. Checks: 0.\nCompleted (unverified): done anyway"
+			}
+		]
+	}
+}

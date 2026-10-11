@@ -1,0 +1,657 @@
+{
+	"cases": [
+		{
+			"name": "full valid config",
+			"content": "{\n  \"providers\": {\n    \"2\": {\n      \"oauth\": \"radius\"\n    },\n    \"10\": {},\n    \"local\": {\n      \"name\": \"Local\",\n      \"baseUrl\": \"http://localhost:8080/v1\",\n      \"apiKey\": \"LOCAL_KEY\",\n      \"api\": \"openai-completions\",\n      \"headers\": {\n        \"x-a\": \"1\"\n      },\n      \"authHeader\": true,\n      \"compat\": {\n        \"supportsStore\": false,\n        \"maxTokensField\": \"max_tokens\",\n        \"thinkingFormat\": \"qwen\"\n      },\n      \"models\": [\n        {\n          \"id\": \"m1\",\n          \"name\": \"Model 1\",\n          \"reasoning\": true,\n          \"thinkingLevelMap\": {\n            \"off\": null,\n            \"high\": \"high\"\n          },\n          \"input\": [\n            \"text\",\n            \"image\"\n          ],\n          \"inputLimits\": {\n            \"maxRequestBytes\": 1000,\n            \"images\": {\n              \"resize\": {\n                \"maxWidth\": 10,\n                \"jpegQuality\": 100\n              },\n              \"maxPerMessage\": 2\n            }\n          },\n          \"cost\": {\n            \"input\": 1,\n            \"output\": 2,\n            \"cacheRead\": 0.1,\n            \"cacheWrite\": 1.25,\n            \"tiers\": [\n              {\n                \"inputTokensAbove\": 200000,\n                \"input\": 1,\n                \"output\": 2,\n                \"cacheRead\": 0.1,\n                \"cacheWrite\": 1.25\n              }\n            ]\n          },\n          \"promptCache\": {\n            \"short\": 300,\n            \"long\": 3600\n          },\n          \"contextWindow\": 128000,\n          \"maxTokens\": 1,\n          \"samplingParams\": {\n            \"top_k\": 20,\n            \"nested\": {\n              \"x\": [\n                1,\n                2\n              ]\n            }\n          },\n          \"unknownField\": 1\n        },\n        {\n          \"id\": \"m2\"\n        }\n      ],\n      \"modelOverrides\": {\n        \"m1\": {\n          \"name\": \"Renamed\",\n          \"cost\": {\n            \"input\": 3\n          }\n        }\n      }\n    },\n    \"zeta\": {\n      \"compat\": {\n        \"allowedFallbackModels\": [\n          {\n            \"provider\": \"p\",\n            \"model\": \"m\",\n            \"cost\": {\n              \"input\": 1,\n              \"output\": 2,\n              \"cacheRead\": 0.1,\n              \"cacheWrite\": 1.25\n            }\n          }\n        ]\n      }\n    }\n  },\n  \"extra\": true\n}",
+			"error": null,
+			"providerIds": [
+				"2",
+				"10",
+				"local",
+				"zeta"
+			],
+			"providers": [
+				[
+					"2",
+					{
+						"oauth": "radius"
+					}
+				],
+				[
+					"10",
+					{}
+				],
+				[
+					"local",
+					{
+						"name": "Local",
+						"baseUrl": "http://localhost:8080/v1",
+						"apiKey": "LOCAL_KEY",
+						"api": "openai-completions",
+						"headers": {
+							"x-a": "1"
+						},
+						"authHeader": true,
+						"compat": {
+							"supportsStore": false,
+							"maxTokensField": "max_tokens",
+							"thinkingFormat": "qwen"
+						},
+						"models": [
+							{
+								"id": "m1",
+								"name": "Model 1",
+								"reasoning": true,
+								"thinkingLevelMap": {
+									"off": null,
+									"high": "high"
+								},
+								"input": [
+									"text",
+									"image"
+								],
+								"inputLimits": {
+									"maxRequestBytes": 1000,
+									"images": {
+										"resize": {
+											"maxWidth": 10,
+											"jpegQuality": 100
+										},
+										"maxPerMessage": 2
+									}
+								},
+								"cost": {
+									"input": 1,
+									"output": 2,
+									"cacheRead": 0.1,
+									"cacheWrite": 1.25,
+									"tiers": [
+										{
+											"inputTokensAbove": 200000,
+											"input": 1,
+											"output": 2,
+											"cacheRead": 0.1,
+											"cacheWrite": 1.25
+										}
+									]
+								},
+								"promptCache": {
+									"short": 300,
+									"long": 3600
+								},
+								"contextWindow": 128000,
+								"maxTokens": 1,
+								"samplingParams": {
+									"top_k": 20,
+									"nested": {
+										"x": [
+											1,
+											2
+										]
+									}
+								},
+								"unknownField": 1
+							},
+							{
+								"id": "m2"
+							}
+						],
+						"modelOverrides": {
+							"m1": {
+								"name": "Renamed",
+								"cost": {
+									"input": 3
+								}
+							}
+						}
+					}
+				],
+				[
+					"zeta",
+					{
+						"compat": {
+							"allowedFallbackModels": [
+								{
+									"provider": "p",
+									"model": "m",
+									"cost": {
+										"input": 1,
+										"output": 2,
+										"cacheRead": 0.1,
+										"cacheWrite": 1.25
+									}
+								}
+							]
+						}
+					}
+				]
+			]
+		},
+		{
+			"name": "empty providers",
+			"content": "{\"providers\":{}}",
+			"error": null,
+			"providerIds": [],
+			"providers": []
+		},
+		{
+			"name": "comments, trailing commas and BOM",
+			"content": "﻿{\n  // comment\n  \"providers\": {\n    \"a\": {\"name\": \"x // not a comment\", \"baseUrl\": \"http://h/,}\", },\n  }, // tail\n}\n",
+			"error": null,
+			"providerIds": [
+				"a"
+			],
+			"providers": [
+				[
+					"a",
+					{
+						"name": "x // not a comment",
+						"baseUrl": "http://h/,}"
+					}
+				]
+			]
+		},
+		{
+			"name": "escaped quotes inside strings",
+			"content": "{\"providers\":{\"a\":{\"name\":\"q\\\"// x,}\"}}}",
+			"error": null,
+			"providerIds": [
+				"a"
+			],
+			"providers": [
+				[
+					"a",
+					{
+						"name": "q\"// x,}"
+					}
+				]
+			]
+		},
+		{
+			"name": "comment at end of file without newline",
+			"content": "{\"providers\":{}} // done",
+			"error": null,
+			"providerIds": [],
+			"providers": []
+		},
+		{
+			"name": "trailing comma before bracket with whitespace",
+			"content": "{\"providers\":{\"a\":{\"models\":[{\"id\":\"x\"} ,\n\t]}}}",
+			"error": null,
+			"providerIds": [
+				"a"
+			],
+			"providers": [
+				[
+					"a",
+					{
+						"models": [
+							{
+								"id": "x"
+							}
+						]
+					}
+				]
+			]
+		},
+		{
+			"name": "line comment ends at LF only",
+			"content": "{\"providers\":{} // c\r\n}",
+			"error": null,
+			"providerIds": [],
+			"providers": []
+		},
+		{
+			"name": "duplicate keys keep first position",
+			"content": "{\"providers\":{\"b\":{\"name\":\"one\"},\"a\":{},\"b\":{\"name\":\"two\"}}}",
+			"error": null,
+			"providerIds": [
+				"b",
+				"a"
+			],
+			"providers": [
+				[
+					"b",
+					{
+						"name": "two"
+					}
+				],
+				[
+					"a",
+					{}
+				]
+			]
+		},
+		{
+			"name": "invalid utf-8 bytes",
+			"hex": "7b2270726f766964657273223a7b2261223a7b226e616d65223a22ff227d7d7d",
+			"error": null,
+			"providerIds": [
+				"a"
+			],
+			"providers": [
+				[
+					"a",
+					{
+						"name": "�"
+					}
+				]
+			]
+		},
+		{
+			"name": "empty object",
+			"content": "{}",
+			"error": "Invalid models.json schema:\n  - providers: must have required properties providers\n\nFile: <dir>/models.json",
+			"providerIds": [],
+			"providers": []
+		},
+		{
+			"name": "array root",
+			"content": "[]",
+			"error": "Invalid models.json schema:\n  - root: must be object\n\nFile: <dir>/models.json",
+			"providerIds": [],
+			"providers": []
+		},
+		{
+			"name": "null root",
+			"content": "null",
+			"error": "Invalid models.json schema:\n  - root: must be object\n\nFile: <dir>/models.json",
+			"providerIds": [],
+			"providers": []
+		},
+		{
+			"name": "number root",
+			"content": "5",
+			"error": "Invalid models.json schema:\n  - root: must be object\n\nFile: <dir>/models.json",
+			"providerIds": [],
+			"providers": []
+		},
+		{
+			"name": "providers not object",
+			"content": "{\"providers\":5}",
+			"error": "Invalid models.json schema:\n  - providers: must be object\n\nFile: <dir>/models.json",
+			"providerIds": [],
+			"providers": []
+		},
+		{
+			"name": "providers array",
+			"content": "{\"providers\":[]}",
+			"error": "Invalid models.json schema:\n  - providers: must be object\n\nFile: <dir>/models.json",
+			"providerIds": [],
+			"providers": []
+		},
+		{
+			"name": "empty id",
+			"content": "{\"providers\":{\"a\":{\"models\":[{\"id\":\"\"}]}}}",
+			"error": "Invalid models.json schema:\n  - providers.a.models.0.id: must not have fewer than 1 characters\n\nFile: <dir>/models.json",
+			"providerIds": [],
+			"providers": []
+		},
+		{
+			"name": "missing id",
+			"content": "{\"providers\":{\"a\":{\"models\":[{}]}}}",
+			"error": "Invalid models.json schema:\n  - providers.a.models.0.id: must have required properties id\n\nFile: <dir>/models.json",
+			"providerIds": [],
+			"providers": []
+		},
+		{
+			"name": "id wrong type",
+			"content": "{\"providers\":{\"a\":{\"models\":[{\"id\":5}]}}}",
+			"error": "Invalid models.json schema:\n  - providers.a.models.0.id: must be string\n\nFile: <dir>/models.json",
+			"providerIds": [],
+			"providers": []
+		},
+		{
+			"name": "oauth literal mismatch",
+			"content": "{\"providers\":{\"a\":{\"oauth\":\"x\",\"x\":1}}}",
+			"error": "Invalid models.json schema:\n  - providers.a.oauth: must be equal to constant\n\nFile: <dir>/models.json",
+			"providerIds": [],
+			"providers": []
+		},
+		{
+			"name": "oauth literal wrong type",
+			"content": "{\"providers\":{\"a\":{\"oauth\":5}}}",
+			"error": "Invalid models.json schema:\n  - providers.a.oauth: must be string\n  - providers.a.oauth: must be equal to constant\n\nFile: <dir>/models.json",
+			"providerIds": [],
+			"providers": []
+		},
+		{
+			"name": "provider not object and empty name",
+			"content": "{\"providers\":{\"a\":5,\"b\":{\"name\":\"\"}},\"x\":1}",
+			"error": "Invalid models.json schema:\n  - providers.a: must be object\n  - providers.b.name: must not have fewer than 1 characters\n\nFile: <dir>/models.json",
+			"providerIds": [],
+			"providers": []
+		},
+		{
+			"name": "headers value and models type",
+			"content": "{\"providers\":{\"a\":{\"headers\":{\"x\":1},\"models\":{}}}}",
+			"error": "Invalid models.json schema:\n  - providers.a.headers.x: must be string\n  - providers.a.models: must be array\n\nFile: <dir>/models.json",
+			"providerIds": [],
+			"providers": []
+		},
+		{
+			"name": "integers, minimum, maximum, exclusiveMinimum, literal items",
+			"content": "{\"providers\":{\"a\":{\"models\":[{\"id\":\"m\",\"inputLimits\":{\"maxRequestBytes\":1.5,\"images\":{\"resize\":{\"jpegQuality\":101,\"maxWidth\":0,\"maxHeight\":0.5},\"maxPerRequest\":0}},\"promptCache\":{\"short\":0,\"long\":-1},\"input\":[\"audio\",3]}]}}}",
+			"error": "Invalid models.json schema:\n  - providers.a.models.0.input.0: must be equal to constant\n  - providers.a.models.0.input.0: must be equal to constant\n  - providers.a.models.0.input.0: must match a schema in anyOf\n  - providers.a.models.0.input.1: must be string\n  - providers.a.models.0.input.1: must be equal to constant\n  - providers.a.models.0.input.1: must be string\n  - providers.a.models.0.input.1: must be equal to constant\n  - providers.a.models.0.input.1: must match a schema in anyOf\n\nFile: <dir>/models.json",
+			"providerIds": [],
+			"providers": []
+		},
+		{
+			"name": "integer and limits alone",
+			"content": "{\"providers\":{\"a\":{\"models\":[{\"id\":\"m\",\"inputLimits\":{\"maxRequestBytes\":1.5,\"images\":{\"resize\":{\"jpegQuality\":100.5,\"maxWidth\":0,\"maxHeight\":0.5},\"maxPerRequest\":\"1\"}}}]}}}",
+			"error": "Invalid models.json schema:\n  - providers.a.models.0.inputLimits.maxRequestBytes: must be integer\n  - providers.a.models.0.inputLimits.images.resize.maxWidth: must be >= 1\n  - providers.a.models.0.inputLimits.images.resize.maxHeight: must be integer\n  - providers.a.models.0.inputLimits.images.resize.maxHeight: must be >= 1\n  - providers.a.models.0.inputLimits.images.resize.jpegQuality: must be integer\n  - providers.a.models.0.inputLimits.images.resize.jpegQuality: must be <= 100\n  - providers.a.models.0.inputLimits.images.maxPerRequest: must be integer\n\nFile: <dir>/models.json",
+			"providerIds": [],
+			"providers": []
+		},
+		{
+			"name": "exclusive minimum boundary",
+			"content": "{\"providers\":{\"a\":{\"models\":[{\"id\":\"m\",\"promptCache\":{\"short\":0,\"long\":0.001}}],\"modelOverrides\":{\"m\":{\"promptCache\":{\"long\":-1}}}}}}",
+			"error": "Invalid models.json schema:\n  - providers.a.models.0.promptCache.short: must be > 0\n  - providers.a.modelOverrides.m.promptCache.long: must be > 0\n\nFile: <dir>/models.json",
+			"providerIds": [],
+			"providers": []
+		},
+		{
+			"name": "cost missing all fields",
+			"content": "{\"providers\":{\"a\":{\"models\":[{\"id\":\"m\",\"cost\":{}}]}}}",
+			"error": "Invalid models.json schema:\n  - providers.a.models.0.cost.input: must have required properties input, output, cacheRead, cacheWrite\n\nFile: <dir>/models.json",
+			"providerIds": [],
+			"providers": []
+		},
+		{
+			"name": "cost wrong type and empty tier",
+			"content": "{\"providers\":{\"a\":{\"models\":[{\"id\":\"m\",\"cost\":{\"input\":\"1\",\"tiers\":[{}]}}]}}}",
+			"error": "Invalid models.json schema:\n  - providers.a.models.0.cost.output: must have required properties output, cacheRead, cacheWrite\n  - providers.a.models.0.cost.input: must be number\n  - providers.a.models.0.cost.tiers.0.inputTokensAbove: must have required properties inputTokensAbove, input, output, cacheRead, cacheWrite\n\nFile: <dir>/models.json",
+			"providerIds": [],
+			"providers": []
+		},
+		{
+			"name": "compat passes when one branch matches",
+			"content": "{\"providers\":{\"a\":{\"compat\":{\"supportsStore\":1,\"allowedFallbackModels\":[1,2,3,4]}}}}",
+			"error": null,
+			"providerIds": [
+				"a"
+			],
+			"providers": [
+				[
+					"a",
+					{
+						"compat": {
+							"supportsStore": 1,
+							"allowedFallbackModels": [
+								1,
+								2,
+								3,
+								4
+							]
+						}
+					}
+				]
+			]
+		},
+		{
+			"name": "compat field failing every branch",
+			"content": "{\"providers\":{\"a\":{\"compat\":{\"supportsLongCacheRetention\":1}}}}",
+			"error": "Invalid models.json schema:\n  - providers.a.compat.supportsLongCacheRetention: must be boolean\n  - providers.a.compat.supportsLongCacheRetention: must be boolean\n  - providers.a.compat.supportsLongCacheRetention: must be boolean\n  - providers.a.compat: must match a schema in anyOf\n\nFile: <dir>/models.json",
+			"providerIds": [],
+			"providers": []
+		},
+		{
+			"name": "compat not an object",
+			"content": "{\"providers\":{\"a\":{\"compat\":5}}}",
+			"error": "Invalid models.json schema:\n  - providers.a.compat: must be object\n  - providers.a.compat: must be object\n  - providers.a.compat: must be object\n  - providers.a.compat: must match a schema in anyOf\n\nFile: <dir>/models.json",
+			"providerIds": [],
+			"providers": []
+		},
+		{
+			"name": "compat branch errors capped",
+			"content": "{\"providers\":{\"a\":{\"compat\":{\"allowedFallbackModels\":[1,2,3,4],\"supportsStrictMode\":1,\"supportsLongCacheRetention\":\"x\"}}}}",
+			"error": "Invalid models.json schema:\n  - providers.a.compat.supportsStrictMode: must be boolean\n  - providers.a.compat.supportsLongCacheRetention: must be boolean\n  - providers.a.compat.supportsLongCacheRetention: must be boolean\n  - providers.a.compat.supportsStrictMode: must be boolean\n  - providers.a.compat.supportsLongCacheRetention: must be boolean\n  - providers.a.compat.allowedFallbackModels.0: must be object\n  - providers.a.compat.allowedFallbackModels.1: must be object\n  - providers.a.compat.allowedFallbackModels.2: must be object\n\nFile: <dir>/models.json",
+			"providerIds": [],
+			"providers": []
+		},
+		{
+			"name": "compat maxItems and anyOf",
+			"content": "{\"providers\":{\"a\":{\"compat\":{\"allowedFallbackModels\":[{\"provider\":\"p\",\"model\":\"m\",\"cost\":{\"input\":1,\"output\":2,\"cacheRead\":0.1,\"cacheWrite\":1.25}},2,3,4],\"supportsLongCacheRetention\":1}}}}",
+			"error": "Invalid models.json schema:\n  - providers.a.compat.supportsLongCacheRetention: must be boolean\n  - providers.a.compat.supportsLongCacheRetention: must be boolean\n  - providers.a.compat.supportsLongCacheRetention: must be boolean\n  - providers.a.compat.allowedFallbackModels.1: must be object\n  - providers.a.compat.allowedFallbackModels.2: must be object\n  - providers.a.compat.allowedFallbackModels.3: must be object\n  - providers.a.compat.allowedFallbackModels: must not have more than 3 items\n  - providers.a.compat: must match a schema in anyOf\n\nFile: <dir>/models.json",
+			"providerIds": [],
+			"providers": []
+		},
+		{
+			"name": "compat fallback model fields",
+			"content": "{\"providers\":{\"a\":{\"compat\":{\"supportsLongCacheRetention\":1,\"allowedFallbackModels\":[{\"provider\":\"\",\"model\":1,\"cost\":{}}]}}}}",
+			"error": "Invalid models.json schema:\n  - providers.a.compat.supportsLongCacheRetention: must be boolean\n  - providers.a.compat.supportsLongCacheRetention: must be boolean\n  - providers.a.compat.supportsLongCacheRetention: must be boolean\n  - providers.a.compat.allowedFallbackModels.0.provider: must not have fewer than 1 characters\n  - providers.a.compat.allowedFallbackModels.0.model: must be string\n  - providers.a.compat.allowedFallbackModels.0.cost.input: must have required properties input, output, cacheRead, cacheWrite\n  - providers.a.compat: must match a schema in anyOf\n\nFile: <dir>/models.json",
+			"providerIds": [],
+			"providers": []
+		},
+		{
+			"name": "compat deep openrouter routing",
+			"content": "{\"providers\":{\"a\":{\"compat\":{\"supportsLongCacheRetention\":0,\"openRouterRouting\":{\"sort\":5,\"max_price\":{\"prompt\":true},\"preferred_min_throughput\":{\"p50\":\"x\"},\"data_collection\":\"maybe\",\"order\":[1]}}}}}",
+			"error": "Invalid models.json schema:\n  - providers.a.compat.openRouterRouting.data_collection: must be equal to constant\n  - providers.a.compat.openRouterRouting.data_collection: must be equal to constant\n  - providers.a.compat.openRouterRouting.data_collection: must match a schema in anyOf\n  - providers.a.compat.openRouterRouting.order.0: must be string\n  - providers.a.compat.openRouterRouting.sort: must be string\n  - providers.a.compat.openRouterRouting.sort: must be object\n  - providers.a.compat.openRouterRouting.sort: must match a schema in anyOf\n  - providers.a.compat.openRouterRouting.max_price.prompt: must be number\n\nFile: <dir>/models.json",
+			"providerIds": [],
+			"providers": []
+		},
+		{
+			"name": "compat chat template kwargs",
+			"content": "{\"providers\":{\"a\":{\"compat\":{\"supportsDeveloperRole\":1,\"sessionAffinityFormat\":\"x\",\"chatTemplateKwargs\":{\"a\":{\"$var\":\"x\"},\"b\":[1],\"c\":null}}}}}",
+			"error": null,
+			"providerIds": [
+				"a"
+			],
+			"providers": [
+				[
+					"a",
+					{
+						"compat": {
+							"supportsDeveloperRole": 1,
+							"sessionAffinityFormat": "x",
+							"chatTemplateKwargs": {
+								"a": {
+									"$var": "x"
+								},
+								"b": [
+									1
+								],
+								"c": null
+							}
+						}
+					}
+				]
+			]
+		},
+		{
+			"name": "thinkingLevelMap union and unknown keys",
+			"content": "{\"providers\":{\"a\":{\"models\":[{\"id\":5,\"thinkingLevelMap\":{\"off\":1,\"zz\":2},\"samplingParams\":{\"a\":{}}}]}}}",
+			"error": "Invalid models.json schema:\n  - providers.a.models.0.id: must be string\n  - providers.a.models.0.thinkingLevelMap.off: must be string\n  - providers.a.models.0.thinkingLevelMap.off: must be null\n  - providers.a.models.0.thinkingLevelMap.off: must match a schema in anyOf\n\nFile: <dir>/models.json",
+			"providerIds": [],
+			"providers": []
+		},
+		{
+			"name": "model overrides",
+			"content": "{\"providers\":{\"a\":{\"modelOverrides\":{\"m\":{\"cost\":{\"input\":\"x\"},\"name\":1},\"n\":5}}}}",
+			"error": "Invalid models.json schema:\n  - providers.a.modelOverrides.m.name: must be string\n  - providers.a.modelOverrides.m.cost.input: must be number\n  - providers.a.modelOverrides.n: must be object\n\nFile: <dir>/models.json",
+			"providerIds": [],
+			"providers": []
+		},
+		{
+			"name": "more than eight errors are capped",
+			"content": "{\"providers\":{\"a\":{\"headers\":{\"h0\":0,\"h1\":1,\"h2\":2,\"h3\":3,\"h4\":4,\"h5\":5,\"h6\":6,\"h7\":7,\"h8\":8,\"h9\":9,\"h10\":10,\"h11\":11}}}}",
+			"error": "Invalid models.json schema:\n  - providers.a.headers.h0: must be string\n  - providers.a.headers.h1: must be string\n  - providers.a.headers.h2: must be string\n  - providers.a.headers.h3: must be string\n  - providers.a.headers.h4: must be string\n  - providers.a.headers.h5: must be string\n  - providers.a.headers.h6: must be string\n  - providers.a.headers.h7: must be string\n\nFile: <dir>/models.json",
+			"providerIds": [],
+			"providers": []
+		},
+		{
+			"name": "record keys in JS order",
+			"content": "{\"providers\":{\"b\":{\"headers\":{\"z\":1,\"10\":2,\"2\":3,\"-1\":4,\"01\":5}},\"1\":5,\"4294967295\":5,\"4294967294\":5}}",
+			"error": "Invalid models.json schema:\n  - providers.1: must be object\n  - providers.4294967294: must be object\n  - providers.b.headers.2: must be string\n  - providers.b.headers.10: must be string\n  - providers.b.headers.z: must be string\n  - providers.b.headers.-1: must be string\n  - providers.b.headers.01: must be string\n  - providers.4294967295: must be object\n\nFile: <dir>/models.json",
+			"providerIds": [],
+			"providers": []
+		},
+		{
+			"name": "record key with newline is not matched",
+			"content": "{\"providers\":{\"a\":{\"headers\":{\"a\\nb\":1,\"c/d\":2,\"\":3}}}}",
+			"error": "Invalid models.json schema:\n  - providers.a.headers.c.d: must be string\n  - providers.a.headers.: must be string\n\nFile: <dir>/models.json",
+			"providerIds": [],
+			"providers": []
+		},
+		{
+			"name": "booleans and numbers",
+			"content": "{\"providers\":{\"a\":{\"authHeader\":\"yes\",\"models\":[{\"id\":\"m\",\"reasoning\":1,\"contextWindow\":\"big\",\"maxTokens\":null}]}}}",
+			"error": "Invalid models.json schema:\n  - providers.a.authHeader: must be boolean\n  - providers.a.models.0.reasoning: must be boolean\n  - providers.a.models.0.contextWindow: must be number\n  - providers.a.models.0.maxTokens: must be number\n\nFile: <dir>/models.json",
+			"providerIds": [],
+			"providers": []
+		},
+		{
+			"name": "string array items",
+			"content": "{\"providers\":{\"a\":{\"compat\":{\"supportsLongCacheRetention\":1,\"openRouterRouting\":{\"only\":[\"a\",2]}}}}}",
+			"error": "Invalid models.json schema:\n  - providers.a.compat.openRouterRouting.only.1: must be string\n  - providers.a.compat.supportsLongCacheRetention: must be boolean\n  - providers.a.compat.supportsLongCacheRetention: must be boolean\n  - providers.a.compat.supportsLongCacheRetention: must be boolean\n  - providers.a.compat: must match a schema in anyOf\n\nFile: <dir>/models.json",
+			"providerIds": [],
+			"providers": []
+		},
+		{
+			"name": "empty file",
+			"content": "",
+			"error": "Failed to parse models.json: Unexpected end of JSON input\n\nFile: <dir>/models.json",
+			"providerIds": [],
+			"providers": []
+		},
+		{
+			"name": "whitespace file",
+			"content": "  \n",
+			"error": "Failed to parse models.json: Unexpected end of JSON input\n\nFile: <dir>/models.json",
+			"providerIds": [],
+			"providers": []
+		},
+		{
+			"name": "invalid json token",
+			"content": "{providers}",
+			"error": "Failed to parse models.json: Expected property name or '}' in JSON at position 1 (line 1 column 2)\n\nFile: <dir>/models.json",
+			"providerIds": [],
+			"providers": []
+		},
+		{
+			"name": "truncated json",
+			"content": "{\"providers\":{",
+			"error": "Failed to parse models.json: Expected property name or '}' in JSON at position 14 (line 1 column 15)\n\nFile: <dir>/models.json",
+			"providerIds": [],
+			"providers": []
+		},
+		{
+			"name": "comment only",
+			"content": "// nothing",
+			"error": "Failed to parse models.json: Unexpected end of JSON input\n\nFile: <dir>/models.json",
+			"providerIds": [],
+			"providers": []
+		},
+		{
+			"name": "missing file",
+			"missing": true,
+			"error": null,
+			"providerIds": [],
+			"providers": []
+		},
+		{
+			"name": "directory instead of file",
+			"directory": true,
+			"error": "Failed to load models.json: EISDIR: illegal operation on a directory, read '<dir>/models.json'\n\nFile: <dir>/models.json",
+			"providerIds": [],
+			"providers": []
+		},
+		{
+			"name": "unreadable file",
+			"content": "{}",
+			"mode": 0,
+			"error": "Failed to load models.json: EACCES: permission denied, open '<dir>/models.json'\n\nFile: <dir>/models.json",
+			"providerIds": [],
+			"providers": []
+		},
+		{
+			"name": "tilde path",
+			"content": "{\"providers\":{\"h\":{}}}",
+			"tilde": true,
+			"error": null,
+			"providerIds": [
+				"h"
+			],
+			"providers": [
+				[
+					"h",
+					{}
+				]
+			]
+		},
+		{
+			"name": "no path",
+			"noPath": true,
+			"error": null,
+			"providerIds": [],
+			"providers": []
+		}
+	],
+	"store": {
+		"read": {
+			"models": [
+				{
+					"id": "m",
+					"name": "M",
+					"api": "openai-completions",
+					"provider": "p",
+					"baseUrl": "u",
+					"reasoning": false,
+					"input": [
+						"text"
+					],
+					"cost": {
+						"input": 1,
+						"output": 2,
+						"cacheRead": 0.1,
+						"cacheWrite": 1.25
+					},
+					"contextWindow": 1,
+					"maxTokens": 1
+				}
+			],
+			"lastModified": 1700000000,
+			"etag": "\"abc\""
+		},
+		"missing": null,
+		"afterDelete": null
+	},
+	"catalog": {
+		"groups": {
+			"openai-completions": {
+				"a": {
+					"id": "a",
+					"api": "openai-completions"
+				},
+				"b": {
+					"id": "b",
+					"api": "openai-completions"
+				}
+			},
+			"anthropic-messages": {
+				"c": {
+					"id": "c",
+					"api": "anthropic-messages"
+				},
+				"a": {
+					"id": "a",
+					"api": "anthropic-messages"
+				}
+			}
+		},
+		"flat": {
+			"a": {
+				"id": "a",
+				"api": "anthropic-messages"
+			},
+			"b": {
+				"id": "b",
+				"api": "openai-completions"
+			},
+			"c": {
+				"id": "c",
+				"api": "anthropic-messages"
+			}
+		}
+	}
+}

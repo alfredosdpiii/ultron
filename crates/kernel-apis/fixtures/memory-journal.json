@@ -1,0 +1,5971 @@
+{
+	"cases": [
+		{
+			"name": "written",
+			"input": {
+				"version": 1,
+				"namespace": "fake://bank",
+				"operations": [
+					{
+						"scope": "session",
+						"textHash": "4eb14b53c602a6b20ac71b4e9e425e1fe8b5d2a8effdacd25f571123c999f0b9",
+						"evidence": [
+							{
+								"ref": "a"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "00000000-0000-4000-8000-000000000001",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "00000000-0000-4000-8000-000000000002",
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"00000000-0000-4000-8000-000000000001"
+						],
+						"receipts": [
+							{
+								"id": "00000000-0000-4000-8000-000000000001",
+								"status": "completed"
+							}
+						]
+					},
+					{
+						"memoryId": "00000000-0000-4000-8000-000000000002",
+						"scope": "session",
+						"id": "00000000-0000-4000-8000-000000000003",
+						"kind": "get",
+						"state": "read",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"observedState": "stored"
+					},
+					{
+						"memoryId": "00000000-0000-4000-8000-000000000002",
+						"scope": "session",
+						"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+						"evidence": [
+							{
+								"ref": "b"
+							}
+						],
+						"evidenceClass": "user_statement",
+						"supersedes": "00000000-0000-4000-8000-000000000001",
+						"id": "00000000-0000-4000-8000-000000000004",
+						"kind": "correct",
+						"state": "accepted",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"00000000-0000-4000-8000-000000000004"
+						]
+					},
+					{
+						"queryHash": "1e7dc6d6c16565406afd121a89164b990879f5f47695e03b9c3fd0f07395a4ca",
+						"scope": "session",
+						"taskId": "t",
+						"id": "00000000-0000-4000-8000-000000000005",
+						"kind": "prepare",
+						"state": "recalled",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"retrieve": true,
+							"probability": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"references": [
+							{
+								"id": "entry-2",
+								"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+								"memoryId": "00000000-0000-4000-8000-000000000002",
+								"evidenceClass": "user_statement"
+							}
+						],
+						"excluded": [
+							{
+								"id": "entry-1",
+								"memoryId": "00000000-0000-4000-8000-000000000002",
+								"reason": "superseded"
+							}
+						]
+					},
+					{
+						"scope": "project",
+						"textHash": "2fde732bd0eed1aa3986245b3a6c5ac34bfb20530c8cb1a1cd26d175d3c536f8",
+						"evidence": [
+							{
+								"ref": "c"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "00000000-0000-4000-8000-000000000006",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "00000000-0000-4000-8000-000000000007",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"operationIds": []
+					},
+					{
+						"memoryId": "00000000-0000-4000-8000-000000000007",
+						"scope": "project",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"id": "00000000-0000-4000-8000-000000000008",
+						"kind": "forget",
+						"state": "forgotten",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z"
+					}
+				]
+			},
+			"ok": [
+				{
+					"scope": "session",
+					"textHash": "4eb14b53c602a6b20ac71b4e9e425e1fe8b5d2a8effdacd25f571123c999f0b9",
+					"evidence": [
+						{
+							"ref": "a"
+						}
+					],
+					"evidenceClass": "hypothesis",
+					"id": "<uuid>",
+					"kind": "propose",
+					"state": "stored",
+					"phase": "backend",
+					"createdAt": "<time>",
+					"updatedAt": "<time>",
+					"gate": {
+						"action": "keep",
+						"confidence": 1
+					},
+					"memoryId": "<uuid>",
+					"tags": [
+						"ultron:session:s1"
+					],
+					"operationIds": [
+						"<uuid>"
+					],
+					"receipts": [
+						{
+							"id": "<uuid>",
+							"status": "completed"
+						}
+					],
+					"supersededBy": "<uuid>"
+				},
+				{
+					"memoryId": "<uuid>",
+					"scope": "session",
+					"id": "<uuid>",
+					"kind": "get",
+					"state": "read",
+					"phase": "backend",
+					"createdAt": "<time>",
+					"updatedAt": "<time>",
+					"observedState": "stored"
+				},
+				{
+					"memoryId": "<uuid>",
+					"scope": "session",
+					"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+					"evidence": [
+						{
+							"ref": "b"
+						}
+					],
+					"evidenceClass": "user_statement",
+					"supersedes": "<uuid>",
+					"id": "<uuid>",
+					"kind": "correct",
+					"state": "accepted",
+					"phase": "backend",
+					"createdAt": "<time>",
+					"updatedAt": "<time>",
+					"gate": {
+						"action": "keep",
+						"confidence": 1
+					},
+					"tags": [
+						"ultron:session:s1"
+					],
+					"operationIds": [
+						"<uuid>"
+					]
+				},
+				{
+					"queryHash": "1e7dc6d6c16565406afd121a89164b990879f5f47695e03b9c3fd0f07395a4ca",
+					"scope": "session",
+					"taskId": "t",
+					"id": "<uuid>",
+					"kind": "prepare",
+					"state": "recalled",
+					"phase": "backend",
+					"createdAt": "<time>",
+					"updatedAt": "<time>",
+					"gate": {
+						"retrieve": true,
+						"probability": 1
+					},
+					"tags": [
+						"ultron:session:s1"
+					],
+					"references": [
+						{
+							"id": "entry-2",
+							"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+							"memoryId": "<uuid>",
+							"evidenceClass": "user_statement"
+						}
+					],
+					"excluded": [
+						{
+							"id": "entry-1",
+							"memoryId": "<uuid>",
+							"reason": "superseded"
+						}
+					]
+				},
+				{
+					"scope": "project",
+					"textHash": "2fde732bd0eed1aa3986245b3a6c5ac34bfb20530c8cb1a1cd26d175d3c536f8",
+					"evidence": [
+						{
+							"ref": "c"
+						}
+					],
+					"evidenceClass": "hypothesis",
+					"id": "<uuid>",
+					"kind": "propose",
+					"state": "stored",
+					"phase": "backend",
+					"createdAt": "<time>",
+					"updatedAt": "<time>",
+					"gate": {
+						"action": "keep",
+						"confidence": 1
+					},
+					"memoryId": "<uuid>",
+					"tags": [
+						"ultron:project:p1"
+					],
+					"operationIds": []
+				},
+				{
+					"memoryId": "<uuid>",
+					"scope": "project",
+					"tags": [
+						"ultron:project:p1"
+					],
+					"id": "<uuid>",
+					"kind": "forget",
+					"state": "forgotten",
+					"phase": "backend",
+					"createdAt": "<time>",
+					"updatedAt": "<time>"
+				}
+			],
+			"stored": {
+				"version": 1,
+				"namespace": "fake://bank",
+				"operations": [
+					{
+						"scope": "session",
+						"textHash": "4eb14b53c602a6b20ac71b4e9e425e1fe8b5d2a8effdacd25f571123c999f0b9",
+						"evidence": [
+							{
+								"ref": "a"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "<uuid>",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "<uuid>",
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"<uuid>"
+						],
+						"receipts": [
+							{
+								"id": "<uuid>",
+								"status": "completed"
+							}
+						]
+					},
+					{
+						"memoryId": "<uuid>",
+						"scope": "session",
+						"id": "<uuid>",
+						"kind": "get",
+						"state": "read",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"observedState": "stored"
+					},
+					{
+						"memoryId": "<uuid>",
+						"scope": "session",
+						"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+						"evidence": [
+							{
+								"ref": "b"
+							}
+						],
+						"evidenceClass": "user_statement",
+						"supersedes": "<uuid>",
+						"id": "<uuid>",
+						"kind": "correct",
+						"state": "accepted",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"<uuid>"
+						]
+					},
+					{
+						"queryHash": "1e7dc6d6c16565406afd121a89164b990879f5f47695e03b9c3fd0f07395a4ca",
+						"scope": "session",
+						"taskId": "t",
+						"id": "<uuid>",
+						"kind": "prepare",
+						"state": "recalled",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"retrieve": true,
+							"probability": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"references": [
+							{
+								"id": "entry-2",
+								"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+								"memoryId": "<uuid>",
+								"evidenceClass": "user_statement"
+							}
+						],
+						"excluded": [
+							{
+								"id": "entry-1",
+								"memoryId": "<uuid>",
+								"reason": "superseded"
+							}
+						]
+					},
+					{
+						"scope": "project",
+						"textHash": "2fde732bd0eed1aa3986245b3a6c5ac34bfb20530c8cb1a1cd26d175d3c536f8",
+						"evidence": [
+							{
+								"ref": "c"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "<uuid>",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "<uuid>",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"operationIds": []
+					},
+					{
+						"memoryId": "<uuid>",
+						"scope": "project",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"id": "<uuid>",
+						"kind": "forget",
+						"state": "forgotten",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>"
+					}
+				]
+			}
+		},
+		{
+			"name": "no version",
+			"input": {
+				"namespace": "fake://bank",
+				"operations": [
+					{
+						"scope": "session",
+						"textHash": "4eb14b53c602a6b20ac71b4e9e425e1fe8b5d2a8effdacd25f571123c999f0b9",
+						"evidence": [
+							{
+								"ref": "a"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "00000000-0000-4000-8000-000000000001",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "00000000-0000-4000-8000-000000000002",
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"00000000-0000-4000-8000-000000000001"
+						],
+						"receipts": [
+							{
+								"id": "00000000-0000-4000-8000-000000000001",
+								"status": "completed"
+							}
+						]
+					},
+					{
+						"memoryId": "00000000-0000-4000-8000-000000000002",
+						"scope": "session",
+						"id": "00000000-0000-4000-8000-000000000003",
+						"kind": "get",
+						"state": "read",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"observedState": "stored"
+					},
+					{
+						"memoryId": "00000000-0000-4000-8000-000000000002",
+						"scope": "session",
+						"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+						"evidence": [
+							{
+								"ref": "b"
+							}
+						],
+						"evidenceClass": "user_statement",
+						"supersedes": "00000000-0000-4000-8000-000000000001",
+						"id": "00000000-0000-4000-8000-000000000004",
+						"kind": "correct",
+						"state": "accepted",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"00000000-0000-4000-8000-000000000004"
+						]
+					},
+					{
+						"queryHash": "1e7dc6d6c16565406afd121a89164b990879f5f47695e03b9c3fd0f07395a4ca",
+						"scope": "session",
+						"taskId": "t",
+						"id": "00000000-0000-4000-8000-000000000005",
+						"kind": "prepare",
+						"state": "recalled",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"retrieve": true,
+							"probability": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"references": [
+							{
+								"id": "entry-2",
+								"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+								"memoryId": "00000000-0000-4000-8000-000000000002",
+								"evidenceClass": "user_statement"
+							}
+						],
+						"excluded": [
+							{
+								"id": "entry-1",
+								"memoryId": "00000000-0000-4000-8000-000000000002",
+								"reason": "superseded"
+							}
+						]
+					},
+					{
+						"scope": "project",
+						"textHash": "2fde732bd0eed1aa3986245b3a6c5ac34bfb20530c8cb1a1cd26d175d3c536f8",
+						"evidence": [
+							{
+								"ref": "c"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "00000000-0000-4000-8000-000000000006",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "00000000-0000-4000-8000-000000000007",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"operationIds": []
+					},
+					{
+						"memoryId": "00000000-0000-4000-8000-000000000007",
+						"scope": "project",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"id": "00000000-0000-4000-8000-000000000008",
+						"kind": "forget",
+						"state": "forgotten",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z"
+					}
+				]
+			},
+			"ok": [
+				{
+					"scope": "session",
+					"textHash": "4eb14b53c602a6b20ac71b4e9e425e1fe8b5d2a8effdacd25f571123c999f0b9",
+					"evidence": [
+						{
+							"ref": "a"
+						}
+					],
+					"evidenceClass": "hypothesis",
+					"id": "<uuid>",
+					"kind": "propose",
+					"state": "stored",
+					"phase": "backend",
+					"createdAt": "<time>",
+					"updatedAt": "<time>",
+					"gate": {
+						"action": "keep",
+						"confidence": 1
+					},
+					"memoryId": "<uuid>",
+					"tags": [
+						"ultron:session:s1"
+					],
+					"operationIds": [
+						"<uuid>"
+					],
+					"receipts": [
+						{
+							"id": "<uuid>",
+							"status": "completed"
+						}
+					],
+					"supersededBy": "<uuid>"
+				},
+				{
+					"memoryId": "<uuid>",
+					"scope": "session",
+					"id": "<uuid>",
+					"kind": "get",
+					"state": "read",
+					"phase": "backend",
+					"createdAt": "<time>",
+					"updatedAt": "<time>",
+					"observedState": "stored"
+				},
+				{
+					"memoryId": "<uuid>",
+					"scope": "session",
+					"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+					"evidence": [
+						{
+							"ref": "b"
+						}
+					],
+					"evidenceClass": "user_statement",
+					"supersedes": "<uuid>",
+					"id": "<uuid>",
+					"kind": "correct",
+					"state": "accepted",
+					"phase": "backend",
+					"createdAt": "<time>",
+					"updatedAt": "<time>",
+					"gate": {
+						"action": "keep",
+						"confidence": 1
+					},
+					"tags": [
+						"ultron:session:s1"
+					],
+					"operationIds": [
+						"<uuid>"
+					]
+				},
+				{
+					"queryHash": "1e7dc6d6c16565406afd121a89164b990879f5f47695e03b9c3fd0f07395a4ca",
+					"scope": "session",
+					"taskId": "t",
+					"id": "<uuid>",
+					"kind": "prepare",
+					"state": "recalled",
+					"phase": "backend",
+					"createdAt": "<time>",
+					"updatedAt": "<time>",
+					"gate": {
+						"retrieve": true,
+						"probability": 1
+					},
+					"tags": [
+						"ultron:session:s1"
+					],
+					"references": [
+						{
+							"id": "entry-2",
+							"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+							"memoryId": "<uuid>",
+							"evidenceClass": "user_statement"
+						}
+					],
+					"excluded": [
+						{
+							"id": "entry-1",
+							"memoryId": "<uuid>",
+							"reason": "superseded"
+						}
+					]
+				},
+				{
+					"scope": "project",
+					"textHash": "2fde732bd0eed1aa3986245b3a6c5ac34bfb20530c8cb1a1cd26d175d3c536f8",
+					"evidence": [
+						{
+							"ref": "c"
+						}
+					],
+					"evidenceClass": "hypothesis",
+					"id": "<uuid>",
+					"kind": "propose",
+					"state": "stored",
+					"phase": "backend",
+					"createdAt": "<time>",
+					"updatedAt": "<time>",
+					"gate": {
+						"action": "keep",
+						"confidence": 1
+					},
+					"memoryId": "<uuid>",
+					"tags": [
+						"ultron:project:p1"
+					],
+					"operationIds": []
+				},
+				{
+					"memoryId": "<uuid>",
+					"scope": "project",
+					"tags": [
+						"ultron:project:p1"
+					],
+					"id": "<uuid>",
+					"kind": "forget",
+					"state": "forgotten",
+					"phase": "backend",
+					"createdAt": "<time>",
+					"updatedAt": "<time>"
+				}
+			],
+			"stored": {
+				"namespace": "fake://bank",
+				"operations": [
+					{
+						"scope": "session",
+						"textHash": "4eb14b53c602a6b20ac71b4e9e425e1fe8b5d2a8effdacd25f571123c999f0b9",
+						"evidence": [
+							{
+								"ref": "a"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "<uuid>",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "<uuid>",
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"<uuid>"
+						],
+						"receipts": [
+							{
+								"id": "<uuid>",
+								"status": "completed"
+							}
+						]
+					},
+					{
+						"memoryId": "<uuid>",
+						"scope": "session",
+						"id": "<uuid>",
+						"kind": "get",
+						"state": "read",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"observedState": "stored"
+					},
+					{
+						"memoryId": "<uuid>",
+						"scope": "session",
+						"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+						"evidence": [
+							{
+								"ref": "b"
+							}
+						],
+						"evidenceClass": "user_statement",
+						"supersedes": "<uuid>",
+						"id": "<uuid>",
+						"kind": "correct",
+						"state": "accepted",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"<uuid>"
+						]
+					},
+					{
+						"queryHash": "1e7dc6d6c16565406afd121a89164b990879f5f47695e03b9c3fd0f07395a4ca",
+						"scope": "session",
+						"taskId": "t",
+						"id": "<uuid>",
+						"kind": "prepare",
+						"state": "recalled",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"retrieve": true,
+							"probability": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"references": [
+							{
+								"id": "entry-2",
+								"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+								"memoryId": "<uuid>",
+								"evidenceClass": "user_statement"
+							}
+						],
+						"excluded": [
+							{
+								"id": "entry-1",
+								"memoryId": "<uuid>",
+								"reason": "superseded"
+							}
+						]
+					},
+					{
+						"scope": "project",
+						"textHash": "2fde732bd0eed1aa3986245b3a6c5ac34bfb20530c8cb1a1cd26d175d3c536f8",
+						"evidence": [
+							{
+								"ref": "c"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "<uuid>",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "<uuid>",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"operationIds": []
+					},
+					{
+						"memoryId": "<uuid>",
+						"scope": "project",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"id": "<uuid>",
+						"kind": "forget",
+						"state": "forgotten",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>"
+					}
+				]
+			}
+		},
+		{
+			"name": "version 2",
+			"input": {
+				"version": 2,
+				"namespace": "fake://bank",
+				"operations": [
+					{
+						"scope": "session",
+						"textHash": "4eb14b53c602a6b20ac71b4e9e425e1fe8b5d2a8effdacd25f571123c999f0b9",
+						"evidence": [
+							{
+								"ref": "a"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "00000000-0000-4000-8000-000000000001",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "00000000-0000-4000-8000-000000000002",
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"00000000-0000-4000-8000-000000000001"
+						],
+						"receipts": [
+							{
+								"id": "00000000-0000-4000-8000-000000000001",
+								"status": "completed"
+							}
+						]
+					},
+					{
+						"memoryId": "00000000-0000-4000-8000-000000000002",
+						"scope": "session",
+						"id": "00000000-0000-4000-8000-000000000003",
+						"kind": "get",
+						"state": "read",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"observedState": "stored"
+					},
+					{
+						"memoryId": "00000000-0000-4000-8000-000000000002",
+						"scope": "session",
+						"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+						"evidence": [
+							{
+								"ref": "b"
+							}
+						],
+						"evidenceClass": "user_statement",
+						"supersedes": "00000000-0000-4000-8000-000000000001",
+						"id": "00000000-0000-4000-8000-000000000004",
+						"kind": "correct",
+						"state": "accepted",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"00000000-0000-4000-8000-000000000004"
+						]
+					},
+					{
+						"queryHash": "1e7dc6d6c16565406afd121a89164b990879f5f47695e03b9c3fd0f07395a4ca",
+						"scope": "session",
+						"taskId": "t",
+						"id": "00000000-0000-4000-8000-000000000005",
+						"kind": "prepare",
+						"state": "recalled",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"retrieve": true,
+							"probability": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"references": [
+							{
+								"id": "entry-2",
+								"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+								"memoryId": "00000000-0000-4000-8000-000000000002",
+								"evidenceClass": "user_statement"
+							}
+						],
+						"excluded": [
+							{
+								"id": "entry-1",
+								"memoryId": "00000000-0000-4000-8000-000000000002",
+								"reason": "superseded"
+							}
+						]
+					},
+					{
+						"scope": "project",
+						"textHash": "2fde732bd0eed1aa3986245b3a6c5ac34bfb20530c8cb1a1cd26d175d3c536f8",
+						"evidence": [
+							{
+								"ref": "c"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "00000000-0000-4000-8000-000000000006",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "00000000-0000-4000-8000-000000000007",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"operationIds": []
+					},
+					{
+						"memoryId": "00000000-0000-4000-8000-000000000007",
+						"scope": "project",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"id": "00000000-0000-4000-8000-000000000008",
+						"kind": "forget",
+						"state": "forgotten",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z"
+					}
+				]
+			},
+			"error": "Cannot resume: session value ultron.memory.state/root has format version 2, but this Ultron reads only format version 1. It was left unchanged; open the session with the Ultron version that wrote it, or upgrade.",
+			"stored": {
+				"version": 2,
+				"namespace": "fake://bank",
+				"operations": [
+					{
+						"scope": "session",
+						"textHash": "4eb14b53c602a6b20ac71b4e9e425e1fe8b5d2a8effdacd25f571123c999f0b9",
+						"evidence": [
+							{
+								"ref": "a"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "<uuid>",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "<uuid>",
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"<uuid>"
+						],
+						"receipts": [
+							{
+								"id": "<uuid>",
+								"status": "completed"
+							}
+						]
+					},
+					{
+						"memoryId": "<uuid>",
+						"scope": "session",
+						"id": "<uuid>",
+						"kind": "get",
+						"state": "read",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"observedState": "stored"
+					},
+					{
+						"memoryId": "<uuid>",
+						"scope": "session",
+						"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+						"evidence": [
+							{
+								"ref": "b"
+							}
+						],
+						"evidenceClass": "user_statement",
+						"supersedes": "<uuid>",
+						"id": "<uuid>",
+						"kind": "correct",
+						"state": "accepted",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"<uuid>"
+						]
+					},
+					{
+						"queryHash": "1e7dc6d6c16565406afd121a89164b990879f5f47695e03b9c3fd0f07395a4ca",
+						"scope": "session",
+						"taskId": "t",
+						"id": "<uuid>",
+						"kind": "prepare",
+						"state": "recalled",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"retrieve": true,
+							"probability": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"references": [
+							{
+								"id": "entry-2",
+								"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+								"memoryId": "<uuid>",
+								"evidenceClass": "user_statement"
+							}
+						],
+						"excluded": [
+							{
+								"id": "entry-1",
+								"memoryId": "<uuid>",
+								"reason": "superseded"
+							}
+						]
+					},
+					{
+						"scope": "project",
+						"textHash": "2fde732bd0eed1aa3986245b3a6c5ac34bfb20530c8cb1a1cd26d175d3c536f8",
+						"evidence": [
+							{
+								"ref": "c"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "<uuid>",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "<uuid>",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"operationIds": []
+					},
+					{
+						"memoryId": "<uuid>",
+						"scope": "project",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"id": "<uuid>",
+						"kind": "forget",
+						"state": "forgotten",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>"
+					}
+				]
+			}
+		},
+		{
+			"name": "other namespace",
+			"input": {
+				"version": 1,
+				"namespace": "fake://other",
+				"operations": [
+					{
+						"scope": "session",
+						"textHash": "4eb14b53c602a6b20ac71b4e9e425e1fe8b5d2a8effdacd25f571123c999f0b9",
+						"evidence": [
+							{
+								"ref": "a"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "00000000-0000-4000-8000-000000000001",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "00000000-0000-4000-8000-000000000002",
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"00000000-0000-4000-8000-000000000001"
+						],
+						"receipts": [
+							{
+								"id": "00000000-0000-4000-8000-000000000001",
+								"status": "completed"
+							}
+						]
+					},
+					{
+						"memoryId": "00000000-0000-4000-8000-000000000002",
+						"scope": "session",
+						"id": "00000000-0000-4000-8000-000000000003",
+						"kind": "get",
+						"state": "read",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"observedState": "stored"
+					},
+					{
+						"memoryId": "00000000-0000-4000-8000-000000000002",
+						"scope": "session",
+						"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+						"evidence": [
+							{
+								"ref": "b"
+							}
+						],
+						"evidenceClass": "user_statement",
+						"supersedes": "00000000-0000-4000-8000-000000000001",
+						"id": "00000000-0000-4000-8000-000000000004",
+						"kind": "correct",
+						"state": "accepted",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"00000000-0000-4000-8000-000000000004"
+						]
+					},
+					{
+						"queryHash": "1e7dc6d6c16565406afd121a89164b990879f5f47695e03b9c3fd0f07395a4ca",
+						"scope": "session",
+						"taskId": "t",
+						"id": "00000000-0000-4000-8000-000000000005",
+						"kind": "prepare",
+						"state": "recalled",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"retrieve": true,
+							"probability": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"references": [
+							{
+								"id": "entry-2",
+								"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+								"memoryId": "00000000-0000-4000-8000-000000000002",
+								"evidenceClass": "user_statement"
+							}
+						],
+						"excluded": [
+							{
+								"id": "entry-1",
+								"memoryId": "00000000-0000-4000-8000-000000000002",
+								"reason": "superseded"
+							}
+						]
+					},
+					{
+						"scope": "project",
+						"textHash": "2fde732bd0eed1aa3986245b3a6c5ac34bfb20530c8cb1a1cd26d175d3c536f8",
+						"evidence": [
+							{
+								"ref": "c"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "00000000-0000-4000-8000-000000000006",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "00000000-0000-4000-8000-000000000007",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"operationIds": []
+					},
+					{
+						"memoryId": "00000000-0000-4000-8000-000000000007",
+						"scope": "project",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"id": "00000000-0000-4000-8000-000000000008",
+						"kind": "forget",
+						"state": "forgotten",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z"
+					}
+				]
+			},
+			"error": "Memory operation did not complete (BACKEND_MISMATCH)",
+			"stored": {
+				"version": 1,
+				"namespace": "fake://other",
+				"operations": [
+					{
+						"scope": "session",
+						"textHash": "4eb14b53c602a6b20ac71b4e9e425e1fe8b5d2a8effdacd25f571123c999f0b9",
+						"evidence": [
+							{
+								"ref": "a"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "<uuid>",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "<uuid>",
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"<uuid>"
+						],
+						"receipts": [
+							{
+								"id": "<uuid>",
+								"status": "completed"
+							}
+						]
+					},
+					{
+						"memoryId": "<uuid>",
+						"scope": "session",
+						"id": "<uuid>",
+						"kind": "get",
+						"state": "read",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"observedState": "stored"
+					},
+					{
+						"memoryId": "<uuid>",
+						"scope": "session",
+						"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+						"evidence": [
+							{
+								"ref": "b"
+							}
+						],
+						"evidenceClass": "user_statement",
+						"supersedes": "<uuid>",
+						"id": "<uuid>",
+						"kind": "correct",
+						"state": "accepted",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"<uuid>"
+						]
+					},
+					{
+						"queryHash": "1e7dc6d6c16565406afd121a89164b990879f5f47695e03b9c3fd0f07395a4ca",
+						"scope": "session",
+						"taskId": "t",
+						"id": "<uuid>",
+						"kind": "prepare",
+						"state": "recalled",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"retrieve": true,
+							"probability": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"references": [
+							{
+								"id": "entry-2",
+								"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+								"memoryId": "<uuid>",
+								"evidenceClass": "user_statement"
+							}
+						],
+						"excluded": [
+							{
+								"id": "entry-1",
+								"memoryId": "<uuid>",
+								"reason": "superseded"
+							}
+						]
+					},
+					{
+						"scope": "project",
+						"textHash": "2fde732bd0eed1aa3986245b3a6c5ac34bfb20530c8cb1a1cd26d175d3c536f8",
+						"evidence": [
+							{
+								"ref": "c"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "<uuid>",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "<uuid>",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"operationIds": []
+					},
+					{
+						"memoryId": "<uuid>",
+						"scope": "project",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"id": "<uuid>",
+						"kind": "forget",
+						"state": "forgotten",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>"
+					}
+				]
+			}
+		},
+		{
+			"name": "extra document field",
+			"input": {
+				"version": 1,
+				"namespace": "fake://bank",
+				"operations": [
+					{
+						"scope": "session",
+						"textHash": "4eb14b53c602a6b20ac71b4e9e425e1fe8b5d2a8effdacd25f571123c999f0b9",
+						"evidence": [
+							{
+								"ref": "a"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "00000000-0000-4000-8000-000000000001",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "00000000-0000-4000-8000-000000000002",
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"00000000-0000-4000-8000-000000000001"
+						],
+						"receipts": [
+							{
+								"id": "00000000-0000-4000-8000-000000000001",
+								"status": "completed"
+							}
+						]
+					},
+					{
+						"memoryId": "00000000-0000-4000-8000-000000000002",
+						"scope": "session",
+						"id": "00000000-0000-4000-8000-000000000003",
+						"kind": "get",
+						"state": "read",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"observedState": "stored"
+					},
+					{
+						"memoryId": "00000000-0000-4000-8000-000000000002",
+						"scope": "session",
+						"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+						"evidence": [
+							{
+								"ref": "b"
+							}
+						],
+						"evidenceClass": "user_statement",
+						"supersedes": "00000000-0000-4000-8000-000000000001",
+						"id": "00000000-0000-4000-8000-000000000004",
+						"kind": "correct",
+						"state": "accepted",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"00000000-0000-4000-8000-000000000004"
+						]
+					},
+					{
+						"queryHash": "1e7dc6d6c16565406afd121a89164b990879f5f47695e03b9c3fd0f07395a4ca",
+						"scope": "session",
+						"taskId": "t",
+						"id": "00000000-0000-4000-8000-000000000005",
+						"kind": "prepare",
+						"state": "recalled",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"retrieve": true,
+							"probability": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"references": [
+							{
+								"id": "entry-2",
+								"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+								"memoryId": "00000000-0000-4000-8000-000000000002",
+								"evidenceClass": "user_statement"
+							}
+						],
+						"excluded": [
+							{
+								"id": "entry-1",
+								"memoryId": "00000000-0000-4000-8000-000000000002",
+								"reason": "superseded"
+							}
+						]
+					},
+					{
+						"scope": "project",
+						"textHash": "2fde732bd0eed1aa3986245b3a6c5ac34bfb20530c8cb1a1cd26d175d3c536f8",
+						"evidence": [
+							{
+								"ref": "c"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "00000000-0000-4000-8000-000000000006",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "00000000-0000-4000-8000-000000000007",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"operationIds": []
+					},
+					{
+						"memoryId": "00000000-0000-4000-8000-000000000007",
+						"scope": "project",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"id": "00000000-0000-4000-8000-000000000008",
+						"kind": "forget",
+						"state": "forgotten",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z"
+					}
+				],
+				"extra": 1
+			},
+			"error": "Memory operation did not complete (INVALID_JOURNAL)",
+			"stored": {
+				"version": 1,
+				"namespace": "fake://bank",
+				"operations": [
+					{
+						"scope": "session",
+						"textHash": "4eb14b53c602a6b20ac71b4e9e425e1fe8b5d2a8effdacd25f571123c999f0b9",
+						"evidence": [
+							{
+								"ref": "a"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "<uuid>",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "<uuid>",
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"<uuid>"
+						],
+						"receipts": [
+							{
+								"id": "<uuid>",
+								"status": "completed"
+							}
+						]
+					},
+					{
+						"memoryId": "<uuid>",
+						"scope": "session",
+						"id": "<uuid>",
+						"kind": "get",
+						"state": "read",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"observedState": "stored"
+					},
+					{
+						"memoryId": "<uuid>",
+						"scope": "session",
+						"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+						"evidence": [
+							{
+								"ref": "b"
+							}
+						],
+						"evidenceClass": "user_statement",
+						"supersedes": "<uuid>",
+						"id": "<uuid>",
+						"kind": "correct",
+						"state": "accepted",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"<uuid>"
+						]
+					},
+					{
+						"queryHash": "1e7dc6d6c16565406afd121a89164b990879f5f47695e03b9c3fd0f07395a4ca",
+						"scope": "session",
+						"taskId": "t",
+						"id": "<uuid>",
+						"kind": "prepare",
+						"state": "recalled",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"retrieve": true,
+							"probability": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"references": [
+							{
+								"id": "entry-2",
+								"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+								"memoryId": "<uuid>",
+								"evidenceClass": "user_statement"
+							}
+						],
+						"excluded": [
+							{
+								"id": "entry-1",
+								"memoryId": "<uuid>",
+								"reason": "superseded"
+							}
+						]
+					},
+					{
+						"scope": "project",
+						"textHash": "2fde732bd0eed1aa3986245b3a6c5ac34bfb20530c8cb1a1cd26d175d3c536f8",
+						"evidence": [
+							{
+								"ref": "c"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "<uuid>",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "<uuid>",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"operationIds": []
+					},
+					{
+						"memoryId": "<uuid>",
+						"scope": "project",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"id": "<uuid>",
+						"kind": "forget",
+						"state": "forgotten",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>"
+					}
+				],
+				"extra": 1
+			}
+		},
+		{
+			"name": "extra operation field",
+			"input": {
+				"version": 1,
+				"namespace": "fake://bank",
+				"operations": [
+					{
+						"scope": "session",
+						"textHash": "4eb14b53c602a6b20ac71b4e9e425e1fe8b5d2a8effdacd25f571123c999f0b9",
+						"evidence": [
+							{
+								"ref": "a"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "00000000-0000-4000-8000-000000000001",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "00000000-0000-4000-8000-000000000002",
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"00000000-0000-4000-8000-000000000001"
+						],
+						"receipts": [
+							{
+								"id": "00000000-0000-4000-8000-000000000001",
+								"status": "completed"
+							}
+						],
+						"text": "secret"
+					},
+					{
+						"memoryId": "00000000-0000-4000-8000-000000000002",
+						"scope": "session",
+						"id": "00000000-0000-4000-8000-000000000003",
+						"kind": "get",
+						"state": "read",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"observedState": "stored"
+					},
+					{
+						"memoryId": "00000000-0000-4000-8000-000000000002",
+						"scope": "session",
+						"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+						"evidence": [
+							{
+								"ref": "b"
+							}
+						],
+						"evidenceClass": "user_statement",
+						"supersedes": "00000000-0000-4000-8000-000000000001",
+						"id": "00000000-0000-4000-8000-000000000004",
+						"kind": "correct",
+						"state": "accepted",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"00000000-0000-4000-8000-000000000004"
+						]
+					},
+					{
+						"queryHash": "1e7dc6d6c16565406afd121a89164b990879f5f47695e03b9c3fd0f07395a4ca",
+						"scope": "session",
+						"taskId": "t",
+						"id": "00000000-0000-4000-8000-000000000005",
+						"kind": "prepare",
+						"state": "recalled",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"retrieve": true,
+							"probability": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"references": [
+							{
+								"id": "entry-2",
+								"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+								"memoryId": "00000000-0000-4000-8000-000000000002",
+								"evidenceClass": "user_statement"
+							}
+						],
+						"excluded": [
+							{
+								"id": "entry-1",
+								"memoryId": "00000000-0000-4000-8000-000000000002",
+								"reason": "superseded"
+							}
+						]
+					},
+					{
+						"scope": "project",
+						"textHash": "2fde732bd0eed1aa3986245b3a6c5ac34bfb20530c8cb1a1cd26d175d3c536f8",
+						"evidence": [
+							{
+								"ref": "c"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "00000000-0000-4000-8000-000000000006",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "00000000-0000-4000-8000-000000000007",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"operationIds": []
+					},
+					{
+						"memoryId": "00000000-0000-4000-8000-000000000007",
+						"scope": "project",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"id": "00000000-0000-4000-8000-000000000008",
+						"kind": "forget",
+						"state": "forgotten",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z"
+					}
+				]
+			},
+			"error": "Memory operation did not complete (INVALID_JOURNAL)",
+			"stored": {
+				"version": 1,
+				"namespace": "fake://bank",
+				"operations": [
+					{
+						"scope": "session",
+						"textHash": "4eb14b53c602a6b20ac71b4e9e425e1fe8b5d2a8effdacd25f571123c999f0b9",
+						"evidence": [
+							{
+								"ref": "a"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "<uuid>",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "<uuid>",
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"<uuid>"
+						],
+						"receipts": [
+							{
+								"id": "<uuid>",
+								"status": "completed"
+							}
+						],
+						"text": "secret"
+					},
+					{
+						"memoryId": "<uuid>",
+						"scope": "session",
+						"id": "<uuid>",
+						"kind": "get",
+						"state": "read",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"observedState": "stored"
+					},
+					{
+						"memoryId": "<uuid>",
+						"scope": "session",
+						"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+						"evidence": [
+							{
+								"ref": "b"
+							}
+						],
+						"evidenceClass": "user_statement",
+						"supersedes": "<uuid>",
+						"id": "<uuid>",
+						"kind": "correct",
+						"state": "accepted",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"<uuid>"
+						]
+					},
+					{
+						"queryHash": "1e7dc6d6c16565406afd121a89164b990879f5f47695e03b9c3fd0f07395a4ca",
+						"scope": "session",
+						"taskId": "t",
+						"id": "<uuid>",
+						"kind": "prepare",
+						"state": "recalled",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"retrieve": true,
+							"probability": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"references": [
+							{
+								"id": "entry-2",
+								"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+								"memoryId": "<uuid>",
+								"evidenceClass": "user_statement"
+							}
+						],
+						"excluded": [
+							{
+								"id": "entry-1",
+								"memoryId": "<uuid>",
+								"reason": "superseded"
+							}
+						]
+					},
+					{
+						"scope": "project",
+						"textHash": "2fde732bd0eed1aa3986245b3a6c5ac34bfb20530c8cb1a1cd26d175d3c536f8",
+						"evidence": [
+							{
+								"ref": "c"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "<uuid>",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "<uuid>",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"operationIds": []
+					},
+					{
+						"memoryId": "<uuid>",
+						"scope": "project",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"id": "<uuid>",
+						"kind": "forget",
+						"state": "forgotten",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>"
+					}
+				]
+			}
+		},
+		{
+			"name": "duplicate id",
+			"input": {
+				"version": 1,
+				"namespace": "fake://bank",
+				"operations": [
+					{
+						"scope": "session",
+						"textHash": "4eb14b53c602a6b20ac71b4e9e425e1fe8b5d2a8effdacd25f571123c999f0b9",
+						"evidence": [
+							{
+								"ref": "a"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "00000000-0000-4000-8000-000000000001",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "00000000-0000-4000-8000-000000000002",
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"00000000-0000-4000-8000-000000000001"
+						],
+						"receipts": [
+							{
+								"id": "00000000-0000-4000-8000-000000000001",
+								"status": "completed"
+							}
+						]
+					},
+					{
+						"memoryId": "00000000-0000-4000-8000-000000000002",
+						"scope": "session",
+						"id": "00000000-0000-4000-8000-000000000003",
+						"kind": "get",
+						"state": "read",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"observedState": "stored"
+					},
+					{
+						"memoryId": "00000000-0000-4000-8000-000000000002",
+						"scope": "session",
+						"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+						"evidence": [
+							{
+								"ref": "b"
+							}
+						],
+						"evidenceClass": "user_statement",
+						"supersedes": "00000000-0000-4000-8000-000000000001",
+						"id": "00000000-0000-4000-8000-000000000004",
+						"kind": "correct",
+						"state": "accepted",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"00000000-0000-4000-8000-000000000004"
+						]
+					},
+					{
+						"queryHash": "1e7dc6d6c16565406afd121a89164b990879f5f47695e03b9c3fd0f07395a4ca",
+						"scope": "session",
+						"taskId": "t",
+						"id": "00000000-0000-4000-8000-000000000005",
+						"kind": "prepare",
+						"state": "recalled",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"retrieve": true,
+							"probability": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"references": [
+							{
+								"id": "entry-2",
+								"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+								"memoryId": "00000000-0000-4000-8000-000000000002",
+								"evidenceClass": "user_statement"
+							}
+						],
+						"excluded": [
+							{
+								"id": "entry-1",
+								"memoryId": "00000000-0000-4000-8000-000000000002",
+								"reason": "superseded"
+							}
+						]
+					},
+					{
+						"scope": "project",
+						"textHash": "2fde732bd0eed1aa3986245b3a6c5ac34bfb20530c8cb1a1cd26d175d3c536f8",
+						"evidence": [
+							{
+								"ref": "c"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "00000000-0000-4000-8000-000000000006",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "00000000-0000-4000-8000-000000000007",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"operationIds": []
+					},
+					{
+						"memoryId": "00000000-0000-4000-8000-000000000007",
+						"scope": "project",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"id": "00000000-0000-4000-8000-000000000008",
+						"kind": "forget",
+						"state": "forgotten",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z"
+					},
+					{
+						"scope": "session",
+						"textHash": "4eb14b53c602a6b20ac71b4e9e425e1fe8b5d2a8effdacd25f571123c999f0b9",
+						"evidence": [
+							{
+								"ref": "a"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "00000000-0000-4000-8000-000000000001",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "00000000-0000-4000-8000-000000000002",
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"00000000-0000-4000-8000-000000000001"
+						],
+						"receipts": [
+							{
+								"id": "00000000-0000-4000-8000-000000000001",
+								"status": "completed"
+							}
+						]
+					}
+				]
+			},
+			"error": "Memory operation did not complete (INVALID_JOURNAL)",
+			"stored": {
+				"version": 1,
+				"namespace": "fake://bank",
+				"operations": [
+					{
+						"scope": "session",
+						"textHash": "4eb14b53c602a6b20ac71b4e9e425e1fe8b5d2a8effdacd25f571123c999f0b9",
+						"evidence": [
+							{
+								"ref": "a"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "<uuid>",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "<uuid>",
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"<uuid>"
+						],
+						"receipts": [
+							{
+								"id": "<uuid>",
+								"status": "completed"
+							}
+						]
+					},
+					{
+						"memoryId": "<uuid>",
+						"scope": "session",
+						"id": "<uuid>",
+						"kind": "get",
+						"state": "read",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"observedState": "stored"
+					},
+					{
+						"memoryId": "<uuid>",
+						"scope": "session",
+						"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+						"evidence": [
+							{
+								"ref": "b"
+							}
+						],
+						"evidenceClass": "user_statement",
+						"supersedes": "<uuid>",
+						"id": "<uuid>",
+						"kind": "correct",
+						"state": "accepted",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"<uuid>"
+						]
+					},
+					{
+						"queryHash": "1e7dc6d6c16565406afd121a89164b990879f5f47695e03b9c3fd0f07395a4ca",
+						"scope": "session",
+						"taskId": "t",
+						"id": "<uuid>",
+						"kind": "prepare",
+						"state": "recalled",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"retrieve": true,
+							"probability": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"references": [
+							{
+								"id": "entry-2",
+								"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+								"memoryId": "<uuid>",
+								"evidenceClass": "user_statement"
+							}
+						],
+						"excluded": [
+							{
+								"id": "entry-1",
+								"memoryId": "<uuid>",
+								"reason": "superseded"
+							}
+						]
+					},
+					{
+						"scope": "project",
+						"textHash": "2fde732bd0eed1aa3986245b3a6c5ac34bfb20530c8cb1a1cd26d175d3c536f8",
+						"evidence": [
+							{
+								"ref": "c"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "<uuid>",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "<uuid>",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"operationIds": []
+					},
+					{
+						"memoryId": "<uuid>",
+						"scope": "project",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"id": "<uuid>",
+						"kind": "forget",
+						"state": "forgotten",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>"
+					},
+					{
+						"scope": "session",
+						"textHash": "4eb14b53c602a6b20ac71b4e9e425e1fe8b5d2a8effdacd25f571123c999f0b9",
+						"evidence": [
+							{
+								"ref": "a"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "<uuid>",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "<uuid>",
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"<uuid>"
+						],
+						"receipts": [
+							{
+								"id": "<uuid>",
+								"status": "completed"
+							}
+						]
+					}
+				]
+			}
+		},
+		{
+			"name": "unknown kind",
+			"input": {
+				"version": 1,
+				"namespace": "fake://bank",
+				"operations": [
+					{
+						"scope": "session",
+						"textHash": "4eb14b53c602a6b20ac71b4e9e425e1fe8b5d2a8effdacd25f571123c999f0b9",
+						"evidence": [
+							{
+								"ref": "a"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "00000000-0000-4000-8000-000000000001",
+						"kind": "bogus",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "00000000-0000-4000-8000-000000000002",
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"00000000-0000-4000-8000-000000000001"
+						],
+						"receipts": [
+							{
+								"id": "00000000-0000-4000-8000-000000000001",
+								"status": "completed"
+							}
+						]
+					},
+					{
+						"memoryId": "00000000-0000-4000-8000-000000000002",
+						"scope": "session",
+						"id": "00000000-0000-4000-8000-000000000003",
+						"kind": "get",
+						"state": "read",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"observedState": "stored"
+					},
+					{
+						"memoryId": "00000000-0000-4000-8000-000000000002",
+						"scope": "session",
+						"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+						"evidence": [
+							{
+								"ref": "b"
+							}
+						],
+						"evidenceClass": "user_statement",
+						"supersedes": "00000000-0000-4000-8000-000000000001",
+						"id": "00000000-0000-4000-8000-000000000004",
+						"kind": "correct",
+						"state": "accepted",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"00000000-0000-4000-8000-000000000004"
+						]
+					},
+					{
+						"queryHash": "1e7dc6d6c16565406afd121a89164b990879f5f47695e03b9c3fd0f07395a4ca",
+						"scope": "session",
+						"taskId": "t",
+						"id": "00000000-0000-4000-8000-000000000005",
+						"kind": "prepare",
+						"state": "recalled",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"retrieve": true,
+							"probability": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"references": [
+							{
+								"id": "entry-2",
+								"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+								"memoryId": "00000000-0000-4000-8000-000000000002",
+								"evidenceClass": "user_statement"
+							}
+						],
+						"excluded": [
+							{
+								"id": "entry-1",
+								"memoryId": "00000000-0000-4000-8000-000000000002",
+								"reason": "superseded"
+							}
+						]
+					},
+					{
+						"scope": "project",
+						"textHash": "2fde732bd0eed1aa3986245b3a6c5ac34bfb20530c8cb1a1cd26d175d3c536f8",
+						"evidence": [
+							{
+								"ref": "c"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "00000000-0000-4000-8000-000000000006",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "00000000-0000-4000-8000-000000000007",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"operationIds": []
+					},
+					{
+						"memoryId": "00000000-0000-4000-8000-000000000007",
+						"scope": "project",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"id": "00000000-0000-4000-8000-000000000008",
+						"kind": "forget",
+						"state": "forgotten",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z"
+					}
+				]
+			},
+			"error": "Memory operation did not complete (INVALID_JOURNAL)",
+			"stored": {
+				"version": 1,
+				"namespace": "fake://bank",
+				"operations": [
+					{
+						"scope": "session",
+						"textHash": "4eb14b53c602a6b20ac71b4e9e425e1fe8b5d2a8effdacd25f571123c999f0b9",
+						"evidence": [
+							{
+								"ref": "a"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "<uuid>",
+						"kind": "bogus",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "<uuid>",
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"<uuid>"
+						],
+						"receipts": [
+							{
+								"id": "<uuid>",
+								"status": "completed"
+							}
+						]
+					},
+					{
+						"memoryId": "<uuid>",
+						"scope": "session",
+						"id": "<uuid>",
+						"kind": "get",
+						"state": "read",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"observedState": "stored"
+					},
+					{
+						"memoryId": "<uuid>",
+						"scope": "session",
+						"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+						"evidence": [
+							{
+								"ref": "b"
+							}
+						],
+						"evidenceClass": "user_statement",
+						"supersedes": "<uuid>",
+						"id": "<uuid>",
+						"kind": "correct",
+						"state": "accepted",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"<uuid>"
+						]
+					},
+					{
+						"queryHash": "1e7dc6d6c16565406afd121a89164b990879f5f47695e03b9c3fd0f07395a4ca",
+						"scope": "session",
+						"taskId": "t",
+						"id": "<uuid>",
+						"kind": "prepare",
+						"state": "recalled",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"retrieve": true,
+							"probability": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"references": [
+							{
+								"id": "entry-2",
+								"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+								"memoryId": "<uuid>",
+								"evidenceClass": "user_statement"
+							}
+						],
+						"excluded": [
+							{
+								"id": "entry-1",
+								"memoryId": "<uuid>",
+								"reason": "superseded"
+							}
+						]
+					},
+					{
+						"scope": "project",
+						"textHash": "2fde732bd0eed1aa3986245b3a6c5ac34bfb20530c8cb1a1cd26d175d3c536f8",
+						"evidence": [
+							{
+								"ref": "c"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "<uuid>",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "<uuid>",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"operationIds": []
+					},
+					{
+						"memoryId": "<uuid>",
+						"scope": "project",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"id": "<uuid>",
+						"kind": "forget",
+						"state": "forgotten",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>"
+					}
+				]
+			}
+		},
+		{
+			"name": "bad created",
+			"input": {
+				"version": 1,
+				"namespace": "fake://bank",
+				"operations": [
+					{
+						"scope": "session",
+						"textHash": "4eb14b53c602a6b20ac71b4e9e425e1fe8b5d2a8effdacd25f571123c999f0b9",
+						"evidence": [
+							{
+								"ref": "a"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "00000000-0000-4000-8000-000000000001",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "yesterday",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "00000000-0000-4000-8000-000000000002",
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"00000000-0000-4000-8000-000000000001"
+						],
+						"receipts": [
+							{
+								"id": "00000000-0000-4000-8000-000000000001",
+								"status": "completed"
+							}
+						]
+					},
+					{
+						"memoryId": "00000000-0000-4000-8000-000000000002",
+						"scope": "session",
+						"id": "00000000-0000-4000-8000-000000000003",
+						"kind": "get",
+						"state": "read",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"observedState": "stored"
+					},
+					{
+						"memoryId": "00000000-0000-4000-8000-000000000002",
+						"scope": "session",
+						"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+						"evidence": [
+							{
+								"ref": "b"
+							}
+						],
+						"evidenceClass": "user_statement",
+						"supersedes": "00000000-0000-4000-8000-000000000001",
+						"id": "00000000-0000-4000-8000-000000000004",
+						"kind": "correct",
+						"state": "accepted",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"00000000-0000-4000-8000-000000000004"
+						]
+					},
+					{
+						"queryHash": "1e7dc6d6c16565406afd121a89164b990879f5f47695e03b9c3fd0f07395a4ca",
+						"scope": "session",
+						"taskId": "t",
+						"id": "00000000-0000-4000-8000-000000000005",
+						"kind": "prepare",
+						"state": "recalled",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"retrieve": true,
+							"probability": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"references": [
+							{
+								"id": "entry-2",
+								"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+								"memoryId": "00000000-0000-4000-8000-000000000002",
+								"evidenceClass": "user_statement"
+							}
+						],
+						"excluded": [
+							{
+								"id": "entry-1",
+								"memoryId": "00000000-0000-4000-8000-000000000002",
+								"reason": "superseded"
+							}
+						]
+					},
+					{
+						"scope": "project",
+						"textHash": "2fde732bd0eed1aa3986245b3a6c5ac34bfb20530c8cb1a1cd26d175d3c536f8",
+						"evidence": [
+							{
+								"ref": "c"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "00000000-0000-4000-8000-000000000006",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "00000000-0000-4000-8000-000000000007",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"operationIds": []
+					},
+					{
+						"memoryId": "00000000-0000-4000-8000-000000000007",
+						"scope": "project",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"id": "00000000-0000-4000-8000-000000000008",
+						"kind": "forget",
+						"state": "forgotten",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z"
+					}
+				]
+			},
+			"error": "Memory operation did not complete (INVALID_JOURNAL)",
+			"stored": {
+				"version": 1,
+				"namespace": "fake://bank",
+				"operations": [
+					{
+						"scope": "session",
+						"textHash": "4eb14b53c602a6b20ac71b4e9e425e1fe8b5d2a8effdacd25f571123c999f0b9",
+						"evidence": [
+							{
+								"ref": "a"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "<uuid>",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "yesterday",
+						"updatedAt": "<time>",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "<uuid>",
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"<uuid>"
+						],
+						"receipts": [
+							{
+								"id": "<uuid>",
+								"status": "completed"
+							}
+						]
+					},
+					{
+						"memoryId": "<uuid>",
+						"scope": "session",
+						"id": "<uuid>",
+						"kind": "get",
+						"state": "read",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"observedState": "stored"
+					},
+					{
+						"memoryId": "<uuid>",
+						"scope": "session",
+						"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+						"evidence": [
+							{
+								"ref": "b"
+							}
+						],
+						"evidenceClass": "user_statement",
+						"supersedes": "<uuid>",
+						"id": "<uuid>",
+						"kind": "correct",
+						"state": "accepted",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"<uuid>"
+						]
+					},
+					{
+						"queryHash": "1e7dc6d6c16565406afd121a89164b990879f5f47695e03b9c3fd0f07395a4ca",
+						"scope": "session",
+						"taskId": "t",
+						"id": "<uuid>",
+						"kind": "prepare",
+						"state": "recalled",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"retrieve": true,
+							"probability": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"references": [
+							{
+								"id": "entry-2",
+								"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+								"memoryId": "<uuid>",
+								"evidenceClass": "user_statement"
+							}
+						],
+						"excluded": [
+							{
+								"id": "entry-1",
+								"memoryId": "<uuid>",
+								"reason": "superseded"
+							}
+						]
+					},
+					{
+						"scope": "project",
+						"textHash": "2fde732bd0eed1aa3986245b3a6c5ac34bfb20530c8cb1a1cd26d175d3c536f8",
+						"evidence": [
+							{
+								"ref": "c"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "<uuid>",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "<uuid>",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"operationIds": []
+					},
+					{
+						"memoryId": "<uuid>",
+						"scope": "project",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"id": "<uuid>",
+						"kind": "forget",
+						"state": "forgotten",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>"
+					}
+				]
+			}
+		},
+		{
+			"name": "bad text hash",
+			"input": {
+				"version": 1,
+				"namespace": "fake://bank",
+				"operations": [
+					{
+						"scope": "session",
+						"textHash": "xyz",
+						"evidence": [
+							{
+								"ref": "a"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "00000000-0000-4000-8000-000000000001",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "00000000-0000-4000-8000-000000000002",
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"00000000-0000-4000-8000-000000000001"
+						],
+						"receipts": [
+							{
+								"id": "00000000-0000-4000-8000-000000000001",
+								"status": "completed"
+							}
+						]
+					},
+					{
+						"memoryId": "00000000-0000-4000-8000-000000000002",
+						"scope": "session",
+						"id": "00000000-0000-4000-8000-000000000003",
+						"kind": "get",
+						"state": "read",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"observedState": "stored"
+					},
+					{
+						"memoryId": "00000000-0000-4000-8000-000000000002",
+						"scope": "session",
+						"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+						"evidence": [
+							{
+								"ref": "b"
+							}
+						],
+						"evidenceClass": "user_statement",
+						"supersedes": "00000000-0000-4000-8000-000000000001",
+						"id": "00000000-0000-4000-8000-000000000004",
+						"kind": "correct",
+						"state": "accepted",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"00000000-0000-4000-8000-000000000004"
+						]
+					},
+					{
+						"queryHash": "1e7dc6d6c16565406afd121a89164b990879f5f47695e03b9c3fd0f07395a4ca",
+						"scope": "session",
+						"taskId": "t",
+						"id": "00000000-0000-4000-8000-000000000005",
+						"kind": "prepare",
+						"state": "recalled",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"retrieve": true,
+							"probability": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"references": [
+							{
+								"id": "entry-2",
+								"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+								"memoryId": "00000000-0000-4000-8000-000000000002",
+								"evidenceClass": "user_statement"
+							}
+						],
+						"excluded": [
+							{
+								"id": "entry-1",
+								"memoryId": "00000000-0000-4000-8000-000000000002",
+								"reason": "superseded"
+							}
+						]
+					},
+					{
+						"scope": "project",
+						"textHash": "2fde732bd0eed1aa3986245b3a6c5ac34bfb20530c8cb1a1cd26d175d3c536f8",
+						"evidence": [
+							{
+								"ref": "c"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "00000000-0000-4000-8000-000000000006",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "00000000-0000-4000-8000-000000000007",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"operationIds": []
+					},
+					{
+						"memoryId": "00000000-0000-4000-8000-000000000007",
+						"scope": "project",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"id": "00000000-0000-4000-8000-000000000008",
+						"kind": "forget",
+						"state": "forgotten",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z"
+					}
+				]
+			},
+			"error": "Memory operation did not complete (INVALID_JOURNAL)",
+			"stored": {
+				"version": 1,
+				"namespace": "fake://bank",
+				"operations": [
+					{
+						"scope": "session",
+						"textHash": "xyz",
+						"evidence": [
+							{
+								"ref": "a"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "<uuid>",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "<uuid>",
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"<uuid>"
+						],
+						"receipts": [
+							{
+								"id": "<uuid>",
+								"status": "completed"
+							}
+						]
+					},
+					{
+						"memoryId": "<uuid>",
+						"scope": "session",
+						"id": "<uuid>",
+						"kind": "get",
+						"state": "read",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"observedState": "stored"
+					},
+					{
+						"memoryId": "<uuid>",
+						"scope": "session",
+						"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+						"evidence": [
+							{
+								"ref": "b"
+							}
+						],
+						"evidenceClass": "user_statement",
+						"supersedes": "<uuid>",
+						"id": "<uuid>",
+						"kind": "correct",
+						"state": "accepted",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"<uuid>"
+						]
+					},
+					{
+						"queryHash": "1e7dc6d6c16565406afd121a89164b990879f5f47695e03b9c3fd0f07395a4ca",
+						"scope": "session",
+						"taskId": "t",
+						"id": "<uuid>",
+						"kind": "prepare",
+						"state": "recalled",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"retrieve": true,
+							"probability": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"references": [
+							{
+								"id": "entry-2",
+								"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+								"memoryId": "<uuid>",
+								"evidenceClass": "user_statement"
+							}
+						],
+						"excluded": [
+							{
+								"id": "entry-1",
+								"memoryId": "<uuid>",
+								"reason": "superseded"
+							}
+						]
+					},
+					{
+						"scope": "project",
+						"textHash": "2fde732bd0eed1aa3986245b3a6c5ac34bfb20530c8cb1a1cd26d175d3c536f8",
+						"evidence": [
+							{
+								"ref": "c"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "<uuid>",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "<uuid>",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"operationIds": []
+					},
+					{
+						"memoryId": "<uuid>",
+						"scope": "project",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"id": "<uuid>",
+						"kind": "forget",
+						"state": "forgotten",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>"
+					}
+				]
+			}
+		},
+		{
+			"name": "supersedes unknown",
+			"input": {
+				"version": 1,
+				"namespace": "fake://bank",
+				"operations": [
+					{
+						"scope": "session",
+						"textHash": "4eb14b53c602a6b20ac71b4e9e425e1fe8b5d2a8effdacd25f571123c999f0b9",
+						"evidence": [
+							{
+								"ref": "a"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "00000000-0000-4000-8000-000000000001",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "00000000-0000-4000-8000-000000000002",
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"00000000-0000-4000-8000-000000000001"
+						],
+						"receipts": [
+							{
+								"id": "00000000-0000-4000-8000-000000000001",
+								"status": "completed"
+							}
+						]
+					},
+					{
+						"memoryId": "00000000-0000-4000-8000-000000000002",
+						"scope": "session",
+						"id": "00000000-0000-4000-8000-000000000003",
+						"kind": "get",
+						"state": "read",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"observedState": "stored"
+					},
+					{
+						"memoryId": "00000000-0000-4000-8000-000000000002",
+						"scope": "session",
+						"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+						"evidence": [
+							{
+								"ref": "b"
+							}
+						],
+						"evidenceClass": "user_statement",
+						"supersedes": "nope",
+						"id": "00000000-0000-4000-8000-000000000004",
+						"kind": "correct",
+						"state": "accepted",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"00000000-0000-4000-8000-000000000004"
+						]
+					},
+					{
+						"queryHash": "1e7dc6d6c16565406afd121a89164b990879f5f47695e03b9c3fd0f07395a4ca",
+						"scope": "session",
+						"taskId": "t",
+						"id": "00000000-0000-4000-8000-000000000005",
+						"kind": "prepare",
+						"state": "recalled",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"retrieve": true,
+							"probability": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"references": [
+							{
+								"id": "entry-2",
+								"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+								"memoryId": "00000000-0000-4000-8000-000000000002",
+								"evidenceClass": "user_statement"
+							}
+						],
+						"excluded": [
+							{
+								"id": "entry-1",
+								"memoryId": "00000000-0000-4000-8000-000000000002",
+								"reason": "superseded"
+							}
+						]
+					},
+					{
+						"scope": "project",
+						"textHash": "2fde732bd0eed1aa3986245b3a6c5ac34bfb20530c8cb1a1cd26d175d3c536f8",
+						"evidence": [
+							{
+								"ref": "c"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "00000000-0000-4000-8000-000000000006",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "00000000-0000-4000-8000-000000000007",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"operationIds": []
+					},
+					{
+						"memoryId": "00000000-0000-4000-8000-000000000007",
+						"scope": "project",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"id": "00000000-0000-4000-8000-000000000008",
+						"kind": "forget",
+						"state": "forgotten",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z"
+					}
+				]
+			},
+			"error": "Memory operation did not complete (INVALID_JOURNAL)",
+			"stored": {
+				"version": 1,
+				"namespace": "fake://bank",
+				"operations": [
+					{
+						"scope": "session",
+						"textHash": "4eb14b53c602a6b20ac71b4e9e425e1fe8b5d2a8effdacd25f571123c999f0b9",
+						"evidence": [
+							{
+								"ref": "a"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "<uuid>",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "<uuid>",
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"<uuid>"
+						],
+						"receipts": [
+							{
+								"id": "<uuid>",
+								"status": "completed"
+							}
+						]
+					},
+					{
+						"memoryId": "<uuid>",
+						"scope": "session",
+						"id": "<uuid>",
+						"kind": "get",
+						"state": "read",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"observedState": "stored"
+					},
+					{
+						"memoryId": "<uuid>",
+						"scope": "session",
+						"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+						"evidence": [
+							{
+								"ref": "b"
+							}
+						],
+						"evidenceClass": "user_statement",
+						"supersedes": "nope",
+						"id": "<uuid>",
+						"kind": "correct",
+						"state": "accepted",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"<uuid>"
+						]
+					},
+					{
+						"queryHash": "1e7dc6d6c16565406afd121a89164b990879f5f47695e03b9c3fd0f07395a4ca",
+						"scope": "session",
+						"taskId": "t",
+						"id": "<uuid>",
+						"kind": "prepare",
+						"state": "recalled",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"retrieve": true,
+							"probability": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"references": [
+							{
+								"id": "entry-2",
+								"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+								"memoryId": "<uuid>",
+								"evidenceClass": "user_statement"
+							}
+						],
+						"excluded": [
+							{
+								"id": "entry-1",
+								"memoryId": "<uuid>",
+								"reason": "superseded"
+							}
+						]
+					},
+					{
+						"scope": "project",
+						"textHash": "2fde732bd0eed1aa3986245b3a6c5ac34bfb20530c8cb1a1cd26d175d3c536f8",
+						"evidence": [
+							{
+								"ref": "c"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "<uuid>",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "<uuid>",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"operationIds": []
+					},
+					{
+						"memoryId": "<uuid>",
+						"scope": "project",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"id": "<uuid>",
+						"kind": "forget",
+						"state": "forgotten",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>"
+					}
+				]
+			}
+		},
+		{
+			"name": "get before owner",
+			"input": {
+				"version": 1,
+				"namespace": "fake://bank",
+				"operations": [
+					{
+						"memoryId": "00000000-0000-4000-8000-000000000002",
+						"scope": "session",
+						"id": "00000000-0000-4000-8000-000000000003",
+						"kind": "get",
+						"state": "read",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"observedState": "stored"
+					},
+					{
+						"scope": "session",
+						"textHash": "4eb14b53c602a6b20ac71b4e9e425e1fe8b5d2a8effdacd25f571123c999f0b9",
+						"evidence": [
+							{
+								"ref": "a"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "00000000-0000-4000-8000-000000000001",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "00000000-0000-4000-8000-000000000002",
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"00000000-0000-4000-8000-000000000001"
+						],
+						"receipts": [
+							{
+								"id": "00000000-0000-4000-8000-000000000001",
+								"status": "completed"
+							}
+						]
+					},
+					{
+						"memoryId": "00000000-0000-4000-8000-000000000002",
+						"scope": "session",
+						"id": "00000000-0000-4000-8000-000000000003",
+						"kind": "get",
+						"state": "read",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"observedState": "stored"
+					},
+					{
+						"memoryId": "00000000-0000-4000-8000-000000000002",
+						"scope": "session",
+						"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+						"evidence": [
+							{
+								"ref": "b"
+							}
+						],
+						"evidenceClass": "user_statement",
+						"supersedes": "00000000-0000-4000-8000-000000000001",
+						"id": "00000000-0000-4000-8000-000000000004",
+						"kind": "correct",
+						"state": "accepted",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"00000000-0000-4000-8000-000000000004"
+						]
+					},
+					{
+						"queryHash": "1e7dc6d6c16565406afd121a89164b990879f5f47695e03b9c3fd0f07395a4ca",
+						"scope": "session",
+						"taskId": "t",
+						"id": "00000000-0000-4000-8000-000000000005",
+						"kind": "prepare",
+						"state": "recalled",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"retrieve": true,
+							"probability": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"references": [
+							{
+								"id": "entry-2",
+								"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+								"memoryId": "00000000-0000-4000-8000-000000000002",
+								"evidenceClass": "user_statement"
+							}
+						],
+						"excluded": [
+							{
+								"id": "entry-1",
+								"memoryId": "00000000-0000-4000-8000-000000000002",
+								"reason": "superseded"
+							}
+						]
+					},
+					{
+						"scope": "project",
+						"textHash": "2fde732bd0eed1aa3986245b3a6c5ac34bfb20530c8cb1a1cd26d175d3c536f8",
+						"evidence": [
+							{
+								"ref": "c"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "00000000-0000-4000-8000-000000000006",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "00000000-0000-4000-8000-000000000007",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"operationIds": []
+					},
+					{
+						"memoryId": "00000000-0000-4000-8000-000000000007",
+						"scope": "project",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"id": "00000000-0000-4000-8000-000000000008",
+						"kind": "forget",
+						"state": "forgotten",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z"
+					}
+				]
+			},
+			"error": "Memory operation did not complete (INVALID_JOURNAL)",
+			"stored": {
+				"version": 1,
+				"namespace": "fake://bank",
+				"operations": [
+					{
+						"memoryId": "<uuid>",
+						"scope": "session",
+						"id": "<uuid>",
+						"kind": "get",
+						"state": "read",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"observedState": "stored"
+					},
+					{
+						"scope": "session",
+						"textHash": "4eb14b53c602a6b20ac71b4e9e425e1fe8b5d2a8effdacd25f571123c999f0b9",
+						"evidence": [
+							{
+								"ref": "a"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "<uuid>",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "<uuid>",
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"<uuid>"
+						],
+						"receipts": [
+							{
+								"id": "<uuid>",
+								"status": "completed"
+							}
+						]
+					},
+					{
+						"memoryId": "<uuid>",
+						"scope": "session",
+						"id": "<uuid>",
+						"kind": "get",
+						"state": "read",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"observedState": "stored"
+					},
+					{
+						"memoryId": "<uuid>",
+						"scope": "session",
+						"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+						"evidence": [
+							{
+								"ref": "b"
+							}
+						],
+						"evidenceClass": "user_statement",
+						"supersedes": "<uuid>",
+						"id": "<uuid>",
+						"kind": "correct",
+						"state": "accepted",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"<uuid>"
+						]
+					},
+					{
+						"queryHash": "1e7dc6d6c16565406afd121a89164b990879f5f47695e03b9c3fd0f07395a4ca",
+						"scope": "session",
+						"taskId": "t",
+						"id": "<uuid>",
+						"kind": "prepare",
+						"state": "recalled",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"retrieve": true,
+							"probability": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"references": [
+							{
+								"id": "entry-2",
+								"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+								"memoryId": "<uuid>",
+								"evidenceClass": "user_statement"
+							}
+						],
+						"excluded": [
+							{
+								"id": "entry-1",
+								"memoryId": "<uuid>",
+								"reason": "superseded"
+							}
+						]
+					},
+					{
+						"scope": "project",
+						"textHash": "2fde732bd0eed1aa3986245b3a6c5ac34bfb20530c8cb1a1cd26d175d3c536f8",
+						"evidence": [
+							{
+								"ref": "c"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "<uuid>",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "<uuid>",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"operationIds": []
+					},
+					{
+						"memoryId": "<uuid>",
+						"scope": "project",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"id": "<uuid>",
+						"kind": "forget",
+						"state": "forgotten",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>"
+					}
+				]
+			}
+		},
+		{
+			"name": "document proposed twice",
+			"input": {
+				"version": 1,
+				"namespace": "fake://bank",
+				"operations": [
+					{
+						"scope": "session",
+						"textHash": "4eb14b53c602a6b20ac71b4e9e425e1fe8b5d2a8effdacd25f571123c999f0b9",
+						"evidence": [
+							{
+								"ref": "a"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "00000000-0000-4000-8000-000000000001",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "00000000-0000-4000-8000-000000000002",
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"00000000-0000-4000-8000-000000000001"
+						],
+						"receipts": [
+							{
+								"id": "00000000-0000-4000-8000-000000000001",
+								"status": "completed"
+							}
+						]
+					},
+					{
+						"memoryId": "00000000-0000-4000-8000-000000000002",
+						"scope": "session",
+						"id": "00000000-0000-4000-8000-000000000003",
+						"kind": "get",
+						"state": "read",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"observedState": "stored"
+					},
+					{
+						"memoryId": "00000000-0000-4000-8000-000000000002",
+						"scope": "session",
+						"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+						"evidence": [
+							{
+								"ref": "b"
+							}
+						],
+						"evidenceClass": "user_statement",
+						"supersedes": "00000000-0000-4000-8000-000000000001",
+						"id": "00000000-0000-4000-8000-000000000004",
+						"kind": "correct",
+						"state": "accepted",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"00000000-0000-4000-8000-000000000004"
+						]
+					},
+					{
+						"queryHash": "1e7dc6d6c16565406afd121a89164b990879f5f47695e03b9c3fd0f07395a4ca",
+						"scope": "session",
+						"taskId": "t",
+						"id": "00000000-0000-4000-8000-000000000005",
+						"kind": "prepare",
+						"state": "recalled",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"retrieve": true,
+							"probability": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"references": [
+							{
+								"id": "entry-2",
+								"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+								"memoryId": "00000000-0000-4000-8000-000000000002",
+								"evidenceClass": "user_statement"
+							}
+						],
+						"excluded": [
+							{
+								"id": "entry-1",
+								"memoryId": "00000000-0000-4000-8000-000000000002",
+								"reason": "superseded"
+							}
+						]
+					},
+					{
+						"scope": "project",
+						"textHash": "2fde732bd0eed1aa3986245b3a6c5ac34bfb20530c8cb1a1cd26d175d3c536f8",
+						"evidence": [
+							{
+								"ref": "c"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "00000000-0000-4000-8000-000000000006",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "00000000-0000-4000-8000-000000000007",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"operationIds": []
+					},
+					{
+						"memoryId": "00000000-0000-4000-8000-000000000007",
+						"scope": "project",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"id": "00000000-0000-4000-8000-000000000008",
+						"kind": "forget",
+						"state": "forgotten",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z"
+					},
+					{
+						"scope": "session",
+						"textHash": "4eb14b53c602a6b20ac71b4e9e425e1fe8b5d2a8effdacd25f571123c999f0b9",
+						"evidence": [
+							{
+								"ref": "a"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "00000000-0000-4000-8000-0000000000ff",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "00000000-0000-4000-8000-000000000002",
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"00000000-0000-4000-8000-000000000001"
+						],
+						"receipts": [
+							{
+								"id": "00000000-0000-4000-8000-000000000001",
+								"status": "completed"
+							}
+						]
+					}
+				]
+			},
+			"error": "Memory operation did not complete (INVALID_JOURNAL)",
+			"stored": {
+				"version": 1,
+				"namespace": "fake://bank",
+				"operations": [
+					{
+						"scope": "session",
+						"textHash": "4eb14b53c602a6b20ac71b4e9e425e1fe8b5d2a8effdacd25f571123c999f0b9",
+						"evidence": [
+							{
+								"ref": "a"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "<uuid>",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "<uuid>",
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"<uuid>"
+						],
+						"receipts": [
+							{
+								"id": "<uuid>",
+								"status": "completed"
+							}
+						]
+					},
+					{
+						"memoryId": "<uuid>",
+						"scope": "session",
+						"id": "<uuid>",
+						"kind": "get",
+						"state": "read",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"observedState": "stored"
+					},
+					{
+						"memoryId": "<uuid>",
+						"scope": "session",
+						"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+						"evidence": [
+							{
+								"ref": "b"
+							}
+						],
+						"evidenceClass": "user_statement",
+						"supersedes": "<uuid>",
+						"id": "<uuid>",
+						"kind": "correct",
+						"state": "accepted",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"<uuid>"
+						]
+					},
+					{
+						"queryHash": "1e7dc6d6c16565406afd121a89164b990879f5f47695e03b9c3fd0f07395a4ca",
+						"scope": "session",
+						"taskId": "t",
+						"id": "<uuid>",
+						"kind": "prepare",
+						"state": "recalled",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"retrieve": true,
+							"probability": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"references": [
+							{
+								"id": "entry-2",
+								"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+								"memoryId": "<uuid>",
+								"evidenceClass": "user_statement"
+							}
+						],
+						"excluded": [
+							{
+								"id": "entry-1",
+								"memoryId": "<uuid>",
+								"reason": "superseded"
+							}
+						]
+					},
+					{
+						"scope": "project",
+						"textHash": "2fde732bd0eed1aa3986245b3a6c5ac34bfb20530c8cb1a1cd26d175d3c536f8",
+						"evidence": [
+							{
+								"ref": "c"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "<uuid>",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "<uuid>",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"operationIds": []
+					},
+					{
+						"memoryId": "<uuid>",
+						"scope": "project",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"id": "<uuid>",
+						"kind": "forget",
+						"state": "forgotten",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>"
+					},
+					{
+						"scope": "session",
+						"textHash": "4eb14b53c602a6b20ac71b4e9e425e1fe8b5d2a8effdacd25f571123c999f0b9",
+						"evidence": [
+							{
+								"ref": "a"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "<uuid>",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "<uuid>",
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"<uuid>"
+						],
+						"receipts": [
+							{
+								"id": "<uuid>",
+								"status": "completed"
+							}
+						]
+					}
+				]
+			}
+		},
+		{
+			"name": "bad gate",
+			"input": {
+				"version": 1,
+				"namespace": "fake://bank",
+				"operations": [
+					{
+						"scope": "session",
+						"textHash": "4eb14b53c602a6b20ac71b4e9e425e1fe8b5d2a8effdacd25f571123c999f0b9",
+						"evidence": [
+							{
+								"ref": "a"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "00000000-0000-4000-8000-000000000001",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"action": "keep",
+							"extra": 1
+						},
+						"memoryId": "00000000-0000-4000-8000-000000000002",
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"00000000-0000-4000-8000-000000000001"
+						],
+						"receipts": [
+							{
+								"id": "00000000-0000-4000-8000-000000000001",
+								"status": "completed"
+							}
+						]
+					},
+					{
+						"memoryId": "00000000-0000-4000-8000-000000000002",
+						"scope": "session",
+						"id": "00000000-0000-4000-8000-000000000003",
+						"kind": "get",
+						"state": "read",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"observedState": "stored"
+					},
+					{
+						"memoryId": "00000000-0000-4000-8000-000000000002",
+						"scope": "session",
+						"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+						"evidence": [
+							{
+								"ref": "b"
+							}
+						],
+						"evidenceClass": "user_statement",
+						"supersedes": "00000000-0000-4000-8000-000000000001",
+						"id": "00000000-0000-4000-8000-000000000004",
+						"kind": "correct",
+						"state": "accepted",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"00000000-0000-4000-8000-000000000004"
+						]
+					},
+					{
+						"queryHash": "1e7dc6d6c16565406afd121a89164b990879f5f47695e03b9c3fd0f07395a4ca",
+						"scope": "session",
+						"taskId": "t",
+						"id": "00000000-0000-4000-8000-000000000005",
+						"kind": "prepare",
+						"state": "recalled",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"retrieve": true,
+							"probability": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"references": [
+							{
+								"id": "entry-2",
+								"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+								"memoryId": "00000000-0000-4000-8000-000000000002",
+								"evidenceClass": "user_statement"
+							}
+						],
+						"excluded": [
+							{
+								"id": "entry-1",
+								"memoryId": "00000000-0000-4000-8000-000000000002",
+								"reason": "superseded"
+							}
+						]
+					},
+					{
+						"scope": "project",
+						"textHash": "2fde732bd0eed1aa3986245b3a6c5ac34bfb20530c8cb1a1cd26d175d3c536f8",
+						"evidence": [
+							{
+								"ref": "c"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "00000000-0000-4000-8000-000000000006",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "00000000-0000-4000-8000-000000000007",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"operationIds": []
+					},
+					{
+						"memoryId": "00000000-0000-4000-8000-000000000007",
+						"scope": "project",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"id": "00000000-0000-4000-8000-000000000008",
+						"kind": "forget",
+						"state": "forgotten",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z"
+					}
+				]
+			},
+			"error": "Memory operation did not complete (INVALID_JOURNAL)",
+			"stored": {
+				"version": 1,
+				"namespace": "fake://bank",
+				"operations": [
+					{
+						"scope": "session",
+						"textHash": "4eb14b53c602a6b20ac71b4e9e425e1fe8b5d2a8effdacd25f571123c999f0b9",
+						"evidence": [
+							{
+								"ref": "a"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "<uuid>",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"action": "keep",
+							"extra": 1
+						},
+						"memoryId": "<uuid>",
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"<uuid>"
+						],
+						"receipts": [
+							{
+								"id": "<uuid>",
+								"status": "completed"
+							}
+						]
+					},
+					{
+						"memoryId": "<uuid>",
+						"scope": "session",
+						"id": "<uuid>",
+						"kind": "get",
+						"state": "read",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"observedState": "stored"
+					},
+					{
+						"memoryId": "<uuid>",
+						"scope": "session",
+						"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+						"evidence": [
+							{
+								"ref": "b"
+							}
+						],
+						"evidenceClass": "user_statement",
+						"supersedes": "<uuid>",
+						"id": "<uuid>",
+						"kind": "correct",
+						"state": "accepted",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"<uuid>"
+						]
+					},
+					{
+						"queryHash": "1e7dc6d6c16565406afd121a89164b990879f5f47695e03b9c3fd0f07395a4ca",
+						"scope": "session",
+						"taskId": "t",
+						"id": "<uuid>",
+						"kind": "prepare",
+						"state": "recalled",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"retrieve": true,
+							"probability": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"references": [
+							{
+								"id": "entry-2",
+								"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+								"memoryId": "<uuid>",
+								"evidenceClass": "user_statement"
+							}
+						],
+						"excluded": [
+							{
+								"id": "entry-1",
+								"memoryId": "<uuid>",
+								"reason": "superseded"
+							}
+						]
+					},
+					{
+						"scope": "project",
+						"textHash": "2fde732bd0eed1aa3986245b3a6c5ac34bfb20530c8cb1a1cd26d175d3c536f8",
+						"evidence": [
+							{
+								"ref": "c"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "<uuid>",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "<uuid>",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"operationIds": []
+					},
+					{
+						"memoryId": "<uuid>",
+						"scope": "project",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"id": "<uuid>",
+						"kind": "forget",
+						"state": "forgotten",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>"
+					}
+				]
+			}
+		},
+		{
+			"name": "bad receipt",
+			"input": {
+				"version": 1,
+				"namespace": "fake://bank",
+				"operations": [
+					{
+						"scope": "session",
+						"textHash": "4eb14b53c602a6b20ac71b4e9e425e1fe8b5d2a8effdacd25f571123c999f0b9",
+						"evidence": [
+							{
+								"ref": "a"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "00000000-0000-4000-8000-000000000001",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "00000000-0000-4000-8000-000000000002",
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"00000000-0000-4000-8000-000000000001"
+						],
+						"receipts": [
+							{
+								"id": "00000000-0000-4000-8000-000000000001",
+								"status": "lost"
+							}
+						]
+					},
+					{
+						"memoryId": "00000000-0000-4000-8000-000000000002",
+						"scope": "session",
+						"id": "00000000-0000-4000-8000-000000000003",
+						"kind": "get",
+						"state": "read",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"observedState": "stored"
+					},
+					{
+						"memoryId": "00000000-0000-4000-8000-000000000002",
+						"scope": "session",
+						"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+						"evidence": [
+							{
+								"ref": "b"
+							}
+						],
+						"evidenceClass": "user_statement",
+						"supersedes": "00000000-0000-4000-8000-000000000001",
+						"id": "00000000-0000-4000-8000-000000000004",
+						"kind": "correct",
+						"state": "accepted",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"00000000-0000-4000-8000-000000000004"
+						]
+					},
+					{
+						"queryHash": "1e7dc6d6c16565406afd121a89164b990879f5f47695e03b9c3fd0f07395a4ca",
+						"scope": "session",
+						"taskId": "t",
+						"id": "00000000-0000-4000-8000-000000000005",
+						"kind": "prepare",
+						"state": "recalled",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"retrieve": true,
+							"probability": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"references": [
+							{
+								"id": "entry-2",
+								"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+								"memoryId": "00000000-0000-4000-8000-000000000002",
+								"evidenceClass": "user_statement"
+							}
+						],
+						"excluded": [
+							{
+								"id": "entry-1",
+								"memoryId": "00000000-0000-4000-8000-000000000002",
+								"reason": "superseded"
+							}
+						]
+					},
+					{
+						"scope": "project",
+						"textHash": "2fde732bd0eed1aa3986245b3a6c5ac34bfb20530c8cb1a1cd26d175d3c536f8",
+						"evidence": [
+							{
+								"ref": "c"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "00000000-0000-4000-8000-000000000006",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "00000000-0000-4000-8000-000000000007",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"operationIds": []
+					},
+					{
+						"memoryId": "00000000-0000-4000-8000-000000000007",
+						"scope": "project",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"id": "00000000-0000-4000-8000-000000000008",
+						"kind": "forget",
+						"state": "forgotten",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z"
+					}
+				]
+			},
+			"error": "Memory operation did not complete (INVALID_JOURNAL)",
+			"stored": {
+				"version": 1,
+				"namespace": "fake://bank",
+				"operations": [
+					{
+						"scope": "session",
+						"textHash": "4eb14b53c602a6b20ac71b4e9e425e1fe8b5d2a8effdacd25f571123c999f0b9",
+						"evidence": [
+							{
+								"ref": "a"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "<uuid>",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "<uuid>",
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"<uuid>"
+						],
+						"receipts": [
+							{
+								"id": "<uuid>",
+								"status": "lost"
+							}
+						]
+					},
+					{
+						"memoryId": "<uuid>",
+						"scope": "session",
+						"id": "<uuid>",
+						"kind": "get",
+						"state": "read",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"observedState": "stored"
+					},
+					{
+						"memoryId": "<uuid>",
+						"scope": "session",
+						"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+						"evidence": [
+							{
+								"ref": "b"
+							}
+						],
+						"evidenceClass": "user_statement",
+						"supersedes": "<uuid>",
+						"id": "<uuid>",
+						"kind": "correct",
+						"state": "accepted",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"<uuid>"
+						]
+					},
+					{
+						"queryHash": "1e7dc6d6c16565406afd121a89164b990879f5f47695e03b9c3fd0f07395a4ca",
+						"scope": "session",
+						"taskId": "t",
+						"id": "<uuid>",
+						"kind": "prepare",
+						"state": "recalled",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"retrieve": true,
+							"probability": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"references": [
+							{
+								"id": "entry-2",
+								"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+								"memoryId": "<uuid>",
+								"evidenceClass": "user_statement"
+							}
+						],
+						"excluded": [
+							{
+								"id": "entry-1",
+								"memoryId": "<uuid>",
+								"reason": "superseded"
+							}
+						]
+					},
+					{
+						"scope": "project",
+						"textHash": "2fde732bd0eed1aa3986245b3a6c5ac34bfb20530c8cb1a1cd26d175d3c536f8",
+						"evidence": [
+							{
+								"ref": "c"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "<uuid>",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "<uuid>",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"operationIds": []
+					},
+					{
+						"memoryId": "<uuid>",
+						"scope": "project",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"id": "<uuid>",
+						"kind": "forget",
+						"state": "forgotten",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>"
+					}
+				]
+			}
+		},
+		{
+			"name": "bad scope tag",
+			"input": {
+				"version": 1,
+				"namespace": "fake://bank",
+				"operations": [
+					{
+						"scope": "session",
+						"textHash": "4eb14b53c602a6b20ac71b4e9e425e1fe8b5d2a8effdacd25f571123c999f0b9",
+						"evidence": [
+							{
+								"ref": "a"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "00000000-0000-4000-8000-000000000001",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "00000000-0000-4000-8000-000000000002",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"operationIds": [
+							"00000000-0000-4000-8000-000000000001"
+						],
+						"receipts": [
+							{
+								"id": "00000000-0000-4000-8000-000000000001",
+								"status": "completed"
+							}
+						]
+					},
+					{
+						"memoryId": "00000000-0000-4000-8000-000000000002",
+						"scope": "session",
+						"id": "00000000-0000-4000-8000-000000000003",
+						"kind": "get",
+						"state": "read",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"observedState": "stored"
+					},
+					{
+						"memoryId": "00000000-0000-4000-8000-000000000002",
+						"scope": "session",
+						"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+						"evidence": [
+							{
+								"ref": "b"
+							}
+						],
+						"evidenceClass": "user_statement",
+						"supersedes": "00000000-0000-4000-8000-000000000001",
+						"id": "00000000-0000-4000-8000-000000000004",
+						"kind": "correct",
+						"state": "accepted",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"00000000-0000-4000-8000-000000000004"
+						]
+					},
+					{
+						"queryHash": "1e7dc6d6c16565406afd121a89164b990879f5f47695e03b9c3fd0f07395a4ca",
+						"scope": "session",
+						"taskId": "t",
+						"id": "00000000-0000-4000-8000-000000000005",
+						"kind": "prepare",
+						"state": "recalled",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"retrieve": true,
+							"probability": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"references": [
+							{
+								"id": "entry-2",
+								"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+								"memoryId": "00000000-0000-4000-8000-000000000002",
+								"evidenceClass": "user_statement"
+							}
+						],
+						"excluded": [
+							{
+								"id": "entry-1",
+								"memoryId": "00000000-0000-4000-8000-000000000002",
+								"reason": "superseded"
+							}
+						]
+					},
+					{
+						"scope": "project",
+						"textHash": "2fde732bd0eed1aa3986245b3a6c5ac34bfb20530c8cb1a1cd26d175d3c536f8",
+						"evidence": [
+							{
+								"ref": "c"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "00000000-0000-4000-8000-000000000006",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "00000000-0000-4000-8000-000000000007",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"operationIds": []
+					},
+					{
+						"memoryId": "00000000-0000-4000-8000-000000000007",
+						"scope": "project",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"id": "00000000-0000-4000-8000-000000000008",
+						"kind": "forget",
+						"state": "forgotten",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z"
+					}
+				]
+			},
+			"error": "Memory operation did not complete (INVALID_JOURNAL)",
+			"stored": {
+				"version": 1,
+				"namespace": "fake://bank",
+				"operations": [
+					{
+						"scope": "session",
+						"textHash": "4eb14b53c602a6b20ac71b4e9e425e1fe8b5d2a8effdacd25f571123c999f0b9",
+						"evidence": [
+							{
+								"ref": "a"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "<uuid>",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "<uuid>",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"operationIds": [
+							"<uuid>"
+						],
+						"receipts": [
+							{
+								"id": "<uuid>",
+								"status": "completed"
+							}
+						]
+					},
+					{
+						"memoryId": "<uuid>",
+						"scope": "session",
+						"id": "<uuid>",
+						"kind": "get",
+						"state": "read",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"observedState": "stored"
+					},
+					{
+						"memoryId": "<uuid>",
+						"scope": "session",
+						"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+						"evidence": [
+							{
+								"ref": "b"
+							}
+						],
+						"evidenceClass": "user_statement",
+						"supersedes": "<uuid>",
+						"id": "<uuid>",
+						"kind": "correct",
+						"state": "accepted",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"<uuid>"
+						]
+					},
+					{
+						"queryHash": "1e7dc6d6c16565406afd121a89164b990879f5f47695e03b9c3fd0f07395a4ca",
+						"scope": "session",
+						"taskId": "t",
+						"id": "<uuid>",
+						"kind": "prepare",
+						"state": "recalled",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"retrieve": true,
+							"probability": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"references": [
+							{
+								"id": "entry-2",
+								"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+								"memoryId": "<uuid>",
+								"evidenceClass": "user_statement"
+							}
+						],
+						"excluded": [
+							{
+								"id": "entry-1",
+								"memoryId": "<uuid>",
+								"reason": "superseded"
+							}
+						]
+					},
+					{
+						"scope": "project",
+						"textHash": "2fde732bd0eed1aa3986245b3a6c5ac34bfb20530c8cb1a1cd26d175d3c536f8",
+						"evidence": [
+							{
+								"ref": "c"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "<uuid>",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "<uuid>",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"operationIds": []
+					},
+					{
+						"memoryId": "<uuid>",
+						"scope": "project",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"id": "<uuid>",
+						"kind": "forget",
+						"state": "forgotten",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>"
+					}
+				]
+			}
+		},
+		{
+			"name": "interrupted",
+			"input": {
+				"version": 1,
+				"namespace": "fake://bank",
+				"operations": [
+					{
+						"scope": "session",
+						"textHash": "4eb14b53c602a6b20ac71b4e9e425e1fe8b5d2a8effdacd25f571123c999f0b9",
+						"evidence": [
+							{
+								"ref": "a"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "00000000-0000-4000-8000-000000000001",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "00000000-0000-4000-8000-000000000002",
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"00000000-0000-4000-8000-000000000001"
+						],
+						"receipts": [
+							{
+								"id": "00000000-0000-4000-8000-000000000001",
+								"status": "completed"
+							}
+						]
+					},
+					{
+						"memoryId": "00000000-0000-4000-8000-000000000002",
+						"scope": "session",
+						"id": "00000000-0000-4000-8000-000000000003",
+						"kind": "get",
+						"state": "read",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"observedState": "stored"
+					},
+					{
+						"memoryId": "00000000-0000-4000-8000-000000000002",
+						"scope": "session",
+						"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+						"evidence": [
+							{
+								"ref": "b"
+							}
+						],
+						"evidenceClass": "user_statement",
+						"supersedes": "00000000-0000-4000-8000-000000000001",
+						"id": "00000000-0000-4000-8000-000000000004",
+						"kind": "correct",
+						"state": "accepted",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"00000000-0000-4000-8000-000000000004"
+						]
+					},
+					{
+						"queryHash": "1e7dc6d6c16565406afd121a89164b990879f5f47695e03b9c3fd0f07395a4ca",
+						"scope": "session",
+						"taskId": "t",
+						"id": "00000000-0000-4000-8000-000000000005",
+						"kind": "prepare",
+						"state": "recalled",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"retrieve": true,
+							"probability": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"references": [
+							{
+								"id": "entry-2",
+								"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+								"memoryId": "00000000-0000-4000-8000-000000000002",
+								"evidenceClass": "user_statement"
+							}
+						],
+						"excluded": [
+							{
+								"id": "entry-1",
+								"memoryId": "00000000-0000-4000-8000-000000000002",
+								"reason": "superseded"
+							}
+						]
+					},
+					{
+						"scope": "project",
+						"textHash": "2fde732bd0eed1aa3986245b3a6c5ac34bfb20530c8cb1a1cd26d175d3c536f8",
+						"evidence": [
+							{
+								"ref": "c"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "00000000-0000-4000-8000-000000000006",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "00000000-0000-4000-8000-000000000007",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"operationIds": []
+					},
+					{
+						"memoryId": "00000000-0000-4000-8000-000000000007",
+						"scope": "project",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"id": "00000000-0000-4000-8000-000000000008",
+						"kind": "forget",
+						"state": "forgotten",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z"
+					},
+					{
+						"scope": "session",
+						"textHash": "4eb14b53c602a6b20ac71b4e9e425e1fe8b5d2a8effdacd25f571123c999f0b9",
+						"evidence": [
+							{
+								"ref": "a"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "started-gate",
+						"kind": "propose",
+						"state": "started",
+						"phase": "gate",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"receipts": [
+							{
+								"id": "00000000-0000-4000-8000-000000000001",
+								"status": "completed"
+							}
+						]
+					},
+					{
+						"scope": "session",
+						"textHash": "4eb14b53c602a6b20ac71b4e9e425e1fe8b5d2a8effdacd25f571123c999f0b9",
+						"evidence": [
+							{
+								"ref": "a"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "started-backend",
+						"kind": "propose",
+						"state": "started",
+						"phase": "backend",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "m-new",
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"started-backend"
+						],
+						"receipts": [
+							{
+								"id": "00000000-0000-4000-8000-000000000001",
+								"status": "completed"
+							}
+						]
+					},
+					{
+						"id": "started-prepare",
+						"kind": "prepare",
+						"state": "started",
+						"phase": "gate",
+						"createdAt": "2026-01-02T03:04:05.006Z",
+						"updatedAt": "2026-01-02T03:04:05.006Z",
+						"scope": "session",
+						"taskId": "t",
+						"queryHash": "4eb14b53c602a6b20ac71b4e9e425e1fe8b5d2a8effdacd25f571123c999f0b9"
+					}
+				]
+			},
+			"ok": [
+				{
+					"scope": "session",
+					"textHash": "4eb14b53c602a6b20ac71b4e9e425e1fe8b5d2a8effdacd25f571123c999f0b9",
+					"evidence": [
+						{
+							"ref": "a"
+						}
+					],
+					"evidenceClass": "hypothesis",
+					"id": "<uuid>",
+					"kind": "propose",
+					"state": "stored",
+					"phase": "backend",
+					"createdAt": "<time>",
+					"updatedAt": "<time>",
+					"gate": {
+						"action": "keep",
+						"confidence": 1
+					},
+					"memoryId": "<uuid>",
+					"tags": [
+						"ultron:session:s1"
+					],
+					"operationIds": [
+						"<uuid>"
+					],
+					"receipts": [
+						{
+							"id": "<uuid>",
+							"status": "completed"
+						}
+					],
+					"supersededBy": "<uuid>"
+				},
+				{
+					"memoryId": "<uuid>",
+					"scope": "session",
+					"id": "<uuid>",
+					"kind": "get",
+					"state": "read",
+					"phase": "backend",
+					"createdAt": "<time>",
+					"updatedAt": "<time>",
+					"observedState": "stored"
+				},
+				{
+					"memoryId": "<uuid>",
+					"scope": "session",
+					"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+					"evidence": [
+						{
+							"ref": "b"
+						}
+					],
+					"evidenceClass": "user_statement",
+					"supersedes": "<uuid>",
+					"id": "<uuid>",
+					"kind": "correct",
+					"state": "accepted",
+					"phase": "backend",
+					"createdAt": "<time>",
+					"updatedAt": "<time>",
+					"gate": {
+						"action": "keep",
+						"confidence": 1
+					},
+					"tags": [
+						"ultron:session:s1"
+					],
+					"operationIds": [
+						"<uuid>"
+					]
+				},
+				{
+					"queryHash": "1e7dc6d6c16565406afd121a89164b990879f5f47695e03b9c3fd0f07395a4ca",
+					"scope": "session",
+					"taskId": "t",
+					"id": "<uuid>",
+					"kind": "prepare",
+					"state": "recalled",
+					"phase": "backend",
+					"createdAt": "<time>",
+					"updatedAt": "<time>",
+					"gate": {
+						"retrieve": true,
+						"probability": 1
+					},
+					"tags": [
+						"ultron:session:s1"
+					],
+					"references": [
+						{
+							"id": "entry-2",
+							"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+							"memoryId": "<uuid>",
+							"evidenceClass": "user_statement"
+						}
+					],
+					"excluded": [
+						{
+							"id": "entry-1",
+							"memoryId": "<uuid>",
+							"reason": "superseded"
+						}
+					]
+				},
+				{
+					"scope": "project",
+					"textHash": "2fde732bd0eed1aa3986245b3a6c5ac34bfb20530c8cb1a1cd26d175d3c536f8",
+					"evidence": [
+						{
+							"ref": "c"
+						}
+					],
+					"evidenceClass": "hypothesis",
+					"id": "<uuid>",
+					"kind": "propose",
+					"state": "stored",
+					"phase": "backend",
+					"createdAt": "<time>",
+					"updatedAt": "<time>",
+					"gate": {
+						"action": "keep",
+						"confidence": 1
+					},
+					"memoryId": "<uuid>",
+					"tags": [
+						"ultron:project:p1"
+					],
+					"operationIds": []
+				},
+				{
+					"memoryId": "<uuid>",
+					"scope": "project",
+					"tags": [
+						"ultron:project:p1"
+					],
+					"id": "<uuid>",
+					"kind": "forget",
+					"state": "forgotten",
+					"phase": "backend",
+					"createdAt": "<time>",
+					"updatedAt": "<time>"
+				},
+				{
+					"scope": "session",
+					"textHash": "4eb14b53c602a6b20ac71b4e9e425e1fe8b5d2a8effdacd25f571123c999f0b9",
+					"evidence": [
+						{
+							"ref": "a"
+						}
+					],
+					"evidenceClass": "hypothesis",
+					"id": "started-gate",
+					"kind": "propose",
+					"state": "interrupted",
+					"phase": "gate",
+					"createdAt": "<time>",
+					"updatedAt": "<time>",
+					"receipts": [
+						{
+							"id": "<uuid>",
+							"status": "completed"
+						}
+					],
+					"error": {
+						"code": "OWNER_ENDED"
+					}
+				},
+				{
+					"scope": "session",
+					"textHash": "4eb14b53c602a6b20ac71b4e9e425e1fe8b5d2a8effdacd25f571123c999f0b9",
+					"evidence": [
+						{
+							"ref": "a"
+						}
+					],
+					"evidenceClass": "hypothesis",
+					"id": "started-backend",
+					"kind": "propose",
+					"state": "unknown",
+					"phase": "backend",
+					"createdAt": "<time>",
+					"updatedAt": "<time>",
+					"gate": {
+						"action": "keep",
+						"confidence": 1
+					},
+					"memoryId": "m-new",
+					"tags": [
+						"ultron:session:s1"
+					],
+					"operationIds": [
+						"started-backend"
+					],
+					"receipts": [
+						{
+							"id": "<uuid>",
+							"status": "completed"
+						}
+					],
+					"error": {
+						"code": "OWNER_ENDED"
+					}
+				},
+				{
+					"id": "started-prepare",
+					"kind": "prepare",
+					"state": "interrupted",
+					"phase": "gate",
+					"createdAt": "<time>",
+					"updatedAt": "<time>",
+					"scope": "session",
+					"taskId": "t",
+					"queryHash": "4eb14b53c602a6b20ac71b4e9e425e1fe8b5d2a8effdacd25f571123c999f0b9",
+					"error": {
+						"code": "OWNER_ENDED"
+					}
+				}
+			],
+			"stored": {
+				"version": 1,
+				"namespace": "fake://bank",
+				"operations": [
+					{
+						"scope": "session",
+						"textHash": "4eb14b53c602a6b20ac71b4e9e425e1fe8b5d2a8effdacd25f571123c999f0b9",
+						"evidence": [
+							{
+								"ref": "a"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "<uuid>",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "<uuid>",
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"<uuid>"
+						],
+						"receipts": [
+							{
+								"id": "<uuid>",
+								"status": "completed"
+							}
+						]
+					},
+					{
+						"memoryId": "<uuid>",
+						"scope": "session",
+						"id": "<uuid>",
+						"kind": "get",
+						"state": "read",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"observedState": "stored"
+					},
+					{
+						"memoryId": "<uuid>",
+						"scope": "session",
+						"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+						"evidence": [
+							{
+								"ref": "b"
+							}
+						],
+						"evidenceClass": "user_statement",
+						"supersedes": "<uuid>",
+						"id": "<uuid>",
+						"kind": "correct",
+						"state": "accepted",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"<uuid>"
+						]
+					},
+					{
+						"queryHash": "1e7dc6d6c16565406afd121a89164b990879f5f47695e03b9c3fd0f07395a4ca",
+						"scope": "session",
+						"taskId": "t",
+						"id": "<uuid>",
+						"kind": "prepare",
+						"state": "recalled",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"retrieve": true,
+							"probability": 1
+						},
+						"tags": [
+							"ultron:session:s1"
+						],
+						"references": [
+							{
+								"id": "entry-2",
+								"textHash": "e75a70f012a62b718ee894bb22f89663bf9736b235fa5061bd0653b1d44870b7",
+								"memoryId": "<uuid>",
+								"evidenceClass": "user_statement"
+							}
+						],
+						"excluded": [
+							{
+								"id": "entry-1",
+								"memoryId": "<uuid>",
+								"reason": "superseded"
+							}
+						]
+					},
+					{
+						"scope": "project",
+						"textHash": "2fde732bd0eed1aa3986245b3a6c5ac34bfb20530c8cb1a1cd26d175d3c536f8",
+						"evidence": [
+							{
+								"ref": "c"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "<uuid>",
+						"kind": "propose",
+						"state": "stored",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "<uuid>",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"operationIds": []
+					},
+					{
+						"memoryId": "<uuid>",
+						"scope": "project",
+						"tags": [
+							"ultron:project:p1"
+						],
+						"id": "<uuid>",
+						"kind": "forget",
+						"state": "forgotten",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>"
+					},
+					{
+						"scope": "session",
+						"textHash": "4eb14b53c602a6b20ac71b4e9e425e1fe8b5d2a8effdacd25f571123c999f0b9",
+						"evidence": [
+							{
+								"ref": "a"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "started-gate",
+						"kind": "propose",
+						"state": "interrupted",
+						"phase": "gate",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"receipts": [
+							{
+								"id": "<uuid>",
+								"status": "completed"
+							}
+						],
+						"error": {
+							"code": "OWNER_ENDED"
+						}
+					},
+					{
+						"scope": "session",
+						"textHash": "4eb14b53c602a6b20ac71b4e9e425e1fe8b5d2a8effdacd25f571123c999f0b9",
+						"evidence": [
+							{
+								"ref": "a"
+							}
+						],
+						"evidenceClass": "hypothesis",
+						"id": "started-backend",
+						"kind": "propose",
+						"state": "unknown",
+						"phase": "backend",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"gate": {
+							"action": "keep",
+							"confidence": 1
+						},
+						"memoryId": "m-new",
+						"tags": [
+							"ultron:session:s1"
+						],
+						"operationIds": [
+							"started-backend"
+						],
+						"receipts": [
+							{
+								"id": "<uuid>",
+								"status": "completed"
+							}
+						],
+						"error": {
+							"code": "OWNER_ENDED"
+						}
+					},
+					{
+						"id": "started-prepare",
+						"kind": "prepare",
+						"state": "interrupted",
+						"phase": "gate",
+						"createdAt": "<time>",
+						"updatedAt": "<time>",
+						"scope": "session",
+						"taskId": "t",
+						"queryHash": "4eb14b53c602a6b20ac71b4e9e425e1fe8b5d2a8effdacd25f571123c999f0b9",
+						"error": {
+							"code": "OWNER_ENDED"
+						}
+					}
+				]
+			}
+		},
+		{
+			"name": "not an object",
+			"input": [
+				1,
+				2
+			],
+			"error": "Memory operation did not complete (INVALID_JOURNAL)",
+			"stored": [
+				1,
+				2
+			]
+		},
+		{
+			"name": "operations not array",
+			"input": {
+				"version": 1,
+				"namespace": "fake://bank",
+				"operations": {}
+			},
+			"error": "Memory operation did not complete (INVALID_JOURNAL)",
+			"stored": {
+				"version": 1,
+				"namespace": "fake://bank",
+				"operations": {}
+			}
+		}
+	]
+}

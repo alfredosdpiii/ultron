@@ -1,0 +1,2836 @@
+{
+ "source": "packages/protocol/src",
+ "cborEncode": [
+  {
+   "value": null,
+   "options": null,
+   "ok": "f6"
+  },
+  {
+   "value": false,
+   "options": null,
+   "ok": "f4"
+  },
+  {
+   "value": true,
+   "options": null,
+   "ok": "f5"
+  },
+  {
+   "value": 0,
+   "options": null,
+   "ok": "00"
+  },
+  {
+   "value": 1,
+   "options": null,
+   "ok": "01"
+  },
+  {
+   "value": 10,
+   "options": null,
+   "ok": "0a"
+  },
+  {
+   "value": 23,
+   "options": null,
+   "ok": "17"
+  },
+  {
+   "value": 24,
+   "options": null,
+   "ok": "1818"
+  },
+  {
+   "value": 25,
+   "options": null,
+   "ok": "1819"
+  },
+  {
+   "value": 100,
+   "options": null,
+   "ok": "1864"
+  },
+  {
+   "value": 1000,
+   "options": null,
+   "ok": "1903e8"
+  },
+  {
+   "value": 1000000,
+   "options": null,
+   "ok": "1a000f4240"
+  },
+  {
+   "value": 1000000000000,
+   "options": null,
+   "ok": "1b000000e8d4a51000"
+  },
+  {
+   "value": 9007199254740991,
+   "options": null,
+   "ok": "1b001fffffffffffff"
+  },
+  {
+   "value": -1,
+   "options": null,
+   "ok": "20"
+  },
+  {
+   "value": -10,
+   "options": null,
+   "ok": "29"
+  },
+  {
+   "value": -24,
+   "options": null,
+   "ok": "37"
+  },
+  {
+   "value": -25,
+   "options": null,
+   "ok": "3818"
+  },
+  {
+   "value": -100,
+   "options": null,
+   "ok": "3863"
+  },
+  {
+   "value": -1000,
+   "options": null,
+   "ok": "3903e7"
+  },
+  {
+   "value": -1000000,
+   "options": null,
+   "ok": "3a000f423f"
+  },
+  {
+   "value": -9007199254740991,
+   "options": null,
+   "ok": "3b001ffffffffffffe"
+  },
+  {
+   "value": 1.1,
+   "options": null,
+   "ok": "fb3ff199999999999a"
+  },
+  {
+   "value": {
+    "$num": "-0"
+   },
+   "options": null,
+   "ok": "fb8000000000000000"
+  },
+  {
+   "value": {
+    "$bytes": "01020304"
+   },
+   "options": null,
+   "ok": "4401020304"
+  },
+  {
+   "value": "",
+   "options": null,
+   "ok": "60"
+  },
+  {
+   "value": "IETF",
+   "options": null,
+   "ok": "6449455446"
+  },
+  {
+   "value": "ü",
+   "options": null,
+   "ok": "62c3bc"
+  },
+  {
+   "value": "水",
+   "options": null,
+   "ok": "63e6b0b4"
+  },
+  {
+   "value": "𐅑",
+   "options": null,
+   "ok": "64f0908591"
+  },
+  {
+   "value": [],
+   "options": null,
+   "ok": "80"
+  },
+  {
+   "value": [
+    1,
+    2,
+    3
+   ],
+   "options": null,
+   "ok": "83010203"
+  },
+  {
+   "value": [
+    1,
+    [
+     2,
+     3
+    ],
+    [
+     4,
+     5
+    ]
+   ],
+   "options": null,
+   "ok": "8301820203820405"
+  },
+  {
+   "value": {
+    "a": 1,
+    "b": [
+     2,
+     3
+    ]
+   },
+   "options": null,
+   "ok": "a26161016162820203"
+  },
+  {
+   "value": {
+    "zero": 0,
+    "empty": "",
+    "no": false,
+    "nil": null
+   },
+   "options": null,
+   "ok": "a4647a65726f0065656d70747960626e6ff4636e696cf6"
+  },
+  {
+   "value": {
+    "__proto__x": "safe"
+   },
+   "options": null,
+   "ok": "a16a5f5f70726f746f5f5f786473616665"
+  },
+  {
+   "value": 0.5,
+   "options": null,
+   "ok": "fb3fe0000000000000"
+  },
+  {
+   "value": -2.75,
+   "options": null,
+   "ok": "fbc006000000000000"
+  },
+  {
+   "value": 1e+300,
+   "options": null,
+   "error": "CborError: CBOR integers must be safe JavaScript integers"
+  },
+  {
+   "value": 1.5e-300,
+   "options": null,
+   "ok": "fb01b01297d23ab683"
+  },
+  {
+   "value": 4294967296,
+   "options": null,
+   "ok": "1b0000000100000000"
+  },
+  {
+   "value": 4294967295,
+   "options": null,
+   "ok": "1affffffff"
+  },
+  {
+   "value": 65535,
+   "options": null,
+   "ok": "19ffff"
+  },
+  {
+   "value": 65536,
+   "options": null,
+   "ok": "1a00010000"
+  },
+  {
+   "value": 255,
+   "options": null,
+   "ok": "18ff"
+  },
+  {
+   "value": 256,
+   "options": null,
+   "ok": "190100"
+  },
+  {
+   "value": -256,
+   "options": null,
+   "ok": "38ff"
+  },
+  {
+   "value": -257,
+   "options": null,
+   "ok": "390100"
+  },
+  {
+   "value": {
+    "$num": "NaN"
+   },
+   "options": null,
+   "error": "CborError: CBOR numbers must be finite"
+  },
+  {
+   "value": {
+    "$num": "Infinity"
+   },
+   "options": null,
+   "error": "CborError: CBOR numbers must be finite"
+  },
+  {
+   "value": {
+    "$num": "-Infinity"
+   },
+   "options": null,
+   "error": "CborError: CBOR numbers must be finite"
+  },
+  {
+   "value": 9007199254740992,
+   "options": null,
+   "error": "CborError: CBOR integers must be safe JavaScript integers"
+  },
+  {
+   "value": -9007199254740992,
+   "options": null,
+   "error": "CborError: CBOR integers must be safe JavaScript integers"
+  },
+  {
+   "value": [
+    [
+     [
+      [
+       [
+        [
+         [
+          [
+           [
+            [
+             [
+              [
+               [
+                [
+                 [
+                  [
+                   [
+                    [
+                     [
+                      [
+                       [
+                        [
+                         [
+                          [
+                           [
+                            [
+                             [
+                              [
+                               [
+                                [
+                                 [
+                                  [
+                                   [
+                                    [
+                                     [
+                                      [
+                                       [
+                                        [
+                                         [
+                                          [
+                                           [
+                                            [
+                                             [
+                                              [
+                                               [
+                                                [
+                                                 [
+                                                  [
+                                                   [
+                                                    [
+                                                     [
+                                                      [
+                                                       [
+                                                        [
+                                                         [
+                                                          [
+                                                           [
+                                                            [
+                                                             [
+                                                              [
+                                                               [
+                                                                [
+                                                                 [
+                                                                  [
+                                                                   null
+                                                                  ]
+                                                                 ]
+                                                                ]
+                                                               ]
+                                                              ]
+                                                             ]
+                                                            ]
+                                                           ]
+                                                          ]
+                                                         ]
+                                                        ]
+                                                       ]
+                                                      ]
+                                                     ]
+                                                    ]
+                                                   ]
+                                                  ]
+                                                 ]
+                                                ]
+                                               ]
+                                              ]
+                                             ]
+                                            ]
+                                           ]
+                                          ]
+                                         ]
+                                        ]
+                                       ]
+                                      ]
+                                     ]
+                                    ]
+                                   ]
+                                  ]
+                                 ]
+                                ]
+                               ]
+                              ]
+                             ]
+                            ]
+                           ]
+                          ]
+                         ]
+                        ]
+                       ]
+                      ]
+                     ]
+                    ]
+                   ]
+                  ]
+                 ]
+                ]
+               ]
+              ]
+             ]
+            ]
+           ]
+          ]
+         ]
+        ]
+       ]
+      ]
+     ]
+    ]
+   ],
+   "options": null,
+   "ok": "81818181818181818181818181818181818181818181818181818181818181818181818181818181818181818181818181818181818181818181818181818181f6"
+  },
+  {
+   "value": [
+    [
+     [
+      [
+       [
+        [
+         [
+          [
+           [
+            [
+             [
+              [
+               [
+                [
+                 [
+                  [
+                   [
+                    [
+                     [
+                      [
+                       [
+                        [
+                         [
+                          [
+                           [
+                            [
+                             [
+                              [
+                               [
+                                [
+                                 [
+                                  [
+                                   [
+                                    [
+                                     [
+                                      [
+                                       [
+                                        [
+                                         [
+                                          [
+                                           [
+                                            [
+                                             [
+                                              [
+                                               [
+                                                [
+                                                 [
+                                                  [
+                                                   [
+                                                    [
+                                                     [
+                                                      [
+                                                       [
+                                                        [
+                                                         [
+                                                          [
+                                                           [
+                                                            [
+                                                             [
+                                                              [
+                                                               [
+                                                                [
+                                                                 [
+                                                                  [
+                                                                   [
+                                                                    null
+                                                                   ]
+                                                                  ]
+                                                                 ]
+                                                                ]
+                                                               ]
+                                                              ]
+                                                             ]
+                                                            ]
+                                                           ]
+                                                          ]
+                                                         ]
+                                                        ]
+                                                       ]
+                                                      ]
+                                                     ]
+                                                    ]
+                                                   ]
+                                                  ]
+                                                 ]
+                                                ]
+                                               ]
+                                              ]
+                                             ]
+                                            ]
+                                           ]
+                                          ]
+                                         ]
+                                        ]
+                                       ]
+                                      ]
+                                     ]
+                                    ]
+                                   ]
+                                  ]
+                                 ]
+                                ]
+                               ]
+                              ]
+                             ]
+                            ]
+                           ]
+                          ]
+                         ]
+                        ]
+                       ]
+                      ]
+                     ]
+                    ]
+                   ]
+                  ]
+                 ]
+                ]
+               ]
+              ]
+             ]
+            ]
+           ]
+          ]
+         ]
+        ]
+       ]
+      ]
+     ]
+    ]
+   ],
+   "options": null,
+   "error": "CborError: CBOR nesting depth exceeds configured limit of 64"
+  },
+  {
+   "value": [
+    1,
+    2,
+    3
+   ],
+   "options": {
+    "max_byte_length": 16777216,
+    "max_container_length": 2,
+    "max_depth": 64
+   },
+   "error": "CborError: CBOR array length exceeds configured limit of 2"
+  },
+  {
+   "value": {
+    "a": 1,
+    "b": 2,
+    "c": 3
+   },
+   "options": {
+    "max_byte_length": 16777216,
+    "max_container_length": 2,
+    "max_depth": 64
+   },
+   "error": "CborError: CBOR map length exceeds configured limit of 2"
+  },
+  {
+   "value": "ab",
+   "options": {
+    "max_byte_length": 2,
+    "max_container_length": 1000000,
+    "max_depth": 64
+   },
+   "error": "CborError: CBOR byte length exceeds configured limit of 2"
+  },
+  {
+   "value": "a",
+   "options": {
+    "max_byte_length": 2,
+    "max_container_length": 1000000,
+    "max_depth": 64
+   },
+   "ok": "6161"
+  },
+  {
+   "value": [
+    1,
+    2
+   ],
+   "options": {
+    "max_byte_length": 2,
+    "max_container_length": 1000000,
+    "max_depth": 64
+   },
+   "error": "CborError: CBOR byte length exceeds configured limit of 2"
+  },
+  {
+   "value": {
+    "$bytes": "0102"
+   },
+   "options": {
+    "max_byte_length": 2,
+    "max_container_length": 1000000,
+    "max_depth": 64
+   },
+   "error": "CborError: CBOR byte length exceeds configured limit of 2"
+  },
+  {
+   "value": [
+    [
+     [
+      1
+     ]
+    ]
+   ],
+   "options": {
+    "max_byte_length": 100,
+    "max_container_length": 100,
+    "max_depth": 2
+   },
+   "error": "CborError: CBOR nesting depth exceeds configured limit of 2"
+  },
+  {
+   "value": [
+    [
+     1
+    ]
+   ],
+   "options": {
+    "max_byte_length": 100,
+    "max_container_length": 100,
+    "max_depth": 2
+   },
+   "ok": "818101"
+  },
+  {
+   "value": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+   "options": null,
+   "ok": "79012c787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878"
+  },
+  {
+   "value": {
+    "$bytes": "abababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababab"
+   },
+   "options": null,
+   "ok": "59012cabababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababab"
+  }
+ ],
+ "cborDecode": [
+  {
+   "hex": "f6",
+   "options": null,
+   "ok": null
+  },
+  {
+   "hex": "f4",
+   "options": null,
+   "ok": false
+  },
+  {
+   "hex": "f5",
+   "options": null,
+   "ok": true
+  },
+  {
+   "hex": "00",
+   "options": null,
+   "ok": 0
+  },
+  {
+   "hex": "01",
+   "options": null,
+   "ok": 1
+  },
+  {
+   "hex": "0a",
+   "options": null,
+   "ok": 10
+  },
+  {
+   "hex": "17",
+   "options": null,
+   "ok": 23
+  },
+  {
+   "hex": "1818",
+   "options": null,
+   "ok": 24
+  },
+  {
+   "hex": "1819",
+   "options": null,
+   "ok": 25
+  },
+  {
+   "hex": "1864",
+   "options": null,
+   "ok": 100
+  },
+  {
+   "hex": "1903e8",
+   "options": null,
+   "ok": 1000
+  },
+  {
+   "hex": "1a000f4240",
+   "options": null,
+   "ok": 1000000
+  },
+  {
+   "hex": "1b000000e8d4a51000",
+   "options": null,
+   "ok": 1000000000000
+  },
+  {
+   "hex": "1b001fffffffffffff",
+   "options": null,
+   "ok": 9007199254740991
+  },
+  {
+   "hex": "20",
+   "options": null,
+   "ok": -1
+  },
+  {
+   "hex": "29",
+   "options": null,
+   "ok": -10
+  },
+  {
+   "hex": "37",
+   "options": null,
+   "ok": -24
+  },
+  {
+   "hex": "3818",
+   "options": null,
+   "ok": -25
+  },
+  {
+   "hex": "3863",
+   "options": null,
+   "ok": -100
+  },
+  {
+   "hex": "3903e7",
+   "options": null,
+   "ok": -1000
+  },
+  {
+   "hex": "3a000f423f",
+   "options": null,
+   "ok": -1000000
+  },
+  {
+   "hex": "3b001ffffffffffffe",
+   "options": null,
+   "ok": -9007199254740991
+  },
+  {
+   "hex": "fb3ff199999999999a",
+   "options": null,
+   "ok": 1.1
+  },
+  {
+   "hex": "fb8000000000000000",
+   "options": null,
+   "ok": {
+    "$num": "-0"
+   }
+  },
+  {
+   "hex": "4401020304",
+   "options": null,
+   "ok": {
+    "$bytes": "01020304"
+   }
+  },
+  {
+   "hex": "60",
+   "options": null,
+   "ok": ""
+  },
+  {
+   "hex": "6449455446",
+   "options": null,
+   "ok": "IETF"
+  },
+  {
+   "hex": "62c3bc",
+   "options": null,
+   "ok": "ü"
+  },
+  {
+   "hex": "63e6b0b4",
+   "options": null,
+   "ok": "水"
+  },
+  {
+   "hex": "64f0908591",
+   "options": null,
+   "ok": "𐅑"
+  },
+  {
+   "hex": "80",
+   "options": null,
+   "ok": []
+  },
+  {
+   "hex": "83010203",
+   "options": null,
+   "ok": [
+    1,
+    2,
+    3
+   ]
+  },
+  {
+   "hex": "8301820203820405",
+   "options": null,
+   "ok": [
+    1,
+    [
+     2,
+     3
+    ],
+    [
+     4,
+     5
+    ]
+   ]
+  },
+  {
+   "hex": "a26161016162820203",
+   "options": null,
+   "ok": {
+    "a": 1,
+    "b": [
+     2,
+     3
+    ]
+   }
+  },
+  {
+   "hex": "63efbbbf",
+   "options": null,
+   "ok": "﻿"
+  },
+  {
+   "hex": "fb3ff0000000000000",
+   "options": null,
+   "ok": 1
+  },
+  {
+   "hex": "fbc000000000000000",
+   "options": null,
+   "ok": -2
+  },
+  {
+   "hex": "1800",
+   "options": null,
+   "ok": 0
+  },
+  {
+   "hex": "190001",
+   "options": null,
+   "ok": 1
+  },
+  {
+   "hex": "1a00000001",
+   "options": null,
+   "ok": 1
+  },
+  {
+   "hex": "1b0000000000000001",
+   "options": null,
+   "ok": 1
+  },
+  {
+   "hex": "",
+   "options": null,
+   "error": "CborError: Truncated CBOR payload"
+  },
+  {
+   "hex": "18",
+   "options": null,
+   "error": "CborError: Truncated CBOR payload"
+  },
+  {
+   "hex": "1c",
+   "options": null,
+   "error": "CborError: Malformed CBOR additional information"
+  },
+  {
+   "hex": "1d",
+   "options": null,
+   "error": "CborError: Malformed CBOR additional information"
+  },
+  {
+   "hex": "1e",
+   "options": null,
+   "error": "CborError: Malformed CBOR additional information"
+  },
+  {
+   "hex": "5f",
+   "options": null,
+   "error": "CborError: Indefinite-length CBOR byte strings are not supported"
+  },
+  {
+   "hex": "7f",
+   "options": null,
+   "error": "CborError: Indefinite-length CBOR text strings are not supported"
+  },
+  {
+   "hex": "9f",
+   "options": null,
+   "error": "CborError: Indefinite-length CBOR arrays are not supported"
+  },
+  {
+   "hex": "bf",
+   "options": null,
+   "error": "CborError: Indefinite-length CBOR maps are not supported"
+  },
+  {
+   "hex": "c000",
+   "options": null,
+   "error": "CborError: CBOR tags are not supported"
+  },
+  {
+   "hex": "f7",
+   "options": null,
+   "error": "CborError: Unsupported CBOR simple value or floating-point width"
+  },
+  {
+   "hex": "e0",
+   "options": null,
+   "error": "CborError: Unsupported CBOR simple value or floating-point width"
+  },
+  {
+   "hex": "ff",
+   "options": null,
+   "error": "CborError: CBOR break marker is not supported"
+  },
+  {
+   "hex": "f93c00",
+   "options": null,
+   "error": "CborError: Unsupported CBOR simple value or floating-point width"
+  },
+  {
+   "hex": "fa3f800000",
+   "options": null,
+   "error": "CborError: Unsupported CBOR simple value or floating-point width"
+  },
+  {
+   "hex": "fb7ff0000000000000",
+   "options": null,
+   "error": "CborError: Decoded CBOR number must be finite"
+  },
+  {
+   "hex": "fb7ff8000000000000",
+   "options": null,
+   "error": "CborError: Decoded CBOR number must be finite"
+  },
+  {
+   "hex": "fbfff0000000000000",
+   "options": null,
+   "error": "CborError: Decoded CBOR number must be finite"
+  },
+  {
+   "hex": "fb3ff00000",
+   "options": null,
+   "error": "CborError: Truncated CBOR payload"
+  },
+  {
+   "hex": "44010203",
+   "options": null,
+   "error": "CborError: Truncated CBOR payload"
+  },
+  {
+   "hex": "636162",
+   "options": null,
+   "error": "CborError: Truncated CBOR payload"
+  },
+  {
+   "hex": "8201",
+   "options": null,
+   "error": "CborError: Truncated CBOR payload"
+  },
+  {
+   "hex": "a16161",
+   "options": null,
+   "error": "CborError: Truncated CBOR payload"
+  },
+  {
+   "hex": "0000",
+   "options": null,
+   "error": "CborError: CBOR payload contains trailing data"
+  },
+  {
+   "hex": "a10102",
+   "options": null,
+   "error": "CborError: CBOR map keys must be strings"
+  },
+  {
+   "hex": "a2616101616102",
+   "options": null,
+   "error": "CborError: CBOR map contains a duplicate key"
+  },
+  {
+   "hex": "61ff",
+   "options": null,
+   "error": "CborError: CBOR text string contains invalid UTF-8"
+  },
+  {
+   "hex": "62c080",
+   "options": null,
+   "error": "CborError: CBOR text string contains invalid UTF-8"
+  },
+  {
+   "hex": "63eda080",
+   "options": null,
+   "error": "CborError: CBOR text string contains invalid UTF-8"
+  },
+  {
+   "hex": "1b0020000000000000",
+   "options": null,
+   "error": "CborError: Decoded CBOR integer or length is outside the safe range"
+  },
+  {
+   "hex": "3b001fffffffffffff",
+   "options": null,
+   "error": "CborError: Decoded CBOR integer is outside the safe range"
+  },
+  {
+   "hex": "fb4340000000000000",
+   "options": null,
+   "error": "CborError: Decoded CBOR integer is outside the safe range"
+  },
+  {
+   "hex": "fbc340000000000000",
+   "options": null,
+   "error": "CborError: Decoded CBOR integer is outside the safe range"
+  },
+  {
+   "hex": "8181818181818181818181818181818181818181818181818181818181818181818181818181818181818181818181818181818181818181818181818181818181f6",
+   "options": null,
+   "error": "CborError: CBOR nesting depth exceeds configured limit of 64"
+  },
+  {
+   "hex": "81818181818181818181818181818181818181818181818181818181818181818181818181818181818181818181818181818181818181818181818181818181f6",
+   "options": null,
+   "ok": [
+    [
+     [
+      [
+       [
+        [
+         [
+          [
+           [
+            [
+             [
+              [
+               [
+                [
+                 [
+                  [
+                   [
+                    [
+                     [
+                      [
+                       [
+                        [
+                         [
+                          [
+                           [
+                            [
+                             [
+                              [
+                               [
+                                [
+                                 [
+                                  [
+                                   [
+                                    [
+                                     [
+                                      [
+                                       [
+                                        [
+                                         [
+                                          [
+                                           [
+                                            [
+                                             [
+                                              [
+                                               [
+                                                [
+                                                 [
+                                                  [
+                                                   [
+                                                    [
+                                                     [
+                                                      [
+                                                       [
+                                                        [
+                                                         [
+                                                          [
+                                                           [
+                                                            [
+                                                             [
+                                                              [
+                                                               [
+                                                                [
+                                                                 [
+                                                                  [
+                                                                   null
+                                                                  ]
+                                                                 ]
+                                                                ]
+                                                               ]
+                                                              ]
+                                                             ]
+                                                            ]
+                                                           ]
+                                                          ]
+                                                         ]
+                                                        ]
+                                                       ]
+                                                      ]
+                                                     ]
+                                                    ]
+                                                   ]
+                                                  ]
+                                                 ]
+                                                ]
+                                               ]
+                                              ]
+                                             ]
+                                            ]
+                                           ]
+                                          ]
+                                         ]
+                                        ]
+                                       ]
+                                      ]
+                                     ]
+                                    ]
+                                   ]
+                                  ]
+                                 ]
+                                ]
+                               ]
+                              ]
+                             ]
+                            ]
+                           ]
+                          ]
+                         ]
+                        ]
+                       ]
+                      ]
+                     ]
+                    ]
+                   ]
+                  ]
+                 ]
+                ]
+               ]
+              ]
+             ]
+            ]
+           ]
+          ]
+         ]
+        ]
+       ]
+      ]
+     ]
+    ]
+   ]
+  },
+  {
+   "hex": "5a01000001",
+   "options": null,
+   "error": "CborError: CBOR byte string length exceeds configured limit of 16777216"
+  },
+  {
+   "hex": "7a01000001",
+   "options": null,
+   "error": "CborError: CBOR text string length exceeds configured limit of 16777216"
+  },
+  {
+   "hex": "9a000f4241",
+   "options": null,
+   "error": "CborError: CBOR array length exceeds configured limit of 1000000"
+  },
+  {
+   "hex": "ba000f4241",
+   "options": null,
+   "error": "CborError: CBOR map length exceeds configured limit of 1000000"
+  },
+  {
+   "hex": "1f",
+   "options": null,
+   "error": "CborError: Indefinite-length CBOR items are not supported"
+  },
+  {
+   "hex": "3f",
+   "options": null,
+   "error": "CborError: Indefinite-length CBOR items are not supported"
+  },
+  {
+   "hex": "5c",
+   "options": null,
+   "error": "CborError: Malformed CBOR additional information"
+  },
+  {
+   "hex": "f8",
+   "options": null,
+   "error": "CborError: Unsupported CBOR simple value or floating-point width"
+  },
+  {
+   "hex": "f818",
+   "options": null,
+   "error": "CborError: Unsupported CBOR simple value or floating-point width"
+  },
+  {
+   "hex": "83010203",
+   "options": {
+    "max_byte_length": 16777216,
+    "max_container_length": 2,
+    "max_depth": 64
+   },
+   "error": "CborError: CBOR array length exceeds configured limit of 2"
+  },
+  {
+   "hex": "626162",
+   "options": {
+    "max_byte_length": 2,
+    "max_container_length": 1000000,
+    "max_depth": 64
+   },
+   "error": "CborError: CBOR byte length exceeds configured limit of 2"
+  },
+  {
+   "hex": "6161",
+   "options": {
+    "max_byte_length": 2,
+    "max_container_length": 1000000,
+    "max_depth": 64
+   },
+   "ok": "a"
+  },
+  {
+   "hex": "420102",
+   "options": {
+    "max_byte_length": 3,
+    "max_container_length": 1000000,
+    "max_depth": 64
+   },
+   "ok": {
+    "$bytes": "0102"
+   }
+  },
+  {
+   "hex": "818101",
+   "options": {
+    "max_byte_length": 100,
+    "max_container_length": 100,
+    "max_depth": 1
+   },
+   "error": "CborError: CBOR nesting depth exceeds configured limit of 1"
+  },
+  {
+   "hex": "8101",
+   "options": {
+    "max_byte_length": 100,
+    "max_container_length": 100,
+    "max_depth": 1
+   },
+   "ok": [
+    1
+   ]
+  }
+ ],
+ "frames": [
+  {
+   "max": null,
+   "ops": [
+    "00000003aabbcc",
+    "00000000",
+    "0000000104",
+    "end"
+   ],
+   "results": [
+    {
+     "op": "00000003aabbcc",
+     "ok": [
+      "aabbcc"
+     ]
+    },
+    {
+     "op": "00000000",
+     "ok": [
+      ""
+     ]
+    },
+    {
+     "op": "0000000104",
+     "ok": [
+      "04"
+     ]
+    },
+    {
+     "op": "end",
+     "ok": null
+    }
+   ]
+  },
+  {
+   "max": null,
+   "ops": [
+    "00",
+    "00",
+    "00",
+    "03",
+    "aa",
+    "bb",
+    "cc",
+    "00",
+    "00",
+    "00",
+    "00",
+    "00",
+    "00",
+    "00",
+    "01",
+    "04",
+    "end"
+   ],
+   "results": [
+    {
+     "op": "00",
+     "ok": []
+    },
+    {
+     "op": "00",
+     "ok": []
+    },
+    {
+     "op": "00",
+     "ok": []
+    },
+    {
+     "op": "03",
+     "ok": []
+    },
+    {
+     "op": "aa",
+     "ok": []
+    },
+    {
+     "op": "bb",
+     "ok": []
+    },
+    {
+     "op": "cc",
+     "ok": [
+      "aabbcc"
+     ]
+    },
+    {
+     "op": "00",
+     "ok": []
+    },
+    {
+     "op": "00",
+     "ok": []
+    },
+    {
+     "op": "00",
+     "ok": []
+    },
+    {
+     "op": "00",
+     "ok": [
+      ""
+     ]
+    },
+    {
+     "op": "00",
+     "ok": []
+    },
+    {
+     "op": "00",
+     "ok": []
+    },
+    {
+     "op": "00",
+     "ok": []
+    },
+    {
+     "op": "01",
+     "ok": []
+    },
+    {
+     "op": "04",
+     "ok": [
+      "04"
+     ]
+    },
+    {
+     "op": "end",
+     "ok": null
+    }
+   ]
+  },
+  {
+   "max": null,
+   "ops": [
+    "000003e8000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f60",
+    "6162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fa000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fa000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122",
+    "232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fa000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6",
+    "end"
+   ],
+   "results": [
+    {
+     "op": "000003e8000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f60",
+     "ok": []
+    },
+    {
+     "op": "6162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fa000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fa000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122",
+     "ok": []
+    },
+    {
+     "op": "232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fa000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6",
+     "ok": [
+      "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fa000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fa000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fa000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6"
+     ]
+    },
+    {
+     "op": "end",
+     "ok": null
+    }
+   ]
+  },
+  {
+   "max": null,
+   "ops": [
+    "",
+    "end"
+   ],
+   "results": [
+    {
+     "op": "",
+     "ok": []
+    },
+    {
+     "op": "end",
+     "ok": null
+    }
+   ]
+  },
+  {
+   "max": null,
+   "ops": [
+    "000000",
+    "end",
+    "00"
+   ],
+   "results": [
+    {
+     "op": "000000",
+     "ok": []
+    },
+    {
+     "op": "end",
+     "error": "FrameError: Truncated frame at end of stream"
+    },
+    {
+     "op": "00",
+     "error": "FrameError: Frame decoder has failed"
+    }
+   ]
+  },
+  {
+   "max": null,
+   "ops": [
+    "0000000201",
+    "end",
+    "end"
+   ],
+   "results": [
+    {
+     "op": "0000000201",
+     "ok": []
+    },
+    {
+     "op": "end",
+     "error": "FrameError: Truncated frame at end of stream"
+    },
+    {
+     "op": "end",
+     "error": "FrameError: Frame decoder has failed"
+    }
+   ]
+  },
+  {
+   "max": 3,
+   "ops": [
+    "00000004",
+    "01"
+   ],
+   "results": [
+    {
+     "op": "00000004",
+     "error": "FrameError: Frame length 4 exceeds configured limit of 3"
+    },
+    {
+     "op": "01",
+     "error": "FrameError: Frame decoder has failed"
+    }
+   ]
+  },
+  {
+   "max": 3,
+   "ops": [
+    "00000003010203",
+    "end"
+   ],
+   "results": [
+    {
+     "op": "00000003010203",
+     "ok": [
+      "010203"
+     ]
+    },
+    {
+     "op": "end",
+     "ok": null
+    }
+   ]
+  },
+  {
+   "max": 0,
+   "ops": [
+    "00000000",
+    "00000001"
+   ],
+   "results": [
+    {
+     "op": "00000000",
+     "ok": [
+      ""
+     ]
+    },
+    {
+     "op": "00000001",
+     "error": "FrameError: Frame length 1 exceeds configured limit of 0"
+    }
+   ]
+  },
+  {
+   "max": null,
+   "ops": [
+    "end",
+    "00"
+   ],
+   "results": [
+    {
+     "op": "end",
+     "ok": null
+    },
+    {
+     "op": "00",
+     "error": "FrameError: Frame decoder has ended"
+    }
+   ]
+  },
+  {
+   "max": null,
+   "ops": [
+    "0000000410",
+    "203040",
+    "end"
+   ],
+   "results": [
+    {
+     "op": "0000000410",
+     "ok": []
+    },
+    {
+     "op": "203040",
+     "ok": [
+      "10203040"
+     ]
+    },
+    {
+     "op": "end",
+     "ok": null
+    }
+   ]
+  },
+  {
+   "max": 4294967296,
+   "ops": [],
+   "results": [
+    {
+     "op": "new",
+     "error": "RangeError: maxFrameLength must be an integer between 0 and 4294967295"
+    }
+   ]
+  },
+  {
+   "max": null,
+   "ops": [
+    "encode:aabbcc"
+   ],
+   "results": [
+    {
+     "op": "encode:aabbcc",
+     "ok": [
+      "00000003aabbcc"
+     ]
+    }
+   ]
+  }
+ ],
+ "messages": [
+  {
+   "side": "client",
+   "value": {
+    "type": "hello",
+    "version": 8
+   },
+   "max": null,
+   "ok": "00000015a264747970656568656c6c6f6776657273696f6e08"
+  },
+  {
+   "side": "client",
+   "value": {
+    "type": "hello",
+    "version": 0
+   },
+   "max": null,
+   "ok": "00000015a264747970656568656c6c6f6776657273696f6e00"
+  },
+  {
+   "side": "client",
+   "value": {
+    "type": "hello",
+    "version": 9
+   },
+   "max": null,
+   "ok": "00000015a264747970656568656c6c6f6776657273696f6e09"
+  },
+  {
+   "side": "client",
+   "value": {
+    "type": "hello",
+    "version": "8"
+   },
+   "max": null,
+   "error": "ProtocolValidationError: Invalid client protocol message"
+  },
+  {
+   "side": "client",
+   "value": {
+    "type": "hello",
+    "version": 8.5
+   },
+   "max": null,
+   "error": "ProtocolValidationError: Invalid client protocol message"
+  },
+  {
+   "side": "client",
+   "value": {
+    "type": "hello",
+    "version": -1
+   },
+   "max": null,
+   "error": "ProtocolValidationError: Invalid client protocol message"
+  },
+  {
+   "side": "client",
+   "value": {
+    "type": "hello",
+    "version": 8,
+    "extra": true
+   },
+   "max": null,
+   "error": "ProtocolValidationError: Invalid client protocol message"
+  },
+  {
+   "side": "client",
+   "value": {
+    "type": "hello"
+   },
+   "max": null,
+   "error": "ProtocolValidationError: Invalid client protocol message"
+  },
+  {
+   "side": "client",
+   "value": {
+    "type": "request",
+    "id": "request-1",
+    "target": {
+     "serverId": ""
+    },
+    "call": {
+     "serviceId": "pi.models",
+     "member": "list",
+     "args": []
+    }
+   },
+   "max": null,
+   "error": "ProtocolValidationError: Invalid client protocol message"
+  },
+  {
+   "side": "client",
+   "value": {
+    "type": "request",
+    "id": "request-1",
+    "target": {
+     "serverId": "server-1"
+    },
+    "call": {
+     "serviceId": "pi.models",
+     "member": "list",
+     "args": []
+    }
+   },
+   "max": null,
+   "error": "ProtocolValidationError: Invalid client protocol message"
+  },
+  {
+   "side": "client",
+   "value": {
+    "type": "request",
+    "id": "request-1",
+    "target": {
+     "serverId": "00000000-0000-7000-8000-000000000001"
+    },
+    "call": {
+     "serviceId": "pi.models",
+     "member": "list",
+     "args": []
+    }
+   },
+   "max": null,
+   "error": "ProtocolValidationError: Invalid client protocol message"
+  },
+  {
+   "side": "client",
+   "value": {
+    "type": "request",
+    "id": "request-1",
+    "target": {
+     "serverId": "00000000-0000-4000-7000-000000000001"
+    },
+    "call": {
+     "serviceId": "pi.models",
+     "member": "list",
+     "args": []
+    }
+   },
+   "max": null,
+   "error": "ProtocolValidationError: Invalid client protocol message"
+  },
+  {
+   "side": "client",
+   "value": {
+    "type": "request",
+    "id": "request-1",
+    "target": {
+     "serverId": "00000000-0000-4000-8000-00000000000A"
+    },
+    "call": {
+     "serviceId": "pi.models",
+     "member": "list",
+     "args": []
+    }
+   },
+   "max": null,
+   "error": "ProtocolValidationError: Invalid client protocol message"
+  },
+  {
+   "side": "client",
+   "value": {
+    "type": "request",
+    "id": "request-1",
+    "target": {
+     "serverId": "00000000-0000-4000-c000-000000000001"
+    },
+    "call": {
+     "serviceId": "pi.models",
+     "member": "list",
+     "args": []
+    }
+   },
+   "max": null,
+   "error": "ProtocolValidationError: Invalid client protocol message"
+  },
+  {
+   "side": "client",
+   "value": {
+    "type": "request",
+    "id": "request-1",
+    "target": {
+     "serverId": "00000000-0000-4000-b000-00000000000f"
+    },
+    "call": {
+     "serviceId": "pi.models",
+     "member": "list",
+     "args": []
+    }
+   },
+   "max": null,
+   "ok": "0000007ea46474797065677265717565737462696469726571756573742d3166746172676574a1687365727665724964782430303030303030302d303030302d343030302d623030302d3030303030303030303030666463616c6ca3697365727669636549646970692e6d6f64656c73666d656d626572646c697374646172677380"
+  },
+  {
+   "side": "client",
+   "value": {
+    "type": "request",
+    "id": "request-1",
+    "target": {
+     "serverId": "00000000-0000-4000-8000-0000000000010"
+    },
+    "call": {
+     "serviceId": "pi.models",
+     "member": "list",
+     "args": []
+    }
+   },
+   "max": null,
+   "error": "ProtocolValidationError: Invalid client protocol message"
+  },
+  {
+   "side": "client",
+   "value": {
+    "type": "request",
+    "id": "request-1",
+    "target": {
+     "serverId": "00000000-0000-4000-8000-000000000001",
+     "sessionId": "session-1",
+     "attachmentId": "attachment-1"
+    },
+    "call": {
+     "serviceId": "application.custom",
+     "instance": {
+      "key": "instance-1",
+      "generation": 2
+     },
+     "member": "invoke",
+     "args": [
+      {
+       "arbitrary": true
+      },
+      [
+       "opaque"
+      ]
+     ]
+    }
+   },
+   "max": null,
+   "ok": "000000f0a46474797065677265717565737462696469726571756573742d3166746172676574a3687365727665724964782430303030303030302d303030302d343030302d383030302d3030303030303030303030316973657373696f6e49646973657373696f6e2d316c6174746163686d656e7449646c6174746163686d656e742d316463616c6ca469736572766963654964726170706c69636174696f6e2e637573746f6d68696e7374616e6365a2636b65796a696e7374616e63652d316a67656e65726174696f6e02666d656d62657266696e766f6b65646172677382a169617262697472617279f581666f7061717565"
+  },
+  {
+   "side": "client",
+   "value": {
+    "type": "request",
+    "id": "request-1",
+    "target": {
+     "serverId": "00000000-0000-4000-8000-000000000001"
+    },
+    "call": {
+     "arbitrary": "strict JSON whose service meaning belongs to Chord"
+    }
+   },
+   "max": null,
+   "ok": "00000096a46474797065677265717565737462696469726571756573742d3166746172676574a1687365727665724964782430303030303030302d303030302d343030302d383030302d3030303030303030303030316463616c6ca1696172626974726172797832737472696374204a534f4e2077686f73652073657276696365206d65616e696e672062656c6f6e677320746f2043686f7264"
+  },
+  {
+   "side": "client",
+   "value": {
+    "type": "request",
+    "id": "request-1",
+    "target": {
+     "serverId": "00000000-0000-4000-8000-000000000001"
+    },
+    "call": {
+     "serviceId": "pi.models",
+     "member": "list",
+     "args": [
+      {
+       "$bytes": "01"
+      }
+     ]
+    }
+   },
+   "max": null,
+   "error": "ProtocolValidationError: Invalid client protocol message"
+  },
+  {
+   "side": "client",
+   "value": {
+    "type": "request",
+    "id": "request-1",
+    "target": {
+     "serverId": "00000000-0000-4000-8000-000000000001"
+    },
+    "call": {
+     "serviceId": "pi.models",
+     "member": "list",
+     "args": [
+      {
+       "$num": "NaN"
+      }
+     ]
+    }
+   },
+   "max": null,
+   "error": "ProtocolValidationError: Invalid client protocol message"
+  },
+  {
+   "side": "client",
+   "value": {
+    "type": "request",
+    "id": "request-1",
+    "target": {
+     "serverId": "00000000-0000-4000-8000-000000000001"
+    },
+    "call": {
+     "serviceId": "pi.models",
+     "member": "list",
+     "args": [
+      {
+       "$num": "-0"
+      },
+      1.5
+     ]
+    }
+   },
+   "max": null,
+   "ok": "00000090a46474797065677265717565737462696469726571756573742d3166746172676574a1687365727665724964782430303030303030302d303030302d343030302d383030302d3030303030303030303030316463616c6ca3697365727669636549646970692e6d6f64656c73666d656d626572646c697374646172677382fb8000000000000000fb3ff8000000000000"
+  },
+  {
+   "side": "client",
+   "value": {
+    "type": "request",
+    "id": "",
+    "target": {
+     "serverId": "00000000-0000-4000-8000-000000000001"
+    },
+    "call": {
+     "serviceId": "pi.models",
+     "member": "list",
+     "args": []
+    }
+   },
+   "max": null,
+   "error": "ProtocolValidationError: Invalid client protocol message"
+  },
+  {
+   "side": "client",
+   "value": {
+    "type": "request",
+    "id": "request-1",
+    "target": {
+     "serverId": "00000000-0000-4000-8000-000000000001"
+    },
+    "call": {
+     "serviceId": "pi.models",
+     "member": "list",
+     "args": []
+    },
+    "extra": true
+   },
+   "max": null,
+   "error": "ProtocolValidationError: Invalid client protocol message"
+  },
+  {
+   "side": "client",
+   "value": {
+    "type": "request",
+    "id": "request-1",
+    "target": {
+     "serverId": "00000000-0000-4000-8000-000000000001"
+    }
+   },
+   "max": null,
+   "error": "ProtocolValidationError: Invalid client protocol message"
+  },
+  {
+   "side": "client",
+   "value": {
+    "type": "request",
+    "id": "request-1",
+    "target": {
+     "serverId": "00000000-0000-4000-8000-000000000001",
+     "sessionId": "s"
+    },
+    "call": {
+     "serviceId": "pi.models",
+     "member": "list",
+     "args": []
+    }
+   },
+   "max": null,
+   "error": "ProtocolValidationError: Invalid client protocol message"
+  },
+  {
+   "side": "client",
+   "value": {
+    "type": "request",
+    "id": "request-1",
+    "target": {
+     "serverId": "00000000-0000-4000-8000-000000000001",
+     "sessionId": "session-1",
+     "attachmentId": ""
+    },
+    "call": {
+     "serviceId": "pi.models",
+     "member": "list",
+     "args": []
+    }
+   },
+   "max": null,
+   "error": "ProtocolValidationError: Invalid client protocol message"
+  },
+  {
+   "side": "client",
+   "value": {
+    "type": "request",
+    "id": "request-1",
+    "target": {
+     "serverId": "00000000-0000-4000-8000-000000000001",
+     "extra": 1
+    },
+    "call": {
+     "serviceId": "pi.models",
+     "member": "list",
+     "args": []
+    }
+   },
+   "max": null,
+   "error": "ProtocolValidationError: Invalid client protocol message"
+  },
+  {
+   "side": "client",
+   "value": {
+    "type": "request",
+    "id": 5,
+    "target": {
+     "serverId": "00000000-0000-4000-8000-000000000001"
+    },
+    "call": {
+     "serviceId": "pi.models",
+     "member": "list",
+     "args": []
+    }
+   },
+   "max": null,
+   "error": "ProtocolValidationError: Invalid client protocol message"
+  },
+  {
+   "side": "client",
+   "value": {
+    "type": "request",
+    "id": "request-1",
+    "target": {
+     "serverId": "00000000-0000-4000-8000-000000000001"
+    },
+    "call": null
+   },
+   "max": null,
+   "ok": "00000058a46474797065677265717565737462696469726571756573742d3166746172676574a1687365727665724964782430303030303030302d303030302d343030302d383030302d3030303030303030303030316463616c6cf6"
+  },
+  {
+   "side": "client",
+   "value": {
+    "type": "cancel",
+    "id": "request-1",
+    "target": {
+     "serverId": "00000000-0000-4000-8000-000000000001"
+    }
+   },
+   "max": null,
+   "ok": "00000051a364747970656663616e63656c62696469726571756573742d3166746172676574a1687365727665724964782430303030303030302d303030302d343030302d383030302d303030303030303030303031"
+  },
+  {
+   "side": "client",
+   "value": {
+    "type": "cancel",
+    "id": "request-1",
+    "target": {
+     "serverId": "00000000-0000-4000-8000-000000000001",
+     "sessionId": "session-1",
+     "attachmentId": "attachment-1"
+    }
+   },
+   "max": null,
+   "ok": "0000007fa364747970656663616e63656c62696469726571756573742d3166746172676574a3687365727665724964782430303030303030302d303030302d343030302d383030302d3030303030303030303030316973657373696f6e49646973657373696f6e2d316c6174746163686d656e7449646c6174746163686d656e742d31"
+  },
+  {
+   "side": "client",
+   "value": {
+    "type": "cancel",
+    "id": "",
+    "target": {
+     "serverId": "00000000-0000-4000-8000-000000000001"
+    }
+   },
+   "max": null,
+   "error": "ProtocolValidationError: Invalid client protocol message"
+  },
+  {
+   "side": "client",
+   "value": {
+    "type": "cancel",
+    "id": "request-1",
+    "target": {
+     "serverId": "00000000-0000-4000-8000-000000000001"
+    },
+    "extra": true
+   },
+   "max": null,
+   "error": "ProtocolValidationError: Invalid client protocol message"
+  },
+  {
+   "side": "client",
+   "value": {
+    "type": "unknown"
+   },
+   "max": null,
+   "error": "ProtocolValidationError: Invalid client protocol message"
+  },
+  {
+   "side": "client",
+   "value": "{\"type\":\"hello\",\"version\":8}",
+   "max": null,
+   "error": "ProtocolValidationError: Invalid client protocol message"
+  },
+  {
+   "side": "client",
+   "value": [],
+   "max": null,
+   "error": "ProtocolValidationError: Invalid client protocol message"
+  },
+  {
+   "side": "client",
+   "value": null,
+   "max": null,
+   "error": "ProtocolValidationError: Invalid client protocol message"
+  },
+  {
+   "side": "server",
+   "value": {
+    "type": "hello",
+    "version": 8,
+    "serverId": "00000000-0000-4000-8000-000000000001"
+   },
+   "max": null,
+   "ok": "00000044a364747970656568656c6c6f6776657273696f6e08687365727665724964782430303030303030302d303030302d343030302d383030302d303030303030303030303031"
+  },
+  {
+   "side": "server",
+   "value": {
+    "type": "hello",
+    "version": 7,
+    "serverId": "00000000-0000-4000-8000-000000000001"
+   },
+   "max": null,
+   "error": "ProtocolValidationError: Invalid server protocol message"
+  },
+  {
+   "side": "server",
+   "value": {
+    "type": "hello",
+    "version": 8,
+    "serverId": "server-1"
+   },
+   "max": null,
+   "error": "ProtocolValidationError: Invalid server protocol message"
+  },
+  {
+   "side": "server",
+   "value": {
+    "type": "hello",
+    "version": 8,
+    "serverId": "00000000-0000-4000-8000-000000000001",
+    "snapshot": {}
+   },
+   "max": null,
+   "error": "ProtocolValidationError: Invalid server protocol message"
+  },
+  {
+   "side": "server",
+   "value": {
+    "type": "hello_error",
+    "error": {
+     "code": "version",
+     "message": "Unsupported protocol version 7; expected 8"
+    }
+   },
+   "max": null,
+   "ok": "0000005aa264747970656b68656c6c6f5f6572726f72656572726f72a264636f64656776657273696f6e676d657373616765782a556e737570706f727465642070726f746f636f6c2076657273696f6e20373b2065787065637465642038"
+  },
+  {
+   "side": "server",
+   "value": {
+    "type": "hello_error",
+    "error": {
+     "code": "",
+     "message": "x"
+    }
+   },
+   "max": null,
+   "error": "ProtocolValidationError: Invalid server protocol message"
+  },
+  {
+   "side": "server",
+   "value": {
+    "type": "hello_error",
+    "error": {
+     "code": "x"
+    }
+   },
+   "max": null,
+   "error": "ProtocolValidationError: Invalid server protocol message"
+  },
+  {
+   "side": "server",
+   "value": {
+    "type": "response",
+    "id": "request-1",
+    "ok": true
+   },
+   "max": null,
+   "ok": "00000020a3647479706568726573706f6e736562696469726571756573742d31626f6bf5"
+  },
+  {
+   "side": "server",
+   "value": {
+    "type": "response",
+    "id": "request-1",
+    "ok": true,
+    "result": []
+   },
+   "max": null,
+   "ok": "00000028a4647479706568726573706f6e736562696469726571756573742d31626f6bf566726573756c7480"
+  },
+  {
+   "side": "server",
+   "value": {
+    "type": "response",
+    "id": "request-1",
+    "ok": true,
+    "result": null
+   },
+   "max": null,
+   "ok": "00000028a4647479706568726573706f6e736562696469726571756573742d31626f6bf566726573756c74f6"
+  },
+  {
+   "side": "server",
+   "value": {
+    "type": "response",
+    "id": "request-1",
+    "ok": true,
+    "result": {
+     "$bytes": "01"
+    }
+   },
+   "max": null,
+   "error": "ProtocolValidationError: Invalid server protocol message"
+  },
+  {
+   "side": "server",
+   "value": {
+    "type": "response",
+    "id": "request-1",
+    "ok": true,
+    "result": [],
+    "extra": true
+   },
+   "max": null,
+   "error": "ProtocolValidationError: Invalid server protocol message"
+  },
+  {
+   "side": "server",
+   "value": {
+    "type": "response",
+    "id": "request-1",
+    "ok": false,
+    "error": {
+     "code": "",
+     "message": "bad"
+    }
+   },
+   "max": null,
+   "error": "ProtocolValidationError: Invalid server protocol message"
+  },
+  {
+   "side": "server",
+   "value": {
+    "type": "response",
+    "id": "request-1",
+    "ok": false,
+    "error": {
+     "code": "wrong_server",
+     "message": "safe"
+    }
+   },
+   "max": null,
+   "ok": "00000046a4647479706568726573706f6e736562696469726571756573742d31626f6bf4656572726f72a264636f64656c77726f6e675f736572766572676d6573736167656473616665"
+  },
+  {
+   "side": "server",
+   "value": {
+    "type": "response",
+    "id": "request-1",
+    "ok": false,
+    "error": {
+     "code": "cancelled",
+     "message": "safe"
+    }
+   },
+   "max": null,
+   "ok": "00000043a4647479706568726573706f6e736562696469726571756573742d31626f6bf4656572726f72a264636f64656963616e63656c6c6564676d6573736167656473616665"
+  },
+  {
+   "side": "server",
+   "value": {
+    "type": "response",
+    "id": "request-1",
+    "ok": false,
+    "error": {
+     "code": "service_not_found",
+     "message": "safe"
+    }
+   },
+   "max": null,
+   "ok": "0000004ba4647479706568726573706f6e736562696469726571756573742d31626f6bf4656572726f72a264636f646571736572766963655f6e6f745f666f756e64676d6573736167656473616665"
+  },
+  {
+   "side": "server",
+   "value": {
+    "type": "response",
+    "id": "request-1",
+    "ok": false,
+    "error": {
+     "code": "application_error",
+     "message": "safe"
+    }
+   },
+   "max": null,
+   "ok": "0000004ba4647479706568726573706f6e736562696469726571756573742d31626f6bf4656572726f72a264636f6465716170706c69636174696f6e5f6572726f72676d6573736167656473616665"
+  },
+  {
+   "side": "server",
+   "value": {
+    "type": "response",
+    "id": "request-1",
+    "ok": false,
+    "error": {
+     "code": "x",
+     "message": "y"
+    },
+    "result": 1
+   },
+   "max": null,
+   "error": "ProtocolValidationError: Invalid server protocol message"
+  },
+  {
+   "side": "server",
+   "value": {
+    "type": "response",
+    "id": "request-1",
+    "ok": false
+   },
+   "max": null,
+   "error": "ProtocolValidationError: Invalid server protocol message"
+  },
+  {
+   "side": "server",
+   "value": {
+    "type": "response",
+    "id": "request-1",
+    "ok": true,
+    "error": {
+     "code": "x",
+     "message": "y"
+    }
+   },
+   "max": null,
+   "error": "ProtocolValidationError: Invalid server protocol message"
+  },
+  {
+   "side": "server",
+   "value": {
+    "type": "response",
+    "id": "request-1",
+    "ok": 1,
+    "result": 1
+   },
+   "max": null,
+   "error": "ProtocolValidationError: Invalid server protocol message"
+  },
+  {
+   "side": "server",
+   "value": {
+    "type": "service_update",
+    "subscriptionId": "subscription-1",
+    "update": {
+     "applicationDefined": true
+    }
+   },
+   "max": null,
+   "ok": "0000004fa364747970656e736572766963655f7570646174656e737562736372697074696f6e49646e737562736372697074696f6e2d3166757064617465a1726170706c69636174696f6e446566696e6564f5"
+  },
+  {
+   "side": "server",
+   "value": {
+    "type": "service_update",
+    "subscriptionId": "",
+    "update": 1
+   },
+   "max": null,
+   "error": "ProtocolValidationError: Invalid server protocol message"
+  },
+  {
+   "side": "server",
+   "value": {
+    "type": "attachment",
+    "attachment": {
+     "serverId": "00000000-0000-4000-8000-000000000001",
+     "sessionId": "session-1",
+     "attachmentId": "attachment-1"
+    }
+   },
+   "max": null,
+   "ok": "0000007aa264747970656a6174746163686d656e746a6174746163686d656e74a3687365727665724964782430303030303030302d303030302d343030302d383030302d3030303030303030303030316973657373696f6e49646973657373696f6e2d316c6174746163686d656e7449646c6174746163686d656e742d31"
+  },
+  {
+   "side": "server",
+   "value": {
+    "type": "attachment",
+    "attachment": null
+   },
+   "max": null,
+   "ok": "0000001da264747970656a6174746163686d656e746a6174746163686d656e74f6"
+  },
+  {
+   "side": "server",
+   "value": {
+    "type": "attachment",
+    "attachment": {
+     "sessionId": "session-1"
+    }
+   },
+   "max": null,
+   "error": "ProtocolValidationError: Invalid server protocol message"
+  },
+  {
+   "side": "server",
+   "value": {
+    "type": "attachment"
+   },
+   "max": null,
+   "error": "ProtocolValidationError: Invalid server protocol message"
+  },
+  {
+   "side": "server",
+   "value": {
+    "type": "unknown",
+    "event": {}
+   },
+   "max": null,
+   "error": "ProtocolValidationError: Invalid server protocol message"
+  },
+  {
+   "side": "client",
+   "value": {
+    "type": "hello",
+    "version": 8
+   },
+   "max": 8,
+   "error": "ProtocolValidationError: Unable to encode client protocol message: CBOR byte length exceeds configured limit of 8"
+  },
+  {
+   "side": "server",
+   "value": {
+    "type": "hello",
+    "version": 8,
+    "serverId": "00000000-0000-4000-8000-000000000001"
+   },
+   "max": 8,
+   "error": "ProtocolValidationError: Unable to encode server protocol message: CBOR byte length exceeds configured limit of 8"
+  },
+  {
+   "side": "server",
+   "value": {
+    "type": "response",
+    "id": "r",
+    "ok": true,
+    "result": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   },
+   "max": 100,
+   "error": "ProtocolValidationError: Unable to encode server protocol message: CBOR text string length exceeds configured limit of 100"
+  }
+ ],
+ "decoders": [
+  {
+   "side": "client",
+   "max": null,
+   "ops": [
+    "00000015a264747970656568656c6c6f6776657273696f6e0800000089a46474797065677265717565737462696469726571756573742d3166746172676574a1687365727665724964782430303030303030302d303030302d343030302d383030302d3030303030303030303030316463616c6ca3697365727669636549647470692e73657373696f6e2d6469726563746f7279666d656d626572646c697374646172677380",
+    "end"
+   ],
+   "results": [
+    {
+     "op": "00000015a264747970656568656c6c6f6776657273696f6e0800000089a46474797065677265717565737462696469726571756573742d3166746172676574a1687365727665724964782430303030303030302d303030302d343030302d383030302d3030303030303030303030316463616c6ca3697365727669636549647470692e73657373696f6e2d6469726563746f7279666d656d626572646c697374646172677380",
+     "ok": [
+      {
+       "type": "hello",
+       "version": 8
+      },
+      {
+       "type": "request",
+       "id": "request-1",
+       "target": {
+        "serverId": "00000000-0000-4000-8000-000000000001"
+       },
+       "call": {
+        "serviceId": "pi.session-directory",
+        "member": "list",
+        "args": []
+       }
+      }
+     ]
+    },
+    {
+     "op": "end",
+     "ok": null
+    }
+   ]
+  },
+  {
+   "side": "client",
+   "max": null,
+   "ops": [
+    "00000015a26474",
+    "7970656568656c6c6f6776657273696f6e0800000089a46474797065677265717565737462696469726571756573742d3166746172676574a1687365727665724964782430303030303030302d303030302d343030302d383030302d3030303030303030303030316463616c6ca3697365727669636549647470692e73657373696f6e2d6469726563746f7279666d656d626572646c697374646172677380",
+    "end"
+   ],
+   "results": [
+    {
+     "op": "00000015a26474",
+     "ok": []
+    },
+    {
+     "op": "7970656568656c6c6f6776657273696f6e0800000089a46474797065677265717565737462696469726571756573742d3166746172676574a1687365727665724964782430303030303030302d303030302d343030302d383030302d3030303030303030303030316463616c6ca3697365727669636549647470692e73657373696f6e2d6469726563746f7279666d656d626572646c697374646172677380",
+     "ok": [
+      {
+       "type": "hello",
+       "version": 8
+      },
+      {
+       "type": "request",
+       "id": "request-1",
+       "target": {
+        "serverId": "00000000-0000-4000-8000-000000000001"
+       },
+       "call": {
+        "serviceId": "pi.session-directory",
+        "member": "list",
+        "args": []
+       }
+      }
+     ]
+    },
+    {
+     "op": "end",
+     "ok": null
+    }
+   ]
+  },
+  {
+   "side": "client",
+   "max": null,
+   "ops": [
+    "00000015a264747970656568656c6c6f67766572",
+    "73",
+    "696f6e0800000089a46474797065677265717565737462696469726571756573742d3166746172676574a1687365727665724964782430303030303030302d303030302d343030302d383030302d3030303030303030303030316463616c6ca3697365727669636549647470692e73657373696f6e2d6469726563746f7279666d656d626572646c697374646172677380",
+    "end"
+   ],
+   "results": [
+    {
+     "op": "00000015a264747970656568656c6c6f67766572",
+     "ok": []
+    },
+    {
+     "op": "73",
+     "ok": []
+    },
+    {
+     "op": "696f6e0800000089a46474797065677265717565737462696469726571756573742d3166746172676574a1687365727665724964782430303030303030302d303030302d343030302d383030302d3030303030303030303030316463616c6ca3697365727669636549647470692e73657373696f6e2d6469726563746f7279666d656d626572646c697374646172677380",
+     "ok": [
+      {
+       "type": "hello",
+       "version": 8
+      },
+      {
+       "type": "request",
+       "id": "request-1",
+       "target": {
+        "serverId": "00000000-0000-4000-8000-000000000001"
+       },
+       "call": {
+        "serviceId": "pi.session-directory",
+        "member": "list",
+        "args": []
+       }
+      }
+     ]
+    },
+    {
+     "op": "end",
+     "ok": null
+    }
+   ]
+  },
+  {
+   "side": "client",
+   "max": null,
+   "ops": [
+    "00000000",
+    "00000015a264747970656568656c6c6f6776657273696f6e08"
+   ],
+   "results": [
+    {
+     "op": "00000000",
+     "error": "ProtocolValidationError: Invalid client protocol frame: Truncated CBOR payload"
+    },
+    {
+     "op": "00000015a264747970656568656c6c6f6776657273696f6e08",
+     "error": "ProtocolValidationError: client message decoder has failed"
+    }
+   ]
+  },
+  {
+   "side": "client",
+   "max": null,
+   "ops": [
+    "00000001ff",
+    "00000015a264747970656568656c6c6f6776657273696f6e08"
+   ],
+   "results": [
+    {
+     "op": "00000001ff",
+     "error": "ProtocolValidationError: Invalid client protocol frame: CBOR break marker is not supported"
+    },
+    {
+     "op": "00000015a264747970656568656c6c6f6776657273696f6e08",
+     "error": "ProtocolValidationError: client message decoder has failed"
+    }
+   ]
+  },
+  {
+   "side": "client",
+   "max": null,
+   "ops": [
+    "0000001ca364747970656568656c6c6f6776657273696f6e01656578747261f5",
+    "00000015a264747970656568656c6c6f6776657273696f6e08"
+   ],
+   "results": [
+    {
+     "op": "0000001ca364747970656568656c6c6f6776657273696f6e01656578747261f5",
+     "error": "ProtocolValidationError: Invalid client protocol message"
+    },
+    {
+     "op": "00000015a264747970656568656c6c6f6776657273696f6e08",
+     "error": "ProtocolValidationError: client message decoder has failed"
+    }
+   ]
+  },
+  {
+   "side": "client",
+   "max": null,
+   "ops": [
+    "00000015a264747970656568656c6c6f6776657273696f6e080000001ca364747970656568656c6c6f6776657273696f6e01656578747261f5"
+   ],
+   "results": [
+    {
+     "op": "00000015a264747970656568656c6c6f6776657273696f6e080000001ca364747970656568656c6c6f6776657273696f6e01656578747261f5",
+     "error": "ProtocolValidationError: Invalid client protocol message"
+    }
+   ]
+  },
+  {
+   "side": "server",
+   "max": null,
+   "ops": [
+    "0000000201",
+    "end",
+    "end"
+   ],
+   "results": [
+    {
+     "op": "0000000201",
+     "ok": []
+    },
+    {
+     "op": "end",
+     "error": "ProtocolValidationError: Invalid server protocol framing: Truncated frame at end of stream"
+    },
+    {
+     "op": "end",
+     "error": "ProtocolValidationError: server message decoder has failed"
+    }
+   ]
+  },
+  {
+   "side": "client",
+   "max": 3,
+   "ops": [
+    "00000004"
+   ],
+   "results": [
+    {
+     "op": "00000004",
+     "error": "ProtocolValidationError: Invalid client protocol frame: Frame length 4 exceeds configured limit of 3"
+    }
+   ]
+  },
+  {
+   "side": "client",
+   "max": null,
+   "ops": [
+    "00000015a264747970656568656c6c6f6776657273696f6e0800",
+    "end"
+   ],
+   "results": [
+    {
+     "op": "00000015a264747970656568656c6c6f6776657273696f6e0800",
+     "ok": [
+      {
+       "type": "hello",
+       "version": 8
+      }
+     ]
+    },
+    {
+     "op": "end",
+     "error": "ProtocolValidationError: Invalid client protocol framing: Truncated frame at end of stream"
+    }
+   ]
+  },
+  {
+   "side": "server",
+   "max": null,
+   "ops": [
+    "00000044a364747970656568656c6c6f6776657273696f6e08687365727665724964782430303030303030302d303030302d343030302d383030302d30303030303030303030303100000028a4647479706568726573706f6e736562696469726571756573742d31626f6bf566726573756c7480",
+    "end"
+   ],
+   "results": [
+    {
+     "op": "00000044a364747970656568656c6c6f6776657273696f6e08687365727665724964782430303030303030302d303030302d343030302d383030302d30303030303030303030303100000028a4647479706568726573706f6e736562696469726571756573742d31626f6bf566726573756c7480",
+     "ok": [
+      {
+       "type": "hello",
+       "version": 8,
+       "serverId": "00000000-0000-4000-8000-000000000001"
+      },
+      {
+       "type": "response",
+       "id": "request-1",
+       "ok": true,
+       "result": []
+      }
+     ]
+    },
+    {
+     "op": "end",
+     "ok": null
+    }
+   ]
+  },
+  {
+   "side": "server",
+   "max": null,
+   "ops": [
+    "00000021a4647479706568726573706f6e73656269646172626f6bf566726573756c744101"
+   ],
+   "results": [
+    {
+     "op": "00000021a4647479706568726573706f6e73656269646172626f6bf566726573756c744101",
+     "error": "ProtocolValidationError: Invalid server protocol message"
+    }
+   ]
+  }
+ ]
+}

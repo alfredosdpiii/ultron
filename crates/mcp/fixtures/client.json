@@ -1,0 +1,701 @@
+{
+ "roots": [
+  {
+   "uri": "file:///workspace",
+   "name": "workspace"
+  }
+ ],
+ "sessions": [
+  {
+   "client": {
+    "name": "fixture-client",
+    "version": "1.0.0",
+    "title": "Fixture",
+    "roots": true
+   },
+   "results": [
+    {
+     "op": "connect",
+     "state": "connected",
+     "ok": {
+      "protocolVersion": "2025-06-18",
+      "capabilities": {
+       "tools": {
+        "listChanged": true
+       },
+       "resources": {}
+      },
+      "serverInfo": {
+       "name": "fake",
+       "version": "1.0.0"
+      },
+      "instructions": "Use fake tools."
+     }
+    },
+    {
+     "op": "listTools",
+     "ok": [
+      {
+       "name": "echo",
+       "description": "Echo text",
+       "inputSchema": {
+        "type": "object"
+       }
+      },
+      {
+       "name": "slow",
+       "inputSchema": {
+        "type": "object"
+       },
+       "annotations": {
+        "readOnlyHint": true
+       }
+      }
+     ]
+    },
+    {
+     "op": "listResources",
+     "ok": [
+      {
+       "uri": "file:///a",
+       "name": "a",
+       "mimeType": "text/plain"
+      },
+      {
+       "uri": "file:///b",
+       "name": "file:///b"
+      }
+     ]
+    },
+    {
+     "op": "listResourceTemplates",
+     "ok": [
+      {
+       "uriTemplate": "repo://{owner}/{repo}",
+       "name": "repo://{owner}/{repo}"
+      }
+     ]
+    },
+    {
+     "op": "listResourcesPage",
+     "ok": {
+      "resources": [
+       {
+        "uri": "file:///a",
+        "name": "a",
+        "mimeType": "text/plain"
+       }
+      ],
+      "nextCursor": "2"
+     }
+    },
+    {
+     "op": "listResourcesPage",
+     "cursor": "2",
+     "ok": {
+      "resources": [
+       {
+        "uri": "file:///b",
+        "name": "file:///b"
+       }
+      ]
+     }
+    },
+    {
+     "op": "readResource",
+     "uri": "file:///a",
+     "ok": {
+      "contents": [
+       {
+        "uri": "file:///a",
+        "text": "hello"
+       }
+      ]
+     }
+    },
+    {
+     "op": "readResource",
+     "uri": "file:///bad",
+     "error": {
+      "name": "McpError",
+      "message": "Invalid contents in MCP resources/read result",
+      "code": -32600
+     }
+    },
+    {
+     "op": "callTool",
+     "name": "echo",
+     "args": {
+      "text": "hi"
+     },
+     "ok": {
+      "content": [
+       {
+        "type": "text",
+        "text": "hi"
+       }
+      ]
+     }
+    },
+    {
+     "op": "callTool",
+     "name": "structured",
+     "ok": {
+      "structuredContent": {
+       "ok": true
+      },
+      "content": []
+     }
+    },
+    {
+     "op": "callTool",
+     "name": "broken",
+     "error": {
+      "name": "McpError",
+      "message": "Invalid MCP tools/call result",
+      "code": -32600
+     }
+    },
+    {
+     "op": "callTool",
+     "name": "fail",
+     "args": {},
+     "error": {
+      "name": "McpError",
+      "message": "tool failed",
+      "code": 1234,
+      "data": {
+       "retryable": false
+      }
+     }
+    },
+    {
+     "op": "callTool",
+     "name": "nope",
+     "error": {
+      "name": "McpError",
+      "message": "Unknown tool: nope",
+      "code": -32602
+     }
+    },
+    {
+     "op": "callTool",
+     "name": "garbage",
+     "ok": {
+      "content": []
+     }
+    },
+    {
+     "op": "callTool",
+     "name": "roots",
+     "ok": {
+      "content": [
+       {
+        "type": "text",
+        "text": "roots done"
+       }
+      ]
+     }
+    },
+    {
+     "op": "callTool",
+     "name": "progress",
+     "args": {
+      "n": 1
+     },
+     "timeoutMs": 450,
+     "progress": true,
+     "ok": {
+      "content": [
+       {
+        "type": "text",
+        "text": "done"
+       }
+      ]
+     }
+    },
+    {
+     "op": "ping",
+     "ok": null
+    },
+    {
+     "op": "request",
+     "method": "bogus/method",
+     "params": {
+      "a": [
+       1,
+       "x",
+       null
+      ]
+     },
+     "error": {
+      "name": "McpError",
+      "message": "Method not found: bogus/method",
+      "code": -32601
+     }
+    },
+    {
+     "op": "callTool",
+     "name": "hang",
+     "abort": "stop",
+     "error": {
+      "name": "AbortError",
+      "message": "MCP request aborted"
+     }
+    },
+    {
+     "op": "callTool",
+     "name": "hang",
+     "timeoutMs": 100,
+     "error": {
+      "name": "McpTimeoutError",
+      "message": "MCP request timed out after 100ms"
+     }
+    },
+    {
+     "op": "notify",
+     "method": "notifications/custom",
+     "params": {
+      "k": "v"
+     },
+     "ok": null
+    },
+    {
+     "op": "callTool",
+     "name": "echo",
+     "args": {
+      "text": "after"
+     },
+     "ok": {
+      "content": [
+       {
+        "type": "text",
+        "text": "after"
+       }
+      ]
+     }
+    },
+    {
+     "op": "close",
+     "ok": null
+    },
+    {
+     "op": "callTool",
+     "name": "echo",
+     "args": {
+      "text": "closed"
+     },
+     "error": {
+      "name": "McpConnectionClosedError",
+      "message": "MCP client is closed"
+     }
+    }
+   ],
+   "state": {
+    "connectionState": "closed",
+    "protocolVersion": "2025-06-18",
+    "serverInfo": {
+     "name": "fake",
+     "version": "1.0.0"
+    },
+    "serverCapabilities": {
+     "tools": {
+      "listChanged": true
+     },
+     "resources": {}
+    },
+    "instructions": "Use fake tools."
+   },
+   "events": [
+    {
+     "error": "Invalid JSON-RPC message"
+    },
+    {
+     "error": "Received response for unknown MCP request 999"
+    },
+    {
+     "notification": null
+    },
+    {
+     "progress": {
+      "progressToken": 18,
+      "progress": 1,
+      "total": 2,
+      "message": "half"
+     }
+    },
+    {
+     "closed": true
+    }
+   ],
+   "frames": [
+    {
+     "dir": "in",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-11-25\",\"capabilities\":{\"roots\":{}},\"clientInfo\":{\"name\":\"fixture-client\",\"version\":\"1.0.0\",\"title\":\"Fixture\"}}}"
+    },
+    {
+     "dir": "out",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"protocolVersion\":\"2025-06-18\",\"capabilities\":{\"tools\":{\"listChanged\":true},\"resources\":{}},\"serverInfo\":{\"name\":\"fake\",\"version\":\"1.0.0\"},\"instructions\":\"Use fake tools.\"}}"
+    },
+    {
+     "dir": "in",
+     "line": "{\"jsonrpc\":\"2.0\",\"method\":\"notifications/initialized\"}"
+    },
+    {
+     "dir": "in",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\"}"
+    },
+    {
+     "dir": "out",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":2,\"result\":{\"tools\":[{\"name\":\"echo\",\"description\":\"Echo text\",\"inputSchema\":{\"type\":\"object\"}}],\"nextCursor\":\"p2\"}}"
+    },
+    {
+     "dir": "in",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/list\",\"params\":{\"cursor\":\"p2\"}}"
+    },
+    {
+     "dir": "out",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":3,\"result\":{\"tools\":[{\"name\":\"slow\",\"inputSchema\":{\"type\":\"object\"},\"annotations\":{\"readOnlyHint\":true}}],\"nextCursor\":\"\"}}"
+    },
+    {
+     "dir": "in",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":4,\"method\":\"resources/list\"}"
+    },
+    {
+     "dir": "out",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":4,\"result\":{\"resources\":[{\"uri\":\"file:///a\",\"name\":\"a\",\"mimeType\":\"text/plain\"}],\"nextCursor\":\"2\"}}"
+    },
+    {
+     "dir": "in",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":5,\"method\":\"resources/list\",\"params\":{\"cursor\":\"2\"}}"
+    },
+    {
+     "dir": "out",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":5,\"result\":{\"resources\":[{\"uri\":\"file:///b\"}],\"nextCursor\":null}}"
+    },
+    {
+     "dir": "in",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":6,\"method\":\"resources/templates/list\"}"
+    },
+    {
+     "dir": "out",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":6,\"result\":{\"resourceTemplates\":[{\"uriTemplate\":\"repo://{owner}/{repo}\"}]}}"
+    },
+    {
+     "dir": "in",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":7,\"method\":\"resources/list\"}"
+    },
+    {
+     "dir": "out",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":7,\"result\":{\"resources\":[{\"uri\":\"file:///a\",\"name\":\"a\",\"mimeType\":\"text/plain\"}],\"nextCursor\":\"2\"}}"
+    },
+    {
+     "dir": "in",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":8,\"method\":\"resources/list\",\"params\":{\"cursor\":\"2\"}}"
+    },
+    {
+     "dir": "out",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":8,\"result\":{\"resources\":[{\"uri\":\"file:///b\"}],\"nextCursor\":null}}"
+    },
+    {
+     "dir": "in",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":9,\"method\":\"resources/read\",\"params\":{\"uri\":\"file:///a\"}}"
+    },
+    {
+     "dir": "out",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":9,\"result\":{\"contents\":[{\"uri\":\"file:///a\",\"text\":\"hello\"}]}}"
+    },
+    {
+     "dir": "in",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":10,\"method\":\"resources/read\",\"params\":{\"uri\":\"file:///bad\"}}"
+    },
+    {
+     "dir": "out",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":10,\"result\":{\"contents\":[{\"uri\":\"file:///bad\"}]}}"
+    },
+    {
+     "dir": "in",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":11,\"method\":\"tools/call\",\"params\":{\"name\":\"echo\",\"arguments\":{\"text\":\"hi\"}}}"
+    },
+    {
+     "dir": "out",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":11,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"hi\"}]}}"
+    },
+    {
+     "dir": "in",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":12,\"method\":\"tools/call\",\"params\":{\"name\":\"structured\"}}"
+    },
+    {
+     "dir": "out",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":12,\"result\":{\"structuredContent\":{\"ok\":true}}}"
+    },
+    {
+     "dir": "in",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":13,\"method\":\"tools/call\",\"params\":{\"name\":\"broken\"}}"
+    },
+    {
+     "dir": "out",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":13,\"result\":{\"content\":\"not a list\"}}"
+    },
+    {
+     "dir": "in",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":14,\"method\":\"tools/call\",\"params\":{\"name\":\"fail\",\"arguments\":{}}}"
+    },
+    {
+     "dir": "out",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":14,\"error\":{\"code\":1234,\"message\":\"tool failed\",\"data\":{\"retryable\":false}}}"
+    },
+    {
+     "dir": "in",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":15,\"method\":\"tools/call\",\"params\":{\"name\":\"nope\"}}"
+    },
+    {
+     "dir": "out",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":15,\"error\":{\"code\":-32602,\"message\":\"Unknown tool: nope\"}}"
+    },
+    {
+     "dir": "in",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":16,\"method\":\"tools/call\",\"params\":{\"name\":\"garbage\"}}"
+    },
+    {
+     "dir": "out",
+     "line": "{\"jsonrpc\":\"2.0\"}"
+    },
+    {
+     "dir": "out",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":999,\"result\":{}}"
+    },
+    {
+     "dir": "out",
+     "line": ""
+    },
+    {
+     "dir": "out",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":16,\"result\":{\"content\":[]}}"
+    },
+    {
+     "dir": "in",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":17,\"method\":\"tools/call\",\"params\":{\"name\":\"roots\"}}"
+    },
+    {
+     "dir": "out",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":\"r1\",\"method\":\"roots/list\"}"
+    },
+    {
+     "dir": "in",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":\"r1\",\"result\":{\"roots\":[{\"uri\":\"file:///workspace\",\"name\":\"workspace\"}]}}"
+    },
+    {
+     "dir": "out",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":\"r2\",\"method\":\"sampling/createMessage\",\"params\":{}}"
+    },
+    {
+     "dir": "in",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":\"r2\",\"error\":{\"code\":-32601,\"message\":\"Method not found: sampling/createMessage\"}}"
+    },
+    {
+     "dir": "out",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":7,\"method\":\"ping\"}"
+    },
+    {
+     "dir": "in",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":7,\"result\":{}}"
+    },
+    {
+     "dir": "out",
+     "line": "{\"jsonrpc\":\"2.0\",\"method\":\"notifications/tools/list_changed\"}"
+    },
+    {
+     "dir": "out",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":17,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"roots done\"}]}}"
+    },
+    {
+     "dir": "in",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":18,\"method\":\"tools/call\",\"params\":{\"name\":\"progress\",\"arguments\":{\"n\":1},\"_meta\":{\"progressToken\":18}}}"
+    },
+    {
+     "dir": "out",
+     "line": "{\"jsonrpc\":\"2.0\",\"method\":\"notifications/progress\",\"params\":{\"progressToken\":18,\"progress\":1,\"total\":2,\"message\":\"half\"}}"
+    },
+    {
+     "dir": "out",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":18,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"done\"}]}}"
+    },
+    {
+     "dir": "in",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":19,\"method\":\"ping\"}"
+    },
+    {
+     "dir": "out",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":19,\"result\":{}}"
+    },
+    {
+     "dir": "in",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":20,\"method\":\"bogus/method\",\"params\":{\"a\":[1,\"x\",null]}}"
+    },
+    {
+     "dir": "out",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":20,\"error\":{\"code\":-32601,\"message\":\"Method not found: bogus/method\"}}"
+    },
+    {
+     "dir": "in",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":21,\"method\":\"tools/call\",\"params\":{\"name\":\"hang\"}}"
+    },
+    {
+     "dir": "in",
+     "line": "{\"jsonrpc\":\"2.0\",\"method\":\"notifications/cancelled\",\"params\":{\"requestId\":21,\"reason\":\"stop\"}}"
+    },
+    {
+     "dir": "in",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":22,\"method\":\"tools/call\",\"params\":{\"name\":\"hang\"}}"
+    },
+    {
+     "dir": "in",
+     "line": "{\"jsonrpc\":\"2.0\",\"method\":\"notifications/cancelled\",\"params\":{\"requestId\":22,\"reason\":\"Request timed out\"}}"
+    },
+    {
+     "dir": "in",
+     "line": "{\"jsonrpc\":\"2.0\",\"method\":\"notifications/custom\",\"params\":{\"k\":\"v\"}}"
+    },
+    {
+     "dir": "in",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":23,\"method\":\"tools/call\",\"params\":{\"name\":\"echo\",\"arguments\":{\"text\":\"after\"}}}"
+    },
+    {
+     "dir": "out",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":23,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"after\"}]}}"
+    },
+    {
+     "dir": "eof",
+     "line": ""
+    }
+   ],
+   "stderr": "fake server ready\n"
+  },
+  {
+   "client": {
+    "name": "old",
+    "version": "0.1.0",
+    "protocolVersion": "2024-11-05"
+   },
+   "results": [
+    {
+     "op": "connect",
+     "state": "connected",
+     "ok": {
+      "protocolVersion": "2024-11-05",
+      "capabilities": {
+       "tools": {
+        "listChanged": true
+       },
+       "resources": {}
+      },
+      "serverInfo": {
+       "name": "fake",
+       "version": "1.0.0"
+      },
+      "instructions": "Use fake tools."
+     }
+    },
+    {
+     "op": "ping",
+     "ok": null
+    },
+    {
+     "op": "close",
+     "ok": null
+    }
+   ],
+   "state": {
+    "connectionState": "closed",
+    "protocolVersion": "2024-11-05",
+    "serverInfo": {
+     "name": "fake",
+     "version": "1.0.0"
+    },
+    "serverCapabilities": {
+     "tools": {
+      "listChanged": true
+     },
+     "resources": {}
+    },
+    "instructions": "Use fake tools."
+   },
+   "events": [
+    {
+     "closed": true
+    }
+   ],
+   "frames": [
+    {
+     "dir": "in",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2024-11-05\",\"capabilities\":{},\"clientInfo\":{\"name\":\"old\",\"version\":\"0.1.0\"}}}"
+    },
+    {
+     "dir": "out",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"protocolVersion\":\"2024-11-05\",\"capabilities\":{\"tools\":{\"listChanged\":true},\"resources\":{}},\"serverInfo\":{\"name\":\"fake\",\"version\":\"1.0.0\"},\"instructions\":\"Use fake tools.\"}}"
+    },
+    {
+     "dir": "in",
+     "line": "{\"jsonrpc\":\"2.0\",\"method\":\"notifications/initialized\"}"
+    },
+    {
+     "dir": "in",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"ping\"}"
+    },
+    {
+     "dir": "out",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":2,\"result\":{}}"
+    },
+    {
+     "dir": "eof",
+     "line": ""
+    }
+   ],
+   "stderr": "fake server ready\n"
+  },
+  {
+   "client": {
+    "name": "ancient",
+    "version": "0.1.0"
+   },
+   "results": [
+    {
+     "op": "connect",
+     "state": "closed",
+     "error": {
+      "name": "Error",
+      "message": "MCP server selected unsupported protocol version 1999-01-01"
+     }
+    }
+   ],
+   "state": {
+    "connectionState": "closed",
+    "protocolVersion": null,
+    "serverInfo": null,
+    "serverCapabilities": null,
+    "instructions": null
+   },
+   "events": [
+    {
+     "closed": true
+    }
+   ],
+   "frames": [
+    {
+     "dir": "in",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-11-25\",\"capabilities\":{},\"clientInfo\":{\"name\":\"ancient\",\"version\":\"0.1.0\"}}}"
+    },
+    {
+     "dir": "out",
+     "line": "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"protocolVersion\":\"1999-01-01\",\"capabilities\":{\"tools\":{\"listChanged\":true},\"resources\":{}},\"serverInfo\":{\"name\":\"fake\",\"version\":\"1.0.0\"},\"instructions\":\"Use fake tools.\"}}"
+    },
+    {
+     "dir": "eof",
+     "line": ""
+    }
+   ],
+   "stderr": "fake server ready\n"
+  }
+ ]
+}

@@ -1,0 +1,973 @@
+{
+	"generator": "crates/ai/fixtures/generate-rest.mjs",
+	"now": 1767225600000,
+	"script": [
+		{
+			"step": {
+				"op": "getAuth",
+				"provider": "env-prov"
+			},
+			"out": null
+		},
+		{
+			"step": {
+				"op": "checkAuth",
+				"provider": "env-prov"
+			},
+			"out": null
+		},
+		{
+			"step": {
+				"op": "getAvailable"
+			},
+			"out": {
+				"error": {
+					"code": "auth",
+					"message": "API key auth failed for provider throw-prov: keychain locked"
+				}
+			}
+		},
+		{
+			"step": {
+				"op": "setEnv",
+				"env": {
+					"ENV_KEY_B": "env-b",
+					"ENV_KEY_A": "  ",
+					"CLOUDFLARE_API_KEY": "cf-env",
+					"CLOUDFLARE_ACCOUNT_ID": "acct-env"
+				}
+			},
+			"out": null
+		},
+		{
+			"step": {
+				"op": "getAuth",
+				"provider": "env-prov"
+			},
+			"out": {
+				"auth": {
+					"apiKey": "env-b"
+				},
+				"source": "ENV_KEY_B"
+			}
+		},
+		{
+			"step": {
+				"op": "getAuth",
+				"model": {
+					"provider": "env-prov",
+					"id": "e1"
+				}
+			},
+			"out": {
+				"auth": {
+					"apiKey": "env-b",
+					"headers": {
+						"X-Model": "1",
+						"authorization": "model-level"
+					}
+				},
+				"source": "ENV_KEY_B"
+			}
+		},
+		{
+			"step": {
+				"op": "getAuth",
+				"provider": "env-prov",
+				"overrides": {
+					"apiKey": "override-key",
+					"env": {
+						"X": "1"
+					}
+				}
+			},
+			"out": {
+				"auth": {
+					"apiKey": "override-key"
+				},
+				"env": {
+					"X": "1"
+				},
+				"source": "stored credential"
+			}
+		},
+		{
+			"step": {
+				"op": "getAuth",
+				"provider": "unknown"
+			},
+			"out": null
+		},
+		{
+			"step": {
+				"op": "checkAuth",
+				"provider": "unknown"
+			},
+			"out": null
+		},
+		{
+			"step": {
+				"op": "getAvailable"
+			},
+			"out": {
+				"error": {
+					"code": "auth",
+					"message": "API key auth failed for provider throw-prov: keychain locked"
+				}
+			}
+		},
+		{
+			"step": {
+				"op": "getAvailable",
+				"provider": "check-prov"
+			},
+			"out": [
+				"check-prov/c1"
+			]
+		},
+		{
+			"step": {
+				"op": "store",
+				"provider": "env-prov",
+				"credential": {
+					"type": "api_key",
+					"key": "stored-key",
+					"env": {
+						"REGION": "eu"
+					}
+				}
+			},
+			"out": null
+		},
+		{
+			"step": {
+				"op": "getAuth",
+				"provider": "env-prov",
+				"overrides": {
+					"env": {
+						"REGION": "us",
+						"EXTRA": "x"
+					}
+				}
+			},
+			"out": {
+				"auth": {
+					"apiKey": "stored-key"
+				},
+				"env": {
+					"REGION": "us",
+					"EXTRA": "x"
+				},
+				"source": "stored credential"
+			}
+		},
+		{
+			"step": {
+				"op": "store",
+				"provider": "env-prov",
+				"credential": {
+					"type": "oauth",
+					"refresh": "r",
+					"access": "a",
+					"expires": 1767229200000
+				}
+			},
+			"out": null
+		},
+		{
+			"step": {
+				"op": "getAuth",
+				"provider": "env-prov"
+			},
+			"out": null
+		},
+		{
+			"step": {
+				"op": "checkAuth",
+				"provider": "env-prov"
+			},
+			"out": null
+		},
+		{
+			"step": {
+				"op": "getAuth",
+				"provider": "oauth-prov"
+			},
+			"out": null
+		},
+		{
+			"step": {
+				"op": "store",
+				"provider": "oauth-prov",
+				"credential": {
+					"type": "oauth",
+					"refresh": "r0",
+					"access": "a0",
+					"expires": 1767229200000
+				}
+			},
+			"out": null
+		},
+		{
+			"step": {
+				"op": "getAuth",
+				"provider": "oauth-prov"
+			},
+			"out": {
+				"auth": {
+					"apiKey": "a0",
+					"headers": {
+						"X-Auth": "a",
+						"Authorization": "Bearer a0"
+					},
+					"baseUrl": "https://per-credential.example.com"
+				},
+				"source": "OAuth"
+			}
+		},
+		{
+			"step": {
+				"op": "refreshes",
+				"provider": "oauth-prov"
+			},
+			"out": 0
+		},
+		{
+			"step": {
+				"op": "store",
+				"provider": "oauth-prov",
+				"credential": {
+					"type": "oauth",
+					"refresh": "r1",
+					"access": "a1",
+					"expires": 1767225660000
+				}
+			},
+			"out": null
+		},
+		{
+			"step": {
+				"op": "concurrentGetAuth",
+				"provider": "oauth-prov",
+				"n": 3
+			},
+			"out": [
+				{
+					"auth": {
+						"apiKey": "fresh-1",
+						"headers": {
+							"X-Auth": "a",
+							"Authorization": "Bearer fresh-1"
+						},
+						"baseUrl": "https://per-credential.example.com"
+					},
+					"source": "OAuth"
+				},
+				{
+					"auth": {
+						"apiKey": "fresh-1",
+						"headers": {
+							"X-Auth": "a",
+							"Authorization": "Bearer fresh-1"
+						},
+						"baseUrl": "https://per-credential.example.com"
+					},
+					"source": "OAuth"
+				},
+				{
+					"auth": {
+						"apiKey": "fresh-1",
+						"headers": {
+							"X-Auth": "a",
+							"Authorization": "Bearer fresh-1"
+						},
+						"baseUrl": "https://per-credential.example.com"
+					},
+					"source": "OAuth"
+				}
+			]
+		},
+		{
+			"step": {
+				"op": "refreshes",
+				"provider": "oauth-prov"
+			},
+			"out": 1
+		},
+		{
+			"step": {
+				"op": "read",
+				"provider": "oauth-prov"
+			},
+			"out": {
+				"type": "oauth",
+				"refresh": "r1+",
+				"access": "fresh-1",
+				"expires": 1767229200000
+			}
+		},
+		{
+			"step": {
+				"op": "getAuth",
+				"provider": "oauth-prov",
+				"overrides": {
+					"minOAuthValidityMs": 7200000
+				}
+			},
+			"out": {
+				"error": {
+					"code": "oauth",
+					"message": "OAuth refresh returned a token that expires too soon for oauth-prov"
+				}
+			}
+		},
+		{
+			"step": {
+				"op": "refreshes",
+				"provider": "oauth-prov"
+			},
+			"out": 2
+		},
+		{
+			"step": {
+				"op": "store",
+				"provider": "fail-prov",
+				"credential": {
+					"type": "oauth",
+					"refresh": "rf",
+					"access": "af",
+					"expires": 1767225599999
+				}
+			},
+			"out": null
+		},
+		{
+			"step": {
+				"op": "getAuth",
+				"provider": "fail-prov"
+			},
+			"out": {
+				"error": {
+					"code": "oauth",
+					"message": "OAuth refresh failed for fail-prov: invalid_grant: token revoked"
+				}
+			}
+		},
+		{
+			"step": {
+				"op": "read",
+				"provider": "fail-prov"
+			},
+			"out": {
+				"type": "oauth",
+				"refresh": "rf",
+				"access": "af",
+				"expires": 1767225599999
+			}
+		},
+		{
+			"step": {
+				"op": "checkAuth",
+				"provider": "fail-prov"
+			},
+			"out": {
+				"source": "OAuth",
+				"type": "oauth"
+			}
+		},
+		{
+			"step": {
+				"op": "getAuth",
+				"provider": "throw-prov"
+			},
+			"out": {
+				"error": {
+					"code": "auth",
+					"message": "API key auth failed for provider throw-prov: keychain locked"
+				}
+			}
+		},
+		{
+			"step": {
+				"op": "checkAuth",
+				"provider": "throw-prov"
+			},
+			"out": {
+				"error": {
+					"code": "auth",
+					"message": "API key auth failed for provider throw-prov: keychain locked"
+				}
+			}
+		},
+		{
+			"step": {
+				"op": "getAuth",
+				"provider": "dup-prov"
+			},
+			"out": {
+				"error": {
+					"code": "auth",
+					"message": "API key auth failed for provider dup-prov"
+				}
+			}
+		},
+		{
+			"step": {
+				"op": "getAuth",
+				"provider": "blank-prov"
+			},
+			"out": {
+				"error": {
+					"code": "auth",
+					"message": "API key auth failed for provider blank-prov"
+				}
+			}
+		},
+		{
+			"step": {
+				"op": "getAvailable",
+				"provider": "throw-prov"
+			},
+			"out": {
+				"error": {
+					"code": "auth",
+					"message": "API key auth failed for provider throw-prov: keychain locked"
+				}
+			}
+		},
+		{
+			"step": {
+				"op": "checkAuth",
+				"provider": "check-prov"
+			},
+			"out": {
+				"source": "checked ambient",
+				"type": "api_key"
+			}
+		},
+		{
+			"step": {
+				"op": "store",
+				"provider": "check-prov",
+				"credential": {
+					"type": "api_key",
+					"key": "k"
+				}
+			},
+			"out": null
+		},
+		{
+			"step": {
+				"op": "checkAuth",
+				"provider": "check-prov"
+			},
+			"out": {
+				"source": "checked stored",
+				"type": "api_key"
+			}
+		},
+		{
+			"step": {
+				"op": "login",
+				"provider": "oauth-prov",
+				"type": "oauth",
+				"answers": [
+					"xyz"
+				]
+			},
+			"out": {
+				"credential": {
+					"type": "oauth",
+					"refresh": "r-xyz",
+					"access": "a-xyz",
+					"expires": 1767229200000
+				},
+				"prompts": [
+					{
+						"type": "text",
+						"message": "Code?"
+					}
+				],
+				"events": [
+					{
+						"type": "progress",
+						"message": "got xyz"
+					}
+				]
+			}
+		},
+		{
+			"step": {
+				"op": "read",
+				"provider": "oauth-prov"
+			},
+			"out": {
+				"type": "oauth",
+				"refresh": "r-xyz",
+				"access": "a-xyz",
+				"expires": 1767229200000
+			}
+		},
+		{
+			"step": {
+				"op": "login",
+				"provider": "env-prov",
+				"type": "api_key",
+				"answers": [
+					"typed-key"
+				]
+			},
+			"out": {
+				"credential": {
+					"type": "api_key",
+					"key": "typed-key"
+				},
+				"prompts": [
+					{
+						"type": "secret",
+						"message": "Enter Env key"
+					}
+				],
+				"events": []
+			}
+		},
+		{
+			"step": {
+				"op": "read",
+				"provider": "env-prov"
+			},
+			"out": {
+				"type": "api_key",
+				"key": "typed-key"
+			}
+		},
+		{
+			"step": {
+				"op": "login",
+				"provider": "env-prov",
+				"type": "oauth",
+				"answers": []
+			},
+			"out": {
+				"credential": {
+					"error": {
+						"code": "auth",
+						"message": "env-prov does not support oauth login"
+					}
+				},
+				"prompts": [],
+				"events": []
+			}
+		},
+		{
+			"step": {
+				"op": "login",
+				"provider": "nope",
+				"type": "oauth",
+				"answers": []
+			},
+			"out": {
+				"credential": {
+					"error": {
+						"code": "provider",
+						"message": "Unknown provider: nope"
+					}
+				},
+				"prompts": [],
+				"events": []
+			}
+		},
+		{
+			"step": {
+				"op": "login",
+				"provider": "cloudflare-ai-gateway",
+				"type": "api_key",
+				"answers": [
+					"cf-key",
+					"acct",
+					"gw"
+				]
+			},
+			"out": {
+				"credential": {
+					"type": "api_key",
+					"key": "cf-key",
+					"env": {
+						"CLOUDFLARE_ACCOUNT_ID": "acct",
+						"CLOUDFLARE_GATEWAY_ID": "gw"
+					}
+				},
+				"prompts": [
+					{
+						"type": "secret",
+						"message": "Enter Cloudflare API key"
+					},
+					{
+						"type": "text",
+						"message": "Enter Cloudflare account ID"
+					},
+					{
+						"type": "text",
+						"message": "Enter Cloudflare AI Gateway ID"
+					}
+				],
+				"events": []
+			}
+		},
+		{
+			"step": {
+				"op": "getAuth",
+				"provider": "cloudflare-ai-gateway"
+			},
+			"out": {
+				"auth": {
+					"headers": {
+						"cf-aig-authorization": "Bearer cf-key",
+						"Authorization": null,
+						"x-api-key": null
+					}
+				},
+				"env": {
+					"CLOUDFLARE_ACCOUNT_ID": "acct",
+					"CLOUDFLARE_GATEWAY_ID": "gw"
+				},
+				"source": "stored credential"
+			}
+		},
+		{
+			"step": {
+				"op": "getAuth",
+				"provider": "cloudflare-workers-ai"
+			},
+			"out": {
+				"auth": {
+					"apiKey": "cf-env"
+				},
+				"env": {
+					"CLOUDFLARE_ACCOUNT_ID": "acct-env"
+				},
+				"source": "CLOUDFLARE_API_KEY"
+			}
+		},
+		{
+			"step": {
+				"op": "store",
+				"provider": "cloudflare-workers-ai",
+				"credential": {
+					"type": "api_key",
+					"key": "cf-stored"
+				}
+			},
+			"out": null
+		},
+		{
+			"step": {
+				"op": "getAuth",
+				"provider": "cloudflare-workers-ai"
+			},
+			"out": {
+				"auth": {
+					"apiKey": "cf-stored"
+				},
+				"env": {
+					"CLOUDFLARE_ACCOUNT_ID": "acct-env"
+				},
+				"source": "stored credential"
+			}
+		},
+		{
+			"step": {
+				"op": "store",
+				"provider": "both-prov",
+				"credential": {
+					"type": "oauth",
+					"refresh": "rb",
+					"access": "ab",
+					"expires": 1767229200000
+				}
+			},
+			"out": null
+		},
+		{
+			"step": {
+				"op": "getAvailable",
+				"provider": "both-prov"
+			},
+			"out": [
+				"both-prov/b1"
+			]
+		},
+		{
+			"step": {
+				"op": "list"
+			},
+			"out": [
+				{
+					"providerId": "env-prov",
+					"type": "api_key"
+				},
+				{
+					"providerId": "oauth-prov",
+					"type": "oauth"
+				},
+				{
+					"providerId": "fail-prov",
+					"type": "oauth"
+				},
+				{
+					"providerId": "check-prov",
+					"type": "api_key"
+				},
+				{
+					"providerId": "cloudflare-ai-gateway",
+					"type": "api_key"
+				},
+				{
+					"providerId": "cloudflare-workers-ai",
+					"type": "api_key"
+				},
+				{
+					"providerId": "both-prov",
+					"type": "oauth"
+				}
+			]
+		},
+		{
+			"step": {
+				"op": "logout",
+				"provider": "env-prov"
+			},
+			"out": null
+		},
+		{
+			"step": {
+				"op": "read",
+				"provider": "env-prov"
+			},
+			"out": null
+		},
+		{
+			"step": {
+				"op": "stream",
+				"model": {
+					"provider": "env-prov",
+					"id": "e1"
+				},
+				"options": {
+					"headers": {
+						"AUTHORIZATION": "request",
+						"X-Req": "r"
+					},
+					"env": {
+						"REQ": "1"
+					}
+				}
+			},
+			"out": {
+				"request": {
+					"baseUrl": "https://default.example.com",
+					"apiKey": "env-b",
+					"headers": {
+						"X-Model": "1",
+						"AUTHORIZATION": "request",
+						"X-Req": "r"
+					},
+					"env": {
+						"REQ": "1"
+					}
+				}
+			}
+		},
+		{
+			"step": {
+				"op": "stream",
+				"model": {
+					"provider": "oauth-prov",
+					"id": "o1"
+				},
+				"options": {
+					"apiKey": "explicit"
+				},
+				"transform": true
+			},
+			"out": {
+				"request": {
+					"baseUrl": "https://per-credential.example.com",
+					"apiKey": "explicit",
+					"headers": {
+						"X-Auth": "a",
+						"Authorization": "Bearer a-xyz",
+						"X-Transformed": "yes"
+					},
+					"env": null
+				}
+			}
+		},
+		{
+			"step": {
+				"op": "stream",
+				"model": {
+					"provider": "cloudflare-ai-gateway",
+					"id": "gw1"
+				},
+				"options": {
+					"env": {
+						"CLOUDFLARE_GATEWAY_ID": "gw-req"
+					}
+				}
+			},
+			"out": {
+				"request": {
+					"baseUrl": "https://default.example.com",
+					"apiKey": null,
+					"headers": {
+						"cf-aig-authorization": "Bearer cf-key",
+						"Authorization": null,
+						"x-api-key": null
+					},
+					"env": {
+						"CLOUDFLARE_ACCOUNT_ID": "acct",
+						"CLOUDFLARE_GATEWAY_ID": "gw-req"
+					}
+				}
+			}
+		},
+		{
+			"step": {
+				"op": "stream",
+				"model": {
+					"provider": "throw-prov",
+					"id": "t1"
+				},
+				"options": {}
+			},
+			"out": {
+				"setupError": "API key auth failed for provider throw-prov: keychain locked"
+			}
+		},
+		{
+			"step": {
+				"op": "stream",
+				"model": {
+					"provider": "missing",
+					"id": "m"
+				},
+				"options": {}
+			},
+			"out": {
+				"setupError": "Unknown provider: missing"
+			}
+		},
+		{
+			"step": {
+				"op": "setEnv",
+				"env": {}
+			},
+			"out": null
+		},
+		{
+			"step": {
+				"op": "stream",
+				"model": {
+					"provider": "check-prov",
+					"id": "c1"
+				},
+				"options": {}
+			},
+			"out": {
+				"setupError": "API key auth failed for provider check-prov: resolve must not run during checks"
+			}
+		}
+	],
+	"fileOps": [
+		{
+			"step": {
+				"op": "modify",
+				"provider": "anthropic",
+				"credential": {
+					"type": "api_key",
+					"key": "sk-1"
+				}
+			},
+			"out": null
+		},
+		{
+			"step": {
+				"op": "modify",
+				"provider": "openai-codex",
+				"credential": {
+					"type": "oauth",
+					"refresh": "r",
+					"access": "a",
+					"expires": 1767225600000,
+					"accountId": "acc"
+				}
+			},
+			"out": null
+		},
+		{
+			"step": {
+				"op": "modify",
+				"provider": "anthropic",
+				"credential": {
+					"type": "api_key",
+					"key": "$MY_KEY",
+					"env": {
+						"MY_KEY": "from-env"
+					}
+				}
+			},
+			"out": null
+		},
+		{
+			"step": {
+				"op": "read",
+				"provider": "anthropic"
+			},
+			"out": {
+				"type": "api_key",
+				"key": "from-env",
+				"env": {
+					"MY_KEY": "from-env"
+				}
+			}
+		},
+		{
+			"step": {
+				"op": "delete",
+				"provider": "openai-codex"
+			},
+			"out": null
+		},
+		{
+			"step": {
+				"op": "modify",
+				"provider": "cloudflare-workers-ai",
+				"credential": {
+					"type": "api_key",
+					"key": "cf",
+					"env": {
+						"CLOUDFLARE_ACCOUNT_ID": "acct"
+					}
+				}
+			},
+			"out": null
+		},
+		{
+			"step": {
+				"op": "list"
+			},
+			"out": [
+				{
+					"providerId": "anthropic",
+					"type": "api_key"
+				},
+				{
+					"providerId": "cloudflare-workers-ai",
+					"type": "api_key"
+				}
+			]
+		}
+	],
+	"fileText": "{\n  \"anthropic\": {\n    \"type\": \"api_key\",\n    \"key\": \"$MY_KEY\",\n    \"env\": {\n      \"MY_KEY\": \"from-env\"\n    }\n  },\n  \"cloudflare-workers-ai\": {\n    \"type\": \"api_key\",\n    \"key\": \"cf\",\n    \"env\": {\n      \"CLOUDFLARE_ACCOUNT_ID\": \"acct\"\n    }\n  }\n}"
+}

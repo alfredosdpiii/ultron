@@ -1,0 +1,15 @@
+[package]
+name = "interactive"
+version = "0.1.0"
+description = "Interactive-mode conversation components (messages, tool/rlm cells, bash, summaries, footer, diffs) on the tui crate"
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+tui = { path = "../tui" }
+serde_json = { version = "=1.0.151", features = ["preserve_order"] }
+fancy-regex = "=0.19.2"
+
+[lints]
+workspace = true

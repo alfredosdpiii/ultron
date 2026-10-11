@@ -1,0 +1,818 @@
+{
+	"engine": "packages/coding-agent/src/ultron/loki-engine/loki.py",
+	"base": {
+		".gitignore": "build/\n*.tmp\n",
+		"src/main.c": "int main(void) { return 0; }\n",
+		"a.txt": "a\n",
+		"docs/.keep": ""
+	},
+	"cases": [
+		{
+			"name": "command-0",
+			"command": "ls -la",
+			"expected": {
+				"status": 0,
+				"stderr": ""
+			}
+		},
+		{
+			"name": "command-1",
+			"command": "",
+			"expected": {
+				"status": 0,
+				"stderr": ""
+			}
+		},
+		{
+			"name": "command-2",
+			"command": "   ",
+			"expected": {
+				"status": 0,
+				"stderr": ""
+			}
+		},
+		{
+			"name": "command-3",
+			"command": "cat a.txt | grep a",
+			"expected": {
+				"status": 0,
+				"stderr": ""
+			}
+		},
+		{
+			"name": "command-4",
+			"command": "echo hi 2>&1",
+			"expected": {
+				"status": 0,
+				"stderr": ""
+			}
+		},
+		{
+			"name": "command-5",
+			"command": "echo hi >/dev/null",
+			"expected": {
+				"status": 0,
+				"stderr": ""
+			}
+		},
+		{
+			"name": "command-6",
+			"command": "echo hi > /dev/null 2>&1",
+			"expected": {
+				"status": 0,
+				"stderr": ""
+			}
+		},
+		{
+			"name": "command-7",
+			"command": "echo hi >&2",
+			"expected": {
+				"status": 0,
+				"stderr": ""
+			}
+		},
+		{
+			"name": "command-8",
+			"command": "echo hi > /dev/stderr",
+			"expected": {
+				"status": 0,
+				"stderr": ""
+			}
+		},
+		{
+			"name": "command-9",
+			"command": "echo hi > /dev/fd/3",
+			"expected": {
+				"status": 0,
+				"stderr": ""
+			}
+		},
+		{
+			"name": "command-10",
+			"command": "echo hi > /proc/self/fd/1",
+			"expected": {
+				"status": 0,
+				"stderr": ""
+			}
+		},
+		{
+			"name": "command-11",
+			"command": "git status && npm test",
+			"expected": {
+				"status": 0,
+				"stderr": ""
+			}
+		},
+		{
+			"name": "command-12",
+			"command": "echo hi > out.py",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: `redirect` into out.py would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "command-13",
+			"command": "echo hi >> src/main.c",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: `redirect` into src/main.c would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "command-14",
+			"command": "echo hi >| src/x.h",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: `redirect` into src/x.h would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "command-15",
+			"command": "make &> build.cfg",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: `redirect` into build.cfg would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "command-16",
+			"command": "make &>> build.json",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: `redirect` into build.json would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "command-17",
+			"command": "echo a;>x.c",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: `redirect` into x.c would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "command-18",
+			"command": "echo a 2> err.ts",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: `redirect` into err.ts would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "command-19",
+			"command": "echo a 2>> err.rs",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: `redirect` into err.rs would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "command-20",
+			"command": "cat <<EOF > script.sh\necho $HOME\nEOF",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: `redirect` into script.sh would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "command-21",
+			"command": "cat <<'EOF' > gen.py\nprint('x') > y.c\nEOF\necho done",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: `redirect` into gen.py would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "command-22",
+			"command": "cat <<-\"END\" >notes.md\n\tbody > z.c\n\tEND",
+			"expected": {
+				"status": 0,
+				"stderr": ""
+			}
+		},
+		{
+			"name": "command-23",
+			"command": "cat << EOF\nbody > z.c\nEOF",
+			"expected": {
+				"status": 0,
+				"stderr": ""
+			}
+		},
+		{
+			"name": "command-24",
+			"command": "(echo a) > sub.ts",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: `redirect` into sub.ts would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "command-25",
+			"command": "{ echo a; } > brace.ts",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: `redirect` into brace.ts would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "command-26",
+			"command": "echo 'a > b.c'",
+			"expected": {
+				"status": 0,
+				"stderr": ""
+			}
+		},
+		{
+			"name": "command-27",
+			"command": "echo \"x\" > \"quoted name.yml\"",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: `redirect` into quoted name.yml would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "command-28",
+			"command": "echo x > 'single.toml'",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: `redirect` into single.toml would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "command-29",
+			"command": "echo x > esc\\ aped.ini",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: `redirect` into esc aped.ini would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "command-30",
+			"command": "echo x > \"dq\\\"q.c\"",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: `redirect` into dq\"q.c would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "command-31",
+			"command": "printf '%s' x>tight.go",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: `redirect` into tight.go would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "command-32",
+			"command": "echo x >> ./src/../src/up.c",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: `redirect` into src/up.c would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "command-33",
+			"command": "echo hi > notes.md",
+			"expected": {
+				"status": 0,
+				"stderr": ""
+			}
+		},
+		{
+			"name": "command-34",
+			"command": "echo hi > NOTES.TXT",
+			"expected": {
+				"status": 0,
+				"stderr": ""
+			}
+		},
+		{
+			"name": "command-35",
+			"command": "echo hi > run.log",
+			"expected": {
+				"status": 0,
+				"stderr": ""
+			}
+		},
+		{
+			"name": "command-36",
+			"command": "git diff > change.patch",
+			"expected": {
+				"status": 0,
+				"stderr": ""
+			}
+		},
+		{
+			"name": "command-37",
+			"command": "echo x > report.csv",
+			"expected": {
+				"status": 0,
+				"stderr": ""
+			}
+		},
+		{
+			"name": "command-38",
+			"command": "echo x > .notes.md",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: `redirect` into .notes.md would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "command-39",
+			"command": "echo x > .github/notes.md",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: `redirect` into .github/notes.md would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "command-40",
+			"command": "echo x > docs/guide.rst",
+			"expected": {
+				"status": 0,
+				"stderr": ""
+			}
+		},
+		{
+			"name": "command-41",
+			"command": "echo x > a.",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: `redirect` into a. would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "command-42",
+			"command": "echo x > noext",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: `redirect` into noext would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "command-43",
+			"command": "make > build/out.js",
+			"expected": {
+				"status": 0,
+				"stderr": ""
+			}
+		},
+		{
+			"name": "command-44",
+			"command": "echo x > cache.tmp",
+			"expected": {
+				"status": 0,
+				"stderr": ""
+			}
+		},
+		{
+			"name": "command-45",
+			"command": "echo x > ../outside.c",
+			"expected": {
+				"status": 0,
+				"stderr": ""
+			}
+		},
+		{
+			"name": "command-46",
+			"command": "echo x > /tmp/elsewhere.c",
+			"expected": {
+				"status": 0,
+				"stderr": ""
+			}
+		},
+		{
+			"name": "command-47",
+			"command": "echo x > $OUT",
+			"expected": {
+				"status": 0,
+				"stderr": ""
+			}
+		},
+		{
+			"name": "command-48",
+			"command": "echo x > `pwd`/a.c",
+			"expected": {
+				"status": 0,
+				"stderr": ""
+			}
+		},
+		{
+			"name": "command-49",
+			"command": "echo x > *.c",
+			"expected": {
+				"status": 0,
+				"stderr": ""
+			}
+		},
+		{
+			"name": "command-50",
+			"command": "echo x > a?.c",
+			"expected": {
+				"status": 0,
+				"stderr": ""
+			}
+		},
+		{
+			"name": "command-51",
+			"command": "echo x > ~/home.c",
+			"expected": {
+				"status": 0,
+				"stderr": ""
+			}
+		},
+		{
+			"name": "command-52",
+			"command": "echo '{}' > .loki/loki.json",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: protected file: .loki/loki.json (set LOKI_ALLOW_PROTECTED=1 to override)\n"
+			}
+		},
+		{
+			"name": "command-53",
+			"command": "cp a.txt .loki/x",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: protected file: .loki/x (set LOKI_ALLOW_PROTECTED=1 to override)\n"
+			}
+		},
+		{
+			"name": "command-54",
+			"command": "echo x > .ruff.toml",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: protected file: .ruff.toml (set LOKI_ALLOW_PROTECTED=1 to override)\n"
+			}
+		},
+		{
+			"name": "command-55",
+			"command": "echo x > .github/workflows/loki.yml",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: protected file: .github/workflows/loki.yml (set LOKI_ALLOW_PROTECTED=1 to override)\n"
+			}
+		},
+		{
+			"name": "command-56",
+			"command": "echo x > src",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: directory target is not a file: <ROOT>/src\n"
+			}
+		},
+		{
+			"name": "command-57",
+			"command": "cat a.txt | tee copy.cfg",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: `tee` into copy.cfg would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "command-58",
+			"command": "cat a.txt | tee -a log.txt other.c",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: `tee` into other.c would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "command-59",
+			"command": "sed -i s/a/b/ src/main.c",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: `sed -i` into src/main.c would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "command-60",
+			"command": "sed -i.bak 's/a/b/' x.txt y.c",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: `sed -i` into y.c would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "command-61",
+			"command": "sed --in-place -e s/a/b/ conf.yaml",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: `sed -i` into conf.yaml would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "command-62",
+			"command": "sed -e s/a/b/ src/main.c",
+			"expected": {
+				"status": 0,
+				"stderr": ""
+			}
+		},
+		{
+			"name": "command-63",
+			"command": "sed -n -i -f script.sed target.c",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: `sed -i` into target.c would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "command-64",
+			"command": "perl -pi -e 's/a/b/' lib.pm",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: `perl -i` into lib.pm would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "command-65",
+			"command": "perl -i.bak -pe s/a/b/ notes.txt",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: `perl -i` into s/a/b would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "command-66",
+			"command": "perl -e 'print 1' foo.c",
+			"expected": {
+				"status": 0,
+				"stderr": ""
+			}
+		},
+		{
+			"name": "command-67",
+			"command": "perl -pe s/a/b/ src/main.c",
+			"expected": {
+				"status": 0,
+				"stderr": ""
+			}
+		},
+		{
+			"name": "command-68",
+			"command": "cp a.txt b.c",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: `cp` into b.c would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "command-69",
+			"command": "cp a.txt docs",
+			"expected": {
+				"status": 0,
+				"stderr": ""
+			}
+		},
+		{
+			"name": "command-70",
+			"command": "cp a.txt docs/",
+			"expected": {
+				"status": 0,
+				"stderr": ""
+			}
+		},
+		{
+			"name": "command-71",
+			"command": "cp a.txt b.txt dest",
+			"expected": {
+				"status": 0,
+				"stderr": ""
+			}
+		},
+		{
+			"name": "command-72",
+			"command": "mv -f a.txt moved.json",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: `mv` into moved.json would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "command-73",
+			"command": "install -m 644 a.txt bin.sh",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: `install` into bin.sh/644 would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "command-74",
+			"command": "cp -t docs a.txt b.c",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: `cp` into docs/b.c would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "command-75",
+			"command": "cp -t docs",
+			"expected": {
+				"status": 0,
+				"stderr": ""
+			}
+		},
+		{
+			"name": "command-76",
+			"command": "cp a.txt",
+			"expected": {
+				"status": 0,
+				"stderr": ""
+			}
+		},
+		{
+			"name": "command-77",
+			"command": "/bin/cp a.txt viapath.c",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: `cp` into viapath.c would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "command-78",
+			"command": "./tee x.c",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: `tee` into x.c would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "command-79",
+			"command": "dd if=/dev/zero of=disk.img bs=1 count=1",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: `dd` into disk.img would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "command-80",
+			"command": "dd of=README.md",
+			"expected": {
+				"status": 0,
+				"stderr": ""
+			}
+		},
+		{
+			"name": "command-81",
+			"command": "sudo tee /etc/hosts",
+			"expected": {
+				"status": 0,
+				"stderr": ""
+			}
+		},
+		{
+			"name": "command-82",
+			"command": "FOO=1 BAR=2 tee env.c",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: `tee` into env.c would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "command-83",
+			"command": "env -i tee envi.c",
+			"expected": {
+				"status": 0,
+				"stderr": ""
+			}
+		},
+		{
+			"name": "command-84",
+			"command": "nohup nice cp a.txt n.c",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: `cp` into n.c would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "command-85",
+			"command": "time mv a.txt t.c",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: `mv` into t.c would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "command-86",
+			"command": "echo ok && cp a.txt and.c || echo no",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: `cp` into and.c would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "command-87",
+			"command": "echo ok; sed -i s/x/y/ semi.c | cat",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: `sed -i` into semi.c would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "command-88",
+			"command": "echo 'unterminated > a.c",
+			"expected": {
+				"status": 0,
+				"stderr": ""
+			}
+		},
+		{
+			"name": "command-89",
+			"command": "echo x > a.c \\",
+			"expected": {
+				"status": 0,
+				"stderr": ""
+			}
+		},
+		{
+			"name": "cwd-subdir",
+			"command": "echo x > here.c",
+			"cwd": "src",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: `redirect` into src/here.c would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "cwd-subdir-parent",
+			"command": "echo x > ../top.c",
+			"cwd": "src",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: `redirect` into top.c would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "cwd-outside-root",
+			"command": "echo x > out.c",
+			"cwd": "..",
+			"expected": {
+				"status": 0,
+				"stderr": ""
+			}
+		},
+		{
+			"name": "protected-extra",
+			"files": {
+				".loki/loki.json": "{\"protected_extra\":[\"secrets/**\"]}"
+			},
+			"command": "echo x > secrets/a.txt",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: protected file: secrets/a.txt (set LOKI_ALLOW_PROTECTED=1 to override)\n"
+			}
+		},
+		{
+			"name": "invalid-config-no-write",
+			"files": {
+				".loki/loki.json": "{\"zeta\":1}"
+			},
+			"command": "ls",
+			"expected": {
+				"status": 0,
+				"stderr": ""
+			}
+		},
+		{
+			"name": "invalid-config-write",
+			"files": {
+				".loki/loki.json": "{\"zeta\":1}"
+			},
+			"command": "echo x > a.c",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: invalid shell input: loki: unknown configuration key: zeta\n"
+			}
+		},
+		{
+			"name": "not-a-string",
+			"payload": {
+				"command": 1
+			},
+			"expected": {
+				"status": 0,
+				"stderr": ""
+			}
+		},
+		{
+			"name": "not-an-object",
+			"payload": [],
+			"expected": {
+				"status": 2,
+				"stderr": "loki: invalid shell input: invalid shell envelope\n"
+			}
+		},
+		{
+			"name": "no-git",
+			"git": false,
+			"command": "make > build/out.js",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: `redirect` into build/out.js would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		}
+	]
+}

@@ -1,0 +1,5587 @@
+{
+	"source": "packages/coding-agent/src/ultron/rlm/native-host.ts",
+	"scenarios": {
+		"subtree_cancel_keeps_sibling": {
+			"ids": [
+				"ultron-task-00000000-0000-4000-8000-000000000000",
+				"ultron-task-00000000-0000-4000-8000-000000000001",
+				"ultron-task-00000000-0000-4000-8000-000000000002",
+				"ultron-task-00000000-0000-4000-8000-000000000003"
+			],
+			"keys": [
+				"00000000-0000-4000-9000-000000000000",
+				"00000000-0000-4000-9000-000000000001",
+				"00000000-0000-4000-9000-000000000002",
+				"00000000-0000-4000-9000-000000000003"
+			],
+			"steps": [
+				{
+					"op": "spawn",
+					"as": "a",
+					"prompt": "child A",
+					"outcome": {
+						"ok": {
+							"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+							"state": "admitted"
+						}
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "9ece5e4318d013f764ee451a2c9f8088bb8aa953f5c10bd173ca738b7021b86a",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "running"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0
+					}
+				},
+				{
+					"op": "spawn",
+					"as": "b",
+					"prompt": "child B",
+					"outcome": {
+						"ok": {
+							"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+							"state": "admitted"
+						}
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "9ece5e4318d013f764ee451a2c9f8088bb8aa953f5c10bd173ca738b7021b86a",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "e0e045ca6e059c44ab45a95b1db79a2b065ecab81827c441a752a62921809ff0",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "running"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"b": 0
+					}
+				},
+				{
+					"op": "spawn",
+					"as": "g",
+					"prompt": "grandchild of A",
+					"from": "a",
+					"outcome": {
+						"ok": {
+							"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+							"state": "admitted"
+						}
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "9ece5e4318d013f764ee451a2c9f8088bb8aa953f5c10bd173ca738b7021b86a",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "e0e045ca6e059c44ab45a95b1db79a2b065ecab81827c441a752a62921809ff0",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "3ba140ee90127072e7db9266b3ac3e65efa7a36429e39bf00652781238ed1ce9",
+								"key": "00000000-0000-4000-9000-000000000002",
+								"state": "running",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"b": 0,
+						"g": 0
+					}
+				},
+				{
+					"op": "spawn",
+					"as": "gg",
+					"prompt": "great-grandchild of A",
+					"from": "g",
+					"outcome": {
+						"ok": {
+							"id": "ultron-task-00000000-0000-4000-8000-000000000003",
+							"state": "admitted"
+						}
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "9ece5e4318d013f764ee451a2c9f8088bb8aa953f5c10bd173ca738b7021b86a",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "e0e045ca6e059c44ab45a95b1db79a2b065ecab81827c441a752a62921809ff0",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "3ba140ee90127072e7db9266b3ac3e65efa7a36429e39bf00652781238ed1ce9",
+								"key": "00000000-0000-4000-9000-000000000002",
+								"state": "running",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000003",
+								"definition": "rlm-child@1",
+								"fingerprint": "077fa2209f8f59fabcdd98db8c64fc84d4172af49c35639bd0b1980abd7ff020",
+								"key": "00000000-0000-4000-9000-000000000003",
+								"state": "running",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000002"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"b": 0,
+						"g": 0,
+						"gg": 0
+					}
+				},
+				{
+					"op": "status",
+					"outcome": {
+						"ok": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"state": "running",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000003",
+								"definition": "rlm-child@1",
+								"state": "running",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000002"
+							}
+						]
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "9ece5e4318d013f764ee451a2c9f8088bb8aa953f5c10bd173ca738b7021b86a",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "e0e045ca6e059c44ab45a95b1db79a2b065ecab81827c441a752a62921809ff0",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "3ba140ee90127072e7db9266b3ac3e65efa7a36429e39bf00652781238ed1ce9",
+								"key": "00000000-0000-4000-9000-000000000002",
+								"state": "running",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000003",
+								"definition": "rlm-child@1",
+								"fingerprint": "077fa2209f8f59fabcdd98db8c64fc84d4172af49c35639bd0b1980abd7ff020",
+								"key": "00000000-0000-4000-9000-000000000003",
+								"state": "running",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000002"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"b": 0,
+						"g": 0,
+						"gg": 0
+					}
+				},
+				{
+					"op": "status",
+					"from": "a",
+					"outcome": {
+						"ok": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"state": "running",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000003",
+								"definition": "rlm-child@1",
+								"state": "running",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000002"
+							}
+						]
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "9ece5e4318d013f764ee451a2c9f8088bb8aa953f5c10bd173ca738b7021b86a",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "e0e045ca6e059c44ab45a95b1db79a2b065ecab81827c441a752a62921809ff0",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "3ba140ee90127072e7db9266b3ac3e65efa7a36429e39bf00652781238ed1ce9",
+								"key": "00000000-0000-4000-9000-000000000002",
+								"state": "running",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000003",
+								"definition": "rlm-child@1",
+								"fingerprint": "077fa2209f8f59fabcdd98db8c64fc84d4172af49c35639bd0b1980abd7ff020",
+								"key": "00000000-0000-4000-9000-000000000003",
+								"state": "running",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000002"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"b": 0,
+						"g": 0,
+						"gg": 0
+					}
+				},
+				{
+					"op": "inspect",
+					"task": "b",
+					"from": "a",
+					"outcome": {
+						"error": "Unknown Ultron task"
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "9ece5e4318d013f764ee451a2c9f8088bb8aa953f5c10bd173ca738b7021b86a",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "e0e045ca6e059c44ab45a95b1db79a2b065ecab81827c441a752a62921809ff0",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "3ba140ee90127072e7db9266b3ac3e65efa7a36429e39bf00652781238ed1ce9",
+								"key": "00000000-0000-4000-9000-000000000002",
+								"state": "running",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000003",
+								"definition": "rlm-child@1",
+								"fingerprint": "077fa2209f8f59fabcdd98db8c64fc84d4172af49c35639bd0b1980abd7ff020",
+								"key": "00000000-0000-4000-9000-000000000003",
+								"state": "running",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000002"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"b": 0,
+						"g": 0,
+						"gg": 0
+					}
+				},
+				{
+					"op": "inspect",
+					"task": "gg",
+					"from": "a",
+					"outcome": {
+						"ok": {
+							"id": "ultron-task-00000000-0000-4000-8000-000000000003",
+							"definition": "rlm-child@1",
+							"state": "running",
+							"parentId": "ultron-task-00000000-0000-4000-8000-000000000002"
+						}
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "9ece5e4318d013f764ee451a2c9f8088bb8aa953f5c10bd173ca738b7021b86a",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "e0e045ca6e059c44ab45a95b1db79a2b065ecab81827c441a752a62921809ff0",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "3ba140ee90127072e7db9266b3ac3e65efa7a36429e39bf00652781238ed1ce9",
+								"key": "00000000-0000-4000-9000-000000000002",
+								"state": "running",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000003",
+								"definition": "rlm-child@1",
+								"fingerprint": "077fa2209f8f59fabcdd98db8c64fc84d4172af49c35639bd0b1980abd7ff020",
+								"key": "00000000-0000-4000-9000-000000000003",
+								"state": "running",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000002"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"b": 0,
+						"g": 0,
+						"gg": 0
+					}
+				},
+				{
+					"op": "cancel",
+					"task": "a",
+					"outcome": {
+						"ok": {
+							"cancelled": true
+						}
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "9ece5e4318d013f764ee451a2c9f8088bb8aa953f5c10bd173ca738b7021b86a",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "cancelled",
+								"result": {
+									"status": "cancelled",
+									"error": "Ultron task cancelled",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "e0e045ca6e059c44ab45a95b1db79a2b065ecab81827c441a752a62921809ff0",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "3ba140ee90127072e7db9266b3ac3e65efa7a36429e39bf00652781238ed1ce9",
+								"key": "00000000-0000-4000-9000-000000000002",
+								"state": "cancelled",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"result": {
+									"status": "cancelled",
+									"error": "Ancestor ultron-task-00000000-0000-4000-8000-000000000000 cancelled: Ultron task cancelled",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000003",
+								"definition": "rlm-child@1",
+								"fingerprint": "077fa2209f8f59fabcdd98db8c64fc84d4172af49c35639bd0b1980abd7ff020",
+								"key": "00000000-0000-4000-9000-000000000003",
+								"state": "cancelled",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"result": {
+									"status": "cancelled",
+									"error": "Ancestor ultron-task-00000000-0000-4000-8000-000000000002 cancelled: Ancestor ultron-task-00000000-0000-4000-8000-000000000000 cancelled: Ultron task cancelled",
+									"verification": "unverified"
+								}
+							}
+						]
+					},
+					"aborts": {
+						"a": 1,
+						"b": 0,
+						"g": 1,
+						"gg": 1
+					}
+				},
+				{
+					"op": "result",
+					"task": "g",
+					"outcome": {
+						"ok": {
+							"status": "cancelled",
+							"error": "Ancestor ultron-task-00000000-0000-4000-8000-000000000000 cancelled: Ultron task cancelled",
+							"verification": "unverified"
+						}
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "9ece5e4318d013f764ee451a2c9f8088bb8aa953f5c10bd173ca738b7021b86a",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "cancelled",
+								"result": {
+									"status": "cancelled",
+									"error": "Ultron task cancelled",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "e0e045ca6e059c44ab45a95b1db79a2b065ecab81827c441a752a62921809ff0",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "3ba140ee90127072e7db9266b3ac3e65efa7a36429e39bf00652781238ed1ce9",
+								"key": "00000000-0000-4000-9000-000000000002",
+								"state": "cancelled",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"result": {
+									"status": "cancelled",
+									"error": "Ancestor ultron-task-00000000-0000-4000-8000-000000000000 cancelled: Ultron task cancelled",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000003",
+								"definition": "rlm-child@1",
+								"fingerprint": "077fa2209f8f59fabcdd98db8c64fc84d4172af49c35639bd0b1980abd7ff020",
+								"key": "00000000-0000-4000-9000-000000000003",
+								"state": "cancelled",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"result": {
+									"status": "cancelled",
+									"error": "Ancestor ultron-task-00000000-0000-4000-8000-000000000002 cancelled: Ancestor ultron-task-00000000-0000-4000-8000-000000000000 cancelled: Ultron task cancelled",
+									"verification": "unverified"
+								}
+							}
+						]
+					},
+					"aborts": {
+						"a": 1,
+						"b": 0,
+						"g": 1,
+						"gg": 1
+					}
+				},
+				{
+					"op": "inspect",
+					"task": "b",
+					"outcome": {
+						"ok": {
+							"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+							"definition": "rlm-child@1",
+							"state": "running"
+						}
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "9ece5e4318d013f764ee451a2c9f8088bb8aa953f5c10bd173ca738b7021b86a",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "cancelled",
+								"result": {
+									"status": "cancelled",
+									"error": "Ultron task cancelled",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "e0e045ca6e059c44ab45a95b1db79a2b065ecab81827c441a752a62921809ff0",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "3ba140ee90127072e7db9266b3ac3e65efa7a36429e39bf00652781238ed1ce9",
+								"key": "00000000-0000-4000-9000-000000000002",
+								"state": "cancelled",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"result": {
+									"status": "cancelled",
+									"error": "Ancestor ultron-task-00000000-0000-4000-8000-000000000000 cancelled: Ultron task cancelled",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000003",
+								"definition": "rlm-child@1",
+								"fingerprint": "077fa2209f8f59fabcdd98db8c64fc84d4172af49c35639bd0b1980abd7ff020",
+								"key": "00000000-0000-4000-9000-000000000003",
+								"state": "cancelled",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"result": {
+									"status": "cancelled",
+									"error": "Ancestor ultron-task-00000000-0000-4000-8000-000000000002 cancelled: Ancestor ultron-task-00000000-0000-4000-8000-000000000000 cancelled: Ultron task cancelled",
+									"verification": "unverified"
+								}
+							}
+						]
+					},
+					"aborts": {
+						"a": 1,
+						"b": 0,
+						"g": 1,
+						"gg": 1
+					}
+				},
+				{
+					"op": "finish",
+					"task": "b",
+					"text": "B summary",
+					"outcome": {
+						"ok": {
+							"status": "succeeded",
+							"value": "B summary",
+							"verification": "unverified",
+							"verdict": null,
+							"unverified": true
+						}
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "9ece5e4318d013f764ee451a2c9f8088bb8aa953f5c10bd173ca738b7021b86a",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "cancelled",
+								"result": {
+									"status": "cancelled",
+									"error": "Ultron task cancelled",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "e0e045ca6e059c44ab45a95b1db79a2b065ecab81827c441a752a62921809ff0",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "B summary",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "3ba140ee90127072e7db9266b3ac3e65efa7a36429e39bf00652781238ed1ce9",
+								"key": "00000000-0000-4000-9000-000000000002",
+								"state": "cancelled",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"result": {
+									"status": "cancelled",
+									"error": "Ancestor ultron-task-00000000-0000-4000-8000-000000000000 cancelled: Ultron task cancelled",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000003",
+								"definition": "rlm-child@1",
+								"fingerprint": "077fa2209f8f59fabcdd98db8c64fc84d4172af49c35639bd0b1980abd7ff020",
+								"key": "00000000-0000-4000-9000-000000000003",
+								"state": "cancelled",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"result": {
+									"status": "cancelled",
+									"error": "Ancestor ultron-task-00000000-0000-4000-8000-000000000002 cancelled: Ancestor ultron-task-00000000-0000-4000-8000-000000000000 cancelled: Ultron task cancelled",
+									"verification": "unverified"
+								}
+							}
+						]
+					},
+					"aborts": {
+						"a": 1,
+						"b": 0,
+						"g": 1,
+						"gg": 1
+					}
+				},
+				{
+					"op": "cancel",
+					"task": "b",
+					"outcome": {
+						"ok": {
+							"cancelled": false
+						}
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "9ece5e4318d013f764ee451a2c9f8088bb8aa953f5c10bd173ca738b7021b86a",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "cancelled",
+								"result": {
+									"status": "cancelled",
+									"error": "Ultron task cancelled",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "e0e045ca6e059c44ab45a95b1db79a2b065ecab81827c441a752a62921809ff0",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "B summary",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "3ba140ee90127072e7db9266b3ac3e65efa7a36429e39bf00652781238ed1ce9",
+								"key": "00000000-0000-4000-9000-000000000002",
+								"state": "cancelled",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"result": {
+									"status": "cancelled",
+									"error": "Ancestor ultron-task-00000000-0000-4000-8000-000000000000 cancelled: Ultron task cancelled",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000003",
+								"definition": "rlm-child@1",
+								"fingerprint": "077fa2209f8f59fabcdd98db8c64fc84d4172af49c35639bd0b1980abd7ff020",
+								"key": "00000000-0000-4000-9000-000000000003",
+								"state": "cancelled",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"result": {
+									"status": "cancelled",
+									"error": "Ancestor ultron-task-00000000-0000-4000-8000-000000000002 cancelled: Ancestor ultron-task-00000000-0000-4000-8000-000000000000 cancelled: Ultron task cancelled",
+									"verification": "unverified"
+								}
+							}
+						]
+					},
+					"aborts": {
+						"a": 1,
+						"b": 0,
+						"g": 1,
+						"gg": 1
+					}
+				},
+				{
+					"op": "cancel",
+					"task": "a",
+					"outcome": {
+						"ok": {
+							"cancelled": true
+						}
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "9ece5e4318d013f764ee451a2c9f8088bb8aa953f5c10bd173ca738b7021b86a",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "cancelled",
+								"result": {
+									"status": "cancelled",
+									"error": "Ultron task cancelled",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "e0e045ca6e059c44ab45a95b1db79a2b065ecab81827c441a752a62921809ff0",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "B summary",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "3ba140ee90127072e7db9266b3ac3e65efa7a36429e39bf00652781238ed1ce9",
+								"key": "00000000-0000-4000-9000-000000000002",
+								"state": "cancelled",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"result": {
+									"status": "cancelled",
+									"error": "Ancestor ultron-task-00000000-0000-4000-8000-000000000000 cancelled: Ultron task cancelled",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000003",
+								"definition": "rlm-child@1",
+								"fingerprint": "077fa2209f8f59fabcdd98db8c64fc84d4172af49c35639bd0b1980abd7ff020",
+								"key": "00000000-0000-4000-9000-000000000003",
+								"state": "cancelled",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"result": {
+									"status": "cancelled",
+									"error": "Ancestor ultron-task-00000000-0000-4000-8000-000000000002 cancelled: Ancestor ultron-task-00000000-0000-4000-8000-000000000000 cancelled: Ultron task cancelled",
+									"verification": "unverified"
+								}
+							}
+						]
+					},
+					"aborts": {
+						"a": 1,
+						"b": 0,
+						"g": 1,
+						"gg": 1
+					}
+				},
+				{
+					"op": "status",
+					"outcome": {
+						"ok": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"state": "cancelled",
+								"result": {
+									"status": "cancelled",
+									"error": "Ultron task cancelled",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "B summary",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"state": "cancelled",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"result": {
+									"status": "cancelled",
+									"error": "Ancestor ultron-task-00000000-0000-4000-8000-000000000000 cancelled: Ultron task cancelled",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000003",
+								"definition": "rlm-child@1",
+								"state": "cancelled",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"result": {
+									"status": "cancelled",
+									"error": "Ancestor ultron-task-00000000-0000-4000-8000-000000000002 cancelled: Ancestor ultron-task-00000000-0000-4000-8000-000000000000 cancelled: Ultron task cancelled",
+									"verification": "unverified"
+								}
+							}
+						]
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "9ece5e4318d013f764ee451a2c9f8088bb8aa953f5c10bd173ca738b7021b86a",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "cancelled",
+								"result": {
+									"status": "cancelled",
+									"error": "Ultron task cancelled",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "e0e045ca6e059c44ab45a95b1db79a2b065ecab81827c441a752a62921809ff0",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "B summary",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "3ba140ee90127072e7db9266b3ac3e65efa7a36429e39bf00652781238ed1ce9",
+								"key": "00000000-0000-4000-9000-000000000002",
+								"state": "cancelled",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"result": {
+									"status": "cancelled",
+									"error": "Ancestor ultron-task-00000000-0000-4000-8000-000000000000 cancelled: Ultron task cancelled",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000003",
+								"definition": "rlm-child@1",
+								"fingerprint": "077fa2209f8f59fabcdd98db8c64fc84d4172af49c35639bd0b1980abd7ff020",
+								"key": "00000000-0000-4000-9000-000000000003",
+								"state": "cancelled",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"result": {
+									"status": "cancelled",
+									"error": "Ancestor ultron-task-00000000-0000-4000-8000-000000000002 cancelled: Ancestor ultron-task-00000000-0000-4000-8000-000000000000 cancelled: Ultron task cancelled",
+									"verification": "unverified"
+								}
+							}
+						]
+					},
+					"aborts": {
+						"a": 1,
+						"b": 0,
+						"g": 1,
+						"gg": 1
+					}
+				}
+			]
+		},
+		"finished_parent_cancel_reaches_live_descendants": {
+			"ids": [
+				"ultron-task-00000000-0000-4000-8000-000000000000",
+				"ultron-task-00000000-0000-4000-8000-000000000001",
+				"ultron-task-00000000-0000-4000-8000-000000000002",
+				"ultron-task-00000000-0000-4000-8000-000000000003"
+			],
+			"keys": [
+				"00000000-0000-4000-9000-000000000000",
+				"00000000-0000-4000-9000-000000000001",
+				"00000000-0000-4000-9000-000000000002",
+				"00000000-0000-4000-9000-000000000003"
+			],
+			"steps": [
+				{
+					"op": "spawn",
+					"as": "p",
+					"prompt": "parent",
+					"outcome": {
+						"ok": {
+							"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+							"state": "admitted"
+						}
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "8467ab935a67b6433305cd2a803e27a4fff3addec4d5cd4bc36ba0287356b5c4",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "running"
+							}
+						]
+					},
+					"aborts": {
+						"p": 0
+					}
+				},
+				{
+					"op": "spawn",
+					"as": "s",
+					"prompt": "sibling",
+					"outcome": {
+						"ok": {
+							"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+							"state": "admitted"
+						}
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "8467ab935a67b6433305cd2a803e27a4fff3addec4d5cd4bc36ba0287356b5c4",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "0a09f54c2e784912342b17cd5bda54b81578e6363c51cb054669278963bf504b",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "running"
+							}
+						]
+					},
+					"aborts": {
+						"p": 0,
+						"s": 0
+					}
+				},
+				{
+					"op": "spawn",
+					"as": "c",
+					"prompt": "child",
+					"from": "p",
+					"outcome": {
+						"ok": {
+							"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+							"state": "admitted"
+						}
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "8467ab935a67b6433305cd2a803e27a4fff3addec4d5cd4bc36ba0287356b5c4",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "0a09f54c2e784912342b17cd5bda54b81578e6363c51cb054669278963bf504b",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "552a1fed16f943bcfca7b4baee9507fdd392efd7f938cc8c12d89b3be792f600",
+								"key": "00000000-0000-4000-9000-000000000002",
+								"state": "running",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000"
+							}
+						]
+					},
+					"aborts": {
+						"p": 0,
+						"s": 0,
+						"c": 0
+					}
+				},
+				{
+					"op": "spawn",
+					"as": "d",
+					"prompt": "grandchild",
+					"from": "c",
+					"outcome": {
+						"ok": {
+							"id": "ultron-task-00000000-0000-4000-8000-000000000003",
+							"state": "admitted"
+						}
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "8467ab935a67b6433305cd2a803e27a4fff3addec4d5cd4bc36ba0287356b5c4",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "0a09f54c2e784912342b17cd5bda54b81578e6363c51cb054669278963bf504b",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "552a1fed16f943bcfca7b4baee9507fdd392efd7f938cc8c12d89b3be792f600",
+								"key": "00000000-0000-4000-9000-000000000002",
+								"state": "running",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000003",
+								"definition": "rlm-child@1",
+								"fingerprint": "e8a92cb79221a785c2fd0936f983d992be63eac8c1d527053f4da614f18fd8c0",
+								"key": "00000000-0000-4000-9000-000000000003",
+								"state": "running",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000002"
+							}
+						]
+					},
+					"aborts": {
+						"p": 0,
+						"s": 0,
+						"c": 0,
+						"d": 0
+					}
+				},
+				{
+					"op": "finish",
+					"task": "p",
+					"text": "parent done",
+					"outcome": {
+						"ok": {
+							"status": "succeeded",
+							"value": "parent done",
+							"verification": "unverified",
+							"verdict": null,
+							"unverified": true
+						}
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "8467ab935a67b6433305cd2a803e27a4fff3addec4d5cd4bc36ba0287356b5c4",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "parent done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "0a09f54c2e784912342b17cd5bda54b81578e6363c51cb054669278963bf504b",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "552a1fed16f943bcfca7b4baee9507fdd392efd7f938cc8c12d89b3be792f600",
+								"key": "00000000-0000-4000-9000-000000000002",
+								"state": "running",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000003",
+								"definition": "rlm-child@1",
+								"fingerprint": "e8a92cb79221a785c2fd0936f983d992be63eac8c1d527053f4da614f18fd8c0",
+								"key": "00000000-0000-4000-9000-000000000003",
+								"state": "running",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000002"
+							}
+						]
+					},
+					"aborts": {
+						"p": 0,
+						"s": 0,
+						"c": 0,
+						"d": 0
+					}
+				},
+				{
+					"op": "inspect",
+					"task": "c",
+					"outcome": {
+						"ok": {
+							"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+							"definition": "rlm-child@1",
+							"state": "running",
+							"parentId": "ultron-task-00000000-0000-4000-8000-000000000000"
+						}
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "8467ab935a67b6433305cd2a803e27a4fff3addec4d5cd4bc36ba0287356b5c4",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "parent done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "0a09f54c2e784912342b17cd5bda54b81578e6363c51cb054669278963bf504b",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "552a1fed16f943bcfca7b4baee9507fdd392efd7f938cc8c12d89b3be792f600",
+								"key": "00000000-0000-4000-9000-000000000002",
+								"state": "running",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000003",
+								"definition": "rlm-child@1",
+								"fingerprint": "e8a92cb79221a785c2fd0936f983d992be63eac8c1d527053f4da614f18fd8c0",
+								"key": "00000000-0000-4000-9000-000000000003",
+								"state": "running",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000002"
+							}
+						]
+					},
+					"aborts": {
+						"p": 0,
+						"s": 0,
+						"c": 0,
+						"d": 0
+					}
+				},
+				{
+					"op": "cancel",
+					"task": "p",
+					"outcome": {
+						"ok": {
+							"cancelled": false
+						}
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "8467ab935a67b6433305cd2a803e27a4fff3addec4d5cd4bc36ba0287356b5c4",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "parent done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "0a09f54c2e784912342b17cd5bda54b81578e6363c51cb054669278963bf504b",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "552a1fed16f943bcfca7b4baee9507fdd392efd7f938cc8c12d89b3be792f600",
+								"key": "00000000-0000-4000-9000-000000000002",
+								"state": "cancelled",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"result": {
+									"status": "cancelled",
+									"error": "Ancestor ultron-task-00000000-0000-4000-8000-000000000000 cancelled: Ultron task cancelled",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000003",
+								"definition": "rlm-child@1",
+								"fingerprint": "e8a92cb79221a785c2fd0936f983d992be63eac8c1d527053f4da614f18fd8c0",
+								"key": "00000000-0000-4000-9000-000000000003",
+								"state": "cancelled",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"result": {
+									"status": "cancelled",
+									"error": "Ancestor ultron-task-00000000-0000-4000-8000-000000000002 cancelled: Ancestor ultron-task-00000000-0000-4000-8000-000000000000 cancelled: Ultron task cancelled",
+									"verification": "unverified"
+								}
+							}
+						]
+					},
+					"aborts": {
+						"p": 0,
+						"s": 0,
+						"c": 1,
+						"d": 1
+					}
+				},
+				{
+					"op": "inspect",
+					"task": "c",
+					"outcome": {
+						"ok": {
+							"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+							"definition": "rlm-child@1",
+							"state": "cancelled",
+							"parentId": "ultron-task-00000000-0000-4000-8000-000000000000",
+							"result": {
+								"status": "cancelled",
+								"error": "Ancestor ultron-task-00000000-0000-4000-8000-000000000000 cancelled: Ultron task cancelled",
+								"verification": "unverified"
+							}
+						}
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "8467ab935a67b6433305cd2a803e27a4fff3addec4d5cd4bc36ba0287356b5c4",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "parent done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "0a09f54c2e784912342b17cd5bda54b81578e6363c51cb054669278963bf504b",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "552a1fed16f943bcfca7b4baee9507fdd392efd7f938cc8c12d89b3be792f600",
+								"key": "00000000-0000-4000-9000-000000000002",
+								"state": "cancelled",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"result": {
+									"status": "cancelled",
+									"error": "Ancestor ultron-task-00000000-0000-4000-8000-000000000000 cancelled: Ultron task cancelled",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000003",
+								"definition": "rlm-child@1",
+								"fingerprint": "e8a92cb79221a785c2fd0936f983d992be63eac8c1d527053f4da614f18fd8c0",
+								"key": "00000000-0000-4000-9000-000000000003",
+								"state": "cancelled",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"result": {
+									"status": "cancelled",
+									"error": "Ancestor ultron-task-00000000-0000-4000-8000-000000000002 cancelled: Ancestor ultron-task-00000000-0000-4000-8000-000000000000 cancelled: Ultron task cancelled",
+									"verification": "unverified"
+								}
+							}
+						]
+					},
+					"aborts": {
+						"p": 0,
+						"s": 0,
+						"c": 1,
+						"d": 1
+					}
+				},
+				{
+					"op": "inspect",
+					"task": "d",
+					"outcome": {
+						"ok": {
+							"id": "ultron-task-00000000-0000-4000-8000-000000000003",
+							"definition": "rlm-child@1",
+							"state": "cancelled",
+							"parentId": "ultron-task-00000000-0000-4000-8000-000000000002",
+							"result": {
+								"status": "cancelled",
+								"error": "Ancestor ultron-task-00000000-0000-4000-8000-000000000002 cancelled: Ancestor ultron-task-00000000-0000-4000-8000-000000000000 cancelled: Ultron task cancelled",
+								"verification": "unverified"
+							}
+						}
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "8467ab935a67b6433305cd2a803e27a4fff3addec4d5cd4bc36ba0287356b5c4",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "parent done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "0a09f54c2e784912342b17cd5bda54b81578e6363c51cb054669278963bf504b",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "552a1fed16f943bcfca7b4baee9507fdd392efd7f938cc8c12d89b3be792f600",
+								"key": "00000000-0000-4000-9000-000000000002",
+								"state": "cancelled",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"result": {
+									"status": "cancelled",
+									"error": "Ancestor ultron-task-00000000-0000-4000-8000-000000000000 cancelled: Ultron task cancelled",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000003",
+								"definition": "rlm-child@1",
+								"fingerprint": "e8a92cb79221a785c2fd0936f983d992be63eac8c1d527053f4da614f18fd8c0",
+								"key": "00000000-0000-4000-9000-000000000003",
+								"state": "cancelled",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"result": {
+									"status": "cancelled",
+									"error": "Ancestor ultron-task-00000000-0000-4000-8000-000000000002 cancelled: Ancestor ultron-task-00000000-0000-4000-8000-000000000000 cancelled: Ultron task cancelled",
+									"verification": "unverified"
+								}
+							}
+						]
+					},
+					"aborts": {
+						"p": 0,
+						"s": 0,
+						"c": 1,
+						"d": 1
+					}
+				},
+				{
+					"op": "inspect",
+					"task": "s",
+					"outcome": {
+						"ok": {
+							"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+							"definition": "rlm-child@1",
+							"state": "running"
+						}
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "8467ab935a67b6433305cd2a803e27a4fff3addec4d5cd4bc36ba0287356b5c4",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "parent done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "0a09f54c2e784912342b17cd5bda54b81578e6363c51cb054669278963bf504b",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "552a1fed16f943bcfca7b4baee9507fdd392efd7f938cc8c12d89b3be792f600",
+								"key": "00000000-0000-4000-9000-000000000002",
+								"state": "cancelled",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"result": {
+									"status": "cancelled",
+									"error": "Ancestor ultron-task-00000000-0000-4000-8000-000000000000 cancelled: Ultron task cancelled",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000003",
+								"definition": "rlm-child@1",
+								"fingerprint": "e8a92cb79221a785c2fd0936f983d992be63eac8c1d527053f4da614f18fd8c0",
+								"key": "00000000-0000-4000-9000-000000000003",
+								"state": "cancelled",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"result": {
+									"status": "cancelled",
+									"error": "Ancestor ultron-task-00000000-0000-4000-8000-000000000002 cancelled: Ancestor ultron-task-00000000-0000-4000-8000-000000000000 cancelled: Ultron task cancelled",
+									"verification": "unverified"
+								}
+							}
+						]
+					},
+					"aborts": {
+						"p": 0,
+						"s": 0,
+						"c": 1,
+						"d": 1
+					}
+				},
+				{
+					"op": "close",
+					"outcome": {
+						"ok": null
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "8467ab935a67b6433305cd2a803e27a4fff3addec4d5cd4bc36ba0287356b5c4",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "parent done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "0a09f54c2e784912342b17cd5bda54b81578e6363c51cb054669278963bf504b",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "cancelled",
+								"result": {
+									"status": "cancelled",
+									"error": "Ultron task host closed",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "552a1fed16f943bcfca7b4baee9507fdd392efd7f938cc8c12d89b3be792f600",
+								"key": "00000000-0000-4000-9000-000000000002",
+								"state": "cancelled",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"result": {
+									"status": "cancelled",
+									"error": "Ancestor ultron-task-00000000-0000-4000-8000-000000000000 cancelled: Ultron task cancelled",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000003",
+								"definition": "rlm-child@1",
+								"fingerprint": "e8a92cb79221a785c2fd0936f983d992be63eac8c1d527053f4da614f18fd8c0",
+								"key": "00000000-0000-4000-9000-000000000003",
+								"state": "cancelled",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"result": {
+									"status": "cancelled",
+									"error": "Ancestor ultron-task-00000000-0000-4000-8000-000000000002 cancelled: Ancestor ultron-task-00000000-0000-4000-8000-000000000000 cancelled: Ultron task cancelled",
+									"verification": "unverified"
+								}
+							}
+						]
+					},
+					"aborts": {
+						"p": 0,
+						"s": 1,
+						"c": 1,
+						"d": 1
+					}
+				},
+				{
+					"op": "status",
+					"outcome": {
+						"error": "Ultron task host is closed"
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "8467ab935a67b6433305cd2a803e27a4fff3addec4d5cd4bc36ba0287356b5c4",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "parent done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "0a09f54c2e784912342b17cd5bda54b81578e6363c51cb054669278963bf504b",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "cancelled",
+								"result": {
+									"status": "cancelled",
+									"error": "Ultron task host closed",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "552a1fed16f943bcfca7b4baee9507fdd392efd7f938cc8c12d89b3be792f600",
+								"key": "00000000-0000-4000-9000-000000000002",
+								"state": "cancelled",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"result": {
+									"status": "cancelled",
+									"error": "Ancestor ultron-task-00000000-0000-4000-8000-000000000000 cancelled: Ultron task cancelled",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000003",
+								"definition": "rlm-child@1",
+								"fingerprint": "e8a92cb79221a785c2fd0936f983d992be63eac8c1d527053f4da614f18fd8c0",
+								"key": "00000000-0000-4000-9000-000000000003",
+								"state": "cancelled",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"result": {
+									"status": "cancelled",
+									"error": "Ancestor ultron-task-00000000-0000-4000-8000-000000000002 cancelled: Ancestor ultron-task-00000000-0000-4000-8000-000000000000 cancelled: Ultron task cancelled",
+									"verification": "unverified"
+								}
+							}
+						]
+					},
+					"aborts": {
+						"p": 0,
+						"s": 1,
+						"c": 1,
+						"d": 1
+					}
+				}
+			]
+		},
+		"failure_and_cancel_from_child_lane": {
+			"ids": [
+				"ultron-task-00000000-0000-4000-8000-000000000000",
+				"ultron-task-00000000-0000-4000-8000-000000000001",
+				"ultron-task-00000000-0000-4000-8000-000000000002"
+			],
+			"keys": [
+				"00000000-0000-4000-9000-000000000000",
+				"00000000-0000-4000-9000-000000000001",
+				"00000000-0000-4000-9000-000000000002"
+			],
+			"steps": [
+				{
+					"op": "spawn",
+					"as": "a",
+					"prompt": "A",
+					"outcome": {
+						"ok": {
+							"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+							"state": "admitted"
+						}
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "56f97aaac48bc1628de703db94676bb1df1dd6c43ed85578f93dc4db8e972427",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "running"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0
+					}
+				},
+				{
+					"op": "spawn",
+					"as": "b",
+					"prompt": "B",
+					"from": "a",
+					"outcome": {
+						"ok": {
+							"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+							"state": "admitted"
+						}
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "56f97aaac48bc1628de703db94676bb1df1dd6c43ed85578f93dc4db8e972427",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "e5bc9a367b434eb3645753a0d458a786dd5789691a73aa2f065f54d2a59e90ff",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "running",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"b": 0
+					}
+				},
+				{
+					"op": "spawn",
+					"as": "c",
+					"prompt": "C",
+					"from": "a",
+					"outcome": {
+						"ok": {
+							"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+							"state": "admitted"
+						}
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "56f97aaac48bc1628de703db94676bb1df1dd6c43ed85578f93dc4db8e972427",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "e5bc9a367b434eb3645753a0d458a786dd5789691a73aa2f065f54d2a59e90ff",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "running",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "e7f6c9ac8e8c9b4ef7ef94f51bddbbc884f14c25d9004e4040e51d2170430d9b",
+								"key": "00000000-0000-4000-9000-000000000002",
+								"state": "running",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"b": 0,
+						"c": 0
+					}
+				},
+				{
+					"op": "fail",
+					"task": "b",
+					"error": {
+						"kind": "provider",
+						"message": "overloaded"
+					},
+					"outcome": {
+						"ok": {
+							"status": "failed",
+							"error": "{\"kind\":\"provider\",\"message\":\"overloaded\"}",
+							"verification": "unverified"
+						}
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "56f97aaac48bc1628de703db94676bb1df1dd6c43ed85578f93dc4db8e972427",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "e5bc9a367b434eb3645753a0d458a786dd5789691a73aa2f065f54d2a59e90ff",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "failed",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"result": {
+									"status": "failed",
+									"error": "{\"kind\":\"provider\",\"message\":\"overloaded\"}",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "e7f6c9ac8e8c9b4ef7ef94f51bddbbc884f14c25d9004e4040e51d2170430d9b",
+								"key": "00000000-0000-4000-9000-000000000002",
+								"state": "running",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"b": 0,
+						"c": 0
+					}
+				},
+				{
+					"op": "cancel",
+					"task": "c",
+					"from": "b",
+					"outcome": {
+						"error": "Unknown Ultron task"
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "56f97aaac48bc1628de703db94676bb1df1dd6c43ed85578f93dc4db8e972427",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "e5bc9a367b434eb3645753a0d458a786dd5789691a73aa2f065f54d2a59e90ff",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "failed",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"result": {
+									"status": "failed",
+									"error": "{\"kind\":\"provider\",\"message\":\"overloaded\"}",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "e7f6c9ac8e8c9b4ef7ef94f51bddbbc884f14c25d9004e4040e51d2170430d9b",
+								"key": "00000000-0000-4000-9000-000000000002",
+								"state": "running",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"b": 0,
+						"c": 0
+					}
+				},
+				{
+					"op": "cancel",
+					"task": "c",
+					"from": "a",
+					"outcome": {
+						"ok": {
+							"cancelled": true
+						}
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "56f97aaac48bc1628de703db94676bb1df1dd6c43ed85578f93dc4db8e972427",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "e5bc9a367b434eb3645753a0d458a786dd5789691a73aa2f065f54d2a59e90ff",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "failed",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"result": {
+									"status": "failed",
+									"error": "{\"kind\":\"provider\",\"message\":\"overloaded\"}",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "e7f6c9ac8e8c9b4ef7ef94f51bddbbc884f14c25d9004e4040e51d2170430d9b",
+								"key": "00000000-0000-4000-9000-000000000002",
+								"state": "cancelled",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"result": {
+									"status": "cancelled",
+									"error": "Ultron task cancelled",
+									"verification": "unverified"
+								}
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"b": 0,
+						"c": 1
+					}
+				},
+				{
+					"op": "result",
+					"task": "c",
+					"outcome": {
+						"ok": {
+							"status": "cancelled",
+							"error": "Ultron task cancelled",
+							"verification": "unverified"
+						}
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "56f97aaac48bc1628de703db94676bb1df1dd6c43ed85578f93dc4db8e972427",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "e5bc9a367b434eb3645753a0d458a786dd5789691a73aa2f065f54d2a59e90ff",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "failed",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"result": {
+									"status": "failed",
+									"error": "{\"kind\":\"provider\",\"message\":\"overloaded\"}",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "e7f6c9ac8e8c9b4ef7ef94f51bddbbc884f14c25d9004e4040e51d2170430d9b",
+								"key": "00000000-0000-4000-9000-000000000002",
+								"state": "cancelled",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"result": {
+									"status": "cancelled",
+									"error": "Ultron task cancelled",
+									"verification": "unverified"
+								}
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"b": 0,
+						"c": 1
+					}
+				},
+				{
+					"op": "result",
+					"task": "b",
+					"from": "a",
+					"outcome": {
+						"ok": {
+							"status": "failed",
+							"error": "{\"kind\":\"provider\",\"message\":\"overloaded\"}",
+							"verification": "unverified"
+						}
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "56f97aaac48bc1628de703db94676bb1df1dd6c43ed85578f93dc4db8e972427",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "e5bc9a367b434eb3645753a0d458a786dd5789691a73aa2f065f54d2a59e90ff",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "failed",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"result": {
+									"status": "failed",
+									"error": "{\"kind\":\"provider\",\"message\":\"overloaded\"}",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "e7f6c9ac8e8c9b4ef7ef94f51bddbbc884f14c25d9004e4040e51d2170430d9b",
+								"key": "00000000-0000-4000-9000-000000000002",
+								"state": "cancelled",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"result": {
+									"status": "cancelled",
+									"error": "Ultron task cancelled",
+									"verification": "unverified"
+								}
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"b": 0,
+						"c": 1
+					}
+				},
+				{
+					"op": "cancel",
+					"task": "a",
+					"from": "c",
+					"outcome": {
+						"error": "Unknown Ultron task"
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "56f97aaac48bc1628de703db94676bb1df1dd6c43ed85578f93dc4db8e972427",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "e5bc9a367b434eb3645753a0d458a786dd5789691a73aa2f065f54d2a59e90ff",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "failed",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"result": {
+									"status": "failed",
+									"error": "{\"kind\":\"provider\",\"message\":\"overloaded\"}",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "e7f6c9ac8e8c9b4ef7ef94f51bddbbc884f14c25d9004e4040e51d2170430d9b",
+								"key": "00000000-0000-4000-9000-000000000002",
+								"state": "cancelled",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"result": {
+									"status": "cancelled",
+									"error": "Ultron task cancelled",
+									"verification": "unverified"
+								}
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"b": 0,
+						"c": 1
+					}
+				},
+				{
+					"op": "status",
+					"outcome": {
+						"ok": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"state": "failed",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"result": {
+									"status": "failed",
+									"error": "{\"kind\":\"provider\",\"message\":\"overloaded\"}",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"state": "cancelled",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"result": {
+									"status": "cancelled",
+									"error": "Ultron task cancelled",
+									"verification": "unverified"
+								}
+							}
+						]
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "56f97aaac48bc1628de703db94676bb1df1dd6c43ed85578f93dc4db8e972427",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "e5bc9a367b434eb3645753a0d458a786dd5789691a73aa2f065f54d2a59e90ff",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "failed",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"result": {
+									"status": "failed",
+									"error": "{\"kind\":\"provider\",\"message\":\"overloaded\"}",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "e7f6c9ac8e8c9b4ef7ef94f51bddbbc884f14c25d9004e4040e51d2170430d9b",
+								"key": "00000000-0000-4000-9000-000000000002",
+								"state": "cancelled",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"result": {
+									"status": "cancelled",
+									"error": "Ultron task cancelled",
+									"verification": "unverified"
+								}
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"b": 0,
+						"c": 1
+					}
+				}
+			]
+		},
+		"idempotent_keys": {
+			"ids": [
+				"ultron-task-00000000-0000-4000-8000-000000000000",
+				"ultron-task-00000000-0000-4000-8000-000000000001",
+				"ultron-task-00000000-0000-4000-8000-000000000002",
+				"ultron-task-00000000-0000-4000-8000-000000000003",
+				"ultron-task-00000000-0000-4000-8000-000000000004",
+				"ultron-task-00000000-0000-4000-8000-000000000005"
+			],
+			"keys": [
+				"k1",
+				"k2",
+				"00000000-0000-4000-9000-000000000000",
+				"kt",
+				"ku",
+				"kw"
+			],
+			"steps": [
+				{
+					"op": "spawn",
+					"as": "a",
+					"prompt": "same",
+					"key": "k1",
+					"outcome": {
+						"ok": {
+							"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+							"state": "admitted"
+						}
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "47aae36582c5cbfc5b22e8bb52525ca3edbbd96cd47fe0e66c22c20ddbe6e3e6",
+								"key": "k1",
+								"state": "running"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0
+					}
+				},
+				{
+					"op": "spawn",
+					"as": "a2",
+					"prompt": "same",
+					"key": "k1",
+					"outcome": {
+						"ok": {
+							"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+							"state": "running"
+						}
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "47aae36582c5cbfc5b22e8bb52525ca3edbbd96cd47fe0e66c22c20ddbe6e3e6",
+								"key": "k1",
+								"state": "running"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"a2": 0
+					}
+				},
+				{
+					"op": "spawn",
+					"as": "x",
+					"prompt": "different",
+					"key": "k1",
+					"outcome": {
+						"error": "Idempotency key reused for a different task"
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "47aae36582c5cbfc5b22e8bb52525ca3edbbd96cd47fe0e66c22c20ddbe6e3e6",
+								"key": "k1",
+								"state": "running"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"a2": 0
+					}
+				},
+				{
+					"op": "spawn",
+					"as": "y",
+					"prompt": "same",
+					"key": "k1",
+					"timeout_ms": 1000,
+					"outcome": {
+						"error": "Idempotency key reused for a different task"
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "47aae36582c5cbfc5b22e8bb52525ca3edbbd96cd47fe0e66c22c20ddbe6e3e6",
+								"key": "k1",
+								"state": "running"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"a2": 0
+					}
+				},
+				{
+					"op": "spawn",
+					"as": "z",
+					"prompt": "same",
+					"key": "k1",
+					"model": "p/m",
+					"outcome": {
+						"error": "Idempotency key reused for a different task"
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "47aae36582c5cbfc5b22e8bb52525ca3edbbd96cd47fe0e66c22c20ddbe6e3e6",
+								"key": "k1",
+								"state": "running"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"a2": 0
+					}
+				},
+				{
+					"op": "finish",
+					"task": "a",
+					"text": "done",
+					"outcome": {
+						"ok": {
+							"status": "succeeded",
+							"value": "done",
+							"verification": "unverified",
+							"verdict": null,
+							"unverified": true
+						}
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "47aae36582c5cbfc5b22e8bb52525ca3edbbd96cd47fe0e66c22c20ddbe6e3e6",
+								"key": "k1",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"a2": 0
+					}
+				},
+				{
+					"op": "spawn",
+					"as": "a3",
+					"prompt": "same",
+					"key": "k1",
+					"outcome": {
+						"ok": {
+							"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+							"state": "completed"
+						}
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "47aae36582c5cbfc5b22e8bb52525ca3edbbd96cd47fe0e66c22c20ddbe6e3e6",
+								"key": "k1",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"a2": 0,
+						"a3": 0
+					}
+				},
+				{
+					"op": "spawn",
+					"as": "m",
+					"prompt": "with model",
+					"key": "k2",
+					"model": "prov/model/x",
+					"timeout_ms": 3600000,
+					"outcome": {
+						"ok": {
+							"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+							"state": "admitted"
+						}
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "47aae36582c5cbfc5b22e8bb52525ca3edbbd96cd47fe0e66c22c20ddbe6e3e6",
+								"key": "k1",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "2b8aa2078ed4dee710d520f12da791a1fe7e3854f7d2dd8345d7595b2a685fa8",
+								"key": "k2",
+								"state": "running"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"a2": 0,
+						"a3": 0,
+						"m": 0
+					}
+				},
+				{
+					"op": "spawn",
+					"as": "bad",
+					"prompt": "x",
+					"model": "nomodel",
+					"outcome": {
+						"error": "model must be provider/model"
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "47aae36582c5cbfc5b22e8bb52525ca3edbbd96cd47fe0e66c22c20ddbe6e3e6",
+								"key": "k1",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "2b8aa2078ed4dee710d520f12da791a1fe7e3854f7d2dd8345d7595b2a685fa8",
+								"key": "k2",
+								"state": "running"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"a2": 0,
+						"a3": 0,
+						"m": 0
+					}
+				},
+				{
+					"op": "spawn",
+					"as": "bad",
+					"prompt": "x",
+					"key": "",
+					"outcome": {
+						"error": "key must be a nonempty string"
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "47aae36582c5cbfc5b22e8bb52525ca3edbbd96cd47fe0e66c22c20ddbe6e3e6",
+								"key": "k1",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "2b8aa2078ed4dee710d520f12da791a1fe7e3854f7d2dd8345d7595b2a685fa8",
+								"key": "k2",
+								"state": "running"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"a2": 0,
+						"a3": 0,
+						"m": 0
+					}
+				},
+				{
+					"op": "spawn",
+					"as": "bad",
+					"prompt": "x",
+					"timeout_ms": 0,
+					"outcome": {
+						"error": "timeout_ms must be an integer between 1 and 3600000"
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "47aae36582c5cbfc5b22e8bb52525ca3edbbd96cd47fe0e66c22c20ddbe6e3e6",
+								"key": "k1",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "2b8aa2078ed4dee710d520f12da791a1fe7e3854f7d2dd8345d7595b2a685fa8",
+								"key": "k2",
+								"state": "running"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"a2": 0,
+						"a3": 0,
+						"m": 0
+					}
+				},
+				{
+					"op": "spawn",
+					"as": "bad",
+					"prompt": "x",
+					"timeout_ms": 3600001,
+					"outcome": {
+						"error": "timeout_ms must be an integer between 1 and 3600000"
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "47aae36582c5cbfc5b22e8bb52525ca3edbbd96cd47fe0e66c22c20ddbe6e3e6",
+								"key": "k1",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "2b8aa2078ed4dee710d520f12da791a1fe7e3854f7d2dd8345d7595b2a685fa8",
+								"key": "k2",
+								"state": "running"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"a2": 0,
+						"a3": 0,
+						"m": 0
+					}
+				},
+				{
+					"op": "spawn",
+					"as": "bad",
+					"prompt": "x",
+					"timeout_ms": 1.5,
+					"outcome": {
+						"error": "timeout_ms must be an integer between 1 and 3600000"
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "47aae36582c5cbfc5b22e8bb52525ca3edbbd96cd47fe0e66c22c20ddbe6e3e6",
+								"key": "k1",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "2b8aa2078ed4dee710d520f12da791a1fe7e3854f7d2dd8345d7595b2a685fa8",
+								"key": "k2",
+								"state": "running"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"a2": 0,
+						"a3": 0,
+						"m": 0
+					}
+				},
+				{
+					"op": "spawn",
+					"as": "bad",
+					"prompt": "x",
+					"set": {
+						"timeout_ms": null
+					},
+					"outcome": {
+						"error": "timeout_ms must be an integer between 1 and 3600000"
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "47aae36582c5cbfc5b22e8bb52525ca3edbbd96cd47fe0e66c22c20ddbe6e3e6",
+								"key": "k1",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "2b8aa2078ed4dee710d520f12da791a1fe7e3854f7d2dd8345d7595b2a685fa8",
+								"key": "k2",
+								"state": "running"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"a2": 0,
+						"a3": 0,
+						"m": 0
+					}
+				},
+				{
+					"op": "spawn",
+					"as": "bad",
+					"prompt": "x",
+					"set": {
+						"timeout_ms": "5"
+					},
+					"outcome": {
+						"error": "timeout_ms must be an integer between 1 and 3600000"
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "47aae36582c5cbfc5b22e8bb52525ca3edbbd96cd47fe0e66c22c20ddbe6e3e6",
+								"key": "k1",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "2b8aa2078ed4dee710d520f12da791a1fe7e3854f7d2dd8345d7595b2a685fa8",
+								"key": "k2",
+								"state": "running"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"a2": 0,
+						"a3": 0,
+						"m": 0
+					}
+				},
+				{
+					"op": "spawn",
+					"as": "bad",
+					"prompt": "x",
+					"key": " \t\n",
+					"outcome": {
+						"error": "key must be a nonempty string"
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "47aae36582c5cbfc5b22e8bb52525ca3edbbd96cd47fe0e66c22c20ddbe6e3e6",
+								"key": "k1",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "2b8aa2078ed4dee710d520f12da791a1fe7e3854f7d2dd8345d7595b2a685fa8",
+								"key": "k2",
+								"state": "running"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"a2": 0,
+						"a3": 0,
+						"m": 0
+					}
+				},
+				{
+					"op": "spawn",
+					"as": "bad",
+					"prompt": "x",
+					"key": 7,
+					"outcome": {
+						"error": "key must be a nonempty string"
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "47aae36582c5cbfc5b22e8bb52525ca3edbbd96cd47fe0e66c22c20ddbe6e3e6",
+								"key": "k1",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "2b8aa2078ed4dee710d520f12da791a1fe7e3854f7d2dd8345d7595b2a685fa8",
+								"key": "k2",
+								"state": "running"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"a2": 0,
+						"a3": 0,
+						"m": 0
+					}
+				},
+				{
+					"op": "spawn",
+					"as": "bad",
+					"prompt": "x",
+					"model": "a/b c",
+					"outcome": {
+						"error": "model must be provider/model"
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "47aae36582c5cbfc5b22e8bb52525ca3edbbd96cd47fe0e66c22c20ddbe6e3e6",
+								"key": "k1",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "2b8aa2078ed4dee710d520f12da791a1fe7e3854f7d2dd8345d7595b2a685fa8",
+								"key": "k2",
+								"state": "running"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"a2": 0,
+						"a3": 0,
+						"m": 0
+					}
+				},
+				{
+					"op": "spawn",
+					"as": "bad",
+					"prompt": "x",
+					"model": "/b",
+					"outcome": {
+						"error": "model must be provider/model"
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "47aae36582c5cbfc5b22e8bb52525ca3edbbd96cd47fe0e66c22c20ddbe6e3e6",
+								"key": "k1",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "2b8aa2078ed4dee710d520f12da791a1fe7e3854f7d2dd8345d7595b2a685fa8",
+								"key": "k2",
+								"state": "running"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"a2": 0,
+						"a3": 0,
+						"m": 0
+					}
+				},
+				{
+					"op": "spawn",
+					"as": "bad",
+					"prompt": "x",
+					"model": "a/",
+					"outcome": {
+						"error": "model must be provider/model"
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "47aae36582c5cbfc5b22e8bb52525ca3edbbd96cd47fe0e66c22c20ddbe6e3e6",
+								"key": "k1",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "2b8aa2078ed4dee710d520f12da791a1fe7e3854f7d2dd8345d7595b2a685fa8",
+								"key": "k2",
+								"state": "running"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"a2": 0,
+						"a3": 0,
+						"m": 0
+					}
+				},
+				{
+					"op": "spawn",
+					"as": "bad",
+					"prompt": "x",
+					"model": "a//b",
+					"outcome": {
+						"error": "model must be provider/model"
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "47aae36582c5cbfc5b22e8bb52525ca3edbbd96cd47fe0e66c22c20ddbe6e3e6",
+								"key": "k1",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "2b8aa2078ed4dee710d520f12da791a1fe7e3854f7d2dd8345d7595b2a685fa8",
+								"key": "k2",
+								"state": "running"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"a2": 0,
+						"a3": 0,
+						"m": 0
+					}
+				},
+				{
+					"op": "spawn",
+					"as": "bad",
+					"prompt": "x",
+					"model": 3,
+					"outcome": {
+						"error": "model must be provider/model"
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "47aae36582c5cbfc5b22e8bb52525ca3edbbd96cd47fe0e66c22c20ddbe6e3e6",
+								"key": "k1",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "2b8aa2078ed4dee710d520f12da791a1fe7e3854f7d2dd8345d7595b2a685fa8",
+								"key": "k2",
+								"state": "running"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"a2": 0,
+						"a3": 0,
+						"m": 0
+					}
+				},
+				{
+					"op": "spawn",
+					"as": "bad",
+					"prompt": "x",
+					"set": {
+						"extra": 1
+					},
+					"outcome": {
+						"error": "Unknown payload field: extra"
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "47aae36582c5cbfc5b22e8bb52525ca3edbbd96cd47fe0e66c22c20ddbe6e3e6",
+								"key": "k1",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "2b8aa2078ed4dee710d520f12da791a1fe7e3854f7d2dd8345d7595b2a685fa8",
+								"key": "k2",
+								"state": "running"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"a2": 0,
+						"a3": 0,
+						"m": 0
+					}
+				},
+				{
+					"op": "spawn",
+					"as": "bad",
+					"prompt": "x",
+					"set": {
+						"definition": "Rlm-child@1"
+					},
+					"outcome": {
+						"error": "definition must be id@version"
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "47aae36582c5cbfc5b22e8bb52525ca3edbbd96cd47fe0e66c22c20ddbe6e3e6",
+								"key": "k1",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "2b8aa2078ed4dee710d520f12da791a1fe7e3854f7d2dd8345d7595b2a685fa8",
+								"key": "k2",
+								"state": "running"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"a2": 0,
+						"a3": 0,
+						"m": 0
+					}
+				},
+				{
+					"op": "spawn",
+					"as": "bad",
+					"prompt": "x",
+					"set": {
+						"definition": "rlm-child@v1"
+					},
+					"outcome": {
+						"error": "definition must be id@version"
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "47aae36582c5cbfc5b22e8bb52525ca3edbbd96cd47fe0e66c22c20ddbe6e3e6",
+								"key": "k1",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "2b8aa2078ed4dee710d520f12da791a1fe7e3854f7d2dd8345d7595b2a685fa8",
+								"key": "k2",
+								"state": "running"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"a2": 0,
+						"a3": 0,
+						"m": 0
+					}
+				},
+				{
+					"op": "spawn",
+					"as": "n",
+					"prompt": "null options",
+					"set": {
+						"key": null,
+						"model": null
+					},
+					"outcome": {
+						"ok": {
+							"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+							"state": "admitted"
+						}
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "47aae36582c5cbfc5b22e8bb52525ca3edbbd96cd47fe0e66c22c20ddbe6e3e6",
+								"key": "k1",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "2b8aa2078ed4dee710d520f12da791a1fe7e3854f7d2dd8345d7595b2a685fa8",
+								"key": "k2",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "42d498a56b0752ae90c1e40f9d8e154994228912a457cd4f2fd6bce68e79ca53",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "running"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"a2": 0,
+						"a3": 0,
+						"m": 0,
+						"n": 0
+					}
+				},
+				{
+					"op": "spawn",
+					"as": "t",
+					"prompt": "timed",
+					"key": "kt",
+					"timeout_ms": 5000,
+					"outcome": {
+						"ok": {
+							"id": "ultron-task-00000000-0000-4000-8000-000000000003",
+							"state": "admitted"
+						}
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "47aae36582c5cbfc5b22e8bb52525ca3edbbd96cd47fe0e66c22c20ddbe6e3e6",
+								"key": "k1",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "2b8aa2078ed4dee710d520f12da791a1fe7e3854f7d2dd8345d7595b2a685fa8",
+								"key": "k2",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "42d498a56b0752ae90c1e40f9d8e154994228912a457cd4f2fd6bce68e79ca53",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000003",
+								"definition": "rlm-child@1",
+								"fingerprint": "f6974a27c02c9ccb5de07ec03f6268341f8a1095466ba12e61ceb819d431a8d5",
+								"key": "kt",
+								"state": "running"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"a2": 0,
+						"a3": 0,
+						"m": 0,
+						"n": 0,
+						"t": 0
+					}
+				},
+				{
+					"op": "spawn",
+					"as": "t2",
+					"prompt": "timed",
+					"key": "kt",
+					"timeout_ms": 5000,
+					"model": null,
+					"outcome": {
+						"ok": {
+							"id": "ultron-task-00000000-0000-4000-8000-000000000003",
+							"state": "running"
+						}
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "47aae36582c5cbfc5b22e8bb52525ca3edbbd96cd47fe0e66c22c20ddbe6e3e6",
+								"key": "k1",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "2b8aa2078ed4dee710d520f12da791a1fe7e3854f7d2dd8345d7595b2a685fa8",
+								"key": "k2",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "42d498a56b0752ae90c1e40f9d8e154994228912a457cd4f2fd6bce68e79ca53",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000003",
+								"definition": "rlm-child@1",
+								"fingerprint": "f6974a27c02c9ccb5de07ec03f6268341f8a1095466ba12e61ceb819d431a8d5",
+								"key": "kt",
+								"state": "running"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"a2": 0,
+						"a3": 0,
+						"m": 0,
+						"n": 0,
+						"t": 0,
+						"t2": 0
+					}
+				},
+				{
+					"op": "spawn",
+					"as": "u",
+					"prompt": "unicode é😀",
+					"key": "ku",
+					"model": "p/méx",
+					"outcome": {
+						"ok": {
+							"id": "ultron-task-00000000-0000-4000-8000-000000000004",
+							"state": "admitted"
+						}
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "47aae36582c5cbfc5b22e8bb52525ca3edbbd96cd47fe0e66c22c20ddbe6e3e6",
+								"key": "k1",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "2b8aa2078ed4dee710d520f12da791a1fe7e3854f7d2dd8345d7595b2a685fa8",
+								"key": "k2",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "42d498a56b0752ae90c1e40f9d8e154994228912a457cd4f2fd6bce68e79ca53",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000003",
+								"definition": "rlm-child@1",
+								"fingerprint": "f6974a27c02c9ccb5de07ec03f6268341f8a1095466ba12e61ceb819d431a8d5",
+								"key": "kt",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000004",
+								"definition": "rlm-child@1",
+								"fingerprint": "5d0acfbfbb9fd52ec89d71fa53d89bd2902bffda3fbe131b01160714c6c777cb",
+								"key": "ku",
+								"state": "running"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"a2": 0,
+						"a3": 0,
+						"m": 0,
+						"n": 0,
+						"t": 0,
+						"t2": 0,
+						"u": 0
+					}
+				},
+				{
+					"op": "spawn",
+					"as": "bad",
+					"prompt": "x",
+					"model": "p/m x",
+					"outcome": {
+						"error": "model must be provider/model"
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "47aae36582c5cbfc5b22e8bb52525ca3edbbd96cd47fe0e66c22c20ddbe6e3e6",
+								"key": "k1",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "2b8aa2078ed4dee710d520f12da791a1fe7e3854f7d2dd8345d7595b2a685fa8",
+								"key": "k2",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "42d498a56b0752ae90c1e40f9d8e154994228912a457cd4f2fd6bce68e79ca53",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000003",
+								"definition": "rlm-child@1",
+								"fingerprint": "f6974a27c02c9ccb5de07ec03f6268341f8a1095466ba12e61ceb819d431a8d5",
+								"key": "kt",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000004",
+								"definition": "rlm-child@1",
+								"fingerprint": "5d0acfbfbb9fd52ec89d71fa53d89bd2902bffda3fbe131b01160714c6c777cb",
+								"key": "ku",
+								"state": "running"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"a2": 0,
+						"a3": 0,
+						"m": 0,
+						"n": 0,
+						"t": 0,
+						"t2": 0,
+						"u": 0
+					}
+				},
+				{
+					"op": "spawn",
+					"as": "bad",
+					"prompt": "x",
+					"model": "p/m x",
+					"outcome": {
+						"error": "model must be provider/model"
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "47aae36582c5cbfc5b22e8bb52525ca3edbbd96cd47fe0e66c22c20ddbe6e3e6",
+								"key": "k1",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "2b8aa2078ed4dee710d520f12da791a1fe7e3854f7d2dd8345d7595b2a685fa8",
+								"key": "k2",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "42d498a56b0752ae90c1e40f9d8e154994228912a457cd4f2fd6bce68e79ca53",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000003",
+								"definition": "rlm-child@1",
+								"fingerprint": "f6974a27c02c9ccb5de07ec03f6268341f8a1095466ba12e61ceb819d431a8d5",
+								"key": "kt",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000004",
+								"definition": "rlm-child@1",
+								"fingerprint": "5d0acfbfbb9fd52ec89d71fa53d89bd2902bffda3fbe131b01160714c6c777cb",
+								"key": "ku",
+								"state": "running"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"a2": 0,
+						"a3": 0,
+						"m": 0,
+						"n": 0,
+						"t": 0,
+						"t2": 0,
+						"u": 0
+					}
+				},
+				{
+					"op": "spawn",
+					"as": "w",
+					"prompt": "nel",
+					"key": "kw",
+					"model": "p/mx",
+					"outcome": {
+						"ok": {
+							"id": "ultron-task-00000000-0000-4000-8000-000000000005",
+							"state": "admitted"
+						}
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "47aae36582c5cbfc5b22e8bb52525ca3edbbd96cd47fe0e66c22c20ddbe6e3e6",
+								"key": "k1",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "2b8aa2078ed4dee710d520f12da791a1fe7e3854f7d2dd8345d7595b2a685fa8",
+								"key": "k2",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "42d498a56b0752ae90c1e40f9d8e154994228912a457cd4f2fd6bce68e79ca53",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000003",
+								"definition": "rlm-child@1",
+								"fingerprint": "f6974a27c02c9ccb5de07ec03f6268341f8a1095466ba12e61ceb819d431a8d5",
+								"key": "kt",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000004",
+								"definition": "rlm-child@1",
+								"fingerprint": "5d0acfbfbb9fd52ec89d71fa53d89bd2902bffda3fbe131b01160714c6c777cb",
+								"key": "ku",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000005",
+								"definition": "rlm-child@1",
+								"fingerprint": "dc1d593ec0e5b709b61baa55ce081b30c366ee638df4cfef4d4952323985b8cc",
+								"key": "kw",
+								"state": "running"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"a2": 0,
+						"a3": 0,
+						"m": 0,
+						"n": 0,
+						"t": 0,
+						"t2": 0,
+						"u": 0,
+						"w": 0
+					}
+				},
+				{
+					"op": "spawn",
+					"as": "v",
+					"prompt": "unicode",
+					"key": "kv",
+					"model": "p/m﻿x",
+					"outcome": {
+						"error": "model must be provider/model"
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "47aae36582c5cbfc5b22e8bb52525ca3edbbd96cd47fe0e66c22c20ddbe6e3e6",
+								"key": "k1",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "2b8aa2078ed4dee710d520f12da791a1fe7e3854f7d2dd8345d7595b2a685fa8",
+								"key": "k2",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "42d498a56b0752ae90c1e40f9d8e154994228912a457cd4f2fd6bce68e79ca53",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000003",
+								"definition": "rlm-child@1",
+								"fingerprint": "f6974a27c02c9ccb5de07ec03f6268341f8a1095466ba12e61ceb819d431a8d5",
+								"key": "kt",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000004",
+								"definition": "rlm-child@1",
+								"fingerprint": "5d0acfbfbb9fd52ec89d71fa53d89bd2902bffda3fbe131b01160714c6c777cb",
+								"key": "ku",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000005",
+								"definition": "rlm-child@1",
+								"fingerprint": "dc1d593ec0e5b709b61baa55ce081b30c366ee638df4cfef4d4952323985b8cc",
+								"key": "kw",
+								"state": "running"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"a2": 0,
+						"a3": 0,
+						"m": 0,
+						"n": 0,
+						"t": 0,
+						"t2": 0,
+						"u": 0,
+						"w": 0
+					}
+				},
+				{
+					"op": "status",
+					"outcome": {
+						"ok": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000003",
+								"definition": "rlm-child@1",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000004",
+								"definition": "rlm-child@1",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000005",
+								"definition": "rlm-child@1",
+								"state": "running"
+							}
+						]
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "47aae36582c5cbfc5b22e8bb52525ca3edbbd96cd47fe0e66c22c20ddbe6e3e6",
+								"key": "k1",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "2b8aa2078ed4dee710d520f12da791a1fe7e3854f7d2dd8345d7595b2a685fa8",
+								"key": "k2",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "42d498a56b0752ae90c1e40f9d8e154994228912a457cd4f2fd6bce68e79ca53",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000003",
+								"definition": "rlm-child@1",
+								"fingerprint": "f6974a27c02c9ccb5de07ec03f6268341f8a1095466ba12e61ceb819d431a8d5",
+								"key": "kt",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000004",
+								"definition": "rlm-child@1",
+								"fingerprint": "5d0acfbfbb9fd52ec89d71fa53d89bd2902bffda3fbe131b01160714c6c777cb",
+								"key": "ku",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000005",
+								"definition": "rlm-child@1",
+								"fingerprint": "dc1d593ec0e5b709b61baa55ce081b30c366ee638df4cfef4d4952323985b8cc",
+								"key": "kw",
+								"state": "running"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"a2": 0,
+						"a3": 0,
+						"m": 0,
+						"n": 0,
+						"t": 0,
+						"t2": 0,
+						"u": 0,
+						"w": 0
+					}
+				}
+			]
+		},
+		"close_cancels_everything_live": {
+			"ids": [
+				"ultron-task-00000000-0000-4000-8000-000000000000",
+				"ultron-task-00000000-0000-4000-8000-000000000001",
+				"ultron-task-00000000-0000-4000-8000-000000000002"
+			],
+			"keys": [
+				"00000000-0000-4000-9000-000000000000",
+				"00000000-0000-4000-9000-000000000001",
+				"00000000-0000-4000-9000-000000000002"
+			],
+			"steps": [
+				{
+					"op": "spawn",
+					"as": "a",
+					"prompt": "A",
+					"outcome": {
+						"ok": {
+							"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+							"state": "admitted"
+						}
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "56f97aaac48bc1628de703db94676bb1df1dd6c43ed85578f93dc4db8e972427",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "running"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0
+					}
+				},
+				{
+					"op": "spawn",
+					"as": "b",
+					"prompt": "B",
+					"from": "a",
+					"outcome": {
+						"ok": {
+							"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+							"state": "admitted"
+						}
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "56f97aaac48bc1628de703db94676bb1df1dd6c43ed85578f93dc4db8e972427",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "e5bc9a367b434eb3645753a0d458a786dd5789691a73aa2f065f54d2a59e90ff",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "running",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"b": 0
+					}
+				},
+				{
+					"op": "spawn",
+					"as": "c",
+					"prompt": "C",
+					"outcome": {
+						"ok": {
+							"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+							"state": "admitted"
+						}
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "56f97aaac48bc1628de703db94676bb1df1dd6c43ed85578f93dc4db8e972427",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "e5bc9a367b434eb3645753a0d458a786dd5789691a73aa2f065f54d2a59e90ff",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "running",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "e7f6c9ac8e8c9b4ef7ef94f51bddbbc884f14c25d9004e4040e51d2170430d9b",
+								"key": "00000000-0000-4000-9000-000000000002",
+								"state": "running"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"b": 0,
+						"c": 0
+					}
+				},
+				{
+					"op": "finish",
+					"task": "c",
+					"text": "C done",
+					"outcome": {
+						"ok": {
+							"status": "succeeded",
+							"value": "C done",
+							"verification": "unverified",
+							"verdict": null,
+							"unverified": true
+						}
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "56f97aaac48bc1628de703db94676bb1df1dd6c43ed85578f93dc4db8e972427",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "e5bc9a367b434eb3645753a0d458a786dd5789691a73aa2f065f54d2a59e90ff",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "running",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "e7f6c9ac8e8c9b4ef7ef94f51bddbbc884f14c25d9004e4040e51d2170430d9b",
+								"key": "00000000-0000-4000-9000-000000000002",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "C done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"b": 0,
+						"c": 0
+					}
+				},
+				{
+					"op": "close",
+					"outcome": {
+						"ok": null
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "56f97aaac48bc1628de703db94676bb1df1dd6c43ed85578f93dc4db8e972427",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "cancelled",
+								"result": {
+									"status": "cancelled",
+									"error": "Ultron task host closed",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "e5bc9a367b434eb3645753a0d458a786dd5789691a73aa2f065f54d2a59e90ff",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "cancelled",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"result": {
+									"status": "cancelled",
+									"error": "Ancestor ultron-task-00000000-0000-4000-8000-000000000000 cancelled: Ultron task host closed",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "e7f6c9ac8e8c9b4ef7ef94f51bddbbc884f14c25d9004e4040e51d2170430d9b",
+								"key": "00000000-0000-4000-9000-000000000002",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "C done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							}
+						]
+					},
+					"aborts": {
+						"a": 1,
+						"b": 1,
+						"c": 0
+					}
+				},
+				{
+					"op": "spawn",
+					"as": "late",
+					"prompt": "late",
+					"outcome": {
+						"error": "Ultron task host is closed"
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "56f97aaac48bc1628de703db94676bb1df1dd6c43ed85578f93dc4db8e972427",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "cancelled",
+								"result": {
+									"status": "cancelled",
+									"error": "Ultron task host closed",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "e5bc9a367b434eb3645753a0d458a786dd5789691a73aa2f065f54d2a59e90ff",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "cancelled",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"result": {
+									"status": "cancelled",
+									"error": "Ancestor ultron-task-00000000-0000-4000-8000-000000000000 cancelled: Ultron task host closed",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "e7f6c9ac8e8c9b4ef7ef94f51bddbbc884f14c25d9004e4040e51d2170430d9b",
+								"key": "00000000-0000-4000-9000-000000000002",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "C done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							}
+						]
+					},
+					"aborts": {
+						"a": 1,
+						"b": 1,
+						"c": 0
+					}
+				},
+				{
+					"op": "status",
+					"outcome": {
+						"error": "Ultron task host is closed"
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "56f97aaac48bc1628de703db94676bb1df1dd6c43ed85578f93dc4db8e972427",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "cancelled",
+								"result": {
+									"status": "cancelled",
+									"error": "Ultron task host closed",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "e5bc9a367b434eb3645753a0d458a786dd5789691a73aa2f065f54d2a59e90ff",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "cancelled",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"result": {
+									"status": "cancelled",
+									"error": "Ancestor ultron-task-00000000-0000-4000-8000-000000000000 cancelled: Ultron task host closed",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "e7f6c9ac8e8c9b4ef7ef94f51bddbbc884f14c25d9004e4040e51d2170430d9b",
+								"key": "00000000-0000-4000-9000-000000000002",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "C done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							}
+						]
+					},
+					"aborts": {
+						"a": 1,
+						"b": 1,
+						"c": 0
+					}
+				}
+			]
+		},
+		"restart_interrupts_unfinished": {
+			"ids": [
+				"ultron-task-00000000-0000-4000-8000-000000000000",
+				"ultron-task-00000000-0000-4000-8000-000000000001",
+				"ultron-task-00000000-0000-4000-8000-000000000002",
+				"ultron-task-00000000-0000-4000-8000-000000000003",
+				"ultron-task-00000000-0000-4000-8000-000000000004"
+			],
+			"keys": [
+				"00000000-0000-4000-9000-000000000000",
+				"00000000-0000-4000-9000-000000000001",
+				"00000000-0000-4000-9000-000000000002",
+				"kd",
+				"00000000-0000-4000-9000-000000000003"
+			],
+			"steps": [
+				{
+					"op": "spawn",
+					"as": "a",
+					"prompt": "A",
+					"outcome": {
+						"ok": {
+							"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+							"state": "admitted"
+						}
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "56f97aaac48bc1628de703db94676bb1df1dd6c43ed85578f93dc4db8e972427",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "running"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0
+					}
+				},
+				{
+					"op": "spawn",
+					"as": "b",
+					"prompt": "B",
+					"from": "a",
+					"outcome": {
+						"ok": {
+							"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+							"state": "admitted"
+						}
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "56f97aaac48bc1628de703db94676bb1df1dd6c43ed85578f93dc4db8e972427",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "e5bc9a367b434eb3645753a0d458a786dd5789691a73aa2f065f54d2a59e90ff",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "running",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"b": 0
+					}
+				},
+				{
+					"op": "spawn",
+					"as": "c",
+					"prompt": "C",
+					"outcome": {
+						"ok": {
+							"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+							"state": "admitted"
+						}
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "56f97aaac48bc1628de703db94676bb1df1dd6c43ed85578f93dc4db8e972427",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "e5bc9a367b434eb3645753a0d458a786dd5789691a73aa2f065f54d2a59e90ff",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "running",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "e7f6c9ac8e8c9b4ef7ef94f51bddbbc884f14c25d9004e4040e51d2170430d9b",
+								"key": "00000000-0000-4000-9000-000000000002",
+								"state": "running"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"b": 0,
+						"c": 0
+					}
+				},
+				{
+					"op": "finish",
+					"task": "c",
+					"text": "C done",
+					"outcome": {
+						"ok": {
+							"status": "succeeded",
+							"value": "C done",
+							"verification": "unverified",
+							"verdict": null,
+							"unverified": true
+						}
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "56f97aaac48bc1628de703db94676bb1df1dd6c43ed85578f93dc4db8e972427",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "e5bc9a367b434eb3645753a0d458a786dd5789691a73aa2f065f54d2a59e90ff",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "running",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "e7f6c9ac8e8c9b4ef7ef94f51bddbbc884f14c25d9004e4040e51d2170430d9b",
+								"key": "00000000-0000-4000-9000-000000000002",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "C done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"b": 0,
+						"c": 0
+					}
+				},
+				{
+					"op": "spawn",
+					"as": "d",
+					"prompt": "D",
+					"key": "kd",
+					"outcome": {
+						"ok": {
+							"id": "ultron-task-00000000-0000-4000-8000-000000000003",
+							"state": "admitted"
+						}
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "56f97aaac48bc1628de703db94676bb1df1dd6c43ed85578f93dc4db8e972427",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "e5bc9a367b434eb3645753a0d458a786dd5789691a73aa2f065f54d2a59e90ff",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "running",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "e7f6c9ac8e8c9b4ef7ef94f51bddbbc884f14c25d9004e4040e51d2170430d9b",
+								"key": "00000000-0000-4000-9000-000000000002",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "C done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000003",
+								"definition": "rlm-child@1",
+								"fingerprint": "d891df05003bc356b77f605b5d8066ad0e6f0cdf8cc11007dbee45dd1ba98ec4",
+								"key": "kd",
+								"state": "running"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"b": 0,
+						"c": 0,
+						"d": 0
+					}
+				},
+				{
+					"op": "crash",
+					"outcome": {
+						"ok": null
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "56f97aaac48bc1628de703db94676bb1df1dd6c43ed85578f93dc4db8e972427",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "e5bc9a367b434eb3645753a0d458a786dd5789691a73aa2f065f54d2a59e90ff",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "running",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "e7f6c9ac8e8c9b4ef7ef94f51bddbbc884f14c25d9004e4040e51d2170430d9b",
+								"key": "00000000-0000-4000-9000-000000000002",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "C done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000003",
+								"definition": "rlm-child@1",
+								"fingerprint": "d891df05003bc356b77f605b5d8066ad0e6f0cdf8cc11007dbee45dd1ba98ec4",
+								"key": "kd",
+								"state": "running"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"b": 0,
+						"c": 0,
+						"d": 0
+					}
+				},
+				{
+					"op": "status",
+					"outcome": {
+						"ok": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"state": "interrupted",
+								"result": {
+									"status": "interrupted",
+									"error": "Owner ended; automatic replay is disabled",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"state": "interrupted",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"result": {
+									"status": "interrupted",
+									"error": "Owner ended; automatic replay is disabled",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "C done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000003",
+								"definition": "rlm-child@1",
+								"state": "interrupted",
+								"result": {
+									"status": "interrupted",
+									"error": "Owner ended; automatic replay is disabled",
+									"verification": "unverified"
+								}
+							}
+						]
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "56f97aaac48bc1628de703db94676bb1df1dd6c43ed85578f93dc4db8e972427",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "interrupted",
+								"result": {
+									"status": "interrupted",
+									"error": "Owner ended; automatic replay is disabled",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "e5bc9a367b434eb3645753a0d458a786dd5789691a73aa2f065f54d2a59e90ff",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "interrupted",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"result": {
+									"status": "interrupted",
+									"error": "Owner ended; automatic replay is disabled",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "e7f6c9ac8e8c9b4ef7ef94f51bddbbc884f14c25d9004e4040e51d2170430d9b",
+								"key": "00000000-0000-4000-9000-000000000002",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "C done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000003",
+								"definition": "rlm-child@1",
+								"fingerprint": "d891df05003bc356b77f605b5d8066ad0e6f0cdf8cc11007dbee45dd1ba98ec4",
+								"key": "kd",
+								"state": "interrupted",
+								"result": {
+									"status": "interrupted",
+									"error": "Owner ended; automatic replay is disabled",
+									"verification": "unverified"
+								}
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"b": 0,
+						"c": 0,
+						"d": 0
+					}
+				},
+				{
+					"op": "result",
+					"task": "a",
+					"outcome": {
+						"ok": {
+							"status": "interrupted",
+							"error": "Owner ended; automatic replay is disabled",
+							"verification": "unverified"
+						}
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "56f97aaac48bc1628de703db94676bb1df1dd6c43ed85578f93dc4db8e972427",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "interrupted",
+								"result": {
+									"status": "interrupted",
+									"error": "Owner ended; automatic replay is disabled",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "e5bc9a367b434eb3645753a0d458a786dd5789691a73aa2f065f54d2a59e90ff",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "interrupted",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"result": {
+									"status": "interrupted",
+									"error": "Owner ended; automatic replay is disabled",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "e7f6c9ac8e8c9b4ef7ef94f51bddbbc884f14c25d9004e4040e51d2170430d9b",
+								"key": "00000000-0000-4000-9000-000000000002",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "C done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000003",
+								"definition": "rlm-child@1",
+								"fingerprint": "d891df05003bc356b77f605b5d8066ad0e6f0cdf8cc11007dbee45dd1ba98ec4",
+								"key": "kd",
+								"state": "interrupted",
+								"result": {
+									"status": "interrupted",
+									"error": "Owner ended; automatic replay is disabled",
+									"verification": "unverified"
+								}
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"b": 0,
+						"c": 0,
+						"d": 0
+					}
+				},
+				{
+					"op": "cancel",
+					"task": "a",
+					"outcome": {
+						"ok": {
+							"cancelled": false
+						}
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "56f97aaac48bc1628de703db94676bb1df1dd6c43ed85578f93dc4db8e972427",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "interrupted",
+								"result": {
+									"status": "interrupted",
+									"error": "Owner ended; automatic replay is disabled",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "e5bc9a367b434eb3645753a0d458a786dd5789691a73aa2f065f54d2a59e90ff",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "interrupted",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"result": {
+									"status": "interrupted",
+									"error": "Owner ended; automatic replay is disabled",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "e7f6c9ac8e8c9b4ef7ef94f51bddbbc884f14c25d9004e4040e51d2170430d9b",
+								"key": "00000000-0000-4000-9000-000000000002",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "C done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000003",
+								"definition": "rlm-child@1",
+								"fingerprint": "d891df05003bc356b77f605b5d8066ad0e6f0cdf8cc11007dbee45dd1ba98ec4",
+								"key": "kd",
+								"state": "interrupted",
+								"result": {
+									"status": "interrupted",
+									"error": "Owner ended; automatic replay is disabled",
+									"verification": "unverified"
+								}
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"b": 0,
+						"c": 0,
+						"d": 0
+					}
+				},
+				{
+					"op": "spawn",
+					"as": "d2",
+					"prompt": "D",
+					"key": "kd",
+					"outcome": {
+						"ok": {
+							"id": "ultron-task-00000000-0000-4000-8000-000000000003",
+							"state": "interrupted"
+						}
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "56f97aaac48bc1628de703db94676bb1df1dd6c43ed85578f93dc4db8e972427",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "interrupted",
+								"result": {
+									"status": "interrupted",
+									"error": "Owner ended; automatic replay is disabled",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "e5bc9a367b434eb3645753a0d458a786dd5789691a73aa2f065f54d2a59e90ff",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "interrupted",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"result": {
+									"status": "interrupted",
+									"error": "Owner ended; automatic replay is disabled",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "e7f6c9ac8e8c9b4ef7ef94f51bddbbc884f14c25d9004e4040e51d2170430d9b",
+								"key": "00000000-0000-4000-9000-000000000002",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "C done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000003",
+								"definition": "rlm-child@1",
+								"fingerprint": "d891df05003bc356b77f605b5d8066ad0e6f0cdf8cc11007dbee45dd1ba98ec4",
+								"key": "kd",
+								"state": "interrupted",
+								"result": {
+									"status": "interrupted",
+									"error": "Owner ended; automatic replay is disabled",
+									"verification": "unverified"
+								}
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"b": 0,
+						"c": 0,
+						"d": 0,
+						"d2": 0
+					}
+				},
+				{
+					"op": "spawn",
+					"as": "e",
+					"prompt": "E",
+					"outcome": {
+						"ok": {
+							"id": "ultron-task-00000000-0000-4000-8000-000000000004",
+							"state": "admitted"
+						}
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "56f97aaac48bc1628de703db94676bb1df1dd6c43ed85578f93dc4db8e972427",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "interrupted",
+								"result": {
+									"status": "interrupted",
+									"error": "Owner ended; automatic replay is disabled",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "e5bc9a367b434eb3645753a0d458a786dd5789691a73aa2f065f54d2a59e90ff",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "interrupted",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"result": {
+									"status": "interrupted",
+									"error": "Owner ended; automatic replay is disabled",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "e7f6c9ac8e8c9b4ef7ef94f51bddbbc884f14c25d9004e4040e51d2170430d9b",
+								"key": "00000000-0000-4000-9000-000000000002",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "C done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000003",
+								"definition": "rlm-child@1",
+								"fingerprint": "d891df05003bc356b77f605b5d8066ad0e6f0cdf8cc11007dbee45dd1ba98ec4",
+								"key": "kd",
+								"state": "interrupted",
+								"result": {
+									"status": "interrupted",
+									"error": "Owner ended; automatic replay is disabled",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000004",
+								"definition": "rlm-child@1",
+								"fingerprint": "b3e2d57dd9f83a279c798add7e6741dd03b26024577d23858faa501b6abb9ead",
+								"key": "00000000-0000-4000-9000-000000000003",
+								"state": "running"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"b": 0,
+						"c": 0,
+						"d": 0,
+						"d2": 0,
+						"e": 0
+					}
+				},
+				{
+					"op": "cancel",
+					"task": "e",
+					"outcome": {
+						"ok": {
+							"cancelled": true
+						}
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "56f97aaac48bc1628de703db94676bb1df1dd6c43ed85578f93dc4db8e972427",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "interrupted",
+								"result": {
+									"status": "interrupted",
+									"error": "Owner ended; automatic replay is disabled",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "e5bc9a367b434eb3645753a0d458a786dd5789691a73aa2f065f54d2a59e90ff",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "interrupted",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"result": {
+									"status": "interrupted",
+									"error": "Owner ended; automatic replay is disabled",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "e7f6c9ac8e8c9b4ef7ef94f51bddbbc884f14c25d9004e4040e51d2170430d9b",
+								"key": "00000000-0000-4000-9000-000000000002",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "C done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000003",
+								"definition": "rlm-child@1",
+								"fingerprint": "d891df05003bc356b77f605b5d8066ad0e6f0cdf8cc11007dbee45dd1ba98ec4",
+								"key": "kd",
+								"state": "interrupted",
+								"result": {
+									"status": "interrupted",
+									"error": "Owner ended; automatic replay is disabled",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000004",
+								"definition": "rlm-child@1",
+								"fingerprint": "b3e2d57dd9f83a279c798add7e6741dd03b26024577d23858faa501b6abb9ead",
+								"key": "00000000-0000-4000-9000-000000000003",
+								"state": "cancelled",
+								"result": {
+									"status": "cancelled",
+									"error": "Ultron task cancelled",
+									"verification": "unverified"
+								}
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"b": 0,
+						"c": 0,
+						"d": 0,
+						"d2": 0,
+						"e": 1
+					}
+				},
+				{
+					"op": "status",
+					"outcome": {
+						"ok": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"state": "interrupted",
+								"result": {
+									"status": "interrupted",
+									"error": "Owner ended; automatic replay is disabled",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"state": "interrupted",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"result": {
+									"status": "interrupted",
+									"error": "Owner ended; automatic replay is disabled",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "C done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000003",
+								"definition": "rlm-child@1",
+								"state": "interrupted",
+								"result": {
+									"status": "interrupted",
+									"error": "Owner ended; automatic replay is disabled",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000004",
+								"definition": "rlm-child@1",
+								"state": "cancelled",
+								"result": {
+									"status": "cancelled",
+									"error": "Ultron task cancelled",
+									"verification": "unverified"
+								}
+							}
+						]
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "56f97aaac48bc1628de703db94676bb1df1dd6c43ed85578f93dc4db8e972427",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "interrupted",
+								"result": {
+									"status": "interrupted",
+									"error": "Owner ended; automatic replay is disabled",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "e5bc9a367b434eb3645753a0d458a786dd5789691a73aa2f065f54d2a59e90ff",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "interrupted",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"result": {
+									"status": "interrupted",
+									"error": "Owner ended; automatic replay is disabled",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "e7f6c9ac8e8c9b4ef7ef94f51bddbbc884f14c25d9004e4040e51d2170430d9b",
+								"key": "00000000-0000-4000-9000-000000000002",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "C done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000003",
+								"definition": "rlm-child@1",
+								"fingerprint": "d891df05003bc356b77f605b5d8066ad0e6f0cdf8cc11007dbee45dd1ba98ec4",
+								"key": "kd",
+								"state": "interrupted",
+								"result": {
+									"status": "interrupted",
+									"error": "Owner ended; automatic replay is disabled",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000004",
+								"definition": "rlm-child@1",
+								"fingerprint": "b3e2d57dd9f83a279c798add7e6741dd03b26024577d23858faa501b6abb9ead",
+								"key": "00000000-0000-4000-9000-000000000003",
+								"state": "cancelled",
+								"result": {
+									"status": "cancelled",
+									"error": "Ultron task cancelled",
+									"verification": "unverified"
+								}
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"b": 0,
+						"c": 0,
+						"d": 0,
+						"d2": 0,
+						"e": 1
+					}
+				},
+				{
+					"op": "crash",
+					"outcome": {
+						"ok": null
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "56f97aaac48bc1628de703db94676bb1df1dd6c43ed85578f93dc4db8e972427",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "interrupted",
+								"result": {
+									"status": "interrupted",
+									"error": "Owner ended; automatic replay is disabled",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "e5bc9a367b434eb3645753a0d458a786dd5789691a73aa2f065f54d2a59e90ff",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "interrupted",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"result": {
+									"status": "interrupted",
+									"error": "Owner ended; automatic replay is disabled",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "e7f6c9ac8e8c9b4ef7ef94f51bddbbc884f14c25d9004e4040e51d2170430d9b",
+								"key": "00000000-0000-4000-9000-000000000002",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "C done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000003",
+								"definition": "rlm-child@1",
+								"fingerprint": "d891df05003bc356b77f605b5d8066ad0e6f0cdf8cc11007dbee45dd1ba98ec4",
+								"key": "kd",
+								"state": "interrupted",
+								"result": {
+									"status": "interrupted",
+									"error": "Owner ended; automatic replay is disabled",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000004",
+								"definition": "rlm-child@1",
+								"fingerprint": "b3e2d57dd9f83a279c798add7e6741dd03b26024577d23858faa501b6abb9ead",
+								"key": "00000000-0000-4000-9000-000000000003",
+								"state": "cancelled",
+								"result": {
+									"status": "cancelled",
+									"error": "Ultron task cancelled",
+									"verification": "unverified"
+								}
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"b": 0,
+						"c": 0,
+						"d": 0,
+						"d2": 0,
+						"e": 0
+					}
+				},
+				{
+					"op": "status",
+					"outcome": {
+						"ok": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"state": "interrupted",
+								"result": {
+									"status": "interrupted",
+									"error": "Owner ended; automatic replay is disabled",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"state": "interrupted",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"result": {
+									"status": "interrupted",
+									"error": "Owner ended; automatic replay is disabled",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "C done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000003",
+								"definition": "rlm-child@1",
+								"state": "interrupted",
+								"result": {
+									"status": "interrupted",
+									"error": "Owner ended; automatic replay is disabled",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000004",
+								"definition": "rlm-child@1",
+								"state": "cancelled",
+								"result": {
+									"status": "cancelled",
+									"error": "Ultron task cancelled",
+									"verification": "unverified"
+								}
+							}
+						]
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "56f97aaac48bc1628de703db94676bb1df1dd6c43ed85578f93dc4db8e972427",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "interrupted",
+								"result": {
+									"status": "interrupted",
+									"error": "Owner ended; automatic replay is disabled",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "e5bc9a367b434eb3645753a0d458a786dd5789691a73aa2f065f54d2a59e90ff",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "interrupted",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"result": {
+									"status": "interrupted",
+									"error": "Owner ended; automatic replay is disabled",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "e7f6c9ac8e8c9b4ef7ef94f51bddbbc884f14c25d9004e4040e51d2170430d9b",
+								"key": "00000000-0000-4000-9000-000000000002",
+								"state": "completed",
+								"result": {
+									"status": "succeeded",
+									"value": "C done",
+									"verification": "unverified",
+									"verdict": null,
+									"unverified": true
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000003",
+								"definition": "rlm-child@1",
+								"fingerprint": "d891df05003bc356b77f605b5d8066ad0e6f0cdf8cc11007dbee45dd1ba98ec4",
+								"key": "kd",
+								"state": "interrupted",
+								"result": {
+									"status": "interrupted",
+									"error": "Owner ended; automatic replay is disabled",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000004",
+								"definition": "rlm-child@1",
+								"fingerprint": "b3e2d57dd9f83a279c798add7e6741dd03b26024577d23858faa501b6abb9ead",
+								"key": "00000000-0000-4000-9000-000000000003",
+								"state": "cancelled",
+								"result": {
+									"status": "cancelled",
+									"error": "Ultron task cancelled",
+									"verification": "unverified"
+								}
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"b": 0,
+						"c": 0,
+						"d": 0,
+						"d2": 0,
+						"e": 0
+					}
+				}
+			]
+		},
+		"close_then_reopen": {
+			"ids": [
+				"ultron-task-00000000-0000-4000-8000-000000000000",
+				"ultron-task-00000000-0000-4000-8000-000000000001",
+				"ultron-task-00000000-0000-4000-8000-000000000002"
+			],
+			"keys": [
+				"00000000-0000-4000-9000-000000000000",
+				"00000000-0000-4000-9000-000000000001",
+				"00000000-0000-4000-9000-000000000002"
+			],
+			"steps": [
+				{
+					"op": "spawn",
+					"as": "a",
+					"prompt": "A",
+					"outcome": {
+						"ok": {
+							"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+							"state": "admitted"
+						}
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "56f97aaac48bc1628de703db94676bb1df1dd6c43ed85578f93dc4db8e972427",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "running"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0
+					}
+				},
+				{
+					"op": "spawn",
+					"as": "b",
+					"prompt": "B",
+					"from": "a",
+					"outcome": {
+						"ok": {
+							"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+							"state": "admitted"
+						}
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "56f97aaac48bc1628de703db94676bb1df1dd6c43ed85578f93dc4db8e972427",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "running"
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "e5bc9a367b434eb3645753a0d458a786dd5789691a73aa2f065f54d2a59e90ff",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "running",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"b": 0
+					}
+				},
+				{
+					"op": "reopen",
+					"outcome": {
+						"ok": null
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "56f97aaac48bc1628de703db94676bb1df1dd6c43ed85578f93dc4db8e972427",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "cancelled",
+								"result": {
+									"status": "cancelled",
+									"error": "Ultron task host closed",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "e5bc9a367b434eb3645753a0d458a786dd5789691a73aa2f065f54d2a59e90ff",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "cancelled",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"result": {
+									"status": "cancelled",
+									"error": "Ancestor ultron-task-00000000-0000-4000-8000-000000000000 cancelled: Ultron task host closed",
+									"verification": "unverified"
+								}
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"b": 0
+					}
+				},
+				{
+					"op": "status",
+					"outcome": {
+						"ok": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"state": "cancelled",
+								"result": {
+									"status": "cancelled",
+									"error": "Ultron task host closed",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"state": "cancelled",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"result": {
+									"status": "cancelled",
+									"error": "Ancestor ultron-task-00000000-0000-4000-8000-000000000000 cancelled: Ultron task host closed",
+									"verification": "unverified"
+								}
+							}
+						]
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "56f97aaac48bc1628de703db94676bb1df1dd6c43ed85578f93dc4db8e972427",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "cancelled",
+								"result": {
+									"status": "cancelled",
+									"error": "Ultron task host closed",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "e5bc9a367b434eb3645753a0d458a786dd5789691a73aa2f065f54d2a59e90ff",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "cancelled",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"result": {
+									"status": "cancelled",
+									"error": "Ancestor ultron-task-00000000-0000-4000-8000-000000000000 cancelled: Ultron task host closed",
+									"verification": "unverified"
+								}
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"b": 0
+					}
+				},
+				{
+					"op": "spawn",
+					"as": "c",
+					"prompt": "C",
+					"from": "a",
+					"outcome": {
+						"ok": {
+							"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+							"state": "admitted"
+						}
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "56f97aaac48bc1628de703db94676bb1df1dd6c43ed85578f93dc4db8e972427",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "cancelled",
+								"result": {
+									"status": "cancelled",
+									"error": "Ultron task host closed",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "e5bc9a367b434eb3645753a0d458a786dd5789691a73aa2f065f54d2a59e90ff",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "cancelled",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"result": {
+									"status": "cancelled",
+									"error": "Ancestor ultron-task-00000000-0000-4000-8000-000000000000 cancelled: Ultron task host closed",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "e7f6c9ac8e8c9b4ef7ef94f51bddbbc884f14c25d9004e4040e51d2170430d9b",
+								"key": "00000000-0000-4000-9000-000000000002",
+								"state": "running"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"b": 0,
+						"c": 0
+					}
+				},
+				{
+					"op": "status",
+					"outcome": {
+						"ok": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"state": "cancelled",
+								"result": {
+									"status": "cancelled",
+									"error": "Ultron task host closed",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"state": "cancelled",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"result": {
+									"status": "cancelled",
+									"error": "Ancestor ultron-task-00000000-0000-4000-8000-000000000000 cancelled: Ultron task host closed",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"state": "running"
+							}
+						]
+					},
+					"stored": {
+						"version": 1,
+						"tasks": [
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"definition": "rlm-child@1",
+								"fingerprint": "56f97aaac48bc1628de703db94676bb1df1dd6c43ed85578f93dc4db8e972427",
+								"key": "00000000-0000-4000-9000-000000000000",
+								"state": "cancelled",
+								"result": {
+									"status": "cancelled",
+									"error": "Ultron task host closed",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000001",
+								"definition": "rlm-child@1",
+								"fingerprint": "e5bc9a367b434eb3645753a0d458a786dd5789691a73aa2f065f54d2a59e90ff",
+								"key": "00000000-0000-4000-9000-000000000001",
+								"state": "cancelled",
+								"parentId": "ultron-task-00000000-0000-4000-8000-000000000000",
+								"result": {
+									"status": "cancelled",
+									"error": "Ancestor ultron-task-00000000-0000-4000-8000-000000000000 cancelled: Ultron task host closed",
+									"verification": "unverified"
+								}
+							},
+							{
+								"id": "ultron-task-00000000-0000-4000-8000-000000000002",
+								"definition": "rlm-child@1",
+								"fingerprint": "e7f6c9ac8e8c9b4ef7ef94f51bddbbc884f14c25d9004e4040e51d2170430d9b",
+								"key": "00000000-0000-4000-9000-000000000002",
+								"state": "running"
+							}
+						]
+					},
+					"aborts": {
+						"a": 0,
+						"b": 0,
+						"c": 0
+					}
+				}
+			]
+		}
+	}
+}

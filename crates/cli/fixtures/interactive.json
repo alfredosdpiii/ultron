@@ -1,0 +1,495 @@
+{
+ "scenarios": [
+  {
+   "name": "startup",
+   "replies": [],
+   "steps": [
+    {
+     "wait": "Session:"
+    }
+   ],
+   "cols": 100,
+   "rows": 30,
+   "captures": [
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n"
+   ]
+  },
+  {
+   "name": "prompt-rlm-cell",
+   "replies": [
+    {
+     "chunks": [
+      "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"id\":\"msg_2\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"claude-sonnet-4-5\",\"content\":[],\"stop_reason\":null,\"usage\":{\"input_tokens\":10,\"output_tokens\":1}}}\n\n",
+      "event: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"tool_use\",\"id\":\"toolu_01\",\"name\":\"rlm\",\"input\":{}}}\n\n",
+      "event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"{\\\"code\\\":\\\"x = 6 * 7\\\\nprint('x is', x)\\\\nx + 1\\\"}\"}}\n\n",
+      "event: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0}\n\n",
+      "event: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"tool_use\"},\"usage\":{\"output_tokens\":7}}\n\n",
+      "event: message_stop\ndata: {\"type\":\"message_stop\"}\n\n"
+     ]
+    },
+    {
+     "chunks": [
+      "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"id\":\"msg_1\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"claude-sonnet-4-5\",\"content\":[],\"stop_reason\":null,\"usage\":{\"input_tokens\":10,\"output_tokens\":1}}}\n\n",
+      "event: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}\n\n",
+      "event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"Done: **43**.\"}}\n\n",
+      "event: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0}\n\n",
+      "event: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\"},\"usage\":{\"output_tokens\":5}}\n\n",
+      "event: message_stop\ndata: {\"type\":\"message_stop\"}\n\n"
+     ]
+    }
+   ],
+   "steps": [
+    {
+     "wait": "Session:"
+    },
+    {
+     "type": "compute",
+     "keys": [
+      "Enter"
+     ],
+     "wait": "Done: 43."
+    }
+   ],
+   "cols": 100,
+   "rows": 30,
+   "captures": [
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n",
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n compute\n\n\n\n rlm python · 3 lines\n\n 1 │ x = 6 * 7\n 2 │ print('x is', x)\n 3 │ x + 1\n\n output\n x is 42\n 43\n\n\n Done: 43.\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n↑20 ↓12 $0.000 0.0%/1.0M (auto)                                           claude-sonnet-4-5 • medium\n"
+   ]
+  },
+  {
+   "name": "streaming-and-steer",
+   "replies": [
+    {
+     "chunks": [
+      "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"id\":\"msg_1\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"claude-sonnet-4-5\",\"content\":[],\"stop_reason\":null,\"usage\":{\"input_tokens\":10,\"output_tokens\":1}}}\n\n",
+      "event: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}\n\n",
+      "event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"Hello\"}}\n\n",
+      "event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\" there\"}}\n\n",
+      "event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\" friend.\"}}\n\n",
+      "event: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0}\n\n",
+      "event: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\"},\"usage\":{\"output_tokens\":5}}\n\n",
+      "event: message_stop\ndata: {\"type\":\"message_stop\"}\n\n"
+     ],
+     "holdAfter": 3
+    },
+    {
+     "chunks": [
+      "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"id\":\"msg_1\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"claude-sonnet-4-5\",\"content\":[],\"stop_reason\":null,\"usage\":{\"input_tokens\":10,\"output_tokens\":1}}}\n\n",
+      "event: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}\n\n",
+      "event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"Steered reply.\"}}\n\n",
+      "event: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0}\n\n",
+      "event: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\"},\"usage\":{\"output_tokens\":5}}\n\n",
+      "event: message_stop\ndata: {\"type\":\"message_stop\"}\n\n"
+     ]
+    }
+   ],
+   "steps": [
+    {
+     "wait": "Session:"
+    },
+    {
+     "type": "hi",
+     "keys": [
+      "Enter"
+     ],
+     "wait": "Hello"
+    },
+    {
+     "type": "also this",
+     "keys": [
+      "Enter"
+     ],
+     "wait": "Steering: also this"
+    },
+    {
+     "release": true,
+     "wait": "Steered reply."
+    }
+   ],
+   "cols": 100,
+   "rows": 30,
+   "captures": [
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n",
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n hi\n\n\n Hello\n\n\n\n\n\n\n\n\n\n\n\n\n Running turn…\n\n * Working... (escape to abort)\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n",
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n hi\n\n\n Hello\n\n\n\n\n\n\n\n\n\n\n Steering: also this\n ↳ Alt+Up to edit all queued messages\n Queued <ID>.\n\n * Working... (escape to abort)\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n",
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n hi\n\n\n Hello there friend.\n\n\n also this\n\n\n Steered reply.\n\n\n\n\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n↑20 ↓10 $0.000 0.0%/1.0M (auto)                                           claude-sonnet-4-5 • medium\n"
+   ]
+  },
+  {
+   "name": "escape-abort",
+   "replies": [
+    {
+     "chunks": [
+      "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"id\":\"msg_1\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"claude-sonnet-4-5\",\"content\":[],\"stop_reason\":null,\"usage\":{\"input_tokens\":10,\"output_tokens\":1}}}\n\n",
+      "event: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}\n\n",
+      "event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"Partial\"}}\n\n",
+      "event: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0}\n\n",
+      "event: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\"},\"usage\":{\"output_tokens\":5}}\n\n",
+      "event: message_stop\ndata: {\"type\":\"message_stop\"}\n\n"
+     ],
+     "holdAfter": 3
+    }
+   ],
+   "steps": [
+    {
+     "wait": "Session:"
+    },
+    {
+     "type": "go",
+     "keys": [
+      "Enter"
+     ],
+     "wait": "Partial"
+    },
+    {
+     "keys": [
+      "Escape"
+     ],
+     "wait": "operation was aborted"
+    }
+   ],
+   "cols": 100,
+   "rows": 30,
+   "captures": [
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n",
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n go\n\n\n Partial\n\n\n\n\n\n\n\n\n\n\n\n\n Running turn…\n\n * Working... (escape to abort)\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n",
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n go\n\n\n Partial\n\n This operation was aborted\n\n\n\n\n\n\n\n\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n↑10 ↓1 $0.000 0.0%/1.0M (auto)                                            claude-sonnet-4-5 • medium\n"
+   ]
+  },
+  {
+   "name": "ctrl-c-clear",
+   "replies": [],
+   "steps": [
+    {
+     "wait": "Session:"
+    },
+    {
+     "type": "draft text",
+     "wait": "draft text"
+    },
+    {
+     "keys": [
+      "C-c"
+     ],
+     "wait": "Session:"
+    }
+   ],
+   "cols": 100,
+   "rows": 30,
+   "captures": [
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n",
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n draft text\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n",
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n"
+   ]
+  },
+  {
+   "name": "slash-list",
+   "replies": [],
+   "steps": [
+    {
+     "wait": "Session:"
+    },
+    {
+     "type": "/",
+     "wait": "(1/38)"
+    },
+    {
+     "type": "se",
+     "wait": "(1/6)"
+    },
+    {
+     "keys": [
+      "Down",
+      "Down"
+     ],
+     "wait": "(3/6)"
+    }
+   ],
+   "cols": 100,
+   "rows": 30,
+   "captures": [
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n",
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n /\n────────────────────────────────────────────────────────────────────────────────────────────────────\n → name           <name> — Set session display name\n   session        Show session info and stats\n   usage          What this session did: depth (frames, sub-agents), cells, tokens and cost, guar\n   goal           [objective | pause | resume | clear | check <command>] — Set a goal the agent w\n   copy           Copy last agent message to clipboard\n   (1/38)\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n",
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n /se\n────────────────────────────────────────────────────────────────────────────────────────────────────\n → session        Show session info and stats\n   settings       Open settings menu\n   share          Share session as a secret GitHub gist\n   scoped-models  Enable/disable models for Ctrl+P cycling\n   usage          What this session did: depth (frames, sub-agents), cells, tokens and cost, guar\n   (1/6)\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n",
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n /se\n────────────────────────────────────────────────────────────────────────────────────────────────────\n   session        Show session info and stats\n   settings       Open settings menu\n → share          Share session as a secret GitHub gist\n   scoped-models  Enable/disable models for Ctrl+P cycling\n   usage          What this session did: depth (frames, sub-agents), cells, tokens and cost, guar\n   (3/6)\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n"
+   ]
+  },
+  {
+   "name": "unknown-command",
+   "replies": [],
+   "steps": [
+    {
+     "wait": "Session:"
+    },
+    {
+     "type": "/nope",
+     "keys": [
+      "Enter"
+     ],
+     "wait": "Unknown slash command"
+    }
+   ],
+   "cols": 100,
+   "rows": 30,
+   "captures": [
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n",
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n Unknown slash command: /nope\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n"
+   ]
+  },
+  {
+   "name": "session-info",
+   "replies": [
+    {
+     "chunks": [
+      "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"id\":\"msg_1\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"claude-sonnet-4-5\",\"content\":[],\"stop_reason\":null,\"usage\":{\"input_tokens\":10,\"output_tokens\":1}}}\n\n",
+      "event: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}\n\n",
+      "event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"Hi.\"}}\n\n",
+      "event: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0}\n\n",
+      "event: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\"},\"usage\":{\"output_tokens\":5}}\n\n",
+      "event: message_stop\ndata: {\"type\":\"message_stop\"}\n\n"
+     ]
+    }
+   ],
+   "steps": [
+    {
+     "wait": "Session:"
+    },
+    {
+     "type": "hello",
+     "keys": [
+      "Enter"
+     ],
+     "wait": "Hi."
+    },
+    {
+     "type": "/session",
+     "keys": [
+      "Enter"
+     ],
+     "wait": "Session Info"
+    }
+   ],
+   "cols": 100,
+   "rows": 30,
+   "captures": [
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n",
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n hello\n\n\n Hi.\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n↑10 ↓5 $0.000 0.0%/1.0M (auto)                                            claude-sonnet-4-5 • medium\n",
+    " Hi.\n\n Session Info\n\n File:\n <TMP>/agent/experimental/sessions/--<TMPNAME>-cwd--/<TIME>_<ID>.jsonl\n ID: <ID>\n\n Messages\n Total: 2\n User: 1\n Assistant: 1\n Tools: 0 calls, 0 results\n\n Tokens\n Input: 10\n Output: 5\n Total: 15\n\n Context\n Used: 15/1.0M (0.0%)\n\n Cost\n Total: $0.000\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n↑10 ↓5 $0.000 0.0%/1.0M (auto)                                            claude-sonnet-4-5 • medium\n"
+   ]
+  },
+  {
+   "name": "hotkeys",
+   "rows": 90,
+   "replies": [],
+   "steps": [
+    {
+     "wait": "Session:"
+    },
+    {
+     "type": "/hotkeys",
+     "keys": [
+      "Enter"
+     ],
+     "wait": "excluded from context"
+    }
+   ],
+   "cols": 100,
+   "captures": [
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n",
+    " │ Ctrl+]                                                │ Jump forward to character           │\n ├───────────────────────────────────────────────────────┼─────────────────────────────────────┤\n │ Ctrl+Alt+]                                            │ Jump backward to character          │\n ├───────────────────────────────────────────────────────┼─────────────────────────────────────┤\n │ PageUp/Ctrl+PageUp / PageDown/Ctrl+PageDown           │ Scroll by page                      │\n └───────────────────────────────────────────────────────┴─────────────────────────────────────┘\n\n Editing\n\n ┌──────────────────────┬──────────────────────────────────────────────┐\n │ Key                  │ Action                                       │\n ├──────────────────────┼──────────────────────────────────────────────┤\n │ Enter                │ Send message (steers while a turn runs)      │\n ├──────────────────────┼──────────────────────────────────────────────┤\n │ Shift+Enter/Ctrl+J   │ New line                                     │\n ├──────────────────────┼──────────────────────────────────────────────┤\n │ Ctrl+W/Alt+Backspace │ Delete word backwards                        │\n ├──────────────────────┼──────────────────────────────────────────────┤\n │ Alt+D/Alt+Delete     │ Delete word forwards                         │\n ├──────────────────────┼──────────────────────────────────────────────┤\n │ Ctrl+U               │ Delete to start of line                      │\n ├──────────────────────┼──────────────────────────────────────────────┤\n │ Ctrl+K               │ Delete to end of line                        │\n ├──────────────────────┼──────────────────────────────────────────────┤\n │ Ctrl+Y               │ Paste the most-recently-deleted text         │\n ├──────────────────────┼──────────────────────────────────────────────┤\n │ Alt+Y                │ Cycle through the deleted text after pasting │\n ├──────────────────────┼──────────────────────────────────────────────┤\n │ Ctrl+-               │ Undo                                         │\n └──────────────────────┴──────────────────────────────────────────────┘\n\n Other\n\n ┌──────────────────────┬─────────────────────────────────────────────────────────────────────────┐\n │ Key                  │ Action                                                                  │\n ├──────────────────────┼─────────────────────────────────────────────────────────────────────────┤\n │ Tab                  │ Path completion / accept autocomplete                                   │\n ├──────────────────────┼─────────────────────────────────────────────────────────────────────────┤\n │ Escape               │ Cancel autocomplete / abort the turn                                    │\n ├──────────────────────┼─────────────────────────────────────────────────────────────────────────┤\n │ Ctrl+C               │ Clear editor (first) / exit (second)                                    │\n ├──────────────────────┼─────────────────────────────────────────────────────────────────────────┤\n │ Ctrl+D               │ Exit (when editor is empty)                                             │\n ├──────────────────────┼─────────────────────────────────────────────────────────────────────────┤\n │ Ctrl+Z               │ Suspend to background                                                   │\n ├──────────────────────┼─────────────────────────────────────────────────────────────────────────┤\n │ Shift+Tab            │ Cycle thinking level                                                    │\n ├──────────────────────┼─────────────────────────────────────────────────────────────────────────┤\n │ Ctrl+P /             │ Cycle models                                                            │\n │ Shift+Ctrl+P         │                                                                         │\n ├──────────────────────┼─────────────────────────────────────────────────────────────────────────┤\n │ Ctrl+L               │ Open model selector                                                     │\n ├──────────────────────┼─────────────────────────────────────────────────────────────────────────┤\n │ Ctrl+O               │ Toggle tool output expansion                                            │\n ├──────────────────────┼─────────────────────────────────────────────────────────────────────────┤\n │ Ctrl+T               │ Toggle thinking block visibility                                        │\n ├──────────────────────┼─────────────────────────────────────────────────────────────────────────┤\n │ Ctrl+G               │ Edit message in external editor                                         │\n ├──────────────────────┼─────────────────────────────────────────────────────────────────────────┤\n │ Ctrl+X               │ Copy last assistant message                                             │\n ├──────────────────────┼─────────────────────────────────────────────────────────────────────────┤\n │ Alt+Enter            │ Queue follow-up message                                                 │\n ├──────────────────────┼─────────────────────────────────────────────────────────────────────────┤\n │ Alt+Up               │ Restore queued messages                                                 │\n ├──────────────────────┼─────────────────────────────────────────────────────────────────────────┤\n │ Ctrl+V               │ Paste image or text from clipboard                                      │\n ├──────────────────────┼─────────────────────────────────────────────────────────────────────────┤\n │ Ctrl+R               │ Toggle the live RLM panel                                               │\n ├──────────────────────┼─────────────────────────────────────────────────────────────────────────┤\n │ Alt+G                │ Open the full-screen RLM graph                                          │\n ├──────────────────────┼─────────────────────────────────────────────────────────────────────────┤\n │ Alt+W                │ Open the RLM pane beside the chat, or move the focus between it and the │\n │                      │ chat                                                                    │\n ├──────────────────────┼─────────────────────────────────────────────────────────────────────────┤\n │ /                    │ Slash commands                                                          │\n ├──────────────────────┼─────────────────────────────────────────────────────────────────────────┤\n │ /usage               │ What this session did: depth (frames, sub-agents), cells, tokens and    │\n │                      │ cost, guardrails                                                        │\n ├──────────────────────┼─────────────────────────────────────────────────────────────────────────┤\n │ !                    │ Run bash command                                                        │\n ├──────────────────────┼─────────────────────────────────────────────────────────────────────────┤\n │ !!                   │ Run bash command (excluded from context)                                │\n └──────────────────────┴─────────────────────────────────────────────────────────────────────────┘\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n"
+   ]
+  },
+  {
+   "name": "new-session",
+   "replies": [
+    {
+     "chunks": [
+      "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"id\":\"msg_1\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"claude-sonnet-4-5\",\"content\":[],\"stop_reason\":null,\"usage\":{\"input_tokens\":10,\"output_tokens\":1}}}\n\n",
+      "event: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}\n\n",
+      "event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"First.\"}}\n\n",
+      "event: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0}\n\n",
+      "event: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\"},\"usage\":{\"output_tokens\":5}}\n\n",
+      "event: message_stop\ndata: {\"type\":\"message_stop\"}\n\n"
+     ]
+    }
+   ],
+   "steps": [
+    {
+     "wait": "Session:"
+    },
+    {
+     "type": "one",
+     "keys": [
+      "Enter"
+     ],
+     "wait": "First."
+    },
+    {
+     "type": "/new",
+     "keys": [
+      "Enter"
+     ],
+     "wait": "New session started"
+    }
+   ],
+   "cols": 100,
+   "rows": 30,
+   "captures": [
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n",
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n one\n\n\n First.\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n↑10 ↓5 $0.000 0.0%/1.0M (auto)                                            claude-sonnet-4-5 • medium\n",
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n ✓ New session started\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n"
+   ]
+  },
+  {
+   "name": "copy-empty",
+   "replies": [],
+   "steps": [
+    {
+     "wait": "Session:"
+    },
+    {
+     "type": "/copy",
+     "keys": [
+      "Enter"
+     ],
+     "wait": "No agent messages"
+    }
+   ],
+   "cols": 100,
+   "rows": 30,
+   "captures": [
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n",
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n Error: No agent messages to copy yet.\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n"
+   ]
+  },
+  {
+   "name": "model-selector",
+   "replies": [],
+   "steps": [
+    {
+     "wait": "Session:"
+    },
+    {
+     "type": "/model",
+     "keys": [
+      "Enter"
+     ],
+     "wait": "claude"
+    },
+    {
+     "keys": [
+      "Escape"
+     ],
+     "wait": "Session:"
+    }
+   ],
+   "cols": 100,
+   "rows": 30,
+   "captures": [
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n",
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n\n Select model:\n\n  Claude Haiku 5.5                anthropic/claude-haiku-5-5\n  Claude Opus 4.5 (latest)        anthropic/claude-opus-4-5\n  Claude Opus 4.5                 anthropic/claude-opus-4-5-20251101\n  Claude Opus 4.6                 anthropic/claude-opus-4-6\n  Claude Opus 4.7                 anthropic/claude-opus-4-7\n  Claude Opus 4.8                 anthropic/claude-opus-4-8\n  Claude Opus 5                   anthropic/claude-opus-5\n  Claude Opus 5.5                 anthropic/claude-opus-5-5\n→ Claude Sonnet 4.5 (latest) (se  anthropic/claude-sonnet-4-5\n  Claude Sonnet 4.5               anthropic/claude-sonnet-4-5-20250929\n  Claude Sonnet 4.6               anthropic/claude-sonnet-4-6\n  Claude Sonnet 5                 anthropic/claude-sonnet-5\n  (13/16)\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n",
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n"
+   ]
+  },
+  {
+   "name": "quit",
+   "replies": [],
+   "steps": [
+    {
+     "wait": "Session:"
+    },
+    {
+     "type": "/quit",
+     "keys": [
+      "Enter"
+     ],
+     "wait": "<exited>"
+    }
+   ],
+   "cols": 100,
+   "rows": 30,
+   "captures": [
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n",
+    " ultron v0.87.39\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n<exited>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
+   ]
+  },
+  {
+   "name": "quit-after-turn",
+   "replies": [
+    {
+     "chunks": [
+      "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"id\":\"msg_1\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"claude-sonnet-4-5\",\"content\":[],\"stop_reason\":null,\"usage\":{\"input_tokens\":10,\"output_tokens\":1}}}\n\n",
+      "event: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}\n\n",
+      "event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"Bye now.\"}}\n\n",
+      "event: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0}\n\n",
+      "event: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\"},\"usage\":{\"output_tokens\":5}}\n\n",
+      "event: message_stop\ndata: {\"type\":\"message_stop\"}\n\n"
+     ]
+    }
+   ],
+   "steps": [
+    {
+     "wait": "Session:"
+    },
+    {
+     "type": "hello",
+     "keys": [
+      "Enter"
+     ],
+     "wait": "Bye now."
+    },
+    {
+     "type": "/quit",
+     "keys": [
+      "Enter"
+     ],
+     "wait": "<exited>"
+    }
+   ],
+   "cols": 100,
+   "rows": 30,
+   "captures": [
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n",
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n hello\n\n\n Bye now.\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n↑10 ↓5 $0.000 0.0%/1.0M (auto)                                            claude-sonnet-4-5 • medium\n",
+    " ultron v0.87.39\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n↑10 ↓5 $0.000 0.0%/1.0M (auto)                                            claude-sonnet-4-5 • medium\n<exited>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
+   ]
+  },
+  {
+   "name": "ctrl-d-exit",
+   "replies": [],
+   "steps": [
+    {
+     "wait": "Session:"
+    },
+    {
+     "keys": [
+      "C-d"
+     ],
+     "wait": "<exited>"
+    }
+   ],
+   "cols": 100,
+   "rows": 30,
+   "captures": [
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n",
+    " ultron v0.87.39\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n<exited>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
+   ]
+  },
+  {
+   "name": "splash",
+   "rows": 46,
+   "splash": true,
+   "replies": [],
+   "steps": [
+    {
+     "wait": "Session:"
+    }
+   ],
+   "cols": 100,
+   "captures": [
+    "                         $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$a$$\n                         $$d$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$oo$$\n                         $$db$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$B$$$\n                         $$$d%$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$dd$$$\n                         $$$kdd$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$dd$$$$\n                         $$$$#dd$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$*dpd$$$$\n                         $$$$%dddd$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$dddd$$$$$\n                         $$$$$$kdddh$$$$$$$$$$$$$$$$$$$$$$$$$$$$%addp$$$$$$\n                         $$$$$$$8ddd%$$$$$$$$$$$$$$$$$$$$$$$$$dddpd$$$$$$$$\n                         $$$$$$$$$ddddd$$$$$$$$$$$$$$$$$$$$$$WdddB$$$$$$$$$\n                         $$$$*d$$$$$*dddb$$$$$$$$$$$$$$$$$$Mbddd$$$$%d$$$$$\n                         $$$$8ddd$$$$$dddW$$$$$$$$$$$$$$$ddddd$$$$$hdd$$$$$\n                         $$$$$dddh$$$$$bpdd*$$$$$$$$$$$$oddd$$$$$d%ddd$$$$$\n                         $$$$$ddddd$$$$$$Wdd$$$$$$$$$$$$kdh$$$$$khddd$$$$$$\n                         $$$$$$ddpdd$$$$$$$d$$$$$$$$$$$$d$$$$$$$%dddd$$$$$$\n                         $$$$$$ddddd&$$$$$$$$$$$$$$$$$$$$$$$$$$ddddd$$$$$$$\n                         $$$$$$$hddddd$$$$$$$$$$$$$$$$$$$$$$$8dddddd$$$$$$$\n                         $$$$$$$Mddddddddo$$$$$$$$$$$$$$$$Mdddddddd$$$$$$$$\n                         $$$$$$$$Bdddddddd%$$$$$$$$$$$$$b@dddddddda$$$$$$$$\n                         $$$$$$$$$odddddddddd$$&WWWW$$$Mdddddddddd$$$$$$$$$\n                         $$$$$$$$$$ddddddddddddhddddpdadpdpdddddd$$$$$$$$$$\n                         $$$$$$$$$$$ddddddddddddddddddddpddddddd$$$$$$$$$$$\n                         $$$$$$$$$$$%dddddddddddddddddddddpdddp$$$$$$$$$$$$\n                         $$$$$$$$$$$$ddddddddddddddddddddddddd$$$$$$$$$$$$$\n                         $$$$$$$$$$$$$ddddddddddddddddddddddd$$$$$$$$$$$$$$\n                         $$$$$$$$$$$$$$%ddddd###dddd###adddd$$$$$$$$$$$$$$$\n                         $$$$$$$$$$$$$$$$ddd$$$hdpdd$$$$bd@$$$$$$$$$$$$$$$$\n                         $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n\n ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n"
+   ]
+  }
+ ]
+}

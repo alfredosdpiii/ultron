@@ -1,0 +1,1444 @@
+{
+	"cases": [
+		{
+			"level": 0,
+			"style": "bold",
+			"input": "hello",
+			"output": "hello"
+		},
+		{
+			"level": 0,
+			"style": "bold",
+			"input": "",
+			"output": ""
+		},
+		{
+			"level": 0,
+			"style": "bold",
+			"input": "a\nb",
+			"output": "a\nb"
+		},
+		{
+			"level": 0,
+			"style": "bold",
+			"input": "a\r\nb\n",
+			"output": "a\r\nb\n"
+		},
+		{
+			"level": 0,
+			"style": "bold",
+			"input": "\n",
+			"output": "\n"
+		},
+		{
+			"level": 0,
+			"style": "bold",
+			"input": "x\u001b[22my",
+			"output": "x\u001b[22my"
+		},
+		{
+			"level": 0,
+			"style": "bold",
+			"input": "x\u001b[23m\u001b[24m\u001b[27m\u001b[29my",
+			"output": "x\u001b[23m\u001b[24m\u001b[27m\u001b[29my"
+		},
+		{
+			"level": 0,
+			"style": "bold",
+			"input": "\u001b[1mbold\u001b[22m tail",
+			"output": "\u001b[1mbold\u001b[22m tail"
+		},
+		{
+			"level": 0,
+			"style": "bold",
+			"input": "multi\nline\u001b[22m\r\nend",
+			"output": "multi\nline\u001b[22m\r\nend"
+		},
+		{
+			"level": 0,
+			"style": "bold",
+			"input": "日本 😀",
+			"output": "日本 😀"
+		},
+		{
+			"level": 0,
+			"style": "bold",
+			"input": "\u001b",
+			"output": "\u001b"
+		},
+		{
+			"level": 0,
+			"style": "bold",
+			"input": "a\rb",
+			"output": "a\rb"
+		},
+		{
+			"level": 0,
+			"style": "italic",
+			"input": "hello",
+			"output": "hello"
+		},
+		{
+			"level": 0,
+			"style": "italic",
+			"input": "",
+			"output": ""
+		},
+		{
+			"level": 0,
+			"style": "italic",
+			"input": "a\nb",
+			"output": "a\nb"
+		},
+		{
+			"level": 0,
+			"style": "italic",
+			"input": "a\r\nb\n",
+			"output": "a\r\nb\n"
+		},
+		{
+			"level": 0,
+			"style": "italic",
+			"input": "\n",
+			"output": "\n"
+		},
+		{
+			"level": 0,
+			"style": "italic",
+			"input": "x\u001b[22my",
+			"output": "x\u001b[22my"
+		},
+		{
+			"level": 0,
+			"style": "italic",
+			"input": "x\u001b[23m\u001b[24m\u001b[27m\u001b[29my",
+			"output": "x\u001b[23m\u001b[24m\u001b[27m\u001b[29my"
+		},
+		{
+			"level": 0,
+			"style": "italic",
+			"input": "\u001b[1mbold\u001b[22m tail",
+			"output": "\u001b[1mbold\u001b[22m tail"
+		},
+		{
+			"level": 0,
+			"style": "italic",
+			"input": "multi\nline\u001b[22m\r\nend",
+			"output": "multi\nline\u001b[22m\r\nend"
+		},
+		{
+			"level": 0,
+			"style": "italic",
+			"input": "日本 😀",
+			"output": "日本 😀"
+		},
+		{
+			"level": 0,
+			"style": "italic",
+			"input": "\u001b",
+			"output": "\u001b"
+		},
+		{
+			"level": 0,
+			"style": "italic",
+			"input": "a\rb",
+			"output": "a\rb"
+		},
+		{
+			"level": 0,
+			"style": "underline",
+			"input": "hello",
+			"output": "hello"
+		},
+		{
+			"level": 0,
+			"style": "underline",
+			"input": "",
+			"output": ""
+		},
+		{
+			"level": 0,
+			"style": "underline",
+			"input": "a\nb",
+			"output": "a\nb"
+		},
+		{
+			"level": 0,
+			"style": "underline",
+			"input": "a\r\nb\n",
+			"output": "a\r\nb\n"
+		},
+		{
+			"level": 0,
+			"style": "underline",
+			"input": "\n",
+			"output": "\n"
+		},
+		{
+			"level": 0,
+			"style": "underline",
+			"input": "x\u001b[22my",
+			"output": "x\u001b[22my"
+		},
+		{
+			"level": 0,
+			"style": "underline",
+			"input": "x\u001b[23m\u001b[24m\u001b[27m\u001b[29my",
+			"output": "x\u001b[23m\u001b[24m\u001b[27m\u001b[29my"
+		},
+		{
+			"level": 0,
+			"style": "underline",
+			"input": "\u001b[1mbold\u001b[22m tail",
+			"output": "\u001b[1mbold\u001b[22m tail"
+		},
+		{
+			"level": 0,
+			"style": "underline",
+			"input": "multi\nline\u001b[22m\r\nend",
+			"output": "multi\nline\u001b[22m\r\nend"
+		},
+		{
+			"level": 0,
+			"style": "underline",
+			"input": "日本 😀",
+			"output": "日本 😀"
+		},
+		{
+			"level": 0,
+			"style": "underline",
+			"input": "\u001b",
+			"output": "\u001b"
+		},
+		{
+			"level": 0,
+			"style": "underline",
+			"input": "a\rb",
+			"output": "a\rb"
+		},
+		{
+			"level": 0,
+			"style": "inverse",
+			"input": "hello",
+			"output": "hello"
+		},
+		{
+			"level": 0,
+			"style": "inverse",
+			"input": "",
+			"output": ""
+		},
+		{
+			"level": 0,
+			"style": "inverse",
+			"input": "a\nb",
+			"output": "a\nb"
+		},
+		{
+			"level": 0,
+			"style": "inverse",
+			"input": "a\r\nb\n",
+			"output": "a\r\nb\n"
+		},
+		{
+			"level": 0,
+			"style": "inverse",
+			"input": "\n",
+			"output": "\n"
+		},
+		{
+			"level": 0,
+			"style": "inverse",
+			"input": "x\u001b[22my",
+			"output": "x\u001b[22my"
+		},
+		{
+			"level": 0,
+			"style": "inverse",
+			"input": "x\u001b[23m\u001b[24m\u001b[27m\u001b[29my",
+			"output": "x\u001b[23m\u001b[24m\u001b[27m\u001b[29my"
+		},
+		{
+			"level": 0,
+			"style": "inverse",
+			"input": "\u001b[1mbold\u001b[22m tail",
+			"output": "\u001b[1mbold\u001b[22m tail"
+		},
+		{
+			"level": 0,
+			"style": "inverse",
+			"input": "multi\nline\u001b[22m\r\nend",
+			"output": "multi\nline\u001b[22m\r\nend"
+		},
+		{
+			"level": 0,
+			"style": "inverse",
+			"input": "日本 😀",
+			"output": "日本 😀"
+		},
+		{
+			"level": 0,
+			"style": "inverse",
+			"input": "\u001b",
+			"output": "\u001b"
+		},
+		{
+			"level": 0,
+			"style": "inverse",
+			"input": "a\rb",
+			"output": "a\rb"
+		},
+		{
+			"level": 0,
+			"style": "strikethrough",
+			"input": "hello",
+			"output": "hello"
+		},
+		{
+			"level": 0,
+			"style": "strikethrough",
+			"input": "",
+			"output": ""
+		},
+		{
+			"level": 0,
+			"style": "strikethrough",
+			"input": "a\nb",
+			"output": "a\nb"
+		},
+		{
+			"level": 0,
+			"style": "strikethrough",
+			"input": "a\r\nb\n",
+			"output": "a\r\nb\n"
+		},
+		{
+			"level": 0,
+			"style": "strikethrough",
+			"input": "\n",
+			"output": "\n"
+		},
+		{
+			"level": 0,
+			"style": "strikethrough",
+			"input": "x\u001b[22my",
+			"output": "x\u001b[22my"
+		},
+		{
+			"level": 0,
+			"style": "strikethrough",
+			"input": "x\u001b[23m\u001b[24m\u001b[27m\u001b[29my",
+			"output": "x\u001b[23m\u001b[24m\u001b[27m\u001b[29my"
+		},
+		{
+			"level": 0,
+			"style": "strikethrough",
+			"input": "\u001b[1mbold\u001b[22m tail",
+			"output": "\u001b[1mbold\u001b[22m tail"
+		},
+		{
+			"level": 0,
+			"style": "strikethrough",
+			"input": "multi\nline\u001b[22m\r\nend",
+			"output": "multi\nline\u001b[22m\r\nend"
+		},
+		{
+			"level": 0,
+			"style": "strikethrough",
+			"input": "日本 😀",
+			"output": "日本 😀"
+		},
+		{
+			"level": 0,
+			"style": "strikethrough",
+			"input": "\u001b",
+			"output": "\u001b"
+		},
+		{
+			"level": 0,
+			"style": "strikethrough",
+			"input": "a\rb",
+			"output": "a\rb"
+		},
+		{
+			"level": 1,
+			"style": "bold",
+			"input": "hello",
+			"output": "\u001b[1mhello\u001b[22m"
+		},
+		{
+			"level": 1,
+			"style": "bold",
+			"input": "",
+			"output": ""
+		},
+		{
+			"level": 1,
+			"style": "bold",
+			"input": "a\nb",
+			"output": "\u001b[1ma\u001b[22m\n\u001b[1mb\u001b[22m"
+		},
+		{
+			"level": 1,
+			"style": "bold",
+			"input": "a\r\nb\n",
+			"output": "\u001b[1ma\u001b[22m\r\n\u001b[1mb\u001b[22m\n\u001b[1m\u001b[22m"
+		},
+		{
+			"level": 1,
+			"style": "bold",
+			"input": "\n",
+			"output": "\u001b[1m\u001b[22m\n\u001b[1m\u001b[22m"
+		},
+		{
+			"level": 1,
+			"style": "bold",
+			"input": "x\u001b[22my",
+			"output": "\u001b[1mx\u001b[22m\u001b[1my\u001b[22m"
+		},
+		{
+			"level": 1,
+			"style": "bold",
+			"input": "x\u001b[23m\u001b[24m\u001b[27m\u001b[29my",
+			"output": "\u001b[1mx\u001b[23m\u001b[24m\u001b[27m\u001b[29my\u001b[22m"
+		},
+		{
+			"level": 1,
+			"style": "bold",
+			"input": "\u001b[1mbold\u001b[22m tail",
+			"output": "\u001b[1m\u001b[1mbold\u001b[22m\u001b[1m tail\u001b[22m"
+		},
+		{
+			"level": 1,
+			"style": "bold",
+			"input": "multi\nline\u001b[22m\r\nend",
+			"output": "\u001b[1mmulti\u001b[22m\n\u001b[1mline\u001b[22m\u001b[1m\u001b[22m\r\n\u001b[1mend\u001b[22m"
+		},
+		{
+			"level": 1,
+			"style": "bold",
+			"input": "日本 😀",
+			"output": "\u001b[1m日本 😀\u001b[22m"
+		},
+		{
+			"level": 1,
+			"style": "bold",
+			"input": "\u001b",
+			"output": "\u001b[1m\u001b\u001b[22m"
+		},
+		{
+			"level": 1,
+			"style": "bold",
+			"input": "a\rb",
+			"output": "\u001b[1ma\rb\u001b[22m"
+		},
+		{
+			"level": 1,
+			"style": "italic",
+			"input": "hello",
+			"output": "\u001b[3mhello\u001b[23m"
+		},
+		{
+			"level": 1,
+			"style": "italic",
+			"input": "",
+			"output": ""
+		},
+		{
+			"level": 1,
+			"style": "italic",
+			"input": "a\nb",
+			"output": "\u001b[3ma\u001b[23m\n\u001b[3mb\u001b[23m"
+		},
+		{
+			"level": 1,
+			"style": "italic",
+			"input": "a\r\nb\n",
+			"output": "\u001b[3ma\u001b[23m\r\n\u001b[3mb\u001b[23m\n\u001b[3m\u001b[23m"
+		},
+		{
+			"level": 1,
+			"style": "italic",
+			"input": "\n",
+			"output": "\u001b[3m\u001b[23m\n\u001b[3m\u001b[23m"
+		},
+		{
+			"level": 1,
+			"style": "italic",
+			"input": "x\u001b[22my",
+			"output": "\u001b[3mx\u001b[22my\u001b[23m"
+		},
+		{
+			"level": 1,
+			"style": "italic",
+			"input": "x\u001b[23m\u001b[24m\u001b[27m\u001b[29my",
+			"output": "\u001b[3mx\u001b[23m\u001b[3m\u001b[24m\u001b[27m\u001b[29my\u001b[23m"
+		},
+		{
+			"level": 1,
+			"style": "italic",
+			"input": "\u001b[1mbold\u001b[22m tail",
+			"output": "\u001b[3m\u001b[1mbold\u001b[22m tail\u001b[23m"
+		},
+		{
+			"level": 1,
+			"style": "italic",
+			"input": "multi\nline\u001b[22m\r\nend",
+			"output": "\u001b[3mmulti\u001b[23m\n\u001b[3mline\u001b[22m\u001b[23m\r\n\u001b[3mend\u001b[23m"
+		},
+		{
+			"level": 1,
+			"style": "italic",
+			"input": "日本 😀",
+			"output": "\u001b[3m日本 😀\u001b[23m"
+		},
+		{
+			"level": 1,
+			"style": "italic",
+			"input": "\u001b",
+			"output": "\u001b[3m\u001b\u001b[23m"
+		},
+		{
+			"level": 1,
+			"style": "italic",
+			"input": "a\rb",
+			"output": "\u001b[3ma\rb\u001b[23m"
+		},
+		{
+			"level": 1,
+			"style": "underline",
+			"input": "hello",
+			"output": "\u001b[4mhello\u001b[24m"
+		},
+		{
+			"level": 1,
+			"style": "underline",
+			"input": "",
+			"output": ""
+		},
+		{
+			"level": 1,
+			"style": "underline",
+			"input": "a\nb",
+			"output": "\u001b[4ma\u001b[24m\n\u001b[4mb\u001b[24m"
+		},
+		{
+			"level": 1,
+			"style": "underline",
+			"input": "a\r\nb\n",
+			"output": "\u001b[4ma\u001b[24m\r\n\u001b[4mb\u001b[24m\n\u001b[4m\u001b[24m"
+		},
+		{
+			"level": 1,
+			"style": "underline",
+			"input": "\n",
+			"output": "\u001b[4m\u001b[24m\n\u001b[4m\u001b[24m"
+		},
+		{
+			"level": 1,
+			"style": "underline",
+			"input": "x\u001b[22my",
+			"output": "\u001b[4mx\u001b[22my\u001b[24m"
+		},
+		{
+			"level": 1,
+			"style": "underline",
+			"input": "x\u001b[23m\u001b[24m\u001b[27m\u001b[29my",
+			"output": "\u001b[4mx\u001b[23m\u001b[24m\u001b[4m\u001b[27m\u001b[29my\u001b[24m"
+		},
+		{
+			"level": 1,
+			"style": "underline",
+			"input": "\u001b[1mbold\u001b[22m tail",
+			"output": "\u001b[4m\u001b[1mbold\u001b[22m tail\u001b[24m"
+		},
+		{
+			"level": 1,
+			"style": "underline",
+			"input": "multi\nline\u001b[22m\r\nend",
+			"output": "\u001b[4mmulti\u001b[24m\n\u001b[4mline\u001b[22m\u001b[24m\r\n\u001b[4mend\u001b[24m"
+		},
+		{
+			"level": 1,
+			"style": "underline",
+			"input": "日本 😀",
+			"output": "\u001b[4m日本 😀\u001b[24m"
+		},
+		{
+			"level": 1,
+			"style": "underline",
+			"input": "\u001b",
+			"output": "\u001b[4m\u001b\u001b[24m"
+		},
+		{
+			"level": 1,
+			"style": "underline",
+			"input": "a\rb",
+			"output": "\u001b[4ma\rb\u001b[24m"
+		},
+		{
+			"level": 1,
+			"style": "inverse",
+			"input": "hello",
+			"output": "\u001b[7mhello\u001b[27m"
+		},
+		{
+			"level": 1,
+			"style": "inverse",
+			"input": "",
+			"output": ""
+		},
+		{
+			"level": 1,
+			"style": "inverse",
+			"input": "a\nb",
+			"output": "\u001b[7ma\u001b[27m\n\u001b[7mb\u001b[27m"
+		},
+		{
+			"level": 1,
+			"style": "inverse",
+			"input": "a\r\nb\n",
+			"output": "\u001b[7ma\u001b[27m\r\n\u001b[7mb\u001b[27m\n\u001b[7m\u001b[27m"
+		},
+		{
+			"level": 1,
+			"style": "inverse",
+			"input": "\n",
+			"output": "\u001b[7m\u001b[27m\n\u001b[7m\u001b[27m"
+		},
+		{
+			"level": 1,
+			"style": "inverse",
+			"input": "x\u001b[22my",
+			"output": "\u001b[7mx\u001b[22my\u001b[27m"
+		},
+		{
+			"level": 1,
+			"style": "inverse",
+			"input": "x\u001b[23m\u001b[24m\u001b[27m\u001b[29my",
+			"output": "\u001b[7mx\u001b[23m\u001b[24m\u001b[27m\u001b[7m\u001b[29my\u001b[27m"
+		},
+		{
+			"level": 1,
+			"style": "inverse",
+			"input": "\u001b[1mbold\u001b[22m tail",
+			"output": "\u001b[7m\u001b[1mbold\u001b[22m tail\u001b[27m"
+		},
+		{
+			"level": 1,
+			"style": "inverse",
+			"input": "multi\nline\u001b[22m\r\nend",
+			"output": "\u001b[7mmulti\u001b[27m\n\u001b[7mline\u001b[22m\u001b[27m\r\n\u001b[7mend\u001b[27m"
+		},
+		{
+			"level": 1,
+			"style": "inverse",
+			"input": "日本 😀",
+			"output": "\u001b[7m日本 😀\u001b[27m"
+		},
+		{
+			"level": 1,
+			"style": "inverse",
+			"input": "\u001b",
+			"output": "\u001b[7m\u001b\u001b[27m"
+		},
+		{
+			"level": 1,
+			"style": "inverse",
+			"input": "a\rb",
+			"output": "\u001b[7ma\rb\u001b[27m"
+		},
+		{
+			"level": 1,
+			"style": "strikethrough",
+			"input": "hello",
+			"output": "\u001b[9mhello\u001b[29m"
+		},
+		{
+			"level": 1,
+			"style": "strikethrough",
+			"input": "",
+			"output": ""
+		},
+		{
+			"level": 1,
+			"style": "strikethrough",
+			"input": "a\nb",
+			"output": "\u001b[9ma\u001b[29m\n\u001b[9mb\u001b[29m"
+		},
+		{
+			"level": 1,
+			"style": "strikethrough",
+			"input": "a\r\nb\n",
+			"output": "\u001b[9ma\u001b[29m\r\n\u001b[9mb\u001b[29m\n\u001b[9m\u001b[29m"
+		},
+		{
+			"level": 1,
+			"style": "strikethrough",
+			"input": "\n",
+			"output": "\u001b[9m\u001b[29m\n\u001b[9m\u001b[29m"
+		},
+		{
+			"level": 1,
+			"style": "strikethrough",
+			"input": "x\u001b[22my",
+			"output": "\u001b[9mx\u001b[22my\u001b[29m"
+		},
+		{
+			"level": 1,
+			"style": "strikethrough",
+			"input": "x\u001b[23m\u001b[24m\u001b[27m\u001b[29my",
+			"output": "\u001b[9mx\u001b[23m\u001b[24m\u001b[27m\u001b[29m\u001b[9my\u001b[29m"
+		},
+		{
+			"level": 1,
+			"style": "strikethrough",
+			"input": "\u001b[1mbold\u001b[22m tail",
+			"output": "\u001b[9m\u001b[1mbold\u001b[22m tail\u001b[29m"
+		},
+		{
+			"level": 1,
+			"style": "strikethrough",
+			"input": "multi\nline\u001b[22m\r\nend",
+			"output": "\u001b[9mmulti\u001b[29m\n\u001b[9mline\u001b[22m\u001b[29m\r\n\u001b[9mend\u001b[29m"
+		},
+		{
+			"level": 1,
+			"style": "strikethrough",
+			"input": "日本 😀",
+			"output": "\u001b[9m日本 😀\u001b[29m"
+		},
+		{
+			"level": 1,
+			"style": "strikethrough",
+			"input": "\u001b",
+			"output": "\u001b[9m\u001b\u001b[29m"
+		},
+		{
+			"level": 1,
+			"style": "strikethrough",
+			"input": "a\rb",
+			"output": "\u001b[9ma\rb\u001b[29m"
+		},
+		{
+			"level": 2,
+			"style": "bold",
+			"input": "hello",
+			"output": "\u001b[1mhello\u001b[22m"
+		},
+		{
+			"level": 2,
+			"style": "bold",
+			"input": "",
+			"output": ""
+		},
+		{
+			"level": 2,
+			"style": "bold",
+			"input": "a\nb",
+			"output": "\u001b[1ma\u001b[22m\n\u001b[1mb\u001b[22m"
+		},
+		{
+			"level": 2,
+			"style": "bold",
+			"input": "a\r\nb\n",
+			"output": "\u001b[1ma\u001b[22m\r\n\u001b[1mb\u001b[22m\n\u001b[1m\u001b[22m"
+		},
+		{
+			"level": 2,
+			"style": "bold",
+			"input": "\n",
+			"output": "\u001b[1m\u001b[22m\n\u001b[1m\u001b[22m"
+		},
+		{
+			"level": 2,
+			"style": "bold",
+			"input": "x\u001b[22my",
+			"output": "\u001b[1mx\u001b[22m\u001b[1my\u001b[22m"
+		},
+		{
+			"level": 2,
+			"style": "bold",
+			"input": "x\u001b[23m\u001b[24m\u001b[27m\u001b[29my",
+			"output": "\u001b[1mx\u001b[23m\u001b[24m\u001b[27m\u001b[29my\u001b[22m"
+		},
+		{
+			"level": 2,
+			"style": "bold",
+			"input": "\u001b[1mbold\u001b[22m tail",
+			"output": "\u001b[1m\u001b[1mbold\u001b[22m\u001b[1m tail\u001b[22m"
+		},
+		{
+			"level": 2,
+			"style": "bold",
+			"input": "multi\nline\u001b[22m\r\nend",
+			"output": "\u001b[1mmulti\u001b[22m\n\u001b[1mline\u001b[22m\u001b[1m\u001b[22m\r\n\u001b[1mend\u001b[22m"
+		},
+		{
+			"level": 2,
+			"style": "bold",
+			"input": "日本 😀",
+			"output": "\u001b[1m日本 😀\u001b[22m"
+		},
+		{
+			"level": 2,
+			"style": "bold",
+			"input": "\u001b",
+			"output": "\u001b[1m\u001b\u001b[22m"
+		},
+		{
+			"level": 2,
+			"style": "bold",
+			"input": "a\rb",
+			"output": "\u001b[1ma\rb\u001b[22m"
+		},
+		{
+			"level": 2,
+			"style": "italic",
+			"input": "hello",
+			"output": "\u001b[3mhello\u001b[23m"
+		},
+		{
+			"level": 2,
+			"style": "italic",
+			"input": "",
+			"output": ""
+		},
+		{
+			"level": 2,
+			"style": "italic",
+			"input": "a\nb",
+			"output": "\u001b[3ma\u001b[23m\n\u001b[3mb\u001b[23m"
+		},
+		{
+			"level": 2,
+			"style": "italic",
+			"input": "a\r\nb\n",
+			"output": "\u001b[3ma\u001b[23m\r\n\u001b[3mb\u001b[23m\n\u001b[3m\u001b[23m"
+		},
+		{
+			"level": 2,
+			"style": "italic",
+			"input": "\n",
+			"output": "\u001b[3m\u001b[23m\n\u001b[3m\u001b[23m"
+		},
+		{
+			"level": 2,
+			"style": "italic",
+			"input": "x\u001b[22my",
+			"output": "\u001b[3mx\u001b[22my\u001b[23m"
+		},
+		{
+			"level": 2,
+			"style": "italic",
+			"input": "x\u001b[23m\u001b[24m\u001b[27m\u001b[29my",
+			"output": "\u001b[3mx\u001b[23m\u001b[3m\u001b[24m\u001b[27m\u001b[29my\u001b[23m"
+		},
+		{
+			"level": 2,
+			"style": "italic",
+			"input": "\u001b[1mbold\u001b[22m tail",
+			"output": "\u001b[3m\u001b[1mbold\u001b[22m tail\u001b[23m"
+		},
+		{
+			"level": 2,
+			"style": "italic",
+			"input": "multi\nline\u001b[22m\r\nend",
+			"output": "\u001b[3mmulti\u001b[23m\n\u001b[3mline\u001b[22m\u001b[23m\r\n\u001b[3mend\u001b[23m"
+		},
+		{
+			"level": 2,
+			"style": "italic",
+			"input": "日本 😀",
+			"output": "\u001b[3m日本 😀\u001b[23m"
+		},
+		{
+			"level": 2,
+			"style": "italic",
+			"input": "\u001b",
+			"output": "\u001b[3m\u001b\u001b[23m"
+		},
+		{
+			"level": 2,
+			"style": "italic",
+			"input": "a\rb",
+			"output": "\u001b[3ma\rb\u001b[23m"
+		},
+		{
+			"level": 2,
+			"style": "underline",
+			"input": "hello",
+			"output": "\u001b[4mhello\u001b[24m"
+		},
+		{
+			"level": 2,
+			"style": "underline",
+			"input": "",
+			"output": ""
+		},
+		{
+			"level": 2,
+			"style": "underline",
+			"input": "a\nb",
+			"output": "\u001b[4ma\u001b[24m\n\u001b[4mb\u001b[24m"
+		},
+		{
+			"level": 2,
+			"style": "underline",
+			"input": "a\r\nb\n",
+			"output": "\u001b[4ma\u001b[24m\r\n\u001b[4mb\u001b[24m\n\u001b[4m\u001b[24m"
+		},
+		{
+			"level": 2,
+			"style": "underline",
+			"input": "\n",
+			"output": "\u001b[4m\u001b[24m\n\u001b[4m\u001b[24m"
+		},
+		{
+			"level": 2,
+			"style": "underline",
+			"input": "x\u001b[22my",
+			"output": "\u001b[4mx\u001b[22my\u001b[24m"
+		},
+		{
+			"level": 2,
+			"style": "underline",
+			"input": "x\u001b[23m\u001b[24m\u001b[27m\u001b[29my",
+			"output": "\u001b[4mx\u001b[23m\u001b[24m\u001b[4m\u001b[27m\u001b[29my\u001b[24m"
+		},
+		{
+			"level": 2,
+			"style": "underline",
+			"input": "\u001b[1mbold\u001b[22m tail",
+			"output": "\u001b[4m\u001b[1mbold\u001b[22m tail\u001b[24m"
+		},
+		{
+			"level": 2,
+			"style": "underline",
+			"input": "multi\nline\u001b[22m\r\nend",
+			"output": "\u001b[4mmulti\u001b[24m\n\u001b[4mline\u001b[22m\u001b[24m\r\n\u001b[4mend\u001b[24m"
+		},
+		{
+			"level": 2,
+			"style": "underline",
+			"input": "日本 😀",
+			"output": "\u001b[4m日本 😀\u001b[24m"
+		},
+		{
+			"level": 2,
+			"style": "underline",
+			"input": "\u001b",
+			"output": "\u001b[4m\u001b\u001b[24m"
+		},
+		{
+			"level": 2,
+			"style": "underline",
+			"input": "a\rb",
+			"output": "\u001b[4ma\rb\u001b[24m"
+		},
+		{
+			"level": 2,
+			"style": "inverse",
+			"input": "hello",
+			"output": "\u001b[7mhello\u001b[27m"
+		},
+		{
+			"level": 2,
+			"style": "inverse",
+			"input": "",
+			"output": ""
+		},
+		{
+			"level": 2,
+			"style": "inverse",
+			"input": "a\nb",
+			"output": "\u001b[7ma\u001b[27m\n\u001b[7mb\u001b[27m"
+		},
+		{
+			"level": 2,
+			"style": "inverse",
+			"input": "a\r\nb\n",
+			"output": "\u001b[7ma\u001b[27m\r\n\u001b[7mb\u001b[27m\n\u001b[7m\u001b[27m"
+		},
+		{
+			"level": 2,
+			"style": "inverse",
+			"input": "\n",
+			"output": "\u001b[7m\u001b[27m\n\u001b[7m\u001b[27m"
+		},
+		{
+			"level": 2,
+			"style": "inverse",
+			"input": "x\u001b[22my",
+			"output": "\u001b[7mx\u001b[22my\u001b[27m"
+		},
+		{
+			"level": 2,
+			"style": "inverse",
+			"input": "x\u001b[23m\u001b[24m\u001b[27m\u001b[29my",
+			"output": "\u001b[7mx\u001b[23m\u001b[24m\u001b[27m\u001b[7m\u001b[29my\u001b[27m"
+		},
+		{
+			"level": 2,
+			"style": "inverse",
+			"input": "\u001b[1mbold\u001b[22m tail",
+			"output": "\u001b[7m\u001b[1mbold\u001b[22m tail\u001b[27m"
+		},
+		{
+			"level": 2,
+			"style": "inverse",
+			"input": "multi\nline\u001b[22m\r\nend",
+			"output": "\u001b[7mmulti\u001b[27m\n\u001b[7mline\u001b[22m\u001b[27m\r\n\u001b[7mend\u001b[27m"
+		},
+		{
+			"level": 2,
+			"style": "inverse",
+			"input": "日本 😀",
+			"output": "\u001b[7m日本 😀\u001b[27m"
+		},
+		{
+			"level": 2,
+			"style": "inverse",
+			"input": "\u001b",
+			"output": "\u001b[7m\u001b\u001b[27m"
+		},
+		{
+			"level": 2,
+			"style": "inverse",
+			"input": "a\rb",
+			"output": "\u001b[7ma\rb\u001b[27m"
+		},
+		{
+			"level": 2,
+			"style": "strikethrough",
+			"input": "hello",
+			"output": "\u001b[9mhello\u001b[29m"
+		},
+		{
+			"level": 2,
+			"style": "strikethrough",
+			"input": "",
+			"output": ""
+		},
+		{
+			"level": 2,
+			"style": "strikethrough",
+			"input": "a\nb",
+			"output": "\u001b[9ma\u001b[29m\n\u001b[9mb\u001b[29m"
+		},
+		{
+			"level": 2,
+			"style": "strikethrough",
+			"input": "a\r\nb\n",
+			"output": "\u001b[9ma\u001b[29m\r\n\u001b[9mb\u001b[29m\n\u001b[9m\u001b[29m"
+		},
+		{
+			"level": 2,
+			"style": "strikethrough",
+			"input": "\n",
+			"output": "\u001b[9m\u001b[29m\n\u001b[9m\u001b[29m"
+		},
+		{
+			"level": 2,
+			"style": "strikethrough",
+			"input": "x\u001b[22my",
+			"output": "\u001b[9mx\u001b[22my\u001b[29m"
+		},
+		{
+			"level": 2,
+			"style": "strikethrough",
+			"input": "x\u001b[23m\u001b[24m\u001b[27m\u001b[29my",
+			"output": "\u001b[9mx\u001b[23m\u001b[24m\u001b[27m\u001b[29m\u001b[9my\u001b[29m"
+		},
+		{
+			"level": 2,
+			"style": "strikethrough",
+			"input": "\u001b[1mbold\u001b[22m tail",
+			"output": "\u001b[9m\u001b[1mbold\u001b[22m tail\u001b[29m"
+		},
+		{
+			"level": 2,
+			"style": "strikethrough",
+			"input": "multi\nline\u001b[22m\r\nend",
+			"output": "\u001b[9mmulti\u001b[29m\n\u001b[9mline\u001b[22m\u001b[29m\r\n\u001b[9mend\u001b[29m"
+		},
+		{
+			"level": 2,
+			"style": "strikethrough",
+			"input": "日本 😀",
+			"output": "\u001b[9m日本 😀\u001b[29m"
+		},
+		{
+			"level": 2,
+			"style": "strikethrough",
+			"input": "\u001b",
+			"output": "\u001b[9m\u001b\u001b[29m"
+		},
+		{
+			"level": 2,
+			"style": "strikethrough",
+			"input": "a\rb",
+			"output": "\u001b[9ma\rb\u001b[29m"
+		},
+		{
+			"level": 3,
+			"style": "bold",
+			"input": "hello",
+			"output": "\u001b[1mhello\u001b[22m"
+		},
+		{
+			"level": 3,
+			"style": "bold",
+			"input": "",
+			"output": ""
+		},
+		{
+			"level": 3,
+			"style": "bold",
+			"input": "a\nb",
+			"output": "\u001b[1ma\u001b[22m\n\u001b[1mb\u001b[22m"
+		},
+		{
+			"level": 3,
+			"style": "bold",
+			"input": "a\r\nb\n",
+			"output": "\u001b[1ma\u001b[22m\r\n\u001b[1mb\u001b[22m\n\u001b[1m\u001b[22m"
+		},
+		{
+			"level": 3,
+			"style": "bold",
+			"input": "\n",
+			"output": "\u001b[1m\u001b[22m\n\u001b[1m\u001b[22m"
+		},
+		{
+			"level": 3,
+			"style": "bold",
+			"input": "x\u001b[22my",
+			"output": "\u001b[1mx\u001b[22m\u001b[1my\u001b[22m"
+		},
+		{
+			"level": 3,
+			"style": "bold",
+			"input": "x\u001b[23m\u001b[24m\u001b[27m\u001b[29my",
+			"output": "\u001b[1mx\u001b[23m\u001b[24m\u001b[27m\u001b[29my\u001b[22m"
+		},
+		{
+			"level": 3,
+			"style": "bold",
+			"input": "\u001b[1mbold\u001b[22m tail",
+			"output": "\u001b[1m\u001b[1mbold\u001b[22m\u001b[1m tail\u001b[22m"
+		},
+		{
+			"level": 3,
+			"style": "bold",
+			"input": "multi\nline\u001b[22m\r\nend",
+			"output": "\u001b[1mmulti\u001b[22m\n\u001b[1mline\u001b[22m\u001b[1m\u001b[22m\r\n\u001b[1mend\u001b[22m"
+		},
+		{
+			"level": 3,
+			"style": "bold",
+			"input": "日本 😀",
+			"output": "\u001b[1m日本 😀\u001b[22m"
+		},
+		{
+			"level": 3,
+			"style": "bold",
+			"input": "\u001b",
+			"output": "\u001b[1m\u001b\u001b[22m"
+		},
+		{
+			"level": 3,
+			"style": "bold",
+			"input": "a\rb",
+			"output": "\u001b[1ma\rb\u001b[22m"
+		},
+		{
+			"level": 3,
+			"style": "italic",
+			"input": "hello",
+			"output": "\u001b[3mhello\u001b[23m"
+		},
+		{
+			"level": 3,
+			"style": "italic",
+			"input": "",
+			"output": ""
+		},
+		{
+			"level": 3,
+			"style": "italic",
+			"input": "a\nb",
+			"output": "\u001b[3ma\u001b[23m\n\u001b[3mb\u001b[23m"
+		},
+		{
+			"level": 3,
+			"style": "italic",
+			"input": "a\r\nb\n",
+			"output": "\u001b[3ma\u001b[23m\r\n\u001b[3mb\u001b[23m\n\u001b[3m\u001b[23m"
+		},
+		{
+			"level": 3,
+			"style": "italic",
+			"input": "\n",
+			"output": "\u001b[3m\u001b[23m\n\u001b[3m\u001b[23m"
+		},
+		{
+			"level": 3,
+			"style": "italic",
+			"input": "x\u001b[22my",
+			"output": "\u001b[3mx\u001b[22my\u001b[23m"
+		},
+		{
+			"level": 3,
+			"style": "italic",
+			"input": "x\u001b[23m\u001b[24m\u001b[27m\u001b[29my",
+			"output": "\u001b[3mx\u001b[23m\u001b[3m\u001b[24m\u001b[27m\u001b[29my\u001b[23m"
+		},
+		{
+			"level": 3,
+			"style": "italic",
+			"input": "\u001b[1mbold\u001b[22m tail",
+			"output": "\u001b[3m\u001b[1mbold\u001b[22m tail\u001b[23m"
+		},
+		{
+			"level": 3,
+			"style": "italic",
+			"input": "multi\nline\u001b[22m\r\nend",
+			"output": "\u001b[3mmulti\u001b[23m\n\u001b[3mline\u001b[22m\u001b[23m\r\n\u001b[3mend\u001b[23m"
+		},
+		{
+			"level": 3,
+			"style": "italic",
+			"input": "日本 😀",
+			"output": "\u001b[3m日本 😀\u001b[23m"
+		},
+		{
+			"level": 3,
+			"style": "italic",
+			"input": "\u001b",
+			"output": "\u001b[3m\u001b\u001b[23m"
+		},
+		{
+			"level": 3,
+			"style": "italic",
+			"input": "a\rb",
+			"output": "\u001b[3ma\rb\u001b[23m"
+		},
+		{
+			"level": 3,
+			"style": "underline",
+			"input": "hello",
+			"output": "\u001b[4mhello\u001b[24m"
+		},
+		{
+			"level": 3,
+			"style": "underline",
+			"input": "",
+			"output": ""
+		},
+		{
+			"level": 3,
+			"style": "underline",
+			"input": "a\nb",
+			"output": "\u001b[4ma\u001b[24m\n\u001b[4mb\u001b[24m"
+		},
+		{
+			"level": 3,
+			"style": "underline",
+			"input": "a\r\nb\n",
+			"output": "\u001b[4ma\u001b[24m\r\n\u001b[4mb\u001b[24m\n\u001b[4m\u001b[24m"
+		},
+		{
+			"level": 3,
+			"style": "underline",
+			"input": "\n",
+			"output": "\u001b[4m\u001b[24m\n\u001b[4m\u001b[24m"
+		},
+		{
+			"level": 3,
+			"style": "underline",
+			"input": "x\u001b[22my",
+			"output": "\u001b[4mx\u001b[22my\u001b[24m"
+		},
+		{
+			"level": 3,
+			"style": "underline",
+			"input": "x\u001b[23m\u001b[24m\u001b[27m\u001b[29my",
+			"output": "\u001b[4mx\u001b[23m\u001b[24m\u001b[4m\u001b[27m\u001b[29my\u001b[24m"
+		},
+		{
+			"level": 3,
+			"style": "underline",
+			"input": "\u001b[1mbold\u001b[22m tail",
+			"output": "\u001b[4m\u001b[1mbold\u001b[22m tail\u001b[24m"
+		},
+		{
+			"level": 3,
+			"style": "underline",
+			"input": "multi\nline\u001b[22m\r\nend",
+			"output": "\u001b[4mmulti\u001b[24m\n\u001b[4mline\u001b[22m\u001b[24m\r\n\u001b[4mend\u001b[24m"
+		},
+		{
+			"level": 3,
+			"style": "underline",
+			"input": "日本 😀",
+			"output": "\u001b[4m日本 😀\u001b[24m"
+		},
+		{
+			"level": 3,
+			"style": "underline",
+			"input": "\u001b",
+			"output": "\u001b[4m\u001b\u001b[24m"
+		},
+		{
+			"level": 3,
+			"style": "underline",
+			"input": "a\rb",
+			"output": "\u001b[4ma\rb\u001b[24m"
+		},
+		{
+			"level": 3,
+			"style": "inverse",
+			"input": "hello",
+			"output": "\u001b[7mhello\u001b[27m"
+		},
+		{
+			"level": 3,
+			"style": "inverse",
+			"input": "",
+			"output": ""
+		},
+		{
+			"level": 3,
+			"style": "inverse",
+			"input": "a\nb",
+			"output": "\u001b[7ma\u001b[27m\n\u001b[7mb\u001b[27m"
+		},
+		{
+			"level": 3,
+			"style": "inverse",
+			"input": "a\r\nb\n",
+			"output": "\u001b[7ma\u001b[27m\r\n\u001b[7mb\u001b[27m\n\u001b[7m\u001b[27m"
+		},
+		{
+			"level": 3,
+			"style": "inverse",
+			"input": "\n",
+			"output": "\u001b[7m\u001b[27m\n\u001b[7m\u001b[27m"
+		},
+		{
+			"level": 3,
+			"style": "inverse",
+			"input": "x\u001b[22my",
+			"output": "\u001b[7mx\u001b[22my\u001b[27m"
+		},
+		{
+			"level": 3,
+			"style": "inverse",
+			"input": "x\u001b[23m\u001b[24m\u001b[27m\u001b[29my",
+			"output": "\u001b[7mx\u001b[23m\u001b[24m\u001b[27m\u001b[7m\u001b[29my\u001b[27m"
+		},
+		{
+			"level": 3,
+			"style": "inverse",
+			"input": "\u001b[1mbold\u001b[22m tail",
+			"output": "\u001b[7m\u001b[1mbold\u001b[22m tail\u001b[27m"
+		},
+		{
+			"level": 3,
+			"style": "inverse",
+			"input": "multi\nline\u001b[22m\r\nend",
+			"output": "\u001b[7mmulti\u001b[27m\n\u001b[7mline\u001b[22m\u001b[27m\r\n\u001b[7mend\u001b[27m"
+		},
+		{
+			"level": 3,
+			"style": "inverse",
+			"input": "日本 😀",
+			"output": "\u001b[7m日本 😀\u001b[27m"
+		},
+		{
+			"level": 3,
+			"style": "inverse",
+			"input": "\u001b",
+			"output": "\u001b[7m\u001b\u001b[27m"
+		},
+		{
+			"level": 3,
+			"style": "inverse",
+			"input": "a\rb",
+			"output": "\u001b[7ma\rb\u001b[27m"
+		},
+		{
+			"level": 3,
+			"style": "strikethrough",
+			"input": "hello",
+			"output": "\u001b[9mhello\u001b[29m"
+		},
+		{
+			"level": 3,
+			"style": "strikethrough",
+			"input": "",
+			"output": ""
+		},
+		{
+			"level": 3,
+			"style": "strikethrough",
+			"input": "a\nb",
+			"output": "\u001b[9ma\u001b[29m\n\u001b[9mb\u001b[29m"
+		},
+		{
+			"level": 3,
+			"style": "strikethrough",
+			"input": "a\r\nb\n",
+			"output": "\u001b[9ma\u001b[29m\r\n\u001b[9mb\u001b[29m\n\u001b[9m\u001b[29m"
+		},
+		{
+			"level": 3,
+			"style": "strikethrough",
+			"input": "\n",
+			"output": "\u001b[9m\u001b[29m\n\u001b[9m\u001b[29m"
+		},
+		{
+			"level": 3,
+			"style": "strikethrough",
+			"input": "x\u001b[22my",
+			"output": "\u001b[9mx\u001b[22my\u001b[29m"
+		},
+		{
+			"level": 3,
+			"style": "strikethrough",
+			"input": "x\u001b[23m\u001b[24m\u001b[27m\u001b[29my",
+			"output": "\u001b[9mx\u001b[23m\u001b[24m\u001b[27m\u001b[29m\u001b[9my\u001b[29m"
+		},
+		{
+			"level": 3,
+			"style": "strikethrough",
+			"input": "\u001b[1mbold\u001b[22m tail",
+			"output": "\u001b[9m\u001b[1mbold\u001b[22m tail\u001b[29m"
+		},
+		{
+			"level": 3,
+			"style": "strikethrough",
+			"input": "multi\nline\u001b[22m\r\nend",
+			"output": "\u001b[9mmulti\u001b[29m\n\u001b[9mline\u001b[22m\u001b[29m\r\n\u001b[9mend\u001b[29m"
+		},
+		{
+			"level": 3,
+			"style": "strikethrough",
+			"input": "日本 😀",
+			"output": "\u001b[9m日本 😀\u001b[29m"
+		},
+		{
+			"level": 3,
+			"style": "strikethrough",
+			"input": "\u001b",
+			"output": "\u001b[9m\u001b\u001b[29m"
+		},
+		{
+			"level": 3,
+			"style": "strikethrough",
+			"input": "a\rb",
+			"output": "\u001b[9ma\rb\u001b[29m"
+		}
+	]
+}

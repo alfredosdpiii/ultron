@@ -1,0 +1,3953 @@
+{
+	"generator": "crates/ai/fixtures/generate-rest.mjs",
+	"now": 1767225600000,
+	"scenarios": [
+		{
+			"name": "pi/full-stream",
+			"fn": "stream",
+			"model": {
+				"id": "test-model",
+				"name": "Test Model",
+				"api": "pi-messages",
+				"provider": "radius",
+				"baseUrl": "https://gateway.example.com/v1//",
+				"reasoning": true,
+				"input": [
+					"text",
+					"image"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "system",
+						"content": "You are helpful.",
+						"timestamp": 1,
+						"toolsAdded": [
+							{
+								"name": "read",
+								"description": "Read a file",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"path": {
+											"type": "string"
+										},
+										"limit": {
+											"type": "number"
+										}
+									},
+									"required": [
+										"path"
+									]
+								}
+							},
+							{
+								"name": "bash",
+								"description": "Run a command",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"command": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"command"
+									]
+								},
+								"constrainedSampling": {
+									"type": "json_schema",
+									"strict": "prefer"
+								}
+							}
+						],
+						"sections": {
+							"rules": "<rules>be brief</rules>"
+						}
+					},
+					{
+						"role": "user",
+						"content": "List files",
+						"timestamp": 2
+					},
+					{
+						"role": "assistant",
+						"content": [
+							{
+								"type": "thinking",
+								"thinking": "I should read.",
+								"thinkingSignature": "{\"type\":\"reasoning\",\"id\":\"rs_1\",\"summary\":[{\"type\":\"summary_text\",\"text\":\"I should read.\"}],\"encrypted_content\":\"enc1\"}"
+							},
+							{
+								"type": "text",
+								"text": "Reading.",
+								"textSignature": "{\"v\":1,\"id\":\"msg_1\",\"phase\":\"commentary\"}"
+							},
+							{
+								"type": "toolCall",
+								"id": "call_1|fc_1",
+								"name": "read",
+								"arguments": {
+									"path": "a.txt"
+								}
+							}
+						],
+						"api": "pi-messages",
+						"provider": "radius",
+						"model": "test-model",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "toolUse",
+						"timestamp": 3
+					},
+					{
+						"role": "toolResult",
+						"toolCallId": "call_1|fc_1",
+						"toolName": "read",
+						"content": [
+							{
+								"type": "text",
+								"text": "contents of a"
+							},
+							{
+								"type": "image",
+								"data": "aGVsbG8=",
+								"mimeType": "image/png"
+							}
+						],
+						"isError": false,
+						"timestamp": 4
+					},
+					{
+						"role": "user",
+						"content": [
+							{
+								"type": "text",
+								"text": "Now look at this"
+							},
+							{
+								"type": "image",
+								"data": "aGVsbG8=",
+								"mimeType": "image/png"
+							}
+						],
+						"timestamp": 2
+					},
+					{
+						"role": "assistant",
+						"content": [
+							{
+								"type": "thinking",
+								"thinking": "Foreign thoughts",
+								"thinkingSignature": "x"
+							},
+							{
+								"type": "text",
+								"text": "Foreign answer"
+							},
+							{
+								"type": "toolCall",
+								"id": "call|weird+id/with=chars",
+								"name": "bash",
+								"arguments": {
+									"command": "ls"
+								}
+							}
+						],
+						"api": "anthropic-messages",
+						"provider": "anthropic",
+						"model": "claude-x",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "toolUse",
+						"timestamp": 3
+					},
+					{
+						"role": "system",
+						"content": "Mid-conversation rule",
+						"timestamp": 1
+					},
+					{
+						"role": "user",
+						"content": "Continue",
+						"timestamp": 2
+					},
+					{
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "partial"
+							}
+						],
+						"api": "pi-messages",
+						"provider": "radius",
+						"model": "test-model",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "error",
+						"timestamp": 3,
+						"errorMessage": "boom"
+					},
+					{
+						"role": "user",
+						"content": "Again",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"apiKey": "rk",
+				"temperature": 0.5,
+				"maxTokens": 100,
+				"reasoning": "high",
+				"sessionId": "s-1",
+				"toolChoice": {
+					"type": "function",
+					"function": {
+						"name": "read"
+					}
+				},
+				"debug": true,
+				"headers": {
+					"X-Extra": "1",
+					"X-Null": null
+				}
+			},
+			"responses": [
+				{
+					"chunks": [
+						"data: {\"type\":\"start\"}\n\n",
+						"data: {\"type\":\"thinking_start\",\"contentIndex\":0}\n\n",
+						"data: {\"type\":\"thinking_delta\",\"contentIndex\":0,\"delta\":\"Hmm \"}\n\n",
+						"data: {\"type\":\"thinking_delta\",\"contentIndex\":0,\"delta\":\"ok\"}\n\n",
+						"data: {\"type\":\"thinking_end\",\"contentIndex\":0,\"content\":\"Hmm ok\",\"contentSignature\":\"tsig\",\"redacted\":false}\n\n",
+						"data: {\"type\":\"text_start\",\"contentIndex\":1}\n\n",
+						"data: {\"type\":\"text_delta\",\"contentIndex\":1,\"delta\":\"Hel\"}\n\n",
+						"data: {\"type\":\"text_delta\",\"contentIndex\":1,\"delta\":\"lo 🌍\"}\n\n",
+						"data: {\"type\":\"text_end\",\"contentIndex\":1,\"content\":\"Hello 🌍\",\"contentSignature\":\"xsig\"}\n\n",
+						"data: {\"type\":\"toolcall_start\",\"contentIndex\":2,\"id\":\"call_1\",\"toolName\":\"read\"}\n\n",
+						"data: {\"type\":\"toolcall_delta\",\"contentIndex\":2,\"delta\":\"{\\\"path\\\":\\\"a\"}\n\n",
+						"data: {\"type\":\"toolcall_delta\",\"contentIndex\":2,\"delta\":\".txt\\\"}\"}\n\n",
+						"data: {\"type\":\"toolcall_end\",\"contentIndex\":2,\"toolCall\":{\"type\":\"toolCall\",\"id\":\"call_1\",\"name\":\"read\",\"arguments\":{\"path\":\"a.txt\"},\"thoughtSignature\":\"ts\"}}\n\n",
+						"data: {\"type\":\"done\",\"reason\":\"toolUse\",\"usage\":{\"input\":10,\"output\":5,\"cacheRead\":2,\"cacheWrite\":1,\"totalTokens\":18,\"cost\":{\"input\":0.1,\"output\":0.2,\"cacheRead\":0.01,\"cacheWrite\":0.02,\"total\":0.33}},\"responseId\":\"resp-9\",\"providerThinkingLevel\":\"high\",\"rewrite\":{\"policyId\":\"p1\",\"policyVersion\":2,\"changed\":true,\"tokenCountChange\":-10,\"messageCountChange\":0,\"systemPromptChanged\":false}}\n\n"
+					]
+				}
+			],
+			"abortOn": null,
+			"result": {
+				"role": "assistant",
+				"content": [
+					{
+						"type": "thinking",
+						"thinking": "Hmm ok",
+						"thinkingSignature": "tsig",
+						"redacted": false
+					},
+					{
+						"type": "text",
+						"text": "Hello 🌍",
+						"textSignature": "xsig"
+					},
+					{
+						"type": "toolCall",
+						"id": "call_1",
+						"name": "read",
+						"arguments": {
+							"path": "a.txt"
+						},
+						"thoughtSignature": "ts"
+					}
+				],
+				"api": "pi-messages",
+				"provider": "radius",
+				"model": "test-model",
+				"usage": {
+					"input": 10,
+					"output": 5,
+					"cacheRead": 2,
+					"cacheWrite": 1,
+					"totalTokens": 18,
+					"cost": {
+						"input": 0.1,
+						"output": 0.2,
+						"cacheRead": 0.01,
+						"cacheWrite": 0.02,
+						"total": 0.33
+					}
+				},
+				"stopReason": "toolUse",
+				"timestamp": 1767225600000,
+				"responseId": "resp-9",
+				"providerThinkingLevel": "high",
+				"diagnostics": [
+					{
+						"type": "pi_messages_rewrite",
+						"timestamp": 1767225600000,
+						"details": {
+							"policyId": "p1",
+							"policyVersion": 2,
+							"changed": true,
+							"tokenCountChange": -10,
+							"messageCountChange": 0,
+							"systemPromptChanged": false
+						}
+					}
+				]
+			},
+			"thrown": null,
+			"events": [
+				{
+					"type": "start",
+					"partial": {
+						"role": "assistant",
+						"content": [],
+						"api": "pi-messages",
+						"provider": "radius",
+						"model": "test-model",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "thinking_start",
+					"contentIndex": 0,
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "thinking",
+								"thinking": ""
+							}
+						],
+						"api": "pi-messages",
+						"provider": "radius",
+						"model": "test-model",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "thinking_delta",
+					"contentIndex": 0,
+					"delta": "Hmm ",
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "thinking",
+								"thinking": "Hmm "
+							}
+						],
+						"api": "pi-messages",
+						"provider": "radius",
+						"model": "test-model",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "thinking_delta",
+					"contentIndex": 0,
+					"delta": "ok",
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "thinking",
+								"thinking": "Hmm ok"
+							}
+						],
+						"api": "pi-messages",
+						"provider": "radius",
+						"model": "test-model",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "thinking_end",
+					"contentIndex": 0,
+					"content": "Hmm ok",
+					"contentSignature": "tsig",
+					"redacted": false,
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "thinking",
+								"thinking": "Hmm ok",
+								"thinkingSignature": "tsig",
+								"redacted": false
+							}
+						],
+						"api": "pi-messages",
+						"provider": "radius",
+						"model": "test-model",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "text_start",
+					"contentIndex": 1,
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "thinking",
+								"thinking": "Hmm ok",
+								"thinkingSignature": "tsig",
+								"redacted": false
+							},
+							{
+								"type": "text",
+								"text": ""
+							}
+						],
+						"api": "pi-messages",
+						"provider": "radius",
+						"model": "test-model",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "text_delta",
+					"contentIndex": 1,
+					"delta": "Hel",
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "thinking",
+								"thinking": "Hmm ok",
+								"thinkingSignature": "tsig",
+								"redacted": false
+							},
+							{
+								"type": "text",
+								"text": "Hel"
+							}
+						],
+						"api": "pi-messages",
+						"provider": "radius",
+						"model": "test-model",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "text_delta",
+					"contentIndex": 1,
+					"delta": "lo 🌍",
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "thinking",
+								"thinking": "Hmm ok",
+								"thinkingSignature": "tsig",
+								"redacted": false
+							},
+							{
+								"type": "text",
+								"text": "Hello 🌍"
+							}
+						],
+						"api": "pi-messages",
+						"provider": "radius",
+						"model": "test-model",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "text_end",
+					"contentIndex": 1,
+					"content": "Hello 🌍",
+					"contentSignature": "xsig",
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "thinking",
+								"thinking": "Hmm ok",
+								"thinkingSignature": "tsig",
+								"redacted": false
+							},
+							{
+								"type": "text",
+								"text": "Hello 🌍",
+								"textSignature": "xsig"
+							}
+						],
+						"api": "pi-messages",
+						"provider": "radius",
+						"model": "test-model",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "toolcall_start",
+					"contentIndex": 2,
+					"id": "call_1",
+					"toolName": "read",
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "thinking",
+								"thinking": "Hmm ok",
+								"thinkingSignature": "tsig",
+								"redacted": false
+							},
+							{
+								"type": "text",
+								"text": "Hello 🌍",
+								"textSignature": "xsig"
+							},
+							{
+								"type": "toolCall",
+								"id": "call_1",
+								"name": "read",
+								"arguments": {}
+							}
+						],
+						"api": "pi-messages",
+						"provider": "radius",
+						"model": "test-model",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "toolcall_delta",
+					"contentIndex": 2,
+					"delta": "{\"path\":\"a",
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "thinking",
+								"thinking": "Hmm ok",
+								"thinkingSignature": "tsig",
+								"redacted": false
+							},
+							{
+								"type": "text",
+								"text": "Hello 🌍",
+								"textSignature": "xsig"
+							},
+							{
+								"type": "toolCall",
+								"id": "call_1",
+								"name": "read",
+								"arguments": {
+									"path": "a"
+								}
+							}
+						],
+						"api": "pi-messages",
+						"provider": "radius",
+						"model": "test-model",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "toolcall_delta",
+					"contentIndex": 2,
+					"delta": ".txt\"}",
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "thinking",
+								"thinking": "Hmm ok",
+								"thinkingSignature": "tsig",
+								"redacted": false
+							},
+							{
+								"type": "text",
+								"text": "Hello 🌍",
+								"textSignature": "xsig"
+							},
+							{
+								"type": "toolCall",
+								"id": "call_1",
+								"name": "read",
+								"arguments": {
+									"path": "a.txt"
+								}
+							}
+						],
+						"api": "pi-messages",
+						"provider": "radius",
+						"model": "test-model",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "toolcall_end",
+					"contentIndex": 2,
+					"toolCall": {
+						"type": "toolCall",
+						"id": "call_1",
+						"name": "read",
+						"arguments": {
+							"path": "a.txt"
+						},
+						"thoughtSignature": "ts"
+					},
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "thinking",
+								"thinking": "Hmm ok",
+								"thinkingSignature": "tsig",
+								"redacted": false
+							},
+							{
+								"type": "text",
+								"text": "Hello 🌍",
+								"textSignature": "xsig"
+							},
+							{
+								"type": "toolCall",
+								"id": "call_1",
+								"name": "read",
+								"arguments": {
+									"path": "a.txt"
+								},
+								"thoughtSignature": "ts"
+							}
+						],
+						"api": "pi-messages",
+						"provider": "radius",
+						"model": "test-model",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "done",
+					"reason": "toolUse",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "thinking",
+								"thinking": "Hmm ok",
+								"thinkingSignature": "tsig",
+								"redacted": false
+							},
+							{
+								"type": "text",
+								"text": "Hello 🌍",
+								"textSignature": "xsig"
+							},
+							{
+								"type": "toolCall",
+								"id": "call_1",
+								"name": "read",
+								"arguments": {
+									"path": "a.txt"
+								},
+								"thoughtSignature": "ts"
+							}
+						],
+						"api": "pi-messages",
+						"provider": "radius",
+						"model": "test-model",
+						"usage": {
+							"input": 10,
+							"output": 5,
+							"cacheRead": 2,
+							"cacheWrite": 1,
+							"totalTokens": 18,
+							"cost": {
+								"input": 0.1,
+								"output": 0.2,
+								"cacheRead": 0.01,
+								"cacheWrite": 0.02,
+								"total": 0.33
+							}
+						},
+						"stopReason": "toolUse",
+						"timestamp": 1767225600000,
+						"responseId": "resp-9",
+						"providerThinkingLevel": "high",
+						"diagnostics": [
+							{
+								"type": "pi_messages_rewrite",
+								"timestamp": 1767225600000,
+								"details": {
+									"policyId": "p1",
+									"policyVersion": 2,
+									"changed": true,
+									"tokenCountChange": -10,
+									"messageCountChange": 0,
+									"systemPromptChanged": false
+								}
+							}
+						]
+					}
+				}
+			],
+			"requests": [
+				{
+					"url": "https://gateway.example.com/v1/messages?debug=1",
+					"method": "POST",
+					"headers": {
+						"accept": "text/event-stream",
+						"authorization": "Bearer rk",
+						"content-type": "application/json",
+						"x-extra": "1"
+					},
+					"body": {
+						"model": "test-model",
+						"context": {
+							"messages": [
+								{
+									"role": "system",
+									"content": "You are helpful.",
+									"timestamp": 1,
+									"toolsAdded": [
+										{
+											"name": "read",
+											"description": "Read a file",
+											"parameters": {
+												"type": "object",
+												"properties": {
+													"path": {
+														"type": "string"
+													},
+													"limit": {
+														"type": "number"
+													}
+												},
+												"required": [
+													"path"
+												]
+											}
+										},
+										{
+											"name": "bash",
+											"description": "Run a command",
+											"parameters": {
+												"type": "object",
+												"properties": {
+													"command": {
+														"type": "string"
+													}
+												},
+												"required": [
+													"command"
+												]
+											},
+											"constrainedSampling": {
+												"type": "json_schema",
+												"strict": "prefer"
+											}
+										}
+									],
+									"sections": {
+										"rules": "<rules>be brief</rules>"
+									}
+								},
+								{
+									"role": "user",
+									"content": "List files",
+									"timestamp": 2
+								},
+								{
+									"role": "assistant",
+									"content": [
+										{
+											"type": "thinking",
+											"thinking": "I should read.",
+											"thinkingSignature": "{\"type\":\"reasoning\",\"id\":\"rs_1\",\"summary\":[{\"type\":\"summary_text\",\"text\":\"I should read.\"}],\"encrypted_content\":\"enc1\"}"
+										},
+										{
+											"type": "text",
+											"text": "Reading.",
+											"textSignature": "{\"v\":1,\"id\":\"msg_1\",\"phase\":\"commentary\"}"
+										},
+										{
+											"type": "toolCall",
+											"id": "call_1|fc_1",
+											"name": "read",
+											"arguments": {
+												"path": "a.txt"
+											}
+										}
+									],
+									"api": "pi-messages",
+									"provider": "radius",
+									"model": "test-model",
+									"usage": {
+										"input": 0,
+										"output": 0,
+										"cacheRead": 0,
+										"cacheWrite": 0,
+										"totalTokens": 0,
+										"cost": {
+											"input": 0,
+											"output": 0,
+											"cacheRead": 0,
+											"cacheWrite": 0,
+											"total": 0
+										}
+									},
+									"stopReason": "toolUse",
+									"timestamp": 3
+								},
+								{
+									"role": "toolResult",
+									"toolCallId": "call_1|fc_1",
+									"toolName": "read",
+									"content": [
+										{
+											"type": "text",
+											"text": "contents of a"
+										},
+										{
+											"type": "image",
+											"data": "aGVsbG8=",
+											"mimeType": "image/png"
+										}
+									],
+									"isError": false,
+									"timestamp": 4
+								},
+								{
+									"role": "user",
+									"content": [
+										{
+											"type": "text",
+											"text": "Now look at this"
+										},
+										{
+											"type": "image",
+											"data": "aGVsbG8=",
+											"mimeType": "image/png"
+										}
+									],
+									"timestamp": 2
+								},
+								{
+									"role": "assistant",
+									"content": [
+										{
+											"type": "thinking",
+											"thinking": "Foreign thoughts",
+											"thinkingSignature": "x"
+										},
+										{
+											"type": "text",
+											"text": "Foreign answer"
+										},
+										{
+											"type": "toolCall",
+											"id": "call|weird+id/with=chars",
+											"name": "bash",
+											"arguments": {
+												"command": "ls"
+											}
+										}
+									],
+									"api": "anthropic-messages",
+									"provider": "anthropic",
+									"model": "claude-x",
+									"usage": {
+										"input": 0,
+										"output": 0,
+										"cacheRead": 0,
+										"cacheWrite": 0,
+										"totalTokens": 0,
+										"cost": {
+											"input": 0,
+											"output": 0,
+											"cacheRead": 0,
+											"cacheWrite": 0,
+											"total": 0
+										}
+									},
+									"stopReason": "toolUse",
+									"timestamp": 3
+								},
+								{
+									"role": "system",
+									"content": "Mid-conversation rule",
+									"timestamp": 1
+								},
+								{
+									"role": "user",
+									"content": "Continue",
+									"timestamp": 2
+								},
+								{
+									"role": "assistant",
+									"content": [
+										{
+											"type": "text",
+											"text": "partial"
+										}
+									],
+									"api": "pi-messages",
+									"provider": "radius",
+									"model": "test-model",
+									"usage": {
+										"input": 0,
+										"output": 0,
+										"cacheRead": 0,
+										"cacheWrite": 0,
+										"totalTokens": 0,
+										"cost": {
+											"input": 0,
+											"output": 0,
+											"cacheRead": 0,
+											"cacheWrite": 0,
+											"total": 0
+										}
+									},
+									"stopReason": "error",
+									"timestamp": 3,
+									"errorMessage": "boom"
+								},
+								{
+									"role": "user",
+									"content": "Again",
+									"timestamp": 2
+								}
+							]
+						},
+						"options": {
+							"temperature": 0.5,
+							"maxTokens": 100,
+							"reasoning": "high",
+							"sessionId": "s-1",
+							"toolChoice": {
+								"type": "function",
+								"function": {
+									"name": "read"
+								}
+							}
+						}
+					}
+				}
+			],
+			"unorderedBody": true
+		},
+		{
+			"name": "pi/crlf-and-trailing-frame",
+			"fn": "stream",
+			"model": {
+				"id": "test-model",
+				"name": "Test Model",
+				"api": "pi-messages",
+				"provider": "radius",
+				"baseUrl": "https://gateway.example.com/v1?team=a",
+				"reasoning": true,
+				"input": [
+					"text",
+					"image"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "system",
+						"content": "sys",
+						"timestamp": 1,
+						"toolsAdded": [
+							{
+								"name": "read",
+								"description": "Read a file",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"path": {
+											"type": "string"
+										},
+										"limit": {
+											"type": "number"
+										}
+									},
+									"required": [
+										"path"
+									]
+								}
+							},
+							{
+								"name": "bash",
+								"description": "Run a command",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"command": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"command"
+									]
+								},
+								"constrainedSampling": {
+									"type": "json_schema",
+									"strict": "prefer"
+								}
+							}
+						]
+					},
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"apiKey": "rk",
+				"env": {
+					"PI_CACHE_RETENTION": "long"
+				},
+				"debug": true
+			},
+			"responses": [
+				{
+					"chunks": [
+						"data: {\"type\":\"start\"}\r\n\r\n",
+						": comment\r\n\r\n",
+						"data: [DONE]\r\n\r\n",
+						"event: x\ndata: {\"type\":\"done\",\"reason\":\"stop\",\"usage\":{\"input\":10,\"output\":5,\"cacheRead\":2,\"cacheWrite\":1,\"totalTokens\":18,\"cost\":{\"input\":0.1,\"output\":0.2,\"cacheRead\":0.01,\"cacheWrite\":0.02,\"total\":0.33}}}"
+					]
+				}
+			],
+			"abortOn": null,
+			"result": {
+				"role": "assistant",
+				"content": [],
+				"api": "pi-messages",
+				"provider": "radius",
+				"model": "test-model",
+				"usage": {
+					"input": 10,
+					"output": 5,
+					"cacheRead": 2,
+					"cacheWrite": 1,
+					"totalTokens": 18,
+					"cost": {
+						"input": 0.1,
+						"output": 0.2,
+						"cacheRead": 0.01,
+						"cacheWrite": 0.02,
+						"total": 0.33
+					}
+				},
+				"stopReason": "stop",
+				"timestamp": 1767225600000
+			},
+			"thrown": null,
+			"events": [
+				{
+					"type": "start",
+					"partial": {
+						"role": "assistant",
+						"content": [],
+						"api": "pi-messages",
+						"provider": "radius",
+						"model": "test-model",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "done",
+					"reason": "stop",
+					"message": {
+						"role": "assistant",
+						"content": [],
+						"api": "pi-messages",
+						"provider": "radius",
+						"model": "test-model",
+						"usage": {
+							"input": 10,
+							"output": 5,
+							"cacheRead": 2,
+							"cacheWrite": 1,
+							"totalTokens": 18,
+							"cost": {
+								"input": 0.1,
+								"output": 0.2,
+								"cacheRead": 0.01,
+								"cacheWrite": 0.02,
+								"total": 0.33
+							}
+						},
+						"stopReason": "stop",
+						"timestamp": 1767225600000
+					}
+				}
+			],
+			"requests": [
+				{
+					"url": "https://gateway.example.com/v1?team=a%2Fmessages&debug=1",
+					"method": "POST",
+					"headers": {
+						"accept": "text/event-stream",
+						"authorization": "Bearer rk",
+						"content-type": "application/json"
+					},
+					"body": {
+						"model": "test-model",
+						"context": {
+							"messages": [
+								{
+									"role": "system",
+									"content": "sys",
+									"timestamp": 1,
+									"toolsAdded": [
+										{
+											"name": "read",
+											"description": "Read a file",
+											"parameters": {
+												"type": "object",
+												"properties": {
+													"path": {
+														"type": "string"
+													},
+													"limit": {
+														"type": "number"
+													}
+												},
+												"required": [
+													"path"
+												]
+											}
+										},
+										{
+											"name": "bash",
+											"description": "Run a command",
+											"parameters": {
+												"type": "object",
+												"properties": {
+													"command": {
+														"type": "string"
+													}
+												},
+												"required": [
+													"command"
+												]
+											},
+											"constrainedSampling": {
+												"type": "json_schema",
+												"strict": "prefer"
+											}
+										}
+									]
+								},
+								{
+									"role": "user",
+									"content": "hi",
+									"timestamp": 2
+								}
+							]
+						},
+						"options": {
+							"cacheRetention": "long"
+						}
+					}
+				}
+			],
+			"unorderedBody": true
+		},
+		{
+			"name": "pi/error-terminal",
+			"fn": "stream",
+			"model": {
+				"id": "test-model",
+				"name": "Test Model",
+				"api": "pi-messages",
+				"provider": "radius",
+				"baseUrl": "https://gateway.example.com/v1//",
+				"reasoning": true,
+				"input": [
+					"text",
+					"image"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "system",
+						"content": "sys",
+						"timestamp": 1,
+						"toolsAdded": [
+							{
+								"name": "read",
+								"description": "Read a file",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"path": {
+											"type": "string"
+										},
+										"limit": {
+											"type": "number"
+										}
+									},
+									"required": [
+										"path"
+									]
+								}
+							},
+							{
+								"name": "bash",
+								"description": "Run a command",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"command": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"command"
+									]
+								},
+								"constrainedSampling": {
+									"type": "json_schema",
+									"strict": "prefer"
+								}
+							}
+						]
+					},
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"apiKey": "rk",
+				"cacheRetention": "none"
+			},
+			"responses": [
+				{
+					"chunks": [
+						"data: {\"type\":\"start\"}\n\n",
+						"data: {\"type\":\"text_start\",\"contentIndex\":0}\n\n",
+						"data: {\"type\":\"text_delta\",\"contentIndex\":0,\"delta\":\"par\"}\n\n",
+						"data: {\"type\":\"error\",\"reason\":\"error\",\"usage\":{\"input\":10,\"output\":5,\"cacheRead\":2,\"cacheWrite\":1,\"totalTokens\":18,\"cost\":{\"input\":0.1,\"output\":0.2,\"cacheRead\":0.01,\"cacheWrite\":0.02,\"total\":0.33}},\"errorMessage\":\"upstream failed\",\"rewrite\":{\"policyId\":\"p\",\"policyVersion\":1,\"changed\":false,\"tokenCountChange\":0,\"messageCountChange\":0,\"systemPromptChanged\":false}}\n\n"
+					]
+				}
+			],
+			"abortOn": null,
+			"result": {
+				"role": "assistant",
+				"content": [
+					{
+						"type": "text",
+						"text": "par"
+					}
+				],
+				"api": "pi-messages",
+				"provider": "radius",
+				"model": "test-model",
+				"usage": {
+					"input": 10,
+					"output": 5,
+					"cacheRead": 2,
+					"cacheWrite": 1,
+					"totalTokens": 18,
+					"cost": {
+						"input": 0.1,
+						"output": 0.2,
+						"cacheRead": 0.01,
+						"cacheWrite": 0.02,
+						"total": 0.33
+					}
+				},
+				"stopReason": "error",
+				"timestamp": 1767225600000,
+				"errorMessage": "upstream failed",
+				"diagnostics": [
+					{
+						"type": "pi_messages_rewrite",
+						"timestamp": 1767225600000,
+						"details": {
+							"policyId": "p",
+							"policyVersion": 1,
+							"changed": false,
+							"tokenCountChange": 0,
+							"messageCountChange": 0,
+							"systemPromptChanged": false
+						}
+					}
+				]
+			},
+			"thrown": null,
+			"events": [
+				{
+					"type": "start",
+					"partial": {
+						"role": "assistant",
+						"content": [],
+						"api": "pi-messages",
+						"provider": "radius",
+						"model": "test-model",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "text_start",
+					"contentIndex": 0,
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": ""
+							}
+						],
+						"api": "pi-messages",
+						"provider": "radius",
+						"model": "test-model",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "text_delta",
+					"contentIndex": 0,
+					"delta": "par",
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "par"
+							}
+						],
+						"api": "pi-messages",
+						"provider": "radius",
+						"model": "test-model",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "error",
+					"reason": "error",
+					"error": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "par"
+							}
+						],
+						"api": "pi-messages",
+						"provider": "radius",
+						"model": "test-model",
+						"usage": {
+							"input": 10,
+							"output": 5,
+							"cacheRead": 2,
+							"cacheWrite": 1,
+							"totalTokens": 18,
+							"cost": {
+								"input": 0.1,
+								"output": 0.2,
+								"cacheRead": 0.01,
+								"cacheWrite": 0.02,
+								"total": 0.33
+							}
+						},
+						"stopReason": "error",
+						"timestamp": 1767225600000,
+						"errorMessage": "upstream failed",
+						"diagnostics": [
+							{
+								"type": "pi_messages_rewrite",
+								"timestamp": 1767225600000,
+								"details": {
+									"policyId": "p",
+									"policyVersion": 1,
+									"changed": false,
+									"tokenCountChange": 0,
+									"messageCountChange": 0,
+									"systemPromptChanged": false
+								}
+							}
+						]
+					}
+				}
+			],
+			"requests": [
+				{
+					"url": "https://gateway.example.com/v1/messages",
+					"method": "POST",
+					"headers": {
+						"accept": "text/event-stream",
+						"authorization": "Bearer rk",
+						"content-type": "application/json"
+					},
+					"body": {
+						"model": "test-model",
+						"context": {
+							"messages": [
+								{
+									"role": "system",
+									"content": "sys",
+									"timestamp": 1,
+									"toolsAdded": [
+										{
+											"name": "read",
+											"description": "Read a file",
+											"parameters": {
+												"type": "object",
+												"properties": {
+													"path": {
+														"type": "string"
+													},
+													"limit": {
+														"type": "number"
+													}
+												},
+												"required": [
+													"path"
+												]
+											}
+										},
+										{
+											"name": "bash",
+											"description": "Run a command",
+											"parameters": {
+												"type": "object",
+												"properties": {
+													"command": {
+														"type": "string"
+													}
+												},
+												"required": [
+													"command"
+												]
+											},
+											"constrainedSampling": {
+												"type": "json_schema",
+												"strict": "prefer"
+											}
+										}
+									]
+								},
+								{
+									"role": "user",
+									"content": "hi",
+									"timestamp": 2
+								}
+							]
+						},
+						"options": {
+							"cacheRetention": "none"
+						}
+					}
+				}
+			],
+			"unorderedBody": true
+		},
+		{
+			"name": "pi/no-terminal",
+			"fn": "stream",
+			"model": {
+				"id": "test-model",
+				"name": "Test Model",
+				"api": "pi-messages",
+				"provider": "radius",
+				"baseUrl": "https://gateway.example.com/v1//",
+				"reasoning": true,
+				"input": [
+					"text",
+					"image"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "system",
+						"content": "sys",
+						"timestamp": 1,
+						"toolsAdded": [
+							{
+								"name": "read",
+								"description": "Read a file",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"path": {
+											"type": "string"
+										},
+										"limit": {
+											"type": "number"
+										}
+									},
+									"required": [
+										"path"
+									]
+								}
+							},
+							{
+								"name": "bash",
+								"description": "Run a command",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"command": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"command"
+									]
+								},
+								"constrainedSampling": {
+									"type": "json_schema",
+									"strict": "prefer"
+								}
+							}
+						]
+					},
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"apiKey": "rk"
+			},
+			"responses": [
+				{
+					"chunks": [
+						"data: {\"type\":\"start\"}\n\n",
+						"data: {\"type\":\"text_start\",\"contentIndex\":0}\n\n"
+					]
+				}
+			],
+			"abortOn": null,
+			"result": {
+				"role": "assistant",
+				"content": [],
+				"api": "pi-messages",
+				"provider": "radius",
+				"model": "test-model",
+				"usage": {
+					"input": 0,
+					"output": 0,
+					"cacheRead": 0,
+					"cacheWrite": 0,
+					"totalTokens": 0,
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"total": 0
+					}
+				},
+				"stopReason": "error",
+				"errorMessage": "radius stream ended without a terminal event",
+				"timestamp": 1767225600000
+			},
+			"thrown": null,
+			"events": [
+				{
+					"type": "start",
+					"partial": {
+						"role": "assistant",
+						"content": [],
+						"api": "pi-messages",
+						"provider": "radius",
+						"model": "test-model",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "text_start",
+					"contentIndex": 0,
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": ""
+							}
+						],
+						"api": "pi-messages",
+						"provider": "radius",
+						"model": "test-model",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "error",
+					"reason": "error",
+					"error": {
+						"role": "assistant",
+						"content": [],
+						"api": "pi-messages",
+						"provider": "radius",
+						"model": "test-model",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "error",
+						"errorMessage": "radius stream ended without a terminal event",
+						"timestamp": 1767225600000
+					}
+				}
+			],
+			"requests": [
+				{
+					"url": "https://gateway.example.com/v1/messages",
+					"method": "POST",
+					"headers": {
+						"accept": "text/event-stream",
+						"authorization": "Bearer rk",
+						"content-type": "application/json"
+					},
+					"body": {
+						"model": "test-model",
+						"context": {
+							"messages": [
+								{
+									"role": "system",
+									"content": "sys",
+									"timestamp": 1,
+									"toolsAdded": [
+										{
+											"name": "read",
+											"description": "Read a file",
+											"parameters": {
+												"type": "object",
+												"properties": {
+													"path": {
+														"type": "string"
+													},
+													"limit": {
+														"type": "number"
+													}
+												},
+												"required": [
+													"path"
+												]
+											}
+										},
+										{
+											"name": "bash",
+											"description": "Run a command",
+											"parameters": {
+												"type": "object",
+												"properties": {
+													"command": {
+														"type": "string"
+													}
+												},
+												"required": [
+													"command"
+												]
+											},
+											"constrainedSampling": {
+												"type": "json_schema",
+												"strict": "prefer"
+											}
+										}
+									]
+								},
+								{
+									"role": "user",
+									"content": "hi",
+									"timestamp": 2
+								}
+							]
+						},
+						"options": {}
+					}
+				}
+			],
+			"unorderedBody": true
+		},
+		{
+			"name": "pi/missing-key",
+			"fn": "stream",
+			"model": {
+				"id": "test-model",
+				"name": "Test Model",
+				"api": "pi-messages",
+				"provider": "radius",
+				"baseUrl": "https://gateway.example.com/v1//",
+				"reasoning": true,
+				"input": [
+					"text",
+					"image"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "system",
+						"content": "sys",
+						"timestamp": 1,
+						"toolsAdded": [
+							{
+								"name": "read",
+								"description": "Read a file",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"path": {
+											"type": "string"
+										},
+										"limit": {
+											"type": "number"
+										}
+									},
+									"required": [
+										"path"
+									]
+								}
+							},
+							{
+								"name": "bash",
+								"description": "Run a command",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"command": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"command"
+									]
+								},
+								"constrainedSampling": {
+									"type": "json_schema",
+									"strict": "prefer"
+								}
+							}
+						]
+					},
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {},
+			"responses": [],
+			"abortOn": null,
+			"result": {
+				"role": "assistant",
+				"content": [],
+				"api": "pi-messages",
+				"provider": "radius",
+				"model": "test-model",
+				"usage": {
+					"input": 0,
+					"output": 0,
+					"cacheRead": 0,
+					"cacheWrite": 0,
+					"totalTokens": 0,
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"total": 0
+					}
+				},
+				"stopReason": "error",
+				"errorMessage": "No API key provided for provider \"radius\"",
+				"timestamp": 1767225600000
+			},
+			"thrown": null,
+			"events": [
+				{
+					"type": "error",
+					"reason": "error",
+					"error": {
+						"role": "assistant",
+						"content": [],
+						"api": "pi-messages",
+						"provider": "radius",
+						"model": "test-model",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "error",
+						"errorMessage": "No API key provided for provider \"radius\"",
+						"timestamp": 1767225600000
+					}
+				}
+			],
+			"requests": [],
+			"unorderedBody": true
+		},
+		{
+			"name": "pi/http-error-json",
+			"fn": "stream",
+			"model": {
+				"id": "test-model",
+				"name": "Test Model",
+				"api": "pi-messages",
+				"provider": "radius",
+				"baseUrl": "https://gateway.example.com/v1//",
+				"reasoning": true,
+				"input": [
+					"text",
+					"image"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "system",
+						"content": "sys",
+						"timestamp": 1,
+						"toolsAdded": [
+							{
+								"name": "read",
+								"description": "Read a file",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"path": {
+											"type": "string"
+										},
+										"limit": {
+											"type": "number"
+										}
+									},
+									"required": [
+										"path"
+									]
+								}
+							},
+							{
+								"name": "bash",
+								"description": "Run a command",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"command": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"command"
+									]
+								},
+								"constrainedSampling": {
+									"type": "json_schema",
+									"strict": "prefer"
+								}
+							}
+						]
+					},
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"apiKey": "rk"
+			},
+			"responses": [
+				{
+					"status": 403,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"error\":{\"message\":\"denied\",\"code\":\"forbidden\",\"details\":{\"team\":\"a\"}}}"
+					]
+				}
+			],
+			"abortOn": null,
+			"result": {
+				"role": "assistant",
+				"content": [],
+				"api": "pi-messages",
+				"provider": "radius",
+				"model": "test-model",
+				"usage": {
+					"input": 0,
+					"output": 0,
+					"cacheRead": 0,
+					"cacheWrite": 0,
+					"totalTokens": 0,
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"total": 0
+					}
+				},
+				"stopReason": "error",
+				"errorMessage": "403 Forbidden: denied (forbidden)",
+				"timestamp": 1767225600000,
+				"diagnostics": [
+					{
+						"type": "pi_messages_response_failure",
+						"timestamp": 1767225600000,
+						"error": {
+							"name": "PiMessagesResponseError",
+							"message": "403 Forbidden: denied (forbidden)",
+							"code": "forbidden"
+						},
+						"details": {
+							"version": 1,
+							"provider": "radius",
+							"model": "test-model",
+							"url": "https://gateway.example.com/v1/messages",
+							"status": 403,
+							"statusText": "Forbidden",
+							"error": {
+								"message": "denied",
+								"code": "forbidden",
+								"details": {
+									"team": "a"
+								}
+							},
+							"timestampMs": 1767225600000
+						}
+					}
+				]
+			},
+			"thrown": null,
+			"events": [
+				{
+					"type": "error",
+					"reason": "error",
+					"error": {
+						"role": "assistant",
+						"content": [],
+						"api": "pi-messages",
+						"provider": "radius",
+						"model": "test-model",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "error",
+						"errorMessage": "403 Forbidden: denied (forbidden)",
+						"timestamp": 1767225600000,
+						"diagnostics": [
+							{
+								"type": "pi_messages_response_failure",
+								"timestamp": 1767225600000,
+								"error": {
+									"name": "PiMessagesResponseError",
+									"message": "403 Forbidden: denied (forbidden)",
+									"code": "forbidden"
+								},
+								"details": {
+									"version": 1,
+									"provider": "radius",
+									"model": "test-model",
+									"url": "https://gateway.example.com/v1/messages",
+									"status": 403,
+									"statusText": "Forbidden",
+									"error": {
+										"message": "denied",
+										"code": "forbidden",
+										"details": {
+											"team": "a"
+										}
+									},
+									"timestampMs": 1767225600000
+								}
+							}
+						]
+					}
+				}
+			],
+			"requests": [
+				{
+					"url": "https://gateway.example.com/v1/messages",
+					"method": "POST",
+					"headers": {
+						"accept": "text/event-stream",
+						"authorization": "Bearer rk",
+						"content-type": "application/json"
+					},
+					"body": {
+						"model": "test-model",
+						"context": {
+							"messages": [
+								{
+									"role": "system",
+									"content": "sys",
+									"timestamp": 1,
+									"toolsAdded": [
+										{
+											"name": "read",
+											"description": "Read a file",
+											"parameters": {
+												"type": "object",
+												"properties": {
+													"path": {
+														"type": "string"
+													},
+													"limit": {
+														"type": "number"
+													}
+												},
+												"required": [
+													"path"
+												]
+											}
+										},
+										{
+											"name": "bash",
+											"description": "Run a command",
+											"parameters": {
+												"type": "object",
+												"properties": {
+													"command": {
+														"type": "string"
+													}
+												},
+												"required": [
+													"command"
+												]
+											},
+											"constrainedSampling": {
+												"type": "json_schema",
+												"strict": "prefer"
+											}
+										}
+									]
+								},
+								{
+									"role": "user",
+									"content": "hi",
+									"timestamp": 2
+								}
+							]
+						},
+						"options": {}
+					}
+				}
+			],
+			"unorderedBody": true
+		},
+		{
+			"name": "pi/http-error-json-no-code",
+			"fn": "stream",
+			"model": {
+				"id": "test-model",
+				"name": "Test Model",
+				"api": "pi-messages",
+				"provider": "radius",
+				"baseUrl": "https://gateway.example.com/v1//",
+				"reasoning": true,
+				"input": [
+					"text",
+					"image"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "system",
+						"content": "sys",
+						"timestamp": 1,
+						"toolsAdded": [
+							{
+								"name": "read",
+								"description": "Read a file",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"path": {
+											"type": "string"
+										},
+										"limit": {
+											"type": "number"
+										}
+									},
+									"required": [
+										"path"
+									]
+								}
+							},
+							{
+								"name": "bash",
+								"description": "Run a command",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"command": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"command"
+									]
+								},
+								"constrainedSampling": {
+									"type": "json_schema",
+									"strict": "prefer"
+								}
+							}
+						]
+					},
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"apiKey": "rk"
+			},
+			"responses": [
+				{
+					"status": 429,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"error\":{\"message\":5}}"
+					]
+				}
+			],
+			"abortOn": null,
+			"result": {
+				"role": "assistant",
+				"content": [],
+				"api": "pi-messages",
+				"provider": "radius",
+				"model": "test-model",
+				"usage": {
+					"input": 0,
+					"output": 0,
+					"cacheRead": 0,
+					"cacheWrite": 0,
+					"totalTokens": 0,
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"total": 0
+					}
+				},
+				"stopReason": "error",
+				"errorMessage": "429 Too Many Requests: {\"error\":{\"message\":5}}",
+				"timestamp": 1767225600000,
+				"diagnostics": [
+					{
+						"type": "pi_messages_response_failure",
+						"timestamp": 1767225600000,
+						"error": {
+							"name": "PiMessagesResponseError",
+							"message": "429 Too Many Requests: {\"error\":{\"message\":5}}"
+						},
+						"details": {
+							"version": 1,
+							"provider": "radius",
+							"model": "test-model",
+							"url": "https://gateway.example.com/v1/messages",
+							"status": 429,
+							"statusText": "Too Many Requests",
+							"error": {
+								"message": 5
+							},
+							"timestampMs": 1767225600000
+						}
+					}
+				]
+			},
+			"thrown": null,
+			"events": [
+				{
+					"type": "error",
+					"reason": "error",
+					"error": {
+						"role": "assistant",
+						"content": [],
+						"api": "pi-messages",
+						"provider": "radius",
+						"model": "test-model",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "error",
+						"errorMessage": "429 Too Many Requests: {\"error\":{\"message\":5}}",
+						"timestamp": 1767225600000,
+						"diagnostics": [
+							{
+								"type": "pi_messages_response_failure",
+								"timestamp": 1767225600000,
+								"error": {
+									"name": "PiMessagesResponseError",
+									"message": "429 Too Many Requests: {\"error\":{\"message\":5}}"
+								},
+								"details": {
+									"version": 1,
+									"provider": "radius",
+									"model": "test-model",
+									"url": "https://gateway.example.com/v1/messages",
+									"status": 429,
+									"statusText": "Too Many Requests",
+									"error": {
+										"message": 5
+									},
+									"timestampMs": 1767225600000
+								}
+							}
+						]
+					}
+				}
+			],
+			"requests": [
+				{
+					"url": "https://gateway.example.com/v1/messages",
+					"method": "POST",
+					"headers": {
+						"accept": "text/event-stream",
+						"authorization": "Bearer rk",
+						"content-type": "application/json"
+					},
+					"body": {
+						"model": "test-model",
+						"context": {
+							"messages": [
+								{
+									"role": "system",
+									"content": "sys",
+									"timestamp": 1,
+									"toolsAdded": [
+										{
+											"name": "read",
+											"description": "Read a file",
+											"parameters": {
+												"type": "object",
+												"properties": {
+													"path": {
+														"type": "string"
+													},
+													"limit": {
+														"type": "number"
+													}
+												},
+												"required": [
+													"path"
+												]
+											}
+										},
+										{
+											"name": "bash",
+											"description": "Run a command",
+											"parameters": {
+												"type": "object",
+												"properties": {
+													"command": {
+														"type": "string"
+													}
+												},
+												"required": [
+													"command"
+												]
+											},
+											"constrainedSampling": {
+												"type": "json_schema",
+												"strict": "prefer"
+											}
+										}
+									]
+								},
+								{
+									"role": "user",
+									"content": "hi",
+									"timestamp": 2
+								}
+							]
+						},
+						"options": {}
+					}
+				}
+			],
+			"unorderedBody": true
+		},
+		{
+			"name": "pi/http-error-text",
+			"fn": "stream",
+			"model": {
+				"id": "test-model",
+				"name": "Test Model",
+				"api": "pi-messages",
+				"provider": "radius",
+				"baseUrl": "https://gateway.example.com/v1//",
+				"reasoning": true,
+				"input": [
+					"text",
+					"image"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "system",
+						"content": "sys",
+						"timestamp": 1,
+						"toolsAdded": [
+							{
+								"name": "read",
+								"description": "Read a file",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"path": {
+											"type": "string"
+										},
+										"limit": {
+											"type": "number"
+										}
+									},
+									"required": [
+										"path"
+									]
+								}
+							},
+							{
+								"name": "bash",
+								"description": "Run a command",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"command": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"command"
+									]
+								},
+								"constrainedSampling": {
+									"type": "json_schema",
+									"strict": "prefer"
+								}
+							}
+						]
+					},
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"apiKey": "rk"
+			},
+			"responses": [
+				{
+					"status": 502,
+					"headers": {
+						"content-type": "text/plain"
+					},
+					"chunks": [
+						"bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway "
+					]
+				}
+			],
+			"abortOn": null,
+			"result": {
+				"role": "assistant",
+				"content": [],
+				"api": "pi-messages",
+				"provider": "radius",
+				"model": "test-model",
+				"usage": {
+					"input": 0,
+					"output": 0,
+					"cacheRead": 0,
+					"cacheWrite": 0,
+					"totalTokens": 0,
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"total": 0
+					}
+				},
+				"stopReason": "error",
+				"errorMessage": "502 Bad Gateway: bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway ",
+				"timestamp": 1767225600000,
+				"diagnostics": [
+					{
+						"type": "pi_messages_response_failure",
+						"timestamp": 1767225600000,
+						"error": {
+							"name": "PiMessagesResponseError",
+							"message": "502 Bad Gateway: bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway "
+						},
+						"details": {
+							"version": 1,
+							"provider": "radius",
+							"model": "test-model",
+							"url": "https://gateway.example.com/v1/messages",
+							"status": 502,
+							"statusText": "Bad Gateway",
+							"body": "bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gate…",
+							"timestampMs": 1767225600000
+						}
+					}
+				]
+			},
+			"thrown": null,
+			"events": [
+				{
+					"type": "error",
+					"reason": "error",
+					"error": {
+						"role": "assistant",
+						"content": [],
+						"api": "pi-messages",
+						"provider": "radius",
+						"model": "test-model",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "error",
+						"errorMessage": "502 Bad Gateway: bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway ",
+						"timestamp": 1767225600000,
+						"diagnostics": [
+							{
+								"type": "pi_messages_response_failure",
+								"timestamp": 1767225600000,
+								"error": {
+									"name": "PiMessagesResponseError",
+									"message": "502 Bad Gateway: bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway "
+								},
+								"details": {
+									"version": 1,
+									"provider": "radius",
+									"model": "test-model",
+									"url": "https://gateway.example.com/v1/messages",
+									"status": 502,
+									"statusText": "Bad Gateway",
+									"body": "bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gateway bad gate…",
+									"timestampMs": 1767225600000
+								}
+							}
+						]
+					}
+				}
+			],
+			"requests": [
+				{
+					"url": "https://gateway.example.com/v1/messages",
+					"method": "POST",
+					"headers": {
+						"accept": "text/event-stream",
+						"authorization": "Bearer rk",
+						"content-type": "application/json"
+					},
+					"body": {
+						"model": "test-model",
+						"context": {
+							"messages": [
+								{
+									"role": "system",
+									"content": "sys",
+									"timestamp": 1,
+									"toolsAdded": [
+										{
+											"name": "read",
+											"description": "Read a file",
+											"parameters": {
+												"type": "object",
+												"properties": {
+													"path": {
+														"type": "string"
+													},
+													"limit": {
+														"type": "number"
+													}
+												},
+												"required": [
+													"path"
+												]
+											}
+										},
+										{
+											"name": "bash",
+											"description": "Run a command",
+											"parameters": {
+												"type": "object",
+												"properties": {
+													"command": {
+														"type": "string"
+													}
+												},
+												"required": [
+													"command"
+												]
+											},
+											"constrainedSampling": {
+												"type": "json_schema",
+												"strict": "prefer"
+											}
+										}
+									]
+								},
+								{
+									"role": "user",
+									"content": "hi",
+									"timestamp": 2
+								}
+							]
+						},
+						"options": {}
+					}
+				}
+			],
+			"unorderedBody": true
+		},
+		{
+			"name": "pi/http-error-array",
+			"fn": "stream",
+			"model": {
+				"id": "test-model",
+				"name": "Test Model",
+				"api": "pi-messages",
+				"provider": "radius",
+				"baseUrl": "https://gateway.example.com/v1//",
+				"reasoning": true,
+				"input": [
+					"text",
+					"image"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "system",
+						"content": "sys",
+						"timestamp": 1,
+						"toolsAdded": [
+							{
+								"name": "read",
+								"description": "Read a file",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"path": {
+											"type": "string"
+										},
+										"limit": {
+											"type": "number"
+										}
+									},
+									"required": [
+										"path"
+									]
+								}
+							},
+							{
+								"name": "bash",
+								"description": "Run a command",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"command": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"command"
+									]
+								},
+								"constrainedSampling": {
+									"type": "json_schema",
+									"strict": "prefer"
+								}
+							}
+						]
+					},
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"apiKey": "rk"
+			},
+			"responses": [
+				{
+					"status": 500,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"error\":[\"x\"]}"
+					]
+				}
+			],
+			"abortOn": null,
+			"result": {
+				"role": "assistant",
+				"content": [],
+				"api": "pi-messages",
+				"provider": "radius",
+				"model": "test-model",
+				"usage": {
+					"input": 0,
+					"output": 0,
+					"cacheRead": 0,
+					"cacheWrite": 0,
+					"totalTokens": 0,
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"total": 0
+					}
+				},
+				"stopReason": "error",
+				"errorMessage": "500 Internal Server Error: {\"error\":[\"x\"]}",
+				"timestamp": 1767225600000,
+				"diagnostics": [
+					{
+						"type": "pi_messages_response_failure",
+						"timestamp": 1767225600000,
+						"error": {
+							"name": "PiMessagesResponseError",
+							"message": "500 Internal Server Error: {\"error\":[\"x\"]}"
+						},
+						"details": {
+							"version": 1,
+							"provider": "radius",
+							"model": "test-model",
+							"url": "https://gateway.example.com/v1/messages",
+							"status": 500,
+							"statusText": "Internal Server Error",
+							"body": "{\"error\":[\"x\"]}",
+							"timestampMs": 1767225600000
+						}
+					}
+				]
+			},
+			"thrown": null,
+			"events": [
+				{
+					"type": "error",
+					"reason": "error",
+					"error": {
+						"role": "assistant",
+						"content": [],
+						"api": "pi-messages",
+						"provider": "radius",
+						"model": "test-model",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "error",
+						"errorMessage": "500 Internal Server Error: {\"error\":[\"x\"]}",
+						"timestamp": 1767225600000,
+						"diagnostics": [
+							{
+								"type": "pi_messages_response_failure",
+								"timestamp": 1767225600000,
+								"error": {
+									"name": "PiMessagesResponseError",
+									"message": "500 Internal Server Error: {\"error\":[\"x\"]}"
+								},
+								"details": {
+									"version": 1,
+									"provider": "radius",
+									"model": "test-model",
+									"url": "https://gateway.example.com/v1/messages",
+									"status": 500,
+									"statusText": "Internal Server Error",
+									"body": "{\"error\":[\"x\"]}",
+									"timestampMs": 1767225600000
+								}
+							}
+						]
+					}
+				}
+			],
+			"requests": [
+				{
+					"url": "https://gateway.example.com/v1/messages",
+					"method": "POST",
+					"headers": {
+						"accept": "text/event-stream",
+						"authorization": "Bearer rk",
+						"content-type": "application/json"
+					},
+					"body": {
+						"model": "test-model",
+						"context": {
+							"messages": [
+								{
+									"role": "system",
+									"content": "sys",
+									"timestamp": 1,
+									"toolsAdded": [
+										{
+											"name": "read",
+											"description": "Read a file",
+											"parameters": {
+												"type": "object",
+												"properties": {
+													"path": {
+														"type": "string"
+													},
+													"limit": {
+														"type": "number"
+													}
+												},
+												"required": [
+													"path"
+												]
+											}
+										},
+										{
+											"name": "bash",
+											"description": "Run a command",
+											"parameters": {
+												"type": "object",
+												"properties": {
+													"command": {
+														"type": "string"
+													}
+												},
+												"required": [
+													"command"
+												]
+											},
+											"constrainedSampling": {
+												"type": "json_schema",
+												"strict": "prefer"
+											}
+										}
+									]
+								},
+								{
+									"role": "user",
+									"content": "hi",
+									"timestamp": 2
+								}
+							]
+						},
+						"options": {}
+					}
+				}
+			],
+			"unorderedBody": true
+		},
+		{
+			"name": "pi/network-error",
+			"fn": "stream",
+			"model": {
+				"id": "test-model",
+				"name": "Test Model",
+				"api": "pi-messages",
+				"provider": "radius",
+				"baseUrl": "https://gateway.example.com/v1//",
+				"reasoning": true,
+				"input": [
+					"text",
+					"image"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "system",
+						"content": "sys",
+						"timestamp": 1,
+						"toolsAdded": [
+							{
+								"name": "read",
+								"description": "Read a file",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"path": {
+											"type": "string"
+										},
+										"limit": {
+											"type": "number"
+										}
+									},
+									"required": [
+										"path"
+									]
+								}
+							},
+							{
+								"name": "bash",
+								"description": "Run a command",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"command": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"command"
+									]
+								},
+								"constrainedSampling": {
+									"type": "json_schema",
+									"strict": "prefer"
+								}
+							}
+						]
+					},
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"apiKey": "rk"
+			},
+			"responses": [
+				{
+					"networkError": true
+				}
+			],
+			"abortOn": null,
+			"result": {
+				"role": "assistant",
+				"content": [],
+				"api": "pi-messages",
+				"provider": "radius",
+				"model": "test-model",
+				"usage": {
+					"input": 0,
+					"output": 0,
+					"cacheRead": 0,
+					"cacheWrite": 0,
+					"totalTokens": 0,
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"total": 0
+					}
+				},
+				"stopReason": "error",
+				"errorMessage": "fetch failed",
+				"timestamp": 1767225600000
+			},
+			"thrown": null,
+			"events": [
+				{
+					"type": "error",
+					"reason": "error",
+					"error": {
+						"role": "assistant",
+						"content": [],
+						"api": "pi-messages",
+						"provider": "radius",
+						"model": "test-model",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "error",
+						"errorMessage": "fetch failed",
+						"timestamp": 1767225600000
+					}
+				}
+			],
+			"requests": [
+				{
+					"url": "https://gateway.example.com/v1/messages",
+					"method": "POST",
+					"headers": {
+						"accept": "text/event-stream",
+						"authorization": "Bearer rk",
+						"content-type": "application/json"
+					},
+					"body": {
+						"model": "test-model",
+						"context": {
+							"messages": [
+								{
+									"role": "system",
+									"content": "sys",
+									"timestamp": 1,
+									"toolsAdded": [
+										{
+											"name": "read",
+											"description": "Read a file",
+											"parameters": {
+												"type": "object",
+												"properties": {
+													"path": {
+														"type": "string"
+													},
+													"limit": {
+														"type": "number"
+													}
+												},
+												"required": [
+													"path"
+												]
+											}
+										},
+										{
+											"name": "bash",
+											"description": "Run a command",
+											"parameters": {
+												"type": "object",
+												"properties": {
+													"command": {
+														"type": "string"
+													}
+												},
+												"required": [
+													"command"
+												]
+											},
+											"constrainedSampling": {
+												"type": "json_schema",
+												"strict": "prefer"
+											}
+										}
+									]
+								},
+								{
+									"role": "user",
+									"content": "hi",
+									"timestamp": 2
+								}
+							]
+						},
+						"options": {}
+					}
+				}
+			],
+			"unorderedBody": true
+		},
+		{
+			"name": "pi/abort",
+			"fn": "stream",
+			"model": {
+				"id": "test-model",
+				"name": "Test Model",
+				"api": "pi-messages",
+				"provider": "radius",
+				"baseUrl": "https://gateway.example.com/v1//",
+				"reasoning": true,
+				"input": [
+					"text",
+					"image"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "system",
+						"content": "sys",
+						"timestamp": 1,
+						"toolsAdded": [
+							{
+								"name": "read",
+								"description": "Read a file",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"path": {
+											"type": "string"
+										},
+										"limit": {
+											"type": "number"
+										}
+									},
+									"required": [
+										"path"
+									]
+								}
+							},
+							{
+								"name": "bash",
+								"description": "Run a command",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"command": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"command"
+									]
+								},
+								"constrainedSampling": {
+									"type": "json_schema",
+									"strict": "prefer"
+								}
+							}
+						]
+					},
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"apiKey": "rk"
+			},
+			"responses": [
+				{
+					"chunks": [
+						"data: {\"type\":\"start\"}\n\n",
+						"data: {\"type\":\"text_start\",\"contentIndex\":0}\n\n",
+						"data: {\"type\":\"text_delta\",\"contentIndex\":0,\"delta\":\"a\"}\n\n",
+						"data: {\"type\":\"text_delta\",\"contentIndex\":0,\"delta\":\"b\"}\n\n",
+						"data: {\"type\":\"done\",\"reason\":\"stop\",\"usage\":{\"input\":10,\"output\":5,\"cacheRead\":2,\"cacheWrite\":1,\"totalTokens\":18,\"cost\":{\"input\":0.1,\"output\":0.2,\"cacheRead\":0.01,\"cacheWrite\":0.02,\"total\":0.33}}}\n\n"
+					]
+				}
+			],
+			"abortOn": {
+				"type": "text_delta",
+				"nth": 1
+			},
+			"result": {
+				"role": "assistant",
+				"content": [],
+				"api": "pi-messages",
+				"provider": "radius",
+				"model": "test-model",
+				"usage": {
+					"input": 0,
+					"output": 0,
+					"cacheRead": 0,
+					"cacheWrite": 0,
+					"totalTokens": 0,
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"total": 0
+					}
+				},
+				"stopReason": "aborted",
+				"errorMessage": "This operation was aborted",
+				"timestamp": 1767225600000
+			},
+			"thrown": null,
+			"events": [
+				{
+					"type": "start",
+					"partial": {
+						"role": "assistant",
+						"content": [],
+						"api": "pi-messages",
+						"provider": "radius",
+						"model": "test-model",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "text_start",
+					"contentIndex": 0,
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": ""
+							}
+						],
+						"api": "pi-messages",
+						"provider": "radius",
+						"model": "test-model",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "text_delta",
+					"contentIndex": 0,
+					"delta": "a",
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "a"
+							}
+						],
+						"api": "pi-messages",
+						"provider": "radius",
+						"model": "test-model",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "error",
+					"reason": "aborted",
+					"error": {
+						"role": "assistant",
+						"content": [],
+						"api": "pi-messages",
+						"provider": "radius",
+						"model": "test-model",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "aborted",
+						"errorMessage": "This operation was aborted",
+						"timestamp": 1767225600000
+					}
+				}
+			],
+			"requests": [
+				{
+					"url": "https://gateway.example.com/v1/messages",
+					"method": "POST",
+					"headers": {
+						"accept": "text/event-stream",
+						"authorization": "Bearer rk",
+						"content-type": "application/json"
+					},
+					"body": {
+						"model": "test-model",
+						"context": {
+							"messages": [
+								{
+									"role": "system",
+									"content": "sys",
+									"timestamp": 1,
+									"toolsAdded": [
+										{
+											"name": "read",
+											"description": "Read a file",
+											"parameters": {
+												"type": "object",
+												"properties": {
+													"path": {
+														"type": "string"
+													},
+													"limit": {
+														"type": "number"
+													}
+												},
+												"required": [
+													"path"
+												]
+											}
+										},
+										{
+											"name": "bash",
+											"description": "Run a command",
+											"parameters": {
+												"type": "object",
+												"properties": {
+													"command": {
+														"type": "string"
+													}
+												},
+												"required": [
+													"command"
+												]
+											},
+											"constrainedSampling": {
+												"type": "json_schema",
+												"strict": "prefer"
+											}
+										}
+									]
+								},
+								{
+									"role": "user",
+									"content": "hi",
+									"timestamp": 2
+								}
+							]
+						},
+						"options": {}
+					}
+				}
+			],
+			"unorderedBody": true
+		},
+		{
+			"name": "pi/simple",
+			"fn": "streamSimple",
+			"model": {
+				"id": "test-model",
+				"name": "Test Model",
+				"api": "pi-messages",
+				"provider": "radius",
+				"baseUrl": "https://gateway.example.com/v1//",
+				"reasoning": true,
+				"input": [
+					"text",
+					"image"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "system",
+						"content": "sys",
+						"timestamp": 1,
+						"toolsAdded": [
+							{
+								"name": "read",
+								"description": "Read a file",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"path": {
+											"type": "string"
+										},
+										"limit": {
+											"type": "number"
+										}
+									},
+									"required": [
+										"path"
+									]
+								}
+							},
+							{
+								"name": "bash",
+								"description": "Run a command",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"command": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"command"
+									]
+								},
+								"constrainedSampling": {
+									"type": "json_schema",
+									"strict": "prefer"
+								}
+							}
+						]
+					},
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"apiKey": "rk",
+				"reasoning": "low",
+				"toolChoice": "auto",
+				"maxTokens": 999999
+			},
+			"responses": [
+				{
+					"chunks": [
+						"data: {\"type\":\"done\",\"reason\":\"length\",\"usage\":{\"input\":10,\"output\":5,\"cacheRead\":2,\"cacheWrite\":1,\"totalTokens\":18,\"cost\":{\"input\":0.1,\"output\":0.2,\"cacheRead\":0.01,\"cacheWrite\":0.02,\"total\":0.33}}}\n\n"
+					]
+				}
+			],
+			"abortOn": null,
+			"result": {
+				"role": "assistant",
+				"content": [],
+				"api": "pi-messages",
+				"provider": "radius",
+				"model": "test-model",
+				"usage": {
+					"input": 10,
+					"output": 5,
+					"cacheRead": 2,
+					"cacheWrite": 1,
+					"totalTokens": 18,
+					"cost": {
+						"input": 0.1,
+						"output": 0.2,
+						"cacheRead": 0.01,
+						"cacheWrite": 0.02,
+						"total": 0.33
+					}
+				},
+				"stopReason": "length",
+				"timestamp": 1767225600000
+			},
+			"thrown": null,
+			"events": [
+				{
+					"type": "done",
+					"reason": "length",
+					"message": {
+						"role": "assistant",
+						"content": [],
+						"api": "pi-messages",
+						"provider": "radius",
+						"model": "test-model",
+						"usage": {
+							"input": 10,
+							"output": 5,
+							"cacheRead": 2,
+							"cacheWrite": 1,
+							"totalTokens": 18,
+							"cost": {
+								"input": 0.1,
+								"output": 0.2,
+								"cacheRead": 0.01,
+								"cacheWrite": 0.02,
+								"total": 0.33
+							}
+						},
+						"stopReason": "length",
+						"timestamp": 1767225600000
+					}
+				}
+			],
+			"requests": [
+				{
+					"url": "https://gateway.example.com/v1/messages",
+					"method": "POST",
+					"headers": {
+						"accept": "text/event-stream",
+						"authorization": "Bearer rk",
+						"content-type": "application/json"
+					},
+					"body": {
+						"model": "test-model",
+						"context": {
+							"messages": [
+								{
+									"role": "system",
+									"content": "sys",
+									"timestamp": 1,
+									"toolsAdded": [
+										{
+											"name": "read",
+											"description": "Read a file",
+											"parameters": {
+												"type": "object",
+												"properties": {
+													"path": {
+														"type": "string"
+													},
+													"limit": {
+														"type": "number"
+													}
+												},
+												"required": [
+													"path"
+												]
+											}
+										},
+										{
+											"name": "bash",
+											"description": "Run a command",
+											"parameters": {
+												"type": "object",
+												"properties": {
+													"command": {
+														"type": "string"
+													}
+												},
+												"required": [
+													"command"
+												]
+											},
+											"constrainedSampling": {
+												"type": "json_schema",
+												"strict": "prefer"
+											}
+										}
+									]
+								},
+								{
+									"role": "user",
+									"content": "hi",
+									"timestamp": 2
+								}
+							]
+						},
+						"options": {
+							"maxTokens": 999999,
+							"reasoning": "low",
+							"toolChoice": "auto"
+						}
+					}
+				}
+			],
+			"unorderedBody": true
+		}
+	]
+}

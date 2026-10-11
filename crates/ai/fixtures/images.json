@@ -1,0 +1,1810 @@
+[
+	{
+		"name": "text plus images with usage",
+		"via": "api",
+		"env": null,
+		"model": {
+			"id": "google/gemini-3.1-flash-image-preview",
+			"name": "Gemini 3.1 Flash Image Preview",
+			"api": "openrouter-images",
+			"provider": "openrouter",
+			"baseUrl": "https://openrouter.ai/api/v1/",
+			"input": [
+				"text",
+				"image"
+			],
+			"output": [
+				"text",
+				"image"
+			],
+			"cost": {
+				"input": 0.015,
+				"output": 0.03,
+				"cacheRead": 0.5,
+				"cacheWrite": 2
+			},
+			"headers": {
+				"HTTP-Referer": "https://example.com",
+				"X-Title": "model"
+			}
+		},
+		"context": {
+			"input": [
+				{
+					"type": "text",
+					"text": "Generate a dog"
+				}
+			]
+		},
+		"options": {
+			"apiKey": "test"
+		},
+		"abort": false,
+		"payloadPatch": null,
+		"responses": [
+			{
+				"body": {
+					"id": "img-1",
+					"choices": [
+						{
+							"message": {
+								"content": "Here is your image.",
+								"images": [
+									{
+										"image_url": "data:image/png;base64,ZmFrZS1wbmc="
+									}
+								]
+							}
+						}
+					],
+					"usage": {
+						"prompt_tokens": 12,
+						"completion_tokens": 34,
+						"prompt_tokens_details": {
+							"cached_tokens": 0
+						}
+					}
+				}
+			}
+		],
+		"requests": [
+			{
+				"url": "https://openrouter.ai/api/v1/chat/completions",
+				"method": "POST",
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer test",
+					"content-type": "application/json",
+					"http-referer": "https://example.com",
+					"user-agent": "OpenAI/JS 6.40.0",
+					"x-title": "model"
+				},
+				"body": {
+					"model": "google/gemini-3.1-flash-image-preview",
+					"messages": [
+						{
+							"role": "user",
+							"content": [
+								{
+									"type": "text",
+									"text": "Generate a dog"
+								}
+							]
+						}
+					],
+					"stream": false,
+					"modalities": [
+						"image",
+						"text"
+					]
+				}
+			}
+		],
+		"result": {
+			"api": "openrouter-images",
+			"provider": "openrouter",
+			"model": "google/gemini-3.1-flash-image-preview",
+			"output": [
+				{
+					"type": "text",
+					"text": "Here is your image."
+				},
+				{
+					"type": "image",
+					"mimeType": "image/png",
+					"data": "ZmFrZS1wbmc="
+				}
+			],
+			"stopReason": "stop",
+			"timestamp": 1767225600000,
+			"responseId": "img-1",
+			"usage": {
+				"input": 12,
+				"output": 34,
+				"cacheRead": 0,
+				"cacheWrite": 0,
+				"totalTokens": 46,
+				"cost": {
+					"input": 1.7999999999999997e-7,
+					"output": 0.00000102,
+					"cacheRead": 0,
+					"cacheWrite": 0,
+					"total": 0.0000012
+				}
+			}
+		},
+		"thrown": null
+	},
+	{
+		"name": "image only model with image input and mixed image urls",
+		"via": "api",
+		"env": null,
+		"model": {
+			"id": "black-forest-labs/flux.2-pro",
+			"name": "Black Forest Labs: FLUX.2 Pro",
+			"api": "openrouter-images",
+			"provider": "openrouter",
+			"baseUrl": "https://openrouter.ai/api/v1",
+			"input": [
+				"text",
+				"image"
+			],
+			"output": [
+				"image"
+			],
+			"cost": {
+				"input": 0,
+				"output": 0,
+				"cacheRead": 0,
+				"cacheWrite": 0
+			}
+		},
+		"context": {
+			"input": [
+				{
+					"type": "text",
+					"text": "Make it blue"
+				},
+				{
+					"type": "image",
+					"data": "aGk=",
+					"mimeType": "image/jpeg"
+				}
+			]
+		},
+		"options": {
+			"apiKey": "k"
+		},
+		"abort": false,
+		"payloadPatch": null,
+		"responses": [
+			{
+				"body": {
+					"id": "img-1",
+					"choices": [
+						{
+							"message": {
+								"content": "",
+								"images": [
+									{
+										"image_url": {
+											"url": "data:image/webp;base64,AAAA"
+										}
+									},
+									{
+										"image_url": "https://example.com/x.png"
+									},
+									{
+										"image_url": "data:image/png,notbase64"
+									},
+									{
+										"image_url": {}
+									},
+									{},
+									{
+										"image_url": "data:image/gif;base64,R0lG"
+									},
+									{
+										"image_url": "data:image/png;charset=x;base64,QUJD"
+									},
+									{
+										"image_url": "data:image/png;base64,"
+									},
+									{
+										"image_url": "data:;base64,QUJD"
+									},
+									{
+										"image_url": "data:image/png;base64,QU\nJD"
+									},
+									{
+										"image_url": "data:image/x;base64,a;base64,b"
+									}
+								]
+							}
+						}
+					]
+				}
+			}
+		],
+		"requests": [
+			{
+				"url": "https://openrouter.ai/api/v1/chat/completions",
+				"method": "POST",
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer k",
+					"content-type": "application/json",
+					"user-agent": "OpenAI/JS 6.40.0"
+				},
+				"body": {
+					"model": "black-forest-labs/flux.2-pro",
+					"messages": [
+						{
+							"role": "user",
+							"content": [
+								{
+									"type": "text",
+									"text": "Make it blue"
+								},
+								{
+									"type": "image_url",
+									"image_url": {
+										"url": "data:image/jpeg;base64,aGk="
+									}
+								}
+							]
+						}
+					],
+					"stream": false,
+					"modalities": [
+						"image"
+					]
+				}
+			}
+		],
+		"result": {
+			"api": "openrouter-images",
+			"provider": "openrouter",
+			"model": "black-forest-labs/flux.2-pro",
+			"output": [
+				{
+					"type": "image",
+					"mimeType": "image/webp",
+					"data": "AAAA"
+				},
+				{
+					"type": "image",
+					"mimeType": "image/gif",
+					"data": "R0lG"
+				},
+				{
+					"type": "image",
+					"mimeType": "image/x",
+					"data": "a;base64,b"
+				}
+			],
+			"stopReason": "stop",
+			"timestamp": 1767225600000,
+			"responseId": "img-1"
+		},
+		"thrown": null
+	},
+	{
+		"name": "cache read and write usage",
+		"via": "api",
+		"env": null,
+		"model": {
+			"id": "google/gemini-3.1-flash-image-preview",
+			"name": "Gemini 3.1 Flash Image Preview",
+			"api": "openrouter-images",
+			"provider": "openrouter",
+			"baseUrl": "https://openrouter.ai/api/v1/",
+			"input": [
+				"text",
+				"image"
+			],
+			"output": [
+				"text",
+				"image"
+			],
+			"cost": {
+				"input": 0.015,
+				"output": 0.03,
+				"cacheRead": 0.5,
+				"cacheWrite": 2
+			},
+			"headers": {
+				"HTTP-Referer": "https://example.com",
+				"X-Title": "model"
+			}
+		},
+		"context": {
+			"input": [
+				{
+					"type": "text",
+					"text": "Generate a dog"
+				}
+			]
+		},
+		"options": {
+			"apiKey": "k"
+		},
+		"abort": false,
+		"payloadPatch": null,
+		"responses": [
+			{
+				"body": {
+					"id": "img-1",
+					"choices": [
+						{
+							"message": {
+								"content": null
+							}
+						}
+					],
+					"usage": {
+						"prompt_tokens": 1000,
+						"completion_tokens": 10,
+						"prompt_tokens_details": {
+							"cached_tokens": 300,
+							"cache_write_tokens": 100
+						}
+					}
+				}
+			}
+		],
+		"requests": [
+			{
+				"url": "https://openrouter.ai/api/v1/chat/completions",
+				"method": "POST",
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer k",
+					"content-type": "application/json",
+					"http-referer": "https://example.com",
+					"user-agent": "OpenAI/JS 6.40.0",
+					"x-title": "model"
+				},
+				"body": {
+					"model": "google/gemini-3.1-flash-image-preview",
+					"messages": [
+						{
+							"role": "user",
+							"content": [
+								{
+									"type": "text",
+									"text": "Generate a dog"
+								}
+							]
+						}
+					],
+					"stream": false,
+					"modalities": [
+						"image",
+						"text"
+					]
+				}
+			}
+		],
+		"result": {
+			"api": "openrouter-images",
+			"provider": "openrouter",
+			"model": "google/gemini-3.1-flash-image-preview",
+			"output": [],
+			"stopReason": "stop",
+			"timestamp": 1767225600000,
+			"responseId": "img-1",
+			"usage": {
+				"input": 700,
+				"output": 10,
+				"cacheRead": 200,
+				"cacheWrite": 100,
+				"totalTokens": 1010,
+				"cost": {
+					"input": 0.0000105,
+					"output": 3e-7,
+					"cacheRead": 0.00009999999999999999,
+					"cacheWrite": 0.00019999999999999998,
+					"total": 0.00031079999999999997
+				}
+			}
+		},
+		"thrown": null
+	},
+	{
+		"name": "cache write exceeding reported cache",
+		"via": "api",
+		"env": null,
+		"model": {
+			"id": "google/gemini-3.1-flash-image-preview",
+			"name": "Gemini 3.1 Flash Image Preview",
+			"api": "openrouter-images",
+			"provider": "openrouter",
+			"baseUrl": "https://openrouter.ai/api/v1/",
+			"input": [
+				"text",
+				"image"
+			],
+			"output": [
+				"text",
+				"image"
+			],
+			"cost": {
+				"input": 0.015,
+				"output": 0.03,
+				"cacheRead": 0.5,
+				"cacheWrite": 2
+			},
+			"headers": {
+				"HTTP-Referer": "https://example.com",
+				"X-Title": "model"
+			}
+		},
+		"context": {
+			"input": [
+				{
+					"type": "text",
+					"text": "Generate a dog"
+				}
+			]
+		},
+		"options": {
+			"apiKey": "k"
+		},
+		"abort": false,
+		"payloadPatch": null,
+		"responses": [
+			{
+				"body": {
+					"id": "img-1",
+					"choices": [
+						{
+							"message": {
+								"content": "x"
+							}
+						}
+					],
+					"usage": {
+						"prompt_tokens": 50,
+						"prompt_tokens_details": {
+							"cached_tokens": 10,
+							"cache_write_tokens": 100
+						}
+					}
+				}
+			}
+		],
+		"requests": [
+			{
+				"url": "https://openrouter.ai/api/v1/chat/completions",
+				"method": "POST",
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer k",
+					"content-type": "application/json",
+					"http-referer": "https://example.com",
+					"user-agent": "OpenAI/JS 6.40.0",
+					"x-title": "model"
+				},
+				"body": {
+					"model": "google/gemini-3.1-flash-image-preview",
+					"messages": [
+						{
+							"role": "user",
+							"content": [
+								{
+									"type": "text",
+									"text": "Generate a dog"
+								}
+							]
+						}
+					],
+					"stream": false,
+					"modalities": [
+						"image",
+						"text"
+					]
+				}
+			}
+		],
+		"result": {
+			"api": "openrouter-images",
+			"provider": "openrouter",
+			"model": "google/gemini-3.1-flash-image-preview",
+			"output": [
+				{
+					"type": "text",
+					"text": "x"
+				}
+			],
+			"stopReason": "stop",
+			"timestamp": 1767225600000,
+			"responseId": "img-1",
+			"usage": {
+				"input": 0,
+				"output": 0,
+				"cacheRead": 0,
+				"cacheWrite": 100,
+				"totalTokens": 100,
+				"cost": {
+					"input": 0,
+					"output": 0,
+					"cacheRead": 0,
+					"cacheWrite": 0.00019999999999999998,
+					"total": 0.00019999999999999998
+				}
+			}
+		},
+		"thrown": null
+	},
+	{
+		"name": "no choices",
+		"via": "api",
+		"env": null,
+		"model": {
+			"id": "black-forest-labs/flux.2-pro",
+			"name": "Black Forest Labs: FLUX.2 Pro",
+			"api": "openrouter-images",
+			"provider": "openrouter",
+			"baseUrl": "https://openrouter.ai/api/v1",
+			"input": [
+				"text",
+				"image"
+			],
+			"output": [
+				"image"
+			],
+			"cost": {
+				"input": 0,
+				"output": 0,
+				"cacheRead": 0,
+				"cacheWrite": 0
+			}
+		},
+		"context": {
+			"input": [
+				{
+					"type": "text",
+					"text": "Generate a dog"
+				}
+			]
+		},
+		"options": {
+			"apiKey": "k"
+		},
+		"abort": false,
+		"payloadPatch": null,
+		"responses": [
+			{
+				"body": {
+					"id": "e",
+					"choices": []
+				}
+			}
+		],
+		"requests": [
+			{
+				"url": "https://openrouter.ai/api/v1/chat/completions",
+				"method": "POST",
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer k",
+					"content-type": "application/json",
+					"user-agent": "OpenAI/JS 6.40.0"
+				},
+				"body": {
+					"model": "black-forest-labs/flux.2-pro",
+					"messages": [
+						{
+							"role": "user",
+							"content": [
+								{
+									"type": "text",
+									"text": "Generate a dog"
+								}
+							]
+						}
+					],
+					"stream": false,
+					"modalities": [
+						"image"
+					]
+				}
+			}
+		],
+		"result": {
+			"api": "openrouter-images",
+			"provider": "openrouter",
+			"model": "black-forest-labs/flux.2-pro",
+			"output": [],
+			"stopReason": "stop",
+			"timestamp": 1767225600000,
+			"responseId": "e"
+		},
+		"thrown": null
+	},
+	{
+		"name": "missing api key",
+		"via": "api",
+		"env": null,
+		"model": {
+			"id": "black-forest-labs/flux.2-pro",
+			"name": "Black Forest Labs: FLUX.2 Pro",
+			"api": "openrouter-images",
+			"provider": "openrouter",
+			"baseUrl": "https://openrouter.ai/api/v1",
+			"input": [
+				"text",
+				"image"
+			],
+			"output": [
+				"image"
+			],
+			"cost": {
+				"input": 0,
+				"output": 0,
+				"cacheRead": 0,
+				"cacheWrite": 0
+			}
+		},
+		"context": {
+			"input": [
+				{
+					"type": "text",
+					"text": "Generate a dog"
+				}
+			]
+		},
+		"options": {},
+		"abort": false,
+		"payloadPatch": null,
+		"responses": [],
+		"requests": [],
+		"result": {
+			"api": "openrouter-images",
+			"provider": "openrouter",
+			"model": "black-forest-labs/flux.2-pro",
+			"output": [],
+			"stopReason": "error",
+			"timestamp": 1767225600000,
+			"errorMessage": "No API key for provider: openrouter"
+		},
+		"thrown": null
+	},
+	{
+		"name": "empty api key",
+		"via": "api",
+		"env": null,
+		"model": {
+			"id": "black-forest-labs/flux.2-pro",
+			"name": "Black Forest Labs: FLUX.2 Pro",
+			"api": "openrouter-images",
+			"provider": "openrouter",
+			"baseUrl": "https://openrouter.ai/api/v1",
+			"input": [
+				"text",
+				"image"
+			],
+			"output": [
+				"image"
+			],
+			"cost": {
+				"input": 0,
+				"output": 0,
+				"cacheRead": 0,
+				"cacheWrite": 0
+			}
+		},
+		"context": {
+			"input": [
+				{
+					"type": "text",
+					"text": "Generate a dog"
+				}
+			]
+		},
+		"options": {
+			"apiKey": ""
+		},
+		"abort": false,
+		"payloadPatch": null,
+		"responses": [],
+		"requests": [],
+		"result": {
+			"api": "openrouter-images",
+			"provider": "openrouter",
+			"model": "black-forest-labs/flux.2-pro",
+			"output": [],
+			"stopReason": "error",
+			"timestamp": 1767225600000,
+			"errorMessage": "No API key for provider: openrouter"
+		},
+		"thrown": null
+	},
+	{
+		"name": "http error with error body",
+		"via": "api",
+		"env": null,
+		"model": {
+			"id": "black-forest-labs/flux.2-pro",
+			"name": "Black Forest Labs: FLUX.2 Pro",
+			"api": "openrouter-images",
+			"provider": "openrouter",
+			"baseUrl": "https://openrouter.ai/api/v1",
+			"input": [
+				"text",
+				"image"
+			],
+			"output": [
+				"image"
+			],
+			"cost": {
+				"input": 0,
+				"output": 0,
+				"cacheRead": 0,
+				"cacheWrite": 0
+			}
+		},
+		"context": {
+			"input": [
+				{
+					"type": "text",
+					"text": "Generate a dog"
+				}
+			]
+		},
+		"options": {
+			"apiKey": "k"
+		},
+		"abort": false,
+		"payloadPatch": null,
+		"responses": [
+			{
+				"status": 400,
+				"body": {
+					"error": {
+						"message": "bad prompt",
+						"code": 400
+					}
+				}
+			}
+		],
+		"requests": [
+			{
+				"url": "https://openrouter.ai/api/v1/chat/completions",
+				"method": "POST",
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer k",
+					"content-type": "application/json",
+					"user-agent": "OpenAI/JS 6.40.0"
+				},
+				"body": {
+					"model": "black-forest-labs/flux.2-pro",
+					"messages": [
+						{
+							"role": "user",
+							"content": [
+								{
+									"type": "text",
+									"text": "Generate a dog"
+								}
+							]
+						}
+					],
+					"stream": false,
+					"modalities": [
+						"image"
+					]
+				}
+			}
+		],
+		"result": {
+			"api": "openrouter-images",
+			"provider": "openrouter",
+			"model": "black-forest-labs/flux.2-pro",
+			"output": [],
+			"stopReason": "error",
+			"timestamp": 1767225600000,
+			"errorMessage": "400: {\"message\":\"bad prompt\",\"code\":400}"
+		},
+		"thrown": null
+	},
+	{
+		"name": "http error with non json body",
+		"via": "api",
+		"env": null,
+		"model": {
+			"id": "black-forest-labs/flux.2-pro",
+			"name": "Black Forest Labs: FLUX.2 Pro",
+			"api": "openrouter-images",
+			"provider": "openrouter",
+			"baseUrl": "https://openrouter.ai/api/v1",
+			"input": [
+				"text",
+				"image"
+			],
+			"output": [
+				"image"
+			],
+			"cost": {
+				"input": 0,
+				"output": 0,
+				"cacheRead": 0,
+				"cacheWrite": 0
+			}
+		},
+		"context": {
+			"input": [
+				{
+					"type": "text",
+					"text": "Generate a dog"
+				}
+			]
+		},
+		"options": {
+			"apiKey": "k"
+		},
+		"abort": false,
+		"payloadPatch": null,
+		"responses": [
+			{
+				"status": 502,
+				"body": "upstream down"
+			}
+		],
+		"requests": [
+			{
+				"url": "https://openrouter.ai/api/v1/chat/completions",
+				"method": "POST",
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer k",
+					"content-type": "application/json",
+					"user-agent": "OpenAI/JS 6.40.0"
+				},
+				"body": {
+					"model": "black-forest-labs/flux.2-pro",
+					"messages": [
+						{
+							"role": "user",
+							"content": [
+								{
+									"type": "text",
+									"text": "Generate a dog"
+								}
+							]
+						}
+					],
+					"stream": false,
+					"modalities": [
+						"image"
+					]
+				}
+			}
+		],
+		"result": {
+			"api": "openrouter-images",
+			"provider": "openrouter",
+			"model": "black-forest-labs/flux.2-pro",
+			"output": [],
+			"stopReason": "error",
+			"timestamp": 1767225600000,
+			"errorMessage": "502 upstream down"
+		},
+		"thrown": null
+	},
+	{
+		"name": "http error body without message",
+		"via": "api",
+		"env": null,
+		"model": {
+			"id": "black-forest-labs/flux.2-pro",
+			"name": "Black Forest Labs: FLUX.2 Pro",
+			"api": "openrouter-images",
+			"provider": "openrouter",
+			"baseUrl": "https://openrouter.ai/api/v1",
+			"input": [
+				"text",
+				"image"
+			],
+			"output": [
+				"image"
+			],
+			"cost": {
+				"input": 0,
+				"output": 0,
+				"cacheRead": 0,
+				"cacheWrite": 0
+			}
+		},
+		"context": {
+			"input": [
+				{
+					"type": "text",
+					"text": "Generate a dog"
+				}
+			]
+		},
+		"options": {
+			"apiKey": "k"
+		},
+		"abort": false,
+		"payloadPatch": null,
+		"responses": [
+			{
+				"status": 403,
+				"body": {
+					"error": {
+						"code": "forbidden",
+						"metadata": {
+							"raw": "r"
+						}
+					}
+				}
+			}
+		],
+		"requests": [
+			{
+				"url": "https://openrouter.ai/api/v1/chat/completions",
+				"method": "POST",
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer k",
+					"content-type": "application/json",
+					"user-agent": "OpenAI/JS 6.40.0"
+				},
+				"body": {
+					"model": "black-forest-labs/flux.2-pro",
+					"messages": [
+						{
+							"role": "user",
+							"content": [
+								{
+									"type": "text",
+									"text": "Generate a dog"
+								}
+							]
+						}
+					],
+					"stream": false,
+					"modalities": [
+						"image"
+					]
+				}
+			}
+		],
+		"result": {
+			"api": "openrouter-images",
+			"provider": "openrouter",
+			"model": "black-forest-labs/flux.2-pro",
+			"output": [],
+			"stopReason": "error",
+			"timestamp": 1767225600000,
+			"errorMessage": "403 {\"code\":\"forbidden\",\"metadata\":{\"raw\":\"r\"}}"
+		},
+		"thrown": null
+	},
+	{
+		"name": "retry after 429",
+		"via": "api",
+		"env": null,
+		"model": {
+			"id": "black-forest-labs/flux.2-pro",
+			"name": "Black Forest Labs: FLUX.2 Pro",
+			"api": "openrouter-images",
+			"provider": "openrouter",
+			"baseUrl": "https://openrouter.ai/api/v1",
+			"input": [
+				"text",
+				"image"
+			],
+			"output": [
+				"image"
+			],
+			"cost": {
+				"input": 0,
+				"output": 0,
+				"cacheRead": 0,
+				"cacheWrite": 0
+			}
+		},
+		"context": {
+			"input": [
+				{
+					"type": "text",
+					"text": "Generate a dog"
+				}
+			]
+		},
+		"options": {
+			"apiKey": "k",
+			"maxRetries": 2
+		},
+		"abort": false,
+		"payloadPatch": null,
+		"responses": [
+			{
+				"status": 429,
+				"body": {
+					"error": {
+						"message": "slow down"
+					}
+				},
+				"headers": {
+					"retry-after-ms": "1"
+				}
+			},
+			{
+				"body": {
+					"id": "img-1",
+					"choices": [
+						{
+							"message": {
+								"content": "done"
+							}
+						}
+					]
+				}
+			}
+		],
+		"requests": [
+			{
+				"url": "https://openrouter.ai/api/v1/chat/completions",
+				"method": "POST",
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer k",
+					"content-type": "application/json",
+					"user-agent": "OpenAI/JS 6.40.0"
+				},
+				"body": {
+					"model": "black-forest-labs/flux.2-pro",
+					"messages": [
+						{
+							"role": "user",
+							"content": [
+								{
+									"type": "text",
+									"text": "Generate a dog"
+								}
+							]
+						}
+					],
+					"stream": false,
+					"modalities": [
+						"image"
+					]
+				}
+			},
+			{
+				"url": "https://openrouter.ai/api/v1/chat/completions",
+				"method": "POST",
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer k",
+					"content-type": "application/json",
+					"user-agent": "OpenAI/JS 6.40.0"
+				},
+				"body": {
+					"model": "black-forest-labs/flux.2-pro",
+					"messages": [
+						{
+							"role": "user",
+							"content": [
+								{
+									"type": "text",
+									"text": "Generate a dog"
+								}
+							]
+						}
+					],
+					"stream": false,
+					"modalities": [
+						"image"
+					]
+				}
+			}
+		],
+		"result": {
+			"api": "openrouter-images",
+			"provider": "openrouter",
+			"model": "black-forest-labs/flux.2-pro",
+			"output": [
+				{
+					"type": "text",
+					"text": "done"
+				}
+			],
+			"stopReason": "stop",
+			"timestamp": 1767225600000,
+			"responseId": "img-1"
+		},
+		"thrown": null
+	},
+	{
+		"name": "no retry without maxRetries",
+		"via": "api",
+		"env": null,
+		"model": {
+			"id": "black-forest-labs/flux.2-pro",
+			"name": "Black Forest Labs: FLUX.2 Pro",
+			"api": "openrouter-images",
+			"provider": "openrouter",
+			"baseUrl": "https://openrouter.ai/api/v1",
+			"input": [
+				"text",
+				"image"
+			],
+			"output": [
+				"image"
+			],
+			"cost": {
+				"input": 0,
+				"output": 0,
+				"cacheRead": 0,
+				"cacheWrite": 0
+			}
+		},
+		"context": {
+			"input": [
+				{
+					"type": "text",
+					"text": "Generate a dog"
+				}
+			]
+		},
+		"options": {
+			"apiKey": "k"
+		},
+		"abort": false,
+		"payloadPatch": null,
+		"responses": [
+			{
+				"status": 429,
+				"body": {
+					"error": {
+						"message": "slow down"
+					}
+				},
+				"headers": {
+					"retry-after-ms": "1"
+				}
+			}
+		],
+		"requests": [
+			{
+				"url": "https://openrouter.ai/api/v1/chat/completions",
+				"method": "POST",
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer k",
+					"content-type": "application/json",
+					"user-agent": "OpenAI/JS 6.40.0"
+				},
+				"body": {
+					"model": "black-forest-labs/flux.2-pro",
+					"messages": [
+						{
+							"role": "user",
+							"content": [
+								{
+									"type": "text",
+									"text": "Generate a dog"
+								}
+							]
+						}
+					],
+					"stream": false,
+					"modalities": [
+						"image"
+					]
+				}
+			}
+		],
+		"result": {
+			"api": "openrouter-images",
+			"provider": "openrouter",
+			"model": "black-forest-labs/flux.2-pro",
+			"output": [],
+			"stopReason": "error",
+			"timestamp": 1767225600000,
+			"errorMessage": "429: {\"message\":\"slow down\"}"
+		},
+		"thrown": null
+	},
+	{
+		"name": "option headers override model headers and null suppresses",
+		"via": "api",
+		"env": null,
+		"model": {
+			"id": "google/gemini-3.1-flash-image-preview",
+			"name": "Gemini 3.1 Flash Image Preview",
+			"api": "openrouter-images",
+			"provider": "openrouter",
+			"baseUrl": "https://openrouter.ai/api/v1/",
+			"input": [
+				"text",
+				"image"
+			],
+			"output": [
+				"text",
+				"image"
+			],
+			"cost": {
+				"input": 0.015,
+				"output": 0.03,
+				"cacheRead": 0.5,
+				"cacheWrite": 2
+			},
+			"headers": {
+				"HTTP-Referer": "https://example.com",
+				"X-Title": "model"
+			}
+		},
+		"context": {
+			"input": [
+				{
+					"type": "text",
+					"text": "Generate a dog"
+				}
+			]
+		},
+		"options": {
+			"apiKey": "k",
+			"headers": {
+				"X-Title": "opt",
+				"HTTP-Referer": null,
+				"X-Extra": "1"
+			}
+		},
+		"abort": false,
+		"payloadPatch": null,
+		"responses": [
+			{
+				"body": {
+					"id": "img-1",
+					"choices": [
+						{
+							"message": {
+								"content": "x"
+							}
+						}
+					]
+				}
+			}
+		],
+		"requests": [
+			{
+				"url": "https://openrouter.ai/api/v1/chat/completions",
+				"method": "POST",
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer k",
+					"content-type": "application/json",
+					"user-agent": "OpenAI/JS 6.40.0",
+					"x-extra": "1",
+					"x-title": "opt"
+				},
+				"body": {
+					"model": "google/gemini-3.1-flash-image-preview",
+					"messages": [
+						{
+							"role": "user",
+							"content": [
+								{
+									"type": "text",
+									"text": "Generate a dog"
+								}
+							]
+						}
+					],
+					"stream": false,
+					"modalities": [
+						"image",
+						"text"
+					]
+				}
+			}
+		],
+		"result": {
+			"api": "openrouter-images",
+			"provider": "openrouter",
+			"model": "google/gemini-3.1-flash-image-preview",
+			"output": [
+				{
+					"type": "text",
+					"text": "x"
+				}
+			],
+			"stopReason": "stop",
+			"timestamp": 1767225600000,
+			"responseId": "img-1"
+		},
+		"thrown": null
+	},
+	{
+		"name": "payload hook replaces params",
+		"via": "api",
+		"env": null,
+		"model": {
+			"id": "black-forest-labs/flux.2-pro",
+			"name": "Black Forest Labs: FLUX.2 Pro",
+			"api": "openrouter-images",
+			"provider": "openrouter",
+			"baseUrl": "https://openrouter.ai/api/v1",
+			"input": [
+				"text",
+				"image"
+			],
+			"output": [
+				"image"
+			],
+			"cost": {
+				"input": 0,
+				"output": 0,
+				"cacheRead": 0,
+				"cacheWrite": 0
+			}
+		},
+		"context": {
+			"input": [
+				{
+					"type": "text",
+					"text": "Generate a dog"
+				}
+			]
+		},
+		"options": {
+			"apiKey": "k"
+		},
+		"abort": false,
+		"payloadPatch": {
+			"seed": 7
+		},
+		"responses": [
+			{
+				"body": {
+					"id": "img-1",
+					"choices": [
+						{
+							"message": {
+								"content": "x"
+							}
+						}
+					]
+				}
+			}
+		],
+		"requests": [
+			{
+				"url": "https://openrouter.ai/api/v1/chat/completions",
+				"method": "POST",
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer k",
+					"content-type": "application/json",
+					"user-agent": "OpenAI/JS 6.40.0"
+				},
+				"body": {
+					"model": "black-forest-labs/flux.2-pro",
+					"messages": [
+						{
+							"role": "user",
+							"content": [
+								{
+									"type": "text",
+									"text": "Generate a dog"
+								}
+							]
+						}
+					],
+					"stream": false,
+					"modalities": [
+						"image"
+					],
+					"seed": 7
+				}
+			}
+		],
+		"result": {
+			"api": "openrouter-images",
+			"provider": "openrouter",
+			"model": "black-forest-labs/flux.2-pro",
+			"output": [
+				{
+					"type": "text",
+					"text": "x"
+				}
+			],
+			"stopReason": "stop",
+			"timestamp": 1767225600000,
+			"responseId": "img-1"
+		},
+		"thrown": null
+	},
+	{
+		"name": "aborted before send",
+		"via": "api",
+		"env": null,
+		"model": {
+			"id": "black-forest-labs/flux.2-pro",
+			"name": "Black Forest Labs: FLUX.2 Pro",
+			"api": "openrouter-images",
+			"provider": "openrouter",
+			"baseUrl": "https://openrouter.ai/api/v1",
+			"input": [
+				"text",
+				"image"
+			],
+			"output": [
+				"image"
+			],
+			"cost": {
+				"input": 0,
+				"output": 0,
+				"cacheRead": 0,
+				"cacheWrite": 0
+			}
+		},
+		"context": {
+			"input": [
+				{
+					"type": "text",
+					"text": "Generate a dog"
+				}
+			]
+		},
+		"options": {
+			"apiKey": "k"
+		},
+		"abort": true,
+		"payloadPatch": null,
+		"responses": [],
+		"requests": [],
+		"result": {
+			"api": "openrouter-images",
+			"provider": "openrouter",
+			"model": "black-forest-labs/flux.2-pro",
+			"output": [],
+			"stopReason": "aborted",
+			"timestamp": 1767225600000,
+			"errorMessage": "Request aborted"
+		},
+		"thrown": null
+	},
+	{
+		"name": "unregistered api",
+		"via": "api",
+		"env": null,
+		"model": {
+			"id": "black-forest-labs/flux.2-pro",
+			"name": "Black Forest Labs: FLUX.2 Pro",
+			"api": "nope-images",
+			"provider": "openrouter",
+			"baseUrl": "https://openrouter.ai/api/v1",
+			"input": [
+				"text",
+				"image"
+			],
+			"output": [
+				"image"
+			],
+			"cost": {
+				"input": 0,
+				"output": 0,
+				"cacheRead": 0,
+				"cacheWrite": 0
+			}
+		},
+		"context": {
+			"input": [
+				{
+					"type": "text",
+					"text": "Generate a dog"
+				}
+			]
+		},
+		"options": {
+			"apiKey": "k"
+		},
+		"abort": false,
+		"payloadPatch": null,
+		"responses": [],
+		"requests": [],
+		"result": null,
+		"thrown": "No API provider registered for api: nope-images"
+	},
+	{
+		"name": "collection env key",
+		"via": "collection",
+		"env": {
+			"OPENROUTER_API_KEY": "env-key"
+		},
+		"model": {
+			"id": "black-forest-labs/flux.2-pro",
+			"name": "Black Forest Labs: FLUX.2 Pro",
+			"api": "openrouter-images",
+			"provider": "openrouter",
+			"baseUrl": "https://openrouter.ai/api/v1",
+			"input": [
+				"text",
+				"image"
+			],
+			"output": [
+				"image"
+			],
+			"cost": {
+				"input": 0,
+				"output": 0,
+				"cacheRead": 0,
+				"cacheWrite": 0
+			}
+		},
+		"context": {
+			"input": [
+				{
+					"type": "text",
+					"text": "Generate a dog"
+				}
+			]
+		},
+		"options": {},
+		"abort": false,
+		"payloadPatch": null,
+		"responses": [
+			{
+				"body": {
+					"id": "img-1",
+					"choices": [
+						{
+							"message": {
+								"content": "x"
+							}
+						}
+					]
+				}
+			}
+		],
+		"requests": [
+			{
+				"url": "https://openrouter.ai/api/v1/chat/completions",
+				"method": "POST",
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer env-key",
+					"content-type": "application/json",
+					"user-agent": "OpenAI/JS 6.40.0"
+				},
+				"body": {
+					"model": "black-forest-labs/flux.2-pro",
+					"messages": [
+						{
+							"role": "user",
+							"content": [
+								{
+									"type": "text",
+									"text": "Generate a dog"
+								}
+							]
+						}
+					],
+					"stream": false,
+					"modalities": [
+						"image"
+					]
+				}
+			}
+		],
+		"result": {
+			"api": "openrouter-images",
+			"provider": "openrouter",
+			"model": "black-forest-labs/flux.2-pro",
+			"output": [
+				{
+					"type": "text",
+					"text": "x"
+				}
+			],
+			"stopReason": "stop",
+			"timestamp": 1767225600000,
+			"responseId": "img-1"
+		},
+		"thrown": null
+	},
+	{
+		"name": "collection explicit key wins",
+		"via": "collection",
+		"env": {
+			"OPENROUTER_API_KEY": "env-key"
+		},
+		"model": {
+			"id": "black-forest-labs/flux.2-pro",
+			"name": "Black Forest Labs: FLUX.2 Pro",
+			"api": "openrouter-images",
+			"provider": "openrouter",
+			"baseUrl": "https://openrouter.ai/api/v1",
+			"input": [
+				"text",
+				"image"
+			],
+			"output": [
+				"image"
+			],
+			"cost": {
+				"input": 0,
+				"output": 0,
+				"cacheRead": 0,
+				"cacheWrite": 0
+			}
+		},
+		"context": {
+			"input": [
+				{
+					"type": "text",
+					"text": "Generate a dog"
+				}
+			]
+		},
+		"options": {
+			"apiKey": "explicit"
+		},
+		"abort": false,
+		"payloadPatch": null,
+		"responses": [
+			{
+				"body": {
+					"id": "img-1",
+					"choices": [
+						{
+							"message": {
+								"content": "x"
+							}
+						}
+					]
+				}
+			}
+		],
+		"requests": [
+			{
+				"url": "https://openrouter.ai/api/v1/chat/completions",
+				"method": "POST",
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer explicit",
+					"content-type": "application/json",
+					"user-agent": "OpenAI/JS 6.40.0"
+				},
+				"body": {
+					"model": "black-forest-labs/flux.2-pro",
+					"messages": [
+						{
+							"role": "user",
+							"content": [
+								{
+									"type": "text",
+									"text": "Generate a dog"
+								}
+							]
+						}
+					],
+					"stream": false,
+					"modalities": [
+						"image"
+					]
+				}
+			}
+		],
+		"result": {
+			"api": "openrouter-images",
+			"provider": "openrouter",
+			"model": "black-forest-labs/flux.2-pro",
+			"output": [
+				{
+					"type": "text",
+					"text": "x"
+				}
+			],
+			"stopReason": "stop",
+			"timestamp": 1767225600000,
+			"responseId": "img-1"
+		},
+		"thrown": null
+	},
+	{
+		"name": "collection unconfigured",
+		"via": "collection",
+		"env": {},
+		"model": {
+			"id": "black-forest-labs/flux.2-pro",
+			"name": "Black Forest Labs: FLUX.2 Pro",
+			"api": "openrouter-images",
+			"provider": "openrouter",
+			"baseUrl": "https://openrouter.ai/api/v1",
+			"input": [
+				"text",
+				"image"
+			],
+			"output": [
+				"image"
+			],
+			"cost": {
+				"input": 0,
+				"output": 0,
+				"cacheRead": 0,
+				"cacheWrite": 0
+			}
+		},
+		"context": {
+			"input": [
+				{
+					"type": "text",
+					"text": "Generate a dog"
+				}
+			]
+		},
+		"options": {},
+		"abort": false,
+		"payloadPatch": null,
+		"responses": [],
+		"requests": [],
+		"result": {
+			"api": "openrouter-images",
+			"provider": "openrouter",
+			"model": "black-forest-labs/flux.2-pro",
+			"output": [],
+			"stopReason": "error",
+			"timestamp": 1767225600000,
+			"errorMessage": "No API key for provider: openrouter"
+		},
+		"thrown": null
+	},
+	{
+		"name": "collection unknown provider",
+		"via": "collection",
+		"env": {},
+		"model": {
+			"id": "black-forest-labs/flux.2-pro",
+			"name": "Black Forest Labs: FLUX.2 Pro",
+			"api": "openrouter-images",
+			"provider": "ghost",
+			"baseUrl": "https://openrouter.ai/api/v1",
+			"input": [
+				"text",
+				"image"
+			],
+			"output": [
+				"image"
+			],
+			"cost": {
+				"input": 0,
+				"output": 0,
+				"cacheRead": 0,
+				"cacheWrite": 0
+			}
+		},
+		"context": {
+			"input": [
+				{
+					"type": "text",
+					"text": "Generate a dog"
+				}
+			]
+		},
+		"options": {},
+		"abort": false,
+		"payloadPatch": null,
+		"responses": [],
+		"requests": [],
+		"result": {
+			"api": "openrouter-images",
+			"provider": "ghost",
+			"model": "black-forest-labs/flux.2-pro",
+			"output": [],
+			"stopReason": "error",
+			"errorMessage": "Unknown provider: ghost",
+			"timestamp": 1767225600000
+		},
+		"thrown": null
+	}
+]

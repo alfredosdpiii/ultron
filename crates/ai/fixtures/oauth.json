@@ -1,0 +1,4072 @@
+{
+	"generator": "crates/ai/fixtures/generate-rest.mjs",
+	"now": 1767225600000,
+	"units": {
+		"pkceChallengeMatchesVerifier": true,
+		"challenge": {
+			"verifier": "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk",
+			"challenge": "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM"
+		},
+		"pages": {
+			"success": "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n  <title>Authentication successful</title>\n  <style>\n    :root {\n      --text: #fafafa;\n      --text-dim: #a1a1aa;\n      --page-bg: #09090b;\n      --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\";\n      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace;\n    }\n    * { box-sizing: border-box; }\n    html { color-scheme: dark; }\n    body {\n      margin: 0;\n      min-height: 100vh;\n      display: flex;\n      align-items: center;\n      justify-content: center;\n      padding: 24px;\n      background: var(--page-bg);\n      color: var(--text);\n      font-family: var(--font-sans);\n      text-align: center;\n    }\n    main {\n      width: 100%;\n      max-width: 560px;\n      display: flex;\n      flex-direction: column;\n      align-items: center;\n      justify-content: center;\n    }\n    .logo {\n      width: 72px;\n      height: 72px;\n      display: block;\n      margin-bottom: 24px;\n    }\n    h1 {\n      margin: 0 0 10px;\n      font-size: 28px;\n      line-height: 1.15;\n      font-weight: 650;\n      color: var(--text);\n    }\n    p {\n      margin: 0;\n      line-height: 1.7;\n      color: var(--text-dim);\n      font-size: 15px;\n    }\n    .details {\n      margin-top: 16px;\n      font-family: var(--font-mono);\n      font-size: 13px;\n      color: var(--text-dim);\n      white-space: pre-wrap;\n      word-break: break-word;\n    }\n  </style>\n</head>\n<body>\n  <main>\n    <div class=\"logo\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 800 800\" aria-hidden=\"true\"><path fill=\"#fff\" fill-rule=\"evenodd\" d=\"M165.29 165.29 H517.36 V400 H400 V517.36 H282.65 V634.72 H165.29 Z M282.65 282.65 V400 H400 V282.65 Z\"/><path fill=\"#fff\" d=\"M517.36 400 H634.72 V634.72 H517.36 Z\"/></svg></div>\n    <h1>Authentication successful</h1>\n    <p>Signed in to &lt;Radius&gt; &amp; co.</p>\n    \n  </main>\n</body>\n</html>",
+			"error": "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n  <title>Authentication failed</title>\n  <style>\n    :root {\n      --text: #fafafa;\n      --text-dim: #a1a1aa;\n      --page-bg: #09090b;\n      --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\";\n      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace;\n    }\n    * { box-sizing: border-box; }\n    html { color-scheme: dark; }\n    body {\n      margin: 0;\n      min-height: 100vh;\n      display: flex;\n      align-items: center;\n      justify-content: center;\n      padding: 24px;\n      background: var(--page-bg);\n      color: var(--text);\n      font-family: var(--font-sans);\n      text-align: center;\n    }\n    main {\n      width: 100%;\n      max-width: 560px;\n      display: flex;\n      flex-direction: column;\n      align-items: center;\n      justify-content: center;\n    }\n    .logo {\n      width: 72px;\n      height: 72px;\n      display: block;\n      margin-bottom: 24px;\n    }\n    h1 {\n      margin: 0 0 10px;\n      font-size: 28px;\n      line-height: 1.15;\n      font-weight: 650;\n      color: var(--text);\n    }\n    p {\n      margin: 0;\n      line-height: 1.7;\n      color: var(--text-dim);\n      font-size: 15px;\n    }\n    .details {\n      margin-top: 16px;\n      font-family: var(--font-mono);\n      font-size: 13px;\n      color: var(--text-dim);\n      white-space: pre-wrap;\n      word-break: break-word;\n    }\n  </style>\n</head>\n<body>\n  <main>\n    <div class=\"logo\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 800 800\" aria-hidden=\"true\"><path fill=\"#fff\" fill-rule=\"evenodd\" d=\"M165.29 165.29 H517.36 V400 H400 V517.36 H282.65 V634.72 H165.29 Z M282.65 282.65 V400 H400 V282.65 Z\"/><path fill=\"#fff\" d=\"M517.36 400 H634.72 V634.72 H517.36 Z\"/></svg></div>\n    <h1>Authentication failed</h1>\n    <p>Bad &quot;state&quot;</p>\n    <div class=\"details\">it&#39;s &lt;bad&gt;</div>\n  </main>\n</body>\n</html>",
+			"errorNoDetails": "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n  <title>Authentication failed</title>\n  <style>\n    :root {\n      --text: #fafafa;\n      --text-dim: #a1a1aa;\n      --page-bg: #09090b;\n      --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\";\n      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace;\n    }\n    * { box-sizing: border-box; }\n    html { color-scheme: dark; }\n    body {\n      margin: 0;\n      min-height: 100vh;\n      display: flex;\n      align-items: center;\n      justify-content: center;\n      padding: 24px;\n      background: var(--page-bg);\n      color: var(--text);\n      font-family: var(--font-sans);\n      text-align: center;\n    }\n    main {\n      width: 100%;\n      max-width: 560px;\n      display: flex;\n      flex-direction: column;\n      align-items: center;\n      justify-content: center;\n    }\n    .logo {\n      width: 72px;\n      height: 72px;\n      display: block;\n      margin-bottom: 24px;\n    }\n    h1 {\n      margin: 0 0 10px;\n      font-size: 28px;\n      line-height: 1.15;\n      font-weight: 650;\n      color: var(--text);\n    }\n    p {\n      margin: 0;\n      line-height: 1.7;\n      color: var(--text-dim);\n      font-size: 15px;\n    }\n    .details {\n      margin-top: 16px;\n      font-family: var(--font-mono);\n      font-size: 13px;\n      color: var(--text-dim);\n      white-space: pre-wrap;\n      word-break: break-word;\n    }\n  </style>\n</head>\n<body>\n  <main>\n    <div class=\"logo\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 800 800\" aria-hidden=\"true\"><path fill=\"#fff\" fill-rule=\"evenodd\" d=\"M165.29 165.29 H517.36 V400 H400 V517.36 H282.65 V634.72 H165.29 Z M282.65 282.65 V400 H400 V282.65 Z\"/><path fill=\"#fff\" d=\"M517.36 400 H634.72 V634.72 H517.36 Z\"/></svg></div>\n    <h1>Authentication failed</h1>\n    <p>Nope</p>\n    \n  </main>\n</body>\n</html>"
+		},
+		"gateways": [
+			{
+				"input": "gateway.example.com/",
+				"output": "https://gateway.example.com"
+			},
+			{
+				"input": "HTTP://x.example.com//",
+				"output": "HTTP://x.example.com"
+			},
+			{
+				"input": "https://y.example.com",
+				"output": "https://y.example.com"
+			}
+		]
+	},
+	"scenarios": [
+		{
+			"name": "xai/login",
+			"flow": "xai",
+			"action": "login",
+			"credential": null,
+			"answers": [],
+			"responses": [
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"device_code\":\"dev-1\",\"user_code\":\"ABCD-EFGH\",\"verification_uri\":\"https://accounts.x.ai/device\",\"verification_uri_complete\":\"https://accounts.x.ai/device?code=ABCD\",\"interval\":1,\"expires_in\":600}"
+					]
+				},
+				{
+					"status": 400,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"error\":\"authorization_pending\"}"
+					]
+				},
+				{
+					"status": 400,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"error\":\"slow_down\",\"interval\":3}"
+					]
+				},
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"access_token\":\"xa\",\"refresh_token\":\"xr\",\"expires_in\":7200}"
+					]
+				}
+			],
+			"result": {
+				"type": "oauth",
+				"access": "xa",
+				"refresh": "xr",
+				"expires": 1767232505000
+			},
+			"thrown": null,
+			"requests": [
+				{
+					"url": "https://auth.x.ai/oauth2/device/code",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=<random>&scope=openid+profile+email+offline_access+grok-cli%3Aaccess+api%3Aaccess&referrer=pi"
+				},
+				{
+					"url": "https://auth.x.ai/oauth2/token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code&client_id=<random>&device_code=dev-1"
+				},
+				{
+					"url": "https://auth.x.ai/oauth2/token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code&client_id=<random>&device_code=dev-1"
+				},
+				{
+					"url": "https://auth.x.ai/oauth2/token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code&client_id=<random>&device_code=dev-1"
+				}
+			],
+			"prompts": [],
+			"events": [
+				{
+					"type": "device_code",
+					"userCode": "ABCD-EFGH",
+					"verificationUri": "https://accounts.x.ai/device?code=ABCD",
+					"intervalSeconds": 1,
+					"expiresInSeconds": 600
+				}
+			],
+			"toAuth": {
+				"apiKey": "xa"
+			}
+		},
+		{
+			"name": "xai/login-slow-down-no-interval",
+			"flow": "xai",
+			"action": "login",
+			"credential": null,
+			"answers": [],
+			"responses": [
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"device_code\":\"dev-1\",\"user_code\":\"ABCD-EFGH\",\"verification_uri\":\"https://accounts.x.ai/device\",\"verification_uri_complete\":\"\",\"interval\":0,\"expires_in\":600}"
+					]
+				},
+				{
+					"status": 400,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"error\":\"slow_down\"}"
+					]
+				},
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"access_token\":\"xa\",\"refresh_token\":\"xr\"}"
+					]
+				}
+			],
+			"result": {
+				"type": "oauth",
+				"access": "xa",
+				"refresh": "xr",
+				"expires": 1767228915000
+			},
+			"thrown": null,
+			"requests": [
+				{
+					"url": "https://auth.x.ai/oauth2/device/code",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=<random>&scope=openid+profile+email+offline_access+grok-cli%3Aaccess+api%3Aaccess&referrer=pi"
+				},
+				{
+					"url": "https://auth.x.ai/oauth2/token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code&client_id=<random>&device_code=dev-1"
+				},
+				{
+					"url": "https://auth.x.ai/oauth2/token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code&client_id=<random>&device_code=dev-1"
+				}
+			],
+			"prompts": [],
+			"events": [
+				{
+					"type": "device_code",
+					"userCode": "ABCD-EFGH",
+					"verificationUri": "https://accounts.x.ai/device",
+					"expiresInSeconds": 600
+				}
+			],
+			"toAuth": {
+				"apiKey": "xa"
+			}
+		},
+		{
+			"name": "xai/login-denied",
+			"flow": "xai",
+			"action": "login",
+			"credential": null,
+			"answers": [],
+			"responses": [
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"device_code\":\"dev-1\",\"user_code\":\"ABCD-EFGH\",\"verification_uri\":\"https://accounts.x.ai/device\",\"verification_uri_complete\":\"https://accounts.x.ai/device?code=ABCD\",\"interval\":1,\"expires_in\":600}"
+					]
+				},
+				{
+					"status": 403,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"error\":\"access_denied\"}"
+					]
+				}
+			],
+			"result": null,
+			"thrown": "xAI device authorization was denied",
+			"requests": [
+				{
+					"url": "https://auth.x.ai/oauth2/device/code",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=<random>&scope=openid+profile+email+offline_access+grok-cli%3Aaccess+api%3Aaccess&referrer=pi"
+				},
+				{
+					"url": "https://auth.x.ai/oauth2/token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code&client_id=<random>&device_code=dev-1"
+				}
+			],
+			"prompts": [],
+			"events": [
+				{
+					"type": "device_code",
+					"userCode": "ABCD-EFGH",
+					"verificationUri": "https://accounts.x.ai/device?code=ABCD",
+					"intervalSeconds": 1,
+					"expiresInSeconds": 600
+				}
+			],
+			"toAuth": null
+		},
+		{
+			"name": "xai/login-expired-code",
+			"flow": "xai",
+			"action": "login",
+			"credential": null,
+			"answers": [],
+			"responses": [
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"device_code\":\"dev-1\",\"user_code\":\"ABCD-EFGH\",\"verification_uri\":\"https://accounts.x.ai/device\",\"verification_uri_complete\":\"https://accounts.x.ai/device?code=ABCD\",\"interval\":1,\"expires_in\":600}"
+					]
+				},
+				{
+					"status": 400,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"error\":\"expired_token\"}"
+					]
+				}
+			],
+			"result": null,
+			"thrown": "xAI device code expired",
+			"requests": [
+				{
+					"url": "https://auth.x.ai/oauth2/device/code",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=<random>&scope=openid+profile+email+offline_access+grok-cli%3Aaccess+api%3Aaccess&referrer=pi"
+				},
+				{
+					"url": "https://auth.x.ai/oauth2/token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code&client_id=<random>&device_code=dev-1"
+				}
+			],
+			"prompts": [],
+			"events": [
+				{
+					"type": "device_code",
+					"userCode": "ABCD-EFGH",
+					"verificationUri": "https://accounts.x.ai/device?code=ABCD",
+					"intervalSeconds": 1,
+					"expiresInSeconds": 600
+				}
+			],
+			"toAuth": null
+		},
+		{
+			"name": "xai/login-poll-other-error",
+			"flow": "xai",
+			"action": "login",
+			"credential": null,
+			"answers": [],
+			"responses": [
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"device_code\":\"dev-1\",\"user_code\":\"ABCD-EFGH\",\"verification_uri\":\"https://accounts.x.ai/device\",\"verification_uri_complete\":\"https://accounts.x.ai/device?code=ABCD\",\"interval\":1,\"expires_in\":600}"
+					]
+				},
+				{
+					"status": 500,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"error\":\"server_error\",\"error_description\":\"oops\"}"
+					]
+				}
+			],
+			"result": null,
+			"thrown": "xAI OAuth device token polling failed (HTTP 500): server_error: oops",
+			"requests": [
+				{
+					"url": "https://auth.x.ai/oauth2/device/code",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=<random>&scope=openid+profile+email+offline_access+grok-cli%3Aaccess+api%3Aaccess&referrer=pi"
+				},
+				{
+					"url": "https://auth.x.ai/oauth2/token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code&client_id=<random>&device_code=dev-1"
+				}
+			],
+			"prompts": [],
+			"events": [
+				{
+					"type": "device_code",
+					"userCode": "ABCD-EFGH",
+					"verificationUri": "https://accounts.x.ai/device?code=ABCD",
+					"intervalSeconds": 1,
+					"expiresInSeconds": 600
+				}
+			],
+			"toAuth": null
+		},
+		{
+			"name": "xai/login-untrusted-uri",
+			"flow": "xai",
+			"action": "login",
+			"credential": null,
+			"answers": [],
+			"responses": [
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"device_code\":\"dev-1\",\"user_code\":\"ABCD-EFGH\",\"verification_uri\":\"http://evil.example.com\",\"verification_uri_complete\":\"https://accounts.x.ai/device?code=ABCD\",\"interval\":1,\"expires_in\":600}"
+					]
+				}
+			],
+			"result": null,
+			"thrown": "Untrusted verification URI in xAI OAuth response",
+			"requests": [
+				{
+					"url": "https://auth.x.ai/oauth2/device/code",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=<random>&scope=openid+profile+email+offline_access+grok-cli%3Aaccess+api%3Aaccess&referrer=pi"
+				}
+			],
+			"prompts": [],
+			"events": [],
+			"toAuth": null
+		},
+		{
+			"name": "xai/login-device-http-error",
+			"flow": "xai",
+			"action": "login",
+			"credential": null,
+			"answers": [],
+			"responses": [
+				{
+					"status": 401,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"error\":\"invalid_client\",\"error_description\":\"bad client\"}"
+					]
+				}
+			],
+			"result": null,
+			"thrown": "xAI OAuth device authorization failed (HTTP 401): invalid_client: bad client",
+			"requests": [
+				{
+					"url": "https://auth.x.ai/oauth2/device/code",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=<random>&scope=openid+profile+email+offline_access+grok-cli%3Aaccess+api%3Aaccess&referrer=pi"
+				}
+			],
+			"prompts": [],
+			"events": [],
+			"toAuth": null
+		},
+		{
+			"name": "xai/login-invalid-json",
+			"flow": "xai",
+			"action": "login",
+			"credential": null,
+			"answers": [],
+			"responses": [
+				{
+					"status": 502,
+					"headers": {
+						"content-type": "text/plain"
+					},
+					"chunks": [
+						"<html>"
+					]
+				}
+			],
+			"result": null,
+			"thrown": "xAI OAuth returned invalid JSON (HTTP 502)",
+			"requests": [
+				{
+					"url": "https://auth.x.ai/oauth2/device/code",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=<random>&scope=openid+profile+email+offline_access+grok-cli%3Aaccess+api%3Aaccess&referrer=pi"
+				}
+			],
+			"prompts": [],
+			"events": [],
+			"toAuth": null
+		},
+		{
+			"name": "xai/login-missing-field",
+			"flow": "xai",
+			"action": "login",
+			"credential": null,
+			"answers": [],
+			"responses": [
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"device_code\":\"dev-1\",\"user_code\":\"\",\"verification_uri\":\"https://accounts.x.ai/device\",\"verification_uri_complete\":\"https://accounts.x.ai/device?code=ABCD\",\"interval\":1,\"expires_in\":600}"
+					]
+				}
+			],
+			"result": null,
+			"thrown": "Invalid xAI OAuth response field: user_code",
+			"requests": [
+				{
+					"url": "https://auth.x.ai/oauth2/device/code",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=<random>&scope=openid+profile+email+offline_access+grok-cli%3Aaccess+api%3Aaccess&referrer=pi"
+				}
+			],
+			"prompts": [],
+			"events": [],
+			"toAuth": null
+		},
+		{
+			"name": "xai/login-times-out",
+			"flow": "xai",
+			"action": "login",
+			"credential": null,
+			"answers": [],
+			"responses": [
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"device_code\":\"dev-1\",\"user_code\":\"ABCD-EFGH\",\"verification_uri\":\"https://accounts.x.ai/device\",\"verification_uri_complete\":\"https://accounts.x.ai/device?code=ABCD\",\"interval\":1,\"expires_in\":3}"
+					]
+				},
+				{
+					"status": 400,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"error\":\"authorization_pending\"}"
+					]
+				},
+				{
+					"status": 400,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"error\":\"authorization_pending\"}"
+					]
+				},
+				{
+					"status": 400,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"error\":\"authorization_pending\"}"
+					]
+				}
+			],
+			"result": null,
+			"thrown": "Device flow timed out",
+			"requests": [
+				{
+					"url": "https://auth.x.ai/oauth2/device/code",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=<random>&scope=openid+profile+email+offline_access+grok-cli%3Aaccess+api%3Aaccess&referrer=pi"
+				},
+				{
+					"url": "https://auth.x.ai/oauth2/token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code&client_id=<random>&device_code=dev-1"
+				},
+				{
+					"url": "https://auth.x.ai/oauth2/token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code&client_id=<random>&device_code=dev-1"
+				}
+			],
+			"prompts": [],
+			"events": [
+				{
+					"type": "device_code",
+					"userCode": "ABCD-EFGH",
+					"verificationUri": "https://accounts.x.ai/device?code=ABCD",
+					"intervalSeconds": 1,
+					"expiresInSeconds": 3
+				}
+			],
+			"toAuth": null
+		},
+		{
+			"name": "xai/login-times-out-after-slow-down",
+			"flow": "xai",
+			"action": "login",
+			"credential": null,
+			"answers": [],
+			"responses": [
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"device_code\":\"dev-1\",\"user_code\":\"ABCD-EFGH\",\"verification_uri\":\"https://accounts.x.ai/device\",\"verification_uri_complete\":\"https://accounts.x.ai/device?code=ABCD\",\"interval\":1,\"expires_in\":2}"
+					]
+				},
+				{
+					"status": 400,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"error\":\"slow_down\"}"
+					]
+				}
+			],
+			"result": null,
+			"thrown": "Device flow timed out after one or more slow_down responses. This is often caused by clock drift in WSL or VM environments. Please sync or restart the VM clock and try again.",
+			"requests": [
+				{
+					"url": "https://auth.x.ai/oauth2/device/code",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=<random>&scope=openid+profile+email+offline_access+grok-cli%3Aaccess+api%3Aaccess&referrer=pi"
+				},
+				{
+					"url": "https://auth.x.ai/oauth2/token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code&client_id=<random>&device_code=dev-1"
+				}
+			],
+			"prompts": [],
+			"events": [
+				{
+					"type": "device_code",
+					"userCode": "ABCD-EFGH",
+					"verificationUri": "https://accounts.x.ai/device?code=ABCD",
+					"intervalSeconds": 1,
+					"expiresInSeconds": 2
+				}
+			],
+			"toAuth": null
+		},
+		{
+			"name": "xai/refresh-keeps-refresh-token",
+			"flow": "xai",
+			"action": "refresh",
+			"credential": {
+				"type": "oauth",
+				"refresh": "old-refresh",
+				"access": "old-access",
+				"expires": 1767225599999
+			},
+			"answers": [],
+			"responses": [
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"access_token\":\"na\",\"expires_in\":100}"
+					]
+				}
+			],
+			"result": {
+				"type": "oauth",
+				"access": "na",
+				"refresh": "old-refresh",
+				"expires": 1767225400000
+			},
+			"thrown": null,
+			"requests": [
+				{
+					"url": "https://auth.x.ai/oauth2/token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "grant_type=refresh_token&client_id=<random>&refresh_token=old-refresh"
+				}
+			],
+			"prompts": [],
+			"events": [],
+			"toAuth": {
+				"apiKey": "na"
+			}
+		},
+		{
+			"name": "xai/refresh-rotates",
+			"flow": "xai",
+			"action": "refresh",
+			"credential": {
+				"type": "oauth",
+				"refresh": "old-refresh",
+				"access": "old-access",
+				"expires": 1767225599999
+			},
+			"answers": [],
+			"responses": [
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"access_token\":\"na\",\"refresh_token\":\"nr\"}"
+					]
+				}
+			],
+			"result": {
+				"type": "oauth",
+				"access": "na",
+				"refresh": "nr",
+				"expires": 1767228900000
+			},
+			"thrown": null,
+			"requests": [
+				{
+					"url": "https://auth.x.ai/oauth2/token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "grant_type=refresh_token&client_id=<random>&refresh_token=old-refresh"
+				}
+			],
+			"prompts": [],
+			"events": [],
+			"toAuth": {
+				"apiKey": "na"
+			}
+		},
+		{
+			"name": "xai/refresh-fails",
+			"flow": "xai",
+			"action": "refresh",
+			"credential": {
+				"type": "oauth",
+				"refresh": "old-refresh",
+				"access": "old-access",
+				"expires": 1767225599999
+			},
+			"answers": [],
+			"responses": [
+				{
+					"status": 400,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"error\":\"invalid_grant\"}"
+					]
+				}
+			],
+			"result": null,
+			"thrown": "xAI OAuth token refresh failed (HTTP 400): invalid_grant",
+			"requests": [
+				{
+					"url": "https://auth.x.ai/oauth2/token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "grant_type=refresh_token&client_id=<random>&refresh_token=old-refresh"
+				}
+			],
+			"prompts": [],
+			"events": [],
+			"toAuth": null
+		},
+		{
+			"name": "xai/refresh-bad-expiry",
+			"flow": "xai",
+			"action": "refresh",
+			"credential": {
+				"type": "oauth",
+				"refresh": "old-refresh",
+				"access": "old-access",
+				"expires": 1767225599999
+			},
+			"answers": [],
+			"responses": [
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"access_token\":\"na\",\"expires_in\":-5}"
+					]
+				}
+			],
+			"result": null,
+			"thrown": "Invalid xAI OAuth response field: expires_in",
+			"requests": [
+				{
+					"url": "https://auth.x.ai/oauth2/token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "grant_type=refresh_token&client_id=<random>&refresh_token=old-refresh"
+				}
+			],
+			"prompts": [],
+			"events": [],
+			"toAuth": null
+		},
+		{
+			"name": "kimi/login",
+			"flow": "kimi",
+			"action": "login",
+			"credential": null,
+			"answers": [],
+			"responses": [
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"device_code\":\"kdev\",\"user_code\":\"K-1\",\"verification_uri\":\"https://www.kimi.com/device\",\"verification_uri_complete\":\"https://www.kimi.com/device?u=K-1\"}"
+					]
+				},
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"error\":\"authorization_pending\"}"
+					]
+				},
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"access_token\":\"ka\",\"refresh_token\":\"kr\",\"expires_in\":900}"
+					]
+				}
+			],
+			"result": {
+				"type": "oauth",
+				"access": "ka",
+				"refresh": "kr",
+				"expires": 1767226510000
+			},
+			"thrown": null,
+			"requests": [
+				{
+					"url": "https://auth.kimi.com/api/oauth/device_authorization",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=<random>"
+				},
+				{
+					"url": "https://auth.kimi.com/api/oauth/token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=<random>&device_code=kdev&grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code"
+				},
+				{
+					"url": "https://auth.kimi.com/api/oauth/token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=<random>&device_code=kdev&grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code"
+				}
+			],
+			"prompts": [],
+			"events": [
+				{
+					"type": "device_code",
+					"userCode": "K-1",
+					"verificationUri": "https://www.kimi.com/device?u=K-1",
+					"intervalSeconds": 5,
+					"expiresInSeconds": 900
+				}
+			],
+			"toAuth": {
+				"headers": {
+					"Authorization": "Bearer ka"
+				}
+			}
+		},
+		{
+			"name": "kimi/login-slow-down",
+			"flow": "kimi",
+			"action": "login",
+			"credential": null,
+			"answers": [],
+			"responses": [
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"device_code\":\"kdev\",\"user_code\":\"K-1\",\"verification_uri\":\"https://www.kimi.com/device\",\"verification_uri_complete\":\"https://www.kimi.com/device?u=K-1\",\"interval\":2,\"expires_in\":60}"
+					]
+				},
+				{
+					"status": 400,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"error\":\"slow_down\",\"interval\":4}"
+					]
+				},
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"access_token\":\"ka\",\"refresh_token\":\"kr\",\"expires_in\":900}"
+					]
+				}
+			],
+			"result": {
+				"type": "oauth",
+				"access": "ka",
+				"refresh": "kr",
+				"expires": 1767226506000
+			},
+			"thrown": null,
+			"requests": [
+				{
+					"url": "https://auth.kimi.com/api/oauth/device_authorization",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=<random>"
+				},
+				{
+					"url": "https://auth.kimi.com/api/oauth/token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=<random>&device_code=kdev&grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code"
+				},
+				{
+					"url": "https://auth.kimi.com/api/oauth/token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=<random>&device_code=kdev&grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code"
+				}
+			],
+			"prompts": [],
+			"events": [
+				{
+					"type": "device_code",
+					"userCode": "K-1",
+					"verificationUri": "https://www.kimi.com/device?u=K-1",
+					"intervalSeconds": 2,
+					"expiresInSeconds": 60
+				}
+			],
+			"toAuth": {
+				"headers": {
+					"Authorization": "Bearer ka"
+				}
+			}
+		},
+		{
+			"name": "kimi/login-device-error",
+			"flow": "kimi",
+			"action": "login",
+			"credential": null,
+			"answers": [],
+			"responses": [
+				{
+					"status": 400,
+					"headers": {
+						"content-type": "text/plain"
+					},
+					"chunks": [
+						"bad request"
+					]
+				}
+			],
+			"result": null,
+			"thrown": "Kimi Code device authorization failed with status 400: bad request",
+			"requests": [
+				{
+					"url": "https://auth.kimi.com/api/oauth/device_authorization",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=<random>"
+				}
+			],
+			"prompts": [],
+			"events": [],
+			"toAuth": null
+		},
+		{
+			"name": "kimi/login-invalid-device",
+			"flow": "kimi",
+			"action": "login",
+			"credential": null,
+			"answers": [],
+			"responses": [
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"device_code\":\"kdev\",\"user_code\":\"K-1\",\"verification_uri\":\"https://www.kimi.com/device\"}"
+					]
+				}
+			],
+			"result": null,
+			"thrown": "Invalid Kimi Code device authorization response: {\"device_code\":\"kdev\",\"user_code\":\"K-1\",\"verification_uri\":\"https://www.kimi.com/device\"}",
+			"requests": [
+				{
+					"url": "https://auth.kimi.com/api/oauth/device_authorization",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=<random>"
+				}
+			],
+			"prompts": [],
+			"events": [],
+			"toAuth": null
+		},
+		{
+			"name": "kimi/login-poll-500",
+			"flow": "kimi",
+			"action": "login",
+			"credential": null,
+			"answers": [],
+			"responses": [
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"device_code\":\"kdev\",\"user_code\":\"K-1\",\"verification_uri\":\"https://www.kimi.com/device\",\"verification_uri_complete\":\"https://www.kimi.com/device?u=K-1\"}"
+					]
+				},
+				{
+					"status": 503,
+					"headers": {
+						"content-type": "text/plain"
+					},
+					"chunks": [
+						"down"
+					]
+				}
+			],
+			"result": null,
+			"thrown": "Kimi Code device token request failed with status 503: down",
+			"requests": [
+				{
+					"url": "https://auth.kimi.com/api/oauth/device_authorization",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=<random>"
+				},
+				{
+					"url": "https://auth.kimi.com/api/oauth/token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=<random>&device_code=kdev&grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code"
+				}
+			],
+			"prompts": [],
+			"events": [
+				{
+					"type": "device_code",
+					"userCode": "K-1",
+					"verificationUri": "https://www.kimi.com/device?u=K-1",
+					"intervalSeconds": 5,
+					"expiresInSeconds": 900
+				}
+			],
+			"toAuth": null
+		},
+		{
+			"name": "kimi/login-expired",
+			"flow": "kimi",
+			"action": "login",
+			"credential": null,
+			"answers": [],
+			"responses": [
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"device_code\":\"kdev\",\"user_code\":\"K-1\",\"verification_uri\":\"https://www.kimi.com/device\",\"verification_uri_complete\":\"https://www.kimi.com/device?u=K-1\"}"
+					]
+				},
+				{
+					"status": 400,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"error\":\"expired_token\"}"
+					]
+				}
+			],
+			"result": null,
+			"thrown": "Kimi Code device authorization expired. Please restart login.",
+			"requests": [
+				{
+					"url": "https://auth.kimi.com/api/oauth/device_authorization",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=<random>"
+				},
+				{
+					"url": "https://auth.kimi.com/api/oauth/token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=<random>&device_code=kdev&grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code"
+				}
+			],
+			"prompts": [],
+			"events": [
+				{
+					"type": "device_code",
+					"userCode": "K-1",
+					"verificationUri": "https://www.kimi.com/device?u=K-1",
+					"intervalSeconds": 5,
+					"expiresInSeconds": 900
+				}
+			],
+			"toAuth": null
+		},
+		{
+			"name": "kimi/login-denied",
+			"flow": "kimi",
+			"action": "login",
+			"credential": null,
+			"answers": [],
+			"responses": [
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"device_code\":\"kdev\",\"user_code\":\"K-1\",\"verification_uri\":\"https://www.kimi.com/device\",\"verification_uri_complete\":\"https://www.kimi.com/device?u=K-1\"}"
+					]
+				},
+				{
+					"status": 400,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"error\":\"access_denied\"}"
+					]
+				}
+			],
+			"result": null,
+			"thrown": "Kimi Code login was denied.",
+			"requests": [
+				{
+					"url": "https://auth.kimi.com/api/oauth/device_authorization",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=<random>"
+				},
+				{
+					"url": "https://auth.kimi.com/api/oauth/token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=<random>&device_code=kdev&grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code"
+				}
+			],
+			"prompts": [],
+			"events": [
+				{
+					"type": "device_code",
+					"userCode": "K-1",
+					"verificationUri": "https://www.kimi.com/device?u=K-1",
+					"intervalSeconds": 5,
+					"expiresInSeconds": 900
+				}
+			],
+			"toAuth": null
+		},
+		{
+			"name": "kimi/login-other",
+			"flow": "kimi",
+			"action": "login",
+			"credential": null,
+			"answers": [],
+			"responses": [
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"device_code\":\"kdev\",\"user_code\":\"K-1\",\"verification_uri\":\"https://www.kimi.com/device\",\"verification_uri_complete\":\"https://www.kimi.com/device?u=K-1\"}"
+					]
+				},
+				{
+					"status": 400,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"error\":\"weird\",\"error_description\":\"huh\"}"
+					]
+				}
+			],
+			"result": null,
+			"thrown": "Kimi Code device token request failed (status 400): weird: huh",
+			"requests": [
+				{
+					"url": "https://auth.kimi.com/api/oauth/device_authorization",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=<random>"
+				},
+				{
+					"url": "https://auth.kimi.com/api/oauth/token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=<random>&device_code=kdev&grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code"
+				}
+			],
+			"prompts": [],
+			"events": [
+				{
+					"type": "device_code",
+					"userCode": "K-1",
+					"verificationUri": "https://www.kimi.com/device?u=K-1",
+					"intervalSeconds": 5,
+					"expiresInSeconds": 900
+				}
+			],
+			"toAuth": null
+		},
+		{
+			"name": "kimi/login-token-missing-fields",
+			"flow": "kimi",
+			"action": "login",
+			"credential": null,
+			"answers": [],
+			"responses": [
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"device_code\":\"kdev\",\"user_code\":\"K-1\",\"verification_uri\":\"https://www.kimi.com/device\",\"verification_uri_complete\":\"https://www.kimi.com/device?u=K-1\"}"
+					]
+				},
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"access_token\":\"ka\"}"
+					]
+				}
+			],
+			"result": null,
+			"thrown": "Kimi Code token poll response missing fields: {\"access_token\":\"ka\"}",
+			"requests": [
+				{
+					"url": "https://auth.kimi.com/api/oauth/device_authorization",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=<random>"
+				},
+				{
+					"url": "https://auth.kimi.com/api/oauth/token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=<random>&device_code=kdev&grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code"
+				}
+			],
+			"prompts": [],
+			"events": [
+				{
+					"type": "device_code",
+					"userCode": "K-1",
+					"verificationUri": "https://www.kimi.com/device?u=K-1",
+					"intervalSeconds": 5,
+					"expiresInSeconds": 900
+				}
+			],
+			"toAuth": null
+		},
+		{
+			"name": "kimi/refresh",
+			"flow": "kimi",
+			"action": "refresh",
+			"credential": {
+				"type": "oauth",
+				"refresh": "old-refresh",
+				"access": "old-access",
+				"expires": 1767225599999
+			},
+			"answers": [],
+			"responses": [
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"access_token\":\"ka2\",\"refresh_token\":\"kr2\",\"expires_in\":600}"
+					]
+				}
+			],
+			"result": {
+				"type": "oauth",
+				"access": "ka2",
+				"refresh": "kr2",
+				"expires": 1767226200000
+			},
+			"thrown": null,
+			"requests": [
+				{
+					"url": "https://auth.kimi.com/api/oauth/token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=<random>&grant_type=refresh_token&refresh_token=old-refresh"
+				}
+			],
+			"prompts": [],
+			"events": [],
+			"toAuth": {
+				"headers": {
+					"Authorization": "Bearer ka2"
+				}
+			}
+		},
+		{
+			"name": "kimi/refresh-unauthorized",
+			"flow": "kimi",
+			"action": "refresh",
+			"credential": {
+				"type": "oauth",
+				"refresh": "old-refresh",
+				"access": "old-access",
+				"expires": 1767225599999
+			},
+			"answers": [],
+			"responses": [
+				{
+					"status": 400,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"error\":\"invalid_grant\",\"error_description\":\"revoked\"}"
+					]
+				}
+			],
+			"result": null,
+			"thrown": "Kimi Code token refresh unauthorized (status 400): revoked",
+			"requests": [
+				{
+					"url": "https://auth.kimi.com/api/oauth/token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=<random>&grant_type=refresh_token&refresh_token=old-refresh"
+				}
+			],
+			"prompts": [],
+			"events": [],
+			"toAuth": null
+		},
+		{
+			"name": "kimi/refresh-retries",
+			"flow": "kimi",
+			"action": "refresh",
+			"credential": {
+				"type": "oauth",
+				"refresh": "old-refresh",
+				"access": "old-access",
+				"expires": 1767225599999
+			},
+			"answers": [],
+			"responses": [
+				{
+					"status": 503,
+					"headers": {
+						"content-type": "text/plain"
+					},
+					"chunks": [
+						"x"
+					]
+				},
+				{
+					"status": 429,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{}"
+					]
+				},
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"access_token\":\"ka3\",\"refresh_token\":\"kr3\",\"expires_in\":60}"
+					]
+				}
+			],
+			"result": {
+				"type": "oauth",
+				"access": "ka3",
+				"refresh": "kr3",
+				"expires": 1767225663000
+			},
+			"thrown": null,
+			"requests": [
+				{
+					"url": "https://auth.kimi.com/api/oauth/token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=<random>&grant_type=refresh_token&refresh_token=old-refresh"
+				},
+				{
+					"url": "https://auth.kimi.com/api/oauth/token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=<random>&grant_type=refresh_token&refresh_token=old-refresh"
+				},
+				{
+					"url": "https://auth.kimi.com/api/oauth/token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=<random>&grant_type=refresh_token&refresh_token=old-refresh"
+				}
+			],
+			"prompts": [],
+			"events": [],
+			"toAuth": {
+				"headers": {
+					"Authorization": "Bearer ka3"
+				}
+			}
+		},
+		{
+			"name": "kimi/refresh-exhausts-retries",
+			"flow": "kimi",
+			"action": "refresh",
+			"credential": {
+				"type": "oauth",
+				"refresh": "old-refresh",
+				"access": "old-access",
+				"expires": 1767225599999
+			},
+			"answers": [],
+			"responses": [
+				{
+					"status": 500,
+					"headers": {
+						"content-type": "text/plain"
+					},
+					"chunks": [
+						"x"
+					]
+				},
+				{
+					"status": 500,
+					"headers": {
+						"content-type": "text/plain"
+					},
+					"chunks": [
+						"x"
+					]
+				},
+				{
+					"status": 500,
+					"headers": {
+						"content-type": "text/plain"
+					},
+					"chunks": [
+						"x"
+					]
+				},
+				{
+					"status": 500,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"message\":\"still down\"}"
+					]
+				}
+			],
+			"result": null,
+			"thrown": "Kimi Code token refresh failed with status 500: {\"message\":\"still down\"}",
+			"requests": [
+				{
+					"url": "https://auth.kimi.com/api/oauth/token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=<random>&grant_type=refresh_token&refresh_token=old-refresh"
+				},
+				{
+					"url": "https://auth.kimi.com/api/oauth/token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=<random>&grant_type=refresh_token&refresh_token=old-refresh"
+				},
+				{
+					"url": "https://auth.kimi.com/api/oauth/token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=<random>&grant_type=refresh_token&refresh_token=old-refresh"
+				},
+				{
+					"url": "https://auth.kimi.com/api/oauth/token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=<random>&grant_type=refresh_token&refresh_token=old-refresh"
+				}
+			],
+			"prompts": [],
+			"events": [],
+			"toAuth": null
+		},
+		{
+			"name": "kimi/refresh-network-errors",
+			"flow": "kimi",
+			"action": "refresh",
+			"credential": {
+				"type": "oauth",
+				"refresh": "old-refresh",
+				"access": "old-access",
+				"expires": 1767225599999
+			},
+			"answers": [],
+			"responses": [
+				{
+					"networkError": true
+				},
+				{
+					"networkError": true
+				},
+				{
+					"networkError": true
+				},
+				{
+					"networkError": true
+				}
+			],
+			"result": null,
+			"thrown": "fetch failed",
+			"requests": [
+				{
+					"url": "https://auth.kimi.com/api/oauth/token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=<random>&grant_type=refresh_token&refresh_token=old-refresh"
+				},
+				{
+					"url": "https://auth.kimi.com/api/oauth/token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=<random>&grant_type=refresh_token&refresh_token=old-refresh"
+				},
+				{
+					"url": "https://auth.kimi.com/api/oauth/token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=<random>&grant_type=refresh_token&refresh_token=old-refresh"
+				},
+				{
+					"url": "https://auth.kimi.com/api/oauth/token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=<random>&grant_type=refresh_token&refresh_token=old-refresh"
+				}
+			],
+			"prompts": [],
+			"events": [],
+			"toAuth": null
+		},
+		{
+			"name": "kimi/refresh-bad-request",
+			"flow": "kimi",
+			"action": "refresh",
+			"credential": {
+				"type": "oauth",
+				"refresh": "old-refresh",
+				"access": "old-access",
+				"expires": 1767225599999
+			},
+			"answers": [],
+			"responses": [
+				{
+					"status": 400,
+					"headers": {
+						"content-type": "text/plain"
+					},
+					"chunks": [
+						"nope"
+					]
+				}
+			],
+			"result": null,
+			"thrown": "Kimi Code token refresh failed with status 400: null",
+			"requests": [
+				{
+					"url": "https://auth.kimi.com/api/oauth/token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=<random>&grant_type=refresh_token&refresh_token=old-refresh"
+				}
+			],
+			"prompts": [],
+			"events": [],
+			"toAuth": null
+		},
+		{
+			"name": "meta/login",
+			"flow": "meta",
+			"action": "login",
+			"credential": null,
+			"answers": [],
+			"responses": [
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"device_code\":\"mdev\",\"user_code\":\"M-1\",\"verification_uri\":\"https://meta.com/device\",\"interval\":2,\"expires_in\":300}"
+					]
+				},
+				{
+					"status": 400,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"error\":\"authorization_pending\"}"
+					]
+				},
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"access_token\":\"identity\"}"
+					]
+				},
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"api_key\":\"meta-key\"}"
+					]
+				}
+			],
+			"result": {
+				"type": "oauth",
+				"refresh": "identity",
+				"access": "meta-key",
+				"expires": 1767312004000
+			},
+			"thrown": null,
+			"requests": [
+				{
+					"url": "https://auth.meta.com/oidc/device/authorization/",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=1031625952748946"
+				},
+				{
+					"url": "https://auth.meta.com/oidc/device/token/",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code&device_code=mdev&client_id=1031625952748946"
+				},
+				{
+					"url": "https://auth.meta.com/oidc/device/token/",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code&device_code=mdev&client_id=1031625952748946"
+				},
+				{
+					"url": "https://api.meta.ai/muse-code/key",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"authorization": "Bearer identity",
+						"content-type": "application/json",
+						"x-api-version": "1.0.0"
+					},
+					"body": {}
+				}
+			],
+			"prompts": [],
+			"events": [
+				{
+					"type": "device_code",
+					"userCode": "M-1",
+					"verificationUri": "https://meta.com/device",
+					"intervalSeconds": 2,
+					"expiresInSeconds": 300
+				},
+				{
+					"type": "progress",
+					"message": "Enabling Meta Model API access..."
+				}
+			],
+			"toAuth": {
+				"apiKey": "meta-key"
+			}
+		},
+		{
+			"name": "meta/login-complete-uri",
+			"flow": "meta",
+			"action": "login",
+			"credential": null,
+			"answers": [],
+			"responses": [
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"device_code\":\"mdev\",\"user_code\":\"M-1\",\"verification_uri\":\"https://meta.com/device\",\"verification_uri_complete\":\"https://meta.com/device?c=M-1\"}"
+					]
+				},
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"access_token\":\"identity\"}"
+					]
+				},
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"api_key\":\"k\"}"
+					]
+				}
+			],
+			"result": {
+				"type": "oauth",
+				"refresh": "identity",
+				"access": "k",
+				"expires": 1767312005000
+			},
+			"thrown": null,
+			"requests": [
+				{
+					"url": "https://auth.meta.com/oidc/device/authorization/",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=1031625952748946"
+				},
+				{
+					"url": "https://auth.meta.com/oidc/device/token/",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code&device_code=mdev&client_id=1031625952748946"
+				},
+				{
+					"url": "https://api.meta.ai/muse-code/key",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"authorization": "Bearer identity",
+						"content-type": "application/json",
+						"x-api-version": "1.0.0"
+					},
+					"body": {}
+				}
+			],
+			"prompts": [],
+			"events": [
+				{
+					"type": "device_code",
+					"userCode": "M-1",
+					"verificationUri": "https://meta.com/device?c=M-1"
+				},
+				{
+					"type": "progress",
+					"message": "Enabling Meta Model API access..."
+				}
+			],
+			"toAuth": {
+				"apiKey": "k"
+			}
+		},
+		{
+			"name": "meta/login-mint-expired",
+			"flow": "meta",
+			"action": "login",
+			"credential": null,
+			"answers": [],
+			"responses": [
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"device_code\":\"mdev\",\"user_code\":\"M-1\",\"verification_uri\":\"https://meta.com/device\",\"interval\":2,\"expires_in\":300}"
+					]
+				},
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"access_token\":\"identity\"}"
+					]
+				},
+				{
+					"status": 403,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"detail\":\" no session \"}"
+					]
+				}
+			],
+			"result": null,
+			"thrown": "Meta session expired (status 403). Run `/login meta` to sign in again.: no session",
+			"requests": [
+				{
+					"url": "https://auth.meta.com/oidc/device/authorization/",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=1031625952748946"
+				},
+				{
+					"url": "https://auth.meta.com/oidc/device/token/",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code&device_code=mdev&client_id=1031625952748946"
+				},
+				{
+					"url": "https://api.meta.ai/muse-code/key",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"authorization": "Bearer identity",
+						"content-type": "application/json",
+						"x-api-version": "1.0.0"
+					},
+					"body": {}
+				}
+			],
+			"prompts": [],
+			"events": [
+				{
+					"type": "device_code",
+					"userCode": "M-1",
+					"verificationUri": "https://meta.com/device",
+					"intervalSeconds": 2,
+					"expiresInSeconds": 300
+				},
+				{
+					"type": "progress",
+					"message": "Enabling Meta Model API access..."
+				}
+			],
+			"toAuth": null
+		},
+		{
+			"name": "meta/login-no-key",
+			"flow": "meta",
+			"action": "login",
+			"credential": null,
+			"answers": [],
+			"responses": [
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"device_code\":\"mdev\",\"user_code\":\"M-1\",\"verification_uri\":\"https://meta.com/device\",\"interval\":2,\"expires_in\":300}"
+					]
+				},
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"access_token\":\"identity\"}"
+					]
+				},
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"action_url\":\"https://meta.ai/setup\"}"
+					]
+				}
+			],
+			"result": null,
+			"thrown": "Meta did not issue an API key. Complete setup at https://meta.ai/setup",
+			"requests": [
+				{
+					"url": "https://auth.meta.com/oidc/device/authorization/",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=1031625952748946"
+				},
+				{
+					"url": "https://auth.meta.com/oidc/device/token/",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code&device_code=mdev&client_id=1031625952748946"
+				},
+				{
+					"url": "https://api.meta.ai/muse-code/key",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"authorization": "Bearer identity",
+						"content-type": "application/json",
+						"x-api-version": "1.0.0"
+					},
+					"body": {}
+				}
+			],
+			"prompts": [],
+			"events": [
+				{
+					"type": "device_code",
+					"userCode": "M-1",
+					"verificationUri": "https://meta.com/device",
+					"intervalSeconds": 2,
+					"expiresInSeconds": 300
+				},
+				{
+					"type": "progress",
+					"message": "Enabling Meta Model API access..."
+				}
+			],
+			"toAuth": null
+		},
+		{
+			"name": "meta/login-device-failure",
+			"flow": "meta",
+			"action": "login",
+			"credential": null,
+			"answers": [],
+			"responses": [
+				{
+					"status": 400,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"error_description\":\"client blocked\"}"
+					]
+				}
+			],
+			"result": null,
+			"thrown": "Meta device authorization failed with status 400: client blocked",
+			"requests": [
+				{
+					"url": "https://auth.meta.com/oidc/device/authorization/",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=1031625952748946"
+				}
+			],
+			"prompts": [],
+			"events": [],
+			"toAuth": null
+		},
+		{
+			"name": "meta/login-invalid-device",
+			"flow": "meta",
+			"action": "login",
+			"credential": null,
+			"answers": [],
+			"responses": [
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"device_code\":\"d\",\"user_code\":\"u\",\"verification_uri\":\"javascript:alert(1)\"}"
+					]
+				}
+			],
+			"result": null,
+			"thrown": "Invalid Meta device authorization response: {\"device_code\":\"d\",\"user_code\":\"u\",\"verification_uri\":\"javascript:alert(1)\"}",
+			"requests": [
+				{
+					"url": "https://auth.meta.com/oidc/device/authorization/",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=1031625952748946"
+				}
+			],
+			"prompts": [],
+			"events": [],
+			"toAuth": null
+		},
+		{
+			"name": "meta/login-poll-failure",
+			"flow": "meta",
+			"action": "login",
+			"credential": null,
+			"answers": [],
+			"responses": [
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"device_code\":\"mdev\",\"user_code\":\"M-1\",\"verification_uri\":\"https://meta.com/device\",\"interval\":2,\"expires_in\":300}"
+					]
+				},
+				{
+					"status": 500,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"message\":\"boom\"}"
+					]
+				}
+			],
+			"result": null,
+			"thrown": "Meta device token request failed with status 500: boom",
+			"requests": [
+				{
+					"url": "https://auth.meta.com/oidc/device/authorization/",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=1031625952748946"
+				},
+				{
+					"url": "https://auth.meta.com/oidc/device/token/",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code&device_code=mdev&client_id=1031625952748946"
+				}
+			],
+			"prompts": [],
+			"events": [
+				{
+					"type": "device_code",
+					"userCode": "M-1",
+					"verificationUri": "https://meta.com/device",
+					"intervalSeconds": 2,
+					"expiresInSeconds": 300
+				}
+			],
+			"toAuth": null
+		},
+		{
+			"name": "meta/refresh",
+			"flow": "meta",
+			"action": "refresh",
+			"credential": {
+				"type": "oauth",
+				"refresh": "identity",
+				"access": "old-access",
+				"expires": 1767225599999
+			},
+			"answers": [],
+			"responses": [
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"api_key\":\"fresh-key\"}"
+					]
+				}
+			],
+			"result": {
+				"type": "oauth",
+				"refresh": "identity",
+				"access": "fresh-key",
+				"expires": 1767312000000
+			},
+			"thrown": null,
+			"requests": [
+				{
+					"url": "https://api.meta.ai/muse-code/key",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"authorization": "Bearer identity",
+						"content-type": "application/json",
+						"x-api-version": "1.0.0"
+					},
+					"body": {}
+				}
+			],
+			"prompts": [],
+			"events": [],
+			"toAuth": {
+				"apiKey": "fresh-key"
+			}
+		},
+		{
+			"name": "meta/refresh-mint-error",
+			"flow": "meta",
+			"action": "refresh",
+			"credential": {
+				"type": "oauth",
+				"refresh": "identity",
+				"access": "old-access",
+				"expires": 1767225599999
+			},
+			"answers": [],
+			"responses": [
+				{
+					"status": 500,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"error\":\"x\"}"
+					]
+				}
+			],
+			"result": null,
+			"thrown": "Meta API key mint failed with status 500: x",
+			"requests": [
+				{
+					"url": "https://api.meta.ai/muse-code/key",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"authorization": "Bearer identity",
+						"content-type": "application/json",
+						"x-api-version": "1.0.0"
+					},
+					"body": {}
+				}
+			],
+			"prompts": [],
+			"events": [],
+			"toAuth": null
+		},
+		{
+			"name": "radius/device-login",
+			"flow": "radius",
+			"action": "login",
+			"credential": null,
+			"answers": [
+				"device-code"
+			],
+			"responses": [
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"device_code\":\"rd\",\"user_code\":\"R-1\",\"verification_uri\":\"https://gateway.example.com/device\",\"expires_in\":120,\"interval\":1}"
+					]
+				},
+				{
+					"status": 400,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"error\":\"authorization_pending\"}"
+					]
+				},
+				{
+					"status": 400,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"error\":\"slow_down\"}"
+					]
+				},
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"access_token\":\"ra\",\"refresh_token\":\"rr\",\"expires_in\":3600,\"scope\":\"gateway\"}"
+					]
+				}
+			],
+			"result": {
+				"type": "oauth",
+				"access": "ra",
+				"refresh": "rr",
+				"expires": 1767229147000,
+				"scope": "gateway"
+			},
+			"thrown": null,
+			"requests": [
+				{
+					"url": "https://gateway.example.com/v1/oauth/device",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=pi-gateway&scope=gateway+offline_access"
+				},
+				{
+					"url": "https://gateway.example.com/v1/oauth/token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code&client_id=pi-gateway&device_code=rd"
+				},
+				{
+					"url": "https://gateway.example.com/v1/oauth/token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code&client_id=pi-gateway&device_code=rd"
+				},
+				{
+					"url": "https://gateway.example.com/v1/oauth/token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code&client_id=pi-gateway&device_code=rd"
+				}
+			],
+			"prompts": [
+				{
+					"type": "select",
+					"message": "Sign in to Radius:",
+					"options": [
+						{
+							"id": "browser",
+							"label": "Sign in with browser (recommended)"
+						},
+						{
+							"id": "device-code",
+							"label": "Sign in with device code (when signing in from another device)"
+						}
+					]
+				}
+			],
+			"events": [
+				{
+					"type": "device_code",
+					"userCode": "R-1",
+					"verificationUri": "https://gateway.example.com/device",
+					"intervalSeconds": 1,
+					"expiresInSeconds": 120
+				}
+			],
+			"toAuth": {
+				"apiKey": "ra"
+			}
+		},
+		{
+			"name": "radius/device-expired",
+			"flow": "radius",
+			"action": "login",
+			"credential": null,
+			"answers": [
+				"device-code"
+			],
+			"responses": [
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"device_code\":\"rd\",\"user_code\":\"R-1\",\"verification_uri\":\"https://gateway.example.com/device\",\"expires_in\":120}"
+					]
+				},
+				{
+					"status": 400,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"error\":\"expired_token\"}"
+					]
+				}
+			],
+			"result": null,
+			"thrown": "Device authorization expired.",
+			"requests": [
+				{
+					"url": "https://gateway.example.com/v1/oauth/device",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=pi-gateway&scope=gateway+offline_access"
+				},
+				{
+					"url": "https://gateway.example.com/v1/oauth/token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code&client_id=pi-gateway&device_code=rd"
+				}
+			],
+			"prompts": [
+				{
+					"type": "select",
+					"message": "Sign in to Radius:",
+					"options": [
+						{
+							"id": "browser",
+							"label": "Sign in with browser (recommended)"
+						},
+						{
+							"id": "device-code",
+							"label": "Sign in with device code (when signing in from another device)"
+						}
+					]
+				}
+			],
+			"events": [
+				{
+					"type": "device_code",
+					"userCode": "R-1",
+					"verificationUri": "https://gateway.example.com/device",
+					"expiresInSeconds": 120
+				}
+			],
+			"toAuth": null
+		},
+		{
+			"name": "radius/device-other-error",
+			"flow": "radius",
+			"action": "login",
+			"credential": null,
+			"answers": [
+				"device-code"
+			],
+			"responses": [
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"device_code\":\"rd\",\"user_code\":\"R-1\",\"verification_uri\":\"https://gateway.example.com/device\",\"expires_in\":120}"
+					]
+				},
+				{
+					"status": 500,
+					"headers": {
+						"content-type": "text/plain"
+					},
+					"chunks": [
+						"gateway broke"
+					]
+				}
+			],
+			"result": null,
+			"thrown": "Radius OAuth token request failed: gateway broke",
+			"requests": [
+				{
+					"url": "https://gateway.example.com/v1/oauth/device",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=pi-gateway&scope=gateway+offline_access"
+				},
+				{
+					"url": "https://gateway.example.com/v1/oauth/token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code&client_id=pi-gateway&device_code=rd"
+				}
+			],
+			"prompts": [
+				{
+					"type": "select",
+					"message": "Sign in to Radius:",
+					"options": [
+						{
+							"id": "browser",
+							"label": "Sign in with browser (recommended)"
+						},
+						{
+							"id": "device-code",
+							"label": "Sign in with device code (when signing in from another device)"
+						}
+					]
+				}
+			],
+			"events": [
+				{
+					"type": "device_code",
+					"userCode": "R-1",
+					"verificationUri": "https://gateway.example.com/device",
+					"expiresInSeconds": 120
+				}
+			],
+			"toAuth": null
+		},
+		{
+			"name": "radius/device-missing-fields",
+			"flow": "radius",
+			"action": "login",
+			"credential": null,
+			"answers": [
+				"device-code"
+			],
+			"responses": [
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"device_code\":\"rd\"}"
+					]
+				}
+			],
+			"result": null,
+			"thrown": "Radius OAuth device authorization response is missing required fields",
+			"requests": [
+				{
+					"url": "https://gateway.example.com/v1/oauth/device",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=pi-gateway&scope=gateway+offline_access"
+				}
+			],
+			"prompts": [
+				{
+					"type": "select",
+					"message": "Sign in to Radius:",
+					"options": [
+						{
+							"id": "browser",
+							"label": "Sign in with browser (recommended)"
+						},
+						{
+							"id": "device-code",
+							"label": "Sign in with device code (when signing in from another device)"
+						}
+					]
+				}
+			],
+			"events": [],
+			"toAuth": null
+		},
+		{
+			"name": "radius/device-http-error",
+			"flow": "radius",
+			"action": "login",
+			"credential": null,
+			"answers": [
+				"device-code"
+			],
+			"responses": [
+				{
+					"status": 401,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"error\":\"unauthorized_client\"}"
+					]
+				}
+			],
+			"result": null,
+			"thrown": "Radius OAuth device authorization failed: unauthorized_client",
+			"requests": [
+				{
+					"url": "https://gateway.example.com/v1/oauth/device",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=pi-gateway&scope=gateway+offline_access"
+				}
+			],
+			"prompts": [
+				{
+					"type": "select",
+					"message": "Sign in to Radius:",
+					"options": [
+						{
+							"id": "browser",
+							"label": "Sign in with browser (recommended)"
+						},
+						{
+							"id": "device-code",
+							"label": "Sign in with device code (when signing in from another device)"
+						}
+					]
+				}
+			],
+			"events": [],
+			"toAuth": null
+		},
+		{
+			"name": "radius/browser-pasted-redirect",
+			"flow": "radius",
+			"action": "login",
+			"credential": null,
+			"answers": [
+				"browser",
+				"http://127.0.0.1:1456/oauth/callback?code=pasted-code&state={STATE}"
+			],
+			"responses": [
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"authorizationEndpoint\":\"https://login.example.com/authorize?old=1\"}"
+					]
+				},
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"access_token\":\"ba\",\"refresh_token\":\"br\",\"expires_in\":60}"
+					]
+				}
+			],
+			"result": {
+				"type": "oauth",
+				"access": "ba",
+				"refresh": "br",
+				"expires": 1767225600000
+			},
+			"thrown": null,
+			"requests": [
+				{
+					"url": "https://gateway.example.com/v1/oauth",
+					"method": "GET",
+					"headers": {
+						"accept": "application/json"
+					},
+					"body": null
+				},
+				{
+					"url": "https://gateway.example.com/v1/oauth/token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "grant_type=authorization_code&client_id=pi-gateway&redirect_uri=http%3A%2F%2F127.0.0.1%3A1456%2Foauth%2Fcallback&code=pasted-code&code_verifier=<random>"
+				}
+			],
+			"prompts": [
+				{
+					"type": "select",
+					"message": "Sign in to Radius:",
+					"options": [
+						{
+							"id": "browser",
+							"label": "Sign in with browser (recommended)"
+						},
+						{
+							"id": "device-code",
+							"label": "Sign in with device code (when signing in from another device)"
+						}
+					]
+				},
+				{
+					"type": "manual_code",
+					"message": "Complete sign-in in your browser, or paste the authorization code / redirect URL here:",
+					"placeholder": "http://127.0.0.1:1456/oauth/callback"
+				}
+			],
+			"events": [
+				{
+					"type": "progress",
+					"message": "Listening for OAuth callback on http://127.0.0.1:1456/oauth/callback"
+				},
+				{
+					"type": "auth_url",
+					"url": "https://login.example.com/authorize?response_type=code&client_id=pi-gateway&redirect_uri=http%3A%2F%2F127.0.0.1%3A1456%2Foauth%2Fcallback&scope=gateway+offline_access&code_challenge=<random>&code_challenge_method=S256&handoff=url&state=<random>",
+					"instructions": "Continue in your browser. If the browser is on another machine, paste the final redirect URL here."
+				}
+			],
+			"toAuth": {
+				"apiKey": "ba"
+			}
+		},
+		{
+			"name": "radius/browser-pasted-code",
+			"flow": "radius",
+			"action": "login",
+			"credential": null,
+			"answers": [
+				"browser",
+				"  bare-code  "
+			],
+			"responses": [
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"authorizationEndpoint\":\"https://login.example.com/authorize\"}"
+					]
+				},
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"access_token\":\"ba\",\"refresh_token\":\"br\",\"expires_in\":60}"
+					]
+				}
+			],
+			"result": {
+				"type": "oauth",
+				"access": "ba",
+				"refresh": "br",
+				"expires": 1767225600000
+			},
+			"thrown": null,
+			"requests": [
+				{
+					"url": "https://gateway.example.com/v1/oauth",
+					"method": "GET",
+					"headers": {
+						"accept": "application/json"
+					},
+					"body": null
+				},
+				{
+					"url": "https://gateway.example.com/v1/oauth/token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "grant_type=authorization_code&client_id=pi-gateway&redirect_uri=http%3A%2F%2F127.0.0.1%3A1456%2Foauth%2Fcallback&code=bare-code&code_verifier=<random>"
+				}
+			],
+			"prompts": [
+				{
+					"type": "select",
+					"message": "Sign in to Radius:",
+					"options": [
+						{
+							"id": "browser",
+							"label": "Sign in with browser (recommended)"
+						},
+						{
+							"id": "device-code",
+							"label": "Sign in with device code (when signing in from another device)"
+						}
+					]
+				},
+				{
+					"type": "manual_code",
+					"message": "Complete sign-in in your browser, or paste the authorization code / redirect URL here:",
+					"placeholder": "http://127.0.0.1:1456/oauth/callback"
+				}
+			],
+			"events": [
+				{
+					"type": "progress",
+					"message": "Listening for OAuth callback on http://127.0.0.1:1456/oauth/callback"
+				},
+				{
+					"type": "auth_url",
+					"url": "https://login.example.com/authorize?response_type=code&client_id=pi-gateway&redirect_uri=http%3A%2F%2F127.0.0.1%3A1456%2Foauth%2Fcallback&scope=gateway+offline_access&code_challenge=<random>&code_challenge_method=S256&handoff=url&state=<random>",
+					"instructions": "Continue in your browser. If the browser is on another machine, paste the final redirect URL here."
+				}
+			],
+			"toAuth": {
+				"apiKey": "ba"
+			}
+		},
+		{
+			"name": "radius/browser-state-mismatch",
+			"flow": "radius",
+			"action": "login",
+			"credential": null,
+			"answers": [
+				"browser",
+				"code=c&state=wrong"
+			],
+			"responses": [
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"authorizationEndpoint\":\"https://login.example.com/authorize\"}"
+					]
+				}
+			],
+			"result": null,
+			"thrown": "OAuth state mismatch",
+			"requests": [
+				{
+					"url": "https://gateway.example.com/v1/oauth",
+					"method": "GET",
+					"headers": {
+						"accept": "application/json"
+					},
+					"body": null
+				}
+			],
+			"prompts": [
+				{
+					"type": "select",
+					"message": "Sign in to Radius:",
+					"options": [
+						{
+							"id": "browser",
+							"label": "Sign in with browser (recommended)"
+						},
+						{
+							"id": "device-code",
+							"label": "Sign in with device code (when signing in from another device)"
+						}
+					]
+				},
+				{
+					"type": "manual_code",
+					"message": "Complete sign-in in your browser, or paste the authorization code / redirect URL here:",
+					"placeholder": "http://127.0.0.1:1456/oauth/callback"
+				}
+			],
+			"events": [
+				{
+					"type": "progress",
+					"message": "Listening for OAuth callback on http://127.0.0.1:1456/oauth/callback"
+				},
+				{
+					"type": "auth_url",
+					"url": "https://login.example.com/authorize?response_type=code&client_id=pi-gateway&redirect_uri=http%3A%2F%2F127.0.0.1%3A1456%2Foauth%2Fcallback&scope=gateway+offline_access&code_challenge=<random>&code_challenge_method=S256&handoff=url&state=<random>",
+					"instructions": "Continue in your browser. If the browser is on another machine, paste the final redirect URL here."
+				}
+			],
+			"toAuth": null
+		},
+		{
+			"name": "radius/browser-empty-paste",
+			"flow": "radius",
+			"action": "login",
+			"credential": null,
+			"answers": [
+				"browser",
+				"   "
+			],
+			"responses": [
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"authorizationEndpoint\":\"https://login.example.com/authorize\"}"
+					]
+				}
+			],
+			"result": null,
+			"thrown": "OAuth callback did not complete.",
+			"requests": [
+				{
+					"url": "https://gateway.example.com/v1/oauth",
+					"method": "GET",
+					"headers": {
+						"accept": "application/json"
+					},
+					"body": null
+				}
+			],
+			"prompts": [
+				{
+					"type": "select",
+					"message": "Sign in to Radius:",
+					"options": [
+						{
+							"id": "browser",
+							"label": "Sign in with browser (recommended)"
+						},
+						{
+							"id": "device-code",
+							"label": "Sign in with device code (when signing in from another device)"
+						}
+					]
+				},
+				{
+					"type": "manual_code",
+					"message": "Complete sign-in in your browser, or paste the authorization code / redirect URL here:",
+					"placeholder": "http://127.0.0.1:1456/oauth/callback"
+				}
+			],
+			"events": [
+				{
+					"type": "progress",
+					"message": "Listening for OAuth callback on http://127.0.0.1:1456/oauth/callback"
+				},
+				{
+					"type": "auth_url",
+					"url": "https://login.example.com/authorize?response_type=code&client_id=pi-gateway&redirect_uri=http%3A%2F%2F127.0.0.1%3A1456%2Foauth%2Fcallback&scope=gateway+offline_access&code_challenge=<random>&code_challenge_method=S256&handoff=url&state=<random>",
+					"instructions": "Continue in your browser. If the browser is on another machine, paste the final redirect URL here."
+				}
+			],
+			"toAuth": null
+		},
+		{
+			"name": "radius/browser-bad-discovery",
+			"flow": "radius",
+			"action": "login",
+			"credential": null,
+			"answers": [
+				"browser"
+			],
+			"responses": [
+				{
+					"status": 404,
+					"headers": {
+						"content-type": "text/plain"
+					},
+					"chunks": [
+						"no oauth here"
+					]
+				}
+			],
+			"result": null,
+			"thrown": "Could not load Radius OAuth config from https://gateway.example.com: 404 no oauth here",
+			"requests": [
+				{
+					"url": "https://gateway.example.com/v1/oauth",
+					"method": "GET",
+					"headers": {
+						"accept": "application/json"
+					},
+					"body": null
+				}
+			],
+			"prompts": [
+				{
+					"type": "select",
+					"message": "Sign in to Radius:",
+					"options": [
+						{
+							"id": "browser",
+							"label": "Sign in with browser (recommended)"
+						},
+						{
+							"id": "device-code",
+							"label": "Sign in with device code (when signing in from another device)"
+						}
+					]
+				}
+			],
+			"events": [],
+			"toAuth": null
+		},
+		{
+			"name": "radius/browser-discovery-shape",
+			"flow": "radius",
+			"action": "login",
+			"credential": null,
+			"answers": [
+				"browser"
+			],
+			"responses": [
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"authorization\":\"x\"}"
+					]
+				}
+			],
+			"result": null,
+			"thrown": "Invalid Radius OAuth config from https://gateway.example.com",
+			"requests": [
+				{
+					"url": "https://gateway.example.com/v1/oauth",
+					"method": "GET",
+					"headers": {
+						"accept": "application/json"
+					},
+					"body": null
+				}
+			],
+			"prompts": [
+				{
+					"type": "select",
+					"message": "Sign in to Radius:",
+					"options": [
+						{
+							"id": "browser",
+							"label": "Sign in with browser (recommended)"
+						},
+						{
+							"id": "device-code",
+							"label": "Sign in with device code (when signing in from another device)"
+						}
+					]
+				}
+			],
+			"events": [],
+			"toAuth": null
+		},
+		{
+			"name": "radius/unknown-method",
+			"flow": "radius",
+			"action": "login",
+			"credential": null,
+			"answers": [
+				"carrier-pigeon"
+			],
+			"responses": [],
+			"result": null,
+			"thrown": "Unknown Radius sign-in method: carrier-pigeon",
+			"requests": [],
+			"prompts": [
+				{
+					"type": "select",
+					"message": "Sign in to Radius:",
+					"options": [
+						{
+							"id": "browser",
+							"label": "Sign in with browser (recommended)"
+						},
+						{
+							"id": "device-code",
+							"label": "Sign in with device code (when signing in from another device)"
+						}
+					]
+				}
+			],
+			"events": [],
+			"toAuth": null
+		},
+		{
+			"name": "radius/refresh",
+			"flow": "radius",
+			"action": "refresh",
+			"credential": {
+				"type": "oauth",
+				"refresh": "old-refresh",
+				"access": "old-access",
+				"expires": 1767225599999
+			},
+			"answers": [],
+			"responses": [
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"access_token\":\"na\",\"refresh_token\":\"nr\",\"expires_in\":3600}"
+					]
+				}
+			],
+			"result": {
+				"type": "oauth",
+				"access": "na",
+				"refresh": "nr",
+				"expires": 1767229140000
+			},
+			"thrown": null,
+			"requests": [
+				{
+					"url": "https://gateway.example.com/v1/oauth/token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "grant_type=refresh_token&client_id=pi-gateway&refresh_token=old-refresh"
+				}
+			],
+			"prompts": [],
+			"events": [],
+			"toAuth": {
+				"apiKey": "na"
+			}
+		},
+		{
+			"name": "radius/refresh-invalid-grant",
+			"flow": "radius",
+			"action": "refresh",
+			"credential": {
+				"type": "oauth",
+				"refresh": "old-refresh",
+				"access": "old-access",
+				"expires": 1767225599999
+			},
+			"answers": [],
+			"responses": [
+				{
+					"status": 400,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"error\":\"invalid_grant\",\"error_description\":\"expired\"}"
+					]
+				}
+			],
+			"result": null,
+			"thrown": "Radius OAuth token request failed: invalid_grant: expired",
+			"requests": [
+				{
+					"url": "https://gateway.example.com/v1/oauth/token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "grant_type=refresh_token&client_id=pi-gateway&refresh_token=old-refresh"
+				}
+			],
+			"prompts": [],
+			"events": [],
+			"toAuth": null
+		},
+		{
+			"name": "radius/refresh-text-error",
+			"flow": "radius",
+			"action": "refresh",
+			"credential": {
+				"type": "oauth",
+				"refresh": "old-refresh",
+				"access": "old-access",
+				"expires": 1767225599999
+			},
+			"answers": [],
+			"responses": [
+				{
+					"status": 503,
+					"headers": {
+						"content-type": "text/plain"
+					},
+					"chunks": [
+						"maintenance"
+					]
+				}
+			],
+			"result": null,
+			"thrown": "Radius OAuth token request failed: maintenance",
+			"requests": [
+				{
+					"url": "https://gateway.example.com/v1/oauth/token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "grant_type=refresh_token&client_id=pi-gateway&refresh_token=old-refresh"
+				}
+			],
+			"prompts": [],
+			"events": [],
+			"toAuth": null
+		},
+		{
+			"name": "radius/refresh-empty-error",
+			"flow": "radius",
+			"action": "refresh",
+			"credential": {
+				"type": "oauth",
+				"refresh": "old-refresh",
+				"access": "old-access",
+				"expires": 1767225599999
+			},
+			"answers": [],
+			"responses": [
+				{
+					"status": 500,
+					"headers": {
+						"content-type": "text/plain"
+					},
+					"chunks": [
+						""
+					]
+				}
+			],
+			"result": null,
+			"thrown": "Radius OAuth token request failed: 500",
+			"requests": [
+				{
+					"url": "https://gateway.example.com/v1/oauth/token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "grant_type=refresh_token&client_id=pi-gateway&refresh_token=old-refresh"
+				}
+			],
+			"prompts": [],
+			"events": [],
+			"toAuth": null
+		}
+	],
+	"subscription": [
+		{
+			"name": "anthropic refresh ok",
+			"provider": "anthropic",
+			"op": "refresh",
+			"credential": {
+				"type": "oauth",
+				"refresh": "r1",
+				"access": "a0",
+				"expires": 0
+			},
+			"responses": [
+				[
+					200,
+					"{\"access_token\":\"a1\",\"refresh_token\":\"r2\",\"expires_in\":3600,\"scope\":\"x\"}"
+				]
+			],
+			"requests": [
+				{
+					"url": "https://platform.claude.com/v1/oauth/token",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json",
+						"accept": "application/json"
+					},
+					"body": "{\"grant_type\":\"refresh_token\",\"client_id\":\"9d1c250a-e61b-44d9-88ed-5944d1962f5e\",\"refresh_token\":\"r1\"}"
+				}
+			],
+			"result": {
+				"type": "oauth",
+				"refresh": "r2",
+				"access": "a1",
+				"expires": 1767228900000
+			},
+			"error": null
+		},
+		{
+			"name": "anthropic refresh http error",
+			"provider": "anthropic",
+			"op": "refresh",
+			"credential": {
+				"type": "oauth",
+				"refresh": "r1",
+				"access": "a0",
+				"expires": 0
+			},
+			"responses": [
+				[
+					400,
+					"{\"error\":\"invalid_grant\"}"
+				]
+			],
+			"requests": [
+				{
+					"url": "https://platform.claude.com/v1/oauth/token",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json",
+						"accept": "application/json"
+					},
+					"body": "{\"grant_type\":\"refresh_token\",\"client_id\":\"9d1c250a-e61b-44d9-88ed-5944d1962f5e\",\"refresh_token\":\"r1\"}"
+				}
+			],
+			"result": null,
+			"error": "Anthropic token refresh request failed. url=https://platform.claude.com/v1/oauth/token; details=Error: HTTP request failed. status=400; url=https://platform.claude.com/v1/oauth/token; body={\"error\":\"invalid_grant\"}"
+		},
+		{
+			"name": "anthropic refresh invalid json",
+			"provider": "anthropic",
+			"op": "refresh",
+			"credential": {
+				"type": "oauth",
+				"refresh": "r1",
+				"access": "a0",
+				"expires": 0
+			},
+			"responses": [
+				[
+					200,
+					"not json"
+				]
+			],
+			"requests": [
+				{
+					"url": "https://platform.claude.com/v1/oauth/token",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json",
+						"accept": "application/json"
+					},
+					"body": "{\"grant_type\":\"refresh_token\",\"client_id\":\"9d1c250a-e61b-44d9-88ed-5944d1962f5e\",\"refresh_token\":\"r1\"}"
+				}
+			],
+			"result": null,
+			"error": "Anthropic token refresh returned invalid JSON. url=https://platform.claude.com/v1/oauth/token; body=not json; details=SyntaxError: Unexpected token 'o', \"not json\" is not valid JSON"
+		},
+		{
+			"name": "codex refresh ok",
+			"provider": "openai-codex",
+			"op": "refresh",
+			"credential": {
+				"type": "oauth",
+				"refresh": "r & =1",
+				"access": "a0",
+				"expires": 0,
+				"accountId": "old"
+			},
+			"responses": [
+				[
+					200,
+					"{\"access_token\":\"eyJhbGciOiJub25lIn0=.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjdF8xMjMifSwic3ViIjoidSJ9.sig\",\"refresh_token\":\"r2\",\"expires_in\":864000}"
+				]
+			],
+			"requests": [
+				{
+					"url": "https://auth.openai.com/oauth/token",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "grant_type=refresh_token&refresh_token=r+%26+%3D1&client_id=app_EMoamEEZ73f0CkXaXp7hrann"
+				}
+			],
+			"result": {
+				"type": "oauth",
+				"access": "eyJhbGciOiJub25lIn0=.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjdF8xMjMifSwic3ViIjoidSJ9.sig",
+				"refresh": "r2",
+				"expires": 1768089600000,
+				"accountId": "acct_123"
+			},
+			"error": null
+		},
+		{
+			"name": "codex refresh no account",
+			"provider": "openai-codex",
+			"op": "refresh",
+			"credential": {
+				"type": "oauth",
+				"refresh": "r1",
+				"access": "a0",
+				"expires": 0
+			},
+			"responses": [
+				[
+					200,
+					"{\"access_token\":\"eyJhbGciOiJub25lIn0=.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiIn19.sig\",\"refresh_token\":\"r2\",\"expires_in\":10}"
+				]
+			],
+			"requests": [
+				{
+					"url": "https://auth.openai.com/oauth/token",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "grant_type=refresh_token&refresh_token=r1&client_id=app_EMoamEEZ73f0CkXaXp7hrann"
+				}
+			],
+			"result": null,
+			"error": "Failed to extract accountId from token"
+		},
+		{
+			"name": "codex refresh not a jwt",
+			"provider": "openai-codex",
+			"op": "refresh",
+			"credential": {
+				"type": "oauth",
+				"refresh": "r1",
+				"access": "a0",
+				"expires": 0
+			},
+			"responses": [
+				[
+					200,
+					"{\"access_token\":\"opaque\",\"refresh_token\":\"r2\",\"expires_in\":10}"
+				]
+			],
+			"requests": [
+				{
+					"url": "https://auth.openai.com/oauth/token",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "grant_type=refresh_token&refresh_token=r1&client_id=app_EMoamEEZ73f0CkXaXp7hrann"
+				}
+			],
+			"result": null,
+			"error": "Failed to extract accountId from token"
+		},
+		{
+			"name": "codex refresh missing fields",
+			"provider": "openai-codex",
+			"op": "refresh",
+			"credential": {
+				"type": "oauth",
+				"refresh": "r1",
+				"access": "a0",
+				"expires": 0
+			},
+			"responses": [
+				[
+					200,
+					"{\"access_token\":\"x\",\"expires_in\":\"10\"}"
+				]
+			],
+			"requests": [
+				{
+					"url": "https://auth.openai.com/oauth/token",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "grant_type=refresh_token&refresh_token=r1&client_id=app_EMoamEEZ73f0CkXaXp7hrann"
+				}
+			],
+			"result": null,
+			"error": "OpenAI Codex token refresh response missing fields: {\"access_token\":\"x\",\"expires_in\":\"10\"}"
+		},
+		{
+			"name": "codex refresh http error",
+			"provider": "openai-codex",
+			"op": "refresh",
+			"credential": {
+				"type": "oauth",
+				"refresh": "r1",
+				"access": "a0",
+				"expires": 0
+			},
+			"responses": [
+				[
+					401,
+					"{\"error\":\"bad\"}"
+				]
+			],
+			"requests": [
+				{
+					"url": "https://auth.openai.com/oauth/token",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "grant_type=refresh_token&refresh_token=r1&client_id=app_EMoamEEZ73f0CkXaXp7hrann"
+				}
+			],
+			"result": null,
+			"error": "OpenAI Codex token refresh failed (401): {\"error\":\"bad\"}"
+		},
+		{
+			"name": "codex refresh http error empty body",
+			"provider": "openai-codex",
+			"op": "refresh",
+			"credential": {
+				"type": "oauth",
+				"refresh": "r1",
+				"access": "a0",
+				"expires": 0
+			},
+			"responses": [
+				[
+					500,
+					""
+				]
+			],
+			"requests": [
+				{
+					"url": "https://auth.openai.com/oauth/token",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "grant_type=refresh_token&refresh_token=r1&client_id=app_EMoamEEZ73f0CkXaXp7hrann"
+				}
+			],
+			"result": null,
+			"error": "OpenAI Codex token refresh failed (500): Internal Server Error"
+		},
+		{
+			"name": "copilot refresh ok",
+			"provider": "github-copilot",
+			"op": "refresh",
+			"credential": {
+				"type": "oauth",
+				"refresh": "gho_1",
+				"access": "old",
+				"expires": 0
+			},
+			"responses": [
+				[
+					200,
+					"{\"token\":\"tid=abc;exp=1767229200;proxy-ep=proxy.individual.githubcopilot.com;sku=x\",\"expires_at\":1767229200}"
+				],
+				[
+					200,
+					"{\"data\":[{\"id\":\"gpt-4o\",\"model_picker_enabled\":true,\"policy\":{\"state\":\"enabled\"}},{\"id\":\"claude-sonnet-4.5\",\"model_picker_enabled\":true,\"policy\":{\"state\":\"unconfigured\"}},{\"id\":\"no-tools\",\"model_picker_enabled\":true,\"capabilities\":{\"supports\":{\"tool_calls\":false}}},{\"id\":\"disabled-one\",\"model_picker_enabled\":true,\"policy\":{\"state\":\"disabled\"}},{\"id\":42},\"junk\"]}"
+				]
+			],
+			"requests": [
+				{
+					"url": "https://api.github.com/copilot_internal/v2/token",
+					"method": "GET",
+					"headers": {
+						"accept": "application/json",
+						"authorization": "Bearer gho_1",
+						"user-agent": "GitHubCopilotChat/0.35.0",
+						"editor-version": "vscode/1.107.0",
+						"editor-plugin-version": "copilot-chat/0.35.0",
+						"copilot-integration-id": "vscode-chat"
+					},
+					"body": ""
+				},
+				{
+					"url": "https://api.individual.githubcopilot.com/models",
+					"method": "GET",
+					"headers": {
+						"accept": "application/json",
+						"authorization": "Bearer tid=abc;exp=1767229200;proxy-ep=proxy.individual.githubcopilot.com;sku=x",
+						"user-agent": "GitHubCopilotChat/0.35.0",
+						"editor-version": "vscode/1.107.0",
+						"editor-plugin-version": "copilot-chat/0.35.0",
+						"copilot-integration-id": "vscode-chat",
+						"x-github-api-version": "2026-06-01"
+					},
+					"body": ""
+				}
+			],
+			"result": {
+				"type": "oauth",
+				"refresh": "gho_1",
+				"access": "tid=abc;exp=1767229200;proxy-ep=proxy.individual.githubcopilot.com;sku=x",
+				"expires": 1767228900000,
+				"availableModelIds": [
+					"gpt-4o",
+					"claude-sonnet-4.5"
+				]
+			},
+			"error": null
+		},
+		{
+			"name": "copilot refresh policy fallback",
+			"provider": "github-copilot",
+			"op": "refresh",
+			"credential": {
+				"type": "oauth",
+				"refresh": "gho_1",
+				"access": "old",
+				"expires": 0
+			},
+			"responses": [
+				[
+					200,
+					"{\"token\":\"tid=abc;exp=1767229200;proxy-ep=proxy.individual.githubcopilot.com;sku=x\",\"expires_at\":1767229200}"
+				],
+				[
+					200,
+					"{\"data\":[{\"id\":\"gpt-4o\",\"model_picker_enabled\":false,\"policy\":{\"state\":\"enabled\"}},{\"id\":\"gpt-5\",\"model_picker_enabled\":false,\"policy\":{\"state\":\"disabled\"}}]}"
+				]
+			],
+			"requests": [
+				{
+					"url": "https://api.github.com/copilot_internal/v2/token",
+					"method": "GET",
+					"headers": {
+						"accept": "application/json",
+						"authorization": "Bearer gho_1",
+						"user-agent": "GitHubCopilotChat/0.35.0",
+						"editor-version": "vscode/1.107.0",
+						"editor-plugin-version": "copilot-chat/0.35.0",
+						"copilot-integration-id": "vscode-chat"
+					},
+					"body": ""
+				},
+				{
+					"url": "https://api.individual.githubcopilot.com/models",
+					"method": "GET",
+					"headers": {
+						"accept": "application/json",
+						"authorization": "Bearer tid=abc;exp=1767229200;proxy-ep=proxy.individual.githubcopilot.com;sku=x",
+						"user-agent": "GitHubCopilotChat/0.35.0",
+						"editor-version": "vscode/1.107.0",
+						"editor-plugin-version": "copilot-chat/0.35.0",
+						"copilot-integration-id": "vscode-chat",
+						"x-github-api-version": "2026-06-01"
+					},
+					"body": ""
+				}
+			],
+			"result": {
+				"type": "oauth",
+				"refresh": "gho_1",
+				"access": "tid=abc;exp=1767229200;proxy-ep=proxy.individual.githubcopilot.com;sku=x",
+				"expires": 1767228900000,
+				"availableModelIds": [
+					"gpt-4o"
+				]
+			},
+			"error": null
+		},
+		{
+			"name": "copilot refresh enterprise",
+			"provider": "github-copilot",
+			"op": "refresh",
+			"credential": {
+				"type": "oauth",
+				"refresh": "gho_1",
+				"access": "old",
+				"expires": 0,
+				"enterpriseUrl": "https://Company.GHE.com/some/path"
+			},
+			"responses": [
+				[
+					200,
+					"{\"token\":\"tid=abc;exp=1767229200;sku=x\",\"expires_at\":1767229200}"
+				],
+				[
+					200,
+					"{\"data\":[{\"id\":\"gpt-4o\",\"model_picker_enabled\":false,\"policy\":{\"state\":\"enabled\"}},{\"id\":\"gpt-5\",\"model_picker_enabled\":false,\"policy\":{\"state\":\"disabled\"}}]}"
+				]
+			],
+			"requests": [
+				{
+					"url": "https://api.company.ghe.com/copilot_internal/v2/token",
+					"method": "GET",
+					"headers": {
+						"accept": "application/json",
+						"authorization": "Bearer gho_1",
+						"user-agent": "GitHubCopilotChat/0.35.0",
+						"editor-version": "vscode/1.107.0",
+						"editor-plugin-version": "copilot-chat/0.35.0",
+						"copilot-integration-id": "vscode-chat"
+					},
+					"body": ""
+				},
+				{
+					"url": "https://copilot-api.company.ghe.com/models",
+					"method": "GET",
+					"headers": {
+						"accept": "application/json",
+						"authorization": "Bearer tid=abc;exp=1767229200;sku=x",
+						"user-agent": "GitHubCopilotChat/0.35.0",
+						"editor-version": "vscode/1.107.0",
+						"editor-plugin-version": "copilot-chat/0.35.0",
+						"copilot-integration-id": "vscode-chat",
+						"x-github-api-version": "2026-06-01"
+					},
+					"body": ""
+				}
+			],
+			"result": {
+				"type": "oauth",
+				"refresh": "gho_1",
+				"access": "tid=abc;exp=1767229200;sku=x",
+				"expires": 1767228900000,
+				"enterpriseUrl": "company.ghe.com",
+				"availableModelIds": []
+			},
+			"error": null
+		},
+		{
+			"name": "copilot refresh invalid fields",
+			"provider": "github-copilot",
+			"op": "refresh",
+			"credential": {
+				"type": "oauth",
+				"refresh": "gho_1",
+				"access": "old",
+				"expires": 0
+			},
+			"responses": [
+				[
+					200,
+					"{\"token\":5,\"expires_at\":1}"
+				]
+			],
+			"requests": [
+				{
+					"url": "https://api.github.com/copilot_internal/v2/token",
+					"method": "GET",
+					"headers": {
+						"accept": "application/json",
+						"authorization": "Bearer gho_1",
+						"user-agent": "GitHubCopilotChat/0.35.0",
+						"editor-version": "vscode/1.107.0",
+						"editor-plugin-version": "copilot-chat/0.35.0",
+						"copilot-integration-id": "vscode-chat"
+					},
+					"body": ""
+				}
+			],
+			"result": null,
+			"error": "Invalid Copilot token response fields"
+		},
+		{
+			"name": "copilot refresh token http error",
+			"provider": "github-copilot",
+			"op": "refresh",
+			"credential": {
+				"type": "oauth",
+				"refresh": "gho_1",
+				"access": "old",
+				"expires": 0
+			},
+			"responses": [
+				[
+					403,
+					"nope"
+				]
+			],
+			"requests": [
+				{
+					"url": "https://api.github.com/copilot_internal/v2/token",
+					"method": "GET",
+					"headers": {
+						"accept": "application/json",
+						"authorization": "Bearer gho_1",
+						"user-agent": "GitHubCopilotChat/0.35.0",
+						"editor-version": "vscode/1.107.0",
+						"editor-plugin-version": "copilot-chat/0.35.0",
+						"copilot-integration-id": "vscode-chat"
+					},
+					"body": ""
+				}
+			],
+			"result": null,
+			"error": "403 Forbidden: nope"
+		},
+		{
+			"name": "copilot refresh models http error",
+			"provider": "github-copilot",
+			"op": "refresh",
+			"credential": {
+				"type": "oauth",
+				"refresh": "gho_1",
+				"access": "old",
+				"expires": 0
+			},
+			"responses": [
+				[
+					200,
+					"{\"token\":\"tid=abc;exp=1767229200;proxy-ep=proxy.individual.githubcopilot.com;sku=x\",\"expires_at\":1767229200}"
+				],
+				[
+					500,
+					"boom"
+				]
+			],
+			"requests": [
+				{
+					"url": "https://api.github.com/copilot_internal/v2/token",
+					"method": "GET",
+					"headers": {
+						"accept": "application/json",
+						"authorization": "Bearer gho_1",
+						"user-agent": "GitHubCopilotChat/0.35.0",
+						"editor-version": "vscode/1.107.0",
+						"editor-plugin-version": "copilot-chat/0.35.0",
+						"copilot-integration-id": "vscode-chat"
+					},
+					"body": ""
+				},
+				{
+					"url": "https://api.individual.githubcopilot.com/models",
+					"method": "GET",
+					"headers": {
+						"accept": "application/json",
+						"authorization": "Bearer tid=abc;exp=1767229200;proxy-ep=proxy.individual.githubcopilot.com;sku=x",
+						"user-agent": "GitHubCopilotChat/0.35.0",
+						"editor-version": "vscode/1.107.0",
+						"editor-plugin-version": "copilot-chat/0.35.0",
+						"copilot-integration-id": "vscode-chat",
+						"x-github-api-version": "2026-06-01"
+					},
+					"body": ""
+				}
+			],
+			"result": null,
+			"error": "500 Internal Server Error: boom"
+		},
+		{
+			"name": "copilot refresh models invalid",
+			"provider": "github-copilot",
+			"op": "refresh",
+			"credential": {
+				"type": "oauth",
+				"refresh": "gho_1",
+				"access": "old",
+				"expires": 0
+			},
+			"responses": [
+				[
+					200,
+					"{\"token\":\"tid=abc;exp=1767229200;proxy-ep=proxy.individual.githubcopilot.com;sku=x\",\"expires_at\":1767229200}"
+				],
+				[
+					200,
+					"{\"data\":{}}"
+				]
+			],
+			"requests": [
+				{
+					"url": "https://api.github.com/copilot_internal/v2/token",
+					"method": "GET",
+					"headers": {
+						"accept": "application/json",
+						"authorization": "Bearer gho_1",
+						"user-agent": "GitHubCopilotChat/0.35.0",
+						"editor-version": "vscode/1.107.0",
+						"editor-plugin-version": "copilot-chat/0.35.0",
+						"copilot-integration-id": "vscode-chat"
+					},
+					"body": ""
+				},
+				{
+					"url": "https://api.individual.githubcopilot.com/models",
+					"method": "GET",
+					"headers": {
+						"accept": "application/json",
+						"authorization": "Bearer tid=abc;exp=1767229200;proxy-ep=proxy.individual.githubcopilot.com;sku=x",
+						"user-agent": "GitHubCopilotChat/0.35.0",
+						"editor-version": "vscode/1.107.0",
+						"editor-plugin-version": "copilot-chat/0.35.0",
+						"copilot-integration-id": "vscode-chat",
+						"x-github-api-version": "2026-06-01"
+					},
+					"body": ""
+				}
+			],
+			"result": null,
+			"error": "Invalid Copilot models response"
+		},
+		{
+			"name": "copilot toAuth proxy",
+			"provider": "github-copilot",
+			"op": "toAuth",
+			"credential": {
+				"type": "oauth",
+				"refresh": "r",
+				"access": "tid=abc;exp=1767229200;proxy-ep=proxy.individual.githubcopilot.com;sku=x",
+				"expires": 0
+			},
+			"responses": [],
+			"requests": [],
+			"result": {
+				"apiKey": "tid=abc;exp=1767229200;proxy-ep=proxy.individual.githubcopilot.com;sku=x",
+				"baseUrl": "https://api.individual.githubcopilot.com"
+			},
+			"error": null
+		},
+		{
+			"name": "copilot toAuth enterprise",
+			"provider": "github-copilot",
+			"op": "toAuth",
+			"credential": {
+				"type": "oauth",
+				"refresh": "r",
+				"access": "tid=abc;exp=1767229200;sku=x",
+				"expires": 0,
+				"enterpriseUrl": "ghe.example.com"
+			},
+			"responses": [],
+			"requests": [],
+			"result": {
+				"apiKey": "tid=abc;exp=1767229200;sku=x",
+				"baseUrl": "https://copilot-api.ghe.example.com"
+			},
+			"error": null
+		},
+		{
+			"name": "copilot toAuth bad enterprise",
+			"provider": "github-copilot",
+			"op": "toAuth",
+			"credential": {
+				"type": "oauth",
+				"refresh": "r",
+				"access": "plain",
+				"expires": 0,
+				"enterpriseUrl": "http://[bad"
+			},
+			"responses": [],
+			"requests": [],
+			"result": {
+				"apiKey": "plain",
+				"baseUrl": "https://api.individual.githubcopilot.com"
+			},
+			"error": null
+		},
+		{
+			"name": "copilot toAuth default",
+			"provider": "github-copilot",
+			"op": "toAuth",
+			"credential": {
+				"type": "oauth",
+				"refresh": "r",
+				"access": "plain",
+				"expires": 0,
+				"enterpriseUrl": 7
+			},
+			"responses": [],
+			"requests": [],
+			"result": {
+				"apiKey": "plain",
+				"baseUrl": "https://api.individual.githubcopilot.com"
+			},
+			"error": null
+		},
+		{
+			"name": "anthropic toAuth",
+			"provider": "anthropic",
+			"op": "toAuth",
+			"credential": {
+				"type": "oauth",
+				"refresh": "r",
+				"access": "sk-ant-oat",
+				"expires": 0
+			},
+			"responses": [],
+			"requests": [],
+			"result": {
+				"apiKey": "sk-ant-oat"
+			},
+			"error": null
+		},
+		{
+			"name": "codex toAuth",
+			"provider": "openai-codex",
+			"op": "toAuth",
+			"credential": {
+				"type": "oauth",
+				"refresh": "r",
+				"access": "eyJhbGciOiJub25lIn0=.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjdF8xMjMifSwic3ViIjoidSJ9.sig",
+				"expires": 0
+			},
+			"responses": [],
+			"requests": [],
+			"result": {
+				"apiKey": "eyJhbGciOiJub25lIn0=.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjdF8xMjMifSwic3ViIjoidSJ9.sig"
+			},
+			"error": null
+		}
+	]
+}

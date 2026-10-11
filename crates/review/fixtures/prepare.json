@@ -1,0 +1,600 @@
+{
+ "repos": [
+  {
+   "tree": [
+    {
+     "path": "pyproject.toml",
+     "content": "[project]\nname = \"x\"\nrequires-python = \">=3.11,<4\"\n"
+    },
+    {
+     "path": "uv.lock",
+     "content": "version = 1\n"
+    },
+    {
+     "path": "requirements/dev.txt",
+     "content": "pytest\n"
+    },
+    {
+     "path": "requirements/base.txt",
+     "content": "x\n"
+    },
+    {
+     "path": "requirements/notes.md",
+     "content": ""
+    },
+    {
+     "path": "requirements/sub.txt",
+     "dir": true
+    },
+    {
+     "path": "backend/requirements.txt",
+     "content": "fastapi\n"
+    },
+    {
+     "path": "services/api/pyproject.toml",
+     "content": "[project]\nname = \"api\"\n"
+    },
+    {
+     "path": "services/api/deps/requirements-dev.txt",
+     "content": "pytest\n"
+    },
+    {
+     "path": "a/b/c/d/e/requirements.txt",
+     "content": "too deep\n"
+    },
+    {
+     "path": "a/b/c/d/requirements-x.txt",
+     "content": "deep enough\n"
+    },
+    {
+     "path": "frontend/dist/requirements.txt",
+     "content": "nope\n"
+    },
+    {
+     "path": "node_modules/pkg/requirements.txt",
+     "content": "nope\n"
+    },
+    {
+     "path": ".tox/requirements.txt",
+     "content": "nope\n"
+    },
+    {
+     "path": "package.json",
+     "content": "{\"name\":\"web\",\"engines\":{\"node\":\">=20\"}}"
+    },
+    {
+     "path": "pnpm-lock.yaml",
+     "content": "lockfileVersion: 9\n"
+    },
+    {
+     "path": ".nvmrc",
+     "content": "v22.13\n"
+    }
+   ],
+   "detect": {
+    "python": [
+     "pyproject.toml",
+     "uv.lock",
+     "requirements/base.txt",
+     "requirements/dev.txt",
+     "requirements/sub.txt",
+     "a/b/c/d/requirements-x.txt",
+     "backend/requirements.txt",
+     "services/api/deps/requirements-dev.txt",
+     "services/api/pyproject.toml"
+    ],
+    "node": [
+     "package.json",
+     "pnpm-lock.yaml"
+    ],
+    "tools": [
+     ".nvmrc"
+    ]
+   },
+   "requests": {
+    "node": "22.13",
+    "python": "3.11"
+   },
+   "hash": "18d57c0dba728936",
+   "hashPython": "45902e8228229550"
+  },
+  {
+   "tree": [
+    {
+     "path": "mise.toml",
+     "content": "[env]\nX = \"1\"\n[tools]\npython = \"3.12\"\nnodejs = '20'\n\n[env]\nY = \"2\"\n"
+    },
+    {
+     "path": ".nvmrc",
+     "content": "18\n"
+    },
+    {
+     "path": ".tool-versions",
+     "content": "python 3.9\nnode 16\n"
+    },
+    {
+     "path": "setup.py",
+     "content": "x"
+    },
+    {
+     "path": "requirements.txt",
+     "content": "a\n"
+    },
+    {
+     "path": "package-lock.json",
+     "content": "{}"
+    },
+    {
+     "path": "yarn.lock",
+     "content": ""
+    },
+    {
+     "path": "svc/setup.py",
+     "content": ""
+    },
+    {
+     "path": "svc/setup.cfg",
+     "content": ""
+    },
+    {
+     "path": "svc/requirements.TXT",
+     "content": ""
+    },
+    {
+     "path": "svc/requirementsXtxt",
+     "content": ""
+    },
+    {
+     "path": "svc/dev-requirements.txt",
+     "content": ""
+    },
+    {
+     "path": "Svc/requirements.txt",
+     "content": ""
+    },
+    {
+     "path": "é/requirements.txt",
+     "content": "u"
+    },
+    {
+     "path": "z/requirements.txt",
+     "content": ""
+    },
+    {
+     "path": "_/pyproject.toml",
+     "content": ""
+    },
+    {
+     "path": "docs/x",
+     "dir": true
+    },
+    {
+     "path": "docs/requirements.txt",
+     "content": ""
+    },
+    {
+     "path": "build/requirements.txt",
+     "content": ""
+    },
+    {
+     "path": "vendor/pyproject.toml",
+     "content": ""
+    },
+    {
+     "path": "target/setup.py",
+     "content": ""
+    },
+    {
+     "path": "coverage/setup.py",
+     "content": ""
+    },
+    {
+     "path": "site-packages/setup.py",
+     "content": ""
+    },
+    {
+     "path": "__pycache__/setup.py",
+     "content": ""
+    },
+    {
+     "path": "mockups/setup.py",
+     "content": ""
+    },
+    {
+     "path": "venv/setup.py",
+     "content": ""
+    },
+    {
+     "path": "dist/setup.py",
+     "content": ""
+    },
+    {
+     "path": "x/requirements/requirements.txt",
+     "content": ""
+    },
+    {
+     "path": "x/.hidden/requirements.txt",
+     "content": ""
+    },
+    {
+     "path": "x/.requirements.txt",
+     "content": ""
+    },
+    {
+     "path": "x/requirements.txt/inner.txt",
+     "content": ""
+    },
+    {
+     "path": "linked",
+     "link": "svc"
+    },
+    {
+     "path": "x/requirements-link.txt",
+     "link": "../z"
+    }
+   ],
+   "detect": {
+    "python": [
+     "setup.py",
+     "requirements.txt",
+     "Svc/requirements.txt",
+     "_/pyproject.toml",
+     "svc/setup.py",
+     "x/requirements-link.txt",
+     "z/requirements.txt",
+     "é/requirements.txt"
+    ],
+    "node": [
+     "package-lock.json",
+     "yarn.lock"
+    ],
+    "tools": [
+     "mise.toml",
+     ".tool-versions",
+     ".nvmrc"
+    ]
+   },
+   "requests": {
+    "python": "3.12",
+    "node": "20"
+   },
+   "hash": "39e3a2fc734c864d",
+   "hashPython": "6bd29814c5ae8961"
+  },
+  {
+   "tree": [
+    {
+     "path": ".tool-versions",
+     "content": "  nodejs   21.1  \n\npython\nruby 3\npython 3.8.1 extra\n"
+    },
+    {
+     "path": ".python-version",
+     "content": "\n3.7\n3.6\n"
+    },
+    {
+     "path": ".node-version",
+     "content": "v14\n"
+    },
+    {
+     "path": "package.json",
+     "content": "{\"engines\": {\"node\": \"^19.1\"}}"
+    },
+    {
+     "path": "mise.toml",
+     "content": "[tools]\nruby = '3'\n"
+    }
+   ],
+   "detect": {
+    "python": [],
+    "node": [
+     "package.json"
+    ],
+    "tools": [
+     "mise.toml",
+     ".tool-versions",
+     ".python-version",
+     ".node-version"
+    ]
+   },
+   "requests": {
+    "node": "21.1",
+    "python": "3.8.1"
+   },
+   "hash": "2fd1485e813af99f",
+   "hashPython": "5e7b4083b7744224"
+  },
+  {
+   "tree": [
+    {
+     "path": ".python-version",
+     "content": "  3.10  \nignored"
+    },
+    {
+     "path": ".nvmrc",
+     "content": ""
+    },
+    {
+     "path": ".node-version",
+     "content": "12"
+    },
+    {
+     "path": "pyproject.toml",
+     "content": "requires-python='~=3.9'"
+    },
+    {
+     "path": "package.json",
+     "content": "{\"engines\": {\"node\": 18}}"
+    }
+   ],
+   "detect": {
+    "python": [
+     "pyproject.toml"
+    ],
+    "node": [
+     "package.json"
+    ],
+    "tools": [
+     ".python-version",
+     ".nvmrc",
+     ".node-version"
+    ]
+   },
+   "requests": {
+    "python": "3.10",
+    "node": "18"
+   },
+   "hash": "f3ef7eb989efff56",
+   "hashPython": "d016c9bd7557ed79"
+  },
+  {
+   "tree": [
+    {
+     "path": ".mise.toml",
+     "content": "[tools]\n  python = \"3.11.4\"\n"
+    },
+    {
+     "path": "pyproject.toml",
+     "content": "requires-python = \">=3\"\n"
+    },
+    {
+     "path": "package.json",
+     "content": "not json"
+    },
+    {
+     "path": "requirements-dev.txt",
+     "content": "x"
+    }
+   ],
+   "detect": {
+    "python": [
+     "pyproject.toml",
+     "requirements-dev.txt"
+    ],
+    "node": [
+     "package.json"
+    ],
+    "tools": [
+     ".mise.toml"
+    ]
+   },
+   "requests": {
+    "python": "3.11.4"
+   },
+   "hash": "8ddf6af2a5dedc54",
+   "hashPython": "e0199bbfc3bf163a"
+  },
+  {
+   "tree": [
+    {
+     "path": "pyproject.toml",
+     "content": "requires-python = \">=3.12\"\n"
+    },
+    {
+     "path": "package.json",
+     "content": "{\"engines\": null}"
+    },
+    {
+     "path": "dev-requirements.txt",
+     "content": ""
+    }
+   ],
+   "detect": {
+    "python": [
+     "pyproject.toml",
+     "dev-requirements.txt"
+    ],
+    "node": [
+     "package.json"
+    ],
+    "tools": []
+   },
+   "requests": {
+    "python": "3.12"
+   },
+   "hash": "e8d40a951e03c94e",
+   "hashPython": "dd475d3dcb87cdb3"
+  },
+  {
+   "tree": [
+    {
+     "path": "package.json",
+     "content": "{\"engines\": {\"node\": [16, 18]}}"
+    },
+    {
+     "path": "npm-shrinkwrap.json",
+     "content": "{}"
+    },
+    {
+     "path": "README.md",
+     "content": "x"
+    }
+   ],
+   "detect": {
+    "python": [],
+    "node": [
+     "package.json",
+     "npm-shrinkwrap.json"
+    ],
+    "tools": []
+   },
+   "requests": {
+    "node": "16"
+   },
+   "hash": "8f1bd5d0be1f611e",
+   "hashPython": "a69c0846e85003a1"
+  },
+  {
+   "tree": [
+    {
+     "path": "package.json",
+     "content": "[1]"
+    },
+    {
+     "path": "mise.toml",
+     "content": "[tools]\nnode = \"lts\""
+    }
+   ],
+   "detect": {
+    "python": [],
+    "node": [
+     "package.json"
+    ],
+    "tools": [
+     "mise.toml"
+    ]
+   },
+   "requests": {
+    "node": "lts"
+   },
+   "hash": "b749ae6af710cabb",
+   "hashPython": "8dc18372c3fa5973"
+  },
+  {
+   "tree": [
+    {
+     "path": "package.json",
+     "content": "{\"engines\": {\"node\": 0}}"
+    }
+   ],
+   "detect": {
+    "python": [],
+    "node": [
+     "package.json"
+    ],
+    "tools": []
+   },
+   "requests": {},
+   "hash": "694c5e4a6bb95252",
+   "hashPython": "f912428dd29f3ea9"
+  },
+  {
+   "tree": [
+    {
+     "path": "package.json",
+     "content": "{\"engines\": {\"node\": false}}"
+    }
+   ],
+   "detect": {
+    "python": [],
+    "node": [
+     "package.json"
+    ],
+    "tools": []
+   },
+   "requests": {},
+   "hash": "e9e646de7216ed55",
+   "hashPython": "226ef3e1493d5b94"
+  },
+  {
+   "tree": [],
+   "detect": {
+    "python": [],
+    "node": [],
+    "tools": []
+   },
+   "requests": {},
+   "hash": "38a3f53c92ca10b5",
+   "hashPython": "4689f8e3a300d275"
+  }
+ ],
+ "miseTree": [
+  {
+   "path": "one/bin/mise",
+   "content": ""
+  },
+  {
+   "path": "two/mise",
+   "content": ""
+  },
+  {
+   "path": "three/mise",
+   "dir": true
+  },
+  {
+   "path": "home/.local/bin/mise",
+   "content": ""
+  },
+  {
+   "path": "mise",
+   "content": ""
+  }
+ ],
+ "mise": [
+  {
+   "path": "<root>/none:<root>/one/bin:<root>/two",
+   "setting": null,
+   "found": "<root>/one/bin/mise"
+  },
+  {
+   "path": "<root>/none:<root>/two/./:<root>/one/bin",
+   "setting": true,
+   "found": "<root>/two/mise"
+  },
+  {
+   "path": "<root>/one/bin",
+   "setting": false,
+   "found": null
+  },
+  {
+   "path": "<root>/one/bin",
+   "setting": "  ",
+   "found": "<root>/one/bin/mise"
+  },
+  {
+   "path": "<root>/one/bin",
+   "setting": " /opt/m ",
+   "found": " /opt/m "
+  },
+  {
+   "path": "<root>/one/bin",
+   "setting": "true",
+   "found": "<root>/one/bin/mise"
+  },
+  {
+   "path": "<root>/three::.:",
+   "setting": null,
+   "found": "<root>/three/mise"
+  },
+  {
+   "path": "<root>/x/../two",
+   "setting": null,
+   "found": "<root>/two/mise"
+  },
+  {
+   "path": "",
+   "setting": null,
+   "found": "<root>/home/.local/bin/mise"
+  },
+  {
+   "path": null,
+   "setting": "false",
+   "found": "false"
+  }
+ ],
+ "describe": [
+  "python 3.12.9 from mise: /m/python/3.12.9",
+  "node 20.0 from mise (installed by prepare): /m/node/20.0",
+  "python (version not pinned) from system: /usr",
+  "node 18 from uv: /u"
+ ]
+}

@@ -1,0 +1,3085 @@
+{
+	"partialJson": [
+		{
+			"input": "",
+			"output": {}
+		},
+		{
+			"input": "{",
+			"output": {}
+		},
+		{
+			"input": "{\"",
+			"output": {}
+		},
+		{
+			"input": "{\"p",
+			"output": {}
+		},
+		{
+			"input": "{\"pa",
+			"output": {}
+		},
+		{
+			"input": "{\"pat",
+			"output": {}
+		},
+		{
+			"input": "{\"path",
+			"output": {}
+		},
+		{
+			"input": "{\"path\"",
+			"output": {}
+		},
+		{
+			"input": "{\"path\":",
+			"output": {}
+		},
+		{
+			"input": "{\"path\": ",
+			"output": {}
+		},
+		{
+			"input": "{\"path\": \"",
+			"output": {
+				"path": ""
+			}
+		},
+		{
+			"input": "{\"path\": \"s",
+			"output": {
+				"path": "s"
+			}
+		},
+		{
+			"input": "{\"path\": \"sr",
+			"output": {
+				"path": "sr"
+			}
+		},
+		{
+			"input": "{\"path\": \"src",
+			"output": {
+				"path": "src"
+			}
+		},
+		{
+			"input": "{\"path\": \"src/",
+			"output": {
+				"path": "src/"
+			}
+		},
+		{
+			"input": "{\"path\": \"src/m",
+			"output": {
+				"path": "src/m"
+			}
+		},
+		{
+			"input": "{\"path\": \"src/ma",
+			"output": {
+				"path": "src/ma"
+			}
+		},
+		{
+			"input": "{\"path\": \"src/mai",
+			"output": {
+				"path": "src/mai"
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main",
+			"output": {
+				"path": "src/main"
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.",
+			"output": {
+				"path": "src/main."
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.r",
+			"output": {
+				"path": "src/main.r"
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs",
+			"output": {
+				"path": "src/main.rs"
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\"",
+			"output": {
+				"path": "src/main.rs"
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\",",
+			"output": {
+				"path": "src/main.rs"
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", ",
+			"output": {
+				"path": "src/main.rs"
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"",
+			"output": {
+				"path": "src/main.rs"
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"l",
+			"output": {
+				"path": "src/main.rs"
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"li",
+			"output": {
+				"path": "src/main.rs"
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"lim",
+			"output": {
+				"path": "src/main.rs"
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limi",
+			"output": {
+				"path": "src/main.rs"
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit",
+			"output": {
+				"path": "src/main.rs"
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\"",
+			"output": {
+				"path": "src/main.rs"
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\":",
+			"output": {
+				"path": "src/main.rs"
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": ",
+			"output": {
+				"path": "src/main.rs"
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 1",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 1
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10,",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, ",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"n",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"ne",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nes",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nest",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"neste",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\"",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\":",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": ",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"l",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"li",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"lis",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\"",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\":",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": ",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": []
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1,",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, ",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.5",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2.5
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.5,",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2.5
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.5, ",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2.5
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.5, -",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2.5
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.5, -3",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2.5,
+						-3
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.5, -3e",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2.5,
+						-3
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.5, -3e2",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2.5,
+						-300
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.5, -3e2,",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2.5,
+						-300
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.5, -3e2, ",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2.5,
+						-300
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.5, -3e2, t",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2.5,
+						-300,
+						true
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.5, -3e2, tr",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2.5,
+						-300,
+						true
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.5, -3e2, tru",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2.5,
+						-300,
+						true
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.5, -3e2, true",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2.5,
+						-300,
+						true
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.5, -3e2, true,",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2.5,
+						-300,
+						true
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.5, -3e2, true, ",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2.5,
+						-300,
+						true
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.5, -3e2, true, f",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2.5,
+						-300,
+						true,
+						false
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.5, -3e2, true, fa",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2.5,
+						-300,
+						true,
+						false
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.5, -3e2, true, fal",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2.5,
+						-300,
+						true,
+						false
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.5, -3e2, true, fals",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2.5,
+						-300,
+						true,
+						false
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.5, -3e2, true, false",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2.5,
+						-300,
+						true,
+						false
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.5, -3e2, true, false,",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2.5,
+						-300,
+						true,
+						false
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.5, -3e2, true, false, ",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2.5,
+						-300,
+						true,
+						false
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.5, -3e2, true, false, n",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2.5,
+						-300,
+						true,
+						false,
+						null
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.5, -3e2, true, false, nu",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2.5,
+						-300,
+						true,
+						false,
+						null
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.5, -3e2, true, false, nul",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2.5,
+						-300,
+						true,
+						false,
+						null
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.5, -3e2, true, false, null",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2.5,
+						-300,
+						true,
+						false,
+						null
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.5, -3e2, true, false, null,",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2.5,
+						-300,
+						true,
+						false,
+						null
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.5, -3e2, true, false, null, ",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2.5,
+						-300,
+						true,
+						false,
+						null
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.5, -3e2, true, false, null, \"",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2.5,
+						-300,
+						true,
+						false,
+						null,
+						""
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.5, -3e2, true, false, null, \"s",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2.5,
+						-300,
+						true,
+						false,
+						null,
+						"s"
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.5, -3e2, true, false, null, \"s\\",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2.5,
+						-300,
+						true,
+						false,
+						null,
+						"s"
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.5, -3e2, true, false, null, \"s\\\"",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2.5,
+						-300,
+						true,
+						false,
+						null,
+						"s\""
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.5, -3e2, true, false, null, \"s\\\"q",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2.5,
+						-300,
+						true,
+						false,
+						null,
+						"s\"q"
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.5, -3e2, true, false, null, \"s\\\"q\\",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2.5,
+						-300,
+						true,
+						false,
+						null,
+						"s\"q"
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.5, -3e2, true, false, null, \"s\\\"q\\u",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2.5,
+						-300,
+						true,
+						false,
+						null,
+						"s\"q"
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.5, -3e2, true, false, null, \"s\\\"q\\u0",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2.5,
+						-300,
+						true,
+						false,
+						null,
+						"s\"q"
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.5, -3e2, true, false, null, \"s\\\"q\\u00",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2.5,
+						-300,
+						true,
+						false,
+						null,
+						"s\"q"
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.5, -3e2, true, false, null, \"s\\\"q\\u00e",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2.5,
+						-300,
+						true,
+						false,
+						null,
+						"s\"q"
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.5, -3e2, true, false, null, \"s\\\"q\\u00e9",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2.5,
+						-300,
+						true,
+						false,
+						null,
+						"s\"qé"
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.5, -3e2, true, false, null, \"s\\\"q\\u00e9\"",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2.5,
+						-300,
+						true,
+						false,
+						null,
+						"s\"qé"
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.5, -3e2, true, false, null, \"s\\\"q\\u00e9\"]",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2.5,
+						-300,
+						true,
+						false,
+						null,
+						"s\"qé"
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.5, -3e2, true, false, null, \"s\\\"q\\u00e9\"]}",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2.5,
+						-300,
+						true,
+						false,
+						null,
+						"s\"qé"
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.5, -3e2, true, false, null, \"s\\\"q\\u00e9\"]},",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2.5,
+						-300,
+						true,
+						false,
+						null,
+						"s\"qé"
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.5, -3e2, true, false, null, \"s\\\"q\\u00e9\"]}, ",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2.5,
+						-300,
+						true,
+						false,
+						null,
+						"s\"qé"
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.5, -3e2, true, false, null, \"s\\\"q\\u00e9\"]}, \"",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2.5,
+						-300,
+						true,
+						false,
+						null,
+						"s\"qé"
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.5, -3e2, true, false, null, \"s\\\"q\\u00e9\"]}, \"e",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2.5,
+						-300,
+						true,
+						false,
+						null,
+						"s\"qé"
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.5, -3e2, true, false, null, \"s\\\"q\\u00e9\"]}, \"em",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2.5,
+						-300,
+						true,
+						false,
+						null,
+						"s\"qé"
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.5, -3e2, true, false, null, \"s\\\"q\\u00e9\"]}, \"emp",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2.5,
+						-300,
+						true,
+						false,
+						null,
+						"s\"qé"
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.5, -3e2, true, false, null, \"s\\\"q\\u00e9\"]}, \"empt",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2.5,
+						-300,
+						true,
+						false,
+						null,
+						"s\"qé"
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.5, -3e2, true, false, null, \"s\\\"q\\u00e9\"]}, \"empty",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2.5,
+						-300,
+						true,
+						false,
+						null,
+						"s\"qé"
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.5, -3e2, true, false, null, \"s\\\"q\\u00e9\"]}, \"empty\"",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2.5,
+						-300,
+						true,
+						false,
+						null,
+						"s\"qé"
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.5, -3e2, true, false, null, \"s\\\"q\\u00e9\"]}, \"empty\":",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2.5,
+						-300,
+						true,
+						false,
+						null,
+						"s\"qé"
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.5, -3e2, true, false, null, \"s\\\"q\\u00e9\"]}, \"empty\": ",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2.5,
+						-300,
+						true,
+						false,
+						null,
+						"s\"qé"
+					]
+				}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.5, -3e2, true, false, null, \"s\\\"q\\u00e9\"]}, \"empty\": {",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2.5,
+						-300,
+						true,
+						false,
+						null,
+						"s\"qé"
+					]
+				},
+				"empty": {}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.5, -3e2, true, false, null, \"s\\\"q\\u00e9\"]}, \"empty\": {}",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2.5,
+						-300,
+						true,
+						false,
+						null,
+						"s\"qé"
+					]
+				},
+				"empty": {}
+			}
+		},
+		{
+			"input": "{\"path\": \"src/main.rs\", \"limit\": 10, \"nested\": {\"list\": [1, 2.5, -3e2, true, false, null, \"s\\\"q\\u00e9\"]}, \"empty\": {}}",
+			"output": {
+				"path": "src/main.rs",
+				"limit": 10,
+				"nested": {
+					"list": [
+						1,
+						2.5,
+						-300,
+						true,
+						false,
+						null,
+						"s\"qé"
+					]
+				},
+				"empty": {}
+			}
+		},
+		{
+			"input": "",
+			"output": {}
+		},
+		{
+			"input": "   ",
+			"output": {}
+		},
+		{
+			"input": "not json",
+			"output": {}
+		},
+		{
+			"input": "{\"a\": tr",
+			"output": {
+				"a": true
+			}
+		},
+		{
+			"input": "{\"a\": nul",
+			"output": {
+				"a": null
+			}
+		},
+		{
+			"input": "{\"a\": -",
+			"output": {}
+		},
+		{
+			"input": "{\"a\": 1e",
+			"output": {
+				"a": 1
+			}
+		},
+		{
+			"input": "[1, 2",
+			"output": [
+				1,
+				2
+			]
+		},
+		{
+			"input": "{\"bad\\x\": 1}",
+			"output": {
+				"bad\\x": 1
+			}
+		},
+		{
+			"input": "{\"s\": \"raw\ttab\"}",
+			"output": {
+				"s": "raw\ttab"
+			}
+		},
+		{
+			"input": "\"str",
+			"output": "str"
+		},
+		{
+			"input": "-",
+			"output": {}
+		},
+		{
+			"input": "12",
+			"output": 12
+		},
+		{
+			"input": "{\"a\":\"x\\",
+			"output": {
+				"a": "x"
+			}
+		},
+		{
+			"input": "{\"k\": \"v\"} trailing",
+			"output": {
+				"k": "v"
+			}
+		},
+		{
+			"input": "[]",
+			"output": []
+		},
+		{
+			"input": "{}",
+			"output": {}
+		},
+		{
+			"input": "{\"a\": [{\"b\": \"c",
+			"output": {
+				"a": [
+					{
+						"b": "c"
+					}
+				]
+			}
+		},
+		{
+			"input": "{\"\\u12",
+			"output": {}
+		},
+		{
+			"input": "{\"x\": NaN}",
+			"output": {
+				"x": null
+			}
+		},
+		{
+			"input": "{\"x\": Infinity",
+			"output": {
+				"x": null
+			}
+		},
+		{
+			"input": "{\"x\": -Inf",
+			"output": {
+				"x": null
+			}
+		}
+	],
+	"repairJson": [
+		{
+			"input": "{\"a\":\"x\\qy\"}",
+			"output": "{\"a\":\"x\\\\qy\"}",
+			"parsed": {
+				"a": "x\\qy"
+			}
+		},
+		{
+			"input": "{\"a\":\"line\nbreak\"}",
+			"output": "{\"a\":\"line\\nbreak\"}",
+			"parsed": {
+				"a": "line\nbreak"
+			}
+		},
+		{
+			"input": "{\"a\":\"\\u12zz\"}",
+			"output": "{\"a\":\"\\u12zz\"}",
+			"parsed": "<error>"
+		},
+		{
+			"input": "{\"a\":\"end\\",
+			"output": "{\"a\":\"end\\\\",
+			"parsed": "<error>"
+		},
+		{
+			"input": "plain \\ outside",
+			"output": "plain \\ outside",
+			"parsed": "<error>"
+		},
+		{
+			"input": "{\"a\":\"\\u00e9 ok\"}",
+			"output": "{\"a\":\"\\u00e9 ok\"}",
+			"parsed": {
+				"a": "é ok"
+			}
+		},
+		{
+			"input": "{\"a\":\"\u0001\"}",
+			"output": "{\"a\":\"\\u0001\"}",
+			"parsed": {
+				"a": "\u0001"
+			}
+		}
+	],
+	"shortHash": [
+		{
+			"input": "",
+			"output": "k4n83c7h0j2b"
+		},
+		{
+			"input": "a",
+			"output": "m8735310ae7sx"
+		},
+		{
+			"input": "call_1|fc_abcdef",
+			"output": "6jc02u1wkseoc"
+		},
+		{
+			"input": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+			"output": "130aesn1aldl4j"
+		},
+		{
+			"input": "émoji 🌍",
+			"output": "1yhqe8crez18n"
+		},
+		{
+			"input": "fc_zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
+			"output": "8dhojs1u2ekrj"
+		}
+	],
+	"cost": {
+		"model": {
+			"cost": {
+				"input": 3,
+				"output": 15,
+				"cacheRead": 0.3,
+				"cacheWrite": 3.75,
+				"tiers": [
+					{
+						"inputTokensAbove": 200000,
+						"input": 6,
+						"output": 22.5,
+						"cacheRead": 0.6,
+						"cacheWrite": 7.5
+					},
+					{
+						"inputTokensAbove": 100000,
+						"input": 4,
+						"output": 20,
+						"cacheRead": 0.4,
+						"cacheWrite": 5
+					}
+				]
+			}
+		},
+		"cases": [
+			{
+				"usage": {
+					"input": 1000,
+					"output": 500,
+					"cacheRead": 200,
+					"cacheWrite": 100
+				},
+				"cost": {
+					"input": 0.003,
+					"output": 0.007500000000000001,
+					"cacheRead": 0.000059999999999999995,
+					"cacheWrite": 0.000375,
+					"total": 0.010935
+				}
+			},
+			{
+				"usage": {
+					"input": 150000,
+					"output": 10,
+					"cacheRead": 0,
+					"cacheWrite": 0
+				},
+				"cost": {
+					"input": 0.6,
+					"output": 0.0002,
+					"cacheRead": 0,
+					"cacheWrite": 0,
+					"total": 0.6002
+				}
+			},
+			{
+				"usage": {
+					"input": 199000,
+					"output": 1,
+					"cacheRead": 1000,
+					"cacheWrite": 1,
+					"cacheWrite1h": 1
+				},
+				"cost": {
+					"input": 1.194,
+					"output": 0.0000225,
+					"cacheRead": 0.0006,
+					"cacheWrite": 0.000012,
+					"total": 1.1946344999999998
+				}
+			},
+			{
+				"usage": {
+					"input": 0,
+					"output": 0,
+					"cacheRead": 0,
+					"cacheWrite": 300,
+					"cacheWrite1h": 200
+				},
+				"cost": {
+					"input": 0,
+					"output": 0,
+					"cacheRead": 0,
+					"cacheWrite": 0.001575,
+					"total": 0.001575
+				}
+			}
+		]
+	},
+	"thinking": [
+		{
+			"model": {
+				"reasoning": false
+			},
+			"supported": [
+				"off"
+			],
+			"clamped": {
+				"off": "off",
+				"minimal": "off",
+				"low": "off",
+				"medium": "off",
+				"high": "off",
+				"xhigh": "off",
+				"max": "off",
+				"bogus": "off"
+			}
+		},
+		{
+			"model": {
+				"reasoning": true
+			},
+			"supported": [
+				"off",
+				"minimal",
+				"low",
+				"medium",
+				"high"
+			],
+			"clamped": {
+				"off": "off",
+				"minimal": "minimal",
+				"low": "low",
+				"medium": "medium",
+				"high": "high",
+				"xhigh": "high",
+				"max": "high",
+				"bogus": "off"
+			}
+		},
+		{
+			"model": {
+				"reasoning": true,
+				"thinkingLevelMap": {
+					"xhigh": "xhigh",
+					"minimal": null
+				}
+			},
+			"supported": [
+				"off",
+				"low",
+				"medium",
+				"high",
+				"xhigh"
+			],
+			"clamped": {
+				"off": "off",
+				"minimal": "low",
+				"low": "low",
+				"medium": "medium",
+				"high": "high",
+				"xhigh": "xhigh",
+				"max": "xhigh",
+				"bogus": "off"
+			}
+		},
+		{
+			"model": {
+				"reasoning": true,
+				"thinkingLevelMap": {
+					"off": null,
+					"low": null,
+					"medium": null,
+					"high": null,
+					"max": "max"
+				}
+			},
+			"supported": [
+				"minimal",
+				"max"
+			],
+			"clamped": {
+				"off": "minimal",
+				"minimal": "minimal",
+				"low": "max",
+				"medium": "max",
+				"high": "max",
+				"xhigh": "max",
+				"max": "max",
+				"bogus": "minimal"
+			}
+		},
+		{
+			"model": {
+				"reasoning": true,
+				"thinkingLevelMap": {
+					"off": null,
+					"minimal": null,
+					"low": null,
+					"medium": null,
+					"high": null
+				}
+			},
+			"supported": [],
+			"clamped": {
+				"off": "off",
+				"minimal": "off",
+				"low": "off",
+				"medium": "off",
+				"high": "off",
+				"xhigh": "off",
+				"max": "off",
+				"bogus": "off"
+			}
+		}
+	],
+	"env": [
+		{
+			"provider": "openai",
+			"env": {
+				"OPENAI_API_KEY": "sk-o"
+			},
+			"found": [
+				"OPENAI_API_KEY"
+			],
+			"key": "sk-o"
+		},
+		{
+			"provider": "openai",
+			"env": {},
+			"found": null,
+			"key": null
+		},
+		{
+			"provider": "anthropic",
+			"env": {
+				"ANTHROPIC_AUTH_TOKEN": "tok",
+				"ANTHROPIC_API_KEY": "key"
+			},
+			"found": [
+				"ANTHROPIC_AUTH_TOKEN",
+				"ANTHROPIC_API_KEY"
+			],
+			"key": "key"
+		},
+		{
+			"provider": "anthropic",
+			"env": {
+				"ANTHROPIC_AUTH_TOKEN": "tok"
+			},
+			"found": [
+				"ANTHROPIC_AUTH_TOKEN"
+			],
+			"key": null
+		},
+		{
+			"provider": "anthropic",
+			"env": {
+				"ANTHROPIC_OAUTH_TOKEN": "oat",
+				"ANTHROPIC_API_KEY": "key"
+			},
+			"found": [
+				"ANTHROPIC_OAUTH_TOKEN",
+				"ANTHROPIC_API_KEY"
+			],
+			"key": "oat"
+		},
+		{
+			"provider": "github-copilot",
+			"env": {
+				"COPILOT_GITHUB_TOKEN": "gh"
+			},
+			"found": [
+				"COPILOT_GITHUB_TOKEN"
+			],
+			"key": "gh"
+		},
+		{
+			"provider": "moonshotai-cn",
+			"env": {
+				"MOONSHOT_API_KEY": "m"
+			},
+			"found": [
+				"MOONSHOT_API_KEY"
+			],
+			"key": "m"
+		},
+		{
+			"provider": "amazon-bedrock",
+			"env": {
+				"AWS_PROFILE": "p"
+			},
+			"found": null,
+			"key": "<authenticated>"
+		},
+		{
+			"provider": "amazon-bedrock",
+			"env": {
+				"AWS_ACCESS_KEY_ID": "a"
+			},
+			"found": null,
+			"key": null
+		},
+		{
+			"provider": "amazon-bedrock",
+			"env": {
+				"AWS_ACCESS_KEY_ID": "a",
+				"AWS_SECRET_ACCESS_KEY": "s"
+			},
+			"found": null,
+			"key": "<authenticated>"
+		},
+		{
+			"provider": "amazon-bedrock",
+			"env": {
+				"AWS_WEB_IDENTITY_TOKEN_FILE": "/f"
+			},
+			"found": null,
+			"key": "<authenticated>"
+		},
+		{
+			"provider": "unknown-provider",
+			"env": {
+				"OPENAI_API_KEY": "x"
+			},
+			"found": null,
+			"key": null
+		},
+		{
+			"provider": "zai",
+			"env": {
+				"ZAI_API_KEY": ""
+			},
+			"found": null,
+			"key": null
+		},
+		{
+			"provider": "google-vertex",
+			"env": {
+				"GOOGLE_CLOUD_API_KEY": "g"
+			},
+			"found": [
+				"GOOGLE_CLOUD_API_KEY"
+			],
+			"key": "g"
+		},
+		{
+			"provider": "google-vertex",
+			"env": {
+				"GOOGLE_APPLICATION_CREDENTIALS": "/nonexistent/creds.json",
+				"GOOGLE_CLOUD_PROJECT": "p",
+				"GOOGLE_CLOUD_LOCATION": "l"
+			},
+			"found": null,
+			"key": null
+		}
+	],
+	"strictSchemas": [
+		{
+			"schema": {
+				"type": "object",
+				"properties": {
+					"a": {
+						"type": "string"
+					},
+					"b": {
+						"type": "number"
+					}
+				},
+				"required": [
+					"a"
+				]
+			},
+			"strict": {
+				"type": "object",
+				"properties": {
+					"a": {
+						"type": "string"
+					},
+					"b": {
+						"anyOf": [
+							{
+								"type": "number"
+							},
+							{
+								"type": "null"
+							}
+						]
+					}
+				},
+				"required": [
+					"a",
+					"b"
+				],
+				"additionalProperties": false
+			}
+		},
+		{
+			"schema": {
+				"type": "object",
+				"properties": {
+					"o": {
+						"type": "object",
+						"properties": {
+							"x": {
+								"type": "string"
+							}
+						}
+					},
+					"l": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						}
+					},
+					"n": {
+						"type": [
+							"string",
+							"null"
+						]
+					}
+				}
+			},
+			"strict": {
+				"type": "object",
+				"properties": {
+					"o": {
+						"anyOf": [
+							{
+								"type": "object",
+								"properties": {
+									"x": {
+										"anyOf": [
+											{
+												"type": "string"
+											},
+											{
+												"type": "null"
+											}
+										]
+									}
+								},
+								"required": [
+									"x"
+								],
+								"additionalProperties": false
+							},
+							{
+								"type": "null"
+							}
+						]
+					},
+					"l": {
+						"anyOf": [
+							{
+								"type": "array",
+								"items": {
+									"type": "string"
+								}
+							},
+							{
+								"type": "null"
+							}
+						]
+					},
+					"n": {
+						"type": [
+							"string",
+							"null"
+						]
+					}
+				},
+				"required": [
+					"o",
+					"l",
+					"n"
+				],
+				"additionalProperties": false
+			}
+		},
+		{
+			"schema": {
+				"type": "object",
+				"properties": {
+					"u": {
+						"anyOf": [
+							{
+								"type": "string"
+							},
+							{
+								"type": "number"
+							}
+						]
+					}
+				},
+				"required": [
+					"u"
+				]
+			},
+			"strict": {
+				"type": "object",
+				"properties": {
+					"u": {
+						"anyOf": [
+							{
+								"type": "string"
+							},
+							{
+								"type": "number"
+							}
+						]
+					}
+				},
+				"required": [
+					"u"
+				],
+				"additionalProperties": false
+			}
+		},
+		{
+			"schema": {
+				"type": "object",
+				"properties": {
+					"u": {
+						"anyOf": [
+							{
+								"type": "object"
+							},
+							{
+								"type": "string"
+							}
+						]
+					}
+				}
+			},
+			"error": "object and array unions are unsupported"
+		},
+		{
+			"schema": {
+				"type": "object",
+				"properties": {
+					"r": {
+						"$ref": "#/x"
+					}
+				}
+			},
+			"error": "$ref schemas are unsupported"
+		},
+		{
+			"schema": {
+				"type": "object",
+				"additionalProperties": true
+			},
+			"error": "schema-valued or true additionalProperties is unsupported"
+		},
+		{
+			"schema": {
+				"type": "object",
+				"properties": {
+					"a": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"b"
+				]
+			},
+			"error": "required contains an unknown property"
+		},
+		{
+			"schema": {
+				"type": "string"
+			},
+			"error": "root schema must have type object"
+		},
+		{
+			"schema": {
+				"type": "object",
+				"properties": {
+					"t": {
+						"type": "array",
+						"items": [
+							{
+								"type": "string"
+							}
+						]
+					}
+				}
+			},
+			"error": "tuple schemas are unsupported"
+		},
+		{
+			"schema": {
+				"type": "object",
+				"properties": {
+					"e": {
+						"enum": [
+							"a",
+							null
+						]
+					},
+					"c": {
+						"const": null
+					}
+				}
+			},
+			"strict": {
+				"type": "object",
+				"properties": {
+					"e": {
+						"enum": [
+							"a",
+							null
+						]
+					},
+					"c": {
+						"const": null
+					}
+				},
+				"required": [
+					"e",
+					"c"
+				],
+				"additionalProperties": false
+			}
+		}
+	],
+	"estimate": [
+		{
+			"context": {
+				"messages": [
+					{
+						"role": "system",
+						"content": "You are helpful.",
+						"timestamp": 1,
+						"toolsAdded": [
+							{
+								"name": "read",
+								"description": "Read a file",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"path": {
+											"type": "string"
+										},
+										"limit": {
+											"type": "number"
+										}
+									},
+									"required": [
+										"path"
+									]
+								}
+							},
+							{
+								"name": "bash",
+								"description": "Run a command",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"command": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"command"
+									]
+								},
+								"constrainedSampling": {
+									"type": "json_schema",
+									"strict": "prefer"
+								}
+							}
+						],
+						"sections": {
+							"rules": "<rules>be brief</rules>"
+						}
+					},
+					{
+						"role": "user",
+						"content": "List files",
+						"timestamp": 2
+					},
+					{
+						"role": "assistant",
+						"content": [
+							{
+								"type": "thinking",
+								"thinking": "I should read.",
+								"thinkingSignature": "sig-1"
+							},
+							{
+								"type": "text",
+								"text": "Reading."
+							},
+							{
+								"type": "toolCall",
+								"id": "call_1",
+								"name": "read",
+								"arguments": {
+									"path": "a.txt"
+								}
+							}
+						],
+						"api": "anthropic-messages",
+						"provider": "anthropic",
+						"model": "test-model",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "toolUse",
+						"timestamp": 3
+					},
+					{
+						"role": "toolResult",
+						"toolCallId": "call_1",
+						"toolName": "read",
+						"content": [
+							{
+								"type": "text",
+								"text": "contents of a"
+							},
+							{
+								"type": "image",
+								"data": "aGVsbG8=",
+								"mimeType": "image/png"
+							}
+						],
+						"isError": false,
+						"timestamp": 4
+					},
+					{
+						"role": "user",
+						"content": [
+							{
+								"type": "text",
+								"text": "Now look at this"
+							},
+							{
+								"type": "image",
+								"data": "aGVsbG8=",
+								"mimeType": "image/png"
+							},
+							{
+								"type": "text",
+								"text": ""
+							}
+						],
+						"timestamp": 2
+					},
+					{
+						"role": "assistant",
+						"content": [
+							{
+								"type": "thinking",
+								"thinking": "Foreign thoughts",
+								"thinkingSignature": "x"
+							},
+							{
+								"type": "text",
+								"text": "Foreign answer"
+							},
+							{
+								"type": "toolCall",
+								"id": "call|weird+id/with=chars",
+								"name": "bash",
+								"arguments": {
+									"command": "ls"
+								}
+							}
+						],
+						"api": "google-generative-ai",
+						"provider": "google",
+						"model": "gemini-x",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "toolUse",
+						"timestamp": 3
+					},
+					{
+						"role": "user",
+						"content": "Continue",
+						"timestamp": 2
+					},
+					{
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "partial"
+							}
+						],
+						"api": "anthropic-messages",
+						"provider": "anthropic",
+						"model": "test-model",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "error",
+						"timestamp": 3,
+						"errorMessage": "boom"
+					},
+					{
+						"role": "user",
+						"content": "Again",
+						"timestamp": 2
+					}
+				]
+			},
+			"estimate": {
+				"tokens": 2544,
+				"usageTokens": 0,
+				"trailingTokens": 2544,
+				"lastUsageIndex": null
+			}
+		},
+		{
+			"context": {
+				"messages": [
+					{
+						"role": "system",
+						"content": "You are helpful.",
+						"timestamp": 1,
+						"toolsAdded": [
+							{
+								"name": "read",
+								"description": "Read a file",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"path": {
+											"type": "string"
+										},
+										"limit": {
+											"type": "number"
+										}
+									},
+									"required": [
+										"path"
+									]
+								}
+							},
+							{
+								"name": "bash",
+								"description": "Run a command",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"command": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"command"
+									]
+								},
+								"constrainedSampling": {
+									"type": "json_schema",
+									"strict": "prefer"
+								}
+							}
+						],
+						"sections": {
+							"rules": "<rules>be brief</rules>"
+						}
+					},
+					{
+						"role": "user",
+						"content": "List files",
+						"timestamp": 2
+					},
+					{
+						"role": "assistant",
+						"content": [
+							{
+								"type": "thinking",
+								"thinking": "I should read.",
+								"thinkingSignature": "sig-1"
+							},
+							{
+								"type": "text",
+								"text": "Reading."
+							},
+							{
+								"type": "toolCall",
+								"id": "call_1",
+								"name": "read",
+								"arguments": {
+									"path": "a.txt"
+								}
+							}
+						],
+						"api": "anthropic-messages",
+						"provider": "anthropic",
+						"model": "test-model",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "toolUse",
+						"timestamp": 3
+					},
+					{
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "x"
+							}
+						],
+						"api": "anthropic-messages",
+						"provider": "anthropic",
+						"model": "test-model",
+						"usage": {
+							"input": 1000,
+							"output": 50,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "stop",
+						"timestamp": 10
+					},
+					{
+						"role": "user",
+						"content": "after usage",
+						"timestamp": 11
+					},
+					{
+						"role": "toolResult",
+						"toolCallId": "z",
+						"toolName": "read",
+						"content": [
+							{
+								"type": "image",
+								"data": "aGVsbG8=",
+								"mimeType": "image/png"
+							}
+						],
+						"isError": false,
+						"timestamp": 4
+					}
+				]
+			},
+			"estimate": {
+				"tokens": 2253,
+				"usageTokens": 1050,
+				"trailingTokens": 1203,
+				"lastUsageIndex": 3
+			}
+		},
+		{
+			"context": {
+				"messages": [
+					{
+						"role": "system",
+						"content": "s",
+						"timestamp": 1,
+						"toolsAdded": [
+							{
+								"name": "read",
+								"description": "Read a file",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"path": {
+											"type": "string"
+										},
+										"limit": {
+											"type": "number"
+										}
+									},
+									"required": [
+										"path"
+									]
+								}
+							},
+							{
+								"name": "bash",
+								"description": "Run a command",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"command": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"command"
+									]
+								},
+								"constrainedSampling": {
+									"type": "json_schema",
+									"strict": "prefer"
+								}
+							}
+						],
+						"toolsRemoved": [
+							{
+								"name": "x"
+							}
+						]
+					}
+				]
+			},
+			"estimate": {
+				"tokens": 97,
+				"usageTokens": 0,
+				"trailingTokens": 97,
+				"lastUsageIndex": null
+			}
+		}
+	],
+	"maxTokens": [
+		{
+			"base": null,
+			"cap": 32000,
+			"level": "high",
+			"budgets": null,
+			"result": {
+				"maxTokens": 32000,
+				"thinkingBudget": 16384
+			}
+		},
+		{
+			"base": 1000,
+			"cap": 32000,
+			"level": "medium",
+			"budgets": null,
+			"result": {
+				"maxTokens": 9192,
+				"thinkingBudget": 8192
+			}
+		},
+		{
+			"base": 30000,
+			"cap": 32000,
+			"level": "high",
+			"budgets": null,
+			"result": {
+				"maxTokens": 32000,
+				"thinkingBudget": 16384
+			}
+		},
+		{
+			"base": null,
+			"cap": 1500,
+			"level": "minimal",
+			"budgets": null,
+			"result": {
+				"maxTokens": 1500,
+				"thinkingBudget": 1024
+			}
+		},
+		{
+			"base": 100,
+			"cap": 100000,
+			"level": "xhigh",
+			"budgets": {
+				"high": 4000
+			},
+			"result": {
+				"maxTokens": 4100,
+				"thinkingBudget": 4000
+			}
+		}
+	],
+	"transform": {
+		"model": {
+			"id": "test-model",
+			"name": "Test Model",
+			"api": "anthropic-messages",
+			"provider": "anthropic",
+			"baseUrl": "https://api.anthropic.com",
+			"reasoning": true,
+			"input": [
+				"text"
+			],
+			"cost": {
+				"input": 3,
+				"output": 15,
+				"cacheRead": 0.3,
+				"cacheWrite": 3.75
+			},
+			"contextWindow": 200000,
+			"maxTokens": 32000
+		},
+		"input": [
+			{
+				"role": "system",
+				"content": "You are helpful.",
+				"timestamp": 1,
+				"toolsAdded": [
+					{
+						"name": "read",
+						"description": "Read a file",
+						"parameters": {
+							"type": "object",
+							"properties": {
+								"path": {
+									"type": "string"
+								},
+								"limit": {
+									"type": "number"
+								}
+							},
+							"required": [
+								"path"
+							]
+						}
+					},
+					{
+						"name": "bash",
+						"description": "Run a command",
+						"parameters": {
+							"type": "object",
+							"properties": {
+								"command": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"command"
+							]
+						},
+						"constrainedSampling": {
+							"type": "json_schema",
+							"strict": "prefer"
+						}
+					}
+				],
+				"sections": {
+					"rules": "<rules>be brief</rules>"
+				}
+			},
+			{
+				"role": "user",
+				"content": "List files",
+				"timestamp": 2
+			},
+			{
+				"role": "assistant",
+				"content": [
+					{
+						"type": "thinking",
+						"thinking": "I should read.",
+						"thinkingSignature": "sig-1"
+					},
+					{
+						"type": "text",
+						"text": "Reading."
+					},
+					{
+						"type": "toolCall",
+						"id": "call_1",
+						"name": "read",
+						"arguments": {
+							"path": "a.txt"
+						}
+					}
+				],
+				"api": "anthropic-messages",
+				"provider": "anthropic",
+				"model": "test-model",
+				"usage": {
+					"input": 0,
+					"output": 0,
+					"cacheRead": 0,
+					"cacheWrite": 0,
+					"totalTokens": 0,
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"total": 0
+					}
+				},
+				"stopReason": "toolUse",
+				"timestamp": 3
+			},
+			{
+				"role": "toolResult",
+				"toolCallId": "call_1",
+				"toolName": "read",
+				"content": [
+					{
+						"type": "text",
+						"text": "contents of a"
+					},
+					{
+						"type": "image",
+						"data": "aGVsbG8=",
+						"mimeType": "image/png"
+					}
+				],
+				"isError": false,
+				"timestamp": 4
+			},
+			{
+				"role": "user",
+				"content": [
+					{
+						"type": "text",
+						"text": "Now look at this"
+					},
+					{
+						"type": "image",
+						"data": "aGVsbG8=",
+						"mimeType": "image/png"
+					},
+					{
+						"type": "text",
+						"text": ""
+					}
+				],
+				"timestamp": 2
+			},
+			{
+				"role": "assistant",
+				"content": [
+					{
+						"type": "thinking",
+						"thinking": "Foreign thoughts",
+						"thinkingSignature": "x"
+					},
+					{
+						"type": "text",
+						"text": "Foreign answer"
+					},
+					{
+						"type": "toolCall",
+						"id": "call|weird+id/with=chars",
+						"name": "bash",
+						"arguments": {
+							"command": "ls"
+						}
+					}
+				],
+				"api": "google-generative-ai",
+				"provider": "google",
+				"model": "gemini-x",
+				"usage": {
+					"input": 0,
+					"output": 0,
+					"cacheRead": 0,
+					"cacheWrite": 0,
+					"totalTokens": 0,
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"total": 0
+					}
+				},
+				"stopReason": "toolUse",
+				"timestamp": 3
+			},
+			{
+				"role": "user",
+				"content": "Continue",
+				"timestamp": 2
+			},
+			{
+				"role": "assistant",
+				"content": [
+					{
+						"type": "text",
+						"text": "partial"
+					}
+				],
+				"api": "anthropic-messages",
+				"provider": "anthropic",
+				"model": "test-model",
+				"usage": {
+					"input": 0,
+					"output": 0,
+					"cacheRead": 0,
+					"cacheWrite": 0,
+					"totalTokens": 0,
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"total": 0
+					}
+				},
+				"stopReason": "error",
+				"timestamp": 3,
+				"errorMessage": "boom"
+			},
+			{
+				"role": "user",
+				"content": "Again",
+				"timestamp": 2
+			}
+		],
+		"output": [
+			{
+				"role": "system",
+				"content": "You are helpful.",
+				"timestamp": 1,
+				"toolsAdded": [
+					{
+						"name": "read",
+						"description": "Read a file",
+						"parameters": {
+							"type": "object",
+							"properties": {
+								"path": {
+									"type": "string"
+								},
+								"limit": {
+									"type": "number"
+								}
+							},
+							"required": [
+								"path"
+							]
+						}
+					},
+					{
+						"name": "bash",
+						"description": "Run a command",
+						"parameters": {
+							"type": "object",
+							"properties": {
+								"command": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"command"
+							]
+						},
+						"constrainedSampling": {
+							"type": "json_schema",
+							"strict": "prefer"
+						}
+					}
+				],
+				"sections": {
+					"rules": "<rules>be brief</rules>"
+				}
+			},
+			{
+				"role": "user",
+				"content": "List files",
+				"timestamp": 2
+			},
+			{
+				"role": "assistant",
+				"content": [
+					{
+						"type": "thinking",
+						"thinking": "I should read.",
+						"thinkingSignature": "sig-1"
+					},
+					{
+						"type": "text",
+						"text": "Reading."
+					},
+					{
+						"type": "toolCall",
+						"id": "call_1",
+						"name": "read",
+						"arguments": {
+							"path": "a.txt"
+						}
+					}
+				],
+				"api": "anthropic-messages",
+				"provider": "anthropic",
+				"model": "test-model",
+				"usage": {
+					"input": 0,
+					"output": 0,
+					"cacheRead": 0,
+					"cacheWrite": 0,
+					"totalTokens": 0,
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"total": 0
+					}
+				},
+				"stopReason": "toolUse",
+				"timestamp": 3
+			},
+			{
+				"role": "toolResult",
+				"toolCallId": "call_1",
+				"toolName": "read",
+				"content": [
+					{
+						"type": "text",
+						"text": "contents of a"
+					},
+					{
+						"type": "text",
+						"text": "(tool image omitted: model does not support images)"
+					}
+				],
+				"isError": false,
+				"timestamp": 4
+			},
+			{
+				"role": "user",
+				"content": [
+					{
+						"type": "text",
+						"text": "Now look at this"
+					},
+					{
+						"type": "text",
+						"text": "(image omitted: model does not support images)"
+					},
+					{
+						"type": "text",
+						"text": ""
+					}
+				],
+				"timestamp": 2
+			},
+			{
+				"role": "assistant",
+				"content": [
+					{
+						"type": "text",
+						"text": "Foreign thoughts"
+					},
+					{
+						"type": "text",
+						"text": "Foreign answer"
+					},
+					{
+						"type": "toolCall",
+						"id": "call_weird_id_with_chars",
+						"name": "bash",
+						"arguments": {
+							"command": "ls"
+						}
+					}
+				],
+				"api": "google-generative-ai",
+				"provider": "google",
+				"model": "gemini-x",
+				"usage": {
+					"input": 0,
+					"output": 0,
+					"cacheRead": 0,
+					"cacheWrite": 0,
+					"totalTokens": 0,
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"total": 0
+					}
+				},
+				"stopReason": "toolUse",
+				"timestamp": 3
+			},
+			{
+				"role": "toolResult",
+				"toolCallId": "call_weird_id_with_chars",
+				"toolName": "bash",
+				"content": [
+					{
+						"type": "text",
+						"text": "No result provided"
+					}
+				],
+				"isError": true,
+				"timestamp": 1767225600000
+			},
+			{
+				"role": "user",
+				"content": "Continue",
+				"timestamp": 2
+			},
+			{
+				"role": "user",
+				"content": "Again",
+				"timestamp": 2
+			}
+		]
+	}
+}

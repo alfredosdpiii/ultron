@@ -1,0 +1,5372 @@
+{
+	"host": {
+		"version": "0.87.39",
+		"runtime": "node/v24.0.0",
+		"platform": "linux",
+		"arch": "x64",
+		"osRelease": "6.1.0-test",
+		"osVersion": "#1 SMP Test",
+		"createdAt": "2026-04-05T14:07:09.321Z"
+	},
+	"redactUrlCases": [
+		{
+			"input": "https://user:pass@proxy.example.com:8080/",
+			"output": "https://proxy.example.com:8080/"
+		},
+		{
+			"input": "git:https://pat@github.com/org/repo",
+			"output": "git:https://github.com/org/repo"
+		},
+		{
+			"input": "https://api.example/v1?api-key=abc&model=x",
+			"output": "https://api.example/v1?api-key=%3Credacted%3E&model=x"
+		},
+		{
+			"input": "https://api.example/v1?model=x",
+			"output": "https://api.example/v1?model=x"
+		},
+		{
+			"input": "https://u:p@x.com:443/a?b=1#frag",
+			"output": "https://x.com/a?b=1#frag"
+		},
+		{
+			"input": "https://user@münchen.de/path",
+			"output": "https://xn--mnchen-3ya.de/path"
+		},
+		{
+			"input": "https://HOST.example.COM/?Password=1&q=a b&r=%41%20c",
+			"output": "https://host.example.com/?Password=%3Credacted%3E&q=a+b&r=A+c"
+		},
+		{
+			"input": "https://h.example/?token",
+			"output": "https://h.example/?token=%3Credacted%3E"
+		},
+		{
+			"input": "https://h.example/?token=a&other=1&token=b&TOKEN=c",
+			"output": "https://h.example/?token=%3Credacted%3E&other=1&TOKEN=%3Credacted%3E"
+		},
+		{
+			"input": "https://h.example/?myToken=1&tokens=2&token_id=3&x-api-key=4&apikey=5&client_secret=6&passwd=7&cookie_jar=8",
+			"output": "https://h.example/?myToken=%3Credacted%3E&tokens=2&token_id=%3Credacted%3E&x-api-key=%3Credacted%3E&apikey=%3Credacted%3E&client_secret=%3Credacted%3E&passwd=%3Credacted%3E&cookie_jar=%3Credacted%3E"
+		},
+		{
+			"input": "https://h.example/?accessToken=1&AuthorizationHeader=2&set-cookie=3&credentials=4&secretive=5",
+			"output": "https://h.example/?accessToken=%3Credacted%3E&AuthorizationHeader=%3Credacted%3E&set-cookie=%3Credacted%3E&credentials=4&secretive=5"
+		},
+		{
+			"input": "https://h.example/?authToken=x#token=y",
+			"output": "https://h.example/?authToken=%3Credacted%3E#token=y"
+		},
+		{
+			"input": "ssh://git@github.com/org/repo.git",
+			"output": "ssh://github.com/org/repo.git"
+		},
+		{
+			"input": "git+ssh://git@github.com:org/repo.git",
+			"output": "git+ssh://git@github.com:org/repo.git"
+		},
+		{
+			"input": "npm:@scope/pkg",
+			"output": "npm:@scope/pkg"
+		},
+		{
+			"input": "mailto:someone@example.com",
+			"output": "mailto:someone@example.com"
+		},
+		{
+			"input": "file:///home/user/x.ts",
+			"output": "file:///home/user/x.ts"
+		},
+		{
+			"input": "http://[::1]:8080/?password=p",
+			"output": "http://[::1]:8080/?password=%3Credacted%3E"
+		},
+		{
+			"input": "not a url",
+			"output": "not a url"
+		},
+		{
+			"input": "",
+			"output": ""
+		},
+		{
+			"input": "https://",
+			"output": "https://"
+		},
+		{
+			"input": "a:b:https://u:p@x.com/",
+			"output": "a:b:https://u:p@x.com/"
+		},
+		{
+			"input": "git:https://pat@github.com/org/repo\nmore",
+			"output": "git:https://pat@github.com/org/repo\nmore"
+		},
+		{
+			"input": "x:https://ok.example/",
+			"output": "x:https://ok.example/"
+		},
+		{
+			"input": "https://ok.example/path?q=1",
+			"output": "https://ok.example/path?q=1"
+		},
+		{
+			"input": "HTTPS://Alice:pw@Example.com",
+			"output": "https://example.com/"
+		}
+	],
+	"redactJsonCases": [
+		{
+			"input": {
+				"apiKey": "sk-123",
+				"headers": {
+					"Authorization": "Bearer x",
+					"X-Trace": "1"
+				},
+				"compaction": {
+					"reserveTokens": 16384,
+					"keepRecentTokens": 20000
+				},
+				"baseUrl": "https://me:secret@example.com/"
+			},
+			"output": {
+				"apiKey": "<redacted>",
+				"headers": {
+					"Authorization": "<redacted>",
+					"X-Trace": "1"
+				},
+				"compaction": {
+					"reserveTokens": 16384,
+					"keepRecentTokens": 20000
+				},
+				"baseUrl": "https://example.com/"
+			}
+		},
+		{
+			"input": {
+				"nested": [
+					{
+						"password": {
+							"deep": 1
+						}
+					},
+					"https://a:b@c.example/",
+					3,
+					null,
+					true,
+					[
+						"x",
+						{
+							"token": null
+						}
+					]
+				],
+				"myApiKey": "k",
+				"api_key": 0,
+				"secret-store": false,
+				"SecretValue": [
+					1,
+					2
+				],
+				"tokenizer": "kept",
+				"maxTokens": 4096,
+				"authorizationUrl": "https://ok.example/?code=1&token=2",
+				"cookie": "",
+				"ratio": 0.75,
+				"v2Secret": "digit before an uppercase letter splits"
+			},
+			"output": {
+				"nested": [
+					{
+						"password": "<redacted>"
+					},
+					"https://c.example/",
+					3,
+					null,
+					true,
+					[
+						"x",
+						{
+							"token": null
+						}
+					]
+				],
+				"myApiKey": "<redacted>",
+				"api_key": "<redacted>",
+				"secret-store": "<redacted>",
+				"SecretValue": "<redacted>",
+				"tokenizer": "kept",
+				"maxTokens": 4096,
+				"authorizationUrl": "<redacted>",
+				"cookie": "<redacted>",
+				"ratio": 0.75,
+				"v2Secret": "<redacted>"
+			}
+		},
+		{
+			"input": "https://u:p@root.example/",
+			"output": "https://root.example/"
+		},
+		{
+			"input": [
+				{
+					"credential": "c"
+				},
+				"plain"
+			],
+			"output": [
+				{
+					"credential": "<redacted>"
+				},
+				"plain"
+			]
+		},
+		{
+			"input": 42,
+			"output": 42
+		},
+		{
+			"input": null,
+			"output": null
+		}
+	],
+	"extensions": [
+		{
+			"path": "/ext/a/index.ts",
+			"resolvedPath": "/ext/a/index.ts",
+			"sourceInfo": {
+				"path": "/ext/a/index.ts",
+				"source": "git:https://pat@github.com/org/a",
+				"scope": "user",
+				"origin": "package",
+				"baseDir": "/ext/a"
+			},
+			"hidden": true
+		},
+		{
+			"path": "/ext/b.ts",
+			"resolvedPath": "/ext/b.ts",
+			"sourceInfo": {
+				"path": "/ext/b.ts",
+				"source": "local",
+				"scope": "user",
+				"origin": "top-level",
+				"baseDir": "/ext"
+			},
+			"hidden": false
+		},
+		{
+			"path": "/ext/c.ts",
+			"resolvedPath": "/ext/c.ts",
+			"sourceInfo": {
+				"path": "/ext/c.ts",
+				"source": "https://u:p@example.com/c.ts?token=1",
+				"scope": "user",
+				"origin": "package",
+				"baseDir": "/ext"
+			}
+		}
+	],
+	"globalSettings": {
+		"defaultProvider": "proxy",
+		"trackingId": "track-me",
+		"enableInstallTelemetry": true,
+		"compaction": {
+			"enabled": true,
+			"reserveTokens": 16384
+		},
+		"packages": [
+			"npm:pkg",
+			"git:https://tok@github.com/o/r"
+		],
+		"providers": {
+			"proxy": {
+				"apiKey": "secret",
+				"baseUrl": "https://a:b@x.example/"
+			}
+		}
+	},
+	"projectSettings": {
+		"trackingId": "project-track",
+		"theme": "dark"
+	},
+	"metadataCases": [
+		{
+			"env": {
+				"SHELL": "/usr/bin/zsh",
+				"TERM": "xterm-256color",
+				"TERM_PROGRAM": "ghostty",
+				"TERM_PROGRAM_VERSION": "1.2",
+				"COLORTERM": "truecolor",
+				"TMUX": "/tmp/tmux",
+				"SSH_TTY": "/dev/pts/1",
+				"CI": "",
+				"PI_TELEMETRY": "0",
+				"PI_OFFLINE": "1",
+				"PI_CODING_AGENT_DIR": "/x",
+				"PIE": "no",
+				"pi_lower": "no"
+			},
+			"options": {
+				"id": "report-1",
+				"hint": "  It broke\n  ",
+				"sessionId": "s1",
+				"cwd": "/work",
+				"includeSession": true,
+				"includeSummary": false,
+				"messageCount": 7,
+				"model": {
+					"id": "gpt-x",
+					"name": "GPT X",
+					"api": "openai-responses",
+					"provider": "proxy",
+					"baseUrl": "https://key:secret@proxy.example.com/v1?api_key=abc",
+					"reasoning": true,
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 1,
+						"output": 2,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000,
+					"headers": {
+						"X-Secret": "s",
+						"Authorization": "a",
+						"A-First": "b"
+					},
+					"samplingParams": {
+						"temperature": 0.2,
+						"apiKey": "nested"
+					},
+					"compat": {
+						"supportsStore": false,
+						"authHeader": "https://u:p@c.example/"
+					},
+					"thinkingLevelMap": {
+						"low": "minimal",
+						"high": "high"
+					}
+				},
+				"thinkingLevel": "high"
+			},
+			"provider": {
+				"id": "proxy",
+				"name": "Proxy",
+				"baseUrl": "https://u:p@proxy.example.com/",
+				"headers": {
+					"Z-Last": "1",
+					"A-First": "2"
+				},
+				"auth": {
+					"apiKey": {
+						"env": "PROXY_KEY"
+					},
+					"oauth": {}
+				}
+			},
+			"status": {
+				"configured": true,
+				"source": "stored"
+			},
+			"usingOAuth": false,
+			"registered": true,
+			"output": {
+				"schemaVersion": 1,
+				"id": "report-1",
+				"createdAt": "2026-04-05T14:07:09.321Z",
+				"hint": "It broke",
+				"environment": {
+					"version": "0.87.39",
+					"userAgent": "pi/0.87.39 (linux; node/v24.0.0; x64)",
+					"runtime": "node/v24.0.0",
+					"platform": "linux",
+					"arch": "x64",
+					"osRelease": "6.1.0-test",
+					"osVersion": "#1 SMP Test",
+					"shell": "zsh",
+					"terminal": {
+						"term": "xterm-256color",
+						"program": "ghostty",
+						"programVersion": "1.2",
+						"colorterm": "truecolor",
+						"tmux": true,
+						"ssh": true,
+						"ci": false
+					},
+					"piEnvironmentVariables": [
+						"PI_CODING_AGENT_DIR",
+						"PI_OFFLINE",
+						"PI_TELEMETRY"
+					]
+				},
+				"session": {
+					"id": "s1",
+					"included": true,
+					"summaryIncluded": false,
+					"messageCount": 7,
+					"cwd": "/work"
+				},
+				"model": {
+					"provider": "proxy",
+					"id": "gpt-x",
+					"name": "GPT X",
+					"api": "openai-responses",
+					"baseUrl": "https://proxy.example.com/v1?api_key=%3Credacted%3E",
+					"reasoning": true,
+					"input": [
+						"text",
+						"image"
+					],
+					"contextWindow": 200000,
+					"maxTokens": 32000,
+					"samplingParams": {
+						"temperature": 0.2,
+						"apiKey": "<redacted>"
+					},
+					"compat": {
+						"supportsStore": false,
+						"authHeader": "https://c.example/"
+					},
+					"thinkingLevelMap": {
+						"low": "minimal",
+						"high": "high"
+					},
+					"headerNames": [
+						"A-First",
+						"Authorization",
+						"X-Secret"
+					]
+				},
+				"provider": {
+					"id": "proxy",
+					"name": "Proxy",
+					"baseUrl": "https://proxy.example.com/",
+					"headerNames": [
+						"A-First",
+						"Z-Last"
+					],
+					"authTypes": [
+						"api_key",
+						"oauth"
+					],
+					"authStatus": {
+						"configured": true,
+						"source": "stored"
+					},
+					"usingOAuth": false,
+					"registeredByExtension": true
+				},
+				"thinkingLevel": "high",
+				"extensions": [
+					{
+						"path": "/ext/a/index.ts",
+						"source": "git:https://github.com/org/a",
+						"scope": "user",
+						"origin": "package",
+						"hidden": true
+					},
+					{
+						"path": "/ext/b.ts",
+						"source": "local",
+						"scope": "user",
+						"origin": "top-level",
+						"hidden": false
+					},
+					{
+						"path": "/ext/c.ts",
+						"source": "https://example.com/c.ts?token=%3Credacted%3E",
+						"scope": "user",
+						"origin": "package",
+						"hidden": false
+					}
+				],
+				"extensionErrors": [
+					{
+						"path": "/ext/bad.ts",
+						"error": "SyntaxError: nope"
+					}
+				],
+				"settings": {
+					"global": {
+						"defaultProvider": "proxy",
+						"enableInstallTelemetry": true,
+						"compaction": {
+							"enabled": true,
+							"reserveTokens": 16384
+						},
+						"packages": [
+							"npm:pkg",
+							"git:https://github.com/o/r"
+						],
+						"providers": {
+							"proxy": {
+								"apiKey": "<redacted>",
+								"baseUrl": "https://x.example/"
+							}
+						}
+					},
+					"project": {
+						"theme": "dark"
+					}
+				}
+			}
+		},
+		{
+			"env": {
+				"SHELL": "C:\\Program Files\\Git\\bin\\bash.exe",
+				"TERM": "",
+				"SSH_CLIENT": "1.2.3.4",
+				"CI": "true"
+			},
+			"options": {
+				"id": "report-2",
+				"hint": "   ",
+				"sessionId": "s2",
+				"cwd": "/secret/cwd",
+				"includeSession": false,
+				"includeSummary": true,
+				"messageCount": 0,
+				"model": {
+					"id": "gpt-x",
+					"name": "GPT X",
+					"api": "openai-responses",
+					"provider": "proxy",
+					"baseUrl": "https://key:secret@proxy.example.com/v1?api_key=abc",
+					"reasoning": true,
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 1,
+						"output": 2,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000,
+					"headers": {
+						"X-Secret": "s",
+						"Authorization": "a",
+						"A-First": "b"
+					},
+					"samplingParams": {
+						"temperature": 0.2,
+						"apiKey": "nested"
+					},
+					"compat": {
+						"supportsStore": false,
+						"authHeader": "https://u:p@c.example/"
+					},
+					"thinkingLevelMap": {
+						"low": "minimal",
+						"high": "high"
+					}
+				},
+				"thinkingLevel": "off"
+			},
+			"provider": {
+				"id": "proxy",
+				"name": "Proxy",
+				"auth": {}
+			},
+			"status": {
+				"configured": false
+			},
+			"usingOAuth": true,
+			"registered": false,
+			"output": {
+				"schemaVersion": 1,
+				"id": "report-2",
+				"createdAt": "2026-04-05T14:07:09.321Z",
+				"hint": null,
+				"environment": {
+					"version": "0.87.39",
+					"userAgent": "pi/0.87.39 (linux; node/v24.0.0; x64)",
+					"runtime": "node/v24.0.0",
+					"platform": "linux",
+					"arch": "x64",
+					"osRelease": "6.1.0-test",
+					"osVersion": "#1 SMP Test",
+					"shell": "bash.exe",
+					"terminal": {
+						"term": null,
+						"program": null,
+						"programVersion": null,
+						"colorterm": null,
+						"tmux": false,
+						"ssh": true,
+						"ci": true
+					},
+					"piEnvironmentVariables": []
+				},
+				"session": {
+					"id": "s2",
+					"included": false,
+					"summaryIncluded": true,
+					"messageCount": 0
+				},
+				"model": {
+					"provider": "proxy",
+					"id": "gpt-x",
+					"name": "GPT X",
+					"api": "openai-responses",
+					"baseUrl": "https://proxy.example.com/v1?api_key=%3Credacted%3E",
+					"reasoning": true,
+					"input": [
+						"text",
+						"image"
+					],
+					"contextWindow": 200000,
+					"maxTokens": 32000,
+					"samplingParams": {
+						"temperature": 0.2,
+						"apiKey": "<redacted>"
+					},
+					"compat": {
+						"supportsStore": false,
+						"authHeader": "https://c.example/"
+					},
+					"thinkingLevelMap": {
+						"low": "minimal",
+						"high": "high"
+					},
+					"headerNames": [
+						"A-First",
+						"Authorization",
+						"X-Secret"
+					]
+				},
+				"provider": {
+					"id": "proxy",
+					"name": "Proxy",
+					"baseUrl": null,
+					"headerNames": [],
+					"authTypes": [],
+					"authStatus": {
+						"configured": false
+					},
+					"usingOAuth": true,
+					"registeredByExtension": false
+				},
+				"thinkingLevel": "off",
+				"extensions": [
+					{
+						"path": "/ext/a/index.ts",
+						"source": "git:https://github.com/org/a",
+						"scope": "user",
+						"origin": "package",
+						"hidden": true
+					},
+					{
+						"path": "/ext/b.ts",
+						"source": "local",
+						"scope": "user",
+						"origin": "top-level",
+						"hidden": false
+					},
+					{
+						"path": "/ext/c.ts",
+						"source": "https://example.com/c.ts?token=%3Credacted%3E",
+						"scope": "user",
+						"origin": "package",
+						"hidden": false
+					}
+				],
+				"extensionErrors": [
+					{
+						"path": "/ext/bad.ts",
+						"error": "SyntaxError: nope"
+					}
+				],
+				"settings": {
+					"global": {
+						"defaultProvider": "proxy",
+						"enableInstallTelemetry": true,
+						"compaction": {
+							"enabled": true,
+							"reserveTokens": 16384
+						},
+						"packages": [
+							"npm:pkg",
+							"git:https://github.com/o/r"
+						],
+						"providers": {
+							"proxy": {
+								"apiKey": "<redacted>",
+								"baseUrl": "https://x.example/"
+							}
+						}
+					},
+					"project": {
+						"theme": "dark"
+					}
+				}
+			}
+		},
+		{
+			"env": {
+				"SHELL": "/bin/",
+				"SSH_CONNECTION": "x"
+			},
+			"options": {
+				"id": "report-3",
+				"sessionId": "s3",
+				"cwd": "/w",
+				"includeSession": true,
+				"includeSummary": true,
+				"messageCount": 2,
+				"model": {
+					"id": "bare",
+					"name": "Bare",
+					"api": "anthropic-messages",
+					"provider": "missing",
+					"baseUrl": "https://api.example.com",
+					"reasoning": false,
+					"contextWindow": 0,
+					"maxTokens": 0
+				},
+				"thinkingLevel": "medium"
+			},
+			"provider": null,
+			"status": {
+				"configured": true,
+				"source": "environment",
+				"label": "PROXY_KEY"
+			},
+			"usingOAuth": false,
+			"registered": false,
+			"output": {
+				"schemaVersion": 1,
+				"id": "report-3",
+				"createdAt": "2026-04-05T14:07:09.321Z",
+				"hint": null,
+				"environment": {
+					"version": "0.87.39",
+					"userAgent": "pi/0.87.39 (linux; node/v24.0.0; x64)",
+					"runtime": "node/v24.0.0",
+					"platform": "linux",
+					"arch": "x64",
+					"osRelease": "6.1.0-test",
+					"osVersion": "#1 SMP Test",
+					"shell": null,
+					"terminal": {
+						"term": null,
+						"program": null,
+						"programVersion": null,
+						"colorterm": null,
+						"tmux": false,
+						"ssh": true,
+						"ci": false
+					},
+					"piEnvironmentVariables": []
+				},
+				"session": {
+					"id": "s3",
+					"included": true,
+					"summaryIncluded": true,
+					"messageCount": 2,
+					"cwd": "/w"
+				},
+				"model": {
+					"provider": "missing",
+					"id": "bare",
+					"name": "Bare",
+					"api": "anthropic-messages",
+					"baseUrl": "https://api.example.com",
+					"reasoning": false,
+					"contextWindow": 0,
+					"maxTokens": 0,
+					"samplingParams": null,
+					"compat": null,
+					"thinkingLevelMap": null,
+					"headerNames": []
+				},
+				"provider": null,
+				"thinkingLevel": "medium",
+				"extensions": [
+					{
+						"path": "/ext/a/index.ts",
+						"source": "git:https://github.com/org/a",
+						"scope": "user",
+						"origin": "package",
+						"hidden": true
+					},
+					{
+						"path": "/ext/b.ts",
+						"source": "local",
+						"scope": "user",
+						"origin": "top-level",
+						"hidden": false
+					},
+					{
+						"path": "/ext/c.ts",
+						"source": "https://example.com/c.ts?token=%3Credacted%3E",
+						"scope": "user",
+						"origin": "package",
+						"hidden": false
+					}
+				],
+				"extensionErrors": [
+					{
+						"path": "/ext/bad.ts",
+						"error": "SyntaxError: nope"
+					}
+				],
+				"settings": {
+					"global": {
+						"defaultProvider": "proxy",
+						"enableInstallTelemetry": true,
+						"compaction": {
+							"enabled": true,
+							"reserveTokens": 16384
+						},
+						"packages": [
+							"npm:pkg",
+							"git:https://github.com/o/r"
+						],
+						"providers": {
+							"proxy": {
+								"apiKey": "<redacted>",
+								"baseUrl": "https://x.example/"
+							}
+						}
+					},
+					"project": {
+						"theme": "dark"
+					}
+				}
+			}
+		},
+		{
+			"env": {},
+			"options": {
+				"id": "report-4",
+				"hint": "",
+				"sessionId": "s4",
+				"cwd": "/w",
+				"includeSession": false,
+				"includeSummary": false,
+				"messageCount": 1,
+				"thinkingLevel": "low"
+			},
+			"provider": null,
+			"status": {
+				"configured": false
+			},
+			"usingOAuth": false,
+			"registered": false,
+			"output": {
+				"schemaVersion": 1,
+				"id": "report-4",
+				"createdAt": "2026-04-05T14:07:09.321Z",
+				"hint": null,
+				"environment": {
+					"version": "0.87.39",
+					"userAgent": "pi/0.87.39 (linux; node/v24.0.0; x64)",
+					"runtime": "node/v24.0.0",
+					"platform": "linux",
+					"arch": "x64",
+					"osRelease": "6.1.0-test",
+					"osVersion": "#1 SMP Test",
+					"shell": null,
+					"terminal": {
+						"term": null,
+						"program": null,
+						"programVersion": null,
+						"colorterm": null,
+						"tmux": false,
+						"ssh": false,
+						"ci": false
+					},
+					"piEnvironmentVariables": []
+				},
+				"session": {
+					"id": "s4",
+					"included": false,
+					"summaryIncluded": false,
+					"messageCount": 1
+				},
+				"model": null,
+				"provider": null,
+				"thinkingLevel": "low",
+				"extensions": [
+					{
+						"path": "/ext/a/index.ts",
+						"source": "git:https://github.com/org/a",
+						"scope": "user",
+						"origin": "package",
+						"hidden": true
+					},
+					{
+						"path": "/ext/b.ts",
+						"source": "local",
+						"scope": "user",
+						"origin": "top-level",
+						"hidden": false
+					},
+					{
+						"path": "/ext/c.ts",
+						"source": "https://example.com/c.ts?token=%3Credacted%3E",
+						"scope": "user",
+						"origin": "package",
+						"hidden": false
+					}
+				],
+				"extensionErrors": [
+					{
+						"path": "/ext/bad.ts",
+						"error": "SyntaxError: nope"
+					}
+				],
+				"settings": {
+					"global": {
+						"defaultProvider": "proxy",
+						"enableInstallTelemetry": true,
+						"compaction": {
+							"enabled": true,
+							"reserveTokens": 16384
+						},
+						"packages": [
+							"npm:pkg",
+							"git:https://github.com/o/r"
+						],
+						"providers": {
+							"proxy": {
+								"apiKey": "<redacted>",
+								"baseUrl": "https://x.example/"
+							}
+						}
+					},
+					"project": {
+						"theme": "dark"
+					}
+				}
+			}
+		}
+	],
+	"diagnosticsCases": [
+		{
+			"entries": [
+				{
+					"type": "session",
+					"id": "h",
+					"timestamp": "t0"
+				},
+				{
+					"type": "message",
+					"id": "u1",
+					"timestamp": "t1",
+					"message": {
+						"role": "user",
+						"content": "hi"
+					}
+				},
+				{
+					"type": "message",
+					"id": "a1",
+					"timestamp": "t2",
+					"message": {
+						"role": "assistant",
+						"provider": "p",
+						"model": "m",
+						"api": "x",
+						"stopReason": "stop",
+						"content": []
+					}
+				},
+				{
+					"type": "message",
+					"id": "a2",
+					"timestamp": "t3",
+					"message": {
+						"role": "assistant",
+						"provider": "p",
+						"model": "m",
+						"api": "x",
+						"stopReason": "error",
+						"errorMessage": "boom",
+						"content": []
+					}
+				},
+				{
+					"type": "message",
+					"id": "a3",
+					"timestamp": "t4",
+					"message": {
+						"role": "assistant",
+						"provider": "p",
+						"model": "m",
+						"api": "x",
+						"stopReason": "aborted",
+						"rawStopReason": "cancelled",
+						"content": []
+					}
+				},
+				{
+					"type": "message",
+					"id": "a4",
+					"timestamp": "t5",
+					"message": {
+						"role": "assistant",
+						"provider": "p",
+						"model": "m",
+						"api": "x",
+						"stopReason": "stop",
+						"diagnostics": [
+							{
+								"type": "retry",
+								"attempt": 1
+							}
+						],
+						"content": []
+					}
+				},
+				{
+					"type": "message",
+					"id": "a5",
+					"timestamp": "t6",
+					"message": {
+						"role": "assistant",
+						"provider": "p",
+						"model": "m",
+						"api": "x",
+						"stopReason": "stop",
+						"errorMessage": "",
+						"diagnostics": [],
+						"content": []
+					}
+				},
+				{
+					"type": "message",
+					"id": "a6",
+					"timestamp": "t7",
+					"message": {
+						"role": "assistant",
+						"stopReason": "length",
+						"errorMessage": "partial",
+						"rawStopReason": null,
+						"content": []
+					}
+				},
+				{
+					"type": "custom",
+					"id": "c1",
+					"timestamp": "t8",
+					"customType": "x",
+					"data": {}
+				},
+				{
+					"type": "message",
+					"id": "t1",
+					"timestamp": "t9",
+					"message": {
+						"role": "toolResult",
+						"content": []
+					}
+				}
+			],
+			"crashes": [
+				{
+					"timestamp": "2026-04-01T00:00:00.000Z",
+					"version": "1",
+					"kind": "fatal_error",
+					"message": "m",
+					"stack": null,
+					"sessionFile": null,
+					"cwd": "/",
+					"notified": true
+				},
+				{
+					"timestamp": "2026-04-02T00:00:00.000Z",
+					"version": "1",
+					"kind": "uncaught_exception",
+					"message": "n",
+					"stack": "s",
+					"sessionFile": "/f",
+					"cwd": "/w"
+				}
+			],
+			"output": {
+				"schemaVersion": 1,
+				"sessionId": "session-9",
+				"entryCount": 10,
+				"assistantMessageCount": 6,
+				"assistant": [
+					{
+						"entryId": "a2",
+						"timestamp": "t3",
+						"provider": "p",
+						"model": "m",
+						"api": "x",
+						"stopReason": "error",
+						"errorMessage": "boom",
+						"diagnostics": []
+					},
+					{
+						"entryId": "a3",
+						"timestamp": "t4",
+						"provider": "p",
+						"model": "m",
+						"api": "x",
+						"stopReason": "aborted",
+						"rawStopReason": "cancelled",
+						"diagnostics": []
+					},
+					{
+						"entryId": "a4",
+						"timestamp": "t5",
+						"provider": "p",
+						"model": "m",
+						"api": "x",
+						"stopReason": "stop",
+						"diagnostics": [
+							{
+								"type": "retry",
+								"attempt": 1
+							}
+						]
+					},
+					{
+						"entryId": "a6",
+						"timestamp": "t7",
+						"stopReason": "length",
+						"rawStopReason": null,
+						"errorMessage": "partial",
+						"diagnostics": []
+					}
+				],
+				"crashes": [
+					{
+						"timestamp": "2026-04-01T00:00:00.000Z",
+						"version": "1",
+						"kind": "fatal_error",
+						"message": "m",
+						"stack": null,
+						"sessionFile": null,
+						"cwd": "/"
+					},
+					{
+						"timestamp": "2026-04-02T00:00:00.000Z",
+						"version": "1",
+						"kind": "uncaught_exception",
+						"message": "n",
+						"stack": "s",
+						"sessionFile": "/f",
+						"cwd": "/w"
+					}
+				]
+			}
+		},
+		{
+			"entries": [],
+			"crashes": [],
+			"output": {
+				"schemaVersion": 1,
+				"sessionId": "empty",
+				"entryCount": 0,
+				"assistantMessageCount": 0,
+				"assistant": [],
+				"crashes": []
+			}
+		}
+	],
+	"fileCases": [
+		{
+			"bundle": {
+				"metadata": {
+					"schemaVersion": 1,
+					"id": "report-1",
+					"createdAt": "2026-04-05T14:07:09.321Z",
+					"hint": "It broke",
+					"environment": {
+						"version": "0.87.39",
+						"userAgent": "pi/0.87.39 (linux; node/v24.0.0; x64)",
+						"runtime": "node/v24.0.0",
+						"platform": "linux",
+						"arch": "x64",
+						"osRelease": "6.1.0-test",
+						"osVersion": "#1 SMP Test",
+						"shell": "zsh",
+						"terminal": {
+							"term": "xterm-256color",
+							"program": "ghostty",
+							"programVersion": "1.2",
+							"colorterm": "truecolor",
+							"tmux": true,
+							"ssh": true,
+							"ci": false
+						},
+						"piEnvironmentVariables": [
+							"PI_CODING_AGENT_DIR",
+							"PI_OFFLINE",
+							"PI_TELEMETRY"
+						]
+					},
+					"session": {
+						"id": "s1",
+						"included": true,
+						"summaryIncluded": false,
+						"messageCount": 7,
+						"cwd": "/work"
+					},
+					"model": {
+						"provider": "proxy",
+						"id": "gpt-x",
+						"name": "GPT X",
+						"api": "openai-responses",
+						"baseUrl": "https://proxy.example.com/v1?api_key=%3Credacted%3E",
+						"reasoning": true,
+						"input": [
+							"text",
+							"image"
+						],
+						"contextWindow": 200000,
+						"maxTokens": 32000,
+						"samplingParams": {
+							"temperature": 0.2,
+							"apiKey": "<redacted>"
+						},
+						"compat": {
+							"supportsStore": false,
+							"authHeader": "https://c.example/"
+						},
+						"thinkingLevelMap": {
+							"low": "minimal",
+							"high": "high"
+						},
+						"headerNames": [
+							"A-First",
+							"Authorization",
+							"X-Secret"
+						]
+					},
+					"provider": {
+						"id": "proxy",
+						"name": "Proxy",
+						"baseUrl": "https://proxy.example.com/",
+						"headerNames": [
+							"A-First",
+							"Z-Last"
+						],
+						"authTypes": [
+							"api_key",
+							"oauth"
+						],
+						"authStatus": {
+							"configured": true,
+							"source": "stored"
+						},
+						"usingOAuth": false,
+						"registeredByExtension": true
+					},
+					"thinkingLevel": "high",
+					"extensions": [
+						{
+							"path": "/ext/a/index.ts",
+							"source": "git:https://github.com/org/a",
+							"scope": "user",
+							"origin": "package",
+							"hidden": true
+						},
+						{
+							"path": "/ext/b.ts",
+							"source": "local",
+							"scope": "user",
+							"origin": "top-level",
+							"hidden": false
+						},
+						{
+							"path": "/ext/c.ts",
+							"source": "https://example.com/c.ts?token=%3Credacted%3E",
+							"scope": "user",
+							"origin": "package",
+							"hidden": false
+						}
+					],
+					"extensionErrors": [
+						{
+							"path": "/ext/bad.ts",
+							"error": "SyntaxError: nope"
+						}
+					],
+					"settings": {
+						"global": {
+							"defaultProvider": "proxy",
+							"enableInstallTelemetry": true,
+							"compaction": {
+								"enabled": true,
+								"reserveTokens": 16384
+							},
+							"packages": [
+								"npm:pkg",
+								"git:https://github.com/o/r"
+							],
+							"providers": {
+								"proxy": {
+									"apiKey": "<redacted>",
+									"baseUrl": "https://x.example/"
+								}
+							}
+						},
+						"project": {
+							"theme": "dark"
+						}
+					}
+				},
+				"diagnostics": {
+					"schemaVersion": 1,
+					"sessionId": "session-9",
+					"entryCount": 10,
+					"assistantMessageCount": 6,
+					"assistant": [
+						{
+							"entryId": "a2",
+							"timestamp": "t3",
+							"provider": "p",
+							"model": "m",
+							"api": "x",
+							"stopReason": "error",
+							"errorMessage": "boom",
+							"diagnostics": []
+						},
+						{
+							"entryId": "a3",
+							"timestamp": "t4",
+							"provider": "p",
+							"model": "m",
+							"api": "x",
+							"stopReason": "aborted",
+							"rawStopReason": "cancelled",
+							"diagnostics": []
+						},
+						{
+							"entryId": "a4",
+							"timestamp": "t5",
+							"provider": "p",
+							"model": "m",
+							"api": "x",
+							"stopReason": "stop",
+							"diagnostics": [
+								{
+									"type": "retry",
+									"attempt": 1
+								}
+							]
+						},
+						{
+							"entryId": "a6",
+							"timestamp": "t7",
+							"stopReason": "length",
+							"rawStopReason": null,
+							"errorMessage": "partial",
+							"diagnostics": []
+						}
+					],
+					"crashes": [
+						{
+							"timestamp": "2026-04-01T00:00:00.000Z",
+							"version": "1",
+							"kind": "fatal_error",
+							"message": "m",
+							"stack": null,
+							"sessionFile": null,
+							"cwd": "/"
+						},
+						{
+							"timestamp": "2026-04-02T00:00:00.000Z",
+							"version": "1",
+							"kind": "uncaught_exception",
+							"message": "n",
+							"stack": "s",
+							"sessionFile": "/f",
+							"cwd": "/w"
+						}
+					]
+				},
+				"sessionJsonl": "{\"a\":1}\n",
+				"summary": "## Summary\nok"
+			},
+			"files": [
+				{
+					"name": "report.json",
+					"contentType": "application/json",
+					"data": "{\n  \"schemaVersion\": 1,\n  \"id\": \"report-1\",\n  \"createdAt\": \"2026-04-05T14:07:09.321Z\",\n  \"hint\": \"It broke\",\n  \"environment\": {\n    \"version\": \"0.87.39\",\n    \"userAgent\": \"pi/0.87.39 (linux; node/v24.0.0; x64)\",\n    \"runtime\": \"node/v24.0.0\",\n    \"platform\": \"linux\",\n    \"arch\": \"x64\",\n    \"osRelease\": \"6.1.0-test\",\n    \"osVersion\": \"#1 SMP Test\",\n    \"shell\": \"zsh\",\n    \"terminal\": {\n      \"term\": \"xterm-256color\",\n      \"program\": \"ghostty\",\n      \"programVersion\": \"1.2\",\n      \"colorterm\": \"truecolor\",\n      \"tmux\": true,\n      \"ssh\": true,\n      \"ci\": false\n    },\n    \"piEnvironmentVariables\": [\n      \"PI_CODING_AGENT_DIR\",\n      \"PI_OFFLINE\",\n      \"PI_TELEMETRY\"\n    ]\n  },\n  \"session\": {\n    \"id\": \"s1\",\n    \"included\": true,\n    \"summaryIncluded\": false,\n    \"messageCount\": 7,\n    \"cwd\": \"/work\"\n  },\n  \"model\": {\n    \"provider\": \"proxy\",\n    \"id\": \"gpt-x\",\n    \"name\": \"GPT X\",\n    \"api\": \"openai-responses\",\n    \"baseUrl\": \"https://proxy.example.com/v1?api_key=%3Credacted%3E\",\n    \"reasoning\": true,\n    \"input\": [\n      \"text\",\n      \"image\"\n    ],\n    \"contextWindow\": 200000,\n    \"maxTokens\": 32000,\n    \"samplingParams\": {\n      \"temperature\": 0.2,\n      \"apiKey\": \"<redacted>\"\n    },\n    \"compat\": {\n      \"supportsStore\": false,\n      \"authHeader\": \"https://c.example/\"\n    },\n    \"thinkingLevelMap\": {\n      \"low\": \"minimal\",\n      \"high\": \"high\"\n    },\n    \"headerNames\": [\n      \"A-First\",\n      \"Authorization\",\n      \"X-Secret\"\n    ]\n  },\n  \"provider\": {\n    \"id\": \"proxy\",\n    \"name\": \"Proxy\",\n    \"baseUrl\": \"https://proxy.example.com/\",\n    \"headerNames\": [\n      \"A-First\",\n      \"Z-Last\"\n    ],\n    \"authTypes\": [\n      \"api_key\",\n      \"oauth\"\n    ],\n    \"authStatus\": {\n      \"configured\": true,\n      \"source\": \"stored\"\n    },\n    \"usingOAuth\": false,\n    \"registeredByExtension\": true\n  },\n  \"thinkingLevel\": \"high\",\n  \"extensions\": [\n    {\n      \"path\": \"/ext/a/index.ts\",\n      \"source\": \"git:https://github.com/org/a\",\n      \"scope\": \"user\",\n      \"origin\": \"package\",\n      \"hidden\": true\n    },\n    {\n      \"path\": \"/ext/b.ts\",\n      \"source\": \"local\",\n      \"scope\": \"user\",\n      \"origin\": \"top-level\",\n      \"hidden\": false\n    },\n    {\n      \"path\": \"/ext/c.ts\",\n      \"source\": \"https://example.com/c.ts?token=%3Credacted%3E\",\n      \"scope\": \"user\",\n      \"origin\": \"package\",\n      \"hidden\": false\n    }\n  ],\n  \"extensionErrors\": [\n    {\n      \"path\": \"/ext/bad.ts\",\n      \"error\": \"SyntaxError: nope\"\n    }\n  ],\n  \"settings\": {\n    \"global\": {\n      \"defaultProvider\": \"proxy\",\n      \"enableInstallTelemetry\": true,\n      \"compaction\": {\n        \"enabled\": true,\n        \"reserveTokens\": 16384\n      },\n      \"packages\": [\n        \"npm:pkg\",\n        \"git:https://github.com/o/r\"\n      ],\n      \"providers\": {\n        \"proxy\": {\n          \"apiKey\": \"<redacted>\",\n          \"baseUrl\": \"https://x.example/\"\n        }\n      }\n    },\n    \"project\": {\n      \"theme\": \"dark\"\n    }\n  }\n}\n"
+				},
+				{
+					"name": "diagnostics.json",
+					"contentType": "application/json",
+					"data": "{\n  \"schemaVersion\": 1,\n  \"sessionId\": \"session-9\",\n  \"entryCount\": 10,\n  \"assistantMessageCount\": 6,\n  \"assistant\": [\n    {\n      \"entryId\": \"a2\",\n      \"timestamp\": \"t3\",\n      \"provider\": \"p\",\n      \"model\": \"m\",\n      \"api\": \"x\",\n      \"stopReason\": \"error\",\n      \"errorMessage\": \"boom\",\n      \"diagnostics\": []\n    },\n    {\n      \"entryId\": \"a3\",\n      \"timestamp\": \"t4\",\n      \"provider\": \"p\",\n      \"model\": \"m\",\n      \"api\": \"x\",\n      \"stopReason\": \"aborted\",\n      \"rawStopReason\": \"cancelled\",\n      \"diagnostics\": []\n    },\n    {\n      \"entryId\": \"a4\",\n      \"timestamp\": \"t5\",\n      \"provider\": \"p\",\n      \"model\": \"m\",\n      \"api\": \"x\",\n      \"stopReason\": \"stop\",\n      \"diagnostics\": [\n        {\n          \"type\": \"retry\",\n          \"attempt\": 1\n        }\n      ]\n    },\n    {\n      \"entryId\": \"a6\",\n      \"timestamp\": \"t7\",\n      \"stopReason\": \"length\",\n      \"rawStopReason\": null,\n      \"errorMessage\": \"partial\",\n      \"diagnostics\": []\n    }\n  ],\n  \"crashes\": [\n    {\n      \"timestamp\": \"2026-04-01T00:00:00.000Z\",\n      \"version\": \"1\",\n      \"kind\": \"fatal_error\",\n      \"message\": \"m\",\n      \"stack\": null,\n      \"sessionFile\": null,\n      \"cwd\": \"/\"\n    },\n    {\n      \"timestamp\": \"2026-04-02T00:00:00.000Z\",\n      \"version\": \"1\",\n      \"kind\": \"uncaught_exception\",\n      \"message\": \"n\",\n      \"stack\": \"s\",\n      \"sessionFile\": \"/f\",\n      \"cwd\": \"/w\"\n    }\n  ]\n}\n"
+				},
+				{
+					"name": "session.jsonl",
+					"contentType": "application/x-ndjson",
+					"data": "{\"a\":1}\n"
+				},
+				{
+					"name": "summary.md",
+					"contentType": "text/markdown",
+					"data": "## Summary\nok\n"
+				}
+			]
+		},
+		{
+			"bundle": {
+				"metadata": {
+					"a": [],
+					"b": {},
+					"c": "é \u0001"
+				},
+				"diagnostics": {
+					"x": 1.5
+				},
+				"summary": "ends\n"
+			},
+			"files": [
+				{
+					"name": "report.json",
+					"contentType": "application/json",
+					"data": "{\n  \"a\": [],\n  \"b\": {},\n  \"c\": \"é \\u0001\"\n}\n"
+				},
+				{
+					"name": "diagnostics.json",
+					"contentType": "application/json",
+					"data": "{\n  \"x\": 1.5\n}\n"
+				},
+				{
+					"name": "summary.md",
+					"contentType": "text/markdown",
+					"data": "ends\n"
+				}
+			]
+		},
+		{
+			"bundle": {
+				"metadata": {
+					"a": 1
+				},
+				"diagnostics": {
+					"b": 2
+				},
+				"sessionJsonl": ""
+			},
+			"files": [
+				{
+					"name": "report.json",
+					"contentType": "application/json",
+					"data": "{\n  \"a\": 1\n}\n"
+				},
+				{
+					"name": "diagnostics.json",
+					"contentType": "application/json",
+					"data": "{\n  \"b\": 2\n}\n"
+				},
+				{
+					"name": "session.jsonl",
+					"contentType": "application/x-ndjson",
+					"data": ""
+				}
+			]
+		}
+	],
+	"archive": {
+		"bundle": {
+			"metadata": {
+				"schemaVersion": 1,
+				"id": "report-1",
+				"createdAt": "2026-04-05T14:07:09.321Z",
+				"hint": "It broke",
+				"environment": {
+					"version": "0.87.39",
+					"userAgent": "pi/0.87.39 (linux; node/v24.0.0; x64)",
+					"runtime": "node/v24.0.0",
+					"platform": "linux",
+					"arch": "x64",
+					"osRelease": "6.1.0-test",
+					"osVersion": "#1 SMP Test",
+					"shell": "zsh",
+					"terminal": {
+						"term": "xterm-256color",
+						"program": "ghostty",
+						"programVersion": "1.2",
+						"colorterm": "truecolor",
+						"tmux": true,
+						"ssh": true,
+						"ci": false
+					},
+					"piEnvironmentVariables": [
+						"PI_CODING_AGENT_DIR",
+						"PI_OFFLINE",
+						"PI_TELEMETRY"
+					]
+				},
+				"session": {
+					"id": "s1",
+					"included": true,
+					"summaryIncluded": false,
+					"messageCount": 7,
+					"cwd": "/work"
+				},
+				"model": {
+					"provider": "proxy",
+					"id": "gpt-x",
+					"name": "GPT X",
+					"api": "openai-responses",
+					"baseUrl": "https://proxy.example.com/v1?api_key=%3Credacted%3E",
+					"reasoning": true,
+					"input": [
+						"text",
+						"image"
+					],
+					"contextWindow": 200000,
+					"maxTokens": 32000,
+					"samplingParams": {
+						"temperature": 0.2,
+						"apiKey": "<redacted>"
+					},
+					"compat": {
+						"supportsStore": false,
+						"authHeader": "https://c.example/"
+					},
+					"thinkingLevelMap": {
+						"low": "minimal",
+						"high": "high"
+					},
+					"headerNames": [
+						"A-First",
+						"Authorization",
+						"X-Secret"
+					]
+				},
+				"provider": {
+					"id": "proxy",
+					"name": "Proxy",
+					"baseUrl": "https://proxy.example.com/",
+					"headerNames": [
+						"A-First",
+						"Z-Last"
+					],
+					"authTypes": [
+						"api_key",
+						"oauth"
+					],
+					"authStatus": {
+						"configured": true,
+						"source": "stored"
+					},
+					"usingOAuth": false,
+					"registeredByExtension": true
+				},
+				"thinkingLevel": "high",
+				"extensions": [
+					{
+						"path": "/ext/a/index.ts",
+						"source": "git:https://github.com/org/a",
+						"scope": "user",
+						"origin": "package",
+						"hidden": true
+					},
+					{
+						"path": "/ext/b.ts",
+						"source": "local",
+						"scope": "user",
+						"origin": "top-level",
+						"hidden": false
+					},
+					{
+						"path": "/ext/c.ts",
+						"source": "https://example.com/c.ts?token=%3Credacted%3E",
+						"scope": "user",
+						"origin": "package",
+						"hidden": false
+					}
+				],
+				"extensionErrors": [
+					{
+						"path": "/ext/bad.ts",
+						"error": "SyntaxError: nope"
+					}
+				],
+				"settings": {
+					"global": {
+						"defaultProvider": "proxy",
+						"enableInstallTelemetry": true,
+						"compaction": {
+							"enabled": true,
+							"reserveTokens": 16384
+						},
+						"packages": [
+							"npm:pkg",
+							"git:https://github.com/o/r"
+						],
+						"providers": {
+							"proxy": {
+								"apiKey": "<redacted>",
+								"baseUrl": "https://x.example/"
+							}
+						}
+					},
+					"project": {
+						"theme": "dark"
+					}
+				}
+			},
+			"diagnostics": {
+				"schemaVersion": 1,
+				"sessionId": "session-9",
+				"entryCount": 10,
+				"assistantMessageCount": 6,
+				"assistant": [
+					{
+						"entryId": "a2",
+						"timestamp": "t3",
+						"provider": "p",
+						"model": "m",
+						"api": "x",
+						"stopReason": "error",
+						"errorMessage": "boom",
+						"diagnostics": []
+					},
+					{
+						"entryId": "a3",
+						"timestamp": "t4",
+						"provider": "p",
+						"model": "m",
+						"api": "x",
+						"stopReason": "aborted",
+						"rawStopReason": "cancelled",
+						"diagnostics": []
+					},
+					{
+						"entryId": "a4",
+						"timestamp": "t5",
+						"provider": "p",
+						"model": "m",
+						"api": "x",
+						"stopReason": "stop",
+						"diagnostics": [
+							{
+								"type": "retry",
+								"attempt": 1
+							}
+						]
+					},
+					{
+						"entryId": "a6",
+						"timestamp": "t7",
+						"stopReason": "length",
+						"rawStopReason": null,
+						"errorMessage": "partial",
+						"diagnostics": []
+					}
+				],
+				"crashes": [
+					{
+						"timestamp": "2026-04-01T00:00:00.000Z",
+						"version": "1",
+						"kind": "fatal_error",
+						"message": "m",
+						"stack": null,
+						"sessionFile": null,
+						"cwd": "/"
+					},
+					{
+						"timestamp": "2026-04-02T00:00:00.000Z",
+						"version": "1",
+						"kind": "uncaught_exception",
+						"message": "n",
+						"stack": "s",
+						"sessionFile": "/f",
+						"cwd": "/w"
+					}
+				]
+			},
+			"sessionJsonl": "{\"a\":1}\n",
+			"summary": "## Summary\nok"
+		},
+		"base64": "UEsDBBQAAAgIAORwhVw4Ip+yTwQAAHQLAAALAAAAcmVwb3J0Lmpzb26lVm1v2zYQ/u5fIXAosAGV5Lc6rbqtyFInM5YXI/G6rkMR0NJF4iyRBHly5Bb57wNpvVBOgm6Yv8i4N94999yRXweeR3ScQUE/gNJMcBJ5o5dGyhISeUSBFAr9EbGyWAFFSI7RqMbD8cwfTv3hq9VoGg2PouGbYDIefdqbZoxbqwV6ayU2sJcC3zIleAFW+XXgeZ5Htu3JZBi8Pgomb6yx55FSgzpO98ZEsrBWe9/njJfVW4+LBMLteBoMg+Fbr5pNf2g8VcmRFWD8XKNGLXOKd0IVRm9jNQqq4swIq9m0EQl9DTlQbYPNglEw9BE0duoOOfLdyLu5WHorR68zyHOj+6KzRoagCsZp3mJQy+zJ5o8/fjWLRS5U7WFSViJV1JqkmdCIu0c6J5FRMO7UNlITH1UJB6GxKCsSeUbTyrTODkUxI5F3R3MNVvLQYMnmXVc/UMXoOgdNIu+vxnG5uD25er+4PLs9Pptfrm7fL667w5eL26vT0/PF5bwnW83P5xfz1fWfxAo/D+oDiQZdF1nTZ09UPWrAZTzOywSSXvpEl0VB1W7RKW0ltbYArWkKJ6K0XDuqxfG9jR3eC7UhbQaFSKBrnQF/yxJQlqNKVLs2EeucSvRbenG65+TZcuV9bDknDbBESOCU+Qq0FFyDbtRrquF3ZSmUIUodhaE9JoCKFjKHIBZFuB29o5LdbmD304vJiYKExgjJi8m8HQigWnDG0z4sjMsS3V4hVNg1ghU0hboDDSaCG5s/GE/EPYm88dD8GhxptRIb4Kb9k3En1yZTxtMlVbTQfdoXEhTFUhlghsG4PZtK9hvsTNk/NvX8THrMi0UhKbrRdCnNvtI3KGw8p8cmYonZr0DrXjVgxg2QYT86ZoxvGE/PYQv5BZXuObktnRSMs4LmHV4ZS+36sN9etMyee0mL/mgc+6dMaQfx4xIzodgXiobkrfijfwOxAjycBod8vXHoEbFh3dIV/itakf+Y/Sf/nGrsE8agvtrJvmdN1s5TGLPHjjdIsewRJhb8jqWlOhhw03xRqtgWqk37k34DSs14emXgPZh9BSnTCAqSX3bzCoHX68XEbnHukaHt8P5Oa3y6AttkJbXHkRAqDGnIeAJVgJo8kXPKMGoakTLMyrXtgFBpSB37WEhrbq5GBz3FUmYXv6TxxsysQ8kkAaeeFpGnk1w/k14uYpfo38wDhfRzC9bjTB7dIU+nEj+TSoOSS1Rj+w7N6nl6//0/6JyEBzU/u7bPlRLqW71f06RXDRgno73ZcaSVjRF53GR4cI4GRMbTbgZImot1/+2QwB0tc1w+cxPZh5e5lRdcI83zFeRQAKrdoxveLNQY3evV8T4cODs7GtQW2p0/mk1eT2v1Q/c82QPrLgCzlWQRyU1KnHDPzUCoSG302X3z2GJ1P9V93a7ouavkpWvxxDasDu6Fpi3dt30BKfE3xL2LCDPY79yE7p8Oe5+HwcPgH1BLAwQUAAAICADkcIVc9jq3hogBAABwBQAAEAAAAGRpYWdub3N0aWNzLmpzb261lE1LAzEQhu/7K0LOVtMPK/YqCB68qHhQRMbs2AazSUimX5T+d0lam36FoiAsy+Z9ZzPzZJIsKsZ4kCNs4Bl9UNbwAWufJRVDHN/VfLAZtK558tCQn9/YsaEYLpIGIahAYOgeQ4Ah/tj9XZcP2GvFGGOL9P6ZbJUGOmn+JJNqMBA0LhrUzYbzdqJq9FF3WW5sjTpqTdbAqajMshLIugeEkEA5em99NtNwXX60P6zdmqxWMDQ2kJIhQrwlfXlWhumWYHr/AgMf1hPW2fYwfdyJkGAkar0d82uoXgnq8l+g4qhY7VrOla7KmrvUPY/k55t/V9mIsHFp027k5frrNHq/hH5Vql6jGdKo3BEz1rq4+xx4UqBP9api7C0dMekhjDAcHrCdYjui02+JXku0n4QYpOdcCPGS00w2FwFvZ/VLmbQKn0Cg3/cOTpOrbrbXAuTXPuX6JrlVGvctOU0ZLvjRThyn6PyNYmwkjIcjeseZREcx8BiMOYThgRdY+MUnP2CZ8tylall9A1BLAwQUAAAICADkcIVcRqPodAoAAAAIAAAADQAAAHNlc3Npb24uanNvbmyrVkpUsjKs5QIAUEsDBBQAAAgIAORwhVxJoMa0EAAAAA4AAAAKAAAAc3VtbWFyeS5tZFNWVgguzc1NLKrkys/mAgBQSwECFAAUAAAICADkcIVcOCKfsk8EAAB0CwAACwAAAAAAAAAAAAAAAAAAAAAAcmVwb3J0Lmpzb25QSwECFAAUAAAICADkcIVc9jq3hogBAABwBQAAEAAAAAAAAAAAAAAAAAB4BAAAZGlhZ25vc3RpY3MuanNvblBLAQIUABQAAAgIAORwhVxGo+h0CgAAAAgAAAANAAAAAAAAAAAAAAAAAC4GAABzZXNzaW9uLmpzb25sUEsBAhQAFAAACAgA5HCFXEmgxrQQAAAADgAAAAoAAAAAAAAAAAAAAAAAYwYAAHN1bW1hcnkubWRQSwUGAAAAAAQABADqAAAAmwYAAAAA",
+		"name": "pi-bug-report-abc.zip"
+	},
+	"crashSteps": [
+		{
+			"op": [
+				"take",
+				1775347200000
+			],
+			"now": 1775398029321,
+			"takeAt": 1775347200000,
+			"result": null,
+			"file": null
+		},
+		{
+			"op": [
+				"record",
+				{
+					"kind": "uncaught_exception",
+					"error": {
+						"name": "TypeError",
+						"message": "x is undefined",
+						"stack": "TypeError: x\n    at f (/a.js:1:1)"
+					},
+					"sessionFile": "/s/1.jsonl",
+					"cwd": "/w"
+				}
+			],
+			"now": 1775398089321,
+			"result": {
+				"timestamp": "2026-04-05T14:08:09.321Z",
+				"version": "0.87.39",
+				"kind": "uncaught_exception",
+				"message": "x is undefined",
+				"stack": "TypeError: x\n    at f (/a.js:1:1)",
+				"sessionFile": "/s/1.jsonl",
+				"cwd": "/w"
+			},
+			"file": "[\n  {\n    \"timestamp\": \"2026-04-05T14:08:09.321Z\",\n    \"version\": \"0.87.39\",\n    \"kind\": \"uncaught_exception\",\n    \"message\": \"x is undefined\",\n    \"stack\": \"TypeError: x\\n    at f (/a.js:1:1)\",\n    \"sessionFile\": \"/s/1.jsonl\",\n    \"cwd\": \"/w\"\n  }\n]\n"
+		},
+		{
+			"op": [
+				"record",
+				{
+					"kind": "fatal_error",
+					"error": {
+						"name": "RangeError",
+						"message": "",
+						"stack": ""
+					},
+					"cwd": "/w"
+				}
+			],
+			"now": 1775398149321,
+			"result": {
+				"timestamp": "2026-04-05T14:09:09.321Z",
+				"version": "0.87.39",
+				"kind": "fatal_error",
+				"message": "RangeError",
+				"stack": null,
+				"sessionFile": null,
+				"cwd": "/w"
+			},
+			"file": "[\n  {\n    \"timestamp\": \"2026-04-05T14:08:09.321Z\",\n    \"version\": \"0.87.39\",\n    \"kind\": \"uncaught_exception\",\n    \"message\": \"x is undefined\",\n    \"stack\": \"TypeError: x\\n    at f (/a.js:1:1)\",\n    \"sessionFile\": \"/s/1.jsonl\",\n    \"cwd\": \"/w\"\n  },\n  {\n    \"timestamp\": \"2026-04-05T14:09:09.321Z\",\n    \"version\": \"0.87.39\",\n    \"kind\": \"fatal_error\",\n    \"message\": \"RangeError\",\n    \"stack\": null,\n    \"sessionFile\": null,\n    \"cwd\": \"/w\"\n  }\n]\n"
+		},
+		{
+			"op": [
+				"record",
+				{
+					"kind": "fatal_error",
+					"error": {
+						"value": "plain string"
+					},
+					"cwd": "/w"
+				}
+			],
+			"now": 1775398209321,
+			"result": {
+				"timestamp": "2026-04-05T14:10:09.321Z",
+				"version": "0.87.39",
+				"kind": "fatal_error",
+				"message": "plain string",
+				"stack": null,
+				"sessionFile": null,
+				"cwd": "/w"
+			},
+			"file": "[\n  {\n    \"timestamp\": \"2026-04-05T14:08:09.321Z\",\n    \"version\": \"0.87.39\",\n    \"kind\": \"uncaught_exception\",\n    \"message\": \"x is undefined\",\n    \"stack\": \"TypeError: x\\n    at f (/a.js:1:1)\",\n    \"sessionFile\": \"/s/1.jsonl\",\n    \"cwd\": \"/w\"\n  },\n  {\n    \"timestamp\": \"2026-04-05T14:09:09.321Z\",\n    \"version\": \"0.87.39\",\n    \"kind\": \"fatal_error\",\n    \"message\": \"RangeError\",\n    \"stack\": null,\n    \"sessionFile\": null,\n    \"cwd\": \"/w\"\n  },\n  {\n    \"timestamp\": \"2026-04-05T14:10:09.321Z\",\n    \"version\": \"0.87.39\",\n    \"kind\": \"fatal_error\",\n    \"message\": \"plain string\",\n    \"stack\": null,\n    \"sessionFile\": null,\n    \"cwd\": \"/w\"\n  }\n]\n"
+		},
+		{
+			"op": [
+				"take",
+				1775401200000
+			],
+			"now": 1775398209321,
+			"takeAt": 1775401200000,
+			"result": {
+				"timestamp": "2026-04-05T14:10:09.321Z",
+				"version": "0.87.39",
+				"kind": "fatal_error",
+				"message": "plain string",
+				"stack": null,
+				"sessionFile": null,
+				"cwd": "/w"
+			},
+			"file": "[\n  {\n    \"timestamp\": \"2026-04-05T14:08:09.321Z\",\n    \"version\": \"0.87.39\",\n    \"kind\": \"uncaught_exception\",\n    \"message\": \"x is undefined\",\n    \"stack\": \"TypeError: x\\n    at f (/a.js:1:1)\",\n    \"sessionFile\": \"/s/1.jsonl\",\n    \"cwd\": \"/w\",\n    \"notified\": true\n  },\n  {\n    \"timestamp\": \"2026-04-05T14:09:09.321Z\",\n    \"version\": \"0.87.39\",\n    \"kind\": \"fatal_error\",\n    \"message\": \"RangeError\",\n    \"stack\": null,\n    \"sessionFile\": null,\n    \"cwd\": \"/w\",\n    \"notified\": true\n  },\n  {\n    \"timestamp\": \"2026-04-05T14:10:09.321Z\",\n    \"version\": \"0.87.39\",\n    \"kind\": \"fatal_error\",\n    \"message\": \"plain string\",\n    \"stack\": null,\n    \"sessionFile\": null,\n    \"cwd\": \"/w\",\n    \"notified\": true\n  }\n]\n"
+		},
+		{
+			"op": [
+				"take",
+				1775401200000
+			],
+			"now": 1775398209321,
+			"takeAt": 1775401200000,
+			"result": null,
+			"file": "[\n  {\n    \"timestamp\": \"2026-04-05T14:08:09.321Z\",\n    \"version\": \"0.87.39\",\n    \"kind\": \"uncaught_exception\",\n    \"message\": \"x is undefined\",\n    \"stack\": \"TypeError: x\\n    at f (/a.js:1:1)\",\n    \"sessionFile\": \"/s/1.jsonl\",\n    \"cwd\": \"/w\",\n    \"notified\": true\n  },\n  {\n    \"timestamp\": \"2026-04-05T14:09:09.321Z\",\n    \"version\": \"0.87.39\",\n    \"kind\": \"fatal_error\",\n    \"message\": \"RangeError\",\n    \"stack\": null,\n    \"sessionFile\": null,\n    \"cwd\": \"/w\",\n    \"notified\": true\n  },\n  {\n    \"timestamp\": \"2026-04-05T14:10:09.321Z\",\n    \"version\": \"0.87.39\",\n    \"kind\": \"fatal_error\",\n    \"message\": \"plain string\",\n    \"stack\": null,\n    \"sessionFile\": null,\n    \"cwd\": \"/w\",\n    \"notified\": true\n  }\n]\n"
+		},
+		{
+			"op": [
+				"record",
+				{
+					"kind": "uncaught_exception",
+					"error": {
+						"name": "Error",
+						"message": "four"
+					},
+					"cwd": "/w"
+				}
+			],
+			"now": 1775398269321,
+			"result": {
+				"timestamp": "2026-04-05T14:11:09.321Z",
+				"version": "0.87.39",
+				"kind": "uncaught_exception",
+				"message": "four",
+				"stack": null,
+				"sessionFile": null,
+				"cwd": "/w"
+			},
+			"file": "[\n  {\n    \"timestamp\": \"2026-04-05T14:08:09.321Z\",\n    \"version\": \"0.87.39\",\n    \"kind\": \"uncaught_exception\",\n    \"message\": \"x is undefined\",\n    \"stack\": \"TypeError: x\\n    at f (/a.js:1:1)\",\n    \"sessionFile\": \"/s/1.jsonl\",\n    \"cwd\": \"/w\",\n    \"notified\": true\n  },\n  {\n    \"timestamp\": \"2026-04-05T14:09:09.321Z\",\n    \"version\": \"0.87.39\",\n    \"kind\": \"fatal_error\",\n    \"message\": \"RangeError\",\n    \"stack\": null,\n    \"sessionFile\": null,\n    \"cwd\": \"/w\",\n    \"notified\": true\n  },\n  {\n    \"timestamp\": \"2026-04-05T14:10:09.321Z\",\n    \"version\": \"0.87.39\",\n    \"kind\": \"fatal_error\",\n    \"message\": \"plain string\",\n    \"stack\": null,\n    \"sessionFile\": null,\n    \"cwd\": \"/w\",\n    \"notified\": true\n  },\n  {\n    \"timestamp\": \"2026-04-05T14:11:09.321Z\",\n    \"version\": \"0.87.39\",\n    \"kind\": \"uncaught_exception\",\n    \"message\": \"four\",\n    \"stack\": null,\n    \"sessionFile\": null,\n    \"cwd\": \"/w\"\n  }\n]\n"
+		},
+		{
+			"op": [
+				"record",
+				{
+					"kind": "uncaught_exception",
+					"error": {
+						"name": "Error",
+						"message": "five"
+					},
+					"cwd": "/w"
+				}
+			],
+			"now": 1775398329321,
+			"result": {
+				"timestamp": "2026-04-05T14:12:09.321Z",
+				"version": "0.87.39",
+				"kind": "uncaught_exception",
+				"message": "five",
+				"stack": null,
+				"sessionFile": null,
+				"cwd": "/w"
+			},
+			"file": "[\n  {\n    \"timestamp\": \"2026-04-05T14:08:09.321Z\",\n    \"version\": \"0.87.39\",\n    \"kind\": \"uncaught_exception\",\n    \"message\": \"x is undefined\",\n    \"stack\": \"TypeError: x\\n    at f (/a.js:1:1)\",\n    \"sessionFile\": \"/s/1.jsonl\",\n    \"cwd\": \"/w\",\n    \"notified\": true\n  },\n  {\n    \"timestamp\": \"2026-04-05T14:09:09.321Z\",\n    \"version\": \"0.87.39\",\n    \"kind\": \"fatal_error\",\n    \"message\": \"RangeError\",\n    \"stack\": null,\n    \"sessionFile\": null,\n    \"cwd\": \"/w\",\n    \"notified\": true\n  },\n  {\n    \"timestamp\": \"2026-04-05T14:10:09.321Z\",\n    \"version\": \"0.87.39\",\n    \"kind\": \"fatal_error\",\n    \"message\": \"plain string\",\n    \"stack\": null,\n    \"sessionFile\": null,\n    \"cwd\": \"/w\",\n    \"notified\": true\n  },\n  {\n    \"timestamp\": \"2026-04-05T14:11:09.321Z\",\n    \"version\": \"0.87.39\",\n    \"kind\": \"uncaught_exception\",\n    \"message\": \"four\",\n    \"stack\": null,\n    \"sessionFile\": null,\n    \"cwd\": \"/w\"\n  },\n  {\n    \"timestamp\": \"2026-04-05T14:12:09.321Z\",\n    \"version\": \"0.87.39\",\n    \"kind\": \"uncaught_exception\",\n    \"message\": \"five\",\n    \"stack\": null,\n    \"sessionFile\": null,\n    \"cwd\": \"/w\"\n  }\n]\n"
+		},
+		{
+			"op": [
+				"record",
+				{
+					"kind": "uncaught_exception",
+					"error": {
+						"name": "Error",
+						"message": "six"
+					},
+					"cwd": "/w"
+				}
+			],
+			"now": 1775398389321,
+			"result": {
+				"timestamp": "2026-04-05T14:13:09.321Z",
+				"version": "0.87.39",
+				"kind": "uncaught_exception",
+				"message": "six",
+				"stack": null,
+				"sessionFile": null,
+				"cwd": "/w"
+			},
+			"file": "[\n  {\n    \"timestamp\": \"2026-04-05T14:09:09.321Z\",\n    \"version\": \"0.87.39\",\n    \"kind\": \"fatal_error\",\n    \"message\": \"RangeError\",\n    \"stack\": null,\n    \"sessionFile\": null,\n    \"cwd\": \"/w\",\n    \"notified\": true\n  },\n  {\n    \"timestamp\": \"2026-04-05T14:10:09.321Z\",\n    \"version\": \"0.87.39\",\n    \"kind\": \"fatal_error\",\n    \"message\": \"plain string\",\n    \"stack\": null,\n    \"sessionFile\": null,\n    \"cwd\": \"/w\",\n    \"notified\": true\n  },\n  {\n    \"timestamp\": \"2026-04-05T14:11:09.321Z\",\n    \"version\": \"0.87.39\",\n    \"kind\": \"uncaught_exception\",\n    \"message\": \"four\",\n    \"stack\": null,\n    \"sessionFile\": null,\n    \"cwd\": \"/w\"\n  },\n  {\n    \"timestamp\": \"2026-04-05T14:12:09.321Z\",\n    \"version\": \"0.87.39\",\n    \"kind\": \"uncaught_exception\",\n    \"message\": \"five\",\n    \"stack\": null,\n    \"sessionFile\": null,\n    \"cwd\": \"/w\"\n  },\n  {\n    \"timestamp\": \"2026-04-05T14:13:09.321Z\",\n    \"version\": \"0.87.39\",\n    \"kind\": \"uncaught_exception\",\n    \"message\": \"six\",\n    \"stack\": null,\n    \"sessionFile\": null,\n    \"cwd\": \"/w\"\n  }\n]\n"
+		},
+		{
+			"op": [
+				"read"
+			],
+			"now": 1775398389321,
+			"result": [
+				{
+					"timestamp": "2026-04-05T14:09:09.321Z",
+					"version": "0.87.39",
+					"kind": "fatal_error",
+					"message": "RangeError",
+					"stack": null,
+					"sessionFile": null,
+					"cwd": "/w",
+					"notified": true
+				},
+				{
+					"timestamp": "2026-04-05T14:10:09.321Z",
+					"version": "0.87.39",
+					"kind": "fatal_error",
+					"message": "plain string",
+					"stack": null,
+					"sessionFile": null,
+					"cwd": "/w",
+					"notified": true
+				},
+				{
+					"timestamp": "2026-04-05T14:11:09.321Z",
+					"version": "0.87.39",
+					"kind": "uncaught_exception",
+					"message": "four",
+					"stack": null,
+					"sessionFile": null,
+					"cwd": "/w"
+				},
+				{
+					"timestamp": "2026-04-05T14:12:09.321Z",
+					"version": "0.87.39",
+					"kind": "uncaught_exception",
+					"message": "five",
+					"stack": null,
+					"sessionFile": null,
+					"cwd": "/w"
+				},
+				{
+					"timestamp": "2026-04-05T14:13:09.321Z",
+					"version": "0.87.39",
+					"kind": "uncaught_exception",
+					"message": "six",
+					"stack": null,
+					"sessionFile": null,
+					"cwd": "/w"
+				}
+			],
+			"file": "[\n  {\n    \"timestamp\": \"2026-04-05T14:09:09.321Z\",\n    \"version\": \"0.87.39\",\n    \"kind\": \"fatal_error\",\n    \"message\": \"RangeError\",\n    \"stack\": null,\n    \"sessionFile\": null,\n    \"cwd\": \"/w\",\n    \"notified\": true\n  },\n  {\n    \"timestamp\": \"2026-04-05T14:10:09.321Z\",\n    \"version\": \"0.87.39\",\n    \"kind\": \"fatal_error\",\n    \"message\": \"plain string\",\n    \"stack\": null,\n    \"sessionFile\": null,\n    \"cwd\": \"/w\",\n    \"notified\": true\n  },\n  {\n    \"timestamp\": \"2026-04-05T14:11:09.321Z\",\n    \"version\": \"0.87.39\",\n    \"kind\": \"uncaught_exception\",\n    \"message\": \"four\",\n    \"stack\": null,\n    \"sessionFile\": null,\n    \"cwd\": \"/w\"\n  },\n  {\n    \"timestamp\": \"2026-04-05T14:12:09.321Z\",\n    \"version\": \"0.87.39\",\n    \"kind\": \"uncaught_exception\",\n    \"message\": \"five\",\n    \"stack\": null,\n    \"sessionFile\": null,\n    \"cwd\": \"/w\"\n  },\n  {\n    \"timestamp\": \"2026-04-05T14:13:09.321Z\",\n    \"version\": \"0.87.39\",\n    \"kind\": \"uncaught_exception\",\n    \"message\": \"six\",\n    \"stack\": null,\n    \"sessionFile\": null,\n    \"cwd\": \"/w\"\n  }\n]\n"
+		},
+		{
+			"op": [
+				"take",
+				1776643200000
+			],
+			"now": 1775398389321,
+			"takeAt": 1776643200000,
+			"result": null,
+			"file": "[\n  {\n    \"timestamp\": \"2026-04-05T14:09:09.321Z\",\n    \"version\": \"0.87.39\",\n    \"kind\": \"fatal_error\",\n    \"message\": \"RangeError\",\n    \"stack\": null,\n    \"sessionFile\": null,\n    \"cwd\": \"/w\",\n    \"notified\": true\n  },\n  {\n    \"timestamp\": \"2026-04-05T14:10:09.321Z\",\n    \"version\": \"0.87.39\",\n    \"kind\": \"fatal_error\",\n    \"message\": \"plain string\",\n    \"stack\": null,\n    \"sessionFile\": null,\n    \"cwd\": \"/w\",\n    \"notified\": true\n  },\n  {\n    \"timestamp\": \"2026-04-05T14:11:09.321Z\",\n    \"version\": \"0.87.39\",\n    \"kind\": \"uncaught_exception\",\n    \"message\": \"four\",\n    \"stack\": null,\n    \"sessionFile\": null,\n    \"cwd\": \"/w\"\n  },\n  {\n    \"timestamp\": \"2026-04-05T14:12:09.321Z\",\n    \"version\": \"0.87.39\",\n    \"kind\": \"uncaught_exception\",\n    \"message\": \"five\",\n    \"stack\": null,\n    \"sessionFile\": null,\n    \"cwd\": \"/w\"\n  },\n  {\n    \"timestamp\": \"2026-04-05T14:13:09.321Z\",\n    \"version\": \"0.87.39\",\n    \"kind\": \"uncaught_exception\",\n    \"message\": \"six\",\n    \"stack\": null,\n    \"sessionFile\": null,\n    \"cwd\": \"/w\"\n  }\n]\n"
+		},
+		{
+			"op": [
+				"take",
+				1776002829321
+			],
+			"now": 1775398389321,
+			"takeAt": 1776002829321,
+			"result": {
+				"timestamp": "2026-04-05T14:13:09.321Z",
+				"version": "0.87.39",
+				"kind": "uncaught_exception",
+				"message": "six",
+				"stack": null,
+				"sessionFile": null,
+				"cwd": "/w"
+			},
+			"file": "[\n  {\n    \"timestamp\": \"2026-04-05T14:09:09.321Z\",\n    \"version\": \"0.87.39\",\n    \"kind\": \"fatal_error\",\n    \"message\": \"RangeError\",\n    \"stack\": null,\n    \"sessionFile\": null,\n    \"cwd\": \"/w\",\n    \"notified\": true\n  },\n  {\n    \"timestamp\": \"2026-04-05T14:10:09.321Z\",\n    \"version\": \"0.87.39\",\n    \"kind\": \"fatal_error\",\n    \"message\": \"plain string\",\n    \"stack\": null,\n    \"sessionFile\": null,\n    \"cwd\": \"/w\",\n    \"notified\": true\n  },\n  {\n    \"timestamp\": \"2026-04-05T14:11:09.321Z\",\n    \"version\": \"0.87.39\",\n    \"kind\": \"uncaught_exception\",\n    \"message\": \"four\",\n    \"stack\": null,\n    \"sessionFile\": null,\n    \"cwd\": \"/w\",\n    \"notified\": true\n  },\n  {\n    \"timestamp\": \"2026-04-05T14:12:09.321Z\",\n    \"version\": \"0.87.39\",\n    \"kind\": \"uncaught_exception\",\n    \"message\": \"five\",\n    \"stack\": null,\n    \"sessionFile\": null,\n    \"cwd\": \"/w\",\n    \"notified\": true\n  },\n  {\n    \"timestamp\": \"2026-04-05T14:13:09.321Z\",\n    \"version\": \"0.87.39\",\n    \"kind\": \"uncaught_exception\",\n    \"message\": \"six\",\n    \"stack\": null,\n    \"sessionFile\": null,\n    \"cwd\": \"/w\",\n    \"notified\": true\n  }\n]\n"
+		},
+		{
+			"op": [
+				"clear"
+			],
+			"now": 1775398389321,
+			"result": null,
+			"file": null
+		},
+		{
+			"op": [
+				"read"
+			],
+			"now": 1775398389321,
+			"result": [],
+			"file": null
+		},
+		{
+			"op": [
+				"clear"
+			],
+			"now": 1775398389321,
+			"result": null,
+			"file": null
+		},
+		{
+			"op": [
+				"raw",
+				"not json"
+			],
+			"now": 1775398389321,
+			"result": null,
+			"file": "not json"
+		},
+		{
+			"op": [
+				"read"
+			],
+			"now": 1775398389321,
+			"result": [],
+			"file": "not json"
+		},
+		{
+			"op": [
+				"raw",
+				"{\"timestamp\":\"x\"}"
+			],
+			"now": 1775398389321,
+			"result": null,
+			"file": "{\"timestamp\":\"x\"}"
+		},
+		{
+			"op": [
+				"read"
+			],
+			"now": 1775398389321,
+			"result": [],
+			"file": "{\"timestamp\":\"x\"}"
+		},
+		{
+			"op": [
+				"raw",
+				"[{\"timestamp\":\"2026-04-05T10:00:00Z\",\"message\":\"ok\",\"extra\":[1],\"notified\":false},{\"timestamp\":5,\"message\":\"bad\"},null,\"str\",{\"timestamp\":\"2026-04-05\",\"message\":\"date only\",\"notified\":0},{\"timestamp\":\"garbage\",\"message\":\"unparseable\"},{\"timestamp\":\"2026-04-05T11:00:00.000+02:00\",\"message\":\"offset\"},{\"message\":\"no timestamp\"}]"
+			],
+			"now": 1775398389321,
+			"result": null,
+			"file": "[{\"timestamp\":\"2026-04-05T10:00:00Z\",\"message\":\"ok\",\"extra\":[1],\"notified\":false},{\"timestamp\":5,\"message\":\"bad\"},null,\"str\",{\"timestamp\":\"2026-04-05\",\"message\":\"date only\",\"notified\":0},{\"timestamp\":\"garbage\",\"message\":\"unparseable\"},{\"timestamp\":\"2026-04-05T11:00:00.000+02:00\",\"message\":\"offset\"},{\"message\":\"no timestamp\"}]"
+		},
+		{
+			"op": [
+				"read"
+			],
+			"now": 1775398389321,
+			"result": [
+				{
+					"timestamp": "2026-04-05T10:00:00Z",
+					"message": "ok",
+					"extra": [
+						1
+					],
+					"notified": false
+				},
+				{
+					"timestamp": "2026-04-05",
+					"message": "date only",
+					"notified": 0
+				},
+				{
+					"timestamp": "garbage",
+					"message": "unparseable"
+				},
+				{
+					"timestamp": "2026-04-05T11:00:00.000+02:00",
+					"message": "offset"
+				}
+			],
+			"file": "[{\"timestamp\":\"2026-04-05T10:00:00Z\",\"message\":\"ok\",\"extra\":[1],\"notified\":false},{\"timestamp\":5,\"message\":\"bad\"},null,\"str\",{\"timestamp\":\"2026-04-05\",\"message\":\"date only\",\"notified\":0},{\"timestamp\":\"garbage\",\"message\":\"unparseable\"},{\"timestamp\":\"2026-04-05T11:00:00.000+02:00\",\"message\":\"offset\"},{\"message\":\"no timestamp\"}]"
+		},
+		{
+			"op": [
+				"take",
+				1775390400000
+			],
+			"now": 1775398389321,
+			"takeAt": 1775390400000,
+			"result": {
+				"timestamp": "2026-04-05T11:00:00.000+02:00",
+				"message": "offset"
+			},
+			"file": "[\n  {\n    \"timestamp\": \"2026-04-05T10:00:00Z\",\n    \"message\": \"ok\",\n    \"extra\": [\n      1\n    ],\n    \"notified\": true\n  },\n  {\n    \"timestamp\": \"2026-04-05\",\n    \"message\": \"date only\",\n    \"notified\": true\n  },\n  {\n    \"timestamp\": \"garbage\",\n    \"message\": \"unparseable\",\n    \"notified\": true\n  },\n  {\n    \"timestamp\": \"2026-04-05T11:00:00.000+02:00\",\n    \"message\": \"offset\",\n    \"notified\": true\n  }\n]\n"
+		},
+		{
+			"op": [
+				"take",
+				1775390400000
+			],
+			"now": 1775398389321,
+			"takeAt": 1775390400000,
+			"result": null,
+			"file": "[\n  {\n    \"timestamp\": \"2026-04-05T10:00:00Z\",\n    \"message\": \"ok\",\n    \"extra\": [\n      1\n    ],\n    \"notified\": true\n  },\n  {\n    \"timestamp\": \"2026-04-05\",\n    \"message\": \"date only\",\n    \"notified\": true\n  },\n  {\n    \"timestamp\": \"garbage\",\n    \"message\": \"unparseable\",\n    \"notified\": true\n  },\n  {\n    \"timestamp\": \"2026-04-05T11:00:00.000+02:00\",\n    \"message\": \"offset\",\n    \"notified\": true\n  }\n]\n"
+		},
+		{
+			"op": [
+				"record",
+				{
+					"kind": "fatal_error",
+					"error": {
+						"name": "Error",
+						"message": "after raw",
+						"stack": "Error: after raw"
+					},
+					"cwd": "/w"
+				}
+			],
+			"now": 1775398449321,
+			"result": {
+				"timestamp": "2026-04-05T14:14:09.321Z",
+				"version": "0.87.39",
+				"kind": "fatal_error",
+				"message": "after raw",
+				"stack": "Error: after raw",
+				"sessionFile": null,
+				"cwd": "/w"
+			},
+			"file": "[\n  {\n    \"timestamp\": \"2026-04-05T10:00:00Z\",\n    \"message\": \"ok\",\n    \"extra\": [\n      1\n    ],\n    \"notified\": true\n  },\n  {\n    \"timestamp\": \"2026-04-05\",\n    \"message\": \"date only\",\n    \"notified\": true\n  },\n  {\n    \"timestamp\": \"garbage\",\n    \"message\": \"unparseable\",\n    \"notified\": true\n  },\n  {\n    \"timestamp\": \"2026-04-05T11:00:00.000+02:00\",\n    \"message\": \"offset\",\n    \"notified\": true\n  },\n  {\n    \"timestamp\": \"2026-04-05T14:14:09.321Z\",\n    \"version\": \"0.87.39\",\n    \"kind\": \"fatal_error\",\n    \"message\": \"after raw\",\n    \"stack\": \"Error: after raw\",\n    \"sessionFile\": null,\n    \"cwd\": \"/w\"\n  }\n]\n"
+		},
+		{
+			"op": [
+				"take",
+				"sevenDays+1"
+			],
+			"now": 1775398449321,
+			"takeAt": 1776003249322,
+			"result": null,
+			"file": "[\n  {\n    \"timestamp\": \"2026-04-05T10:00:00Z\",\n    \"message\": \"ok\",\n    \"extra\": [\n      1\n    ],\n    \"notified\": true\n  },\n  {\n    \"timestamp\": \"2026-04-05\",\n    \"message\": \"date only\",\n    \"notified\": true\n  },\n  {\n    \"timestamp\": \"garbage\",\n    \"message\": \"unparseable\",\n    \"notified\": true\n  },\n  {\n    \"timestamp\": \"2026-04-05T11:00:00.000+02:00\",\n    \"message\": \"offset\",\n    \"notified\": true\n  },\n  {\n    \"timestamp\": \"2026-04-05T14:14:09.321Z\",\n    \"version\": \"0.87.39\",\n    \"kind\": \"fatal_error\",\n    \"message\": \"after raw\",\n    \"stack\": \"Error: after raw\",\n    \"sessionFile\": null,\n    \"cwd\": \"/w\"\n  }\n]\n"
+		},
+		{
+			"op": [
+				"take",
+				"sevenDays"
+			],
+			"now": 1775398449321,
+			"takeAt": 1776003249321,
+			"result": {
+				"timestamp": "2026-04-05T14:14:09.321Z",
+				"version": "0.87.39",
+				"kind": "fatal_error",
+				"message": "after raw",
+				"stack": "Error: after raw",
+				"sessionFile": null,
+				"cwd": "/w"
+			},
+			"file": "[\n  {\n    \"timestamp\": \"2026-04-05T10:00:00Z\",\n    \"message\": \"ok\",\n    \"extra\": [\n      1\n    ],\n    \"notified\": true\n  },\n  {\n    \"timestamp\": \"2026-04-05\",\n    \"message\": \"date only\",\n    \"notified\": true\n  },\n  {\n    \"timestamp\": \"garbage\",\n    \"message\": \"unparseable\",\n    \"notified\": true\n  },\n  {\n    \"timestamp\": \"2026-04-05T11:00:00.000+02:00\",\n    \"message\": \"offset\",\n    \"notified\": true\n  },\n  {\n    \"timestamp\": \"2026-04-05T14:14:09.321Z\",\n    \"version\": \"0.87.39\",\n    \"kind\": \"fatal_error\",\n    \"message\": \"after raw\",\n    \"stack\": \"Error: after raw\",\n    \"sessionFile\": null,\n    \"cwd\": \"/w\",\n    \"notified\": true\n  }\n]\n"
+		},
+		{
+			"op": [
+				"raw",
+				"[{\"timestamp\":\"2026-04-05T10:00:00Z\",\"message\":\"truthy\",\"notified\":\"yes\"},{\"timestamp\":\"2026-04-05T10:00:00Z\",\"message\":\"falsy\",\"notified\":\"\"}]"
+			],
+			"now": 1775398449321,
+			"result": null,
+			"file": "[{\"timestamp\":\"2026-04-05T10:00:00Z\",\"message\":\"truthy\",\"notified\":\"yes\"},{\"timestamp\":\"2026-04-05T10:00:00Z\",\"message\":\"falsy\",\"notified\":\"\"}]"
+		},
+		{
+			"op": [
+				"take",
+				1775390400000
+			],
+			"now": 1775398449321,
+			"takeAt": 1775390400000,
+			"result": {
+				"timestamp": "2026-04-05T10:00:00Z",
+				"message": "falsy",
+				"notified": ""
+			},
+			"file": "[\n  {\n    \"timestamp\": \"2026-04-05T10:00:00Z\",\n    \"message\": \"truthy\",\n    \"notified\": \"yes\"\n  },\n  {\n    \"timestamp\": \"2026-04-05T10:00:00Z\",\n    \"message\": \"falsy\",\n    \"notified\": true\n  }\n]\n"
+		}
+	],
+	"stackCases": [
+		{
+			"stack": "TypeError: Cannot read properties of undefined (reading 'runtime')\n    at streamSimple (file:///home/fedora/.local/lib/node_modules/@earendil-works/pi-coding-agent/dist/bundle/chunks/chunk-CMRUVXTE.js:1093:16944)\n    at /home/fedora/.pi/agent/npm/node_modules/pi-observational-memory/src/agents/worker-stream.ts:43:45",
+			"extensions": [
+				{
+					"path": "/home/fedora/.pi/agent/npm/node_modules/pi-observational-memory/extensions/index.ts",
+					"resolvedPath": "/home/fedora/.pi/agent/npm/node_modules/pi-observational-memory/extensions/index.ts",
+					"sourceInfo": {
+						"path": "/home/fedora/.pi/agent/npm/node_modules/pi-observational-memory/extensions/index.ts",
+						"source": "npm:pi-observational-memory",
+						"scope": "user",
+						"origin": "package",
+						"baseDir": "/home/fedora/.pi/agent/npm/node_modules/pi-observational-memory"
+					}
+				},
+				{
+					"path": "/home/fedora/.pi/agent/npm/node_modules/unrelated/extensions/index.ts",
+					"resolvedPath": "/home/fedora/.pi/agent/npm/node_modules/unrelated/extensions/index.ts",
+					"sourceInfo": {
+						"path": "/home/fedora/.pi/agent/npm/node_modules/unrelated/extensions/index.ts",
+						"source": "npm:unrelated",
+						"scope": "user",
+						"origin": "package",
+						"baseDir": "/home/fedora/.pi/agent/npm/node_modules/unrelated"
+					}
+				}
+			],
+			"matches": [
+				"npm:pi-observational-memory"
+			]
+		},
+		{
+			"stack": "Error: broken\n    at run (c:\\users\\reporter\\.pi\\agent\\npm\\node_modules\\@scope\\memory\\src\\worker.ts:4:2)",
+			"extensions": [
+				{
+					"path": "C:/Users/reporter/.pi/agent/npm/node_modules/@scope/memory/extensions/first.ts",
+					"resolvedPath": "C:/Users/reporter/.pi/agent/npm/node_modules/@scope/memory/extensions/first.ts",
+					"sourceInfo": {
+						"path": "C:/Users/reporter/.pi/agent/npm/node_modules/@scope/memory/extensions/first.ts",
+						"source": "npm:@scope/memory",
+						"scope": "user",
+						"origin": "package",
+						"baseDir": "C:\\Users\\reporter\\.pi\\agent\\npm\\node_modules\\@scope\\memory"
+					}
+				},
+				{
+					"path": "C:/Users/reporter/.pi/agent/npm/node_modules/@scope/memory/extensions/second.ts",
+					"resolvedPath": "C:/Users/reporter/.pi/agent/npm/node_modules/@scope/memory/extensions/second.ts",
+					"sourceInfo": {
+						"path": "C:/Users/reporter/.pi/agent/npm/node_modules/@scope/memory/extensions/second.ts",
+						"source": "npm:@scope/memory",
+						"scope": "user",
+						"origin": "package",
+						"baseDir": "C:\\Users\\reporter\\.pi\\agent\\npm\\node_modules\\@scope\\memory"
+					}
+				}
+			],
+			"matches": [
+				"npm:@scope/memory"
+			]
+		},
+		{
+			"stack": "Error: broken\n    at run (file:///plugins/b.ts:4:2)",
+			"extensions": [
+				{
+					"path": "/plugins/a.ts",
+					"resolvedPath": "/plugins/a.ts",
+					"sourceInfo": {
+						"path": "/plugins/a.ts",
+						"source": "/plugins/a.ts",
+						"scope": "user",
+						"origin": "package",
+						"baseDir": "/plugins"
+					}
+				},
+				{
+					"path": "/plugins/b.ts",
+					"resolvedPath": "/plugins/b.ts",
+					"sourceInfo": {
+						"path": "/plugins/b.ts",
+						"source": "/plugins/b.ts",
+						"scope": "user",
+						"origin": "package",
+						"baseDir": "/plugins"
+					}
+				}
+			],
+			"matches": [
+				"/plugins/b.ts"
+			]
+		},
+		{
+			"stack": "Error: Failed to read /tmp/node_modules/memory/extensions/index.ts\n    at run (file:///opt/pi/dist/core.js:4:2)",
+			"extensions": [
+				{
+					"path": "/tmp/node_modules/memory/extensions/index.ts",
+					"resolvedPath": "/tmp/node_modules/memory/extensions/index.ts",
+					"sourceInfo": {
+						"path": "/tmp/node_modules/memory/extensions/index.ts",
+						"source": "npm:memory",
+						"scope": "user",
+						"origin": "package",
+						"baseDir": "/tmp/node_modules/memory"
+					}
+				}
+			],
+			"matches": []
+		},
+		{
+			"stack": "Error: progress 100%\n    at run (file:///Users/reporter/.pi/agent/extensions/local%20memory/worker.ts:4:2)",
+			"extensions": [
+				{
+					"path": "/Users/reporter/.pi/agent/extensions/local memory/index.ts",
+					"resolvedPath": "/Users/reporter/.pi/agent/extensions/local memory/index.ts",
+					"sourceInfo": {
+						"path": "/Users/reporter/.pi/agent/extensions/local memory/index.ts",
+						"source": "local",
+						"scope": "user",
+						"origin": "top-level",
+						"baseDir": "/Users/reporter/.pi/agent/extensions/local memory"
+					}
+				}
+			],
+			"matches": [
+				"/Users/reporter/.pi/agent/extensions/local memory/index.ts"
+			]
+		},
+		{
+			"stack": "Error\n    at a (/x/one.ts:1:1)\n    at b (/x/one.tsx:2:2)\n    at c /x/two.ts\n  at d (/x/three.ts)\n\tat e (/x/four.ts\tmore)\n    at f (/x/bad%E0%A4%A.ts:1:1)\n    at g (/x/five.ts%3A1)\n    not a frame /x/six.ts",
+			"extensions": [
+				{
+					"path": "/x/one.ts",
+					"resolvedPath": "/x/one.ts",
+					"sourceInfo": {
+						"path": "/x/one.ts",
+						"source": "local",
+						"scope": "user",
+						"origin": "top-level",
+						"baseDir": "/x"
+					}
+				},
+				{
+					"path": "/x/two.ts",
+					"resolvedPath": "/x/two.ts",
+					"sourceInfo": {
+						"path": "/x/two.ts",
+						"source": "local",
+						"scope": "user",
+						"origin": "top-level",
+						"baseDir": "/x"
+					}
+				},
+				{
+					"path": "/x/three.ts",
+					"resolvedPath": "/x/three.ts",
+					"sourceInfo": {
+						"path": "/x/three.ts",
+						"source": "local",
+						"scope": "user",
+						"origin": "top-level",
+						"baseDir": "/x"
+					}
+				},
+				{
+					"path": "/x/four.ts",
+					"resolvedPath": "/x/four.ts",
+					"sourceInfo": {
+						"path": "/x/four.ts",
+						"source": "local",
+						"scope": "user",
+						"origin": "top-level",
+						"baseDir": "/x"
+					}
+				},
+				{
+					"path": "/x/five.ts",
+					"resolvedPath": "/x/five.ts",
+					"sourceInfo": {
+						"path": "/x/five.ts",
+						"source": "local",
+						"scope": "user",
+						"origin": "top-level",
+						"baseDir": "/x"
+					}
+				},
+				{
+					"path": "/x/six.ts",
+					"resolvedPath": "/x/six.ts",
+					"sourceInfo": {
+						"path": "/x/six.ts",
+						"source": "local",
+						"scope": "user",
+						"origin": "top-level",
+						"baseDir": "/x"
+					}
+				},
+				{
+					"path": "/x/bad%E0%A4%A.ts",
+					"resolvedPath": "/x/bad%E0%A4%A.ts",
+					"sourceInfo": {
+						"path": "/x/bad%E0%A4%A.ts",
+						"source": "local",
+						"scope": "user",
+						"origin": "top-level",
+						"baseDir": "/x"
+					}
+				},
+				{
+					"path": "label-tsx",
+					"resolvedPath": "/x/one.tsx",
+					"sourceInfo": {
+						"path": "/x/one.tsx",
+						"source": "local",
+						"scope": "user",
+						"origin": "top-level",
+						"baseDir": "/x"
+					}
+				},
+				{
+					"path": "<inline>",
+					"resolvedPath": "<inline>",
+					"sourceInfo": {
+						"path": "<inline>",
+						"source": "local",
+						"scope": "user",
+						"origin": "top-level",
+						"baseDir": "."
+					}
+				},
+				{
+					"path": "",
+					"resolvedPath": "",
+					"sourceInfo": {
+						"path": "",
+						"source": "local",
+						"scope": "user",
+						"origin": "top-level",
+						"baseDir": "."
+					}
+				}
+			],
+			"matches": [
+				"/x/one.ts",
+				"/x/two.ts",
+				"/x/three.ts",
+				"/x/four.ts",
+				"/x/bad%E0%A4%A.ts",
+				"label-tsx"
+			]
+		},
+		{
+			"stack": "Error\n    at (/pkg/root/lib/x.js:1:1)",
+			"extensions": [
+				{
+					"path": "/pkg/root/extensions/index.ts",
+					"resolvedPath": "/pkg/root/extensions/index.ts",
+					"sourceInfo": {
+						"path": "/pkg/root/extensions/index.ts",
+						"source": "",
+						"scope": "user",
+						"origin": "package",
+						"baseDir": "/pkg/root"
+					}
+				},
+				{
+					"path": "/nb/extensions/index.ts",
+					"resolvedPath": "/nb/extensions/index.ts",
+					"sourceInfo": {
+						"path": "/nb/extensions/index.ts",
+						"source": "npm:nobase",
+						"scope": "user",
+						"origin": "package",
+						"baseDir": ""
+					}
+				}
+			],
+			"matches": [
+				"/pkg/root/extensions/index.ts"
+			]
+		},
+		{
+			"stack": "Error\n    at (/pkg/root/lib/x.js:1:1)\n    at (/nb/extensions/index.ts:2:2)",
+			"extensions": [
+				{
+					"path": "/nb/extensions/index.ts",
+					"resolvedPath": "/nb/extensions/index.ts",
+					"sourceInfo": {
+						"path": "/nb/extensions/index.ts",
+						"source": "npm:nobase",
+						"scope": "user",
+						"origin": "package"
+					}
+				}
+			],
+			"matches": [
+				"npm:nobase"
+			]
+		},
+		{
+			"stack": "Error\n    at (/dir/sub/file.ts:1:1)\n    at (/w/single.mjs:1:1)",
+			"extensions": [
+				{
+					"path": "/dir/index.js",
+					"resolvedPath": "/dir/index.js",
+					"sourceInfo": {
+						"path": "/dir/index.js",
+						"source": "./dir",
+						"scope": "project",
+						"origin": "top-level"
+					}
+				},
+				{
+					"path": "/w/single.mjs",
+					"resolvedPath": "/w/single.mjs",
+					"sourceInfo": {
+						"path": "/w/single.mjs",
+						"source": "npm:single.mjs",
+						"scope": "user",
+						"origin": "package",
+						"baseDir": "/w"
+					}
+				},
+				{
+					"path": "/w/x/y.js",
+					"resolvedPath": "/w/x/y.js",
+					"sourceInfo": {
+						"path": "/w/x/y.js",
+						"source": "https://ex.com/y.js",
+						"scope": "user",
+						"origin": "package",
+						"baseDir": "/w"
+					}
+				}
+			],
+			"matches": [
+				"/dir/index.js",
+				"npm:single.mjs",
+				"https://ex.com/y.js"
+			]
+		},
+		{
+			"stack": "Error\n    at (D:/Proj/Ext.ts:1:1)",
+			"extensions": [
+				{
+					"path": "d:/proj/ext.ts",
+					"resolvedPath": "d:/proj/ext.ts",
+					"sourceInfo": {
+						"path": "d:/proj/ext.ts",
+						"source": "local",
+						"scope": "user",
+						"origin": "top-level",
+						"baseDir": "d:/proj"
+					}
+				},
+				{
+					"path": "D:/Proj/Ext.ts/",
+					"resolvedPath": "D:/Proj/Ext.ts/",
+					"sourceInfo": {
+						"path": "D:/Proj/Ext.ts/",
+						"source": "local",
+						"scope": "user",
+						"origin": "top-level",
+						"baseDir": "D:/Proj"
+					}
+				}
+			],
+			"matches": [
+				"d:/proj/ext.ts",
+				"D:/Proj/Ext.ts/"
+			]
+		},
+		{
+			"stack": "",
+			"extensions": [
+				{
+					"path": "/x.ts",
+					"resolvedPath": "/x.ts",
+					"sourceInfo": {
+						"path": "/x.ts",
+						"source": "local",
+						"scope": "user",
+						"origin": "top-level",
+						"baseDir": "/"
+					}
+				}
+			],
+			"matches": []
+		},
+		{
+			"stack": "    at message (/msg/a.ts:1:1)\n    at frame (/frame/b.ts:2:2)",
+			"extensions": [
+				{
+					"path": "/msg/a.ts",
+					"resolvedPath": "/msg/a.ts",
+					"sourceInfo": {
+						"path": "/msg/a.ts",
+						"source": "local",
+						"scope": "user",
+						"origin": "top-level",
+						"baseDir": "/msg"
+					}
+				},
+				{
+					"path": "/frame/b.ts",
+					"resolvedPath": "/frame/b.ts",
+					"sourceInfo": {
+						"path": "/frame/b.ts",
+						"source": "local",
+						"scope": "user",
+						"origin": "top-level",
+						"baseDir": "/frame"
+					}
+				}
+			],
+			"matches": [
+				"/frame/b.ts"
+			]
+		},
+		{
+			"stack": "only one line /x.ts",
+			"extensions": [
+				{
+					"path": "/x.ts",
+					"resolvedPath": "/x.ts",
+					"sourceInfo": {
+						"path": "/x.ts",
+						"source": "local",
+						"scope": "user",
+						"origin": "top-level",
+						"baseDir": "/"
+					}
+				}
+			],
+			"matches": []
+		},
+		{
+			"stack": "Error\n    at x (/a%2Fb/c.ts:1:1)\n    at y (/q%23r/i.ts:1)",
+			"extensions": [
+				{
+					"path": "/a%2Fb/c.ts",
+					"resolvedPath": "/a%2Fb/c.ts",
+					"sourceInfo": {
+						"path": "/a%2Fb/c.ts",
+						"source": "local",
+						"scope": "user",
+						"origin": "top-level",
+						"baseDir": "/a%2Fb"
+					}
+				},
+				{
+					"path": "/q%23r/i.ts",
+					"resolvedPath": "/q%23r/i.ts",
+					"sourceInfo": {
+						"path": "/q%23r/i.ts",
+						"source": "local",
+						"scope": "user",
+						"origin": "top-level",
+						"baseDir": "/q%23r"
+					}
+				}
+			],
+			"matches": [
+				"/a%2Fb/c.ts",
+				"/q%23r/i.ts"
+			]
+		}
+	],
+	"attributionCases": [
+		{
+			"model": {
+				"provider": "openrouter",
+				"baseUrl": "https://example.com"
+			},
+			"enabled": true,
+			"sessionId": null,
+			"headerSources": [],
+			"output": {
+				"HTTP-Referer": "https://pi.dev",
+				"X-OpenRouter-Title": "pi",
+				"X-OpenRouter-Categories": "cli-agent"
+			}
+		},
+		{
+			"model": {
+				"provider": "openrouter",
+				"baseUrl": "https://example.com"
+			},
+			"enabled": true,
+			"sessionId": null,
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"HTTP-Referer": "https://pi.dev",
+				"X-OpenRouter-Title": "pi",
+				"X-OpenRouter-Categories": "cli-agent",
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "openrouter",
+				"baseUrl": "https://example.com"
+			},
+			"enabled": true,
+			"sessionId": "",
+			"headerSources": [],
+			"output": {
+				"HTTP-Referer": "https://pi.dev",
+				"X-OpenRouter-Title": "pi",
+				"X-OpenRouter-Categories": "cli-agent"
+			}
+		},
+		{
+			"model": {
+				"provider": "openrouter",
+				"baseUrl": "https://example.com"
+			},
+			"enabled": true,
+			"sessionId": "",
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"HTTP-Referer": "https://pi.dev",
+				"X-OpenRouter-Title": "pi",
+				"X-OpenRouter-Categories": "cli-agent",
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "openrouter",
+				"baseUrl": "https://example.com"
+			},
+			"enabled": true,
+			"sessionId": "sess-1",
+			"headerSources": [],
+			"output": {
+				"HTTP-Referer": "https://pi.dev",
+				"X-OpenRouter-Title": "pi",
+				"X-OpenRouter-Categories": "cli-agent"
+			}
+		},
+		{
+			"model": {
+				"provider": "openrouter",
+				"baseUrl": "https://example.com"
+			},
+			"enabled": true,
+			"sessionId": "sess-1",
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"HTTP-Referer": "https://pi.dev",
+				"X-OpenRouter-Title": "pi",
+				"X-OpenRouter-Categories": "cli-agent",
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "openrouter",
+				"baseUrl": "https://example.com"
+			},
+			"enabled": false,
+			"sessionId": null,
+			"headerSources": [],
+			"output": null
+		},
+		{
+			"model": {
+				"provider": "openrouter",
+				"baseUrl": "https://example.com"
+			},
+			"enabled": false,
+			"sessionId": null,
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "openrouter",
+				"baseUrl": "https://example.com"
+			},
+			"enabled": false,
+			"sessionId": "",
+			"headerSources": [],
+			"output": null
+		},
+		{
+			"model": {
+				"provider": "openrouter",
+				"baseUrl": "https://example.com"
+			},
+			"enabled": false,
+			"sessionId": "",
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "openrouter",
+				"baseUrl": "https://example.com"
+			},
+			"enabled": false,
+			"sessionId": "sess-1",
+			"headerSources": [],
+			"output": null
+		},
+		{
+			"model": {
+				"provider": "openrouter",
+				"baseUrl": "https://example.com"
+			},
+			"enabled": false,
+			"sessionId": "sess-1",
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://openrouter.ai/api/v1"
+			},
+			"enabled": true,
+			"sessionId": null,
+			"headerSources": [],
+			"output": {
+				"HTTP-Referer": "https://pi.dev",
+				"X-OpenRouter-Title": "pi",
+				"X-OpenRouter-Categories": "cli-agent"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://openrouter.ai/api/v1"
+			},
+			"enabled": true,
+			"sessionId": null,
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"HTTP-Referer": "https://pi.dev",
+				"X-OpenRouter-Title": "pi",
+				"X-OpenRouter-Categories": "cli-agent",
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://openrouter.ai/api/v1"
+			},
+			"enabled": true,
+			"sessionId": "",
+			"headerSources": [],
+			"output": {
+				"HTTP-Referer": "https://pi.dev",
+				"X-OpenRouter-Title": "pi",
+				"X-OpenRouter-Categories": "cli-agent"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://openrouter.ai/api/v1"
+			},
+			"enabled": true,
+			"sessionId": "",
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"HTTP-Referer": "https://pi.dev",
+				"X-OpenRouter-Title": "pi",
+				"X-OpenRouter-Categories": "cli-agent",
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://openrouter.ai/api/v1"
+			},
+			"enabled": true,
+			"sessionId": "sess-1",
+			"headerSources": [],
+			"output": {
+				"HTTP-Referer": "https://pi.dev",
+				"X-OpenRouter-Title": "pi",
+				"X-OpenRouter-Categories": "cli-agent"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://openrouter.ai/api/v1"
+			},
+			"enabled": true,
+			"sessionId": "sess-1",
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"HTTP-Referer": "https://pi.dev",
+				"X-OpenRouter-Title": "pi",
+				"X-OpenRouter-Categories": "cli-agent",
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://openrouter.ai/api/v1"
+			},
+			"enabled": false,
+			"sessionId": null,
+			"headerSources": [],
+			"output": null
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://openrouter.ai/api/v1"
+			},
+			"enabled": false,
+			"sessionId": null,
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://openrouter.ai/api/v1"
+			},
+			"enabled": false,
+			"sessionId": "",
+			"headerSources": [],
+			"output": null
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://openrouter.ai/api/v1"
+			},
+			"enabled": false,
+			"sessionId": "",
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://openrouter.ai/api/v1"
+			},
+			"enabled": false,
+			"sessionId": "sess-1",
+			"headerSources": [],
+			"output": null
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://openrouter.ai/api/v1"
+			},
+			"enabled": false,
+			"sessionId": "sess-1",
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://notopenrouter.ai.example/x"
+			},
+			"enabled": true,
+			"sessionId": null,
+			"headerSources": [],
+			"output": {
+				"HTTP-Referer": "https://pi.dev",
+				"X-OpenRouter-Title": "pi",
+				"X-OpenRouter-Categories": "cli-agent"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://notopenrouter.ai.example/x"
+			},
+			"enabled": true,
+			"sessionId": null,
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"HTTP-Referer": "https://pi.dev",
+				"X-OpenRouter-Title": "pi",
+				"X-OpenRouter-Categories": "cli-agent",
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://notopenrouter.ai.example/x"
+			},
+			"enabled": true,
+			"sessionId": "",
+			"headerSources": [],
+			"output": {
+				"HTTP-Referer": "https://pi.dev",
+				"X-OpenRouter-Title": "pi",
+				"X-OpenRouter-Categories": "cli-agent"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://notopenrouter.ai.example/x"
+			},
+			"enabled": true,
+			"sessionId": "",
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"HTTP-Referer": "https://pi.dev",
+				"X-OpenRouter-Title": "pi",
+				"X-OpenRouter-Categories": "cli-agent",
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://notopenrouter.ai.example/x"
+			},
+			"enabled": true,
+			"sessionId": "sess-1",
+			"headerSources": [],
+			"output": {
+				"HTTP-Referer": "https://pi.dev",
+				"X-OpenRouter-Title": "pi",
+				"X-OpenRouter-Categories": "cli-agent"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://notopenrouter.ai.example/x"
+			},
+			"enabled": true,
+			"sessionId": "sess-1",
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"HTTP-Referer": "https://pi.dev",
+				"X-OpenRouter-Title": "pi",
+				"X-OpenRouter-Categories": "cli-agent",
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://notopenrouter.ai.example/x"
+			},
+			"enabled": false,
+			"sessionId": null,
+			"headerSources": [],
+			"output": null
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://notopenrouter.ai.example/x"
+			},
+			"enabled": false,
+			"sessionId": null,
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://notopenrouter.ai.example/x"
+			},
+			"enabled": false,
+			"sessionId": "",
+			"headerSources": [],
+			"output": null
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://notopenrouter.ai.example/x"
+			},
+			"enabled": false,
+			"sessionId": "",
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://notopenrouter.ai.example/x"
+			},
+			"enabled": false,
+			"sessionId": "sess-1",
+			"headerSources": [],
+			"output": null
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://notopenrouter.ai.example/x"
+			},
+			"enabled": false,
+			"sessionId": "sess-1",
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "nvidia",
+				"baseUrl": ""
+			},
+			"enabled": true,
+			"sessionId": null,
+			"headerSources": [],
+			"output": {
+				"X-BILLING-INVOKE-ORIGIN": "Pi"
+			}
+		},
+		{
+			"model": {
+				"provider": "nvidia",
+				"baseUrl": ""
+			},
+			"enabled": true,
+			"sessionId": null,
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"X-BILLING-INVOKE-ORIGIN": "Pi",
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "nvidia",
+				"baseUrl": ""
+			},
+			"enabled": true,
+			"sessionId": "",
+			"headerSources": [],
+			"output": {
+				"X-BILLING-INVOKE-ORIGIN": "Pi"
+			}
+		},
+		{
+			"model": {
+				"provider": "nvidia",
+				"baseUrl": ""
+			},
+			"enabled": true,
+			"sessionId": "",
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"X-BILLING-INVOKE-ORIGIN": "Pi",
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "nvidia",
+				"baseUrl": ""
+			},
+			"enabled": true,
+			"sessionId": "sess-1",
+			"headerSources": [],
+			"output": {
+				"X-BILLING-INVOKE-ORIGIN": "Pi"
+			}
+		},
+		{
+			"model": {
+				"provider": "nvidia",
+				"baseUrl": ""
+			},
+			"enabled": true,
+			"sessionId": "sess-1",
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"X-BILLING-INVOKE-ORIGIN": "Pi",
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "nvidia",
+				"baseUrl": ""
+			},
+			"enabled": false,
+			"sessionId": null,
+			"headerSources": [],
+			"output": null
+		},
+		{
+			"model": {
+				"provider": "nvidia",
+				"baseUrl": ""
+			},
+			"enabled": false,
+			"sessionId": null,
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "nvidia",
+				"baseUrl": ""
+			},
+			"enabled": false,
+			"sessionId": "",
+			"headerSources": [],
+			"output": null
+		},
+		{
+			"model": {
+				"provider": "nvidia",
+				"baseUrl": ""
+			},
+			"enabled": false,
+			"sessionId": "",
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "nvidia",
+				"baseUrl": ""
+			},
+			"enabled": false,
+			"sessionId": "sess-1",
+			"headerSources": [],
+			"output": null
+		},
+		{
+			"model": {
+				"provider": "nvidia",
+				"baseUrl": ""
+			},
+			"enabled": false,
+			"sessionId": "sess-1",
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://integrate.api.nvidia.com/v1"
+			},
+			"enabled": true,
+			"sessionId": null,
+			"headerSources": [],
+			"output": {
+				"X-BILLING-INVOKE-ORIGIN": "Pi"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://integrate.api.nvidia.com/v1"
+			},
+			"enabled": true,
+			"sessionId": null,
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"X-BILLING-INVOKE-ORIGIN": "Pi",
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://integrate.api.nvidia.com/v1"
+			},
+			"enabled": true,
+			"sessionId": "",
+			"headerSources": [],
+			"output": {
+				"X-BILLING-INVOKE-ORIGIN": "Pi"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://integrate.api.nvidia.com/v1"
+			},
+			"enabled": true,
+			"sessionId": "",
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"X-BILLING-INVOKE-ORIGIN": "Pi",
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://integrate.api.nvidia.com/v1"
+			},
+			"enabled": true,
+			"sessionId": "sess-1",
+			"headerSources": [],
+			"output": {
+				"X-BILLING-INVOKE-ORIGIN": "Pi"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://integrate.api.nvidia.com/v1"
+			},
+			"enabled": true,
+			"sessionId": "sess-1",
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"X-BILLING-INVOKE-ORIGIN": "Pi",
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://integrate.api.nvidia.com/v1"
+			},
+			"enabled": false,
+			"sessionId": null,
+			"headerSources": [],
+			"output": null
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://integrate.api.nvidia.com/v1"
+			},
+			"enabled": false,
+			"sessionId": null,
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://integrate.api.nvidia.com/v1"
+			},
+			"enabled": false,
+			"sessionId": "",
+			"headerSources": [],
+			"output": null
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://integrate.api.nvidia.com/v1"
+			},
+			"enabled": false,
+			"sessionId": "",
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://integrate.api.nvidia.com/v1"
+			},
+			"enabled": false,
+			"sessionId": "sess-1",
+			"headerSources": [],
+			"output": null
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://integrate.api.nvidia.com/v1"
+			},
+			"enabled": false,
+			"sessionId": "sess-1",
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://INTEGRATE.api.nvidia.com:8443/v1"
+			},
+			"enabled": true,
+			"sessionId": null,
+			"headerSources": [],
+			"output": {
+				"X-BILLING-INVOKE-ORIGIN": "Pi"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://INTEGRATE.api.nvidia.com:8443/v1"
+			},
+			"enabled": true,
+			"sessionId": null,
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"X-BILLING-INVOKE-ORIGIN": "Pi",
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://INTEGRATE.api.nvidia.com:8443/v1"
+			},
+			"enabled": true,
+			"sessionId": "",
+			"headerSources": [],
+			"output": {
+				"X-BILLING-INVOKE-ORIGIN": "Pi"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://INTEGRATE.api.nvidia.com:8443/v1"
+			},
+			"enabled": true,
+			"sessionId": "",
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"X-BILLING-INVOKE-ORIGIN": "Pi",
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://INTEGRATE.api.nvidia.com:8443/v1"
+			},
+			"enabled": true,
+			"sessionId": "sess-1",
+			"headerSources": [],
+			"output": {
+				"X-BILLING-INVOKE-ORIGIN": "Pi"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://INTEGRATE.api.nvidia.com:8443/v1"
+			},
+			"enabled": true,
+			"sessionId": "sess-1",
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"X-BILLING-INVOKE-ORIGIN": "Pi",
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://INTEGRATE.api.nvidia.com:8443/v1"
+			},
+			"enabled": false,
+			"sessionId": null,
+			"headerSources": [],
+			"output": null
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://INTEGRATE.api.nvidia.com:8443/v1"
+			},
+			"enabled": false,
+			"sessionId": null,
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://INTEGRATE.api.nvidia.com:8443/v1"
+			},
+			"enabled": false,
+			"sessionId": "",
+			"headerSources": [],
+			"output": null
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://INTEGRATE.api.nvidia.com:8443/v1"
+			},
+			"enabled": false,
+			"sessionId": "",
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://INTEGRATE.api.nvidia.com:8443/v1"
+			},
+			"enabled": false,
+			"sessionId": "sess-1",
+			"headerSources": [],
+			"output": null
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://INTEGRATE.api.nvidia.com:8443/v1"
+			},
+			"enabled": false,
+			"sessionId": "sess-1",
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "cloudflare-workers-ai",
+				"baseUrl": "x"
+			},
+			"enabled": true,
+			"sessionId": null,
+			"headerSources": [],
+			"output": {
+				"User-Agent": "pi-coding-agent"
+			}
+		},
+		{
+			"model": {
+				"provider": "cloudflare-workers-ai",
+				"baseUrl": "x"
+			},
+			"enabled": true,
+			"sessionId": null,
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "cloudflare-workers-ai",
+				"baseUrl": "x"
+			},
+			"enabled": true,
+			"sessionId": "",
+			"headerSources": [],
+			"output": {
+				"User-Agent": "pi-coding-agent"
+			}
+		},
+		{
+			"model": {
+				"provider": "cloudflare-workers-ai",
+				"baseUrl": "x"
+			},
+			"enabled": true,
+			"sessionId": "",
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "cloudflare-workers-ai",
+				"baseUrl": "x"
+			},
+			"enabled": true,
+			"sessionId": "sess-1",
+			"headerSources": [],
+			"output": {
+				"User-Agent": "pi-coding-agent"
+			}
+		},
+		{
+			"model": {
+				"provider": "cloudflare-workers-ai",
+				"baseUrl": "x"
+			},
+			"enabled": true,
+			"sessionId": "sess-1",
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "cloudflare-workers-ai",
+				"baseUrl": "x"
+			},
+			"enabled": false,
+			"sessionId": null,
+			"headerSources": [],
+			"output": null
+		},
+		{
+			"model": {
+				"provider": "cloudflare-workers-ai",
+				"baseUrl": "x"
+			},
+			"enabled": false,
+			"sessionId": null,
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "cloudflare-workers-ai",
+				"baseUrl": "x"
+			},
+			"enabled": false,
+			"sessionId": "",
+			"headerSources": [],
+			"output": null
+		},
+		{
+			"model": {
+				"provider": "cloudflare-workers-ai",
+				"baseUrl": "x"
+			},
+			"enabled": false,
+			"sessionId": "",
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "cloudflare-workers-ai",
+				"baseUrl": "x"
+			},
+			"enabled": false,
+			"sessionId": "sess-1",
+			"headerSources": [],
+			"output": null
+		},
+		{
+			"model": {
+				"provider": "cloudflare-workers-ai",
+				"baseUrl": "x"
+			},
+			"enabled": false,
+			"sessionId": "sess-1",
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "cloudflare-ai-gateway",
+				"baseUrl": "x"
+			},
+			"enabled": true,
+			"sessionId": null,
+			"headerSources": [],
+			"output": {
+				"User-Agent": "pi-coding-agent"
+			}
+		},
+		{
+			"model": {
+				"provider": "cloudflare-ai-gateway",
+				"baseUrl": "x"
+			},
+			"enabled": true,
+			"sessionId": null,
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "cloudflare-ai-gateway",
+				"baseUrl": "x"
+			},
+			"enabled": true,
+			"sessionId": "",
+			"headerSources": [],
+			"output": {
+				"User-Agent": "pi-coding-agent"
+			}
+		},
+		{
+			"model": {
+				"provider": "cloudflare-ai-gateway",
+				"baseUrl": "x"
+			},
+			"enabled": true,
+			"sessionId": "",
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "cloudflare-ai-gateway",
+				"baseUrl": "x"
+			},
+			"enabled": true,
+			"sessionId": "sess-1",
+			"headerSources": [],
+			"output": {
+				"User-Agent": "pi-coding-agent"
+			}
+		},
+		{
+			"model": {
+				"provider": "cloudflare-ai-gateway",
+				"baseUrl": "x"
+			},
+			"enabled": true,
+			"sessionId": "sess-1",
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "cloudflare-ai-gateway",
+				"baseUrl": "x"
+			},
+			"enabled": false,
+			"sessionId": null,
+			"headerSources": [],
+			"output": null
+		},
+		{
+			"model": {
+				"provider": "cloudflare-ai-gateway",
+				"baseUrl": "x"
+			},
+			"enabled": false,
+			"sessionId": null,
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "cloudflare-ai-gateway",
+				"baseUrl": "x"
+			},
+			"enabled": false,
+			"sessionId": "",
+			"headerSources": [],
+			"output": null
+		},
+		{
+			"model": {
+				"provider": "cloudflare-ai-gateway",
+				"baseUrl": "x"
+			},
+			"enabled": false,
+			"sessionId": "",
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "cloudflare-ai-gateway",
+				"baseUrl": "x"
+			},
+			"enabled": false,
+			"sessionId": "sess-1",
+			"headerSources": [],
+			"output": null
+		},
+		{
+			"model": {
+				"provider": "cloudflare-ai-gateway",
+				"baseUrl": "x"
+			},
+			"enabled": false,
+			"sessionId": "sess-1",
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://api.cloudflare.com/client"
+			},
+			"enabled": true,
+			"sessionId": null,
+			"headerSources": [],
+			"output": {
+				"User-Agent": "pi-coding-agent"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://api.cloudflare.com/client"
+			},
+			"enabled": true,
+			"sessionId": null,
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://api.cloudflare.com/client"
+			},
+			"enabled": true,
+			"sessionId": "",
+			"headerSources": [],
+			"output": {
+				"User-Agent": "pi-coding-agent"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://api.cloudflare.com/client"
+			},
+			"enabled": true,
+			"sessionId": "",
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://api.cloudflare.com/client"
+			},
+			"enabled": true,
+			"sessionId": "sess-1",
+			"headerSources": [],
+			"output": {
+				"User-Agent": "pi-coding-agent"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://api.cloudflare.com/client"
+			},
+			"enabled": true,
+			"sessionId": "sess-1",
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://api.cloudflare.com/client"
+			},
+			"enabled": false,
+			"sessionId": null,
+			"headerSources": [],
+			"output": null
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://api.cloudflare.com/client"
+			},
+			"enabled": false,
+			"sessionId": null,
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://api.cloudflare.com/client"
+			},
+			"enabled": false,
+			"sessionId": "",
+			"headerSources": [],
+			"output": null
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://api.cloudflare.com/client"
+			},
+			"enabled": false,
+			"sessionId": "",
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://api.cloudflare.com/client"
+			},
+			"enabled": false,
+			"sessionId": "sess-1",
+			"headerSources": [],
+			"output": null
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://api.cloudflare.com/client"
+			},
+			"enabled": false,
+			"sessionId": "sess-1",
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://gateway.ai.cloudflare.com/v1"
+			},
+			"enabled": true,
+			"sessionId": null,
+			"headerSources": [],
+			"output": {
+				"User-Agent": "pi-coding-agent"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://gateway.ai.cloudflare.com/v1"
+			},
+			"enabled": true,
+			"sessionId": null,
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://gateway.ai.cloudflare.com/v1"
+			},
+			"enabled": true,
+			"sessionId": "",
+			"headerSources": [],
+			"output": {
+				"User-Agent": "pi-coding-agent"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://gateway.ai.cloudflare.com/v1"
+			},
+			"enabled": true,
+			"sessionId": "",
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://gateway.ai.cloudflare.com/v1"
+			},
+			"enabled": true,
+			"sessionId": "sess-1",
+			"headerSources": [],
+			"output": {
+				"User-Agent": "pi-coding-agent"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://gateway.ai.cloudflare.com/v1"
+			},
+			"enabled": true,
+			"sessionId": "sess-1",
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://gateway.ai.cloudflare.com/v1"
+			},
+			"enabled": false,
+			"sessionId": null,
+			"headerSources": [],
+			"output": null
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://gateway.ai.cloudflare.com/v1"
+			},
+			"enabled": false,
+			"sessionId": null,
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://gateway.ai.cloudflare.com/v1"
+			},
+			"enabled": false,
+			"sessionId": "",
+			"headerSources": [],
+			"output": null
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://gateway.ai.cloudflare.com/v1"
+			},
+			"enabled": false,
+			"sessionId": "",
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://gateway.ai.cloudflare.com/v1"
+			},
+			"enabled": false,
+			"sessionId": "sess-1",
+			"headerSources": [],
+			"output": null
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://gateway.ai.cloudflare.com/v1"
+			},
+			"enabled": false,
+			"sessionId": "sess-1",
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "opencode",
+				"baseUrl": "x"
+			},
+			"enabled": true,
+			"sessionId": null,
+			"headerSources": [],
+			"output": null
+		},
+		{
+			"model": {
+				"provider": "opencode",
+				"baseUrl": "x"
+			},
+			"enabled": true,
+			"sessionId": null,
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "opencode",
+				"baseUrl": "x"
+			},
+			"enabled": true,
+			"sessionId": "",
+			"headerSources": [],
+			"output": null
+		},
+		{
+			"model": {
+				"provider": "opencode",
+				"baseUrl": "x"
+			},
+			"enabled": true,
+			"sessionId": "",
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "opencode",
+				"baseUrl": "x"
+			},
+			"enabled": true,
+			"sessionId": "sess-1",
+			"headerSources": [],
+			"output": {
+				"x-opencode-session": "sess-1",
+				"x-opencode-client": "pi"
+			}
+		},
+		{
+			"model": {
+				"provider": "opencode",
+				"baseUrl": "x"
+			},
+			"enabled": true,
+			"sessionId": "sess-1",
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"x-opencode-session": "sess-1",
+				"x-opencode-client": null,
+				"User-Agent": "custom",
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "opencode",
+				"baseUrl": "x"
+			},
+			"enabled": false,
+			"sessionId": null,
+			"headerSources": [],
+			"output": null
+		},
+		{
+			"model": {
+				"provider": "opencode",
+				"baseUrl": "x"
+			},
+			"enabled": false,
+			"sessionId": null,
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "opencode",
+				"baseUrl": "x"
+			},
+			"enabled": false,
+			"sessionId": "",
+			"headerSources": [],
+			"output": null
+		},
+		{
+			"model": {
+				"provider": "opencode",
+				"baseUrl": "x"
+			},
+			"enabled": false,
+			"sessionId": "",
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "opencode",
+				"baseUrl": "x"
+			},
+			"enabled": false,
+			"sessionId": "sess-1",
+			"headerSources": [],
+			"output": {
+				"x-opencode-session": "sess-1",
+				"x-opencode-client": "pi"
+			}
+		},
+		{
+			"model": {
+				"provider": "opencode",
+				"baseUrl": "x"
+			},
+			"enabled": false,
+			"sessionId": "sess-1",
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"x-opencode-session": "sess-1",
+				"x-opencode-client": null,
+				"User-Agent": "custom",
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "opencode-go",
+				"baseUrl": "x"
+			},
+			"enabled": true,
+			"sessionId": null,
+			"headerSources": [],
+			"output": null
+		},
+		{
+			"model": {
+				"provider": "opencode-go",
+				"baseUrl": "x"
+			},
+			"enabled": true,
+			"sessionId": null,
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "opencode-go",
+				"baseUrl": "x"
+			},
+			"enabled": true,
+			"sessionId": "",
+			"headerSources": [],
+			"output": null
+		},
+		{
+			"model": {
+				"provider": "opencode-go",
+				"baseUrl": "x"
+			},
+			"enabled": true,
+			"sessionId": "",
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "opencode-go",
+				"baseUrl": "x"
+			},
+			"enabled": true,
+			"sessionId": "sess-1",
+			"headerSources": [],
+			"output": {
+				"x-opencode-session": "sess-1",
+				"x-opencode-client": "pi"
+			}
+		},
+		{
+			"model": {
+				"provider": "opencode-go",
+				"baseUrl": "x"
+			},
+			"enabled": true,
+			"sessionId": "sess-1",
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"x-opencode-session": "sess-1",
+				"x-opencode-client": null,
+				"User-Agent": "custom",
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "opencode-go",
+				"baseUrl": "x"
+			},
+			"enabled": false,
+			"sessionId": null,
+			"headerSources": [],
+			"output": null
+		},
+		{
+			"model": {
+				"provider": "opencode-go",
+				"baseUrl": "x"
+			},
+			"enabled": false,
+			"sessionId": null,
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "opencode-go",
+				"baseUrl": "x"
+			},
+			"enabled": false,
+			"sessionId": "",
+			"headerSources": [],
+			"output": null
+		},
+		{
+			"model": {
+				"provider": "opencode-go",
+				"baseUrl": "x"
+			},
+			"enabled": false,
+			"sessionId": "",
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "opencode-go",
+				"baseUrl": "x"
+			},
+			"enabled": false,
+			"sessionId": "sess-1",
+			"headerSources": [],
+			"output": {
+				"x-opencode-session": "sess-1",
+				"x-opencode-client": "pi"
+			}
+		},
+		{
+			"model": {
+				"provider": "opencode-go",
+				"baseUrl": "x"
+			},
+			"enabled": false,
+			"sessionId": "sess-1",
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"x-opencode-session": "sess-1",
+				"x-opencode-client": null,
+				"User-Agent": "custom",
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://opencode.ai/zen"
+			},
+			"enabled": true,
+			"sessionId": null,
+			"headerSources": [],
+			"output": null
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://opencode.ai/zen"
+			},
+			"enabled": true,
+			"sessionId": null,
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://opencode.ai/zen"
+			},
+			"enabled": true,
+			"sessionId": "",
+			"headerSources": [],
+			"output": null
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://opencode.ai/zen"
+			},
+			"enabled": true,
+			"sessionId": "",
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://opencode.ai/zen"
+			},
+			"enabled": true,
+			"sessionId": "sess-1",
+			"headerSources": [],
+			"output": {
+				"x-opencode-session": "sess-1",
+				"x-opencode-client": "pi"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://opencode.ai/zen"
+			},
+			"enabled": true,
+			"sessionId": "sess-1",
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"x-opencode-session": "sess-1",
+				"x-opencode-client": null,
+				"User-Agent": "custom",
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://opencode.ai/zen"
+			},
+			"enabled": false,
+			"sessionId": null,
+			"headerSources": [],
+			"output": null
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://opencode.ai/zen"
+			},
+			"enabled": false,
+			"sessionId": null,
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://opencode.ai/zen"
+			},
+			"enabled": false,
+			"sessionId": "",
+			"headerSources": [],
+			"output": null
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://opencode.ai/zen"
+			},
+			"enabled": false,
+			"sessionId": "",
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://opencode.ai/zen"
+			},
+			"enabled": false,
+			"sessionId": "sess-1",
+			"headerSources": [],
+			"output": {
+				"x-opencode-session": "sess-1",
+				"x-opencode-client": "pi"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "https://opencode.ai/zen"
+			},
+			"enabled": false,
+			"sessionId": "sess-1",
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"x-opencode-session": "sess-1",
+				"x-opencode-client": null,
+				"User-Agent": "custom",
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "not a url"
+			},
+			"enabled": true,
+			"sessionId": null,
+			"headerSources": [],
+			"output": null
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "not a url"
+			},
+			"enabled": true,
+			"sessionId": null,
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "not a url"
+			},
+			"enabled": true,
+			"sessionId": "",
+			"headerSources": [],
+			"output": null
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "not a url"
+			},
+			"enabled": true,
+			"sessionId": "",
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "not a url"
+			},
+			"enabled": true,
+			"sessionId": "sess-1",
+			"headerSources": [],
+			"output": null
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "not a url"
+			},
+			"enabled": true,
+			"sessionId": "sess-1",
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "not a url"
+			},
+			"enabled": false,
+			"sessionId": null,
+			"headerSources": [],
+			"output": null
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "not a url"
+			},
+			"enabled": false,
+			"sessionId": null,
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "not a url"
+			},
+			"enabled": false,
+			"sessionId": "",
+			"headerSources": [],
+			"output": null
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "not a url"
+			},
+			"enabled": false,
+			"sessionId": "",
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "not a url"
+			},
+			"enabled": false,
+			"sessionId": "sess-1",
+			"headerSources": [],
+			"output": null
+		},
+		{
+			"model": {
+				"provider": "custom",
+				"baseUrl": "not a url"
+			},
+			"enabled": false,
+			"sessionId": "sess-1",
+			"headerSources": [
+				null,
+				{
+					"User-Agent": "custom",
+					"x-opencode-client": null,
+					"X-Extra": "1"
+				}
+			],
+			"output": {
+				"User-Agent": "custom",
+				"x-opencode-client": null,
+				"X-Extra": "1"
+			}
+		}
+	],
+	"envOverride": null
+}

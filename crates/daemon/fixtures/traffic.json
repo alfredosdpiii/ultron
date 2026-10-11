@@ -1,0 +1,6512 @@
+[
+ {
+  "name": "prompt",
+  "replies": [
+   "Hi there."
+  ],
+  "command": {
+   "command": "client",
+   "prompt": "hello"
+  },
+  "frames": [
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "hello",
+     "version": 8
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "hello",
+     "version": 8,
+     "serverId": "<id:0>"
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-1",
+     "target": {
+      "serverId": "<id:0>"
+     },
+     "call": {
+      "serviceId": "$chord.service",
+      "member": "subscribe",
+      "args": [
+       "service-1",
+       "pi.session-directory",
+       "singleton"
+      ]
+     }
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-2",
+     "target": {
+      "serverId": "<id:0>"
+     },
+     "call": {
+      "serviceId": "$chord.service",
+      "member": "subscribe",
+      "args": [
+       "service-2",
+       "pi.session-management",
+       "singleton"
+      ]
+     }
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-3",
+     "target": {
+      "serverId": "<id:0>"
+     },
+     "call": {
+      "serviceId": "$chord.service",
+      "member": "subscribe",
+      "args": [
+       "service-3",
+       "pi.presentation-plugins",
+       "singleton"
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-1",
+     "ok": true,
+     "result": {
+      "serviceId": "pi.session-directory",
+      "mode": "singleton",
+      "instances": [
+       {
+        "members": [
+         {
+          "name": "state",
+          "kind": "state",
+          "sequence": 1,
+          "ops": [
+           [
+            "r",
+            {
+             "revision": 2,
+             "sessions": []
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-2",
+     "ok": true,
+     "result": {
+      "serviceId": "pi.session-management",
+      "mode": "singleton",
+      "instances": [
+       {
+        "members": [
+         {
+          "name": "attach",
+          "kind": "method"
+         },
+         {
+          "name": "create",
+          "kind": "method"
+         },
+         {
+          "name": "describe",
+          "kind": "method"
+         },
+         {
+          "name": "detach",
+          "kind": "method"
+         },
+         {
+          "name": "importPi",
+          "kind": "method"
+         },
+         {
+          "name": "remove",
+          "kind": "method"
+         },
+         {
+          "name": "rename",
+          "kind": "method"
+         }
+        ]
+       }
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-3",
+     "ok": true,
+     "result": {
+      "serviceId": "pi.presentation-plugins",
+      "mode": "singleton",
+      "instances": [
+       {
+        "members": [
+         {
+          "name": "prepareSession",
+          "kind": "method"
+         },
+         {
+          "name": "reload",
+          "kind": "method"
+         }
+        ]
+       }
+      ]
+     }
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-4",
+     "target": {
+      "serverId": "<id:0>"
+     },
+     "call": {
+      "serviceId": "pi.session-management",
+      "member": "create",
+      "args": [
+       {}
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "service_update",
+     "subscriptionId": "service-1",
+     "update": {
+      "type": "state",
+      "member": "state",
+      "sequence": 2,
+      "ops": [
+       [
+        "s",
+        [
+         "revision"
+        ],
+        3
+       ],
+       [
+        "p",
+        [
+         "sessions"
+        ],
+        0,
+        0,
+        [
+         {
+          "serverId": "<id:0>",
+          "sessionId": "<id:1>",
+          "createdAt": "<time>",
+          "modifiedAt": "<time>"
+         }
+        ]
+       ]
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-4",
+     "ok": true,
+     "result": {
+      "serverId": "<id:0>",
+      "sessionId": "<id:1>",
+      "createdAt": "<time>",
+      "modifiedAt": "<time>",
+      "sessionFile": "<TMP>/agent/experimental/sessions/--<TMPNAME>-cwd--/<FILETIME>_<id:1>.jsonl"
+     }
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-5",
+     "target": {
+      "serverId": "<id:0>"
+     },
+     "call": {
+      "serviceId": "pi.presentation-plugins",
+      "member": "prepareSession",
+      "args": [
+       {
+        "sessionId": "<id:1>",
+        "packagePaths": null
+       }
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-5",
+     "ok": true,
+     "result": {
+      "presentationFacetBundles": []
+     }
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-6",
+     "target": {
+      "serverId": "<id:0>"
+     },
+     "call": {
+      "serviceId": "pi.session-management",
+      "member": "attach",
+      "args": [
+       "<id:1>"
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "attachment",
+     "attachment": {
+      "serverId": "<id:0>",
+      "sessionId": "<id:1>",
+      "attachmentId": "<id:2>"
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-6",
+     "ok": true
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-7",
+     "target": {
+      "serverId": "<id:0>",
+      "sessionId": "<id:1>",
+      "attachmentId": "<id:2>"
+     },
+     "call": {
+      "serviceId": "$chord.service",
+      "member": "catalogue",
+      "args": []
+     }
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-8",
+     "target": {
+      "serverId": "<id:0>",
+      "sessionId": "<id:1>",
+      "attachmentId": "<id:2>"
+     },
+     "call": {
+      "serviceId": "$chord.service",
+      "member": "subscribe",
+      "args": [
+       "service-4",
+       "pi.models",
+       "singleton"
+      ]
+     }
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-9",
+     "target": {
+      "serverId": "<id:0>",
+      "sessionId": "<id:1>",
+      "attachmentId": "<id:2>"
+     },
+     "call": {
+      "serviceId": "$chord.service",
+      "member": "subscribe",
+      "args": [
+       "service-5",
+       "pi.agent-controller",
+       "singleton"
+      ]
+     }
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-10",
+     "target": {
+      "serverId": "<id:0>",
+      "sessionId": "<id:1>",
+      "attachmentId": "<id:2>"
+     },
+     "call": {
+      "serviceId": "$chord.service",
+      "member": "subscribe",
+      "args": [
+       "service-6",
+       "pi.transcript",
+       "singleton"
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-7",
+     "ok": true,
+     "result": [
+      {
+       "serviceId": "pi.agent-controller",
+       "mode": "singleton"
+      },
+      {
+       "serviceId": "pi.session-plugins",
+       "mode": "singleton"
+      },
+      {
+       "serviceId": "pi.legacy-extension-commands",
+       "mode": "singleton"
+      },
+      {
+       "serviceId": "ultron.session-control",
+       "mode": "singleton"
+      },
+      {
+       "serviceId": "ultron.extension-ui",
+       "mode": "singleton"
+      },
+      {
+       "serviceId": "pi.models",
+       "mode": "singleton"
+      },
+      {
+       "serviceId": "pi.transcript",
+       "mode": "singleton"
+      }
+     ]
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-8",
+     "ok": true,
+     "result": {
+      "serviceId": "pi.models",
+      "mode": "singleton",
+      "instances": [
+       {
+        "members": [
+         {
+          "name": "cycleThinking",
+          "kind": "method"
+         },
+         {
+          "name": "getThinkingLevels",
+          "kind": "method"
+         },
+         {
+          "name": "refresh",
+          "kind": "method"
+         },
+         {
+          "name": "select",
+          "kind": "method"
+         },
+         {
+          "name": "selectThinking",
+          "kind": "method"
+         },
+         {
+          "name": "state",
+          "kind": "state",
+          "sequence": 1,
+          "ops": [
+           [
+            "r",
+            {
+             "catalog": {
+              "revision": 1,
+              "availableModels": {
+               "count": 137
+              }
+             },
+             "configuration": {
+              "model": {
+               "provider": "anthropic",
+               "modelId": "claude-sonnet-4-5"
+              },
+              "thinkingLevel": "medium"
+             },
+             "refresh": {
+              "status": "idle"
+             }
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-9",
+     "ok": true,
+     "result": {
+      "serviceId": "pi.agent-controller",
+      "mode": "singleton",
+      "instances": [
+       {
+        "members": [
+         {
+          "name": "cancelQueued",
+          "kind": "method"
+         },
+         {
+          "name": "compact",
+          "kind": "method"
+         },
+         {
+          "name": "followUp",
+          "kind": "method"
+         },
+         {
+          "name": "navigate",
+          "kind": "method"
+         },
+         {
+          "name": "nextRun",
+          "kind": "method"
+         },
+         {
+          "name": "prompt",
+          "kind": "method"
+         },
+         {
+          "name": "requestAbort",
+          "kind": "method"
+         },
+         {
+          "name": "resume",
+          "kind": "method"
+         },
+         {
+          "name": "steer",
+          "kind": "method"
+         }
+        ]
+       }
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-10",
+     "ok": true,
+     "result": {
+      "serviceId": "pi.transcript",
+      "mode": "singleton",
+      "instances": [
+       {
+        "members": [
+         {
+          "name": "state",
+          "kind": "state",
+          "sequence": 1,
+          "ops": [
+           [
+            "r",
+            {
+             "snapshot": {
+              "lane": "main",
+              "transcript": [],
+              "tipId": null,
+              "configuration": {
+               "model": {
+                "provider": "anthropic",
+                "modelId": "claude-sonnet-4-5"
+               },
+               "thinkingLevel": "medium",
+               "activeToolNames": [
+                "rlm"
+               ]
+              },
+              "stats": {
+               "messageCount": 0,
+               "usage": {
+                "input": 0,
+                "output": 0,
+                "cacheRead": 0,
+                "cacheWrite": 0,
+                "totalTokens": 0,
+                "cost": {
+                 "input": 0,
+                 "output": 0,
+                 "cacheRead": 0,
+                 "cacheWrite": 0,
+                 "total": 0
+                }
+               }
+              },
+              "operation": null,
+              "queues": [],
+              "faulted": false
+             },
+             "event": null
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-11",
+     "target": {
+      "serverId": "<id:0>",
+      "sessionId": "<id:1>",
+      "attachmentId": "<id:2>"
+     },
+     "call": {
+      "serviceId": "pi.agent-controller",
+      "member": "prompt",
+      "args": [
+       {
+        "message": "hello",
+        "images": null
+       }
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "service_update",
+     "subscriptionId": "service-6",
+     "update": {
+      "type": "state",
+      "member": "state",
+      "sequence": 2,
+      "ops": [
+       [
+        "s",
+        [
+         "snapshot",
+         "operation"
+        ],
+        {
+         "id": "<id:3>",
+         "kind": "run",
+         "startedAt": "<time>",
+         "fromTipId": null,
+         "status": "open",
+         "runningTools": []
+        }
+       ],
+       [
+        "s",
+        [
+         "event"
+        ],
+        {
+         "type": "run_start",
+         "runId": "<id:3>",
+         "startedAt": "<time>",
+         "lane": "main"
+        }
+       ]
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "service_update",
+     "subscriptionId": "service-6",
+     "update": {
+      "type": "state",
+      "member": "state",
+      "sequence": 3,
+      "ops": [
+       [
+        "s",
+        [
+         "event",
+         "type"
+        ],
+        "message_start"
+       ],
+       [
+        "s",
+        [
+         "event",
+         "message"
+        ],
+        {
+         "role": "user",
+         "content": [
+          {
+           "type": "text",
+           "text": "hello"
+          }
+         ],
+         "timestamp": "<time>"
+        }
+       ],
+       [
+        "d",
+        [
+         "event",
+         "startedAt"
+        ]
+       ]
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "service_update",
+     "subscriptionId": "service-6",
+     "update": {
+      "type": "state",
+      "member": "state",
+      "sequence": 4,
+      "ops": [
+       [
+        "#",
+        0,
+        [
+         "event",
+         "type"
+        ]
+       ],
+       [
+        "s",
+        0,
+        "message_end"
+       ],
+       [
+        "s",
+        [
+         "event",
+         "entryId"
+        ],
+        "<id:4>"
+       ]
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "service_update",
+     "subscriptionId": "service-6",
+     "update": {
+      "type": "state",
+      "member": "state",
+      "sequence": 5,
+      "ops": [
+       [
+        "p",
+        [
+         "snapshot",
+         "transcript"
+        ],
+        0,
+        0,
+        [
+         {
+          "id": "<id:4>",
+          "parentId": null,
+          "type": "message",
+          "message": {
+           "role": "user",
+           "content": [
+            {
+             "type": "text",
+             "text": "hello"
+            }
+           ],
+           "timestamp": "<time>"
+          },
+          "seq": 4,
+          "timestamp": "<time>"
+         }
+        ]
+       ],
+       [
+        "s",
+        [
+         "snapshot",
+         "tipId"
+        ],
+        "<id:4>"
+       ],
+       [
+        "s",
+        [
+         "snapshot",
+         "stats",
+         "messageCount"
+        ],
+        1
+       ],
+       [
+        "s",
+        0,
+        "entry_added"
+       ],
+       [
+        "s",
+        [
+         "event",
+         "entry"
+        ],
+        {
+         "id": "<id:4>",
+         "parentId": null,
+         "type": "message",
+         "message": {
+          "role": "user",
+          "content": [
+           {
+            "type": "text",
+            "text": "hello"
+           }
+          ],
+          "timestamp": "<time>"
+         },
+         "seq": 4,
+         "timestamp": "<time>"
+        }
+       ],
+       [
+        "d",
+        [
+         "event",
+         "runId"
+        ]
+       ],
+       [
+        "#",
+        1,
+        [
+         "event",
+         "message"
+        ]
+       ],
+       [
+        "d",
+        1
+       ],
+       [
+        "#",
+        2,
+        [
+         "event",
+         "entryId"
+        ]
+       ],
+       [
+        "d",
+        2
+       ]
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "service_update",
+     "subscriptionId": "service-6",
+     "update": {
+      "type": "state",
+      "member": "state",
+      "sequence": 6,
+      "ops": [
+       [
+        "s",
+        [
+         "snapshot",
+         "operation",
+         "streamingMessage"
+        ],
+        {
+         "role": "assistant",
+         "content": [
+          {
+           "type": "text",
+           "text": "",
+           "index": 0
+          }
+         ],
+         "api": "anthropic-messages",
+         "provider": "anthropic",
+         "model": "claude-sonnet-4-5",
+         "usage": {
+          "input": 10,
+          "output": 1,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 11,
+          "cost": {
+           "input": 0.00003,
+           "output": 0.000015,
+           "cacheRead": 0,
+           "cacheWrite": 0,
+           "total": 0.000045
+          },
+          "cacheWrite1h": 0
+         },
+         "stopReason": "pending",
+         "timestamp": "<time>",
+         "responseId": "msg_1"
+        }
+       ],
+       [
+        "s",
+        0,
+        "message_start"
+       ],
+       [
+        "#",
+        3,
+        [
+         "event",
+         "runId"
+        ]
+       ],
+       [
+        "s",
+        3,
+        "<id:3>"
+       ],
+       [
+        "s",
+        1,
+        {
+         "role": "assistant",
+         "content": [
+          {
+           "type": "text",
+           "text": "",
+           "index": 0
+          }
+         ],
+         "api": "anthropic-messages",
+         "provider": "anthropic",
+         "model": "claude-sonnet-4-5",
+         "usage": {
+          "input": 10,
+          "output": 1,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 11,
+          "cost": {
+           "input": 0.00003,
+           "output": 0.000015,
+           "cacheRead": 0,
+           "cacheWrite": 0,
+           "total": 0.000045
+          },
+          "cacheWrite1h": 0
+         },
+         "stopReason": "pending",
+         "timestamp": "<time>",
+         "responseId": "msg_1"
+        }
+       ],
+       [
+        "#",
+        4,
+        [
+         "event",
+         "entry"
+        ]
+       ],
+       [
+        "d",
+        4
+       ]
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "service_update",
+     "subscriptionId": "service-6",
+     "update": {
+      "type": "state",
+      "member": "state",
+      "sequence": 7,
+      "ops": [
+       [
+        "a",
+        [
+         "snapshot",
+         "operation",
+         "streamingMessage",
+         "content",
+         0,
+         "text"
+        ],
+        "Hi there."
+       ],
+       [
+        "d",
+        [
+         "snapshot",
+         "operation",
+         "streamingMessage",
+         "content",
+         0,
+         "index"
+        ]
+       ],
+       [
+        "s",
+        0,
+        "message_update"
+       ],
+       [
+        "a",
+        [
+         "event",
+         "message",
+         "content",
+         0,
+         "text"
+        ],
+        "Hi there."
+       ],
+       [
+        "d",
+        [
+         "event",
+         "message",
+         "content",
+         0,
+         "index"
+        ]
+       ],
+       [
+        "s",
+        [
+         "event",
+         "frame"
+        ],
+        {
+         "type": "text_start",
+         "contentIndex": 0,
+         "content": {
+          "type": "text",
+          "text": "Hi there."
+         }
+        }
+       ]
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "service_update",
+     "subscriptionId": "service-6",
+     "update": {
+      "type": "state",
+      "member": "state",
+      "sequence": 8,
+      "ops": [
+       [
+        "s",
+        [
+         "snapshot",
+         "operation",
+         "streamingMessage",
+         "usage",
+         "output"
+        ],
+        5
+       ],
+       [
+        "s",
+        [
+         "snapshot",
+         "operation",
+         "streamingMessage",
+         "usage",
+         "totalTokens"
+        ],
+        15
+       ],
+       [
+        "s",
+        [
+         "snapshot",
+         "operation",
+         "streamingMessage",
+         "usage",
+         "cost",
+         "output"
+        ],
+        0.00007500000000000001
+       ],
+       [
+        "s",
+        [
+         "snapshot",
+         "operation",
+         "streamingMessage",
+         "usage",
+         "cost",
+         "total"
+        ],
+        0.000105
+       ],
+       [
+        "s",
+        [
+         "snapshot",
+         "operation",
+         "streamingMessage",
+         "stopReason"
+        ],
+        "stop"
+       ],
+       [
+        "s",
+        [
+         "snapshot",
+         "operation",
+         "streamingMessage",
+         "rawStopReason"
+        ],
+        "end_turn"
+       ],
+       [
+        "s",
+        [
+         "event",
+         "message",
+         "usage",
+         "output"
+        ],
+        5
+       ],
+       [
+        "s",
+        [
+         "event",
+         "message",
+         "usage",
+         "totalTokens"
+        ],
+        15
+       ],
+       [
+        "s",
+        [
+         "event",
+         "message",
+         "usage",
+         "cost",
+         "output"
+        ],
+        0.00007500000000000001
+       ],
+       [
+        "s",
+        [
+         "event",
+         "message",
+         "usage",
+         "cost",
+         "total"
+        ],
+        0.000105
+       ],
+       [
+        "s",
+        [
+         "event",
+         "message",
+         "stopReason"
+        ],
+        "stop"
+       ],
+       [
+        "s",
+        [
+         "event",
+         "message",
+         "rawStopReason"
+        ],
+        "end_turn"
+       ],
+       [
+        "#",
+        5,
+        [
+         "event",
+         "frame"
+        ]
+       ],
+       [
+        "d",
+        5
+       ]
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "service_update",
+     "subscriptionId": "service-6",
+     "update": {
+      "type": "state",
+      "member": "state",
+      "sequence": 9,
+      "ops": [
+       [
+        "s",
+        5,
+        {
+         "type": "text_end",
+         "contentIndex": 0,
+         "content": "Hi there."
+        }
+       ]
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "service_update",
+     "subscriptionId": "service-6",
+     "update": {
+      "type": "state",
+      "member": "state",
+      "sequence": 10,
+      "ops": [
+       [
+        "#",
+        6,
+        [
+         "snapshot",
+         "operation",
+         "streamingMessage"
+        ]
+       ],
+       [
+        "d",
+        6
+       ],
+       [
+        "s",
+        0,
+        "message_end"
+       ],
+       [
+        "s",
+        2,
+        "<id:5>"
+       ],
+       [
+        "d",
+        5
+       ]
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "service_update",
+     "subscriptionId": "service-6",
+     "update": {
+      "type": "state",
+      "member": "state",
+      "sequence": 11,
+      "ops": [
+       [
+        "#",
+        7,
+        [
+         "snapshot",
+         "transcript"
+        ]
+       ],
+       [
+        "p",
+        7,
+        1,
+        0,
+        [
+         {
+          "id": "<id:5>",
+          "parentId": "<id:4>",
+          "type": "message",
+          "message": {
+           "role": "assistant",
+           "content": [
+            {
+             "type": "text",
+             "text": "Hi there."
+            }
+           ],
+           "api": "anthropic-messages",
+           "provider": "anthropic",
+           "model": "claude-sonnet-4-5",
+           "usage": {
+            "input": 10,
+            "output": 5,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "totalTokens": 15,
+            "cost": {
+             "input": 0.00003,
+             "output": 0.00007500000000000001,
+             "cacheRead": 0,
+             "cacheWrite": 0,
+             "total": 0.000105
+            },
+            "cacheWrite1h": 0
+           },
+           "stopReason": "stop",
+           "timestamp": "<time>",
+           "responseId": "msg_1",
+           "rawStopReason": "end_turn"
+          },
+          "seq": 17,
+          "timestamp": "<time>"
+         }
+        ]
+       ],
+       [
+        "#",
+        8,
+        [
+         "snapshot",
+         "tipId"
+        ]
+       ],
+       [
+        "s",
+        8,
+        "<id:5>"
+       ],
+       [
+        "#",
+        9,
+        [
+         "snapshot",
+         "stats",
+         "messageCount"
+        ]
+       ],
+       [
+        "s",
+        9,
+        2
+       ],
+       [
+        "s",
+        0,
+        "entry_added"
+       ],
+       [
+        "s",
+        4,
+        {
+         "id": "<id:5>",
+         "parentId": "<id:4>",
+         "type": "message",
+         "message": {
+          "role": "assistant",
+          "content": [
+           {
+            "type": "text",
+            "text": "Hi there."
+           }
+          ],
+          "api": "anthropic-messages",
+          "provider": "anthropic",
+          "model": "claude-sonnet-4-5",
+          "usage": {
+           "input": 10,
+           "output": 5,
+           "cacheRead": 0,
+           "cacheWrite": 0,
+           "totalTokens": 15,
+           "cost": {
+            "input": 0.00003,
+            "output": 0.00007500000000000001,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0.000105
+           },
+           "cacheWrite1h": 0
+          },
+          "stopReason": "stop",
+          "timestamp": "<time>",
+          "responseId": "msg_1",
+          "rawStopReason": "end_turn"
+         },
+         "seq": 17,
+         "timestamp": "<time>"
+        }
+       ],
+       [
+        "d",
+        3
+       ],
+       [
+        "d",
+        1
+       ],
+       [
+        "d",
+        2
+       ]
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "service_update",
+     "subscriptionId": "service-6",
+     "update": {
+      "type": "state",
+      "member": "state",
+      "sequence": 12,
+      "ops": [
+       [
+        "s",
+        [
+         "snapshot",
+         "stats",
+         "usage",
+         "input"
+        ],
+        10
+       ],
+       [
+        "s",
+        [
+         "snapshot",
+         "stats",
+         "usage",
+         "output"
+        ],
+        5
+       ],
+       [
+        "s",
+        [
+         "snapshot",
+         "stats",
+         "usage",
+         "cacheWrite1h"
+        ],
+        0
+       ],
+       [
+        "s",
+        [
+         "snapshot",
+         "stats",
+         "usage",
+         "totalTokens"
+        ],
+        15
+       ],
+       [
+        "s",
+        [
+         "snapshot",
+         "stats",
+         "usage",
+         "cost",
+         "input"
+        ],
+        0.00003
+       ],
+       [
+        "s",
+        [
+         "snapshot",
+         "stats",
+         "usage",
+         "cost",
+         "output"
+        ],
+        0.00007500000000000001
+       ],
+       [
+        "s",
+        [
+         "snapshot",
+         "stats",
+         "usage",
+         "cost",
+         "total"
+        ],
+        0.000105
+       ],
+       [
+        "s",
+        0,
+        "usage"
+       ],
+       [
+        "s",
+        [
+         "event",
+         "row"
+        ],
+        {
+         "id": "<id:6>",
+         "usage": {
+          "input": 10,
+          "output": 5,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 15,
+          "cost": {
+           "input": 0.00003,
+           "output": 0.00007500000000000001,
+           "cacheRead": 0,
+           "cacheWrite": 0,
+           "total": 0.000105
+          },
+          "cacheWrite1h": 0
+         },
+         "entryId": "<id:5>",
+         "adjustment": false,
+         "seq": 18
+        }
+       ],
+       [
+        "s",
+        [
+         "event",
+         "totals"
+        ],
+        {
+         "input": 10,
+         "output": 5,
+         "cacheRead": 0,
+         "cacheWrite": 0,
+         "cacheWrite1h": 0,
+         "totalTokens": 15,
+         "cost": {
+          "input": 0.00003,
+          "output": 0.00007500000000000001,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0.000105
+         }
+        }
+       ],
+       [
+        "d",
+        4
+       ]
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "service_update",
+     "subscriptionId": "service-6",
+     "update": {
+      "type": "state",
+      "member": "state",
+      "sequence": 13,
+      "ops": [
+       [
+        "#",
+        10,
+        [
+         "snapshot",
+         "operation"
+        ]
+       ],
+       [
+        "s",
+        10,
+        null
+       ],
+       [
+        "s",
+        [
+         "snapshot",
+         "lastResult"
+        ],
+        {
+         "operationId": "<id:3>",
+         "kind": "run",
+         "status": "completed",
+         "fromTipId": null,
+         "tipId": "<id:5>",
+         "startedAt": "<time>",
+         "endedAt": "<time>"
+        }
+       ],
+       [
+        "s",
+        0,
+        "run_end"
+       ],
+       [
+        "s",
+        3,
+        "<id:3>"
+       ],
+       [
+        "s",
+        [
+         "event",
+         "status"
+        ],
+        "completed"
+       ],
+       [
+        "s",
+        [
+         "event",
+         "fromTipId"
+        ],
+        null
+       ],
+       [
+        "s",
+        [
+         "event",
+         "tipId"
+        ],
+        "<id:5>"
+       ],
+       [
+        "s",
+        [
+         "event",
+         "endedAt"
+        ],
+        "<time>"
+       ],
+       [
+        "#",
+        11,
+        [
+         "event",
+         "row"
+        ]
+       ],
+       [
+        "d",
+        11
+       ],
+       [
+        "#",
+        12,
+        [
+         "event",
+         "totals"
+        ]
+       ],
+       [
+        "d",
+        12
+       ]
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-11",
+     "ok": true,
+     "result": {
+      "accepted": true,
+      "operationId": "<id:3>",
+      "error": null
+     }
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-12",
+     "target": {
+      "serverId": "<id:0>",
+      "sessionId": "<id:1>",
+      "attachmentId": "<id:2>"
+     },
+     "call": {
+      "serviceId": "$chord.service",
+      "member": "subscribe",
+      "args": [
+       "service-7",
+       "ultron.session-control",
+       "singleton"
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-12",
+     "ok": true,
+     "result": {
+      "serviceId": "ultron.session-control",
+      "mode": "singleton",
+      "instances": [
+       {
+        "members": [
+         {
+          "name": "abortBash",
+          "kind": "method"
+         },
+         {
+          "name": "bash",
+          "kind": "method"
+         },
+         {
+          "name": "beforeFork",
+          "kind": "method"
+         },
+         {
+          "name": "debugInfo",
+          "kind": "method"
+         },
+         {
+          "name": "forked",
+          "kind": "method"
+         },
+         {
+          "name": "getSettings",
+          "kind": "method"
+         },
+         {
+          "name": "inspect",
+          "kind": "method"
+         },
+         {
+          "name": "listCommands",
+          "kind": "method"
+         },
+         {
+          "name": "readSettings",
+          "kind": "method"
+         },
+         {
+          "name": "readTree",
+          "kind": "method"
+         },
+         {
+          "name": "reloadAuth",
+          "kind": "method"
+         },
+         {
+          "name": "setAutoCompaction",
+          "kind": "method"
+         },
+         {
+          "name": "setAutoRetry",
+          "kind": "method"
+         },
+         {
+          "name": "setFollowUpMode",
+          "kind": "method"
+         },
+         {
+          "name": "setLabel",
+          "kind": "method"
+         },
+         {
+          "name": "setName",
+          "kind": "method"
+         },
+         {
+          "name": "setProjectTrust",
+          "kind": "method"
+         },
+         {
+          "name": "setSetting",
+          "kind": "method"
+         },
+         {
+          "name": "setSteeringMode",
+          "kind": "method"
+         }
+        ]
+       }
+      ]
+     }
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-13",
+     "target": {
+      "serverId": "<id:0>",
+      "sessionId": "<id:1>",
+      "attachmentId": "<id:2>"
+     },
+     "call": {
+      "serviceId": "ultron.session-control",
+      "member": "inspect",
+      "args": [
+       "async.pending",
+       {}
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-13",
+     "ok": true,
+     "result": {
+      "pending": false,
+      "jobs": 0,
+      "tools": 0,
+      "tasks": 0,
+      "events": 0,
+      "running": 0
+     }
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-14",
+     "target": {
+      "serverId": "<id:0>",
+      "sessionId": "<id:1>",
+      "attachmentId": "<id:2>"
+     },
+     "call": {
+      "serviceId": "$chord.service",
+      "member": "unsubscribe",
+      "args": [
+       "service-7"
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-14",
+     "ok": true
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-15",
+     "target": {
+      "serverId": "<id:0>"
+     },
+     "call": {
+      "serviceId": "$chord.service",
+      "member": "unsubscribe",
+      "args": [
+       "service-1"
+      ]
+     }
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-16",
+     "target": {
+      "serverId": "<id:0>"
+     },
+     "call": {
+      "serviceId": "$chord.service",
+      "member": "unsubscribe",
+      "args": [
+       "service-2"
+      ]
+     }
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-17",
+     "target": {
+      "serverId": "<id:0>"
+     },
+     "call": {
+      "serviceId": "$chord.service",
+      "member": "unsubscribe",
+      "args": [
+       "service-3"
+      ]
+     }
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-18",
+     "target": {
+      "serverId": "<id:0>",
+      "sessionId": "<id:1>",
+      "attachmentId": "<id:2>"
+     },
+     "call": {
+      "serviceId": "$chord.service",
+      "member": "unsubscribe",
+      "args": [
+       "service-4"
+      ]
+     }
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-19",
+     "target": {
+      "serverId": "<id:0>",
+      "sessionId": "<id:1>",
+      "attachmentId": "<id:2>"
+     },
+     "call": {
+      "serviceId": "$chord.service",
+      "member": "unsubscribe",
+      "args": [
+       "service-5"
+      ]
+     }
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-20",
+     "target": {
+      "serverId": "<id:0>",
+      "sessionId": "<id:1>",
+      "attachmentId": "<id:2>"
+     },
+     "call": {
+      "serviceId": "$chord.service",
+      "member": "unsubscribe",
+      "args": [
+       "service-6"
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-15",
+     "ok": true
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-16",
+     "ok": true
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-17",
+     "ok": true
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-18",
+     "ok": true
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-19",
+     "ok": true
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-20",
+     "ok": true
+    }
+   },
+   {
+    "dir": "result",
+    "frame": {
+     "kind": "prompted",
+     "serverId": "<id:0>",
+     "sessionId": "<id:1>",
+     "text": "Hi there."
+    }
+   }
+  ]
+ },
+ {
+  "name": "resume",
+  "replies": [
+   "One.",
+   "Two."
+  ],
+  "setup": {
+   "command": "client",
+   "prompt": "first"
+  },
+  "command": {
+   "command": "client",
+   "prompt": "second"
+  },
+  "resume": true,
+  "frames": [
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "hello",
+     "version": 8
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "hello",
+     "version": 8,
+     "serverId": "<id:0>"
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-1",
+     "target": {
+      "serverId": "<id:0>"
+     },
+     "call": {
+      "serviceId": "$chord.service",
+      "member": "subscribe",
+      "args": [
+       "service-1",
+       "pi.session-directory",
+       "singleton"
+      ]
+     }
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-2",
+     "target": {
+      "serverId": "<id:0>"
+     },
+     "call": {
+      "serviceId": "$chord.service",
+      "member": "subscribe",
+      "args": [
+       "service-2",
+       "pi.session-management",
+       "singleton"
+      ]
+     }
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-3",
+     "target": {
+      "serverId": "<id:0>"
+     },
+     "call": {
+      "serviceId": "$chord.service",
+      "member": "subscribe",
+      "args": [
+       "service-3",
+       "pi.presentation-plugins",
+       "singleton"
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-1",
+     "ok": true,
+     "result": {
+      "serviceId": "pi.session-directory",
+      "mode": "singleton",
+      "instances": [
+       {
+        "members": [
+         {
+          "name": "state",
+          "kind": "state",
+          "sequence": 2,
+          "ops": [
+           [
+            "r",
+            {
+             "revision": 3,
+             "sessions": [
+              {
+               "serverId": "<id:0>",
+               "sessionId": "<id:1>",
+               "createdAt": "<time>",
+               "modifiedAt": "<time>"
+              }
+             ]
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-2",
+     "ok": true,
+     "result": {
+      "serviceId": "pi.session-management",
+      "mode": "singleton",
+      "instances": [
+       {
+        "members": [
+         {
+          "name": "attach",
+          "kind": "method"
+         },
+         {
+          "name": "create",
+          "kind": "method"
+         },
+         {
+          "name": "describe",
+          "kind": "method"
+         },
+         {
+          "name": "detach",
+          "kind": "method"
+         },
+         {
+          "name": "importPi",
+          "kind": "method"
+         },
+         {
+          "name": "remove",
+          "kind": "method"
+         },
+         {
+          "name": "rename",
+          "kind": "method"
+         }
+        ]
+       }
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-3",
+     "ok": true,
+     "result": {
+      "serviceId": "pi.presentation-plugins",
+      "mode": "singleton",
+      "instances": [
+       {
+        "members": [
+         {
+          "name": "prepareSession",
+          "kind": "method"
+         },
+         {
+          "name": "reload",
+          "kind": "method"
+         }
+        ]
+       }
+      ]
+     }
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-4",
+     "target": {
+      "serverId": "<id:0>"
+     },
+     "call": {
+      "serviceId": "pi.presentation-plugins",
+      "member": "prepareSession",
+      "args": [
+       {
+        "sessionId": "<id:1>",
+        "packagePaths": null
+       }
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-4",
+     "ok": true,
+     "result": {
+      "presentationFacetBundles": []
+     }
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-5",
+     "target": {
+      "serverId": "<id:0>"
+     },
+     "call": {
+      "serviceId": "pi.session-management",
+      "member": "attach",
+      "args": [
+       "<id:1>"
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "attachment",
+     "attachment": {
+      "serverId": "<id:0>",
+      "sessionId": "<id:1>",
+      "attachmentId": "<id:2>"
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-5",
+     "ok": true
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-6",
+     "target": {
+      "serverId": "<id:0>",
+      "sessionId": "<id:1>",
+      "attachmentId": "<id:2>"
+     },
+     "call": {
+      "serviceId": "$chord.service",
+      "member": "catalogue",
+      "args": []
+     }
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-7",
+     "target": {
+      "serverId": "<id:0>",
+      "sessionId": "<id:1>",
+      "attachmentId": "<id:2>"
+     },
+     "call": {
+      "serviceId": "$chord.service",
+      "member": "subscribe",
+      "args": [
+       "service-4",
+       "pi.models",
+       "singleton"
+      ]
+     }
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-8",
+     "target": {
+      "serverId": "<id:0>",
+      "sessionId": "<id:1>",
+      "attachmentId": "<id:2>"
+     },
+     "call": {
+      "serviceId": "$chord.service",
+      "member": "subscribe",
+      "args": [
+       "service-5",
+       "pi.agent-controller",
+       "singleton"
+      ]
+     }
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-9",
+     "target": {
+      "serverId": "<id:0>",
+      "sessionId": "<id:1>",
+      "attachmentId": "<id:2>"
+     },
+     "call": {
+      "serviceId": "$chord.service",
+      "member": "subscribe",
+      "args": [
+       "service-6",
+       "pi.transcript",
+       "singleton"
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-6",
+     "ok": true,
+     "result": [
+      {
+       "serviceId": "pi.agent-controller",
+       "mode": "singleton"
+      },
+      {
+       "serviceId": "pi.session-plugins",
+       "mode": "singleton"
+      },
+      {
+       "serviceId": "pi.legacy-extension-commands",
+       "mode": "singleton"
+      },
+      {
+       "serviceId": "ultron.session-control",
+       "mode": "singleton"
+      },
+      {
+       "serviceId": "ultron.extension-ui",
+       "mode": "singleton"
+      },
+      {
+       "serviceId": "pi.models",
+       "mode": "singleton"
+      },
+      {
+       "serviceId": "pi.transcript",
+       "mode": "singleton"
+      }
+     ]
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-7",
+     "ok": true,
+     "result": {
+      "serviceId": "pi.models",
+      "mode": "singleton",
+      "instances": [
+       {
+        "members": [
+         {
+          "name": "cycleThinking",
+          "kind": "method"
+         },
+         {
+          "name": "getThinkingLevels",
+          "kind": "method"
+         },
+         {
+          "name": "refresh",
+          "kind": "method"
+         },
+         {
+          "name": "select",
+          "kind": "method"
+         },
+         {
+          "name": "selectThinking",
+          "kind": "method"
+         },
+         {
+          "name": "state",
+          "kind": "state",
+          "sequence": 1,
+          "ops": [
+           [
+            "r",
+            {
+             "catalog": {
+              "revision": 1,
+              "availableModels": {
+               "count": 137
+              }
+             },
+             "configuration": {
+              "model": {
+               "provider": "anthropic",
+               "modelId": "claude-sonnet-4-5"
+              },
+              "thinkingLevel": "medium"
+             },
+             "refresh": {
+              "status": "idle"
+             }
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-8",
+     "ok": true,
+     "result": {
+      "serviceId": "pi.agent-controller",
+      "mode": "singleton",
+      "instances": [
+       {
+        "members": [
+         {
+          "name": "cancelQueued",
+          "kind": "method"
+         },
+         {
+          "name": "compact",
+          "kind": "method"
+         },
+         {
+          "name": "followUp",
+          "kind": "method"
+         },
+         {
+          "name": "navigate",
+          "kind": "method"
+         },
+         {
+          "name": "nextRun",
+          "kind": "method"
+         },
+         {
+          "name": "prompt",
+          "kind": "method"
+         },
+         {
+          "name": "requestAbort",
+          "kind": "method"
+         },
+         {
+          "name": "resume",
+          "kind": "method"
+         },
+         {
+          "name": "steer",
+          "kind": "method"
+         }
+        ]
+       }
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-9",
+     "ok": true,
+     "result": {
+      "serviceId": "pi.transcript",
+      "mode": "singleton",
+      "instances": [
+       {
+        "members": [
+         {
+          "name": "state",
+          "kind": "state",
+          "sequence": 1,
+          "ops": [
+           [
+            "r",
+            {
+             "snapshot": {
+              "lane": "main",
+              "transcript": [
+               {
+                "id": "<id:3>",
+                "parentId": null,
+                "type": "message",
+                "message": {
+                 "role": "user",
+                 "content": [
+                  {
+                   "type": "text",
+                   "text": "first"
+                  }
+                 ],
+                 "timestamp": "<time>"
+                },
+                "seq": 4,
+                "timestamp": "<time>"
+               },
+               {
+                "id": "<id:4>",
+                "parentId": "<id:3>",
+                "type": "message",
+                "message": {
+                 "role": "assistant",
+                 "content": [
+                  {
+                   "type": "text",
+                   "text": "One."
+                  }
+                 ],
+                 "api": "anthropic-messages",
+                 "provider": "anthropic",
+                 "model": "claude-sonnet-4-5",
+                 "usage": {
+                  "input": 10,
+                  "output": 5,
+                  "cacheRead": 0,
+                  "cacheWrite": 0,
+                  "totalTokens": 15,
+                  "cost": {
+                   "input": 0.00003,
+                   "output": 0.00007500000000000001,
+                   "cacheRead": 0,
+                   "cacheWrite": 0,
+                   "total": 0.000105
+                  },
+                  "cacheWrite1h": 0
+                 },
+                 "stopReason": "stop",
+                 "timestamp": "<time>",
+                 "responseId": "msg_1",
+                 "rawStopReason": "end_turn"
+                },
+                "seq": 17,
+                "timestamp": "<time>"
+               }
+              ],
+              "tipId": "<id:4>",
+              "lastResult": {
+               "operationId": "<id:5>",
+               "kind": "run",
+               "status": "completed",
+               "fromTipId": null,
+               "tipId": "<id:4>",
+               "startedAt": "<time>",
+               "endedAt": "<time>"
+              },
+              "configuration": {
+               "model": {
+                "provider": "anthropic",
+                "modelId": "claude-sonnet-4-5"
+               },
+               "thinkingLevel": "medium",
+               "activeToolNames": [
+                "rlm"
+               ]
+              },
+              "stats": {
+               "messageCount": 2,
+               "usage": {
+                "input": 10,
+                "output": 5,
+                "cacheRead": 0,
+                "cacheWrite": 0,
+                "cacheWrite1h": 0,
+                "totalTokens": 15,
+                "cost": {
+                 "input": 0.00003,
+                 "output": 0.00007500000000000001,
+                 "cacheRead": 0,
+                 "cacheWrite": 0,
+                 "total": 0.000105
+                }
+               }
+              },
+              "operation": null,
+              "queues": [],
+              "faulted": false
+             },
+             "event": null
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-10",
+     "target": {
+      "serverId": "<id:0>",
+      "sessionId": "<id:1>",
+      "attachmentId": "<id:2>"
+     },
+     "call": {
+      "serviceId": "pi.agent-controller",
+      "member": "prompt",
+      "args": [
+       {
+        "message": "second",
+        "images": null
+       }
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "service_update",
+     "subscriptionId": "service-6",
+     "update": {
+      "type": "state",
+      "member": "state",
+      "sequence": 2,
+      "ops": [
+       [
+        "s",
+        [
+         "snapshot",
+         "operation"
+        ],
+        {
+         "id": "<id:6>",
+         "kind": "run",
+         "startedAt": "<time>",
+         "fromTipId": "<id:4>",
+         "status": "open",
+         "runningTools": []
+        }
+       ],
+       [
+        "s",
+        [
+         "event"
+        ],
+        {
+         "type": "run_start",
+         "runId": "<id:6>",
+         "startedAt": "<time>",
+         "lane": "main"
+        }
+       ]
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "service_update",
+     "subscriptionId": "service-6",
+     "update": {
+      "type": "state",
+      "member": "state",
+      "sequence": 3,
+      "ops": [
+       [
+        "s",
+        [
+         "event",
+         "type"
+        ],
+        "message_start"
+       ],
+       [
+        "s",
+        [
+         "event",
+         "message"
+        ],
+        {
+         "role": "user",
+         "content": [
+          {
+           "type": "text",
+           "text": "second"
+          }
+         ],
+         "timestamp": "<time>"
+        }
+       ],
+       [
+        "d",
+        [
+         "event",
+         "startedAt"
+        ]
+       ]
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "service_update",
+     "subscriptionId": "service-6",
+     "update": {
+      "type": "state",
+      "member": "state",
+      "sequence": 4,
+      "ops": [
+       [
+        "#",
+        0,
+        [
+         "event",
+         "type"
+        ]
+       ],
+       [
+        "s",
+        0,
+        "message_end"
+       ],
+       [
+        "s",
+        [
+         "event",
+         "entryId"
+        ],
+        "<id:7>"
+       ]
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "service_update",
+     "subscriptionId": "service-6",
+     "update": {
+      "type": "state",
+      "member": "state",
+      "sequence": 5,
+      "ops": [
+       [
+        "p",
+        [
+         "snapshot",
+         "transcript"
+        ],
+        2,
+        0,
+        [
+         {
+          "id": "<id:7>",
+          "parentId": "<id:4>",
+          "type": "message",
+          "message": {
+           "role": "user",
+           "content": [
+            {
+             "type": "text",
+             "text": "second"
+            }
+           ],
+           "timestamp": "<time>"
+          },
+          "seq": 27,
+          "timestamp": "<time>"
+         }
+        ]
+       ],
+       [
+        "s",
+        [
+         "snapshot",
+         "tipId"
+        ],
+        "<id:7>"
+       ],
+       [
+        "s",
+        [
+         "snapshot",
+         "stats",
+         "messageCount"
+        ],
+        3
+       ],
+       [
+        "s",
+        0,
+        "entry_added"
+       ],
+       [
+        "s",
+        [
+         "event",
+         "entry"
+        ],
+        {
+         "id": "<id:7>",
+         "parentId": "<id:4>",
+         "type": "message",
+         "message": {
+          "role": "user",
+          "content": [
+           {
+            "type": "text",
+            "text": "second"
+           }
+          ],
+          "timestamp": "<time>"
+         },
+         "seq": 27,
+         "timestamp": "<time>"
+        }
+       ],
+       [
+        "d",
+        [
+         "event",
+         "runId"
+        ]
+       ],
+       [
+        "#",
+        1,
+        [
+         "event",
+         "message"
+        ]
+       ],
+       [
+        "d",
+        1
+       ],
+       [
+        "#",
+        2,
+        [
+         "event",
+         "entryId"
+        ]
+       ],
+       [
+        "d",
+        2
+       ]
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "service_update",
+     "subscriptionId": "service-6",
+     "update": {
+      "type": "state",
+      "member": "state",
+      "sequence": 6,
+      "ops": [
+       [
+        "s",
+        [
+         "snapshot",
+         "operation",
+         "streamingMessage"
+        ],
+        {
+         "role": "assistant",
+         "content": [
+          {
+           "type": "text",
+           "text": "",
+           "index": 0
+          }
+         ],
+         "api": "anthropic-messages",
+         "provider": "anthropic",
+         "model": "claude-sonnet-4-5",
+         "usage": {
+          "input": 10,
+          "output": 1,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 11,
+          "cost": {
+           "input": 0.00003,
+           "output": 0.000015,
+           "cacheRead": 0,
+           "cacheWrite": 0,
+           "total": 0.000045
+          },
+          "cacheWrite1h": 0
+         },
+         "stopReason": "pending",
+         "timestamp": "<time>",
+         "responseId": "msg_1"
+        }
+       ],
+       [
+        "s",
+        0,
+        "message_start"
+       ],
+       [
+        "#",
+        3,
+        [
+         "event",
+         "runId"
+        ]
+       ],
+       [
+        "s",
+        3,
+        "<id:6>"
+       ],
+       [
+        "s",
+        1,
+        {
+         "role": "assistant",
+         "content": [
+          {
+           "type": "text",
+           "text": "",
+           "index": 0
+          }
+         ],
+         "api": "anthropic-messages",
+         "provider": "anthropic",
+         "model": "claude-sonnet-4-5",
+         "usage": {
+          "input": 10,
+          "output": 1,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 11,
+          "cost": {
+           "input": 0.00003,
+           "output": 0.000015,
+           "cacheRead": 0,
+           "cacheWrite": 0,
+           "total": 0.000045
+          },
+          "cacheWrite1h": 0
+         },
+         "stopReason": "pending",
+         "timestamp": "<time>",
+         "responseId": "msg_1"
+        }
+       ],
+       [
+        "#",
+        4,
+        [
+         "event",
+         "entry"
+        ]
+       ],
+       [
+        "d",
+        4
+       ]
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "service_update",
+     "subscriptionId": "service-6",
+     "update": {
+      "type": "state",
+      "member": "state",
+      "sequence": 7,
+      "ops": [
+       [
+        "a",
+        [
+         "snapshot",
+         "operation",
+         "streamingMessage",
+         "content",
+         0,
+         "text"
+        ],
+        "Two."
+       ],
+       [
+        "d",
+        [
+         "snapshot",
+         "operation",
+         "streamingMessage",
+         "content",
+         0,
+         "index"
+        ]
+       ],
+       [
+        "s",
+        0,
+        "message_update"
+       ],
+       [
+        "a",
+        [
+         "event",
+         "message",
+         "content",
+         0,
+         "text"
+        ],
+        "Two."
+       ],
+       [
+        "d",
+        [
+         "event",
+         "message",
+         "content",
+         0,
+         "index"
+        ]
+       ],
+       [
+        "s",
+        [
+         "event",
+         "frame"
+        ],
+        {
+         "type": "text_start",
+         "contentIndex": 0,
+         "content": {
+          "type": "text",
+          "text": "Two."
+         }
+        }
+       ]
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "service_update",
+     "subscriptionId": "service-6",
+     "update": {
+      "type": "state",
+      "member": "state",
+      "sequence": 8,
+      "ops": [
+       [
+        "s",
+        [
+         "snapshot",
+         "operation",
+         "streamingMessage",
+         "usage",
+         "output"
+        ],
+        5
+       ],
+       [
+        "s",
+        [
+         "snapshot",
+         "operation",
+         "streamingMessage",
+         "usage",
+         "totalTokens"
+        ],
+        15
+       ],
+       [
+        "s",
+        [
+         "snapshot",
+         "operation",
+         "streamingMessage",
+         "usage",
+         "cost",
+         "output"
+        ],
+        0.00007500000000000001
+       ],
+       [
+        "s",
+        [
+         "snapshot",
+         "operation",
+         "streamingMessage",
+         "usage",
+         "cost",
+         "total"
+        ],
+        0.000105
+       ],
+       [
+        "s",
+        [
+         "snapshot",
+         "operation",
+         "streamingMessage",
+         "stopReason"
+        ],
+        "stop"
+       ],
+       [
+        "s",
+        [
+         "snapshot",
+         "operation",
+         "streamingMessage",
+         "rawStopReason"
+        ],
+        "end_turn"
+       ],
+       [
+        "s",
+        [
+         "event",
+         "message",
+         "usage",
+         "output"
+        ],
+        5
+       ],
+       [
+        "s",
+        [
+         "event",
+         "message",
+         "usage",
+         "totalTokens"
+        ],
+        15
+       ],
+       [
+        "s",
+        [
+         "event",
+         "message",
+         "usage",
+         "cost",
+         "output"
+        ],
+        0.00007500000000000001
+       ],
+       [
+        "s",
+        [
+         "event",
+         "message",
+         "usage",
+         "cost",
+         "total"
+        ],
+        0.000105
+       ],
+       [
+        "s",
+        [
+         "event",
+         "message",
+         "stopReason"
+        ],
+        "stop"
+       ],
+       [
+        "s",
+        [
+         "event",
+         "message",
+         "rawStopReason"
+        ],
+        "end_turn"
+       ],
+       [
+        "#",
+        5,
+        [
+         "event",
+         "frame"
+        ]
+       ],
+       [
+        "d",
+        5
+       ]
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "service_update",
+     "subscriptionId": "service-6",
+     "update": {
+      "type": "state",
+      "member": "state",
+      "sequence": 9,
+      "ops": [
+       [
+        "s",
+        5,
+        {
+         "type": "text_end",
+         "contentIndex": 0,
+         "content": "Two."
+        }
+       ]
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "service_update",
+     "subscriptionId": "service-6",
+     "update": {
+      "type": "state",
+      "member": "state",
+      "sequence": 10,
+      "ops": [
+       [
+        "#",
+        6,
+        [
+         "snapshot",
+         "operation",
+         "streamingMessage"
+        ]
+       ],
+       [
+        "d",
+        6
+       ],
+       [
+        "s",
+        0,
+        "message_end"
+       ],
+       [
+        "s",
+        2,
+        "<id:8>"
+       ],
+       [
+        "d",
+        5
+       ]
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "service_update",
+     "subscriptionId": "service-6",
+     "update": {
+      "type": "state",
+      "member": "state",
+      "sequence": 11,
+      "ops": [
+       [
+        "#",
+        7,
+        [
+         "snapshot",
+         "transcript"
+        ]
+       ],
+       [
+        "p",
+        7,
+        3,
+        0,
+        [
+         {
+          "id": "<id:8>",
+          "parentId": "<id:7>",
+          "type": "message",
+          "message": {
+           "role": "assistant",
+           "content": [
+            {
+             "type": "text",
+             "text": "Two."
+            }
+           ],
+           "api": "anthropic-messages",
+           "provider": "anthropic",
+           "model": "claude-sonnet-4-5",
+           "usage": {
+            "input": 10,
+            "output": 5,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "totalTokens": 15,
+            "cost": {
+             "input": 0.00003,
+             "output": 0.00007500000000000001,
+             "cacheRead": 0,
+             "cacheWrite": 0,
+             "total": 0.000105
+            },
+            "cacheWrite1h": 0
+           },
+           "stopReason": "stop",
+           "timestamp": "<time>",
+           "responseId": "msg_1",
+           "rawStopReason": "end_turn"
+          },
+          "seq": 40,
+          "timestamp": "<time>"
+         }
+        ]
+       ],
+       [
+        "#",
+        8,
+        [
+         "snapshot",
+         "tipId"
+        ]
+       ],
+       [
+        "s",
+        8,
+        "<id:8>"
+       ],
+       [
+        "#",
+        9,
+        [
+         "snapshot",
+         "stats",
+         "messageCount"
+        ]
+       ],
+       [
+        "s",
+        9,
+        4
+       ],
+       [
+        "s",
+        0,
+        "entry_added"
+       ],
+       [
+        "s",
+        4,
+        {
+         "id": "<id:8>",
+         "parentId": "<id:7>",
+         "type": "message",
+         "message": {
+          "role": "assistant",
+          "content": [
+           {
+            "type": "text",
+            "text": "Two."
+           }
+          ],
+          "api": "anthropic-messages",
+          "provider": "anthropic",
+          "model": "claude-sonnet-4-5",
+          "usage": {
+           "input": 10,
+           "output": 5,
+           "cacheRead": 0,
+           "cacheWrite": 0,
+           "totalTokens": 15,
+           "cost": {
+            "input": 0.00003,
+            "output": 0.00007500000000000001,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0.000105
+           },
+           "cacheWrite1h": 0
+          },
+          "stopReason": "stop",
+          "timestamp": "<time>",
+          "responseId": "msg_1",
+          "rawStopReason": "end_turn"
+         },
+         "seq": 40,
+         "timestamp": "<time>"
+        }
+       ],
+       [
+        "d",
+        3
+       ],
+       [
+        "d",
+        1
+       ],
+       [
+        "d",
+        2
+       ]
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "service_update",
+     "subscriptionId": "service-6",
+     "update": {
+      "type": "state",
+      "member": "state",
+      "sequence": 12,
+      "ops": [
+       [
+        "s",
+        [
+         "snapshot",
+         "stats",
+         "usage",
+         "input"
+        ],
+        20
+       ],
+       [
+        "s",
+        [
+         "snapshot",
+         "stats",
+         "usage",
+         "output"
+        ],
+        10
+       ],
+       [
+        "s",
+        [
+         "snapshot",
+         "stats",
+         "usage",
+         "totalTokens"
+        ],
+        30
+       ],
+       [
+        "s",
+        [
+         "snapshot",
+         "stats",
+         "usage",
+         "cost",
+         "input"
+        ],
+        0.00006
+       ],
+       [
+        "s",
+        [
+         "snapshot",
+         "stats",
+         "usage",
+         "cost",
+         "output"
+        ],
+        0.00015000000000000001
+       ],
+       [
+        "s",
+        [
+         "snapshot",
+         "stats",
+         "usage",
+         "cost",
+         "total"
+        ],
+        0.00021
+       ],
+       [
+        "s",
+        0,
+        "usage"
+       ],
+       [
+        "s",
+        [
+         "event",
+         "row"
+        ],
+        {
+         "id": "<id:9>",
+         "usage": {
+          "input": 10,
+          "output": 5,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 15,
+          "cost": {
+           "input": 0.00003,
+           "output": 0.00007500000000000001,
+           "cacheRead": 0,
+           "cacheWrite": 0,
+           "total": 0.000105
+          },
+          "cacheWrite1h": 0
+         },
+         "entryId": "<id:8>",
+         "adjustment": false,
+         "seq": 41
+        }
+       ],
+       [
+        "s",
+        [
+         "event",
+         "totals"
+        ],
+        {
+         "input": 20,
+         "output": 10,
+         "cacheRead": 0,
+         "cacheWrite": 0,
+         "cacheWrite1h": 0,
+         "totalTokens": 30,
+         "cost": {
+          "input": 0.00006,
+          "output": 0.00015000000000000001,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0.00021
+         }
+        }
+       ],
+       [
+        "d",
+        4
+       ]
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "service_update",
+     "subscriptionId": "service-6",
+     "update": {
+      "type": "state",
+      "member": "state",
+      "sequence": 13,
+      "ops": [
+       [
+        "s",
+        [
+         "snapshot",
+         "lastResult",
+         "operationId"
+        ],
+        "<id:6>"
+       ],
+       [
+        "s",
+        [
+         "snapshot",
+         "lastResult",
+         "fromTipId"
+        ],
+        "<id:4>"
+       ],
+       [
+        "s",
+        [
+         "snapshot",
+         "lastResult",
+         "tipId"
+        ],
+        "<id:8>"
+       ],
+       [
+        "s",
+        [
+         "snapshot",
+         "lastResult",
+         "startedAt"
+        ],
+        "<time>"
+       ],
+       [
+        "s",
+        [
+         "snapshot",
+         "lastResult",
+         "endedAt"
+        ],
+        "<time>"
+       ],
+       [
+        "#",
+        10,
+        [
+         "snapshot",
+         "operation"
+        ]
+       ],
+       [
+        "s",
+        10,
+        null
+       ],
+       [
+        "s",
+        0,
+        "run_end"
+       ],
+       [
+        "s",
+        3,
+        "<id:6>"
+       ],
+       [
+        "s",
+        [
+         "event",
+         "status"
+        ],
+        "completed"
+       ],
+       [
+        "s",
+        [
+         "event",
+         "fromTipId"
+        ],
+        "<id:4>"
+       ],
+       [
+        "s",
+        [
+         "event",
+         "tipId"
+        ],
+        "<id:8>"
+       ],
+       [
+        "s",
+        [
+         "event",
+         "endedAt"
+        ],
+        "<time>"
+       ],
+       [
+        "#",
+        11,
+        [
+         "event",
+         "row"
+        ]
+       ],
+       [
+        "d",
+        11
+       ],
+       [
+        "#",
+        12,
+        [
+         "event",
+         "totals"
+        ]
+       ],
+       [
+        "d",
+        12
+       ]
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-10",
+     "ok": true,
+     "result": {
+      "accepted": true,
+      "operationId": "<id:6>",
+      "error": null
+     }
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-11",
+     "target": {
+      "serverId": "<id:0>",
+      "sessionId": "<id:1>",
+      "attachmentId": "<id:2>"
+     },
+     "call": {
+      "serviceId": "$chord.service",
+      "member": "subscribe",
+      "args": [
+       "service-7",
+       "ultron.session-control",
+       "singleton"
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-11",
+     "ok": true,
+     "result": {
+      "serviceId": "ultron.session-control",
+      "mode": "singleton",
+      "instances": [
+       {
+        "members": [
+         {
+          "name": "abortBash",
+          "kind": "method"
+         },
+         {
+          "name": "bash",
+          "kind": "method"
+         },
+         {
+          "name": "beforeFork",
+          "kind": "method"
+         },
+         {
+          "name": "debugInfo",
+          "kind": "method"
+         },
+         {
+          "name": "forked",
+          "kind": "method"
+         },
+         {
+          "name": "getSettings",
+          "kind": "method"
+         },
+         {
+          "name": "inspect",
+          "kind": "method"
+         },
+         {
+          "name": "listCommands",
+          "kind": "method"
+         },
+         {
+          "name": "readSettings",
+          "kind": "method"
+         },
+         {
+          "name": "readTree",
+          "kind": "method"
+         },
+         {
+          "name": "reloadAuth",
+          "kind": "method"
+         },
+         {
+          "name": "setAutoCompaction",
+          "kind": "method"
+         },
+         {
+          "name": "setAutoRetry",
+          "kind": "method"
+         },
+         {
+          "name": "setFollowUpMode",
+          "kind": "method"
+         },
+         {
+          "name": "setLabel",
+          "kind": "method"
+         },
+         {
+          "name": "setName",
+          "kind": "method"
+         },
+         {
+          "name": "setProjectTrust",
+          "kind": "method"
+         },
+         {
+          "name": "setSetting",
+          "kind": "method"
+         },
+         {
+          "name": "setSteeringMode",
+          "kind": "method"
+         }
+        ]
+       }
+      ]
+     }
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-12",
+     "target": {
+      "serverId": "<id:0>",
+      "sessionId": "<id:1>",
+      "attachmentId": "<id:2>"
+     },
+     "call": {
+      "serviceId": "ultron.session-control",
+      "member": "inspect",
+      "args": [
+       "async.pending",
+       {}
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-12",
+     "ok": true,
+     "result": {
+      "pending": false,
+      "jobs": 0,
+      "tools": 0,
+      "tasks": 0,
+      "events": 0,
+      "running": 0
+     }
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-13",
+     "target": {
+      "serverId": "<id:0>",
+      "sessionId": "<id:1>",
+      "attachmentId": "<id:2>"
+     },
+     "call": {
+      "serviceId": "$chord.service",
+      "member": "unsubscribe",
+      "args": [
+       "service-7"
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-13",
+     "ok": true
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-14",
+     "target": {
+      "serverId": "<id:0>"
+     },
+     "call": {
+      "serviceId": "$chord.service",
+      "member": "unsubscribe",
+      "args": [
+       "service-1"
+      ]
+     }
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-15",
+     "target": {
+      "serverId": "<id:0>"
+     },
+     "call": {
+      "serviceId": "$chord.service",
+      "member": "unsubscribe",
+      "args": [
+       "service-2"
+      ]
+     }
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-16",
+     "target": {
+      "serverId": "<id:0>"
+     },
+     "call": {
+      "serviceId": "$chord.service",
+      "member": "unsubscribe",
+      "args": [
+       "service-3"
+      ]
+     }
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-17",
+     "target": {
+      "serverId": "<id:0>",
+      "sessionId": "<id:1>",
+      "attachmentId": "<id:2>"
+     },
+     "call": {
+      "serviceId": "$chord.service",
+      "member": "unsubscribe",
+      "args": [
+       "service-4"
+      ]
+     }
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-18",
+     "target": {
+      "serverId": "<id:0>",
+      "sessionId": "<id:1>",
+      "attachmentId": "<id:2>"
+     },
+     "call": {
+      "serviceId": "$chord.service",
+      "member": "unsubscribe",
+      "args": [
+       "service-5"
+      ]
+     }
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-19",
+     "target": {
+      "serverId": "<id:0>",
+      "sessionId": "<id:1>",
+      "attachmentId": "<id:2>"
+     },
+     "call": {
+      "serviceId": "$chord.service",
+      "member": "unsubscribe",
+      "args": [
+       "service-6"
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-14",
+     "ok": true
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-15",
+     "ok": true
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-16",
+     "ok": true
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-17",
+     "ok": true
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-18",
+     "ok": true
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-19",
+     "ok": true
+    }
+   },
+   {
+    "dir": "result",
+    "frame": {
+     "kind": "prompted",
+     "serverId": "<id:0>",
+     "sessionId": "<id:1>",
+     "text": "Two."
+    }
+   }
+  ]
+ },
+ {
+  "name": "no-session",
+  "replies": [
+   "ok"
+  ],
+  "command": {
+   "command": "client",
+   "prompt": "forget"
+  },
+  "noSession": true,
+  "frames": [
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "hello",
+     "version": 8
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "hello",
+     "version": 8,
+     "serverId": "<id:0>"
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-1",
+     "target": {
+      "serverId": "<id:0>"
+     },
+     "call": {
+      "serviceId": "$chord.service",
+      "member": "subscribe",
+      "args": [
+       "service-1",
+       "pi.session-directory",
+       "singleton"
+      ]
+     }
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-2",
+     "target": {
+      "serverId": "<id:0>"
+     },
+     "call": {
+      "serviceId": "$chord.service",
+      "member": "subscribe",
+      "args": [
+       "service-2",
+       "pi.session-management",
+       "singleton"
+      ]
+     }
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-3",
+     "target": {
+      "serverId": "<id:0>"
+     },
+     "call": {
+      "serviceId": "$chord.service",
+      "member": "subscribe",
+      "args": [
+       "service-3",
+       "pi.presentation-plugins",
+       "singleton"
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-1",
+     "ok": true,
+     "result": {
+      "serviceId": "pi.session-directory",
+      "mode": "singleton",
+      "instances": [
+       {
+        "members": [
+         {
+          "name": "state",
+          "kind": "state",
+          "sequence": 1,
+          "ops": [
+           [
+            "r",
+            {
+             "revision": 2,
+             "sessions": []
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-2",
+     "ok": true,
+     "result": {
+      "serviceId": "pi.session-management",
+      "mode": "singleton",
+      "instances": [
+       {
+        "members": [
+         {
+          "name": "attach",
+          "kind": "method"
+         },
+         {
+          "name": "create",
+          "kind": "method"
+         },
+         {
+          "name": "describe",
+          "kind": "method"
+         },
+         {
+          "name": "detach",
+          "kind": "method"
+         },
+         {
+          "name": "importPi",
+          "kind": "method"
+         },
+         {
+          "name": "remove",
+          "kind": "method"
+         },
+         {
+          "name": "rename",
+          "kind": "method"
+         }
+        ]
+       }
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-3",
+     "ok": true,
+     "result": {
+      "serviceId": "pi.presentation-plugins",
+      "mode": "singleton",
+      "instances": [
+       {
+        "members": [
+         {
+          "name": "prepareSession",
+          "kind": "method"
+         },
+         {
+          "name": "reload",
+          "kind": "method"
+         }
+        ]
+       }
+      ]
+     }
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-4",
+     "target": {
+      "serverId": "<id:0>"
+     },
+     "call": {
+      "serviceId": "pi.session-management",
+      "member": "create",
+      "args": [
+       {}
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "service_update",
+     "subscriptionId": "service-1",
+     "update": {
+      "type": "state",
+      "member": "state",
+      "sequence": 2,
+      "ops": [
+       [
+        "s",
+        [
+         "revision"
+        ],
+        3
+       ],
+       [
+        "p",
+        [
+         "sessions"
+        ],
+        0,
+        0,
+        [
+         {
+          "serverId": "<id:0>",
+          "sessionId": "<id:1>",
+          "createdAt": "<time>",
+          "modifiedAt": "<time>"
+         }
+        ]
+       ]
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-4",
+     "ok": true,
+     "result": {
+      "serverId": "<id:0>",
+      "sessionId": "<id:1>",
+      "createdAt": "<time>",
+      "modifiedAt": "<time>",
+      "sessionFile": "<TMP>/agent/experimental/sessions/--<TMPNAME>-cwd--/<FILETIME>_<id:1>.jsonl"
+     }
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-5",
+     "target": {
+      "serverId": "<id:0>"
+     },
+     "call": {
+      "serviceId": "pi.presentation-plugins",
+      "member": "prepareSession",
+      "args": [
+       {
+        "sessionId": "<id:1>",
+        "packagePaths": null
+       }
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-5",
+     "ok": true,
+     "result": {
+      "presentationFacetBundles": []
+     }
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-6",
+     "target": {
+      "serverId": "<id:0>"
+     },
+     "call": {
+      "serviceId": "pi.session-management",
+      "member": "attach",
+      "args": [
+       "<id:1>"
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "attachment",
+     "attachment": {
+      "serverId": "<id:0>",
+      "sessionId": "<id:1>",
+      "attachmentId": "<id:2>"
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-6",
+     "ok": true
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-7",
+     "target": {
+      "serverId": "<id:0>",
+      "sessionId": "<id:1>",
+      "attachmentId": "<id:2>"
+     },
+     "call": {
+      "serviceId": "$chord.service",
+      "member": "catalogue",
+      "args": []
+     }
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-8",
+     "target": {
+      "serverId": "<id:0>",
+      "sessionId": "<id:1>",
+      "attachmentId": "<id:2>"
+     },
+     "call": {
+      "serviceId": "$chord.service",
+      "member": "subscribe",
+      "args": [
+       "service-4",
+       "pi.models",
+       "singleton"
+      ]
+     }
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-9",
+     "target": {
+      "serverId": "<id:0>",
+      "sessionId": "<id:1>",
+      "attachmentId": "<id:2>"
+     },
+     "call": {
+      "serviceId": "$chord.service",
+      "member": "subscribe",
+      "args": [
+       "service-5",
+       "pi.agent-controller",
+       "singleton"
+      ]
+     }
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-10",
+     "target": {
+      "serverId": "<id:0>",
+      "sessionId": "<id:1>",
+      "attachmentId": "<id:2>"
+     },
+     "call": {
+      "serviceId": "$chord.service",
+      "member": "subscribe",
+      "args": [
+       "service-6",
+       "pi.transcript",
+       "singleton"
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-7",
+     "ok": true,
+     "result": [
+      {
+       "serviceId": "pi.agent-controller",
+       "mode": "singleton"
+      },
+      {
+       "serviceId": "pi.session-plugins",
+       "mode": "singleton"
+      },
+      {
+       "serviceId": "pi.legacy-extension-commands",
+       "mode": "singleton"
+      },
+      {
+       "serviceId": "ultron.session-control",
+       "mode": "singleton"
+      },
+      {
+       "serviceId": "ultron.extension-ui",
+       "mode": "singleton"
+      },
+      {
+       "serviceId": "pi.models",
+       "mode": "singleton"
+      },
+      {
+       "serviceId": "pi.transcript",
+       "mode": "singleton"
+      }
+     ]
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-8",
+     "ok": true,
+     "result": {
+      "serviceId": "pi.models",
+      "mode": "singleton",
+      "instances": [
+       {
+        "members": [
+         {
+          "name": "cycleThinking",
+          "kind": "method"
+         },
+         {
+          "name": "getThinkingLevels",
+          "kind": "method"
+         },
+         {
+          "name": "refresh",
+          "kind": "method"
+         },
+         {
+          "name": "select",
+          "kind": "method"
+         },
+         {
+          "name": "selectThinking",
+          "kind": "method"
+         },
+         {
+          "name": "state",
+          "kind": "state",
+          "sequence": 1,
+          "ops": [
+           [
+            "r",
+            {
+             "catalog": {
+              "revision": 1,
+              "availableModels": {
+               "count": 137
+              }
+             },
+             "configuration": {
+              "model": {
+               "provider": "anthropic",
+               "modelId": "claude-sonnet-4-5"
+              },
+              "thinkingLevel": "medium"
+             },
+             "refresh": {
+              "status": "idle"
+             }
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-9",
+     "ok": true,
+     "result": {
+      "serviceId": "pi.agent-controller",
+      "mode": "singleton",
+      "instances": [
+       {
+        "members": [
+         {
+          "name": "cancelQueued",
+          "kind": "method"
+         },
+         {
+          "name": "compact",
+          "kind": "method"
+         },
+         {
+          "name": "followUp",
+          "kind": "method"
+         },
+         {
+          "name": "navigate",
+          "kind": "method"
+         },
+         {
+          "name": "nextRun",
+          "kind": "method"
+         },
+         {
+          "name": "prompt",
+          "kind": "method"
+         },
+         {
+          "name": "requestAbort",
+          "kind": "method"
+         },
+         {
+          "name": "resume",
+          "kind": "method"
+         },
+         {
+          "name": "steer",
+          "kind": "method"
+         }
+        ]
+       }
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-10",
+     "ok": true,
+     "result": {
+      "serviceId": "pi.transcript",
+      "mode": "singleton",
+      "instances": [
+       {
+        "members": [
+         {
+          "name": "state",
+          "kind": "state",
+          "sequence": 1,
+          "ops": [
+           [
+            "r",
+            {
+             "snapshot": {
+              "lane": "main",
+              "transcript": [],
+              "tipId": null,
+              "configuration": {
+               "model": {
+                "provider": "anthropic",
+                "modelId": "claude-sonnet-4-5"
+               },
+               "thinkingLevel": "medium",
+               "activeToolNames": [
+                "rlm"
+               ]
+              },
+              "stats": {
+               "messageCount": 0,
+               "usage": {
+                "input": 0,
+                "output": 0,
+                "cacheRead": 0,
+                "cacheWrite": 0,
+                "totalTokens": 0,
+                "cost": {
+                 "input": 0,
+                 "output": 0,
+                 "cacheRead": 0,
+                 "cacheWrite": 0,
+                 "total": 0
+                }
+               }
+              },
+              "operation": null,
+              "queues": [],
+              "faulted": false
+             },
+             "event": null
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-11",
+     "target": {
+      "serverId": "<id:0>",
+      "sessionId": "<id:1>",
+      "attachmentId": "<id:2>"
+     },
+     "call": {
+      "serviceId": "pi.agent-controller",
+      "member": "prompt",
+      "args": [
+       {
+        "message": "forget",
+        "images": null
+       }
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "service_update",
+     "subscriptionId": "service-6",
+     "update": {
+      "type": "state",
+      "member": "state",
+      "sequence": 2,
+      "ops": [
+       [
+        "s",
+        [
+         "snapshot",
+         "operation"
+        ],
+        {
+         "id": "<id:3>",
+         "kind": "run",
+         "startedAt": "<time>",
+         "fromTipId": null,
+         "status": "open",
+         "runningTools": []
+        }
+       ],
+       [
+        "s",
+        [
+         "event"
+        ],
+        {
+         "type": "run_start",
+         "runId": "<id:3>",
+         "startedAt": "<time>",
+         "lane": "main"
+        }
+       ]
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "service_update",
+     "subscriptionId": "service-6",
+     "update": {
+      "type": "state",
+      "member": "state",
+      "sequence": 3,
+      "ops": [
+       [
+        "s",
+        [
+         "event",
+         "type"
+        ],
+        "message_start"
+       ],
+       [
+        "s",
+        [
+         "event",
+         "message"
+        ],
+        {
+         "role": "user",
+         "content": [
+          {
+           "type": "text",
+           "text": "forget"
+          }
+         ],
+         "timestamp": "<time>"
+        }
+       ],
+       [
+        "d",
+        [
+         "event",
+         "startedAt"
+        ]
+       ]
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "service_update",
+     "subscriptionId": "service-6",
+     "update": {
+      "type": "state",
+      "member": "state",
+      "sequence": 4,
+      "ops": [
+       [
+        "#",
+        0,
+        [
+         "event",
+         "type"
+        ]
+       ],
+       [
+        "s",
+        0,
+        "message_end"
+       ],
+       [
+        "s",
+        [
+         "event",
+         "entryId"
+        ],
+        "<id:4>"
+       ]
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "service_update",
+     "subscriptionId": "service-6",
+     "update": {
+      "type": "state",
+      "member": "state",
+      "sequence": 5,
+      "ops": [
+       [
+        "p",
+        [
+         "snapshot",
+         "transcript"
+        ],
+        0,
+        0,
+        [
+         {
+          "id": "<id:4>",
+          "parentId": null,
+          "type": "message",
+          "message": {
+           "role": "user",
+           "content": [
+            {
+             "type": "text",
+             "text": "forget"
+            }
+           ],
+           "timestamp": "<time>"
+          },
+          "seq": 4,
+          "timestamp": "<time>"
+         }
+        ]
+       ],
+       [
+        "s",
+        [
+         "snapshot",
+         "tipId"
+        ],
+        "<id:4>"
+       ],
+       [
+        "s",
+        [
+         "snapshot",
+         "stats",
+         "messageCount"
+        ],
+        1
+       ],
+       [
+        "s",
+        0,
+        "entry_added"
+       ],
+       [
+        "s",
+        [
+         "event",
+         "entry"
+        ],
+        {
+         "id": "<id:4>",
+         "parentId": null,
+         "type": "message",
+         "message": {
+          "role": "user",
+          "content": [
+           {
+            "type": "text",
+            "text": "forget"
+           }
+          ],
+          "timestamp": "<time>"
+         },
+         "seq": 4,
+         "timestamp": "<time>"
+        }
+       ],
+       [
+        "d",
+        [
+         "event",
+         "runId"
+        ]
+       ],
+       [
+        "#",
+        1,
+        [
+         "event",
+         "message"
+        ]
+       ],
+       [
+        "d",
+        1
+       ],
+       [
+        "#",
+        2,
+        [
+         "event",
+         "entryId"
+        ]
+       ],
+       [
+        "d",
+        2
+       ]
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "service_update",
+     "subscriptionId": "service-6",
+     "update": {
+      "type": "state",
+      "member": "state",
+      "sequence": 6,
+      "ops": [
+       [
+        "s",
+        [
+         "snapshot",
+         "operation",
+         "streamingMessage"
+        ],
+        {
+         "role": "assistant",
+         "content": [
+          {
+           "type": "text",
+           "text": "",
+           "index": 0
+          }
+         ],
+         "api": "anthropic-messages",
+         "provider": "anthropic",
+         "model": "claude-sonnet-4-5",
+         "usage": {
+          "input": 10,
+          "output": 1,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 11,
+          "cost": {
+           "input": 0.00003,
+           "output": 0.000015,
+           "cacheRead": 0,
+           "cacheWrite": 0,
+           "total": 0.000045
+          },
+          "cacheWrite1h": 0
+         },
+         "stopReason": "pending",
+         "timestamp": "<time>",
+         "responseId": "msg_1"
+        }
+       ],
+       [
+        "s",
+        0,
+        "message_start"
+       ],
+       [
+        "#",
+        3,
+        [
+         "event",
+         "runId"
+        ]
+       ],
+       [
+        "s",
+        3,
+        "<id:3>"
+       ],
+       [
+        "s",
+        1,
+        {
+         "role": "assistant",
+         "content": [
+          {
+           "type": "text",
+           "text": "",
+           "index": 0
+          }
+         ],
+         "api": "anthropic-messages",
+         "provider": "anthropic",
+         "model": "claude-sonnet-4-5",
+         "usage": {
+          "input": 10,
+          "output": 1,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 11,
+          "cost": {
+           "input": 0.00003,
+           "output": 0.000015,
+           "cacheRead": 0,
+           "cacheWrite": 0,
+           "total": 0.000045
+          },
+          "cacheWrite1h": 0
+         },
+         "stopReason": "pending",
+         "timestamp": "<time>",
+         "responseId": "msg_1"
+        }
+       ],
+       [
+        "#",
+        4,
+        [
+         "event",
+         "entry"
+        ]
+       ],
+       [
+        "d",
+        4
+       ]
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "service_update",
+     "subscriptionId": "service-6",
+     "update": {
+      "type": "state",
+      "member": "state",
+      "sequence": 7,
+      "ops": [
+       [
+        "a",
+        [
+         "snapshot",
+         "operation",
+         "streamingMessage",
+         "content",
+         0,
+         "text"
+        ],
+        "ok"
+       ],
+       [
+        "d",
+        [
+         "snapshot",
+         "operation",
+         "streamingMessage",
+         "content",
+         0,
+         "index"
+        ]
+       ],
+       [
+        "s",
+        0,
+        "message_update"
+       ],
+       [
+        "a",
+        [
+         "event",
+         "message",
+         "content",
+         0,
+         "text"
+        ],
+        "ok"
+       ],
+       [
+        "d",
+        [
+         "event",
+         "message",
+         "content",
+         0,
+         "index"
+        ]
+       ],
+       [
+        "s",
+        [
+         "event",
+         "frame"
+        ],
+        {
+         "type": "text_start",
+         "contentIndex": 0,
+         "content": {
+          "type": "text",
+          "text": "ok"
+         }
+        }
+       ]
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "service_update",
+     "subscriptionId": "service-6",
+     "update": {
+      "type": "state",
+      "member": "state",
+      "sequence": 8,
+      "ops": [
+       [
+        "s",
+        [
+         "snapshot",
+         "operation",
+         "streamingMessage",
+         "usage",
+         "output"
+        ],
+        5
+       ],
+       [
+        "s",
+        [
+         "snapshot",
+         "operation",
+         "streamingMessage",
+         "usage",
+         "totalTokens"
+        ],
+        15
+       ],
+       [
+        "s",
+        [
+         "snapshot",
+         "operation",
+         "streamingMessage",
+         "usage",
+         "cost",
+         "output"
+        ],
+        0.00007500000000000001
+       ],
+       [
+        "s",
+        [
+         "snapshot",
+         "operation",
+         "streamingMessage",
+         "usage",
+         "cost",
+         "total"
+        ],
+        0.000105
+       ],
+       [
+        "s",
+        [
+         "snapshot",
+         "operation",
+         "streamingMessage",
+         "stopReason"
+        ],
+        "stop"
+       ],
+       [
+        "s",
+        [
+         "snapshot",
+         "operation",
+         "streamingMessage",
+         "rawStopReason"
+        ],
+        "end_turn"
+       ],
+       [
+        "s",
+        [
+         "event",
+         "message",
+         "usage",
+         "output"
+        ],
+        5
+       ],
+       [
+        "s",
+        [
+         "event",
+         "message",
+         "usage",
+         "totalTokens"
+        ],
+        15
+       ],
+       [
+        "s",
+        [
+         "event",
+         "message",
+         "usage",
+         "cost",
+         "output"
+        ],
+        0.00007500000000000001
+       ],
+       [
+        "s",
+        [
+         "event",
+         "message",
+         "usage",
+         "cost",
+         "total"
+        ],
+        0.000105
+       ],
+       [
+        "s",
+        [
+         "event",
+         "message",
+         "stopReason"
+        ],
+        "stop"
+       ],
+       [
+        "s",
+        [
+         "event",
+         "message",
+         "rawStopReason"
+        ],
+        "end_turn"
+       ],
+       [
+        "#",
+        5,
+        [
+         "event",
+         "frame"
+        ]
+       ],
+       [
+        "d",
+        5
+       ]
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "service_update",
+     "subscriptionId": "service-6",
+     "update": {
+      "type": "state",
+      "member": "state",
+      "sequence": 9,
+      "ops": [
+       [
+        "s",
+        5,
+        {
+         "type": "text_end",
+         "contentIndex": 0,
+         "content": "ok"
+        }
+       ]
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "service_update",
+     "subscriptionId": "service-6",
+     "update": {
+      "type": "state",
+      "member": "state",
+      "sequence": 10,
+      "ops": [
+       [
+        "#",
+        6,
+        [
+         "snapshot",
+         "operation",
+         "streamingMessage"
+        ]
+       ],
+       [
+        "d",
+        6
+       ],
+       [
+        "s",
+        0,
+        "message_end"
+       ],
+       [
+        "s",
+        2,
+        "<id:5>"
+       ],
+       [
+        "d",
+        5
+       ]
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "service_update",
+     "subscriptionId": "service-6",
+     "update": {
+      "type": "state",
+      "member": "state",
+      "sequence": 11,
+      "ops": [
+       [
+        "#",
+        7,
+        [
+         "snapshot",
+         "transcript"
+        ]
+       ],
+       [
+        "p",
+        7,
+        1,
+        0,
+        [
+         {
+          "id": "<id:5>",
+          "parentId": "<id:4>",
+          "type": "message",
+          "message": {
+           "role": "assistant",
+           "content": [
+            {
+             "type": "text",
+             "text": "ok"
+            }
+           ],
+           "api": "anthropic-messages",
+           "provider": "anthropic",
+           "model": "claude-sonnet-4-5",
+           "usage": {
+            "input": 10,
+            "output": 5,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "totalTokens": 15,
+            "cost": {
+             "input": 0.00003,
+             "output": 0.00007500000000000001,
+             "cacheRead": 0,
+             "cacheWrite": 0,
+             "total": 0.000105
+            },
+            "cacheWrite1h": 0
+           },
+           "stopReason": "stop",
+           "timestamp": "<time>",
+           "responseId": "msg_1",
+           "rawStopReason": "end_turn"
+          },
+          "seq": 17,
+          "timestamp": "<time>"
+         }
+        ]
+       ],
+       [
+        "#",
+        8,
+        [
+         "snapshot",
+         "tipId"
+        ]
+       ],
+       [
+        "s",
+        8,
+        "<id:5>"
+       ],
+       [
+        "#",
+        9,
+        [
+         "snapshot",
+         "stats",
+         "messageCount"
+        ]
+       ],
+       [
+        "s",
+        9,
+        2
+       ],
+       [
+        "s",
+        0,
+        "entry_added"
+       ],
+       [
+        "s",
+        4,
+        {
+         "id": "<id:5>",
+         "parentId": "<id:4>",
+         "type": "message",
+         "message": {
+          "role": "assistant",
+          "content": [
+           {
+            "type": "text",
+            "text": "ok"
+           }
+          ],
+          "api": "anthropic-messages",
+          "provider": "anthropic",
+          "model": "claude-sonnet-4-5",
+          "usage": {
+           "input": 10,
+           "output": 5,
+           "cacheRead": 0,
+           "cacheWrite": 0,
+           "totalTokens": 15,
+           "cost": {
+            "input": 0.00003,
+            "output": 0.00007500000000000001,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0.000105
+           },
+           "cacheWrite1h": 0
+          },
+          "stopReason": "stop",
+          "timestamp": "<time>",
+          "responseId": "msg_1",
+          "rawStopReason": "end_turn"
+         },
+         "seq": 17,
+         "timestamp": "<time>"
+        }
+       ],
+       [
+        "d",
+        3
+       ],
+       [
+        "d",
+        1
+       ],
+       [
+        "d",
+        2
+       ]
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "service_update",
+     "subscriptionId": "service-6",
+     "update": {
+      "type": "state",
+      "member": "state",
+      "sequence": 12,
+      "ops": [
+       [
+        "s",
+        [
+         "snapshot",
+         "stats",
+         "usage",
+         "input"
+        ],
+        10
+       ],
+       [
+        "s",
+        [
+         "snapshot",
+         "stats",
+         "usage",
+         "output"
+        ],
+        5
+       ],
+       [
+        "s",
+        [
+         "snapshot",
+         "stats",
+         "usage",
+         "cacheWrite1h"
+        ],
+        0
+       ],
+       [
+        "s",
+        [
+         "snapshot",
+         "stats",
+         "usage",
+         "totalTokens"
+        ],
+        15
+       ],
+       [
+        "s",
+        [
+         "snapshot",
+         "stats",
+         "usage",
+         "cost",
+         "input"
+        ],
+        0.00003
+       ],
+       [
+        "s",
+        [
+         "snapshot",
+         "stats",
+         "usage",
+         "cost",
+         "output"
+        ],
+        0.00007500000000000001
+       ],
+       [
+        "s",
+        [
+         "snapshot",
+         "stats",
+         "usage",
+         "cost",
+         "total"
+        ],
+        0.000105
+       ],
+       [
+        "s",
+        0,
+        "usage"
+       ],
+       [
+        "s",
+        [
+         "event",
+         "row"
+        ],
+        {
+         "id": "<id:6>",
+         "usage": {
+          "input": 10,
+          "output": 5,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 15,
+          "cost": {
+           "input": 0.00003,
+           "output": 0.00007500000000000001,
+           "cacheRead": 0,
+           "cacheWrite": 0,
+           "total": 0.000105
+          },
+          "cacheWrite1h": 0
+         },
+         "entryId": "<id:5>",
+         "adjustment": false,
+         "seq": 18
+        }
+       ],
+       [
+        "s",
+        [
+         "event",
+         "totals"
+        ],
+        {
+         "input": 10,
+         "output": 5,
+         "cacheRead": 0,
+         "cacheWrite": 0,
+         "cacheWrite1h": 0,
+         "totalTokens": 15,
+         "cost": {
+          "input": 0.00003,
+          "output": 0.00007500000000000001,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0.000105
+         }
+        }
+       ],
+       [
+        "d",
+        4
+       ]
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "service_update",
+     "subscriptionId": "service-6",
+     "update": {
+      "type": "state",
+      "member": "state",
+      "sequence": 13,
+      "ops": [
+       [
+        "#",
+        10,
+        [
+         "snapshot",
+         "operation"
+        ]
+       ],
+       [
+        "s",
+        10,
+        null
+       ],
+       [
+        "s",
+        [
+         "snapshot",
+         "lastResult"
+        ],
+        {
+         "operationId": "<id:3>",
+         "kind": "run",
+         "status": "completed",
+         "fromTipId": null,
+         "tipId": "<id:5>",
+         "startedAt": "<time>",
+         "endedAt": "<time>"
+        }
+       ],
+       [
+        "s",
+        0,
+        "run_end"
+       ],
+       [
+        "s",
+        3,
+        "<id:3>"
+       ],
+       [
+        "s",
+        [
+         "event",
+         "status"
+        ],
+        "completed"
+       ],
+       [
+        "s",
+        [
+         "event",
+         "fromTipId"
+        ],
+        null
+       ],
+       [
+        "s",
+        [
+         "event",
+         "tipId"
+        ],
+        "<id:5>"
+       ],
+       [
+        "s",
+        [
+         "event",
+         "endedAt"
+        ],
+        "<time>"
+       ],
+       [
+        "#",
+        11,
+        [
+         "event",
+         "row"
+        ]
+       ],
+       [
+        "d",
+        11
+       ],
+       [
+        "#",
+        12,
+        [
+         "event",
+         "totals"
+        ]
+       ],
+       [
+        "d",
+        12
+       ]
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-11",
+     "ok": true,
+     "result": {
+      "accepted": true,
+      "operationId": "<id:3>",
+      "error": null
+     }
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-12",
+     "target": {
+      "serverId": "<id:0>",
+      "sessionId": "<id:1>",
+      "attachmentId": "<id:2>"
+     },
+     "call": {
+      "serviceId": "$chord.service",
+      "member": "subscribe",
+      "args": [
+       "service-7",
+       "ultron.session-control",
+       "singleton"
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-12",
+     "ok": true,
+     "result": {
+      "serviceId": "ultron.session-control",
+      "mode": "singleton",
+      "instances": [
+       {
+        "members": [
+         {
+          "name": "abortBash",
+          "kind": "method"
+         },
+         {
+          "name": "bash",
+          "kind": "method"
+         },
+         {
+          "name": "beforeFork",
+          "kind": "method"
+         },
+         {
+          "name": "debugInfo",
+          "kind": "method"
+         },
+         {
+          "name": "forked",
+          "kind": "method"
+         },
+         {
+          "name": "getSettings",
+          "kind": "method"
+         },
+         {
+          "name": "inspect",
+          "kind": "method"
+         },
+         {
+          "name": "listCommands",
+          "kind": "method"
+         },
+         {
+          "name": "readSettings",
+          "kind": "method"
+         },
+         {
+          "name": "readTree",
+          "kind": "method"
+         },
+         {
+          "name": "reloadAuth",
+          "kind": "method"
+         },
+         {
+          "name": "setAutoCompaction",
+          "kind": "method"
+         },
+         {
+          "name": "setAutoRetry",
+          "kind": "method"
+         },
+         {
+          "name": "setFollowUpMode",
+          "kind": "method"
+         },
+         {
+          "name": "setLabel",
+          "kind": "method"
+         },
+         {
+          "name": "setName",
+          "kind": "method"
+         },
+         {
+          "name": "setProjectTrust",
+          "kind": "method"
+         },
+         {
+          "name": "setSetting",
+          "kind": "method"
+         },
+         {
+          "name": "setSteeringMode",
+          "kind": "method"
+         }
+        ]
+       }
+      ]
+     }
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-13",
+     "target": {
+      "serverId": "<id:0>",
+      "sessionId": "<id:1>",
+      "attachmentId": "<id:2>"
+     },
+     "call": {
+      "serviceId": "ultron.session-control",
+      "member": "inspect",
+      "args": [
+       "async.pending",
+       {}
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-13",
+     "ok": true,
+     "result": {
+      "pending": false,
+      "jobs": 0,
+      "tools": 0,
+      "tasks": 0,
+      "events": 0,
+      "running": 0
+     }
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-14",
+     "target": {
+      "serverId": "<id:0>",
+      "sessionId": "<id:1>",
+      "attachmentId": "<id:2>"
+     },
+     "call": {
+      "serviceId": "$chord.service",
+      "member": "unsubscribe",
+      "args": [
+       "service-7"
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-14",
+     "ok": true
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-15",
+     "target": {
+      "serverId": "<id:0>"
+     },
+     "call": {
+      "serviceId": "pi.session-management",
+      "member": "remove",
+      "args": [
+       "<id:1>"
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "attachment",
+     "attachment": null
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "service_update",
+     "subscriptionId": "service-1",
+     "update": {
+      "type": "state",
+      "member": "state",
+      "sequence": 3,
+      "ops": [
+       [
+        "#",
+        0,
+        [
+         "revision"
+        ]
+       ],
+       [
+        "s",
+        0,
+        4
+       ],
+       [
+        "#",
+        1,
+        [
+         "sessions"
+        ]
+       ],
+       [
+        "p",
+        1,
+        0,
+        1,
+        []
+       ]
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-15",
+     "ok": true
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-16",
+     "target": {
+      "serverId": "<id:0>"
+     },
+     "call": {
+      "serviceId": "$chord.service",
+      "member": "unsubscribe",
+      "args": [
+       "service-1"
+      ]
+     }
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-17",
+     "target": {
+      "serverId": "<id:0>"
+     },
+     "call": {
+      "serviceId": "$chord.service",
+      "member": "unsubscribe",
+      "args": [
+       "service-2"
+      ]
+     }
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-18",
+     "target": {
+      "serverId": "<id:0>"
+     },
+     "call": {
+      "serviceId": "$chord.service",
+      "member": "unsubscribe",
+      "args": [
+       "service-3"
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-16",
+     "ok": true
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-17",
+     "ok": true
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-18",
+     "ok": true
+    }
+   },
+   {
+    "dir": "result",
+    "frame": {
+     "kind": "prompted",
+     "serverId": "<id:0>",
+     "sessionId": "<id:1>",
+     "text": "ok"
+    }
+   }
+  ]
+ },
+ {
+  "name": "list",
+  "replies": [
+   "One."
+  ],
+  "setup": {
+   "command": "client",
+   "prompt": "first"
+  },
+  "command": {
+   "command": "client"
+  },
+  "frames": [
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "hello",
+     "version": 8
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "hello",
+     "version": 8,
+     "serverId": "<id:0>"
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-1",
+     "target": {
+      "serverId": "<id:0>"
+     },
+     "call": {
+      "serviceId": "$chord.service",
+      "member": "subscribe",
+      "args": [
+       "service-1",
+       "pi.session-directory",
+       "singleton"
+      ]
+     }
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-2",
+     "target": {
+      "serverId": "<id:0>"
+     },
+     "call": {
+      "serviceId": "$chord.service",
+      "member": "subscribe",
+      "args": [
+       "service-2",
+       "pi.session-management",
+       "singleton"
+      ]
+     }
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-3",
+     "target": {
+      "serverId": "<id:0>"
+     },
+     "call": {
+      "serviceId": "$chord.service",
+      "member": "subscribe",
+      "args": [
+       "service-3",
+       "pi.presentation-plugins",
+       "singleton"
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-1",
+     "ok": true,
+     "result": {
+      "serviceId": "pi.session-directory",
+      "mode": "singleton",
+      "instances": [
+       {
+        "members": [
+         {
+          "name": "state",
+          "kind": "state",
+          "sequence": 2,
+          "ops": [
+           [
+            "r",
+            {
+             "revision": 3,
+             "sessions": [
+              {
+               "serverId": "<id:0>",
+               "sessionId": "<id:1>",
+               "createdAt": "<time>",
+               "modifiedAt": "<time>"
+              }
+             ]
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-2",
+     "ok": true,
+     "result": {
+      "serviceId": "pi.session-management",
+      "mode": "singleton",
+      "instances": [
+       {
+        "members": [
+         {
+          "name": "attach",
+          "kind": "method"
+         },
+         {
+          "name": "create",
+          "kind": "method"
+         },
+         {
+          "name": "describe",
+          "kind": "method"
+         },
+         {
+          "name": "detach",
+          "kind": "method"
+         },
+         {
+          "name": "importPi",
+          "kind": "method"
+         },
+         {
+          "name": "remove",
+          "kind": "method"
+         },
+         {
+          "name": "rename",
+          "kind": "method"
+         }
+        ]
+       }
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-3",
+     "ok": true,
+     "result": {
+      "serviceId": "pi.presentation-plugins",
+      "mode": "singleton",
+      "instances": [
+       {
+        "members": [
+         {
+          "name": "prepareSession",
+          "kind": "method"
+         },
+         {
+          "name": "reload",
+          "kind": "method"
+         }
+        ]
+       }
+      ]
+     }
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-4",
+     "target": {
+      "serverId": "<id:0>"
+     },
+     "call": {
+      "serviceId": "$chord.service",
+      "member": "unsubscribe",
+      "args": [
+       "service-1"
+      ]
+     }
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-5",
+     "target": {
+      "serverId": "<id:0>"
+     },
+     "call": {
+      "serviceId": "$chord.service",
+      "member": "unsubscribe",
+      "args": [
+       "service-2"
+      ]
+     }
+    }
+   },
+   {
+    "dir": "c2s",
+    "frame": {
+     "type": "request",
+     "id": "request-6",
+     "target": {
+      "serverId": "<id:0>"
+     },
+     "call": {
+      "serviceId": "$chord.service",
+      "member": "unsubscribe",
+      "args": [
+       "service-3"
+      ]
+     }
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-4",
+     "ok": true
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-5",
+     "ok": true
+    }
+   },
+   {
+    "dir": "s2c",
+    "frame": {
+     "type": "response",
+     "id": "request-6",
+     "ok": true
+    }
+   },
+   {
+    "dir": "result",
+    "frame": {
+     "kind": "list",
+     "sessions": [
+      {
+       "serverId": "<id:0>",
+       "sessionId": "<id:1>"
+      }
+     ]
+    }
+   }
+  ]
+ }
+]

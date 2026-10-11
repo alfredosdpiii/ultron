@@ -1,0 +1,16 @@
+[package]
+name = "config"
+version = "0.1.0"
+description = "Ultron settings, auth.json, project trust and agent paths, file-compatible with the TypeScript product"
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+serde_json = { version = "=1.0.151", features = ["preserve_order"] }
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+tempfile = "=3.27.0"

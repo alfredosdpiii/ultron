@@ -1,0 +1,18 @@
+[package]
+name = "agent"
+version = "0.1.0"
+description = "Agent loop of packages/agent: turns over ai streaming, tool execution, steering/follow-up queues, abort, and the AgentEvent stream"
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+ai = { path = "../ai" }
+serde = { version = "=1.0.229", features = ["derive"] }
+serde_json = { version = "=1.0.151", features = ["float_roundtrip", "preserve_order"] }
+
+[dev-dependencies]
+tokio = { version = "=1.53.2", features = ["macros", "rt"] }
+
+[lints]
+workspace = true

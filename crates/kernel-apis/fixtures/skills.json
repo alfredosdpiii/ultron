@@ -1,0 +1,1196 @@
+{
+	"area": "skills",
+	"scenarios": [
+		{
+			"name": "propose, reject, import, version, rollback",
+			"cells": [
+				{
+					"code": "import json as _json\nr = await skills.propose_code(\"slug\", \"def slugify(text):\\n    return text.upper()\\n\", \"from code_skills import slug\\ndef test_slugify():\\n    assert slug.slugify(\\\"a b\\\") == \\\"a-b\\\"\\n\", \"first try\")\nprint(r[\"status\"], r[\"version\"], r[\"test\"][\"passed\"], \"AssertionError\" in r[\"test\"][\"tests\"][0][\"error\"])\nprint(_json.dumps({k: v for k, v in r.items() if k != \"test\"}, sort_keys=True))",
+					"status": "ok",
+					"stdout": "rejected 1 False True\n{\"kind\": \"code\", \"name\": \"slug\", \"previous\": null, \"secretCheck\": {\"status\": \"clean\"}, \"status\": \"rejected\", \"version\": 1}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "from code_skills import slug",
+					"status": "error",
+					"stdout": "",
+					"result": null,
+					"error": "ImportError: cannot import name 'slug' from 'code_skills' (unknown location)"
+				},
+				{
+					"code": "import code_skills.slug",
+					"status": "error",
+					"stdout": "",
+					"result": null,
+					"error": "ModuleNotFoundError: No module named 'code_skills.slug'"
+				},
+				{
+					"code": "r = await skills.propose_code(\"slug\", \"\\\"\\\"\\\"Turn free text into URL slugs.\\\"\\\"\\\"\\nimport re\\n\\ndef slugify(text: str) -> str:\\n    \\\"\\\"\\\"Lowercase, keep alphanumerics, join words with hyphens.\\\"\\\"\\\"\\n    return \\\"-\\\".join(re.findall(r\\\"[a-z0-9]+\\\", text.lower()))\\n\", \"x = 1\\n\", \"no tests\")\nprint(r[\"status\"], r[\"test\"][\"error\"])",
+					"status": "ok",
+					"stdout": "rejected test_source defines no test_* functions\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "r = await skills.propose_code(\"slug\", \"def slugify(:\\n\", \"from code_skills import slug\\ndef test_slugify():\\n    assert slug.slugify(\\\"Hello, World!\\\") == \\\"hello-world\\\"\\n\", \"typo\")\nprint(r[\"status\"], \"SyntaxError\" in r[\"test\"][\"error\"])",
+					"status": "ok",
+					"stdout": "rejected True\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nprint(_json.dumps(await skills.propose_code(\"slug\", \"\\\"\\\"\\\"Turn free text into URL slugs.\\\"\\\"\\\"\\nimport re\\n\\ndef slugify(text: str) -> str:\\n    \\\"\\\"\\\"Lowercase, keep alphanumerics, join words with hyphens.\\\"\\\"\\\"\\n    return \\\"-\\\".join(re.findall(r\\\"[a-z0-9]+\\\", text.lower()))\\n\", \"from code_skills import slug\\ndef test_slugify():\\n    assert slug.slugify(\\\"Hello, World!\\\") == \\\"hello-world\\\"\\n\", {\"task\": \"slugs\", \"worked\": True}), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"import\": \"from code_skills import slug\", \"kind\": \"code\", \"name\": \"slug\", \"previous\": null, \"secretCheck\": {\"status\": \"clean\"}, \"status\": \"active\", \"test\": {\"doc\": \"Turn free text into URL slugs.\", \"durationMs\": 0, \"functions\": [{\"doc\": \"Lowercase, keep alphanumerics, join words with hyphens.\", \"name\": \"slugify\", \"signature\": \"slugify(text: str) -> str\"}], \"passed\": true, \"tests\": [{\"name\": \"test_slugify\", \"ok\": true}]}, \"version\": 4}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "from code_skills import slug\nprint(slug.__skill_version__, slug.slugify('Hi There'))",
+					"status": "ok",
+					"stdout": "4 hi-there\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import code_skills.slug\nfrom code_skills.slug import slugify\nprint(code_skills.slug.slugify('A  B'), slugify('C d'))",
+					"status": "ok",
+					"stdout": "a-b c-d\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "r = await skills.propose_code(\"slug\", \"def slugify(text):\\n    return text.upper()\\n\", \"from code_skills import slug\\ndef test_slugify():\\n    assert slug.slugify(\\\"a b\\\") == \\\"a-b\\\"\\n\", \"regression\")\nprint(r[\"status\"], r[\"version\"], r[\"previous\"])\nfrom code_skills import slug\nprint(slug.__skill_version__, slug.slugify('A b'))",
+					"status": "ok",
+					"stdout": "rejected 5 None\n4 a-b\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nprint(_json.dumps(await skills.propose_code(\"slug\", \"\\\"\\\"\\\"Turn free text into URL slugs (v2: underscores).\\\"\\\"\\\"\\nimport re\\n\\ndef slugify(text: str) -> str:\\n    return \\\"_\\\".join(re.findall(r\\\"[a-z0-9]+\\\", text.lower()))\\n\", \"from skill import slugify\\nasync def test_slugify():\\n    assert slugify(\\\"Hello, World!\\\") == \\\"hello_world\\\"\\n\", [\"v2\", {\"ref\": \"blog\"}]), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"import\": \"from code_skills import slug\", \"kind\": \"code\", \"name\": \"slug\", \"previous\": 4, \"secretCheck\": {\"status\": \"clean\"}, \"status\": \"active\", \"test\": {\"doc\": \"Turn free text into URL slugs (v2: underscores).\", \"durationMs\": 0, \"functions\": [{\"doc\": null, \"name\": \"slugify\", \"signature\": \"slugify(text: str) -> str\"}], \"passed\": true, \"tests\": [{\"name\": \"test_slugify\", \"ok\": true}]}, \"version\": 6}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "from code_skills import slug\nprint(slug.__skill_version__, slug.slugify('A b'))",
+					"status": "ok",
+					"stdout": "6 a_b\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\ntry:\n    r = await skills.rollback(\"slug\", 4)\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await skills.rollback(\"slug\", 6)\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await skills.rollback(\"slug\", 99)\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await skills.rollback(\"nosuch\", 1)\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await skills.rollback(\"slug\", 0)\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)",
+					"status": "ok",
+					"stdout": "RuntimeError Only the active version can be rolled back: slug has version 6 active\nok {\"active\": 4, \"name\": \"slug\", \"rolledBack\": 6}\nRuntimeError Unknown version 99 of code skill slug\nRuntimeError Unknown code skill: nosuch\nRuntimeError version must be a positive integer\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "from code_skills import slug\nprint(slug.__skill_version__, slug.slugify('A b'))",
+					"status": "ok",
+					"stdout": "4 a-b\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\ntry:\n    r = await skills.rollback(\"slug\", 4)\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    from code_skills import slug\nexcept ImportError as e:\n    print(\"ImportError\", e)\nprint(dir(__import__(\"code_skills\")))",
+					"status": "ok",
+					"stdout": "ok {\"active\": null, \"name\": \"slug\", \"rolledBack\": 4}\nImportError cannot import name 'slug' from 'code_skills' (unknown location)\n[]\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nprint(_json.dumps(await skills.propose_code(\"slug\", \"\\\"\\\"\\\"Turn free text into URL slugs.\\\"\\\"\\\"\\nimport re\\n\\ndef slugify(text: str) -> str:\\n    \\\"\\\"\\\"Lowercase, keep alphanumerics, join words with hyphens.\\\"\\\"\\\"\\n    return \\\"-\\\".join(re.findall(r\\\"[a-z0-9]+\\\", text.lower()))\\n\", \"from code_skills import slug\\ndef test_slugify():\\n    assert slug.slugify(\\\"Hello, World!\\\") == \\\"hello-world\\\"\\n\", \"v3\"), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"import\": \"from code_skills import slug\", \"kind\": \"code\", \"name\": \"slug\", \"previous\": null, \"secretCheck\": {\"status\": \"clean\"}, \"status\": \"active\", \"test\": {\"doc\": \"Turn free text into URL slugs.\", \"durationMs\": 0, \"functions\": [{\"doc\": \"Lowercase, keep alphanumerics, join words with hyphens.\", \"name\": \"slugify\", \"signature\": \"slugify(text: str) -> str\"}], \"passed\": true, \"tests\": [{\"name\": \"test_slugify\", \"ok\": true}]}, \"version\": 7}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nprint(_json.dumps(await skills.code_list(), sort_keys=True))",
+					"status": "ok",
+					"stdout": "[{\"activatedAt\": \"<time>\", \"doc\": \"Turn free text into URL slugs.\", \"family\": null, \"functions\": [{\"doc\": \"Lowercase, keep alphanumerics, join words with hyphens.\", \"name\": \"slugify\", \"signature\": \"slugify(text: str) -> str\"}], \"kind\": \"code\", \"name\": \"slug\", \"version\": 7}]\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nprint(_json.dumps(await skills.code_history(\"slug\"), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"active\": 7, \"format\": 1, \"name\": \"slug\", \"versions\": [{\"createdAt\": \"<time>\", \"evidence\": \"first try\", \"family\": null, \"history\": [{\"at\": \"<time>\", \"cause\": \"<uuid>\", \"state\": \"proposed\"}, {\"at\": \"<time>\", \"cause\": \"<uuid>\", \"state\": \"rejected\"}], \"kind\": \"code\", \"previous\": null, \"secretCheck\": {\"status\": \"clean\"}, \"sha256\": {\"skill\": \"a347b8757db6b19fb6f5aea0613a6384f3dc70fe2dfe56812596b8cdd7cd5618\", \"test\": \"f669e344e31d44cb600834b613098d269f90b231452ad358659fd5a73aec5ad5\"}, \"state\": \"rejected\", \"test\": {\"doc\": null, \"durationMs\": 0, \"functions\": [{\"doc\": null, \"name\": \"slugify\", \"signature\": \"slugify(text)\"}], \"passed\": false, \"tests\": [{\"error\": \"Traceback (most recent call last):\\n  File \\\"<rlm-cell>\\\", line 38, in <module>\\n  File \\\"test_skill.py\\\", line 3, in test_slugify\\n    assert slug.slugify(\\\"a b\\\") == \\\"a-b\\\"\\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\\nAssertionError\\n\", \"name\": \"test_slugify\", \"ok\": false}]}, \"version\": 1}, {\"createdAt\": \"<time>\", \"evidence\": \"no tests\", \"family\": null, \"history\": [{\"at\": \"<time>\", \"cause\": \"<uuid>\", \"state\": \"proposed\"}, {\"at\": \"<time>\", \"cause\": \"<uuid>\", \"state\": \"rejected\"}], \"kind\": \"code\", \"previous\": null, \"secretCheck\": {\"status\": \"clean\"}, \"sha256\": {\"skill\": \"e2cd754ef62c37cc41c207f50694b769d7b843a66e2857215062f8ece238d944\", \"test\": \"9e26bf369911c45c243c684147b23fc9e1dcfcf257d299a1c632016a6fcd33f4\"}, \"state\": \"rejected\", \"test\": {\"doc\": \"Turn free text into URL slugs.\", \"durationMs\": 0, \"error\": \"test_source defines no test_* functions\", \"functions\": [{\"doc\": \"Lowercase, keep alphanumerics, join words with hyphens.\", \"name\": \"slugify\", \"signature\": \"slugify(text: str) -> str\"}], \"passed\": false, \"tests\": []}, \"version\": 2}, {\"createdAt\": \"<time>\", \"evidence\": \"typo\", \"family\": null, \"history\": [{\"at\": \"<time>\", \"cause\": \"<uuid>\", \"state\": \"proposed\"}, {\"at\": \"<time>\", \"cause\": \"<uuid>\", \"state\": \"rejected\"}], \"kind\": \"code\", \"previous\": null, \"secretCheck\": {\"status\": \"clean\"}, \"sha256\": {\"skill\": \"af83d42dc7a4efc1e4d36e01c79c310a1925e318d7d4054ff89aa9e6e51af1ef\", \"test\": \"e43938d82790b35f1f3d2f5f959a0b801f75567eafb7e67db621d394262599ac\"}, \"state\": \"rejected\", \"test\": {\"doc\": null, \"durationMs\": 0, \"error\": \"  File \\\"<rlm-cell>\\\", line 12, in <module>\\n  File \\\"/usr/lib/python3.14/ast.py\\\", line 46, in parse\\n    return compile(source, filename, mode, flags,\\n                   _feature_version=feature_version, optimize=optimize)\\n  File \\\"skill.py\\\", line 1\\n    def slugify(:\\n                ^\\nSyntaxError: invalid syntax\\n\", \"functions\": [], \"passed\": false, \"tests\": []}, \"version\": 3}, {\"createdAt\": \"<time>\", \"evidence\": {\"task\": \"slugs\", \"worked\": true}, \"family\": null, \"history\": [{\"at\": \"<time>\", \"cause\": \"<uuid>\", \"state\": \"proposed\"}, {\"at\": \"<time>\", \"cause\": \"<uuid>\", \"state\": \"active\"}, {\"at\": \"<time>\", \"cause\": \"<uuid>\", \"state\": \"superseded\"}, {\"at\": \"<time>\", \"cause\": \"<uuid>\", \"state\": \"active\"}, {\"at\": \"<time>\", \"cause\": \"<uuid>\", \"state\": \"rolled_back\"}], \"kind\": \"code\", \"previous\": null, \"secretCheck\": {\"status\": \"clean\"}, \"sha256\": {\"skill\": \"e2cd754ef62c37cc41c207f50694b769d7b843a66e2857215062f8ece238d944\", \"test\": \"e43938d82790b35f1f3d2f5f959a0b801f75567eafb7e67db621d394262599ac\"}, \"state\": \"rolled_back\", \"test\": {\"doc\": \"Turn free text into URL slugs.\", \"durationMs\": 0, \"functions\": [{\"doc\": \"Lowercase, keep alphanumerics, join words with hyphens.\", \"name\": \"slugify\", \"signature\": \"slugify(text: str) -> str\"}], \"passed\": true, \"tests\": [{\"name\": \"test_slugify\", \"ok\": true}]}, \"version\": 4}, {\"createdAt\": \"<time>\", \"evidence\": \"regression\", \"family\": null, \"history\": [{\"at\": \"<time>\", \"cause\": \"<uuid>\", \"state\": \"proposed\"}, {\"at\": \"<time>\", \"cause\": \"<uuid>\", \"state\": \"rejected\"}], \"kind\": \"code\", \"previous\": null, \"secretCheck\": {\"status\": \"clean\"}, \"sha256\": {\"skill\": \"a347b8757db6b19fb6f5aea0613a6384f3dc70fe2dfe56812596b8cdd7cd5618\", \"test\": \"f669e344e31d44cb600834b613098d269f90b231452ad358659fd5a73aec5ad5\"}, \"state\": \"rejected\", \"test\": {\"doc\": null, \"durationMs\": 0, \"functions\": [{\"doc\": null, \"name\": \"slugify\", \"signature\": \"slugify(text)\"}], \"passed\": false, \"tests\": [{\"error\": \"Traceback (most recent call last):\\n  File \\\"<rlm-cell>\\\", line 38, in <module>\\n  File \\\"test_skill.py\\\", line 3, in test_slugify\\n    assert slug.slugify(\\\"a b\\\") == \\\"a-b\\\"\\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\\nAssertionError\\n\", \"name\": \"test_slugify\", \"ok\": false}]}, \"version\": 5}, {\"createdAt\": \"<time>\", \"evidence\": [\"v2\", {\"ref\": \"blog\"}], \"family\": null, \"history\": [{\"at\": \"<time>\", \"cause\": \"<uuid>\", \"state\": \"proposed\"}, {\"at\": \"<time>\", \"cause\": \"<uuid>\", \"state\": \"active\"}, {\"at\": \"<time>\", \"cause\": \"<uuid>\", \"state\": \"rolled_back\"}], \"kind\": \"code\", \"previous\": 4, \"secretCheck\": {\"status\": \"clean\"}, \"sha256\": {\"skill\": \"479b9aa48de53bb64f3fd45aa3a1e95044d6b9648f4e1df726d9a8b7602cccaf\", \"test\": \"b470617a805adf9c459d025b0dae32084a987e6f3ce8f85c063d108077459932\"}, \"state\": \"rolled_back\", \"test\": {\"doc\": \"Turn free text into URL slugs (v2: underscores).\", \"durationMs\": 0, \"functions\": [{\"doc\": null, \"name\": \"slugify\", \"signature\": \"slugify(text: str) -> str\"}], \"passed\": true, \"tests\": [{\"name\": \"test_slugify\", \"ok\": true}]}, \"version\": 6}, {\"createdAt\": \"<time>\", \"evidence\": \"v3\", \"family\": null, \"history\": [{\"at\": \"<time>\", \"cause\": \"<uuid>\", \"state\": \"proposed\"}, {\"at\": \"<time>\", \"cause\": \"<uuid>\", \"state\": \"active\"}], \"kind\": \"code\", \"previous\": null, \"secretCheck\": {\"status\": \"clean\"}, \"sha256\": {\"skill\": \"e2cd754ef62c37cc41c207f50694b769d7b843a66e2857215062f8ece238d944\", \"test\": \"e43938d82790b35f1f3d2f5f959a0b801f75567eafb7e67db621d394262599ac\"}, \"state\": \"active\", \"test\": {\"doc\": \"Turn free text into URL slugs.\", \"durationMs\": 0, \"functions\": [{\"doc\": \"Lowercase, keep alphanumerics, join words with hyphens.\", \"name\": \"slugify\", \"signature\": \"slugify(text: str) -> str\"}], \"passed\": true, \"tests\": [{\"name\": \"test_slugify\", \"ok\": true}]}, \"version\": 7}]}\n",
+					"result": "",
+					"error": null
+				}
+			],
+			"state": {
+				"module": {
+					"format": 1,
+					"generation": 1,
+					"catalog": [
+						{
+							"name": "deploy-notes",
+							"description": "Write deployment notes for a release",
+							"file_path": "/skills/deploy-notes/SKILL.md",
+							"version": "0754f48d8d1197a890551e2e92c0268e3864a5482efe8c8c69216bac63d44407",
+							"invocable": true
+						},
+						{
+							"name": "slug-helper",
+							"description": "Make URL slugs",
+							"file_path": "/skills/slug-helper/SKILL.md",
+							"version": "346a08ce4a15a97872b883ac76a8f62610e1a7809bd633db63a2f3fc47349856",
+							"invocable": true
+						},
+						{
+							"name": "hidden",
+							"description": "Internal only",
+							"file_path": "/skills/hidden/SKILL.md",
+							"version": "562d7dd7a7b905b7a0bf3c9cb0d09e9876f336b2402bbe233762836520998fb7",
+							"invocable": false
+						}
+					],
+					"changes": [
+						{
+							"at": 1760000000000,
+							"generation": 1,
+							"name": "deploy-notes",
+							"from": null,
+							"to": "0754f48d8d1197a890551e2e92c0268e3864a5482efe8c8c69216bac63d44407"
+						},
+						{
+							"at": 1760000000000,
+							"generation": 1,
+							"name": "hidden",
+							"from": null,
+							"to": "562d7dd7a7b905b7a0bf3c9cb0d09e9876f336b2402bbe233762836520998fb7"
+						},
+						{
+							"at": 1760000000000,
+							"generation": 1,
+							"name": "slug-helper",
+							"from": null,
+							"to": "346a08ce4a15a97872b883ac76a8f62610e1a7809bd633db63a2f3fc47349856"
+						}
+					],
+					"decisions": [],
+					"loads": [],
+					"invocations": [],
+					"code": [
+						{
+							"id": "<uuid>",
+							"at": 1760000000000,
+							"action": "propose_code",
+							"name": "slug",
+							"caller_task_id": null,
+							"version": 1,
+							"status": "rejected",
+							"secretCheck": {
+								"status": "clean"
+							},
+							"test": {
+								"passed": false,
+								"tests": 1,
+								"failed": [
+									"test_slugify"
+								]
+							}
+						},
+						{
+							"id": "<uuid>",
+							"at": 1760000000000,
+							"action": "propose_code",
+							"name": "slug",
+							"caller_task_id": null,
+							"version": 2,
+							"status": "rejected",
+							"secretCheck": {
+								"status": "clean"
+							},
+							"test": {
+								"passed": false,
+								"tests": 0,
+								"failed": [],
+								"error": "test_source defines no test_* functions"
+							}
+						},
+						{
+							"id": "<uuid>",
+							"at": 1760000000000,
+							"action": "propose_code",
+							"name": "slug",
+							"caller_task_id": null,
+							"version": 3,
+							"status": "rejected",
+							"secretCheck": {
+								"status": "clean"
+							},
+							"test": {
+								"passed": false,
+								"tests": 0,
+								"failed": [],
+								"error": "  File \"<rlm-cell>\", line 12, in <module>\n  File \"/usr/lib/python3.14/ast.py\", line 46, in parse\n    return compile(source, filename, mode, flags,\n                   _feature_version=feature_version, optimize=optimize)\n  File \"skill.py\", line 1\n    def slugify(:\n                ^\nSyntaxError: invalid syntax\n"
+							}
+						},
+						{
+							"id": "<uuid>",
+							"at": 1760000000000,
+							"action": "propose_code",
+							"name": "slug",
+							"caller_task_id": null,
+							"version": 4,
+							"status": "active",
+							"secretCheck": {
+								"status": "clean"
+							},
+							"test": {
+								"passed": true,
+								"tests": 1,
+								"failed": []
+							}
+						},
+						{
+							"id": "<uuid>",
+							"at": 1760000000000,
+							"action": "propose_code",
+							"name": "slug",
+							"caller_task_id": null,
+							"version": 5,
+							"status": "rejected",
+							"secretCheck": {
+								"status": "clean"
+							},
+							"test": {
+								"passed": false,
+								"tests": 1,
+								"failed": [
+									"test_slugify"
+								]
+							}
+						},
+						{
+							"id": "<uuid>",
+							"at": 1760000000000,
+							"action": "propose_code",
+							"name": "slug",
+							"caller_task_id": null,
+							"version": 6,
+							"status": "active",
+							"secretCheck": {
+								"status": "clean"
+							},
+							"test": {
+								"passed": true,
+								"tests": 1,
+								"failed": []
+							}
+						},
+						{
+							"id": "<uuid>",
+							"at": 1760000000000,
+							"action": "rollback",
+							"name": "slug",
+							"caller_task_id": null,
+							"version": null,
+							"status": "failed",
+							"error": "Only the active version can be rolled back: slug has version 6 active"
+						},
+						{
+							"id": "<uuid>",
+							"at": 1760000000000,
+							"action": "rollback",
+							"name": "slug",
+							"caller_task_id": null,
+							"version": 6,
+							"status": "rolled_back",
+							"active": 4
+						},
+						{
+							"id": "<uuid>",
+							"at": 1760000000000,
+							"action": "rollback",
+							"name": "slug",
+							"caller_task_id": null,
+							"version": null,
+							"status": "failed",
+							"error": "Unknown version 99 of code skill slug"
+						},
+						{
+							"id": "<uuid>",
+							"at": 1760000000000,
+							"action": "rollback",
+							"name": "nosuch",
+							"caller_task_id": null,
+							"version": null,
+							"status": "failed",
+							"error": "Unknown code skill: nosuch"
+						},
+						{
+							"id": "<uuid>",
+							"at": 1760000000000,
+							"action": "rollback",
+							"name": "slug",
+							"caller_task_id": null,
+							"version": null,
+							"status": "failed",
+							"error": "version must be a positive integer"
+						},
+						{
+							"id": "<uuid>",
+							"at": 1760000000000,
+							"action": "rollback",
+							"name": "slug",
+							"caller_task_id": null,
+							"version": 4,
+							"status": "rolled_back",
+							"active": null
+						},
+						{
+							"id": "<uuid>",
+							"at": 1760000000000,
+							"action": "propose_code",
+							"name": "slug",
+							"caller_task_id": null,
+							"version": 7,
+							"status": "active",
+							"secretCheck": {
+								"status": "clean"
+							},
+							"test": {
+								"passed": true,
+								"tests": 1,
+								"failed": []
+							}
+						}
+					]
+				},
+				"files": {
+					"slug/.history.json": "{\n\t\"format\": 1,\n\t\"name\": \"slug\",\n\t\"active\": 7,\n\t\"versions\": [\n\t\t{\n\t\t\t\"version\": 1,\n\t\t\t\"kind\": \"code\",\n\t\t\t\"family\": null,\n\t\t\t\"state\": \"rejected\",\n\t\t\t\"createdAt\": \"<time>\",\n\t\t\t\"sha256\": {\n\t\t\t\t\"skill\": \"a347b8757db6b19fb6f5aea0613a6384f3dc70fe2dfe56812596b8cdd7cd5618\",\n\t\t\t\t\"test\": \"f669e344e31d44cb600834b613098d269f90b231452ad358659fd5a73aec5ad5\"\n\t\t\t},\n\t\t\t\"evidence\": \"first try\",\n\t\t\t\"previous\": null,\n\t\t\t\"secretCheck\": {\n\t\t\t\t\"status\": \"clean\"\n\t\t\t},\n\t\t\t\"test\": {\n\t\t\t\t\"passed\": false,\n\t\t\t\t\"tests\": [\n\t\t\t\t\t{\n\t\t\t\t\t\t\"name\": \"test_slugify\",\n\t\t\t\t\t\t\"ok\": false,\n\t\t\t\t\t\t\"error\": \"Traceback (most recent call last):\\n  File \\\"<rlm-cell>\\\", line 38, in <module>\\n  File \\\"test_skill.py\\\", line 3, in test_slugify\\n    assert slug.slugify(\\\"a b\\\") == \\\"a-b\\\"\\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\\nAssertionError\\n\"\n\t\t\t\t\t}\n\t\t\t\t],\n\t\t\t\t\"doc\": null,\n\t\t\t\t\"functions\": [\n\t\t\t\t\t{\n\t\t\t\t\t\t\"name\": \"slugify\",\n\t\t\t\t\t\t\"signature\": \"slugify(text)\",\n\t\t\t\t\t\t\"doc\": null\n\t\t\t\t\t}\n\t\t\t\t],\n\t\t\t\t\"durationMs\": 0\n\t\t\t},\n\t\t\t\"history\": [\n\t\t\t\t{\n\t\t\t\t\t\"state\": \"proposed\",\n\t\t\t\t\t\"at\": \"<time>\",\n\t\t\t\t\t\"cause\": \"<uuid>\"\n\t\t\t\t},\n\t\t\t\t{\n\t\t\t\t\t\"state\": \"rejected\",\n\t\t\t\t\t\"at\": \"<time>\",\n\t\t\t\t\t\"cause\": \"<uuid>\"\n\t\t\t\t}\n\t\t\t]\n\t\t},\n\t\t{\n\t\t\t\"version\": 2,\n\t\t\t\"kind\": \"code\",\n\t\t\t\"family\": null,\n\t\t\t\"state\": \"rejected\",\n\t\t\t\"createdAt\": \"<time>\",\n\t\t\t\"sha256\": {\n\t\t\t\t\"skill\": \"e2cd754ef62c37cc41c207f50694b769d7b843a66e2857215062f8ece238d944\",\n\t\t\t\t\"test\": \"9e26bf369911c45c243c684147b23fc9e1dcfcf257d299a1c632016a6fcd33f4\"\n\t\t\t},\n\t\t\t\"evidence\": \"no tests\",\n\t\t\t\"previous\": null,\n\t\t\t\"secretCheck\": {\n\t\t\t\t\"status\": \"clean\"\n\t\t\t},\n\t\t\t\"test\": {\n\t\t\t\t\"passed\": false,\n\t\t\t\t\"tests\": [],\n\t\t\t\t\"doc\": \"Turn free text into URL slugs.\",\n\t\t\t\t\"functions\": [\n\t\t\t\t\t{\n\t\t\t\t\t\t\"name\": \"slugify\",\n\t\t\t\t\t\t\"signature\": \"slugify(text: str) -> str\",\n\t\t\t\t\t\t\"doc\": \"Lowercase, keep alphanumerics, join words with hyphens.\"\n\t\t\t\t\t}\n\t\t\t\t],\n\t\t\t\t\"error\": \"test_source defines no test_* functions\",\n\t\t\t\t\"durationMs\": 0\n\t\t\t},\n\t\t\t\"history\": [\n\t\t\t\t{\n\t\t\t\t\t\"state\": \"proposed\",\n\t\t\t\t\t\"at\": \"<time>\",\n\t\t\t\t\t\"cause\": \"<uuid>\"\n\t\t\t\t},\n\t\t\t\t{\n\t\t\t\t\t\"state\": \"rejected\",\n\t\t\t\t\t\"at\": \"<time>\",\n\t\t\t\t\t\"cause\": \"<uuid>\"\n\t\t\t\t}\n\t\t\t]\n\t\t},\n\t\t{\n\t\t\t\"version\": 3,\n\t\t\t\"kind\": \"code\",\n\t\t\t\"family\": null,\n\t\t\t\"state\": \"rejected\",\n\t\t\t\"createdAt\": \"<time>\",\n\t\t\t\"sha256\": {\n\t\t\t\t\"skill\": \"af83d42dc7a4efc1e4d36e01c79c310a1925e318d7d4054ff89aa9e6e51af1ef\",\n\t\t\t\t\"test\": \"e43938d82790b35f1f3d2f5f959a0b801f75567eafb7e67db621d394262599ac\"\n\t\t\t},\n\t\t\t\"evidence\": \"typo\",\n\t\t\t\"previous\": null,\n\t\t\t\"secretCheck\": {\n\t\t\t\t\"status\": \"clean\"\n\t\t\t},\n\t\t\t\"test\": {\n\t\t\t\t\"passed\": false,\n\t\t\t\t\"tests\": [],\n\t\t\t\t\"doc\": null,\n\t\t\t\t\"functions\": [],\n\t\t\t\t\"error\": \"  File \\\"<rlm-cell>\\\", line 12, in <module>\\n  File \\\"/usr/lib/python3.14/ast.py\\\", line 46, in parse\\n    return compile(source, filename, mode, flags,\\n                   _feature_version=feature_version, optimize=optimize)\\n  File \\\"skill.py\\\", line 1\\n    def slugify(:\\n                ^\\nSyntaxError: invalid syntax\\n\",\n\t\t\t\t\"durationMs\": 0\n\t\t\t},\n\t\t\t\"history\": [\n\t\t\t\t{\n\t\t\t\t\t\"state\": \"proposed\",\n\t\t\t\t\t\"at\": \"<time>\",\n\t\t\t\t\t\"cause\": \"<uuid>\"\n\t\t\t\t},\n\t\t\t\t{\n\t\t\t\t\t\"state\": \"rejected\",\n\t\t\t\t\t\"at\": \"<time>\",\n\t\t\t\t\t\"cause\": \"<uuid>\"\n\t\t\t\t}\n\t\t\t]\n\t\t},\n\t\t{\n\t\t\t\"version\": 4,\n\t\t\t\"kind\": \"code\",\n\t\t\t\"family\": null,\n\t\t\t\"state\": \"rolled_back\",\n\t\t\t\"createdAt\": \"<time>\",\n\t\t\t\"sha256\": {\n\t\t\t\t\"skill\": \"e2cd754ef62c37cc41c207f50694b769d7b843a66e2857215062f8ece238d944\",\n\t\t\t\t\"test\": \"e43938d82790b35f1f3d2f5f959a0b801f75567eafb7e67db621d394262599ac\"\n\t\t\t},\n\t\t\t\"evidence\": {\n\t\t\t\t\"task\": \"slugs\",\n\t\t\t\t\"worked\": true\n\t\t\t},\n\t\t\t\"previous\": null,\n\t\t\t\"secretCheck\": {\n\t\t\t\t\"status\": \"clean\"\n\t\t\t},\n\t\t\t\"test\": {\n\t\t\t\t\"passed\": true,\n\t\t\t\t\"tests\": [\n\t\t\t\t\t{\n\t\t\t\t\t\t\"name\": \"test_slugify\",\n\t\t\t\t\t\t\"ok\": true\n\t\t\t\t\t}\n\t\t\t\t],\n\t\t\t\t\"doc\": \"Turn free text into URL slugs.\",\n\t\t\t\t\"functions\": [\n\t\t\t\t\t{\n\t\t\t\t\t\t\"name\": \"slugify\",\n\t\t\t\t\t\t\"signature\": \"slugify(text: str) -> str\",\n\t\t\t\t\t\t\"doc\": \"Lowercase, keep alphanumerics, join words with hyphens.\"\n\t\t\t\t\t}\n\t\t\t\t],\n\t\t\t\t\"durationMs\": 0\n\t\t\t},\n\t\t\t\"history\": [\n\t\t\t\t{\n\t\t\t\t\t\"state\": \"proposed\",\n\t\t\t\t\t\"at\": \"<time>\",\n\t\t\t\t\t\"cause\": \"<uuid>\"\n\t\t\t\t},\n\t\t\t\t{\n\t\t\t\t\t\"state\": \"active\",\n\t\t\t\t\t\"at\": \"<time>\",\n\t\t\t\t\t\"cause\": \"<uuid>\"\n\t\t\t\t},\n\t\t\t\t{\n\t\t\t\t\t\"state\": \"superseded\",\n\t\t\t\t\t\"at\": \"<time>\",\n\t\t\t\t\t\"cause\": \"<uuid>\"\n\t\t\t\t},\n\t\t\t\t{\n\t\t\t\t\t\"state\": \"active\",\n\t\t\t\t\t\"at\": \"<time>\",\n\t\t\t\t\t\"cause\": \"<uuid>\"\n\t\t\t\t},\n\t\t\t\t{\n\t\t\t\t\t\"state\": \"rolled_back\",\n\t\t\t\t\t\"at\": \"<time>\",\n\t\t\t\t\t\"cause\": \"<uuid>\"\n\t\t\t\t}\n\t\t\t]\n\t\t},\n\t\t{\n\t\t\t\"version\": 5,\n\t\t\t\"kind\": \"code\",\n\t\t\t\"family\": null,\n\t\t\t\"state\": \"rejected\",\n\t\t\t\"createdAt\": \"<time>\",\n\t\t\t\"sha256\": {\n\t\t\t\t\"skill\": \"a347b8757db6b19fb6f5aea0613a6384f3dc70fe2dfe56812596b8cdd7cd5618\",\n\t\t\t\t\"test\": \"f669e344e31d44cb600834b613098d269f90b231452ad358659fd5a73aec5ad5\"\n\t\t\t},\n\t\t\t\"evidence\": \"regression\",\n\t\t\t\"previous\": null,\n\t\t\t\"secretCheck\": {\n\t\t\t\t\"status\": \"clean\"\n\t\t\t},\n\t\t\t\"test\": {\n\t\t\t\t\"passed\": false,\n\t\t\t\t\"tests\": [\n\t\t\t\t\t{\n\t\t\t\t\t\t\"name\": \"test_slugify\",\n\t\t\t\t\t\t\"ok\": false,\n\t\t\t\t\t\t\"error\": \"Traceback (most recent call last):\\n  File \\\"<rlm-cell>\\\", line 38, in <module>\\n  File \\\"test_skill.py\\\", line 3, in test_slugify\\n    assert slug.slugify(\\\"a b\\\") == \\\"a-b\\\"\\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\\nAssertionError\\n\"\n\t\t\t\t\t}\n\t\t\t\t],\n\t\t\t\t\"doc\": null,\n\t\t\t\t\"functions\": [\n\t\t\t\t\t{\n\t\t\t\t\t\t\"name\": \"slugify\",\n\t\t\t\t\t\t\"signature\": \"slugify(text)\",\n\t\t\t\t\t\t\"doc\": null\n\t\t\t\t\t}\n\t\t\t\t],\n\t\t\t\t\"durationMs\": 0\n\t\t\t},\n\t\t\t\"history\": [\n\t\t\t\t{\n\t\t\t\t\t\"state\": \"proposed\",\n\t\t\t\t\t\"at\": \"<time>\",\n\t\t\t\t\t\"cause\": \"<uuid>\"\n\t\t\t\t},\n\t\t\t\t{\n\t\t\t\t\t\"state\": \"rejected\",\n\t\t\t\t\t\"at\": \"<time>\",\n\t\t\t\t\t\"cause\": \"<uuid>\"\n\t\t\t\t}\n\t\t\t]\n\t\t},\n\t\t{\n\t\t\t\"version\": 6,\n\t\t\t\"kind\": \"code\",\n\t\t\t\"family\": null,\n\t\t\t\"state\": \"rolled_back\",\n\t\t\t\"createdAt\": \"<time>\",\n\t\t\t\"sha256\": {\n\t\t\t\t\"skill\": \"479b9aa48de53bb64f3fd45aa3a1e95044d6b9648f4e1df726d9a8b7602cccaf\",\n\t\t\t\t\"test\": \"b470617a805adf9c459d025b0dae32084a987e6f3ce8f85c063d108077459932\"\n\t\t\t},\n\t\t\t\"evidence\": [\n\t\t\t\t\"v2\",\n\t\t\t\t{\n\t\t\t\t\t\"ref\": \"blog\"\n\t\t\t\t}\n\t\t\t],\n\t\t\t\"previous\": 4,\n\t\t\t\"secretCheck\": {\n\t\t\t\t\"status\": \"clean\"\n\t\t\t},\n\t\t\t\"test\": {\n\t\t\t\t\"passed\": true,\n\t\t\t\t\"tests\": [\n\t\t\t\t\t{\n\t\t\t\t\t\t\"name\": \"test_slugify\",\n\t\t\t\t\t\t\"ok\": true\n\t\t\t\t\t}\n\t\t\t\t],\n\t\t\t\t\"doc\": \"Turn free text into URL slugs (v2: underscores).\",\n\t\t\t\t\"functions\": [\n\t\t\t\t\t{\n\t\t\t\t\t\t\"name\": \"slugify\",\n\t\t\t\t\t\t\"signature\": \"slugify(text: str) -> str\",\n\t\t\t\t\t\t\"doc\": null\n\t\t\t\t\t}\n\t\t\t\t],\n\t\t\t\t\"durationMs\": 0\n\t\t\t},\n\t\t\t\"history\": [\n\t\t\t\t{\n\t\t\t\t\t\"state\": \"proposed\",\n\t\t\t\t\t\"at\": \"<time>\",\n\t\t\t\t\t\"cause\": \"<uuid>\"\n\t\t\t\t},\n\t\t\t\t{\n\t\t\t\t\t\"state\": \"active\",\n\t\t\t\t\t\"at\": \"<time>\",\n\t\t\t\t\t\"cause\": \"<uuid>\"\n\t\t\t\t},\n\t\t\t\t{\n\t\t\t\t\t\"state\": \"rolled_back\",\n\t\t\t\t\t\"at\": \"<time>\",\n\t\t\t\t\t\"cause\": \"<uuid>\"\n\t\t\t\t}\n\t\t\t]\n\t\t},\n\t\t{\n\t\t\t\"version\": 7,\n\t\t\t\"kind\": \"code\",\n\t\t\t\"family\": null,\n\t\t\t\"state\": \"active\",\n\t\t\t\"createdAt\": \"<time>\",\n\t\t\t\"sha256\": {\n\t\t\t\t\"skill\": \"e2cd754ef62c37cc41c207f50694b769d7b843a66e2857215062f8ece238d944\",\n\t\t\t\t\"test\": \"e43938d82790b35f1f3d2f5f959a0b801f75567eafb7e67db621d394262599ac\"\n\t\t\t},\n\t\t\t\"evidence\": \"v3\",\n\t\t\t\"previous\": null,\n\t\t\t\"secretCheck\": {\n\t\t\t\t\"status\": \"clean\"\n\t\t\t},\n\t\t\t\"test\": {\n\t\t\t\t\"passed\": true,\n\t\t\t\t\"tests\": [\n\t\t\t\t\t{\n\t\t\t\t\t\t\"name\": \"test_slugify\",\n\t\t\t\t\t\t\"ok\": true\n\t\t\t\t\t}\n\t\t\t\t],\n\t\t\t\t\"doc\": \"Turn free text into URL slugs.\",\n\t\t\t\t\"functions\": [\n\t\t\t\t\t{\n\t\t\t\t\t\t\"name\": \"slugify\",\n\t\t\t\t\t\t\"signature\": \"slugify(text: str) -> str\",\n\t\t\t\t\t\t\"doc\": \"Lowercase, keep alphanumerics, join words with hyphens.\"\n\t\t\t\t\t}\n\t\t\t\t],\n\t\t\t\t\"durationMs\": 0\n\t\t\t},\n\t\t\t\"history\": [\n\t\t\t\t{\n\t\t\t\t\t\"state\": \"proposed\",\n\t\t\t\t\t\"at\": \"<time>\",\n\t\t\t\t\t\"cause\": \"<uuid>\"\n\t\t\t\t},\n\t\t\t\t{\n\t\t\t\t\t\"state\": \"active\",\n\t\t\t\t\t\"at\": \"<time>\",\n\t\t\t\t\t\"cause\": \"<uuid>\"\n\t\t\t\t}\n\t\t\t]\n\t\t}\n\t]\n}\n",
+					"slug/.versions/1/SKILL.md": "---\nname: slug\ndescription: \"Python code skill slug (tested).\"\n---\n# slug (code skill, version 1)\n\nTested Python. In the rlm tool: `from code_skills import slug`.\n\n## Functions\n\n- `slugify(text)`\n",
+					"slug/.versions/1/skill.py": "def slugify(text):\n    return text.upper()\n",
+					"slug/.versions/1/test_skill.py": "from code_skills import slug\ndef test_slugify():\n    assert slug.slugify(\"a b\") == \"a-b\"\n",
+					"slug/.versions/2/SKILL.md": "---\nname: slug\ndescription: \"Turn free text into URL slugs.\"\n---\n# slug (code skill, version 2)\n\nTested Python. In the rlm tool: `from code_skills import slug`.\n\nTurn free text into URL slugs.\n\n## Functions\n\n- `slugify(text: str) -> str`: Lowercase, keep alphanumerics, join words with hyphens.\n",
+					"slug/.versions/2/skill.py": "\"\"\"Turn free text into URL slugs.\"\"\"\nimport re\n\ndef slugify(text: str) -> str:\n    \"\"\"Lowercase, keep alphanumerics, join words with hyphens.\"\"\"\n    return \"-\".join(re.findall(r\"[a-z0-9]+\", text.lower()))\n",
+					"slug/.versions/2/test_skill.py": "x = 1\n",
+					"slug/.versions/3/SKILL.md": "---\nname: slug\ndescription: \"Python code skill slug (tested).\"\n---\n# slug (code skill, version 3)\n\nTested Python. In the rlm tool: `from code_skills import slug`.\n",
+					"slug/.versions/3/skill.py": "def slugify(:\n",
+					"slug/.versions/3/test_skill.py": "from code_skills import slug\ndef test_slugify():\n    assert slug.slugify(\"Hello, World!\") == \"hello-world\"\n",
+					"slug/.versions/4/SKILL.md": "---\nname: slug\ndescription: \"Turn free text into URL slugs.\"\n---\n# slug (code skill, version 4)\n\nTested Python. In the rlm tool: `from code_skills import slug`.\n\nTurn free text into URL slugs.\n\n## Functions\n\n- `slugify(text: str) -> str`: Lowercase, keep alphanumerics, join words with hyphens.\n",
+					"slug/.versions/4/skill.py": "\"\"\"Turn free text into URL slugs.\"\"\"\nimport re\n\ndef slugify(text: str) -> str:\n    \"\"\"Lowercase, keep alphanumerics, join words with hyphens.\"\"\"\n    return \"-\".join(re.findall(r\"[a-z0-9]+\", text.lower()))\n",
+					"slug/.versions/4/test_skill.py": "from code_skills import slug\ndef test_slugify():\n    assert slug.slugify(\"Hello, World!\") == \"hello-world\"\n",
+					"slug/.versions/5/SKILL.md": "---\nname: slug\ndescription: \"Python code skill slug (tested).\"\n---\n# slug (code skill, version 5)\n\nTested Python. In the rlm tool: `from code_skills import slug`.\n\n## Functions\n\n- `slugify(text)`\n",
+					"slug/.versions/5/skill.py": "def slugify(text):\n    return text.upper()\n",
+					"slug/.versions/5/test_skill.py": "from code_skills import slug\ndef test_slugify():\n    assert slug.slugify(\"a b\") == \"a-b\"\n",
+					"slug/.versions/6/SKILL.md": "---\nname: slug\ndescription: \"Turn free text into URL slugs (v2: underscores).\"\n---\n# slug (code skill, version 6)\n\nTested Python. In the rlm tool: `from code_skills import slug`.\n\nTurn free text into URL slugs (v2: underscores).\n\n## Functions\n\n- `slugify(text: str) -> str`\n",
+					"slug/.versions/6/skill.py": "\"\"\"Turn free text into URL slugs (v2: underscores).\"\"\"\nimport re\n\ndef slugify(text: str) -> str:\n    return \"_\".join(re.findall(r\"[a-z0-9]+\", text.lower()))\n",
+					"slug/.versions/6/test_skill.py": "from skill import slugify\nasync def test_slugify():\n    assert slugify(\"Hello, World!\") == \"hello_world\"\n",
+					"slug/.versions/7/SKILL.md": "---\nname: slug\ndescription: \"Turn free text into URL slugs.\"\n---\n# slug (code skill, version 7)\n\nTested Python. In the rlm tool: `from code_skills import slug`.\n\nTurn free text into URL slugs.\n\n## Functions\n\n- `slugify(text: str) -> str`: Lowercase, keep alphanumerics, join words with hyphens.\n",
+					"slug/.versions/7/skill.py": "\"\"\"Turn free text into URL slugs.\"\"\"\nimport re\n\ndef slugify(text: str) -> str:\n    \"\"\"Lowercase, keep alphanumerics, join words with hyphens.\"\"\"\n    return \"-\".join(re.findall(r\"[a-z0-9]+\", text.lower()))\n",
+					"slug/.versions/7/test_skill.py": "from code_skills import slug\ndef test_slugify():\n    assert slug.slugify(\"Hello, World!\") == \"hello-world\"\n",
+					"slug/SKILL.md": "---\nname: slug\ndescription: \"Turn free text into URL slugs.\"\n---\n# slug (code skill, version 7)\n\nTested Python. In the rlm tool: `from code_skills import slug`.\n\nTurn free text into URL slugs.\n\n## Functions\n\n- `slugify(text: str) -> str`: Lowercase, keep alphanumerics, join words with hyphens.\n",
+					"slug/skill.py": "\"\"\"Turn free text into URL slugs.\"\"\"\nimport re\n\ndef slugify(text: str) -> str:\n    \"\"\"Lowercase, keep alphanumerics, join words with hyphens.\"\"\"\n    return \"-\".join(re.findall(r\"[a-z0-9]+\", text.lower()))\n",
+					"slug/test_skill.py": "from code_skills import slug\ndef test_slugify():\n    assert slug.slugify(\"Hello, World!\") == \"hello-world\"\n"
+				},
+				"describe": "Active code skills (`from code_skills import <name>`):\n- slug v7: Turn free text into URL slugs. [slugify(text: str) -> str]"
+			}
+		},
+		{
+			"name": "validation, secrets, isolation, policy",
+			"cells": [
+				{
+					"code": "import json as _json\ntry:\n    r = await skills.propose_code(\"Bad\", \"x=1\", \"def test_a(): pass\", \"e\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await skills.propose_code(\"class\", \"x=1\", \"def test_a(): pass\", \"e\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await skills.propose_code(\"a\" * 65, \"x=1\", \"def test_a(): pass\", \"e\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await skills.propose_code(\"ok\", \"x=1\", \"def test_a(): pass\", \"\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await skills.propose_code(\"ok\", \"x=1\", \"def test_a(): pass\", {\"a\": [None, \" \"]})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await skills.propose_code(\"ok\", \"x=1\", \"def test_a(): pass\", \"e\" * 17000)\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await skills.propose_code(\"ok\", \"x\" * 70000, \"def test_a(): pass\", \"e\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await skills.propose_code(\"ok\", \"   \", \"def test_a(): pass\", \"e\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await skills.propose_policy(\"ok\", \"def plan(): pass\", \"def test_a(): pass\", \"e\", family=\"  \")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await skills.code_history(\"nosuch\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await skills.code_history(\"Bad\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await skills.code_list(kind=\"other\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await skills.code_list(family=\"\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await rlm.host_request(\"skills.propose_code\", {\"name\": \"x\", \"source\": \"a\", \"test_source\": \"b\", \"evidence\": \"e\", \"bogus\": 1})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await rlm.host_request(\"skills.code_list\", {\"extra\": 1})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await rlm.host_request(\"skills.unknown\", {})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)",
+					"status": "ok",
+					"stdout": "RuntimeError name must be a lowercase Python identifier (a-z, 0-9, _; at most 64 characters)\nRuntimeError name must be a lowercase Python identifier (a-z, 0-9, _; at most 64 characters)\nRuntimeError name must be a lowercase Python identifier (a-z, 0-9, _; at most 64 characters)\nRuntimeError evidence must be nonempty JSON (what worked, and where)\nRuntimeError evidence must be nonempty JSON (what worked, and where)\nRuntimeError evidence exceeds 16 KiB\nRuntimeError source exceeds 64 KiB\nValueError source must be nonempty Python source text\nRuntimeError family must be a nonempty string of at most 200 characters\nRuntimeError Unknown code skill: nosuch\nRuntimeError name must be a lowercase Python identifier (a-z, 0-9, _; at most 64 characters)\nRuntimeError kind must be \"code\" or \"policy\"\nRuntimeError family must be a nonempty string\nRuntimeError Unknown payload field: bogus\nRuntimeError Unknown payload field: extra\nRuntimeError Unsupported skills request: skills.unknown\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nfor name, source, test, evidence in [\n    (\"deploy\", 'API_KEY = \"sk-abcdefghijklmnop1234\"\\ndef deploy():\\n    return API_KEY\\n', \"def test_x():\\n    pass\\n\", \"deploys\"),\n    (\"fetcher\", \"\\\"\\\"\\\"Turn free text into URL slugs.\\\"\\\"\\\"\\nimport re\\n\\ndef slugify(text: str) -> str:\\n    \\\"\\\"\\\"Lowercase, keep alphanumerics, join words with hyphens.\\\"\\\"\\\"\\n    return \\\"-\\\".join(re.findall(r\\\"[a-z0-9]+\\\", text.lower()))\\n\", 'TOKEN = \"ghp_abcdefghijklmnopqrstuvwx\"\\ndef test_x():\\n    pass\\n', \"fetches\"),\n    (\"notes\", \"\\\"\\\"\\\"Turn free text into URL slugs.\\\"\\\"\\\"\\nimport re\\n\\ndef slugify(text: str) -> str:\\n    \\\"\\\"\\\"Lowercase, keep alphanumerics, join words with hyphens.\\\"\\\"\\\"\\n    return \\\"-\\\".join(re.findall(r\\\"[a-z0-9]+\\\", text.lower()))\\n\", \"from code_skills import slug\\ndef test_slugify():\\n    assert slug.slugify(\\\"Hello, World!\\\") == \\\"hello-world\\\"\\n\", \"the key is AKIAABCDEFGHIJKLMNOP\"),\n]:\n    print(_json.dumps(await skills.propose_code(name, source, test, evidence), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"kind\": \"code\", \"name\": \"deploy\", \"previous\": null, \"reason\": \"the proposal contains a secret or credential; nothing was written\", \"secretCheck\": {\"reason\": \"the proposal contains a secret or credential\", \"status\": \"sensitive\"}, \"status\": \"refused\", \"test\": null, \"version\": null}\n{\"kind\": \"code\", \"name\": \"fetcher\", \"previous\": null, \"reason\": \"the proposal contains a secret or credential; nothing was written\", \"secretCheck\": {\"reason\": \"the proposal contains a secret or credential\", \"status\": \"sensitive\"}, \"status\": \"refused\", \"test\": null, \"version\": null}\n{\"kind\": \"code\", \"name\": \"notes\", \"previous\": null, \"reason\": \"the proposal contains a secret or credential; nothing was written\", \"secretCheck\": {\"reason\": \"the proposal contains a secret or credential\", \"status\": \"sensitive\"}, \"status\": \"refused\", \"test\": null, \"version\": null}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nprint(_json.dumps(await skills.propose_code(\"probe\", '\"\"\"Probe.\"\"\"\\nimport os\\nMARKER = os.getcwd()\\n', 'import os\\nfrom code_skills import probe\\ndef test_fresh_kernel():\\n    assert \"state\" not in globals() or globals()[\"state\"] == {}\\n    assert os.path.basename(os.getcwd()).startswith(\"ultron-skill-test-\")\\nasync def test_no_host():\\n    import __main__\\n    try:\\n        await __main__._STATE.namespace[\"skills\"].list()\\n    except RuntimeError as error:\\n        print(\"refused:\", error)\\n    else:\\n        raise AssertionError(\"host request succeeded\")\\ndef helper():\\n    pass\\n', {\"ref\": \"isolation\"}), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"import\": \"from code_skills import probe\", \"kind\": \"code\", \"name\": \"probe\", \"previous\": null, \"secretCheck\": {\"status\": \"clean\"}, \"status\": \"active\", \"test\": {\"doc\": \"Probe.\", \"durationMs\": 0, \"functions\": [], \"passed\": true, \"tests\": [{\"name\": \"test_fresh_kernel\", \"ok\": true}, {\"name\": \"test_no_host\", \"ok\": true}]}, \"version\": 1}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "r = await skills.propose_code(\"sleepy\", \"def f():\\n    return 1\\n\", \"import time\\ndef test_slow():\\n    time.sleep(30)\\n\", \"slow\")\nprint(r[\"status\"], r[\"test\"][\"error\"], r[\"test\"][\"tests\"])",
+					"status": "ok",
+					"stdout": "rejected test timed out after 4000 ms []\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import os\nos.makedirs(os.path.join(os.environ[\"ULTRON_CODE_SKILLS_DIR\"], \"manual\"), exist_ok=True)\nopen(os.path.join(os.environ[\"ULTRON_CODE_SKILLS_DIR\"], \"manual\", \"SKILL.md\"), \"w\").write(\"---\\nname: manual\\ndescription: d\\n---\\nbody\\n\")\nimport json as _json\ntry:\n    r = await skills.propose_code(\"manual\", \"x = 1\", \"def test_a(): pass\", \"e\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)",
+					"status": "ok",
+					"stdout": "RuntimeError manual is an instruction skill (SKILL.md without code history); choose another name\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nprint(_json.dumps(await skills.propose_policy(\"hourly\", '\"\"\"Split a log into per-hour tasks.\"\"\"\\ndef plan(handle, hours=24):\\n    return [{\"task\": f\"summarize hour {h}\", \"slice\": [h * 100, (h + 1) * 100]} for h in range(hours)]\\nclass Helper:\\n    \"\"\"A helper.\"\"\"\\nasync def fetch(url: str, *, retries: int = 3) -> bytes:\\n    \"\"\"Fetch it.\\n\\n    Details.\"\"\"\\n', 'from code_skills import hourly\\ndef test_plan():\\n    tasks = hourly.plan(None, hours=3)\\n    assert [t[\"slice\"] for t in tasks] == [[0, 100], [100, 200], [200, 300]]\\n', {\"map\": \"8 frames, all complete\"}, family=\"logs-forensics\"), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"import\": \"from code_skills import hourly\", \"kind\": \"policy\", \"name\": \"hourly\", \"previous\": null, \"secretCheck\": {\"status\": \"clean\"}, \"status\": \"active\", \"test\": {\"doc\": \"Split a log into per-hour tasks.\", \"durationMs\": 0, \"functions\": [{\"doc\": null, \"name\": \"plan\", \"signature\": \"plan(handle, hours=24)\"}, {\"doc\": \"A helper.\", \"name\": \"Helper\", \"signature\": \"Helper\"}, {\"doc\": \"Fetch it.\\n\\nDetails.\", \"name\": \"fetch\", \"signature\": \"async fetch(url: str, *, retries: int=3) -> bytes\"}], \"passed\": true, \"tests\": [{\"name\": \"policy_defines_plan\", \"ok\": true}, {\"name\": \"test_plan\", \"ok\": true}]}, \"version\": 1}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "r = await skills.propose_policy(\"noplan\", \"def split(x):\\n    return [x]\\n\", \"def test_ok():\\n    pass\\n\", \"x\")\nprint(r[\"status\"], r[\"test\"][\"tests\"][0][\"name\"], r[\"test\"][\"tests\"][0][\"ok\"], r[\"test\"][\"tests\"][1:])",
+					"status": "ok",
+					"stdout": "rejected policy_defines_plan False [{'name': 'test_ok', 'ok': True}]\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import tempfile, os, importlib.util\nsrc = \"def by_chunks(handle, n=2):\\n    return [{'task': 'chunk', 'index': i} for i in range(n)]\\n\"\npath = os.path.join(tempfile.mkdtemp(), \"planner.py\")\nopen(path, \"w\").write(src)\nspec = importlib.util.spec_from_file_location(\"planner\", path); planner = importlib.util.module_from_spec(spec); spec.loader.exec_module(planner)\nr = await skills.propose_policy(\"chunked\", planner.by_chunks, \"from code_skills import chunked\\ndef test_plan():\\n    assert len(chunked.plan(None, n=3)) == 3\\n\", \"worked on logs\", family=\"logs\")\nfrom code_skills import chunked\nprint(r[\"status\"], r[\"kind\"], len(chunked.plan(None)))\nh = await skills.code_history(\"chunked\")\nprint(h[\"versions\"][0][\"family\"], [s[\"name\"] for s in await skills.code_list(kind=\"policy\", family=\"logs\")])",
+					"status": "ok",
+					"stdout": "active policy 2\nlogs ['chunked']\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nprint(_json.dumps([await skills.code_list(kind='code'), await skills.code_list(kind='policy'), await skills.code_list(family='logs-forensics'), await skills.code_list(family='other')], sort_keys=True))",
+					"status": "ok",
+					"stdout": "[[{\"activatedAt\": \"<time>\", \"doc\": \"Probe.\", \"family\": null, \"functions\": [], \"kind\": \"code\", \"name\": \"probe\", \"version\": 1}], [{\"activatedAt\": \"<time>\", \"doc\": null, \"family\": \"logs\", \"functions\": [{\"doc\": null, \"name\": \"by_chunks\", \"signature\": \"by_chunks(handle, n=2)\"}], \"kind\": \"policy\", \"name\": \"chunked\", \"version\": 1}, {\"activatedAt\": \"<time>\", \"doc\": \"Split a log into per-hour tasks.\", \"family\": \"logs-forensics\", \"functions\": [{\"doc\": null, \"name\": \"plan\", \"signature\": \"plan(handle, hours=24)\"}, {\"doc\": \"A helper.\", \"name\": \"Helper\", \"signature\": \"Helper\"}, {\"doc\": \"Fetch it.\\n\\nDetails.\", \"name\": \"fetch\", \"signature\": \"async fetch(url: str, *, retries: int=3) -> bytes\"}], \"kind\": \"policy\", \"name\": \"hourly\", \"version\": 1}], [{\"activatedAt\": \"<time>\", \"doc\": \"Split a log into per-hour tasks.\", \"family\": \"logs-forensics\", \"functions\": [{\"doc\": null, \"name\": \"plan\", \"signature\": \"plan(handle, hours=24)\"}, {\"doc\": \"A helper.\", \"name\": \"Helper\", \"signature\": \"Helper\"}, {\"doc\": \"Fetch it.\\n\\nDetails.\", \"name\": \"fetch\", \"signature\": \"async fetch(url: str, *, retries: int=3) -> bytes\"}], \"kind\": \"policy\", \"name\": \"hourly\", \"version\": 1}], []]\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import os\np = os.path.join(os.environ[\"ULTRON_CODE_SKILLS_DIR\"], \"probe\", \".versions\", \"1\", \"skill.py\")\nopen(p, \"w\").write(\"MARKER = 'tampered'\\n\")\ntry:\n    from code_skills import probe\nexcept ImportError as e:\n    print(\"ImportError\", e)",
+					"status": "ok",
+					"stdout": "ImportError cannot import name 'probe' from 'code_skills' (unknown location)\n",
+					"result": "",
+					"error": null
+				}
+			],
+			"state": {
+				"module": {
+					"format": 1,
+					"generation": 1,
+					"catalog": [
+						{
+							"name": "deploy-notes",
+							"description": "Write deployment notes for a release",
+							"file_path": "/skills/deploy-notes/SKILL.md",
+							"version": "0754f48d8d1197a890551e2e92c0268e3864a5482efe8c8c69216bac63d44407",
+							"invocable": true
+						},
+						{
+							"name": "slug-helper",
+							"description": "Make URL slugs",
+							"file_path": "/skills/slug-helper/SKILL.md",
+							"version": "346a08ce4a15a97872b883ac76a8f62610e1a7809bd633db63a2f3fc47349856",
+							"invocable": true
+						},
+						{
+							"name": "hidden",
+							"description": "Internal only",
+							"file_path": "/skills/hidden/SKILL.md",
+							"version": "562d7dd7a7b905b7a0bf3c9cb0d09e9876f336b2402bbe233762836520998fb7",
+							"invocable": false
+						}
+					],
+					"changes": [
+						{
+							"at": 1760000000000,
+							"generation": 1,
+							"name": "deploy-notes",
+							"from": null,
+							"to": "0754f48d8d1197a890551e2e92c0268e3864a5482efe8c8c69216bac63d44407"
+						},
+						{
+							"at": 1760000000000,
+							"generation": 1,
+							"name": "hidden",
+							"from": null,
+							"to": "562d7dd7a7b905b7a0bf3c9cb0d09e9876f336b2402bbe233762836520998fb7"
+						},
+						{
+							"at": 1760000000000,
+							"generation": 1,
+							"name": "slug-helper",
+							"from": null,
+							"to": "346a08ce4a15a97872b883ac76a8f62610e1a7809bd633db63a2f3fc47349856"
+						}
+					],
+					"decisions": [],
+					"loads": [],
+					"invocations": [],
+					"code": [
+						{
+							"id": "<uuid>",
+							"at": 1760000000000,
+							"action": "propose_code",
+							"name": "Bad",
+							"caller_task_id": null,
+							"version": null,
+							"status": "failed",
+							"error": "name must be a lowercase Python identifier (a-z, 0-9, _; at most 64 characters)"
+						},
+						{
+							"id": "<uuid>",
+							"at": 1760000000000,
+							"action": "propose_code",
+							"name": "class",
+							"caller_task_id": null,
+							"version": null,
+							"status": "failed",
+							"error": "name must be a lowercase Python identifier (a-z, 0-9, _; at most 64 characters)"
+						},
+						{
+							"id": "<uuid>",
+							"at": 1760000000000,
+							"action": "propose_code",
+							"name": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+							"caller_task_id": null,
+							"version": null,
+							"status": "failed",
+							"error": "name must be a lowercase Python identifier (a-z, 0-9, _; at most 64 characters)"
+						},
+						{
+							"id": "<uuid>",
+							"at": 1760000000000,
+							"action": "propose_code",
+							"name": "ok",
+							"caller_task_id": null,
+							"version": null,
+							"status": "failed",
+							"error": "evidence must be nonempty JSON (what worked, and where)"
+						},
+						{
+							"id": "<uuid>",
+							"at": 1760000000000,
+							"action": "propose_code",
+							"name": "ok",
+							"caller_task_id": null,
+							"version": null,
+							"status": "failed",
+							"error": "evidence must be nonempty JSON (what worked, and where)"
+						},
+						{
+							"id": "<uuid>",
+							"at": 1760000000000,
+							"action": "propose_code",
+							"name": "ok",
+							"caller_task_id": null,
+							"version": null,
+							"status": "failed",
+							"error": "evidence exceeds 16 KiB"
+						},
+						{
+							"id": "<uuid>",
+							"at": 1760000000000,
+							"action": "propose_code",
+							"name": "ok",
+							"caller_task_id": null,
+							"version": null,
+							"status": "failed",
+							"error": "source exceeds 64 KiB"
+						},
+						{
+							"id": "<uuid>",
+							"at": 1760000000000,
+							"action": "propose_policy",
+							"name": "ok",
+							"caller_task_id": null,
+							"version": null,
+							"status": "failed",
+							"error": "family must be a nonempty string of at most 200 characters"
+						},
+						{
+							"id": "<uuid>",
+							"at": 1760000000000,
+							"action": "propose_code",
+							"name": "x",
+							"caller_task_id": null,
+							"version": null,
+							"status": "failed",
+							"error": "Unknown payload field: bogus"
+						},
+						{
+							"id": "<uuid>",
+							"at": 1760000000000,
+							"action": "propose_code",
+							"name": "deploy",
+							"caller_task_id": null,
+							"version": null,
+							"status": "refused",
+							"secretCheck": {
+								"status": "sensitive",
+								"reason": "the proposal contains a secret or credential"
+							}
+						},
+						{
+							"id": "<uuid>",
+							"at": 1760000000000,
+							"action": "propose_code",
+							"name": "fetcher",
+							"caller_task_id": null,
+							"version": null,
+							"status": "refused",
+							"secretCheck": {
+								"status": "sensitive",
+								"reason": "the proposal contains a secret or credential"
+							}
+						},
+						{
+							"id": "<uuid>",
+							"at": 1760000000000,
+							"action": "propose_code",
+							"name": "notes",
+							"caller_task_id": null,
+							"version": null,
+							"status": "refused",
+							"secretCheck": {
+								"status": "sensitive",
+								"reason": "the proposal contains a secret or credential"
+							}
+						},
+						{
+							"id": "<uuid>",
+							"at": 1760000000000,
+							"action": "propose_code",
+							"name": "probe",
+							"caller_task_id": null,
+							"version": 1,
+							"status": "active",
+							"secretCheck": {
+								"status": "clean"
+							},
+							"test": {
+								"passed": true,
+								"tests": 2,
+								"failed": []
+							}
+						},
+						{
+							"id": "<uuid>",
+							"at": 1760000000000,
+							"action": "propose_code",
+							"name": "sleepy",
+							"caller_task_id": null,
+							"version": 1,
+							"status": "rejected",
+							"secretCheck": {
+								"status": "clean"
+							},
+							"test": {
+								"passed": false,
+								"tests": 0,
+								"failed": [],
+								"error": "test timed out after 4000 ms"
+							}
+						},
+						{
+							"id": "<uuid>",
+							"at": 1760000000000,
+							"action": "propose_code",
+							"name": "manual",
+							"caller_task_id": null,
+							"version": null,
+							"status": "failed",
+							"error": "manual is an instruction skill (SKILL.md without code history); choose another name"
+						},
+						{
+							"id": "<uuid>",
+							"at": 1760000000000,
+							"action": "propose_policy",
+							"name": "hourly",
+							"caller_task_id": null,
+							"version": 1,
+							"status": "active",
+							"secretCheck": {
+								"status": "clean"
+							},
+							"test": {
+								"passed": true,
+								"tests": 2,
+								"failed": []
+							}
+						},
+						{
+							"id": "<uuid>",
+							"at": 1760000000000,
+							"action": "propose_policy",
+							"name": "noplan",
+							"caller_task_id": null,
+							"version": 1,
+							"status": "rejected",
+							"secretCheck": {
+								"status": "clean"
+							},
+							"test": {
+								"passed": false,
+								"tests": 2,
+								"failed": [
+									"policy_defines_plan"
+								]
+							}
+						},
+						{
+							"id": "<uuid>",
+							"at": 1760000000000,
+							"action": "propose_policy",
+							"name": "chunked",
+							"caller_task_id": null,
+							"version": 1,
+							"status": "active",
+							"secretCheck": {
+								"status": "clean"
+							},
+							"test": {
+								"passed": true,
+								"tests": 2,
+								"failed": []
+							}
+						}
+					]
+				},
+				"files": {
+					"chunked/.history.json": "{\n\t\"format\": 1,\n\t\"name\": \"chunked\",\n\t\"active\": 1,\n\t\"versions\": [\n\t\t{\n\t\t\t\"version\": 1,\n\t\t\t\"kind\": \"policy\",\n\t\t\t\"family\": \"logs\",\n\t\t\t\"state\": \"active\",\n\t\t\t\"createdAt\": \"<time>\",\n\t\t\t\"sha256\": {\n\t\t\t\t\"skill\": \"9a166ba1f8c4d55478a27ff76c843ed48e391c980634c526510fdfa7d346c625\",\n\t\t\t\t\"test\": \"b5fc3898ae6deb1af6635c89dc40b508c7ff7f40c7b6a60aabde06defa2b89a7\"\n\t\t\t},\n\t\t\t\"evidence\": \"worked on logs\",\n\t\t\t\"previous\": null,\n\t\t\t\"secretCheck\": {\n\t\t\t\t\"status\": \"clean\"\n\t\t\t},\n\t\t\t\"test\": {\n\t\t\t\t\"passed\": true,\n\t\t\t\t\"tests\": [\n\t\t\t\t\t{\n\t\t\t\t\t\t\"name\": \"policy_defines_plan\",\n\t\t\t\t\t\t\"ok\": true\n\t\t\t\t\t},\n\t\t\t\t\t{\n\t\t\t\t\t\t\"name\": \"test_plan\",\n\t\t\t\t\t\t\"ok\": true\n\t\t\t\t\t}\n\t\t\t\t],\n\t\t\t\t\"doc\": null,\n\t\t\t\t\"functions\": [\n\t\t\t\t\t{\n\t\t\t\t\t\t\"name\": \"by_chunks\",\n\t\t\t\t\t\t\"signature\": \"by_chunks(handle, n=2)\",\n\t\t\t\t\t\t\"doc\": null\n\t\t\t\t\t}\n\t\t\t\t],\n\t\t\t\t\"durationMs\": 0\n\t\t\t},\n\t\t\t\"history\": [\n\t\t\t\t{\n\t\t\t\t\t\"state\": \"proposed\",\n\t\t\t\t\t\"at\": \"<time>\",\n\t\t\t\t\t\"cause\": \"<uuid>\"\n\t\t\t\t},\n\t\t\t\t{\n\t\t\t\t\t\"state\": \"active\",\n\t\t\t\t\t\"at\": \"<time>\",\n\t\t\t\t\t\"cause\": \"<uuid>\"\n\t\t\t\t}\n\t\t\t]\n\t\t}\n\t]\n}\n",
+					"chunked/.versions/1/SKILL.md": "---\nname: chunked\ndescription: \"Python policy skill chunked (tested).\"\n---\n# chunked (policy skill, version 1)\n\nTested Python. In the rlm tool: `from code_skills import chunked`.\n\nTask family: logs\n\n## Functions\n\n- `by_chunks(handle, n=2)`\n",
+					"chunked/.versions/1/skill.py": "def by_chunks(handle, n=2):\n    return [{'task': 'chunk', 'index': i} for i in range(n)]\n\nplan = by_chunks\n",
+					"chunked/.versions/1/test_skill.py": "from code_skills import chunked\ndef test_plan():\n    assert len(chunked.plan(None, n=3)) == 3\n",
+					"chunked/SKILL.md": "---\nname: chunked\ndescription: \"Python policy skill chunked (tested).\"\n---\n# chunked (policy skill, version 1)\n\nTested Python. In the rlm tool: `from code_skills import chunked`.\n\nTask family: logs\n\n## Functions\n\n- `by_chunks(handle, n=2)`\n",
+					"chunked/skill.py": "def by_chunks(handle, n=2):\n    return [{'task': 'chunk', 'index': i} for i in range(n)]\n\nplan = by_chunks\n",
+					"chunked/test_skill.py": "from code_skills import chunked\ndef test_plan():\n    assert len(chunked.plan(None, n=3)) == 3\n",
+					"hourly/.history.json": "{\n\t\"format\": 1,\n\t\"name\": \"hourly\",\n\t\"active\": 1,\n\t\"versions\": [\n\t\t{\n\t\t\t\"version\": 1,\n\t\t\t\"kind\": \"policy\",\n\t\t\t\"family\": \"logs-forensics\",\n\t\t\t\"state\": \"active\",\n\t\t\t\"createdAt\": \"<time>\",\n\t\t\t\"sha256\": {\n\t\t\t\t\"skill\": \"34e195f7e9b916a67e1d804f785fcbade7d60810b73cfcfafb69afa855fe423c\",\n\t\t\t\t\"test\": \"4f84e14573b9f151c48a74a3c670eda86d78afb8baa054349e1a0dcece802b0f\"\n\t\t\t},\n\t\t\t\"evidence\": {\n\t\t\t\t\"map\": \"8 frames, all complete\"\n\t\t\t},\n\t\t\t\"previous\": null,\n\t\t\t\"secretCheck\": {\n\t\t\t\t\"status\": \"clean\"\n\t\t\t},\n\t\t\t\"test\": {\n\t\t\t\t\"passed\": true,\n\t\t\t\t\"tests\": [\n\t\t\t\t\t{\n\t\t\t\t\t\t\"name\": \"policy_defines_plan\",\n\t\t\t\t\t\t\"ok\": true\n\t\t\t\t\t},\n\t\t\t\t\t{\n\t\t\t\t\t\t\"name\": \"test_plan\",\n\t\t\t\t\t\t\"ok\": true\n\t\t\t\t\t}\n\t\t\t\t],\n\t\t\t\t\"doc\": \"Split a log into per-hour tasks.\",\n\t\t\t\t\"functions\": [\n\t\t\t\t\t{\n\t\t\t\t\t\t\"name\": \"plan\",\n\t\t\t\t\t\t\"signature\": \"plan(handle, hours=24)\",\n\t\t\t\t\t\t\"doc\": null\n\t\t\t\t\t},\n\t\t\t\t\t{\n\t\t\t\t\t\t\"name\": \"Helper\",\n\t\t\t\t\t\t\"signature\": \"Helper\",\n\t\t\t\t\t\t\"doc\": \"A helper.\"\n\t\t\t\t\t},\n\t\t\t\t\t{\n\t\t\t\t\t\t\"name\": \"fetch\",\n\t\t\t\t\t\t\"signature\": \"async fetch(url: str, *, retries: int=3) -> bytes\",\n\t\t\t\t\t\t\"doc\": \"Fetch it.\\n\\nDetails.\"\n\t\t\t\t\t}\n\t\t\t\t],\n\t\t\t\t\"durationMs\": 0\n\t\t\t},\n\t\t\t\"history\": [\n\t\t\t\t{\n\t\t\t\t\t\"state\": \"proposed\",\n\t\t\t\t\t\"at\": \"<time>\",\n\t\t\t\t\t\"cause\": \"<uuid>\"\n\t\t\t\t},\n\t\t\t\t{\n\t\t\t\t\t\"state\": \"active\",\n\t\t\t\t\t\"at\": \"<time>\",\n\t\t\t\t\t\"cause\": \"<uuid>\"\n\t\t\t\t}\n\t\t\t]\n\t\t}\n\t]\n}\n",
+					"hourly/.versions/1/SKILL.md": "---\nname: hourly\ndescription: \"Split a log into per-hour tasks.\"\n---\n# hourly (policy skill, version 1)\n\nTested Python. In the rlm tool: `from code_skills import hourly`.\n\nTask family: logs-forensics\n\nSplit a log into per-hour tasks.\n\n## Functions\n\n- `plan(handle, hours=24)`\n- `Helper`: A helper.\n- `async fetch(url: str, *, retries: int=3) -> bytes`: Fetch it.\n",
+					"hourly/.versions/1/skill.py": "\"\"\"Split a log into per-hour tasks.\"\"\"\ndef plan(handle, hours=24):\n    return [{\"task\": f\"summarize hour {h}\", \"slice\": [h * 100, (h + 1) * 100]} for h in range(hours)]\nclass Helper:\n    \"\"\"A helper.\"\"\"\nasync def fetch(url: str, *, retries: int = 3) -> bytes:\n    \"\"\"Fetch it.\n\n    Details.\"\"\"\n",
+					"hourly/.versions/1/test_skill.py": "from code_skills import hourly\ndef test_plan():\n    tasks = hourly.plan(None, hours=3)\n    assert [t[\"slice\"] for t in tasks] == [[0, 100], [100, 200], [200, 300]]\n",
+					"hourly/SKILL.md": "---\nname: hourly\ndescription: \"Split a log into per-hour tasks.\"\n---\n# hourly (policy skill, version 1)\n\nTested Python. In the rlm tool: `from code_skills import hourly`.\n\nTask family: logs-forensics\n\nSplit a log into per-hour tasks.\n\n## Functions\n\n- `plan(handle, hours=24)`\n- `Helper`: A helper.\n- `async fetch(url: str, *, retries: int=3) -> bytes`: Fetch it.\n",
+					"hourly/skill.py": "\"\"\"Split a log into per-hour tasks.\"\"\"\ndef plan(handle, hours=24):\n    return [{\"task\": f\"summarize hour {h}\", \"slice\": [h * 100, (h + 1) * 100]} for h in range(hours)]\nclass Helper:\n    \"\"\"A helper.\"\"\"\nasync def fetch(url: str, *, retries: int = 3) -> bytes:\n    \"\"\"Fetch it.\n\n    Details.\"\"\"\n",
+					"hourly/test_skill.py": "from code_skills import hourly\ndef test_plan():\n    tasks = hourly.plan(None, hours=3)\n    assert [t[\"slice\"] for t in tasks] == [[0, 100], [100, 200], [200, 300]]\n",
+					"manual/SKILL.md": "---\nname: manual\ndescription: d\n---\nbody\n",
+					"noplan/.history.json": "{\n\t\"format\": 1,\n\t\"name\": \"noplan\",\n\t\"active\": null,\n\t\"versions\": [\n\t\t{\n\t\t\t\"version\": 1,\n\t\t\t\"kind\": \"policy\",\n\t\t\t\"family\": null,\n\t\t\t\"state\": \"rejected\",\n\t\t\t\"createdAt\": \"<time>\",\n\t\t\t\"sha256\": {\n\t\t\t\t\"skill\": \"7bca29715a98d8fcfd32c17adbf52a3e54c156c61ba161e558aa7b344121135c\",\n\t\t\t\t\"test\": \"3dbb4e9f55c38b8ea37b23a34ce124072f8dad95660106e581a8c87dc8b20fdd\"\n\t\t\t},\n\t\t\t\"evidence\": \"x\",\n\t\t\t\"previous\": null,\n\t\t\t\"secretCheck\": {\n\t\t\t\t\"status\": \"clean\"\n\t\t\t},\n\t\t\t\"test\": {\n\t\t\t\t\"passed\": false,\n\t\t\t\t\"tests\": [\n\t\t\t\t\t{\n\t\t\t\t\t\t\"name\": \"policy_defines_plan\",\n\t\t\t\t\t\t\"ok\": false,\n\t\t\t\t\t\t\"error\": \"Traceback (most recent call last):\\n  File \\\"<rlm-cell>\\\", line 27, in <module>\\nAssertionError: a policy skill must define a callable plan(...)\\n\"\n\t\t\t\t\t},\n\t\t\t\t\t{\n\t\t\t\t\t\t\"name\": \"test_ok\",\n\t\t\t\t\t\t\"ok\": true\n\t\t\t\t\t}\n\t\t\t\t],\n\t\t\t\t\"doc\": null,\n\t\t\t\t\"functions\": [\n\t\t\t\t\t{\n\t\t\t\t\t\t\"name\": \"split\",\n\t\t\t\t\t\t\"signature\": \"split(x)\",\n\t\t\t\t\t\t\"doc\": null\n\t\t\t\t\t}\n\t\t\t\t],\n\t\t\t\t\"durationMs\": 0\n\t\t\t},\n\t\t\t\"history\": [\n\t\t\t\t{\n\t\t\t\t\t\"state\": \"proposed\",\n\t\t\t\t\t\"at\": \"<time>\",\n\t\t\t\t\t\"cause\": \"<uuid>\"\n\t\t\t\t},\n\t\t\t\t{\n\t\t\t\t\t\"state\": \"rejected\",\n\t\t\t\t\t\"at\": \"<time>\",\n\t\t\t\t\t\"cause\": \"<uuid>\"\n\t\t\t\t}\n\t\t\t]\n\t\t}\n\t]\n}\n",
+					"noplan/.versions/1/SKILL.md": "---\nname: noplan\ndescription: \"Python policy skill noplan (tested).\"\n---\n# noplan (policy skill, version 1)\n\nTested Python. In the rlm tool: `from code_skills import noplan`.\n\n## Functions\n\n- `split(x)`\n",
+					"noplan/.versions/1/skill.py": "def split(x):\n    return [x]\n",
+					"noplan/.versions/1/test_skill.py": "def test_ok():\n    pass\n",
+					"probe/.history.json": "{\n\t\"format\": 1,\n\t\"name\": \"probe\",\n\t\"active\": 1,\n\t\"versions\": [\n\t\t{\n\t\t\t\"version\": 1,\n\t\t\t\"kind\": \"code\",\n\t\t\t\"family\": null,\n\t\t\t\"state\": \"active\",\n\t\t\t\"createdAt\": \"<time>\",\n\t\t\t\"sha256\": {\n\t\t\t\t\"skill\": \"6160708db5dca17965bec0073c5a2855d7f2932bade3f5bc638205afe5dc7d96\",\n\t\t\t\t\"test\": \"ba0336557d548cb2bc852d257b3f165de583e3865e862b9f9c968d9046a461f9\"\n\t\t\t},\n\t\t\t\"evidence\": {\n\t\t\t\t\"ref\": \"isolation\"\n\t\t\t},\n\t\t\t\"previous\": null,\n\t\t\t\"secretCheck\": {\n\t\t\t\t\"status\": \"clean\"\n\t\t\t},\n\t\t\t\"test\": {\n\t\t\t\t\"passed\": true,\n\t\t\t\t\"tests\": [\n\t\t\t\t\t{\n\t\t\t\t\t\t\"name\": \"test_fresh_kernel\",\n\t\t\t\t\t\t\"ok\": true\n\t\t\t\t\t},\n\t\t\t\t\t{\n\t\t\t\t\t\t\"name\": \"test_no_host\",\n\t\t\t\t\t\t\"ok\": true\n\t\t\t\t\t}\n\t\t\t\t],\n\t\t\t\t\"doc\": \"Probe.\",\n\t\t\t\t\"functions\": [],\n\t\t\t\t\"durationMs\": 0\n\t\t\t},\n\t\t\t\"history\": [\n\t\t\t\t{\n\t\t\t\t\t\"state\": \"proposed\",\n\t\t\t\t\t\"at\": \"<time>\",\n\t\t\t\t\t\"cause\": \"<uuid>\"\n\t\t\t\t},\n\t\t\t\t{\n\t\t\t\t\t\"state\": \"active\",\n\t\t\t\t\t\"at\": \"<time>\",\n\t\t\t\t\t\"cause\": \"<uuid>\"\n\t\t\t\t}\n\t\t\t]\n\t\t}\n\t]\n}\n",
+					"probe/.versions/1/SKILL.md": "---\nname: probe\ndescription: \"Probe.\"\n---\n# probe (code skill, version 1)\n\nTested Python. In the rlm tool: `from code_skills import probe`.\n\nProbe.\n",
+					"probe/.versions/1/skill.py": "MARKER = 'tampered'\n",
+					"probe/.versions/1/test_skill.py": "import os\nfrom code_skills import probe\ndef test_fresh_kernel():\n    assert \"state\" not in globals() or globals()[\"state\"] == {}\n    assert os.path.basename(os.getcwd()).startswith(\"ultron-skill-test-\")\nasync def test_no_host():\n    import __main__\n    try:\n        await __main__._STATE.namespace[\"skills\"].list()\n    except RuntimeError as error:\n        print(\"refused:\", error)\n    else:\n        raise AssertionError(\"host request succeeded\")\ndef helper():\n    pass\n",
+					"probe/SKILL.md": "---\nname: probe\ndescription: \"Probe.\"\n---\n# probe (code skill, version 1)\n\nTested Python. In the rlm tool: `from code_skills import probe`.\n\nProbe.\n",
+					"probe/skill.py": "\"\"\"Probe.\"\"\"\nimport os\nMARKER = os.getcwd()\n",
+					"probe/test_skill.py": "import os\nfrom code_skills import probe\ndef test_fresh_kernel():\n    assert \"state\" not in globals() or globals()[\"state\"] == {}\n    assert os.path.basename(os.getcwd()).startswith(\"ultron-skill-test-\")\nasync def test_no_host():\n    import __main__\n    try:\n        await __main__._STATE.namespace[\"skills\"].list()\n    except RuntimeError as error:\n        print(\"refused:\", error)\n    else:\n        raise AssertionError(\"host request succeeded\")\ndef helper():\n    pass\n",
+					"sleepy/.history.json": "{\n\t\"format\": 1,\n\t\"name\": \"sleepy\",\n\t\"active\": null,\n\t\"versions\": [\n\t\t{\n\t\t\t\"version\": 1,\n\t\t\t\"kind\": \"code\",\n\t\t\t\"family\": null,\n\t\t\t\"state\": \"rejected\",\n\t\t\t\"createdAt\": \"<time>\",\n\t\t\t\"sha256\": {\n\t\t\t\t\"skill\": \"5b76d0962c09ab4ee309fac65fad3568c97abdec983b405146ae3e86a235e352\",\n\t\t\t\t\"test\": \"ed7a42311a668a4a4f7ace61e8c76cba07015aa3e3ce4de9bf6c785529a57418\"\n\t\t\t},\n\t\t\t\"evidence\": \"slow\",\n\t\t\t\"previous\": null,\n\t\t\t\"secretCheck\": {\n\t\t\t\t\"status\": \"clean\"\n\t\t\t},\n\t\t\t\"test\": {\n\t\t\t\t\"passed\": false,\n\t\t\t\t\"tests\": [],\n\t\t\t\t\"error\": \"test timed out after 4000 ms\",\n\t\t\t\t\"durationMs\": 0,\n\t\t\t\t\"doc\": null,\n\t\t\t\t\"functions\": []\n\t\t\t},\n\t\t\t\"history\": [\n\t\t\t\t{\n\t\t\t\t\t\"state\": \"proposed\",\n\t\t\t\t\t\"at\": \"<time>\",\n\t\t\t\t\t\"cause\": \"<uuid>\"\n\t\t\t\t},\n\t\t\t\t{\n\t\t\t\t\t\"state\": \"rejected\",\n\t\t\t\t\t\"at\": \"<time>\",\n\t\t\t\t\t\"cause\": \"<uuid>\"\n\t\t\t\t}\n\t\t\t]\n\t\t}\n\t]\n}\n",
+					"sleepy/.versions/1/SKILL.md": "---\nname: sleepy\ndescription: \"Python code skill sleepy (tested).\"\n---\n# sleepy (code skill, version 1)\n\nTested Python. In the rlm tool: `from code_skills import sleepy`.\n",
+					"sleepy/.versions/1/skill.py": "def f():\n    return 1\n",
+					"sleepy/.versions/1/test_skill.py": "import time\ndef test_slow():\n    time.sleep(30)\n"
+				},
+				"describe": "Active code skills (`from code_skills import <name>`):\n- chunked v1 (policy, logs): [by_chunks(handle, n=2)]\n- hourly v1 (policy, logs-forensics): Split a log into per-hour tasks. [plan(handle, hours=24); Helper; async fetch(url: str, *, retries: int=3) -> bytes]\n- probe v1: Probe."
+			}
+		},
+		{
+			"name": "catalog: list, select, load, why, refresh",
+			"cells": [
+				{
+					"code": "import json as _json\nprint(_json.dumps(await skills.list(), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"generation\": 1, \"skills\": [{\"description\": \"Write deployment notes for a release\", \"invocable\": true, \"name\": \"deploy-notes\", \"version\": \"0754f48d8d1197a890551e2e92c0268e3864a5482efe8c8c69216bac63d44407\"}, {\"description\": \"Make URL slugs\", \"invocable\": true, \"name\": \"slug-helper\", \"version\": \"346a08ce4a15a97872b883ac76a8f62610e1a7809bd633db63a2f3fc47349856\"}, {\"description\": \"Internal only\", \"invocable\": false, \"name\": \"hidden\", \"version\": \"562d7dd7a7b905b7a0bf3c9cb0d09e9876f336b2402bbe233762836520998fb7\"}]}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nprint(_json.dumps(await skills.select(\"write release notes for the deploy\"), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"at\": 1760000000000, \"caller_task_id\": null, \"candidates\": [{\"matches\": [{\"fields\": [\"description\", \"body\"], \"term\": \"write\"}, {\"fields\": [\"description\", \"body\"], \"term\": \"release\"}, {\"fields\": [\"name\", \"description\", \"body\"], \"term\": \"notes\"}, {\"fields\": [\"name\", \"body\"], \"term\": \"deploy\"}], \"name\": \"deploy-notes\", \"score\": 16, \"version\": \"0754f48d8d1197a890551e2e92c0268e3864a5482efe8c8c69216bac63d44407\"}, {\"matches\": [{\"fields\": [\"body\"], \"term\": \"release\"}], \"name\": \"slug-helper\", \"score\": 1, \"version\": \"346a08ce4a15a97872b883ac76a8f62610e1a7809bd633db63a2f3fc47349856\"}], \"catalog_generation\": 1, \"chosen\": [{\"name\": \"deploy-notes\", \"version\": \"0754f48d8d1197a890551e2e92c0268e3864a5482efe8c8c69216bac63d44407\"}, {\"name\": \"slug-helper\", \"version\": \"346a08ce4a15a97872b883ac76a8f62610e1a7809bd633db63a2f3fc47349856\"}], \"considered\": {\"deploy-notes\": \"0754f48d8d1197a890551e2e92c0268e3864a5482efe8c8c69216bac63d44407\", \"hidden\": \"562d7dd7a7b905b7a0bf3c9cb0d09e9876f336b2402bbe233762836520998fb7\", \"slug-helper\": \"346a08ce4a15a97872b883ac76a8f62610e1a7809bd633db63a2f3fc47349856\"}, \"excluded\": [{\"name\": \"hidden\", \"reason\": \"not_invocable\", \"version\": \"562d7dd7a7b905b7a0bf3c9cb0d09e9876f336b2402bbe233762836520998fb7\"}], \"id\": \"<uuid>\", \"query\": \"write release notes for the deploy\", \"terms\": [\"write\", \"release\", \"notes\", \"deploy\"]}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nprint(_json.dumps(await skills.select(\"slug-helper\", limit=1), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"at\": 1760000000000, \"caller_task_id\": null, \"candidates\": [{\"matches\": [{\"fields\": [\"name\"], \"term\": \"slug\"}, {\"fields\": [\"name\"], \"term\": \"helper\"}], \"name\": \"slug-helper\", \"score\": 11, \"version\": \"346a08ce4a15a97872b883ac76a8f62610e1a7809bd633db63a2f3fc47349856\"}], \"catalog_generation\": 1, \"chosen\": [{\"name\": \"slug-helper\", \"version\": \"346a08ce4a15a97872b883ac76a8f62610e1a7809bd633db63a2f3fc47349856\"}], \"considered\": {\"deploy-notes\": \"0754f48d8d1197a890551e2e92c0268e3864a5482efe8c8c69216bac63d44407\", \"hidden\": \"562d7dd7a7b905b7a0bf3c9cb0d09e9876f336b2402bbe233762836520998fb7\", \"slug-helper\": \"346a08ce4a15a97872b883ac76a8f62610e1a7809bd633db63a2f3fc47349856\"}, \"excluded\": [{\"name\": \"hidden\", \"reason\": \"not_invocable\", \"version\": \"562d7dd7a7b905b7a0bf3c9cb0d09e9876f336b2402bbe233762836520998fb7\"}], \"id\": \"<uuid>\", \"query\": \"slug-helper\", \"terms\": [\"slug\", \"helper\"]}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nprint(_json.dumps(await skills.select(\"the a of\"), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"at\": 1760000000000, \"caller_task_id\": null, \"candidates\": [], \"catalog_generation\": 1, \"chosen\": [], \"considered\": {\"deploy-notes\": \"0754f48d8d1197a890551e2e92c0268e3864a5482efe8c8c69216bac63d44407\", \"hidden\": \"562d7dd7a7b905b7a0bf3c9cb0d09e9876f336b2402bbe233762836520998fb7\", \"slug-helper\": \"346a08ce4a15a97872b883ac76a8f62610e1a7809bd633db63a2f3fc47349856\"}, \"excluded\": [{\"name\": \"hidden\", \"reason\": \"not_invocable\", \"version\": \"562d7dd7a7b905b7a0bf3c9cb0d09e9876f336b2402bbe233762836520998fb7\"}], \"id\": \"<uuid>\", \"query\": \"the a of\", \"terms\": []}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nprint(_json.dumps(await skills.select(\"x z slug\"), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"at\": 1760000000000, \"caller_task_id\": null, \"candidates\": [{\"matches\": [{\"fields\": [\"name\"], \"term\": \"slug\"}], \"name\": \"slug-helper\", \"score\": 3, \"version\": \"346a08ce4a15a97872b883ac76a8f62610e1a7809bd633db63a2f3fc47349856\"}], \"catalog_generation\": 1, \"chosen\": [{\"name\": \"slug-helper\", \"version\": \"346a08ce4a15a97872b883ac76a8f62610e1a7809bd633db63a2f3fc47349856\"}], \"considered\": {\"deploy-notes\": \"0754f48d8d1197a890551e2e92c0268e3864a5482efe8c8c69216bac63d44407\", \"hidden\": \"562d7dd7a7b905b7a0bf3c9cb0d09e9876f336b2402bbe233762836520998fb7\", \"slug-helper\": \"346a08ce4a15a97872b883ac76a8f62610e1a7809bd633db63a2f3fc47349856\"}, \"excluded\": [{\"name\": \"hidden\", \"reason\": \"not_invocable\", \"version\": \"562d7dd7a7b905b7a0bf3c9cb0d09e9876f336b2402bbe233762836520998fb7\"}], \"id\": \"<uuid>\", \"query\": \"x z slug\", \"terms\": [\"slug\"]}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nd = await skills.select(\"release\")\nprint(_json.dumps(d[\"candidates\"], sort_keys=True))\nw = await skills.why(d[\"id\"])\nprint(w == d)",
+					"status": "ok",
+					"stdout": "[{\"matches\": [{\"fields\": [\"description\", \"body\"], \"term\": \"release\"}], \"name\": \"deploy-notes\", \"score\": 3, \"version\": \"0754f48d8d1197a890551e2e92c0268e3864a5482efe8c8c69216bac63d44407\"}, {\"matches\": [{\"fields\": [\"body\"], \"term\": \"release\"}], \"name\": \"slug-helper\", \"score\": 1, \"version\": \"346a08ce4a15a97872b883ac76a8f62610e1a7809bd633db63a2f3fc47349856\"}]\nTrue\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nprint(_json.dumps(await skills.load(\"deploy-notes\"), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"content\": \"---\\nname: deploy-notes\\ndescription: Write deployment notes for a release\\nallowed-tools: [bash]\\nmodel: big\\n---\\nCollect the changelog and write release notes for the deploy.\\n\", \"context_chars\": 172, \"description\": \"Write deployment notes for a release\", \"ignored_capability_requests\": {\"allowed-tools\": [\"bash\"], \"model\": \"big\"}, \"invocable\": true, \"load_id\": \"<uuid>\", \"name\": \"deploy-notes\", \"version\": \"0754f48d8d1197a890551e2e92c0268e3864a5482efe8c8c69216bac63d44407\"}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nv = (await skills.list())[\"skills\"][1][\"version\"]\nprint(_json.dumps(await skills.load(\"slug-helper\", version=v), sort_keys=True))\ntry:\n    r = await skills.load(\"slug-helper\", version=\"0\" * 64)\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await skills.load(\"nosuch\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await skills.load(\"nosuch\", version=\"0\" * 64)\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await skills.load(\"slug-helper\", version=\"ABC\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await skills.load(\"\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await skills.select(\"\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await skills.select(\"x\", limit=0)\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await skills.select(\"x\", limit=51)\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await skills.select(\"x\" * 4001)\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await skills.why(\"nope\")\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await skills.invoke(\"hidden\", \"0\" * 64, {})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)",
+					"status": "ok",
+					"stdout": "{\"content\": \"---\\nname: slug-helper\\ndescription: Make URL slugs\\n---\\nUse slugify on titles. Release slugs are lowercase.\\n\", \"context_chars\": 106, \"description\": \"Make URL slugs\", \"ignored_capability_requests\": {}, \"invocable\": true, \"load_id\": \"<uuid>\", \"name\": \"slug-helper\", \"version\": \"346a08ce4a15a97872b883ac76a8f62610e1a7809bd633db63a2f3fc47349856\"}\nRuntimeError Stale skill version: slug-helper@0000000000000000000000000000000000000000000000000000000000000000 was requested but the catalog has slug-helper@346a08ce4a15a97872b883ac76a8f62610e1a7809bd633db63a2f3fc47349856; select or load again\nRuntimeError Unknown skill: nosuch\nRuntimeError Stale skill version: nosuch@0000000000000000000000000000000000000000000000000000000000000000 is no longer in the catalog (skill removed)\nRuntimeError version must be a lowercase sha256 hex digest\nRuntimeError name must be a nonempty string\nRuntimeError query must be a nonempty string\nRuntimeError limit must be an integer between 1 and 50\nRuntimeError limit must be an integer between 1 and 50\nRuntimeError query must be at most 4000 characters\nRuntimeError Unknown skill decision: nope\nRuntimeError Stale skill version: hidden@0000000000000000000000000000000000000000000000000000000000000000 was requested but the catalog has hidden@562d7dd7a7b905b7a0bf3c9cb0d09e9876f336b2402bbe233762836520998fb7; select or load again\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nprint(_json.dumps(await skills.refresh(), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"changes\": [], \"generation\": 2}\n",
+					"result": "",
+					"error": null
+				}
+			],
+			"state": {
+				"module": {
+					"format": 1,
+					"generation": 2,
+					"catalog": [
+						{
+							"name": "deploy-notes",
+							"description": "Write deployment notes for a release",
+							"file_path": "/skills/deploy-notes/SKILL.md",
+							"version": "0754f48d8d1197a890551e2e92c0268e3864a5482efe8c8c69216bac63d44407",
+							"invocable": true
+						},
+						{
+							"name": "slug-helper",
+							"description": "Make URL slugs",
+							"file_path": "/skills/slug-helper/SKILL.md",
+							"version": "346a08ce4a15a97872b883ac76a8f62610e1a7809bd633db63a2f3fc47349856",
+							"invocable": true
+						},
+						{
+							"name": "hidden",
+							"description": "Internal only",
+							"file_path": "/skills/hidden/SKILL.md",
+							"version": "562d7dd7a7b905b7a0bf3c9cb0d09e9876f336b2402bbe233762836520998fb7",
+							"invocable": false
+						}
+					],
+					"changes": [
+						{
+							"at": 1760000000000,
+							"generation": 1,
+							"name": "deploy-notes",
+							"from": null,
+							"to": "0754f48d8d1197a890551e2e92c0268e3864a5482efe8c8c69216bac63d44407"
+						},
+						{
+							"at": 1760000000000,
+							"generation": 1,
+							"name": "hidden",
+							"from": null,
+							"to": "562d7dd7a7b905b7a0bf3c9cb0d09e9876f336b2402bbe233762836520998fb7"
+						},
+						{
+							"at": 1760000000000,
+							"generation": 1,
+							"name": "slug-helper",
+							"from": null,
+							"to": "346a08ce4a15a97872b883ac76a8f62610e1a7809bd633db63a2f3fc47349856"
+						}
+					],
+					"decisions": [
+						{
+							"id": "<uuid>",
+							"at": 1760000000000,
+							"query": "write release notes for the deploy",
+							"terms": [
+								"write",
+								"release",
+								"notes",
+								"deploy"
+							],
+							"caller_task_id": null,
+							"catalog_generation": 1,
+							"considered": {
+								"deploy-notes": "0754f48d8d1197a890551e2e92c0268e3864a5482efe8c8c69216bac63d44407",
+								"hidden": "562d7dd7a7b905b7a0bf3c9cb0d09e9876f336b2402bbe233762836520998fb7",
+								"slug-helper": "346a08ce4a15a97872b883ac76a8f62610e1a7809bd633db63a2f3fc47349856"
+							},
+							"excluded": [
+								{
+									"name": "hidden",
+									"version": "562d7dd7a7b905b7a0bf3c9cb0d09e9876f336b2402bbe233762836520998fb7",
+									"reason": "not_invocable"
+								}
+							],
+							"candidates": [
+								{
+									"name": "deploy-notes",
+									"version": "0754f48d8d1197a890551e2e92c0268e3864a5482efe8c8c69216bac63d44407",
+									"score": 16,
+									"matches": [
+										{
+											"term": "write",
+											"fields": [
+												"description",
+												"body"
+											]
+										},
+										{
+											"term": "release",
+											"fields": [
+												"description",
+												"body"
+											]
+										},
+										{
+											"term": "notes",
+											"fields": [
+												"name",
+												"description",
+												"body"
+											]
+										},
+										{
+											"term": "deploy",
+											"fields": [
+												"name",
+												"body"
+											]
+										}
+									]
+								},
+								{
+									"name": "slug-helper",
+									"version": "346a08ce4a15a97872b883ac76a8f62610e1a7809bd633db63a2f3fc47349856",
+									"score": 1,
+									"matches": [
+										{
+											"term": "release",
+											"fields": [
+												"body"
+											]
+										}
+									]
+								}
+							],
+							"chosen": [
+								{
+									"name": "deploy-notes",
+									"version": "0754f48d8d1197a890551e2e92c0268e3864a5482efe8c8c69216bac63d44407"
+								},
+								{
+									"name": "slug-helper",
+									"version": "346a08ce4a15a97872b883ac76a8f62610e1a7809bd633db63a2f3fc47349856"
+								}
+							]
+						},
+						{
+							"id": "<uuid>",
+							"at": 1760000000000,
+							"query": "slug-helper",
+							"terms": [
+								"slug",
+								"helper"
+							],
+							"caller_task_id": null,
+							"catalog_generation": 1,
+							"considered": {
+								"deploy-notes": "0754f48d8d1197a890551e2e92c0268e3864a5482efe8c8c69216bac63d44407",
+								"hidden": "562d7dd7a7b905b7a0bf3c9cb0d09e9876f336b2402bbe233762836520998fb7",
+								"slug-helper": "346a08ce4a15a97872b883ac76a8f62610e1a7809bd633db63a2f3fc47349856"
+							},
+							"excluded": [
+								{
+									"name": "hidden",
+									"version": "562d7dd7a7b905b7a0bf3c9cb0d09e9876f336b2402bbe233762836520998fb7",
+									"reason": "not_invocable"
+								}
+							],
+							"candidates": [
+								{
+									"name": "slug-helper",
+									"version": "346a08ce4a15a97872b883ac76a8f62610e1a7809bd633db63a2f3fc47349856",
+									"score": 11,
+									"matches": [
+										{
+											"term": "slug",
+											"fields": [
+												"name"
+											]
+										},
+										{
+											"term": "helper",
+											"fields": [
+												"name"
+											]
+										}
+									]
+								}
+							],
+							"chosen": [
+								{
+									"name": "slug-helper",
+									"version": "346a08ce4a15a97872b883ac76a8f62610e1a7809bd633db63a2f3fc47349856"
+								}
+							]
+						},
+						{
+							"id": "<uuid>",
+							"at": 1760000000000,
+							"query": "the a of",
+							"terms": [],
+							"caller_task_id": null,
+							"catalog_generation": 1,
+							"considered": {
+								"deploy-notes": "0754f48d8d1197a890551e2e92c0268e3864a5482efe8c8c69216bac63d44407",
+								"hidden": "562d7dd7a7b905b7a0bf3c9cb0d09e9876f336b2402bbe233762836520998fb7",
+								"slug-helper": "346a08ce4a15a97872b883ac76a8f62610e1a7809bd633db63a2f3fc47349856"
+							},
+							"excluded": [
+								{
+									"name": "hidden",
+									"version": "562d7dd7a7b905b7a0bf3c9cb0d09e9876f336b2402bbe233762836520998fb7",
+									"reason": "not_invocable"
+								}
+							],
+							"candidates": [],
+							"chosen": []
+						},
+						{
+							"id": "<uuid>",
+							"at": 1760000000000,
+							"query": "x z slug",
+							"terms": [
+								"slug"
+							],
+							"caller_task_id": null,
+							"catalog_generation": 1,
+							"considered": {
+								"deploy-notes": "0754f48d8d1197a890551e2e92c0268e3864a5482efe8c8c69216bac63d44407",
+								"hidden": "562d7dd7a7b905b7a0bf3c9cb0d09e9876f336b2402bbe233762836520998fb7",
+								"slug-helper": "346a08ce4a15a97872b883ac76a8f62610e1a7809bd633db63a2f3fc47349856"
+							},
+							"excluded": [
+								{
+									"name": "hidden",
+									"version": "562d7dd7a7b905b7a0bf3c9cb0d09e9876f336b2402bbe233762836520998fb7",
+									"reason": "not_invocable"
+								}
+							],
+							"candidates": [
+								{
+									"name": "slug-helper",
+									"version": "346a08ce4a15a97872b883ac76a8f62610e1a7809bd633db63a2f3fc47349856",
+									"score": 3,
+									"matches": [
+										{
+											"term": "slug",
+											"fields": [
+												"name"
+											]
+										}
+									]
+								}
+							],
+							"chosen": [
+								{
+									"name": "slug-helper",
+									"version": "346a08ce4a15a97872b883ac76a8f62610e1a7809bd633db63a2f3fc47349856"
+								}
+							]
+						},
+						{
+							"id": "<uuid>",
+							"at": 1760000000000,
+							"query": "release",
+							"terms": [
+								"release"
+							],
+							"caller_task_id": null,
+							"catalog_generation": 1,
+							"considered": {
+								"deploy-notes": "0754f48d8d1197a890551e2e92c0268e3864a5482efe8c8c69216bac63d44407",
+								"hidden": "562d7dd7a7b905b7a0bf3c9cb0d09e9876f336b2402bbe233762836520998fb7",
+								"slug-helper": "346a08ce4a15a97872b883ac76a8f62610e1a7809bd633db63a2f3fc47349856"
+							},
+							"excluded": [
+								{
+									"name": "hidden",
+									"version": "562d7dd7a7b905b7a0bf3c9cb0d09e9876f336b2402bbe233762836520998fb7",
+									"reason": "not_invocable"
+								}
+							],
+							"candidates": [
+								{
+									"name": "deploy-notes",
+									"version": "0754f48d8d1197a890551e2e92c0268e3864a5482efe8c8c69216bac63d44407",
+									"score": 3,
+									"matches": [
+										{
+											"term": "release",
+											"fields": [
+												"description",
+												"body"
+											]
+										}
+									]
+								},
+								{
+									"name": "slug-helper",
+									"version": "346a08ce4a15a97872b883ac76a8f62610e1a7809bd633db63a2f3fc47349856",
+									"score": 1,
+									"matches": [
+										{
+											"term": "release",
+											"fields": [
+												"body"
+											]
+										}
+									]
+								}
+							],
+							"chosen": [
+								{
+									"name": "deploy-notes",
+									"version": "0754f48d8d1197a890551e2e92c0268e3864a5482efe8c8c69216bac63d44407"
+								},
+								{
+									"name": "slug-helper",
+									"version": "346a08ce4a15a97872b883ac76a8f62610e1a7809bd633db63a2f3fc47349856"
+								}
+							]
+						}
+					],
+					"loads": [
+						{
+							"id": "<uuid>",
+							"at": 1760000000000,
+							"name": "deploy-notes",
+							"version": "0754f48d8d1197a890551e2e92c0268e3864a5482efe8c8c69216bac63d44407",
+							"caller_task_id": null,
+							"context_chars": 172
+						},
+						{
+							"id": "<uuid>",
+							"at": 1760000000000,
+							"name": "slug-helper",
+							"version": "346a08ce4a15a97872b883ac76a8f62610e1a7809bd633db63a2f3fc47349856",
+							"caller_task_id": null,
+							"context_chars": 106
+						}
+					],
+					"invocations": []
+				},
+				"files": {},
+				"describe": ""
+			}
+		}
+	]
+}

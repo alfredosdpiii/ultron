@@ -1,0 +1,4464 @@
+{
+	"hooks": {
+		"steps": [
+			{
+				"op": "append",
+				"lane": "main",
+				"entry": {
+					"id": "u1",
+					"type": "message",
+					"message": {
+						"role": "user",
+						"content": "q1",
+						"timestamp": 0
+					}
+				}
+			},
+			{
+				"op": "append",
+				"lane": "main",
+				"entry": {
+					"id": "a1",
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "run"
+							},
+							{
+								"type": "toolCall",
+								"id": "c1",
+								"name": "rlm",
+								"arguments": {
+									"code": "run(\"c1\")"
+								}
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "toolUse",
+						"timestamp": 0
+					}
+				}
+			},
+			{
+				"op": "event",
+				"name": "tool_start",
+				"event": {
+					"lane": "main",
+					"toolName": "rlm",
+					"toolCallId": "c1"
+				}
+			},
+			{
+				"op": "taskEnded",
+				"task": {
+					"id": "t1",
+					"key": "batch-1",
+					"definition": "rlm-child@1",
+					"state": "running",
+					"result": {
+						"status": "completed"
+					}
+				},
+				"cost": 0.0123
+			},
+			{
+				"op": "taskEnded",
+				"task": {
+					"id": "t2",
+					"parentId": "t1",
+					"key": "k",
+					"definition": "rlm-child@1",
+					"state": "completed"
+				},
+				"cost": 1
+			},
+			{
+				"op": "taskEnded",
+				"task": {
+					"id": "t3",
+					"key": "0b4a3c3e-1d2f-4a5b-8c9d-0e1f2a3b4c5d",
+					"definition": "reviewer@1",
+					"state": "failed"
+				},
+				"cost": null
+			},
+			{
+				"op": "event",
+				"name": "tool_end",
+				"event": {
+					"lane": "main",
+					"toolCallId": "c1"
+				}
+			},
+			{
+				"op": "append",
+				"lane": "main",
+				"entry": {
+					"id": "r1",
+					"type": "message",
+					"message": {
+						"role": "toolResult",
+						"toolCallId": "c1",
+						"toolName": "rlm",
+						"content": [
+							{
+								"type": "text",
+								"text": "R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 "
+							}
+						],
+						"isError": false,
+						"timestamp": 0
+					}
+				}
+			},
+			{
+				"op": "event",
+				"name": "message_end",
+				"event": {
+					"lane": "main",
+					"message": {
+						"role": "toolResult"
+					}
+				}
+			},
+			{
+				"op": "settle"
+			},
+			{
+				"op": "snapshot",
+				"lane": "main"
+			},
+			{
+				"op": "append",
+				"lane": "main",
+				"entry": {
+					"id": "a2",
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "seen it"
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "stop",
+						"timestamp": 0
+					}
+				}
+			},
+			{
+				"op": "event",
+				"name": "message_end",
+				"event": {
+					"lane": "main",
+					"message": {
+						"role": "assistant"
+					}
+				}
+			},
+			{
+				"op": "settle"
+			},
+			{
+				"op": "snapshot",
+				"lane": "main"
+			},
+			{
+				"op": "request",
+				"lane": "main",
+				"type": "ctx.history",
+				"payload": {
+					"limit": 50
+				}
+			},
+			{
+				"op": "taskEnded",
+				"task": {
+					"id": "t4",
+					"key": "k4",
+					"definition": "worker@1",
+					"state": "completed"
+				},
+				"cost": 0.5
+			},
+			{
+				"op": "append",
+				"lane": "main",
+				"entry": {
+					"id": "a3",
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "again"
+							},
+							{
+								"type": "toolCall",
+								"id": "c2",
+								"name": "rlm",
+								"arguments": {
+									"code": "run(\"c2\")"
+								}
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "toolUse",
+						"timestamp": 0
+					}
+				}
+			},
+			{
+				"op": "event",
+				"name": "tool_start",
+				"event": {
+					"lane": "main",
+					"toolName": "rlm",
+					"toolCallId": "c2"
+				}
+			},
+			{
+				"op": "event",
+				"name": "tool_end",
+				"event": {
+					"lane": "main",
+					"toolCallId": "c2"
+				}
+			},
+			{
+				"op": "append",
+				"lane": "main",
+				"entry": {
+					"id": "r2",
+					"type": "message",
+					"message": {
+						"role": "toolResult",
+						"toolCallId": "c2",
+						"toolName": "rlm",
+						"content": [
+							{
+								"type": "text",
+								"text": "short"
+							}
+						],
+						"isError": false,
+						"timestamp": 0
+					}
+				}
+			},
+			{
+				"op": "append",
+				"lane": "main",
+				"entry": {
+					"id": "a4",
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "ok"
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "stop",
+						"timestamp": 0
+					}
+				}
+			},
+			{
+				"op": "event",
+				"name": "run_end",
+				"event": {
+					"lane": "main"
+				}
+			},
+			{
+				"op": "settle"
+			},
+			{
+				"op": "append",
+				"lane": "main",
+				"entry": {
+					"id": "a5",
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "third"
+							},
+							{
+								"type": "toolCall",
+								"id": "c5",
+								"name": "rlm",
+								"arguments": {
+									"code": "run(\"c5\")"
+								}
+							},
+							{
+								"type": "toolCall",
+								"id": "c6",
+								"name": "rlm",
+								"arguments": {
+									"code": "run(\"c6\")"
+								}
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "toolUse",
+						"timestamp": 0
+					}
+				}
+			},
+			{
+				"op": "event",
+				"name": "tool_start",
+				"event": {
+					"lane": "main",
+					"toolName": "rlm",
+					"toolCallId": "c5"
+				}
+			},
+			{
+				"op": "taskEnded",
+				"task": {
+					"id": "t5",
+					"key": "k5",
+					"definition": "worker@1",
+					"state": "completed"
+				},
+				"cost": 0.25
+			},
+			{
+				"op": "event",
+				"name": "tool_end",
+				"event": {
+					"lane": "main",
+					"toolCallId": "c5"
+				}
+			},
+			{
+				"op": "event",
+				"name": "tool_start",
+				"event": {
+					"lane": "other",
+					"toolName": "rlm",
+					"toolCallId": "c6"
+				}
+			},
+			{
+				"op": "event",
+				"name": "tool_start",
+				"event": {
+					"lane": "main",
+					"toolName": "bash",
+					"toolCallId": "c6"
+				}
+			},
+			{
+				"op": "taskEnded",
+				"task": {
+					"id": "t6",
+					"key": "k6",
+					"definition": "worker@1",
+					"state": "completed"
+				},
+				"cost": 0.5
+			},
+			{
+				"op": "append",
+				"lane": "main",
+				"entry": {
+					"id": "r5",
+					"type": "message",
+					"message": {
+						"role": "toolResult",
+						"toolCallId": "c5",
+						"toolName": "rlm",
+						"content": [
+							{
+								"type": "text",
+								"text": "R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 "
+							}
+						],
+						"isError": false,
+						"timestamp": 0
+					}
+				}
+			},
+			{
+				"op": "append",
+				"lane": "main",
+				"entry": {
+					"id": "r6",
+					"type": "message",
+					"message": {
+						"role": "toolResult",
+						"toolCallId": "c6",
+						"toolName": "rlm",
+						"content": [
+							{
+								"type": "text",
+								"text": "R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 "
+							}
+						],
+						"isError": false,
+						"timestamp": 0
+					}
+				}
+			},
+			{
+				"op": "request",
+				"lane": "main",
+				"type": "ctx.pin",
+				"payload": {
+					"id": "r5"
+				}
+			},
+			{
+				"op": "append",
+				"lane": "main",
+				"entry": {
+					"id": "a6",
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "done"
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "stop",
+						"timestamp": 0
+					}
+				}
+			},
+			{
+				"op": "event",
+				"name": "message_end",
+				"event": {
+					"lane": "main",
+					"message": {
+						"role": "assistant"
+					}
+				}
+			},
+			{
+				"op": "settle"
+			},
+			{
+				"op": "snapshot",
+				"lane": "main"
+			},
+			{
+				"op": "append",
+				"lane": "main",
+				"entry": {
+					"id": "a7",
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "read"
+							},
+							{
+								"type": "toolCall",
+								"id": "c7",
+								"name": "rlm",
+								"arguments": {
+									"code": "run(\"c7\")"
+								}
+							},
+							{
+								"type": "toolCall",
+								"id": "c8",
+								"name": "rlm",
+								"arguments": {
+									"code": "run(\"c8\")"
+								}
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "toolUse",
+						"timestamp": 0
+					}
+				}
+			},
+			{
+				"op": "append",
+				"lane": "main",
+				"entry": {
+					"id": "r7",
+					"type": "message",
+					"message": {
+						"role": "toolResult",
+						"toolCallId": "c7",
+						"toolName": "rlm",
+						"content": [
+							{
+								"type": "text",
+								"text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+							}
+						],
+						"isError": false,
+						"timestamp": 0
+					}
+				}
+			},
+			{
+				"op": "append",
+				"lane": "main",
+				"entry": {
+					"id": "r8",
+					"type": "message",
+					"message": {
+						"role": "toolResult",
+						"toolCallId": "c8",
+						"toolName": "rlm",
+						"content": [
+							{
+								"type": "text",
+								"text": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+							}
+						],
+						"isError": false,
+						"timestamp": 0
+					}
+				}
+			},
+			{
+				"op": "hook",
+				"name": "before_compaction",
+				"event": {
+					"lane": "main",
+					"reason": "threshold",
+					"preparation": {
+						"tokensBefore": 28000,
+						"settings": {
+							"reserveTokens": 10000
+						}
+					}
+				}
+			},
+			{
+				"op": "append",
+				"lane": "main",
+				"entry": {
+					"id": "a8",
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "noted"
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "stop",
+						"timestamp": 0
+					}
+				}
+			},
+			{
+				"op": "hook",
+				"name": "before_compaction",
+				"event": {
+					"lane": "main",
+					"reason": "threshold",
+					"preparation": {
+						"tokensBefore": 20000,
+						"settings": {
+							"reserveTokens": 10000
+						}
+					}
+				}
+			},
+			{
+				"op": "hook",
+				"name": "before_compaction",
+				"event": {
+					"lane": "main",
+					"reason": "manual",
+					"preparation": {
+						"tokensBefore": 99000,
+						"settings": {
+							"reserveTokens": 10000
+						}
+					}
+				}
+			},
+			{
+				"op": "hook",
+				"name": "before_compaction",
+				"event": {
+					"lane": "main",
+					"reason": "threshold",
+					"preparation": {
+						"tokensBefore": 29900,
+						"settings": {
+							"reserveTokens": 10000
+						}
+					}
+				}
+			},
+			{
+				"op": "hook",
+				"name": "before_compaction",
+				"event": {
+					"lane": "main",
+					"reason": "threshold",
+					"preparation": {
+						"tokensBefore": 28000,
+						"settings": {
+							"reserveTokens": 10000
+						}
+					}
+				}
+			},
+			{
+				"op": "snapshot",
+				"lane": "main"
+			},
+			{
+				"op": "request",
+				"lane": "main",
+				"type": "ctx.note",
+				"payload": {
+					"text": "keep: the port is 8080"
+				}
+			},
+			{
+				"op": "request",
+				"lane": "main",
+				"type": "ctx.note",
+				"payload": {
+					"text": "dropped note"
+				}
+			},
+			{
+				"op": "request",
+				"lane": "main",
+				"type": "ctx.pin",
+				"payload": {
+					"id": "u1"
+				}
+			},
+			{
+				"op": "request",
+				"lane": "main",
+				"type": "ctx.pin",
+				"payload": {
+					"id": "a8"
+				}
+			},
+			{
+				"op": "request",
+				"lane": "main",
+				"type": "ctx.forget",
+				"payload": {
+					"ids": [
+						"main-y5"
+					],
+					"reason": "x"
+				}
+			},
+			{
+				"op": "hook",
+				"name": "transform_context",
+				"event": {
+					"lane": "main",
+					"messages": [
+						{
+							"role": "compactionSummary",
+							"summary": "S"
+						}
+					]
+				}
+			},
+			{
+				"op": "append",
+				"lane": "main",
+				"entry": {
+					"id": "cp1",
+					"type": "compaction",
+					"summary": "S",
+					"firstKeptEntryId": "a8",
+					"tokensBefore": 1,
+					"retainedTail": [
+						{
+							"role": "assistant",
+							"content": [
+								{
+									"type": "text",
+									"text": "noted"
+								}
+							],
+							"api": "openai-completions",
+							"provider": "faux",
+							"model": "faux",
+							"stopReason": "stop",
+							"timestamp": 0
+						}
+					]
+				}
+			},
+			{
+				"op": "hook",
+				"name": "transform_context",
+				"event": {
+					"lane": "main",
+					"messages": [
+						{
+							"role": "user",
+							"content": "x"
+						}
+					]
+				}
+			},
+			{
+				"op": "hook",
+				"name": "transform_context",
+				"event": {
+					"lane": "main",
+					"messages": [
+						{
+							"role": "user",
+							"content": "x"
+						},
+						{
+							"role": "compactionSummary",
+							"summary": "S"
+						},
+						{
+							"role": "user",
+							"content": "y"
+						}
+					]
+				}
+			},
+			{
+				"op": "hook",
+				"name": "transform_context",
+				"event": {
+					"lane": "lane-z",
+					"messages": [
+						{
+							"role": "compactionSummary",
+							"summary": "S"
+						}
+					]
+				}
+			},
+			{
+				"op": "request",
+				"lane": "main",
+				"type": "ctx.state",
+				"payload": {}
+			}
+		],
+		"outputs": [
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+			[
+				{
+					"id": "u1",
+					"parentId": null,
+					"seq": 1,
+					"timestamp": 1,
+					"type": "message",
+					"message": {
+						"role": "user",
+						"content": "q1",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "a1",
+					"parentId": null,
+					"seq": 2,
+					"timestamp": 2,
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "run"
+							},
+							{
+								"type": "toolCall",
+								"id": "c1",
+								"name": "rlm",
+								"arguments": {
+									"code": "run(\"c1\")"
+								}
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "toolUse",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "r1",
+					"parentId": null,
+					"seq": 3,
+					"timestamp": 3,
+					"type": "message",
+					"message": {
+						"role": "toolResult",
+						"toolCallId": "c1",
+						"toolName": "rlm",
+						"content": [
+							{
+								"type": "text",
+								"text": "R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 "
+							}
+						],
+						"isError": false,
+						"timestamp": 0
+					}
+				}
+			],
+			null,
+			null,
+			null,
+			[
+				{
+					"id": "u1",
+					"parentId": null,
+					"seq": 1,
+					"timestamp": 1,
+					"type": "message",
+					"message": {
+						"role": "user",
+						"content": "q1",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "a1",
+					"parentId": null,
+					"seq": 2,
+					"timestamp": 2,
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "run"
+							},
+							{
+								"type": "toolCall",
+								"id": "c1",
+								"name": "rlm",
+								"arguments": {
+									"code": "run(\"c1\")"
+								}
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "toolUse",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "r1",
+					"parentId": null,
+					"seq": 3,
+					"timestamp": 3,
+					"type": "message",
+					"message": {
+						"role": "toolResult",
+						"toolCallId": "c1",
+						"toolName": "rlm",
+						"content": [
+							{
+								"type": "text",
+								"text": "R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 "
+							}
+						],
+						"isError": false,
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "a2",
+					"parentId": null,
+					"seq": 4,
+					"timestamp": 4,
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "seen it"
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "stop",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "main-y1",
+					"parentId": null,
+					"seq": 5,
+					"timestamp": 5,
+					"type": "custom",
+					"customType": "context_edit",
+					"data": {
+						"edits": [
+							{
+								"targetId": "r1",
+								"replacement": {
+									"content": "[collapsed on return: this cell output was 900 bytes; ctx.get(\"r1\") shows it]\nR1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R…\n↳ task t1 rlm-child@1 key=batch-1 completed cost=$0.0123 · full result: await agents.result(\"t1\")\n↳ task t3 reviewer@1 failed cost=? · full result: await agents.result(\"t3\")"
+								}
+							}
+						],
+						"source": "collapse",
+						"reason": "task results returned",
+						"tasks": [
+							"t1",
+							"t3"
+						]
+					}
+				}
+			],
+			{
+				"ok": {
+					"items": [
+						{
+							"id": "u1",
+							"kind": "user",
+							"bytes": 4,
+							"original_bytes": 4,
+							"preview": "q1",
+							"state": "visible",
+							"pinned": false,
+							"protected": true,
+							"at": 1
+						},
+						{
+							"id": "a1",
+							"kind": "assistant",
+							"bytes": 108,
+							"original_bytes": 108,
+							"preview": "run rlm({\"code\":\"run(\\\"c1\\\")\"})",
+							"state": "visible",
+							"pinned": false,
+							"protected": false,
+							"at": 2
+						},
+						{
+							"id": "r1",
+							"kind": "tool",
+							"tool": "rlm",
+							"bytes": 496,
+							"original_bytes": 927,
+							"preview": "R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 …",
+							"state": "collapsed",
+							"pinned": false,
+							"protected": false,
+							"at": 3
+						},
+						{
+							"id": "a2",
+							"kind": "assistant",
+							"bytes": 34,
+							"original_bytes": 34,
+							"preview": "seen it",
+							"state": "visible",
+							"pinned": false,
+							"protected": false,
+							"at": 4
+						}
+					],
+					"total": 4,
+					"visible_bytes": 642,
+					"compacted": false
+				}
+			},
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+			{
+				"ok": {
+					"id": "r5",
+					"pinned": true,
+					"changed": true
+				}
+			},
+			null,
+			null,
+			null,
+			[
+				{
+					"id": "u1",
+					"parentId": null,
+					"seq": 1,
+					"timestamp": 1,
+					"type": "message",
+					"message": {
+						"role": "user",
+						"content": "q1",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "a1",
+					"parentId": null,
+					"seq": 2,
+					"timestamp": 2,
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "run"
+							},
+							{
+								"type": "toolCall",
+								"id": "c1",
+								"name": "rlm",
+								"arguments": {
+									"code": "run(\"c1\")"
+								}
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "toolUse",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "r1",
+					"parentId": null,
+					"seq": 3,
+					"timestamp": 3,
+					"type": "message",
+					"message": {
+						"role": "toolResult",
+						"toolCallId": "c1",
+						"toolName": "rlm",
+						"content": [
+							{
+								"type": "text",
+								"text": "R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 "
+							}
+						],
+						"isError": false,
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "a2",
+					"parentId": null,
+					"seq": 4,
+					"timestamp": 4,
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "seen it"
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "stop",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "main-y1",
+					"parentId": null,
+					"seq": 5,
+					"timestamp": 5,
+					"type": "custom",
+					"customType": "context_edit",
+					"data": {
+						"edits": [
+							{
+								"targetId": "r1",
+								"replacement": {
+									"content": "[collapsed on return: this cell output was 900 bytes; ctx.get(\"r1\") shows it]\nR1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R…\n↳ task t1 rlm-child@1 key=batch-1 completed cost=$0.0123 · full result: await agents.result(\"t1\")\n↳ task t3 reviewer@1 failed cost=? · full result: await agents.result(\"t3\")"
+								}
+							}
+						],
+						"source": "collapse",
+						"reason": "task results returned",
+						"tasks": [
+							"t1",
+							"t3"
+						]
+					}
+				},
+				{
+					"id": "a3",
+					"parentId": null,
+					"seq": 6,
+					"timestamp": 6,
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "again"
+							},
+							{
+								"type": "toolCall",
+								"id": "c2",
+								"name": "rlm",
+								"arguments": {
+									"code": "run(\"c2\")"
+								}
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "toolUse",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "r2",
+					"parentId": null,
+					"seq": 7,
+					"timestamp": 7,
+					"type": "message",
+					"message": {
+						"role": "toolResult",
+						"toolCallId": "c2",
+						"toolName": "rlm",
+						"content": [
+							{
+								"type": "text",
+								"text": "short"
+							}
+						],
+						"isError": false,
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "a4",
+					"parentId": null,
+					"seq": 8,
+					"timestamp": 8,
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "ok"
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "stop",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "a5",
+					"parentId": null,
+					"seq": 9,
+					"timestamp": 9,
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "third"
+							},
+							{
+								"type": "toolCall",
+								"id": "c5",
+								"name": "rlm",
+								"arguments": {
+									"code": "run(\"c5\")"
+								}
+							},
+							{
+								"type": "toolCall",
+								"id": "c6",
+								"name": "rlm",
+								"arguments": {
+									"code": "run(\"c6\")"
+								}
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "toolUse",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "r5",
+					"parentId": null,
+					"seq": 10,
+					"timestamp": 10,
+					"type": "message",
+					"message": {
+						"role": "toolResult",
+						"toolCallId": "c5",
+						"toolName": "rlm",
+						"content": [
+							{
+								"type": "text",
+								"text": "R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 "
+							}
+						],
+						"isError": false,
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "r6",
+					"parentId": null,
+					"seq": 11,
+					"timestamp": 11,
+					"type": "message",
+					"message": {
+						"role": "toolResult",
+						"toolCallId": "c6",
+						"toolName": "rlm",
+						"content": [
+							{
+								"type": "text",
+								"text": "R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 "
+							}
+						],
+						"isError": false,
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "main-y2",
+					"parentId": null,
+					"seq": 12,
+					"timestamp": 12,
+					"type": "custom",
+					"customType": "ultron:context-pin",
+					"data": {
+						"targetId": "r5",
+						"pinned": true
+					}
+				},
+				{
+					"id": "a6",
+					"parentId": null,
+					"seq": 13,
+					"timestamp": 13,
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "done"
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "stop",
+						"timestamp": 0
+					}
+				}
+			],
+			null,
+			null,
+			null,
+			null,
+			null,
+			{
+				"decline": true
+			},
+			null,
+			null,
+			{
+				"decline": true
+			},
+			[
+				{
+					"id": "u1",
+					"parentId": null,
+					"seq": 1,
+					"timestamp": 1,
+					"type": "message",
+					"message": {
+						"role": "user",
+						"content": "q1",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "a1",
+					"parentId": null,
+					"seq": 2,
+					"timestamp": 2,
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "run"
+							},
+							{
+								"type": "toolCall",
+								"id": "c1",
+								"name": "rlm",
+								"arguments": {
+									"code": "run(\"c1\")"
+								}
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "toolUse",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "r1",
+					"parentId": null,
+					"seq": 3,
+					"timestamp": 3,
+					"type": "message",
+					"message": {
+						"role": "toolResult",
+						"toolCallId": "c1",
+						"toolName": "rlm",
+						"content": [
+							{
+								"type": "text",
+								"text": "R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 "
+							}
+						],
+						"isError": false,
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "a2",
+					"parentId": null,
+					"seq": 4,
+					"timestamp": 4,
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "seen it"
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "stop",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "main-y1",
+					"parentId": null,
+					"seq": 5,
+					"timestamp": 5,
+					"type": "custom",
+					"customType": "context_edit",
+					"data": {
+						"edits": [
+							{
+								"targetId": "r1",
+								"replacement": {
+									"content": "[collapsed on return: this cell output was 900 bytes; ctx.get(\"r1\") shows it]\nR1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R1 R…\n↳ task t1 rlm-child@1 key=batch-1 completed cost=$0.0123 · full result: await agents.result(\"t1\")\n↳ task t3 reviewer@1 failed cost=? · full result: await agents.result(\"t3\")"
+								}
+							}
+						],
+						"source": "collapse",
+						"reason": "task results returned",
+						"tasks": [
+							"t1",
+							"t3"
+						]
+					}
+				},
+				{
+					"id": "a3",
+					"parentId": null,
+					"seq": 6,
+					"timestamp": 6,
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "again"
+							},
+							{
+								"type": "toolCall",
+								"id": "c2",
+								"name": "rlm",
+								"arguments": {
+									"code": "run(\"c2\")"
+								}
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "toolUse",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "r2",
+					"parentId": null,
+					"seq": 7,
+					"timestamp": 7,
+					"type": "message",
+					"message": {
+						"role": "toolResult",
+						"toolCallId": "c2",
+						"toolName": "rlm",
+						"content": [
+							{
+								"type": "text",
+								"text": "short"
+							}
+						],
+						"isError": false,
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "a4",
+					"parentId": null,
+					"seq": 8,
+					"timestamp": 8,
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "ok"
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "stop",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "a5",
+					"parentId": null,
+					"seq": 9,
+					"timestamp": 9,
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "third"
+							},
+							{
+								"type": "toolCall",
+								"id": "c5",
+								"name": "rlm",
+								"arguments": {
+									"code": "run(\"c5\")"
+								}
+							},
+							{
+								"type": "toolCall",
+								"id": "c6",
+								"name": "rlm",
+								"arguments": {
+									"code": "run(\"c6\")"
+								}
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "toolUse",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "r5",
+					"parentId": null,
+					"seq": 10,
+					"timestamp": 10,
+					"type": "message",
+					"message": {
+						"role": "toolResult",
+						"toolCallId": "c5",
+						"toolName": "rlm",
+						"content": [
+							{
+								"type": "text",
+								"text": "R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 "
+							}
+						],
+						"isError": false,
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "r6",
+					"parentId": null,
+					"seq": 11,
+					"timestamp": 11,
+					"type": "message",
+					"message": {
+						"role": "toolResult",
+						"toolCallId": "c6",
+						"toolName": "rlm",
+						"content": [
+							{
+								"type": "text",
+								"text": "R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 R6 "
+							}
+						],
+						"isError": false,
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "main-y2",
+					"parentId": null,
+					"seq": 12,
+					"timestamp": 12,
+					"type": "custom",
+					"customType": "ultron:context-pin",
+					"data": {
+						"targetId": "r5",
+						"pinned": true
+					}
+				},
+				{
+					"id": "a6",
+					"parentId": null,
+					"seq": 13,
+					"timestamp": 13,
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "done"
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "stop",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "a7",
+					"parentId": null,
+					"seq": 14,
+					"timestamp": 14,
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "read"
+							},
+							{
+								"type": "toolCall",
+								"id": "c7",
+								"name": "rlm",
+								"arguments": {
+									"code": "run(\"c7\")"
+								}
+							},
+							{
+								"type": "toolCall",
+								"id": "c8",
+								"name": "rlm",
+								"arguments": {
+									"code": "run(\"c8\")"
+								}
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "toolUse",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "r7",
+					"parentId": null,
+					"seq": 15,
+					"timestamp": 15,
+					"type": "message",
+					"message": {
+						"role": "toolResult",
+						"toolCallId": "c7",
+						"toolName": "rlm",
+						"content": [
+							{
+								"type": "text",
+								"text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+							}
+						],
+						"isError": false,
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "r8",
+					"parentId": null,
+					"seq": 16,
+					"timestamp": 16,
+					"type": "message",
+					"message": {
+						"role": "toolResult",
+						"toolCallId": "c8",
+						"toolName": "rlm",
+						"content": [
+							{
+								"type": "text",
+								"text": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+							}
+						],
+						"isError": false,
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "a8",
+					"parentId": null,
+					"seq": 17,
+					"timestamp": 17,
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "noted"
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "stop",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "main-y3",
+					"parentId": null,
+					"seq": 18,
+					"timestamp": 18,
+					"type": "custom",
+					"customType": "context_edit",
+					"data": {
+						"edits": [
+							{
+								"targetId": "r7",
+								"replacement": {
+									"content": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n[... 4880 characters trimmed before compaction; ctx.get(\"r7\") shows them ...]\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+								}
+							},
+							{
+								"targetId": "r8",
+								"replacement": {
+									"content": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy\n[... 3880 characters trimmed before compaction; ctx.get(\"r8\") shows them ...]\nyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+								}
+							}
+						],
+						"source": "trim",
+						"reason": "trimmed old tool results instead of compacting"
+					}
+				}
+			],
+			{
+				"ok": {
+					"id": "main-y4"
+				}
+			},
+			{
+				"ok": {
+					"id": "main-y5"
+				}
+			},
+			{
+				"ok": {
+					"id": "u1",
+					"pinned": true,
+					"changed": true
+				}
+			},
+			{
+				"ok": {
+					"id": "a8",
+					"pinned": true,
+					"changed": true
+				}
+			},
+			{
+				"ok": {
+					"forgotten": [
+						"main-y5"
+					],
+					"already": [],
+					"edit_id": "main-y8",
+					"freed_bytes": 12
+				}
+			},
+			null,
+			null,
+			null,
+			{
+				"messages": [
+					{
+						"role": "user",
+						"content": "x"
+					},
+					{
+						"role": "compactionSummary",
+						"summary": "S"
+					},
+					{
+						"role": "custom",
+						"customType": "ultron-context-kept",
+						"content": "Notes and pinned items kept across compaction (ctx.note / ctx.pin):\n- pinned u1 (user): q1\n- pinned r5 (toolResult): R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 R5 \n- note main-y4: keep: the port is 8080",
+						"display": false,
+						"timestamp": 0
+					},
+					{
+						"role": "user",
+						"content": "y"
+					}
+				]
+			},
+			null,
+			{
+				"ok": {
+					"forgotten": [],
+					"forgottenCount": 0,
+					"collapsedCount": 0,
+					"pinned": [
+						{
+							"id": "r5"
+						},
+						{
+							"id": "u1"
+						},
+						{
+							"id": "a8"
+						}
+					],
+					"pinnedCount": 3,
+					"notes": 2
+				}
+			}
+		],
+		"observed": [
+			{
+				"lane": "main",
+				"editId": "main-y1",
+				"source": "collapse",
+				"reason": "task results returned",
+				"edits": [
+					{
+						"targetId": "r1",
+						"action": "replace"
+					}
+				],
+				"tasks": [
+					"t1",
+					"t3"
+				]
+			},
+			{
+				"lane": "main",
+				"editId": "main-y3",
+				"source": "trim",
+				"reason": "trimmed old tool results instead of compacting",
+				"edits": [
+					{
+						"targetId": "r7",
+						"action": "replace"
+					},
+					{
+						"targetId": "r8",
+						"action": "replace"
+					}
+				]
+			},
+			{
+				"lane": "main",
+				"editId": "main-y8",
+				"source": "ctx.forget",
+				"reason": "x",
+				"edits": [
+					{
+						"targetId": "main-y5",
+						"action": "omit"
+					}
+				]
+			}
+		]
+	},
+	"seed": {
+		"branches": {
+			"main": [
+				{
+					"id": "m0",
+					"parentId": null,
+					"seq": 1,
+					"timestamp": 1,
+					"type": "model_change",
+					"provider": "faux",
+					"modelId": "faux"
+				},
+				{
+					"id": "u1",
+					"parentId": null,
+					"seq": 2,
+					"timestamp": 2,
+					"type": "message",
+					"message": {
+						"role": "user",
+						"content": "first question",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "a1",
+					"parentId": null,
+					"seq": 3,
+					"timestamp": 3,
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "calling"
+							},
+							{
+								"type": "toolCall",
+								"id": "c1",
+								"name": "rlm",
+								"arguments": {
+									"code": "run(\"c1\")"
+								}
+							},
+							{
+								"type": "toolCall",
+								"id": "c2",
+								"name": "rlm",
+								"arguments": {
+									"code": "run(\"c2\")"
+								}
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "toolUse",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "r1",
+					"parentId": null,
+					"seq": 4,
+					"timestamp": 4,
+					"type": "message",
+					"message": {
+						"role": "toolResult",
+						"toolCallId": "c1",
+						"toolName": "rlm",
+						"content": [
+							{
+								"type": "text",
+								"text": "BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE BIG ONE "
+							}
+						],
+						"isError": false,
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "r2",
+					"parentId": null,
+					"seq": 5,
+					"timestamp": 5,
+					"type": "message",
+					"message": {
+						"role": "toolResult",
+						"toolCallId": "c2",
+						"toolName": "rlm",
+						"content": [
+							{
+								"type": "text",
+								"text": "small two\n\twith   spaces"
+							}
+						],
+						"isError": false,
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "a2",
+					"parentId": null,
+					"seq": 6,
+					"timestamp": 6,
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "answer one — ünïcödé 😀"
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "stop",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "bs1",
+					"parentId": null,
+					"seq": 7,
+					"timestamp": 7,
+					"type": "branch_summary",
+					"summary": "earlier branch work",
+					"fromId": "u1"
+				},
+				{
+					"id": "cm1",
+					"parentId": null,
+					"seq": 8,
+					"timestamp": 8,
+					"type": "message",
+					"message": {
+						"role": "custom",
+						"customType": "x",
+						"content": "custom text",
+						"display": true,
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "u2",
+					"parentId": null,
+					"seq": 9,
+					"timestamp": 9,
+					"type": "message",
+					"message": {
+						"role": "user",
+						"content": "second question",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "a3",
+					"parentId": null,
+					"seq": 10,
+					"timestamp": 10,
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "working"
+							},
+							{
+								"type": "toolCall",
+								"id": "c3",
+								"name": "rlm",
+								"arguments": {
+									"code": "run(\"c3\")"
+								}
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "toolUse",
+						"timestamp": 0
+					}
+				}
+			],
+			"lane-x": [
+				{
+					"id": "ux",
+					"parentId": null,
+					"seq": 11,
+					"timestamp": 11,
+					"type": "message",
+					"message": {
+						"role": "user",
+						"content": "child task",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "ax",
+					"parentId": null,
+					"seq": 12,
+					"timestamp": 12,
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "child answer"
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "stop",
+						"timestamp": 0
+					}
+				}
+			]
+		},
+		"seq": 12
+	},
+	"taskLines": [
+		[
+			{
+				"id": "t1",
+				"definition": "rlm-child@1",
+				"key": "0b4a3c3e-1d2f-4a5b-8c9d-0e1f2a3b4c5d",
+				"status": "completed",
+				"cost": 0.012345
+			},
+			"↳ task t1 rlm-child@1 completed cost=$0.0123 · full result: await agents.result(\"t1\")"
+		],
+		[
+			{
+				"id": "t2",
+				"definition": "reviewer@2",
+				"key": "pr-12",
+				"status": "failed",
+				"cost": null
+			},
+			"↳ task t2 reviewer@2 key=pr-12 failed cost=? · full result: await agents.result(\"t2\")"
+		],
+		[
+			{
+				"id": "t3",
+				"definition": "x@1",
+				"key": "k",
+				"status": "cancelled",
+				"cost": 0
+			},
+			"↳ task t3 x@1 key=k cancelled cost=$0.0000 · full result: await agents.result(\"t3\")"
+		]
+	],
+	"collapsed": [
+		[
+			"r9",
+			"out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out ",
+			[
+				{
+					"id": "t1",
+					"definition": "d@1",
+					"key": "k",
+					"status": "completed",
+					"cost": 1.5
+				}
+			],
+			"[collapsed on return: this cell output was 1200 bytes; ctx.get(\"r9\") shows it]\nout out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out out…\n↳ task t1 d@1 key=k completed cost=$1.5000 · full result: await agents.result(\"t1\")"
+		],
+		[
+			"r8",
+			"é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong é\n\tlong ",
+			[
+				{
+					"id": "t0",
+					"definition": "d@1",
+					"key": "k0",
+					"status": "completed",
+					"cost": null
+				},
+				{
+					"id": "t1",
+					"definition": "d@1",
+					"key": "k1",
+					"status": "completed",
+					"cost": null
+				},
+				{
+					"id": "t2",
+					"definition": "d@1",
+					"key": "k2",
+					"status": "completed",
+					"cost": null
+				},
+				{
+					"id": "t3",
+					"definition": "d@1",
+					"key": "k3",
+					"status": "completed",
+					"cost": null
+				},
+				{
+					"id": "t4",
+					"definition": "d@1",
+					"key": "k4",
+					"status": "completed",
+					"cost": null
+				},
+				{
+					"id": "t5",
+					"definition": "d@1",
+					"key": "k5",
+					"status": "completed",
+					"cost": null
+				},
+				{
+					"id": "t6",
+					"definition": "d@1",
+					"key": "k6",
+					"status": "completed",
+					"cost": null
+				},
+				{
+					"id": "t7",
+					"definition": "d@1",
+					"key": "k7",
+					"status": "completed",
+					"cost": null
+				},
+				{
+					"id": "t8",
+					"definition": "d@1",
+					"key": "k8",
+					"status": "completed",
+					"cost": null
+				},
+				{
+					"id": "t9",
+					"definition": "d@1",
+					"key": "k9",
+					"status": "completed",
+					"cost": null
+				}
+			],
+			"[collapsed on return: this cell output was 900 bytes; ctx.get(\"r8\") shows it]\né long é long é long é long é long é long é long é long é long é long é long é long é long é long é long é long é long é long é long é long é long é long é long é long é long é long é long é long é l…\n↳ task t0 d@1 key=k0 completed cost=? · full result: await agents.result(\"t0\")\n↳ task t1 d@1 key=k1 completed cost=? · full result: await agents.result(\"t1\")\n↳ task t2 d@1 key=k2 completed cost=? · full result: await agents.result(\"t2\")\n↳ task t3 d@1 key=k3 completed cost=? · full result: await agents.result(\"t3\")\n↳ task t4 d@1 key=k4 completed cost=? · full result: await agents.result(\"t4\")\n↳ task t5 d@1 key=k5 completed cost=? · full result: await agents.result(\"t5\")\n↳ task t6 d@1 key=k6 completed cost=? · full result: await agents.result(\"t6\")\n↳ task t7 d@1 key=k7 completed cost=? · full result: await agents.result(\"t7\")\n↳ +2 more finished tasks"
+		]
+	],
+	"trimmed": [
+		[
+			"r7",
+			"abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghij",
+			"abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdef\n[... 4880 characters trimmed before compaction; ctx.get(\"r7\") shows them ...]\nghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghij"
+		],
+		[
+			"r6",
+			"éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé",
+			"éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé\n[... -120 characters trimmed before compaction; ctx.get(\"r6\") shows them ...]\néééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé"
+		]
+	],
+	"apply": [
+		[
+			[
+				{
+					"id": "u1",
+					"parentId": null,
+					"seq": 1,
+					"timestamp": 1,
+					"type": "message",
+					"message": {
+						"role": "user",
+						"content": "first",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "a1",
+					"parentId": null,
+					"seq": 2,
+					"timestamp": 2,
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "calling"
+							},
+							{
+								"type": "toolCall",
+								"id": "c1",
+								"name": "rlm",
+								"arguments": {
+									"code": "run(\"c1\")"
+								}
+							},
+							{
+								"type": "toolCall",
+								"id": "c2",
+								"name": "rlm",
+								"arguments": {
+									"code": "run(\"c2\")"
+								}
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "toolUse",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "r1",
+					"parentId": null,
+					"seq": 3,
+					"timestamp": 3,
+					"type": "message",
+					"message": {
+						"role": "toolResult",
+						"toolCallId": "c1",
+						"toolName": "rlm",
+						"content": [
+							{
+								"type": "text",
+								"text": "BIG ONE"
+							}
+						],
+						"isError": false,
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "r2",
+					"parentId": null,
+					"seq": 4,
+					"timestamp": 4,
+					"type": "message",
+					"message": {
+						"role": "toolResult",
+						"toolCallId": "c2",
+						"toolName": "rlm",
+						"content": [
+							{
+								"type": "text",
+								"text": "BIG TWO"
+							}
+						],
+						"isError": false,
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "a2",
+					"parentId": null,
+					"seq": 5,
+					"timestamp": 5,
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "answer"
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "stop",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "n1",
+					"parentId": null,
+					"seq": 6,
+					"timestamp": 6,
+					"type": "custom",
+					"customType": "ultron:context-note",
+					"data": {
+						"text": "a note"
+					}
+				}
+			],
+			[
+				{
+					"id": "u1",
+					"parentId": null,
+					"seq": 1,
+					"timestamp": 1,
+					"type": "message",
+					"message": {
+						"role": "user",
+						"content": "first",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "a1",
+					"parentId": null,
+					"seq": 2,
+					"timestamp": 2,
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "calling"
+							},
+							{
+								"type": "toolCall",
+								"id": "c1",
+								"name": "rlm",
+								"arguments": {
+									"code": "run(\"c1\")"
+								}
+							},
+							{
+								"type": "toolCall",
+								"id": "c2",
+								"name": "rlm",
+								"arguments": {
+									"code": "run(\"c2\")"
+								}
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "toolUse",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "r1",
+					"parentId": null,
+					"seq": 3,
+					"timestamp": 3,
+					"type": "message",
+					"message": {
+						"role": "toolResult",
+						"toolCallId": "c1",
+						"toolName": "rlm",
+						"content": [
+							{
+								"type": "text",
+								"text": "BIG ONE"
+							}
+						],
+						"isError": false,
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "r2",
+					"parentId": null,
+					"seq": 4,
+					"timestamp": 4,
+					"type": "message",
+					"message": {
+						"role": "toolResult",
+						"toolCallId": "c2",
+						"toolName": "rlm",
+						"content": [
+							{
+								"type": "text",
+								"text": "BIG TWO"
+							}
+						],
+						"isError": false,
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "a2",
+					"parentId": null,
+					"seq": 5,
+					"timestamp": 5,
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "answer"
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "stop",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "n1",
+					"parentId": null,
+					"seq": 6,
+					"timestamp": 6,
+					"type": "custom",
+					"customType": "ultron:context-note",
+					"data": {
+						"text": "a note"
+					}
+				}
+			]
+		],
+		[
+			[
+				{
+					"id": "u1",
+					"parentId": null,
+					"seq": 1,
+					"timestamp": 1,
+					"type": "message",
+					"message": {
+						"role": "user",
+						"content": "first",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "a1",
+					"parentId": null,
+					"seq": 2,
+					"timestamp": 2,
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "calling"
+							},
+							{
+								"type": "toolCall",
+								"id": "c1",
+								"name": "rlm",
+								"arguments": {
+									"code": "run(\"c1\")"
+								}
+							},
+							{
+								"type": "toolCall",
+								"id": "c2",
+								"name": "rlm",
+								"arguments": {
+									"code": "run(\"c2\")"
+								}
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "toolUse",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "r1",
+					"parentId": null,
+					"seq": 3,
+					"timestamp": 3,
+					"type": "message",
+					"message": {
+						"role": "toolResult",
+						"toolCallId": "c1",
+						"toolName": "rlm",
+						"content": [
+							{
+								"type": "text",
+								"text": "BIG ONE"
+							}
+						],
+						"isError": false,
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "r2",
+					"parentId": null,
+					"seq": 4,
+					"timestamp": 4,
+					"type": "message",
+					"message": {
+						"role": "toolResult",
+						"toolCallId": "c2",
+						"toolName": "rlm",
+						"content": [
+							{
+								"type": "text",
+								"text": "BIG TWO"
+							}
+						],
+						"isError": false,
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "a2",
+					"parentId": null,
+					"seq": 5,
+					"timestamp": 5,
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "answer"
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "stop",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "n1",
+					"parentId": null,
+					"seq": 6,
+					"timestamp": 6,
+					"type": "custom",
+					"customType": "ultron:context-note",
+					"data": {
+						"text": "a note"
+					}
+				},
+				{
+					"id": "e1",
+					"parentId": null,
+					"seq": 9,
+					"timestamp": 9,
+					"type": "custom",
+					"customType": "context_edit",
+					"data": {
+						"edits": [
+							{
+								"targetId": "a1",
+								"replacement": null
+							}
+						]
+					}
+				}
+			],
+			[
+				{
+					"id": "u1",
+					"parentId": null,
+					"seq": 1,
+					"timestamp": 1,
+					"type": "message",
+					"message": {
+						"role": "user",
+						"content": "first",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "a1",
+					"parentId": null,
+					"seq": 2,
+					"timestamp": 2,
+					"type": "custom",
+					"customType": "context_edit:omitted"
+				},
+				{
+					"id": "r1",
+					"parentId": null,
+					"seq": 3,
+					"timestamp": 3,
+					"type": "custom",
+					"customType": "context_edit:omitted"
+				},
+				{
+					"id": "r2",
+					"parentId": null,
+					"seq": 4,
+					"timestamp": 4,
+					"type": "custom",
+					"customType": "context_edit:omitted"
+				},
+				{
+					"id": "a2",
+					"parentId": null,
+					"seq": 5,
+					"timestamp": 5,
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "answer"
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "stop",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "n1",
+					"parentId": null,
+					"seq": 6,
+					"timestamp": 6,
+					"type": "custom",
+					"customType": "ultron:context-note",
+					"data": {
+						"text": "a note"
+					}
+				},
+				{
+					"id": "e1",
+					"parentId": null,
+					"seq": 9,
+					"timestamp": 9,
+					"type": "custom",
+					"customType": "context_edit",
+					"data": {
+						"edits": [
+							{
+								"targetId": "a1",
+								"replacement": null
+							}
+						]
+					}
+				}
+			]
+		],
+		[
+			[
+				{
+					"id": "u1",
+					"parentId": null,
+					"seq": 1,
+					"timestamp": 1,
+					"type": "message",
+					"message": {
+						"role": "user",
+						"content": "first",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "a1",
+					"parentId": null,
+					"seq": 2,
+					"timestamp": 2,
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "calling"
+							},
+							{
+								"type": "toolCall",
+								"id": "c1",
+								"name": "rlm",
+								"arguments": {
+									"code": "run(\"c1\")"
+								}
+							},
+							{
+								"type": "toolCall",
+								"id": "c2",
+								"name": "rlm",
+								"arguments": {
+									"code": "run(\"c2\")"
+								}
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "toolUse",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "r1",
+					"parentId": null,
+					"seq": 3,
+					"timestamp": 3,
+					"type": "message",
+					"message": {
+						"role": "toolResult",
+						"toolCallId": "c1",
+						"toolName": "rlm",
+						"content": [
+							{
+								"type": "text",
+								"text": "BIG ONE"
+							}
+						],
+						"isError": false,
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "r2",
+					"parentId": null,
+					"seq": 4,
+					"timestamp": 4,
+					"type": "message",
+					"message": {
+						"role": "toolResult",
+						"toolCallId": "c2",
+						"toolName": "rlm",
+						"content": [
+							{
+								"type": "text",
+								"text": "BIG TWO"
+							}
+						],
+						"isError": false,
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "a2",
+					"parentId": null,
+					"seq": 5,
+					"timestamp": 5,
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "answer"
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "stop",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "n1",
+					"parentId": null,
+					"seq": 6,
+					"timestamp": 6,
+					"type": "custom",
+					"customType": "ultron:context-note",
+					"data": {
+						"text": "a note"
+					}
+				},
+				{
+					"id": "e1",
+					"parentId": null,
+					"seq": 9,
+					"timestamp": 9,
+					"type": "custom",
+					"customType": "context_edit",
+					"data": {
+						"targetId": "r1",
+						"replacement": null
+					}
+				}
+			],
+			[
+				{
+					"id": "u1",
+					"parentId": null,
+					"seq": 1,
+					"timestamp": 1,
+					"type": "message",
+					"message": {
+						"role": "user",
+						"content": "first",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "a1",
+					"parentId": null,
+					"seq": 2,
+					"timestamp": 2,
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "calling"
+							},
+							{
+								"type": "toolCall",
+								"id": "c1",
+								"name": "rlm",
+								"arguments": {
+									"code": "run(\"c1\")"
+								}
+							},
+							{
+								"type": "toolCall",
+								"id": "c2",
+								"name": "rlm",
+								"arguments": {
+									"code": "run(\"c2\")"
+								}
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "toolUse",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "r1",
+					"parentId": null,
+					"seq": 3,
+					"timestamp": 3,
+					"type": "message",
+					"message": {
+						"role": "toolResult",
+						"toolCallId": "c1",
+						"toolName": "rlm",
+						"content": [
+							{
+								"type": "text",
+								"text": "[Tool result removed from context.]"
+							}
+						],
+						"isError": false,
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "r2",
+					"parentId": null,
+					"seq": 4,
+					"timestamp": 4,
+					"type": "message",
+					"message": {
+						"role": "toolResult",
+						"toolCallId": "c2",
+						"toolName": "rlm",
+						"content": [
+							{
+								"type": "text",
+								"text": "BIG TWO"
+							}
+						],
+						"isError": false,
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "a2",
+					"parentId": null,
+					"seq": 5,
+					"timestamp": 5,
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "answer"
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "stop",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "n1",
+					"parentId": null,
+					"seq": 6,
+					"timestamp": 6,
+					"type": "custom",
+					"customType": "ultron:context-note",
+					"data": {
+						"text": "a note"
+					}
+				},
+				{
+					"id": "e1",
+					"parentId": null,
+					"seq": 9,
+					"timestamp": 9,
+					"type": "custom",
+					"customType": "context_edit",
+					"data": {
+						"targetId": "r1",
+						"replacement": null
+					}
+				}
+			]
+		],
+		[
+			[
+				{
+					"id": "u1",
+					"parentId": null,
+					"seq": 1,
+					"timestamp": 1,
+					"type": "message",
+					"message": {
+						"role": "user",
+						"content": "first",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "a1",
+					"parentId": null,
+					"seq": 2,
+					"timestamp": 2,
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "calling"
+							},
+							{
+								"type": "toolCall",
+								"id": "c1",
+								"name": "rlm",
+								"arguments": {
+									"code": "run(\"c1\")"
+								}
+							},
+							{
+								"type": "toolCall",
+								"id": "c2",
+								"name": "rlm",
+								"arguments": {
+									"code": "run(\"c2\")"
+								}
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "toolUse",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "r1",
+					"parentId": null,
+					"seq": 3,
+					"timestamp": 3,
+					"type": "message",
+					"message": {
+						"role": "toolResult",
+						"toolCallId": "c1",
+						"toolName": "rlm",
+						"content": [
+							{
+								"type": "text",
+								"text": "BIG ONE"
+							}
+						],
+						"isError": false,
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "r2",
+					"parentId": null,
+					"seq": 4,
+					"timestamp": 4,
+					"type": "message",
+					"message": {
+						"role": "toolResult",
+						"toolCallId": "c2",
+						"toolName": "rlm",
+						"content": [
+							{
+								"type": "text",
+								"text": "BIG TWO"
+							}
+						],
+						"isError": false,
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "a2",
+					"parentId": null,
+					"seq": 5,
+					"timestamp": 5,
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "answer"
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "stop",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "n1",
+					"parentId": null,
+					"seq": 6,
+					"timestamp": 6,
+					"type": "custom",
+					"customType": "ultron:context-note",
+					"data": {
+						"text": "a note"
+					}
+				},
+				{
+					"id": "e1",
+					"parentId": null,
+					"seq": 9,
+					"timestamp": 9,
+					"type": "custom",
+					"customType": "context_edit",
+					"data": {
+						"edits": [
+							{
+								"targetId": "u1",
+								"replacement": null
+							}
+						]
+					}
+				},
+				{
+					"id": "e2",
+					"parentId": null,
+					"seq": 9,
+					"timestamp": 9,
+					"type": "custom",
+					"customType": "context_edit",
+					"data": {
+						"edits": [
+							{
+								"targetId": "a1",
+								"replacement": {
+									"content": "SUMMARY"
+								}
+							},
+							{
+								"targetId": "u1",
+								"replacement": {
+									"content": "kept after all"
+								}
+							}
+						]
+					}
+				}
+			],
+			[
+				{
+					"id": "u1",
+					"parentId": null,
+					"seq": 1,
+					"timestamp": 1,
+					"type": "message",
+					"message": {
+						"role": "user",
+						"content": "kept after all",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "a1",
+					"parentId": null,
+					"seq": 2,
+					"timestamp": 2,
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "SUMMARY"
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "toolUse",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "r1",
+					"parentId": null,
+					"seq": 3,
+					"timestamp": 3,
+					"type": "custom",
+					"customType": "context_edit:omitted"
+				},
+				{
+					"id": "r2",
+					"parentId": null,
+					"seq": 4,
+					"timestamp": 4,
+					"type": "custom",
+					"customType": "context_edit:omitted"
+				},
+				{
+					"id": "a2",
+					"parentId": null,
+					"seq": 5,
+					"timestamp": 5,
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "answer"
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "stop",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "n1",
+					"parentId": null,
+					"seq": 6,
+					"timestamp": 6,
+					"type": "custom",
+					"customType": "ultron:context-note",
+					"data": {
+						"text": "a note"
+					}
+				},
+				{
+					"id": "e1",
+					"parentId": null,
+					"seq": 9,
+					"timestamp": 9,
+					"type": "custom",
+					"customType": "context_edit",
+					"data": {
+						"edits": [
+							{
+								"targetId": "u1",
+								"replacement": null
+							}
+						]
+					}
+				},
+				{
+					"id": "e2",
+					"parentId": null,
+					"seq": 9,
+					"timestamp": 9,
+					"type": "custom",
+					"customType": "context_edit",
+					"data": {
+						"edits": [
+							{
+								"targetId": "a1",
+								"replacement": {
+									"content": "SUMMARY"
+								}
+							},
+							{
+								"targetId": "u1",
+								"replacement": {
+									"content": "kept after all"
+								}
+							}
+						]
+					}
+				}
+			]
+		],
+		[
+			[
+				{
+					"id": "u1",
+					"parentId": null,
+					"seq": 1,
+					"timestamp": 1,
+					"type": "message",
+					"message": {
+						"role": "user",
+						"content": "first",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "a1",
+					"parentId": null,
+					"seq": 2,
+					"timestamp": 2,
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "calling"
+							},
+							{
+								"type": "toolCall",
+								"id": "c1",
+								"name": "rlm",
+								"arguments": {
+									"code": "run(\"c1\")"
+								}
+							},
+							{
+								"type": "toolCall",
+								"id": "c2",
+								"name": "rlm",
+								"arguments": {
+									"code": "run(\"c2\")"
+								}
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "toolUse",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "r1",
+					"parentId": null,
+					"seq": 3,
+					"timestamp": 3,
+					"type": "message",
+					"message": {
+						"role": "toolResult",
+						"toolCallId": "c1",
+						"toolName": "rlm",
+						"content": [
+							{
+								"type": "text",
+								"text": "BIG ONE"
+							}
+						],
+						"isError": false,
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "r2",
+					"parentId": null,
+					"seq": 4,
+					"timestamp": 4,
+					"type": "message",
+					"message": {
+						"role": "toolResult",
+						"toolCallId": "c2",
+						"toolName": "rlm",
+						"content": [
+							{
+								"type": "text",
+								"text": "BIG TWO"
+							}
+						],
+						"isError": false,
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "a2",
+					"parentId": null,
+					"seq": 5,
+					"timestamp": 5,
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "answer"
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "stop",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "n1",
+					"parentId": null,
+					"seq": 6,
+					"timestamp": 6,
+					"type": "custom",
+					"customType": "ultron:context-note",
+					"data": {
+						"text": "a note"
+					}
+				},
+				{
+					"id": "e1",
+					"parentId": null,
+					"seq": 9,
+					"timestamp": 9,
+					"type": "custom",
+					"customType": "context_edit",
+					"data": {
+						"edits": [
+							{
+								"targetId": "a1",
+								"replacement": {
+									"content": [
+										{
+											"type": "text",
+											"text": "x"
+										},
+										{
+											"type": "toolCall",
+											"id": "c2",
+											"name": "rlm",
+											"arguments": {}
+										}
+									]
+								}
+							}
+						]
+					}
+				}
+			],
+			[
+				{
+					"id": "u1",
+					"parentId": null,
+					"seq": 1,
+					"timestamp": 1,
+					"type": "message",
+					"message": {
+						"role": "user",
+						"content": "first",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "a1",
+					"parentId": null,
+					"seq": 2,
+					"timestamp": 2,
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "x"
+							},
+							{
+								"type": "toolCall",
+								"id": "c2",
+								"name": "rlm",
+								"arguments": {}
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "toolUse",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "r1",
+					"parentId": null,
+					"seq": 3,
+					"timestamp": 3,
+					"type": "custom",
+					"customType": "context_edit:omitted"
+				},
+				{
+					"id": "r2",
+					"parentId": null,
+					"seq": 4,
+					"timestamp": 4,
+					"type": "message",
+					"message": {
+						"role": "toolResult",
+						"toolCallId": "c2",
+						"toolName": "rlm",
+						"content": [
+							{
+								"type": "text",
+								"text": "BIG TWO"
+							}
+						],
+						"isError": false,
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "a2",
+					"parentId": null,
+					"seq": 5,
+					"timestamp": 5,
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "answer"
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "stop",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "n1",
+					"parentId": null,
+					"seq": 6,
+					"timestamp": 6,
+					"type": "custom",
+					"customType": "ultron:context-note",
+					"data": {
+						"text": "a note"
+					}
+				},
+				{
+					"id": "e1",
+					"parentId": null,
+					"seq": 9,
+					"timestamp": 9,
+					"type": "custom",
+					"customType": "context_edit",
+					"data": {
+						"edits": [
+							{
+								"targetId": "a1",
+								"replacement": {
+									"content": [
+										{
+											"type": "text",
+											"text": "x"
+										},
+										{
+											"type": "toolCall",
+											"id": "c2",
+											"name": "rlm",
+											"arguments": {}
+										}
+									]
+								}
+							}
+						]
+					}
+				}
+			]
+		],
+		[
+			[
+				{
+					"id": "u1",
+					"parentId": null,
+					"seq": 1,
+					"timestamp": 1,
+					"type": "message",
+					"message": {
+						"role": "user",
+						"content": "first",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "a1",
+					"parentId": null,
+					"seq": 2,
+					"timestamp": 2,
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "calling"
+							},
+							{
+								"type": "toolCall",
+								"id": "c1",
+								"name": "rlm",
+								"arguments": {
+									"code": "run(\"c1\")"
+								}
+							},
+							{
+								"type": "toolCall",
+								"id": "c2",
+								"name": "rlm",
+								"arguments": {
+									"code": "run(\"c2\")"
+								}
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "toolUse",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "r1",
+					"parentId": null,
+					"seq": 3,
+					"timestamp": 3,
+					"type": "message",
+					"message": {
+						"role": "toolResult",
+						"toolCallId": "c1",
+						"toolName": "rlm",
+						"content": [
+							{
+								"type": "text",
+								"text": "BIG ONE"
+							}
+						],
+						"isError": false,
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "r2",
+					"parentId": null,
+					"seq": 4,
+					"timestamp": 4,
+					"type": "message",
+					"message": {
+						"role": "toolResult",
+						"toolCallId": "c2",
+						"toolName": "rlm",
+						"content": [
+							{
+								"type": "text",
+								"text": "BIG TWO"
+							}
+						],
+						"isError": false,
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "a2",
+					"parentId": null,
+					"seq": 5,
+					"timestamp": 5,
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "answer"
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "stop",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "n1",
+					"parentId": null,
+					"seq": 6,
+					"timestamp": 6,
+					"type": "custom",
+					"customType": "ultron:context-note",
+					"data": {
+						"text": "a note"
+					}
+				},
+				{
+					"id": "e1",
+					"parentId": null,
+					"seq": 9,
+					"timestamp": 9,
+					"type": "custom",
+					"customType": "context_edit",
+					"data": {
+						"edits": [
+							{
+								"targetId": "n1",
+								"replacement": null
+							},
+							{
+								"targetId": "r2",
+								"replacement": {
+									"content": "short"
+								}
+							}
+						]
+					}
+				}
+			],
+			[
+				{
+					"id": "u1",
+					"parentId": null,
+					"seq": 1,
+					"timestamp": 1,
+					"type": "message",
+					"message": {
+						"role": "user",
+						"content": "first",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "a1",
+					"parentId": null,
+					"seq": 2,
+					"timestamp": 2,
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "calling"
+							},
+							{
+								"type": "toolCall",
+								"id": "c1",
+								"name": "rlm",
+								"arguments": {
+									"code": "run(\"c1\")"
+								}
+							},
+							{
+								"type": "toolCall",
+								"id": "c2",
+								"name": "rlm",
+								"arguments": {
+									"code": "run(\"c2\")"
+								}
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "toolUse",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "r1",
+					"parentId": null,
+					"seq": 3,
+					"timestamp": 3,
+					"type": "message",
+					"message": {
+						"role": "toolResult",
+						"toolCallId": "c1",
+						"toolName": "rlm",
+						"content": [
+							{
+								"type": "text",
+								"text": "BIG ONE"
+							}
+						],
+						"isError": false,
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "r2",
+					"parentId": null,
+					"seq": 4,
+					"timestamp": 4,
+					"type": "message",
+					"message": {
+						"role": "toolResult",
+						"toolCallId": "c2",
+						"toolName": "rlm",
+						"content": [
+							{
+								"type": "text",
+								"text": "short"
+							}
+						],
+						"isError": false,
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "a2",
+					"parentId": null,
+					"seq": 5,
+					"timestamp": 5,
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "answer"
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "stop",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "n1",
+					"parentId": null,
+					"seq": 6,
+					"timestamp": 6,
+					"type": "custom",
+					"customType": "context_edit:omitted"
+				},
+				{
+					"id": "e1",
+					"parentId": null,
+					"seq": 9,
+					"timestamp": 9,
+					"type": "custom",
+					"customType": "context_edit",
+					"data": {
+						"edits": [
+							{
+								"targetId": "n1",
+								"replacement": null
+							},
+							{
+								"targetId": "r2",
+								"replacement": {
+									"content": "short"
+								}
+							}
+						]
+					}
+				}
+			]
+		],
+		[
+			[
+				{
+					"id": "u1",
+					"parentId": null,
+					"seq": 1,
+					"timestamp": 1,
+					"type": "message",
+					"message": {
+						"role": "user",
+						"content": "first",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "a1",
+					"parentId": null,
+					"seq": 2,
+					"timestamp": 2,
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "calling"
+							},
+							{
+								"type": "toolCall",
+								"id": "c1",
+								"name": "rlm",
+								"arguments": {
+									"code": "run(\"c1\")"
+								}
+							},
+							{
+								"type": "toolCall",
+								"id": "c2",
+								"name": "rlm",
+								"arguments": {
+									"code": "run(\"c2\")"
+								}
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "toolUse",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "r1",
+					"parentId": null,
+					"seq": 3,
+					"timestamp": 3,
+					"type": "message",
+					"message": {
+						"role": "toolResult",
+						"toolCallId": "c1",
+						"toolName": "rlm",
+						"content": [
+							{
+								"type": "text",
+								"text": "BIG ONE"
+							}
+						],
+						"isError": false,
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "r2",
+					"parentId": null,
+					"seq": 4,
+					"timestamp": 4,
+					"type": "message",
+					"message": {
+						"role": "toolResult",
+						"toolCallId": "c2",
+						"toolName": "rlm",
+						"content": [
+							{
+								"type": "text",
+								"text": "BIG TWO"
+							}
+						],
+						"isError": false,
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "a2",
+					"parentId": null,
+					"seq": 5,
+					"timestamp": 5,
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "answer"
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "stop",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "n1",
+					"parentId": null,
+					"seq": 6,
+					"timestamp": 6,
+					"type": "custom",
+					"customType": "ultron:context-note",
+					"data": {
+						"text": "a note"
+					}
+				},
+				{
+					"id": "e1",
+					"parentId": null,
+					"seq": 9,
+					"timestamp": 9,
+					"type": "custom",
+					"customType": "context_edit",
+					"data": {
+						"edits": [
+							{
+								"targetId": "",
+								"replacement": null
+							},
+							{
+								"targetId": "u1",
+								"replacement": 3
+							},
+							{
+								"targetId": "a2",
+								"replacement": {
+									"content": 3
+								}
+							},
+							"junk"
+						]
+					}
+				}
+			],
+			[
+				{
+					"id": "u1",
+					"parentId": null,
+					"seq": 1,
+					"timestamp": 1,
+					"type": "message",
+					"message": {
+						"role": "user",
+						"content": "first",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "a1",
+					"parentId": null,
+					"seq": 2,
+					"timestamp": 2,
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "calling"
+							},
+							{
+								"type": "toolCall",
+								"id": "c1",
+								"name": "rlm",
+								"arguments": {
+									"code": "run(\"c1\")"
+								}
+							},
+							{
+								"type": "toolCall",
+								"id": "c2",
+								"name": "rlm",
+								"arguments": {
+									"code": "run(\"c2\")"
+								}
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "toolUse",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "r1",
+					"parentId": null,
+					"seq": 3,
+					"timestamp": 3,
+					"type": "message",
+					"message": {
+						"role": "toolResult",
+						"toolCallId": "c1",
+						"toolName": "rlm",
+						"content": [
+							{
+								"type": "text",
+								"text": "BIG ONE"
+							}
+						],
+						"isError": false,
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "r2",
+					"parentId": null,
+					"seq": 4,
+					"timestamp": 4,
+					"type": "message",
+					"message": {
+						"role": "toolResult",
+						"toolCallId": "c2",
+						"toolName": "rlm",
+						"content": [
+							{
+								"type": "text",
+								"text": "BIG TWO"
+							}
+						],
+						"isError": false,
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "a2",
+					"parentId": null,
+					"seq": 5,
+					"timestamp": 5,
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "answer"
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "stop",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "n1",
+					"parentId": null,
+					"seq": 6,
+					"timestamp": 6,
+					"type": "custom",
+					"customType": "ultron:context-note",
+					"data": {
+						"text": "a note"
+					}
+				},
+				{
+					"id": "e1",
+					"parentId": null,
+					"seq": 9,
+					"timestamp": 9,
+					"type": "custom",
+					"customType": "context_edit",
+					"data": {
+						"edits": [
+							{
+								"targetId": "",
+								"replacement": null
+							},
+							{
+								"targetId": "u1",
+								"replacement": 3
+							},
+							{
+								"targetId": "a2",
+								"replacement": {
+									"content": 3
+								}
+							},
+							"junk"
+						]
+					}
+				}
+			]
+		],
+		[
+			[
+				{
+					"id": "u1",
+					"parentId": null,
+					"seq": 1,
+					"timestamp": 1,
+					"type": "message",
+					"message": {
+						"role": "user",
+						"content": "first",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "a1",
+					"parentId": null,
+					"seq": 2,
+					"timestamp": 2,
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "calling"
+							},
+							{
+								"type": "toolCall",
+								"id": "c1",
+								"name": "rlm",
+								"arguments": {
+									"code": "run(\"c1\")"
+								}
+							},
+							{
+								"type": "toolCall",
+								"id": "c2",
+								"name": "rlm",
+								"arguments": {
+									"code": "run(\"c2\")"
+								}
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "toolUse",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "r1",
+					"parentId": null,
+					"seq": 3,
+					"timestamp": 3,
+					"type": "message",
+					"message": {
+						"role": "toolResult",
+						"toolCallId": "c1",
+						"toolName": "rlm",
+						"content": [
+							{
+								"type": "text",
+								"text": "BIG ONE"
+							}
+						],
+						"isError": false,
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "r2",
+					"parentId": null,
+					"seq": 4,
+					"timestamp": 4,
+					"type": "message",
+					"message": {
+						"role": "toolResult",
+						"toolCallId": "c2",
+						"toolName": "rlm",
+						"content": [
+							{
+								"type": "text",
+								"text": "BIG TWO"
+							}
+						],
+						"isError": false,
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "a2",
+					"parentId": null,
+					"seq": 5,
+					"timestamp": 5,
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "answer"
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "stop",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "n1",
+					"parentId": null,
+					"seq": 6,
+					"timestamp": 6,
+					"type": "custom",
+					"customType": "ultron:context-note",
+					"data": {
+						"text": "a note"
+					}
+				},
+				{
+					"id": "e1",
+					"parentId": null,
+					"seq": 9,
+					"timestamp": 9,
+					"type": "custom",
+					"customType": "context_edit",
+					"data": {
+						"edits": [
+							{
+								"targetId": "r2",
+								"replacement": {
+									"content": [
+										{
+											"type": "text",
+											"text": "array"
+										}
+									]
+								}
+							}
+						]
+					}
+				}
+			],
+			[
+				{
+					"id": "u1",
+					"parentId": null,
+					"seq": 1,
+					"timestamp": 1,
+					"type": "message",
+					"message": {
+						"role": "user",
+						"content": "first",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "a1",
+					"parentId": null,
+					"seq": 2,
+					"timestamp": 2,
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "calling"
+							},
+							{
+								"type": "toolCall",
+								"id": "c1",
+								"name": "rlm",
+								"arguments": {
+									"code": "run(\"c1\")"
+								}
+							},
+							{
+								"type": "toolCall",
+								"id": "c2",
+								"name": "rlm",
+								"arguments": {
+									"code": "run(\"c2\")"
+								}
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "toolUse",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "r1",
+					"parentId": null,
+					"seq": 3,
+					"timestamp": 3,
+					"type": "message",
+					"message": {
+						"role": "toolResult",
+						"toolCallId": "c1",
+						"toolName": "rlm",
+						"content": [
+							{
+								"type": "text",
+								"text": "BIG ONE"
+							}
+						],
+						"isError": false,
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "r2",
+					"parentId": null,
+					"seq": 4,
+					"timestamp": 4,
+					"type": "message",
+					"message": {
+						"role": "toolResult",
+						"toolCallId": "c2",
+						"toolName": "rlm",
+						"content": [
+							{
+								"type": "text",
+								"text": "array"
+							}
+						],
+						"isError": false,
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "a2",
+					"parentId": null,
+					"seq": 5,
+					"timestamp": 5,
+					"type": "message",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "answer"
+							}
+						],
+						"api": "openai-completions",
+						"provider": "faux",
+						"model": "faux",
+						"stopReason": "stop",
+						"timestamp": 0
+					}
+				},
+				{
+					"id": "n1",
+					"parentId": null,
+					"seq": 6,
+					"timestamp": 6,
+					"type": "custom",
+					"customType": "ultron:context-note",
+					"data": {
+						"text": "a note"
+					}
+				},
+				{
+					"id": "e1",
+					"parentId": null,
+					"seq": 9,
+					"timestamp": 9,
+					"type": "custom",
+					"customType": "context_edit",
+					"data": {
+						"edits": [
+							{
+								"targetId": "r2",
+								"replacement": {
+									"content": [
+										{
+											"type": "text",
+											"text": "array"
+										}
+									]
+								}
+							}
+						]
+					}
+				}
+			]
+		]
+	]
+}

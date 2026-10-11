@@ -1,0 +1,2326 @@
+{
+ "plans": [
+  {
+   "result": {
+    "complete": true,
+    "label": "o/r#1",
+    "files": 1,
+    "added": 1,
+    "removed": 1,
+    "findings": [],
+    "alsoRaised": [],
+    "earlier": [],
+    "dropped": {
+     "rejected": 0,
+     "duplicates": 0
+    },
+    "timing": {
+     "totalMs": 42000,
+     "scopeMs": 100,
+     "findMs": 30000,
+     "verifyMs": 11000
+    },
+    "usage": {
+     "inputTokens": 90000,
+     "outputTokens": 4000,
+     "costUsd": 0.31,
+     "frames": 12,
+     "tokens": 94000,
+     "budget": 300000
+    },
+    "model": "stub/frames",
+    "verifyModel": "stub/frames",
+    "notChecked": [],
+    "incomplete": [],
+    "diffLines": {
+     "calc.py": [
+      [
+       1,
+       6
+      ]
+     ]
+    }
+   },
+   "options": {
+    "selfAuthored": false,
+    "state": "open",
+    "headSha": "abcdef0123456789",
+    "signature": true
+   },
+   "verdict": {
+    "verdict": "approve",
+    "reason": "no confirmed finding at medium or above"
+   },
+   "ranked": [],
+   "plan": {
+    "verdict": "approve",
+    "event": "APPROVE",
+    "body": "Read the diff of `abcdef0` (1 file, +1 -1) with the code around it; every finding below was checked against the source by a second pass.\n\n**Approve.** No confirmed finding at medium or above.\n\nReviewed in 42 s: 12 model calls, 94k tokens, $0.31.\n\nAutomated review by Ultron",
+    "comments": [],
+    "inSummary": [],
+    "overCap": []
+   },
+   "withoutInline": {
+    "verdict": "approve",
+    "event": "APPROVE",
+    "body": "Read the diff of `abcdef0` (1 file, +1 -1) with the code around it; every finding below was checked against the source by a second pass.\n\n**Approve.** No confirmed finding at medium or above.\n\nReviewed in 42 s: 12 model calls, 94k tokens, $0.31.\n\nAutomated review by Ultron",
+    "comments": [],
+    "inSummary": [],
+    "overCap": []
+   },
+   "comments": [],
+   "cost": "Reviewed in 42 s: 12 model calls, 94k tokens, $0.31."
+  },
+  {
+   "result": {
+    "complete": true,
+    "label": "o/r#1",
+    "files": 1,
+    "added": 1,
+    "removed": 1,
+    "findings": [
+     {
+      "file": "calc.py",
+      "line": 4,
+      "severity": "major",
+      "category": "correctness",
+      "claim": "total() skips the last item.",
+      "why": "range(len(items) - 1) stops one short.",
+      "suggestedFix": "Use range(len(items)).",
+      "replacement": "    for i in range(len(items)):",
+      "verification": "confirmed",
+      "confidence": 0.9
+     }
+    ],
+    "alsoRaised": [],
+    "earlier": [],
+    "dropped": {
+     "rejected": 0,
+     "duplicates": 0
+    },
+    "timing": {
+     "totalMs": 42000,
+     "scopeMs": 100,
+     "findMs": 30000,
+     "verifyMs": 11000
+    },
+    "usage": {
+     "inputTokens": 90000,
+     "outputTokens": 4000,
+     "costUsd": 0.31,
+     "frames": 12,
+     "tokens": 94000,
+     "budget": 300000
+    },
+    "model": "stub/frames",
+    "verifyModel": "stub/frames",
+    "notChecked": [],
+    "incomplete": [],
+    "diffLines": {
+     "calc.py": [
+      [
+       1,
+       6
+      ]
+     ]
+    }
+   },
+   "options": {
+    "selfAuthored": false,
+    "state": "open",
+    "headSha": "abcdef0123456789",
+    "signature": true
+   },
+   "verdict": {
+    "verdict": "request_changes",
+    "reason": "1 confirmed finding at medium or above"
+   },
+   "ranked": [
+    0
+   ],
+   "plan": {
+    "verdict": "request_changes",
+    "event": "REQUEST_CHANGES",
+    "body": "Read the diff of `abcdef0` (1 file, +1 -1) with the code around it; every finding below was checked against the source by a second pass.\n\n**Request changes.** To resolve before merge: `calc.py:4` (inline) total() skips the last item.\n\nReviewed in 42 s: 12 model calls, 94k tokens, $0.31.\n\nAutomated review by Ultron",
+    "comments": [
+     {
+      "finding": 0,
+      "marker": "<!-- ultron-autoreview:abcdef0-1 -->",
+      "relocated": false,
+      "suggestion": true,
+      "path": "calc.py",
+      "line": 4,
+      "side": "RIGHT",
+      "body": "[high] total() skips the last item. range(len(items) - 1) stops one short.\n\n```suggestion\n    for i in range(len(items)):\n```\n\n<!-- ultron-autoreview:abcdef0-1 -->"
+     }
+    ],
+    "inSummary": [],
+    "overCap": []
+   },
+   "withoutInline": {
+    "verdict": "request_changes",
+    "event": "REQUEST_CHANGES",
+    "body": "Read the diff of `abcdef0` (1 file, +1 -1) with the code around it; every finding below was checked against the source by a second pass.\n\n**Request changes.** To resolve before merge: `calc.py:4` (inline) total() skips the last item.\n\nReviewed in 42 s: 12 model calls, 94k tokens, $0.31.\n\nThese could not be attached to the diff: `calc.py:4` [high] total() skips the last item. range(len(items) - 1) stops one short.\n\nAutomated review by Ultron",
+    "comments": [],
+    "inSummary": [
+     0
+    ],
+    "overCap": []
+   },
+   "comments": [
+    "[high] total() skips the last item. range(len(items) - 1) stops one short."
+   ],
+   "cost": "Reviewed in 42 s: 12 model calls, 94k tokens, $0.31."
+  },
+  {
+   "result": {
+    "complete": true,
+    "label": "o/r#1",
+    "files": 1,
+    "added": 1,
+    "removed": 1,
+    "findings": [
+     {
+      "file": "calc.py",
+      "line": 4,
+      "severity": "major",
+      "category": "correctness",
+      "claim": "total() skips the last item.",
+      "why": "range(len(items) - 1) stops one short.",
+      "suggestedFix": "Use range(len(items)).",
+      "replacement": "    for i in range(len(items)):",
+      "verification": "confirmed",
+      "confidence": 0.9,
+      "level": "low"
+     },
+     {
+      "file": "calc.py",
+      "line": 2,
+      "severity": "major",
+      "category": "correctness",
+      "claim": "total() skips the last item.",
+      "why": "range(len(items) - 1) stops one short.",
+      "suggestedFix": "Use range(len(items)).",
+      "replacement": "    for i in range(len(items)):",
+      "verification": "confirmed",
+      "confidence": 0.9,
+      "level": "nit"
+     }
+    ],
+    "alsoRaised": [],
+    "earlier": [],
+    "dropped": {
+     "rejected": 0,
+     "duplicates": 0
+    },
+    "timing": {
+     "totalMs": 42000,
+     "scopeMs": 100,
+     "findMs": 30000,
+     "verifyMs": 11000
+    },
+    "usage": {
+     "inputTokens": 90000,
+     "outputTokens": 4000,
+     "costUsd": 0.31,
+     "frames": 12,
+     "tokens": 94000,
+     "budget": 300000
+    },
+    "model": "stub/frames",
+    "verifyModel": "stub/frames",
+    "notChecked": [],
+    "incomplete": [],
+    "diffLines": {
+     "calc.py": [
+      [
+       1,
+       6
+      ]
+     ]
+    }
+   },
+   "options": {
+    "selfAuthored": false,
+    "state": "open",
+    "headSha": "abcdef0123456789",
+    "signature": false
+   },
+   "verdict": {
+    "verdict": "approve",
+    "reason": "no confirmed finding at medium or above"
+   },
+   "ranked": [
+    0,
+    1
+   ],
+   "plan": {
+    "verdict": "approve",
+    "event": "APPROVE",
+    "body": "Read the diff of `abcdef0` (1 file, +1 -1) with the code around it; every finding below was checked against the source by a second pass.\n\n**Approve.** No confirmed finding at medium or above.\n\n1 non-blocking note inline. Not posted: 1 lower-ranked finding (1 nit).\n\nReviewed in 42 s: 12 model calls, 94k tokens, $0.31.",
+    "comments": [
+     {
+      "finding": 0,
+      "marker": "<!-- ultron-autoreview:abcdef0-1 -->",
+      "relocated": false,
+      "suggestion": true,
+      "path": "calc.py",
+      "line": 4,
+      "side": "RIGHT",
+      "body": "[low] total() skips the last item. range(len(items) - 1) stops one short.\n\n```suggestion\n    for i in range(len(items)):\n```\n\n<!-- ultron-autoreview:abcdef0-1 -->"
+     }
+    ],
+    "inSummary": [],
+    "overCap": [
+     1
+    ]
+   },
+   "withoutInline": {
+    "verdict": "approve",
+    "event": "APPROVE",
+    "body": "Read the diff of `abcdef0` (1 file, +1 -1) with the code around it; every finding below was checked against the source by a second pass.\n\n**Approve.** No confirmed finding at medium or above.\n\n1 non-blocking note inline. Not posted: 1 lower-ranked finding (1 nit).\n\nReviewed in 42 s: 12 model calls, 94k tokens, $0.31.\n\nThese could not be attached to the diff: `calc.py:4` [low] total() skips the last item. range(len(items) - 1) stops one short.",
+    "comments": [],
+    "inSummary": [
+     0
+    ],
+    "overCap": [
+     1
+    ]
+   },
+   "comments": [
+    "[low] total() skips the last item. range(len(items) - 1) stops one short.",
+    "[nit] total() skips the last item. range(len(items) - 1) stops one short."
+   ],
+   "cost": "Reviewed in 42 s: 12 model calls, 94k tokens, $0.31."
+  },
+  {
+   "result": {
+    "complete": false,
+    "label": "o/r#1",
+    "files": 1,
+    "added": 1,
+    "removed": 1,
+    "findings": [],
+    "alsoRaised": [],
+    "earlier": [],
+    "dropped": {
+     "rejected": 0,
+     "duplicates": 0
+    },
+    "timing": {
+     "totalMs": 42000,
+     "scopeMs": 100,
+     "findMs": 30000,
+     "verifyMs": 11000
+    },
+    "usage": {
+     "inputTokens": 90000,
+     "outputTokens": 4000,
+     "costUsd": 0.31,
+     "frames": 12,
+     "tokens": 94000,
+     "budget": 300000
+    },
+    "model": "stub/frames",
+    "verifyModel": "stub/frames",
+    "notChecked": [
+     "timeout",
+     "x.bin",
+     "y",
+     "z"
+    ],
+    "incomplete": [
+     "3 reviewer passes failed: a.py.",
+     "timeout"
+    ],
+    "diffLines": {
+     "calc.py": [
+      [
+       1,
+       6
+      ]
+     ]
+    }
+   },
+   "options": {
+    "selfAuthored": false,
+    "state": "open",
+    "headSha": "abcdef0123456789",
+    "signature": true
+   },
+   "verdict": {
+    "verdict": "comment",
+    "reason": "the review did not cover everything"
+   },
+   "ranked": [],
+   "plan": {
+    "verdict": "comment",
+    "event": "COMMENT",
+    "body": "Read the diff of `abcdef0` (1 file, +1 -1) with the code around it; every finding below was checked against the source by a second pass.\n\n**Comment.** The review did not cover everything.\n\nNot checked: 3 reviewer passes failed: a.py; timeout; x.bin; and 2 more.\n\nReviewed in 42 s: 12 model calls, 94k tokens, $0.31.\n\nAutomated review by Ultron",
+    "comments": [],
+    "inSummary": [],
+    "overCap": []
+   },
+   "withoutInline": {
+    "verdict": "comment",
+    "event": "COMMENT",
+    "body": "Read the diff of `abcdef0` (1 file, +1 -1) with the code around it; every finding below was checked against the source by a second pass.\n\n**Comment.** The review did not cover everything.\n\nNot checked: 3 reviewer passes failed: a.py; timeout; x.bin; and 2 more.\n\nReviewed in 42 s: 12 model calls, 94k tokens, $0.31.\n\nAutomated review by Ultron",
+    "comments": [],
+    "inSummary": [],
+    "overCap": []
+   },
+   "comments": [],
+   "cost": "Reviewed in 42 s: 12 model calls, 94k tokens, $0.31."
+  },
+  {
+   "result": {
+    "complete": true,
+    "label": "o/r#1",
+    "files": 1,
+    "added": 1,
+    "removed": 1,
+    "findings": [
+     {
+      "file": "calc.py",
+      "line": 4,
+      "severity": "major",
+      "category": "correctness",
+      "claim": "total() skips the last item.",
+      "why": "range(len(items) - 1) stops one short.",
+      "suggestedFix": "Use range(len(items)).",
+      "replacement": "    for i in range(len(items)):",
+      "verification": "confirmed",
+      "confidence": 0.9
+     }
+    ],
+    "alsoRaised": [],
+    "earlier": [],
+    "dropped": {
+     "rejected": 0,
+     "duplicates": 0
+    },
+    "timing": {
+     "totalMs": 42000,
+     "scopeMs": 100,
+     "findMs": 30000,
+     "verifyMs": 11000
+    },
+    "usage": {
+     "inputTokens": 90000,
+     "outputTokens": 4000,
+     "costUsd": 0.31,
+     "frames": 12,
+     "tokens": 94000,
+     "budget": 300000
+    },
+    "model": "stub/frames",
+    "verifyModel": "stub/frames",
+    "notChecked": [],
+    "incomplete": [],
+    "diffLines": {
+     "calc.py": [
+      [
+       1,
+       6
+      ]
+     ]
+    }
+   },
+   "options": {
+    "selfAuthored": true,
+    "state": "open",
+    "headSha": "abcdef0123456789",
+    "signature": true
+   },
+   "verdict": {
+    "verdict": "comment",
+    "reason": "this account opened the pull request"
+   },
+   "ranked": [
+    0
+   ],
+   "plan": {
+    "verdict": "comment",
+    "event": "COMMENT",
+    "body": "Read the diff of `abcdef0` (1 file, +1 -1) with the code around it; every finding below was checked against the source by a second pass.\n\n**Comment.** Worth resolving: `calc.py:4` (inline) total() skips the last item. This account opened the pull request.\n\nReviewed in 42 s: 12 model calls, 94k tokens, $0.31.\n\nAutomated review by Ultron",
+    "comments": [
+     {
+      "finding": 0,
+      "marker": "<!-- ultron-autoreview:abcdef0-1 -->",
+      "relocated": false,
+      "suggestion": true,
+      "path": "calc.py",
+      "line": 4,
+      "side": "RIGHT",
+      "body": "[high] total() skips the last item. range(len(items) - 1) stops one short.\n\n```suggestion\n    for i in range(len(items)):\n```\n\n<!-- ultron-autoreview:abcdef0-1 -->"
+     }
+    ],
+    "inSummary": [],
+    "overCap": []
+   },
+   "withoutInline": {
+    "verdict": "comment",
+    "event": "COMMENT",
+    "body": "Read the diff of `abcdef0` (1 file, +1 -1) with the code around it; every finding below was checked against the source by a second pass.\n\n**Comment.** Worth resolving: `calc.py:4` (inline) total() skips the last item. This account opened the pull request.\n\nReviewed in 42 s: 12 model calls, 94k tokens, $0.31.\n\nThese could not be attached to the diff: `calc.py:4` [high] total() skips the last item. range(len(items) - 1) stops one short.\n\nAutomated review by Ultron",
+    "comments": [],
+    "inSummary": [
+     0
+    ],
+    "overCap": []
+   },
+   "comments": [
+    "[high] total() skips the last item. range(len(items) - 1) stops one short."
+   ],
+   "cost": "Reviewed in 42 s: 12 model calls, 94k tokens, $0.31."
+  },
+  {
+   "result": {
+    "complete": true,
+    "label": "o/r#1",
+    "files": 1,
+    "added": 1,
+    "removed": 1,
+    "findings": [
+     {
+      "file": "calc.py",
+      "line": 4,
+      "severity": "major",
+      "category": "correctness",
+      "claim": "total() skips the last item.",
+      "why": "range(len(items) - 1) stops one short.",
+      "suggestedFix": "Use range(len(items)).",
+      "replacement": "    for i in range(len(items)):",
+      "verification": "confirmed",
+      "confidence": 0.9
+     }
+    ],
+    "alsoRaised": [],
+    "earlier": [],
+    "dropped": {
+     "rejected": 0,
+     "duplicates": 0
+    },
+    "timing": {
+     "totalMs": 42000,
+     "scopeMs": 100,
+     "findMs": 30000,
+     "verifyMs": 11000
+    },
+    "usage": {
+     "inputTokens": 90000,
+     "outputTokens": 4000,
+     "costUsd": 0.31,
+     "frames": 12,
+     "tokens": 94000,
+     "budget": 300000
+    },
+    "model": "stub/frames",
+    "verifyModel": "stub/frames",
+    "notChecked": [],
+    "incomplete": [],
+    "diffLines": {
+     "calc.py": [
+      [
+       1,
+       6
+      ]
+     ]
+    }
+   },
+   "options": {
+    "selfAuthored": false,
+    "state": "merged",
+    "headSha": "abcdef0123456789",
+    "signature": true
+   },
+   "verdict": {
+    "verdict": "comment",
+    "reason": "the pull request is merged"
+   },
+   "ranked": [
+    0
+   ],
+   "plan": {
+    "verdict": "comment",
+    "event": "COMMENT",
+    "body": "Read the diff of `abcdef0` (1 file, +1 -1) with the code around it; every finding below was checked against the source by a second pass.\n\n**Comment.** Worth resolving: `calc.py:4` (inline) total() skips the last item. The pull request is merged.\n\nReviewed in 42 s: 12 model calls, 94k tokens, $0.31.\n\nAutomated review by Ultron",
+    "comments": [
+     {
+      "finding": 0,
+      "marker": "<!-- ultron-autoreview:abcdef0-1 -->",
+      "relocated": false,
+      "suggestion": true,
+      "path": "calc.py",
+      "line": 4,
+      "side": "RIGHT",
+      "body": "[high] total() skips the last item. range(len(items) - 1) stops one short.\n\n```suggestion\n    for i in range(len(items)):\n```\n\n<!-- ultron-autoreview:abcdef0-1 -->"
+     }
+    ],
+    "inSummary": [],
+    "overCap": []
+   },
+   "withoutInline": {
+    "verdict": "comment",
+    "event": "COMMENT",
+    "body": "Read the diff of `abcdef0` (1 file, +1 -1) with the code around it; every finding below was checked against the source by a second pass.\n\n**Comment.** Worth resolving: `calc.py:4` (inline) total() skips the last item. The pull request is merged.\n\nReviewed in 42 s: 12 model calls, 94k tokens, $0.31.\n\nThese could not be attached to the diff: `calc.py:4` [high] total() skips the last item. range(len(items) - 1) stops one short.\n\nAutomated review by Ultron",
+    "comments": [],
+    "inSummary": [
+     0
+    ],
+    "overCap": []
+   },
+   "comments": [
+    "[high] total() skips the last item. range(len(items) - 1) stops one short."
+   ],
+   "cost": "Reviewed in 42 s: 12 model calls, 94k tokens, $0.31."
+  },
+  {
+   "result": {
+    "complete": true,
+    "label": "o/r#1",
+    "files": 1,
+    "added": 1,
+    "removed": 1,
+    "findings": [
+     {
+      "file": "calc.py",
+      "line": 4,
+      "severity": "major",
+      "category": "correctness",
+      "claim": "total() skips the last item.",
+      "why": "range(len(items) - 1) stops one short.",
+      "suggestedFix": "Use range(len(items)).",
+      "replacement": "    for i in range(len(items)):",
+      "verification": "confirmed",
+      "confidence": 0.9,
+      "level": "medium"
+     }
+    ],
+    "alsoRaised": [],
+    "earlier": [],
+    "dropped": {
+     "rejected": 0,
+     "duplicates": 0
+    },
+    "timing": {
+     "totalMs": 42000,
+     "scopeMs": 100,
+     "findMs": 30000,
+     "verifyMs": 11000
+    },
+    "usage": {
+     "inputTokens": 90000,
+     "outputTokens": 4000,
+     "costUsd": 0.31,
+     "frames": 12,
+     "tokens": 94000,
+     "budget": 300000
+    },
+    "model": "stub/frames",
+    "verifyModel": "stub/frames",
+    "notChecked": [],
+    "incomplete": [],
+    "diffLines": {
+     "calc.py": [
+      [
+       1,
+       6
+      ]
+     ]
+    }
+   },
+   "options": {
+    "selfAuthored": false,
+    "state": "open",
+    "headSha": "abcdef0123456789",
+    "signature": true,
+    "blockAt": "high"
+   },
+   "verdict": {
+    "verdict": "approve",
+    "reason": "no confirmed finding at high or above"
+   },
+   "ranked": [
+    0
+   ],
+   "plan": {
+    "verdict": "approve",
+    "event": "APPROVE",
+    "body": "Read the diff of `abcdef0` (1 file, +1 -1) with the code around it; every finding below was checked against the source by a second pass.\n\n**Approve.** No confirmed finding at high or above.\n\n1 non-blocking note inline.\n\nReviewed in 42 s: 12 model calls, 94k tokens, $0.31.\n\nAutomated review by Ultron",
+    "comments": [
+     {
+      "finding": 0,
+      "marker": "<!-- ultron-autoreview:abcdef0-1 -->",
+      "relocated": false,
+      "suggestion": true,
+      "path": "calc.py",
+      "line": 4,
+      "side": "RIGHT",
+      "body": "[medium] total() skips the last item. range(len(items) - 1) stops one short.\n\n```suggestion\n    for i in range(len(items)):\n```\n\n<!-- ultron-autoreview:abcdef0-1 -->"
+     }
+    ],
+    "inSummary": [],
+    "overCap": []
+   },
+   "withoutInline": {
+    "verdict": "approve",
+    "event": "APPROVE",
+    "body": "Read the diff of `abcdef0` (1 file, +1 -1) with the code around it; every finding below was checked against the source by a second pass.\n\n**Approve.** No confirmed finding at high or above.\n\n1 non-blocking note inline.\n\nReviewed in 42 s: 12 model calls, 94k tokens, $0.31.\n\nThese could not be attached to the diff: `calc.py:4` [medium] total() skips the last item. range(len(items) - 1) stops one short.\n\nAutomated review by Ultron",
+    "comments": [],
+    "inSummary": [
+     0
+    ],
+    "overCap": []
+   },
+   "comments": [
+    "[medium] total() skips the last item. range(len(items) - 1) stops one short."
+   ],
+   "cost": "Reviewed in 42 s: 12 model calls, 94k tokens, $0.31."
+  },
+  {
+   "result": {
+    "complete": true,
+    "label": "o/r#1",
+    "files": 1,
+    "added": 1,
+    "removed": 1,
+    "findings": [
+     {
+      "file": "calc.py",
+      "line": 4,
+      "severity": "major",
+      "category": "correctness",
+      "claim": "total() skips the last item.",
+      "why": "range(len(items) - 1) stops one short.",
+      "suggestedFix": "Use range(len(items)).",
+      "replacement": "    for i in range(len(items)):",
+      "verification": "confirmed",
+      "confidence": 0.9,
+      "level": "low"
+     }
+    ],
+    "alsoRaised": [],
+    "earlier": [],
+    "dropped": {
+     "rejected": 0,
+     "duplicates": 0
+    },
+    "timing": {
+     "totalMs": 42000,
+     "scopeMs": 100,
+     "findMs": 30000,
+     "verifyMs": 11000
+    },
+    "usage": {
+     "inputTokens": 90000,
+     "outputTokens": 4000,
+     "costUsd": 0.31,
+     "frames": 12,
+     "tokens": 94000,
+     "budget": 300000
+    },
+    "model": "stub/frames",
+    "verifyModel": "stub/frames",
+    "notChecked": [],
+    "incomplete": [],
+    "diffLines": {
+     "calc.py": [
+      [
+       1,
+       6
+      ]
+     ]
+    }
+   },
+   "options": {
+    "selfAuthored": false,
+    "state": "open",
+    "headSha": "abcdef0123456789",
+    "signature": true,
+    "blockAt": "low"
+   },
+   "verdict": {
+    "verdict": "request_changes",
+    "reason": "1 confirmed finding at low or above"
+   },
+   "ranked": [
+    0
+   ],
+   "plan": {
+    "verdict": "request_changes",
+    "event": "REQUEST_CHANGES",
+    "body": "Read the diff of `abcdef0` (1 file, +1 -1) with the code around it; every finding below was checked against the source by a second pass.\n\n**Request changes.** To resolve before merge: `calc.py:4` (inline) total() skips the last item.\n\nReviewed in 42 s: 12 model calls, 94k tokens, $0.31.\n\nAutomated review by Ultron",
+    "comments": [
+     {
+      "finding": 0,
+      "marker": "<!-- ultron-autoreview:abcdef0-1 -->",
+      "relocated": false,
+      "suggestion": true,
+      "path": "calc.py",
+      "line": 4,
+      "side": "RIGHT",
+      "body": "[low] total() skips the last item. range(len(items) - 1) stops one short.\n\n```suggestion\n    for i in range(len(items)):\n```\n\n<!-- ultron-autoreview:abcdef0-1 -->"
+     }
+    ],
+    "inSummary": [],
+    "overCap": []
+   },
+   "withoutInline": {
+    "verdict": "request_changes",
+    "event": "REQUEST_CHANGES",
+    "body": "Read the diff of `abcdef0` (1 file, +1 -1) with the code around it; every finding below was checked against the source by a second pass.\n\n**Request changes.** To resolve before merge: `calc.py:4` (inline) total() skips the last item.\n\nReviewed in 42 s: 12 model calls, 94k tokens, $0.31.\n\nThese could not be attached to the diff: `calc.py:4` [low] total() skips the last item. range(len(items) - 1) stops one short.\n\nAutomated review by Ultron",
+    "comments": [],
+    "inSummary": [
+     0
+    ],
+    "overCap": []
+   },
+   "comments": [
+    "[low] total() skips the last item. range(len(items) - 1) stops one short."
+   ],
+   "cost": "Reviewed in 42 s: 12 model calls, 94k tokens, $0.31."
+  },
+  {
+   "result": {
+    "complete": true,
+    "label": "o/r#1",
+    "files": 1,
+    "added": 1,
+    "removed": 1,
+    "findings": [
+     {
+      "file": "calc.py",
+      "line": 4,
+      "severity": "minor",
+      "category": "correctness",
+      "claim": "total() skips the last item.",
+      "why": "range(len(items) - 1) stops one short.",
+      "suggestedFix": "Use range(len(items)).",
+      "verification": "confirmed",
+      "confidence": 0.9
+     }
+    ],
+    "alsoRaised": [],
+    "earlier": [],
+    "dropped": {
+     "rejected": 0,
+     "duplicates": 0
+    },
+    "timing": {
+     "totalMs": 42000,
+     "scopeMs": 100,
+     "findMs": 30000,
+     "verifyMs": 11000
+    },
+    "usage": {
+     "inputTokens": 90000,
+     "outputTokens": 4000,
+     "costUsd": 0.31,
+     "frames": 12,
+     "tokens": 94000,
+     "budget": 300000
+    },
+    "model": "stub/frames",
+    "verifyModel": "stub/frames",
+    "notChecked": [],
+    "incomplete": [],
+    "diffLines": {
+     "calc.py": [
+      [
+       1,
+       6
+      ]
+     ]
+    }
+   },
+   "options": {
+    "selfAuthored": false,
+    "state": "open",
+    "headSha": "abcdef0123456789",
+    "signature": true
+   },
+   "verdict": {
+    "verdict": "approve",
+    "reason": "no confirmed finding at medium or above"
+   },
+   "ranked": [
+    0
+   ],
+   "plan": {
+    "verdict": "approve",
+    "event": "APPROVE",
+    "body": "Read the diff of `abcdef0` (1 file, +1 -1) with the code around it; every finding below was checked against the source by a second pass.\n\n**Approve.** No confirmed finding at medium or above.\n\n1 non-blocking note inline.\n\nReviewed in 42 s: 12 model calls, 94k tokens, $0.31.\n\nAutomated review by Ultron",
+    "comments": [
+     {
+      "finding": 0,
+      "marker": "<!-- ultron-autoreview:abcdef0-1 -->",
+      "relocated": false,
+      "suggestion": false,
+      "path": "calc.py",
+      "line": 4,
+      "side": "RIGHT",
+      "body": "[low] total() skips the last item. range(len(items) - 1) stops one short. Use range(len(items)).\n\n<!-- ultron-autoreview:abcdef0-1 -->"
+     }
+    ],
+    "inSummary": [],
+    "overCap": []
+   },
+   "withoutInline": {
+    "verdict": "approve",
+    "event": "APPROVE",
+    "body": "Read the diff of `abcdef0` (1 file, +1 -1) with the code around it; every finding below was checked against the source by a second pass.\n\n**Approve.** No confirmed finding at medium or above.\n\n1 non-blocking note inline.\n\nReviewed in 42 s: 12 model calls, 94k tokens, $0.31.\n\nThese could not be attached to the diff: `calc.py:4` [low] total() skips the last item. range(len(items) - 1) stops one short. Use range(len(items)).\n\nAutomated review by Ultron",
+    "comments": [],
+    "inSummary": [
+     0
+    ],
+    "overCap": []
+   },
+   "comments": [
+    "[low] total() skips the last item. range(len(items) - 1) stops one short. Use range(len(items))."
+   ],
+   "cost": "Reviewed in 42 s: 12 model calls, 94k tokens, $0.31."
+  },
+  {
+   "result": {
+    "complete": true,
+    "label": "o/r#1",
+    "files": 1,
+    "added": 1,
+    "removed": 1,
+    "findings": [
+     {
+      "file": "calc.py",
+      "line": 4,
+      "severity": "major",
+      "category": "correctness",
+      "claim": "total() skips the last item.",
+      "why": "range(len(items) - 1) stops one short.",
+      "suggestedFix": "Use range(len(items)).",
+      "replacement": "    for i in range(len(items)):",
+      "verification": "uncertain",
+      "confidence": 0.9,
+      "level": "critical"
+     }
+    ],
+    "alsoRaised": [],
+    "earlier": [],
+    "dropped": {
+     "rejected": 0,
+     "duplicates": 0
+    },
+    "timing": {
+     "totalMs": 42000,
+     "scopeMs": 100,
+     "findMs": 30000,
+     "verifyMs": 11000
+    },
+    "usage": {
+     "inputTokens": 90000,
+     "outputTokens": 4000,
+     "costUsd": 0.31,
+     "frames": 12,
+     "tokens": 94000,
+     "budget": 300000
+    },
+    "model": "stub/frames",
+    "verifyModel": "stub/frames",
+    "notChecked": [],
+    "incomplete": [],
+    "diffLines": {
+     "calc.py": [
+      [
+       1,
+       6
+      ]
+     ]
+    }
+   },
+   "options": {
+    "selfAuthored": false,
+    "state": "open",
+    "headSha": "abcdef0123456789",
+    "signature": true
+   },
+   "verdict": {
+    "verdict": "approve",
+    "reason": "no confirmed finding at medium or above"
+   },
+   "ranked": [],
+   "plan": {
+    "verdict": "approve",
+    "event": "APPROVE",
+    "body": "Read the diff of `abcdef0` (1 file, +1 -1) with the code around it; every finding below was checked against the source by a second pass.\n\n**Approve.** No confirmed finding at medium or above.\n\nNot posted: 1 unconfirmed.\n\nReviewed in 42 s: 12 model calls, 94k tokens, $0.31.\n\nAutomated review by Ultron",
+    "comments": [],
+    "inSummary": [],
+    "overCap": []
+   },
+   "withoutInline": {
+    "verdict": "approve",
+    "event": "APPROVE",
+    "body": "Read the diff of `abcdef0` (1 file, +1 -1) with the code around it; every finding below was checked against the source by a second pass.\n\n**Approve.** No confirmed finding at medium or above.\n\nNot posted: 1 unconfirmed.\n\nReviewed in 42 s: 12 model calls, 94k tokens, $0.31.\n\nAutomated review by Ultron",
+    "comments": [],
+    "inSummary": [],
+    "overCap": []
+   },
+   "comments": [
+    "[critical] total() skips the last item. range(len(items) - 1) stops one short."
+   ],
+   "cost": "Reviewed in 42 s: 12 model calls, 94k tokens, $0.31."
+  },
+  {
+   "result": {
+    "complete": true,
+    "label": "o/r#1",
+    "files": 1,
+    "added": 1,
+    "removed": 1,
+    "findings": [],
+    "alsoRaised": [],
+    "earlier": [
+     {
+      "id": "ccccccc-1",
+      "file": "calc.py",
+      "line": 4,
+      "claim": "x",
+      "severity": "major",
+      "evidence": "",
+      "status": "still_present"
+     },
+     {
+      "id": "ccccccc-1",
+      "file": "b.py",
+      "line": 9,
+      "claim": "x",
+      "severity": "major",
+      "evidence": "",
+      "status": "fixed"
+     },
+     {
+      "id": "ccccccc-1",
+      "file": "calc.py",
+      "line": 4,
+      "claim": "x",
+      "severity": "major",
+      "evidence": "",
+      "status": "unknown"
+     },
+     {
+      "id": "ccccccc-1",
+      "file": "calc.py",
+      "line": 4,
+      "claim": "x",
+      "severity": "major",
+      "evidence": "",
+      "status": "not_applicable"
+     },
+     {
+      "id": "ccccccc-1",
+      "file": "calc.py",
+      "line": 4,
+      "claim": "x",
+      "severity": "low",
+      "evidence": "",
+      "status": "still_present"
+     }
+    ],
+    "dropped": {
+     "rejected": 0,
+     "duplicates": 0
+    },
+    "timing": {
+     "totalMs": 42000,
+     "scopeMs": 100,
+     "findMs": 30000,
+     "verifyMs": 11000
+    },
+    "usage": {
+     "inputTokens": 90000,
+     "outputTokens": 4000,
+     "costUsd": 0.31,
+     "frames": 12,
+     "tokens": 94000,
+     "budget": 300000
+    },
+    "model": "stub/frames",
+    "verifyModel": "stub/frames",
+    "notChecked": [],
+    "incomplete": [],
+    "diffLines": {
+     "calc.py": [
+      [
+       1,
+       6
+      ]
+     ]
+    }
+   },
+   "options": {
+    "selfAuthored": false,
+    "state": "open",
+    "headSha": "abcdef0123456789",
+    "signature": true
+   },
+   "verdict": {
+    "verdict": "request_changes",
+    "reason": "1 finding from an earlier review still present"
+   },
+   "ranked": [],
+   "plan": {
+    "verdict": "request_changes",
+    "event": "REQUEST_CHANGES",
+    "body": "Read the diff of `abcdef0` (1 file, +1 -1) with the code around it; every finding below was checked against the source by a second pass.\n\n**Request changes.** 1 finding from an earlier review still present. Earlier findings: 1 fixed (`b.py:9`); 2 still present (`calc.py:4`, `calc.py:4`); 2 no longer applicable or not re-checked.\n\nReviewed in 42 s: 12 model calls, 94k tokens, $0.31.\n\nAutomated review by Ultron",
+    "comments": [],
+    "inSummary": [],
+    "overCap": []
+   },
+   "withoutInline": {
+    "verdict": "request_changes",
+    "event": "REQUEST_CHANGES",
+    "body": "Read the diff of `abcdef0` (1 file, +1 -1) with the code around it; every finding below was checked against the source by a second pass.\n\n**Request changes.** 1 finding from an earlier review still present. Earlier findings: 1 fixed (`b.py:9`); 2 still present (`calc.py:4`, `calc.py:4`); 2 no longer applicable or not re-checked.\n\nReviewed in 42 s: 12 model calls, 94k tokens, $0.31.\n\nAutomated review by Ultron",
+    "comments": [],
+    "inSummary": [],
+    "overCap": []
+   },
+   "comments": [],
+   "cost": "Reviewed in 42 s: 12 model calls, 94k tokens, $0.31."
+  },
+  {
+   "result": {
+    "complete": true,
+    "label": "o/r#1",
+    "files": 1,
+    "added": 1,
+    "removed": 1,
+    "findings": [],
+    "alsoRaised": [],
+    "earlier": [
+     {
+      "id": "ccccccc-1",
+      "file": "calc.py",
+      "line": 4,
+      "claim": "x",
+      "severity": "low",
+      "evidence": "",
+      "status": "still_present"
+     }
+    ],
+    "dropped": {
+     "rejected": 0,
+     "duplicates": 0
+    },
+    "timing": {
+     "totalMs": 42000,
+     "scopeMs": 100,
+     "findMs": 30000,
+     "verifyMs": 11000
+    },
+    "usage": {
+     "inputTokens": 90000,
+     "outputTokens": 4000,
+     "costUsd": 0.31,
+     "frames": 12,
+     "tokens": 94000,
+     "budget": 300000
+    },
+    "model": "stub/frames",
+    "verifyModel": "stub/frames",
+    "notChecked": [],
+    "incomplete": [],
+    "diffLines": {
+     "calc.py": [
+      [
+       1,
+       6
+      ]
+     ]
+    }
+   },
+   "options": {
+    "selfAuthored": false,
+    "state": "open",
+    "headSha": "abcdef0123456789",
+    "signature": true
+   },
+   "verdict": {
+    "verdict": "approve",
+    "reason": "no confirmed finding at medium or above"
+   },
+   "ranked": [],
+   "plan": {
+    "verdict": "approve",
+    "event": "APPROVE",
+    "body": "Read the diff of `abcdef0` (1 file, +1 -1) with the code around it; every finding below was checked against the source by a second pass.\n\n**Approve.** No confirmed finding at medium or above. Earlier findings: 1 still present (`calc.py:4`).\n\nReviewed in 42 s: 12 model calls, 94k tokens, $0.31.\n\nAutomated review by Ultron",
+    "comments": [],
+    "inSummary": [],
+    "overCap": []
+   },
+   "withoutInline": {
+    "verdict": "approve",
+    "event": "APPROVE",
+    "body": "Read the diff of `abcdef0` (1 file, +1 -1) with the code around it; every finding below was checked against the source by a second pass.\n\n**Approve.** No confirmed finding at medium or above. Earlier findings: 1 still present (`calc.py:4`).\n\nReviewed in 42 s: 12 model calls, 94k tokens, $0.31.\n\nAutomated review by Ultron",
+    "comments": [],
+    "inSummary": [],
+    "overCap": []
+   },
+   "comments": [],
+   "cost": "Reviewed in 42 s: 12 model calls, 94k tokens, $0.31."
+  },
+  {
+   "result": {
+    "complete": true,
+    "label": "o/r#1",
+    "files": 3,
+    "added": 120,
+    "removed": 7,
+    "findings": [
+     {
+      "file": "calc.py",
+      "line": 2,
+      "severity": "major",
+      "category": "correctness",
+      "claim": "total() skips the last item.",
+      "why": "range(len(items) - 1) stops one short.",
+      "suggestedFix": "Use range(len(items)).",
+      "replacement": "    for i in range(len(items)):",
+      "verification": "confirmed",
+      "confidence": 0.9,
+      "level": "low",
+      "strength": "diff"
+     },
+     {
+      "file": "calc.py",
+      "line": 42,
+      "severity": "major",
+      "category": "correctness",
+      "claim": "total() skips the last item.",
+      "why": "range(len(items) - 1) stops one short.",
+      "suggestedFix": "Use range(len(items)).",
+      "replacement": "a\nb\nc",
+      "verification": "confirmed",
+      "confidence": 0.9,
+      "level": "medium",
+      "strength": "outside",
+      "endLine": 44
+     },
+     {
+      "file": "calc.py",
+      "line": 5,
+      "severity": "major",
+      "category": "correctness",
+      "claim": "total() skips the last item.",
+      "why": "range(len(items) - 1) stops one short.",
+      "suggestedFix": "Use range(len(items)).",
+      "replacement": "x ```` y",
+      "verification": "confirmed",
+      "confidence": 0.9,
+      "level": "medium",
+      "endLine": 9
+     },
+     {
+      "file": "b.py",
+      "line": 22,
+      "severity": "major",
+      "category": "correctness",
+      "claim": "total() skips the last item.",
+      "why": "range(len(items) - 1) stops one short.",
+      "suggestedFix": "Use range(len(items)).",
+      "verification": "confirmed",
+      "confidence": 0.9,
+      "level": "high",
+      "scenario": "  input [] gives 0;\n should raise  "
+     },
+     {
+      "file": "calc.py",
+      "line": 100,
+      "severity": "major",
+      "category": "correctness",
+      "claim": "total() skips the last item.",
+      "why": "range(len(items) - 1) stops one short.",
+      "suggestedFix": "Use range(len(items)).",
+      "replacement": "    for i in range(len(items)):",
+      "verification": "confirmed",
+      "confidence": 0.9,
+      "level": "critical",
+      "alsoAt": [
+       {
+        "file": "c.py",
+        "line": 50
+       },
+       {
+        "file": "c.py",
+        "line": 2
+       },
+       {
+        "file": "z.py",
+        "line": 1
+       }
+      ]
+     },
+     {
+      "file": "calc.py",
+      "line": 3,
+      "severity": "major",
+      "category": "correctness",
+      "claim": "total() skips the last item.",
+      "why": "range(len(items) - 1) stops one short.",
+      "suggestedFix": "Use range(len(items)).",
+      "replacement": "    for i in range(len(items)):",
+      "verification": "confirmed",
+      "confidence": 0.9,
+      "level": "low",
+      "strength": "test",
+      "lesson": "accepted 1 of 7 such findings in the last 180 days"
+     },
+     {
+      "file": "calc.py",
+      "line": 1,
+      "severity": "major",
+      "category": "correctness",
+      "claim": "total() skips the last item.",
+      "why": "range(len(items) - 1) stops one short.",
+      "suggestedFix": "Use range(len(items)).",
+      "replacement": "    for i in range(len(items)):",
+      "verification": "confirmed",
+      "confidence": 0.9,
+      "level": "nit"
+     },
+     {
+      "file": "calc.py",
+      "line": 37,
+      "severity": "major",
+      "category": "correctness",
+      "claim": "total() skips the last item.",
+      "why": "range(len(items) - 1) stops one short.",
+      "suggestedFix": "",
+      "verification": "confirmed",
+      "confidence": 0.9,
+      "level": "low",
+      "source": "deep:structure"
+     },
+     {
+      "file": "nowhere.py",
+      "line": 7,
+      "severity": "major",
+      "category": "correctness",
+      "claim": "word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word ",
+      "why": "word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word ",
+      "suggestedFix": "Use range(len(items)).",
+      "replacement": "    for i in range(len(items)):",
+      "verification": "confirmed",
+      "confidence": 0.9,
+      "level": "medium"
+     },
+     {
+      "file": "nowhere.py",
+      "line": 8,
+      "severity": "major",
+      "category": "correctness",
+      "claim": "outside one",
+      "why": "range(len(items) - 1) stops one short.",
+      "suggestedFix": "Use range(len(items)).",
+      "replacement": "    for i in range(len(items)):",
+      "verification": "confirmed",
+      "confidence": 0.9,
+      "level": "low"
+     },
+     {
+      "file": "nowhere.py",
+      "line": 9,
+      "severity": "major",
+      "category": "correctness",
+      "claim": "outside two",
+      "why": "range(len(items) - 1) stops one short.",
+      "suggestedFix": "Use range(len(items)).",
+      "replacement": "    for i in range(len(items)):",
+      "verification": "confirmed",
+      "confidence": 0.9,
+      "level": "low"
+     },
+     {
+      "file": "nowhere.py",
+      "line": 10,
+      "severity": "major",
+      "category": "correctness",
+      "claim": "outside three",
+      "why": "range(len(items) - 1) stops one short.",
+      "suggestedFix": "Use range(len(items)).",
+      "replacement": "    for i in range(len(items)):",
+      "verification": "confirmed",
+      "confidence": 0.9,
+      "level": "low"
+     },
+     {
+      "file": "nowhere.py",
+      "line": 11,
+      "severity": "major",
+      "category": "correctness",
+      "claim": "outside four?",
+      "why": "range(len(items) - 1) stops one short.",
+      "suggestedFix": "Use range(len(items)).",
+      "replacement": "    for i in range(len(items)):",
+      "verification": "confirmed",
+      "confidence": 0.9,
+      "level": "low"
+     },
+     {
+      "file": "b.py",
+      "line": 15,
+      "severity": "major",
+      "category": "correctness",
+      "claim": "total() skips the last item.",
+      "why": "range(len(items) - 1) stops one short.",
+      "suggestedFix": "Use range(len(items)).",
+      "replacement": "    for i in range(len(items)):",
+      "verification": "uncertain",
+      "confidence": 0.9,
+      "level": "high"
+     },
+     {
+      "file": "c.py",
+      "line": 4,
+      "severity": "major",
+      "category": "correctness",
+      "claim": "total() skips the last item.",
+      "why": "range(len(items) - 1) stops one short.",
+      "suggestedFix": "Use range(len(items)).",
+      "replacement": "    for i in range(len(items)):",
+      "verification": "confirmed",
+      "confidence": 0.9,
+      "level": "medium",
+      "alsoAt": [
+       {
+        "file": "a",
+        "line": 1
+       },
+       {
+        "file": "b",
+        "line": 2
+       },
+       {
+        "file": "c",
+        "line": 3
+       },
+       {
+        "file": "d",
+        "line": 4
+       },
+       {
+        "file": "e",
+        "line": 5
+       },
+       {
+        "file": "f",
+        "line": 6
+       },
+       {
+        "file": "g",
+        "line": 7
+       }
+      ]
+     }
+    ],
+    "alsoRaised": [
+     {
+      "file": "a",
+      "line": 1,
+      "severity": "x",
+      "claim": "c",
+      "by": [
+       "al",
+       "bo"
+      ]
+     },
+     {
+      "file": "b",
+      "line": 2,
+      "severity": "x",
+      "claim": "d",
+      "by": [
+       "bo",
+       "cy",
+       "di",
+       "ed",
+       "fy"
+      ]
+     }
+    ],
+    "earlier": [],
+    "dropped": {
+     "rejected": 2,
+     "duplicates": 1
+    },
+    "timing": {
+     "totalMs": 2250,
+     "scopeMs": 0,
+     "findMs": 0,
+     "verifyMs": 0
+    },
+    "usage": {
+     "inputTokens": 1,
+     "outputTokens": 1,
+     "costUsd": 0,
+     "frames": 3,
+     "tokens": 999,
+     "budget": null
+    },
+    "model": "stub/frames",
+    "verifyModel": "stub/frames",
+    "notChecked": [],
+    "incomplete": [],
+    "diffLines": {
+     "calc.py": [
+      [
+       1,
+       6
+      ],
+      [
+       40,
+       45
+      ]
+     ],
+     "b.py": [
+      [
+       10,
+       20
+      ]
+     ],
+     "c.py": [
+      [
+       1,
+       3
+      ]
+     ]
+    }
+   },
+   "options": {
+    "selfAuthored": false,
+    "state": "open",
+    "headSha": "abcdef0123456789",
+    "signature": true,
+    "maxComments": 4
+   },
+   "verdict": {
+    "verdict": "request_changes",
+    "reason": "6 confirmed findings at medium or above"
+   },
+   "ranked": [
+    4,
+    3,
+    1,
+    5,
+    2,
+    8,
+    14,
+    0,
+    7,
+    9,
+    10,
+    11,
+    12,
+    6
+   ],
+   "plan": {
+    "verdict": "request_changes",
+    "event": "REQUEST_CHANGES",
+    "body": "Read the diff of `abcdef0` (3 files, +120 -7) with the code around it; every finding below was checked against the source by a second pass, which rejected 2.\n\n**Request changes.** To resolve before merge: (1) `calc.py:100` (inline) total() skips the last item. (2) `b.py:22` (inline) total() skips the last item. (3) `calc.py:42` (inline) total() skips the last item. (4) `calc.py:5` total() skips the last item. And 2 more at medium or above.\n\n1 non-blocking note inline. Outside the diff: `nowhere.py:8` [low] outside one. `nowhere.py:9` [low] outside two. `nowhere.py:10` [low] outside three. And 1 more. Not posted: 3 lower-ranked findings (2 low, 1 nit) and 1 unconfirmed. 1 finding is notes because this repository rarely accepted their kind. 2 findings were already raised by @al, @bo, @cy, @di and are not repeated.\n\nReviewed in 2.3 s: 3 model calls, 999 tokens.\n\nAutomated review by Ultron",
+    "comments": [
+     {
+      "finding": 4,
+      "marker": "<!-- ultron-autoreview:abcdef0-5 -->",
+      "relocated": false,
+      "suggestion": false,
+      "path": "c.py",
+      "line": 2,
+      "side": "RIGHT",
+      "body": "[critical] total() skips the last item. range(len(items) - 1) stops one short. Use range(len(items)).\n\nSame at `calc.py:100`, `c.py:50`, `z.py:1`.\n\n<!-- ultron-autoreview:abcdef0-5 -->"
+     },
+     {
+      "finding": 3,
+      "marker": "<!-- ultron-autoreview:abcdef0-4 -->",
+      "relocated": true,
+      "suggestion": false,
+      "path": "b.py",
+      "line": 20,
+      "side": "RIGHT",
+      "body": "[high] total() skips the last item. input [] gives 0; should raise. Use range(len(items)).\n\nThis is about line 22, which is not part of the diff.\n\n<!-- ultron-autoreview:abcdef0-4 -->"
+     },
+     {
+      "finding": 1,
+      "marker": "<!-- ultron-autoreview:abcdef0-2 -->",
+      "relocated": false,
+      "suggestion": true,
+      "path": "calc.py",
+      "line": 44,
+      "side": "RIGHT",
+      "start_line": 42,
+      "start_side": "RIGHT",
+      "body": "[medium] total() skips the last item. range(len(items) - 1) stops one short.\n\n```suggestion\na\nb\nc\n```\n\n<!-- ultron-autoreview:abcdef0-2 -->"
+     },
+     {
+      "finding": 5,
+      "marker": "<!-- ultron-autoreview:abcdef0-6 -->",
+      "relocated": false,
+      "suggestion": true,
+      "path": "calc.py",
+      "line": 3,
+      "side": "RIGHT",
+      "body": "[low] total() skips the last item. range(len(items) - 1) stops one short. Proven by a test run the reviewer made. Posted as a note: this repository accepted 1 of 7 such findings in the last 180 days.\n\n```suggestion\n    for i in range(len(items)):\n```\n\n<!-- ultron-autoreview:abcdef0-6 -->"
+     }
+    ],
+    "inSummary": [
+     2,
+     8,
+     14,
+     9,
+     10,
+     11,
+     12
+    ],
+    "overCap": [
+     0,
+     7,
+     6
+    ]
+   },
+   "withoutInline": {
+    "verdict": "request_changes",
+    "event": "REQUEST_CHANGES",
+    "body": "Read the diff of `abcdef0` (3 files, +120 -7) with the code around it; every finding below was checked against the source by a second pass, which rejected 2.\n\n**Request changes.** To resolve before merge: (1) `calc.py:100` (inline) total() skips the last item. (2) `b.py:22` (inline) total() skips the last item. (3) `calc.py:42` (inline) total() skips the last item. (4) `calc.py:5` total() skips the last item. And 2 more at medium or above.\n\n1 non-blocking note inline. Outside the diff: `nowhere.py:8` [low] outside one. `nowhere.py:9` [low] outside two. `nowhere.py:10` [low] outside three. And 1 more. Not posted: 3 lower-ranked findings (2 low, 1 nit) and 1 unconfirmed. 1 finding is notes because this repository rarely accepted their kind. 2 findings were already raised by @al, @bo, @cy, @di and are not repeated.\n\nReviewed in 2.3 s: 3 model calls, 999 tokens.\n\nThese could not be attached to the diff: `calc.py:100` [critical] total() skips the last item. range(len(items) - 1) stops one short. `b.py:22` [high] total() skips the last item. input [] gives 0; should raise. Use range(len(items)). `calc.py:42` [medium] total() skips the last item. range(len(items) - 1) stops one short. `calc.py:3` [low] total() skips the last item. range(len(items) - 1) stops one short. Proven by a test run the reviewer made. Posted as a note: this repository accepted 1 of 7 such findings in the last 180 days.\n\nAutomated review by Ultron",
+    "comments": [],
+    "inSummary": [
+     2,
+     8,
+     14,
+     9,
+     10,
+     11,
+     12,
+     4,
+     3,
+     1,
+     5
+    ],
+    "overCap": [
+     0,
+     7,
+     6
+    ]
+   },
+   "comments": [
+    "[low] total() skips the last item. range(len(items) - 1) stops one short.",
+    "[medium] total() skips the last item. range(len(items) - 1) stops one short.",
+    "[medium] total() skips the last item. range(len(items) - 1) stops one short.",
+    "[high] total() skips the last item. input [] gives 0; should raise. Use range(len(items)).",
+    "[critical] total() skips the last item. range(len(items) - 1) stops one short.",
+    "[low] total() skips the last item. range(len(items) - 1) stops one short. Proven by a test run the reviewer made. Posted as a note: this repository accepted 1 of 7 such findings in the last 180 days.",
+    "[nit] total() skips the last item. range(len(items) - 1) stops one short.",
+    "[low] total() skips the last item. range(len(items) - 1) stops one short. Stated by the reviewer from the files' structure; the verifier agreed it matters here.",
+    "[medium] word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word.",
+    "[low] outside one. range(len(items) - 1) stops one short.",
+    "[low] outside two. range(len(items) - 1) stops one short.",
+    "[low] outside three. range(len(items) - 1) stops one short.",
+    "[low] outside four? range(len(items) - 1) stops one short.",
+    "[high] total() skips the last item. range(len(items) - 1) stops one short.",
+    "[medium] total() skips the last item. range(len(items) - 1) stops one short."
+   ],
+   "cost": "Reviewed in 2.3 s: 3 model calls, 999 tokens."
+  },
+  {
+   "result": {
+    "complete": true,
+    "label": "o/r#1",
+    "files": 1,
+    "added": 1,
+    "removed": 1,
+    "findings": [
+     {
+      "file": "calc.py",
+      "line": 4,
+      "severity": "major",
+      "category": "correctness",
+      "claim": "total() skips the last item.",
+      "why": "range(len(items) - 1) stops one short.",
+      "suggestedFix": "Use range(len(items)).",
+      "replacement": "    for i in range(len(items)):",
+      "verification": "confirmed",
+      "confidence": 0.9,
+      "level": "high"
+     },
+     {
+      "file": "calc.py",
+      "line": 5,
+      "severity": "major",
+      "category": "correctness",
+      "claim": "total() skips the last item.",
+      "why": "range(len(items) - 1) stops one short.",
+      "suggestedFix": "Use range(len(items)).",
+      "replacement": "    for i in range(len(items)):",
+      "verification": "confirmed",
+      "confidence": 0.9,
+      "level": "high"
+     },
+     {
+      "file": "calc.py",
+      "line": 6,
+      "severity": "major",
+      "category": "correctness",
+      "claim": "total() skips the last item.",
+      "why": "range(len(items) - 1) stops one short.",
+      "suggestedFix": "Use range(len(items)).",
+      "replacement": "    for i in range(len(items)):",
+      "verification": "confirmed",
+      "confidence": 0.9,
+      "level": "medium"
+     },
+     {
+      "file": "calc.py",
+      "line": 1,
+      "severity": "major",
+      "category": "correctness",
+      "claim": "total() skips the last item.",
+      "why": "range(len(items) - 1) stops one short.",
+      "suggestedFix": "Use range(len(items)).",
+      "replacement": "    for i in range(len(items)):",
+      "verification": "confirmed",
+      "confidence": 0.9,
+      "level": "critical"
+     },
+     {
+      "file": "calc.py",
+      "line": 2,
+      "severity": "major",
+      "category": "correctness",
+      "claim": "total() skips the last item.",
+      "why": "range(len(items) - 1) stops one short.",
+      "suggestedFix": "Use range(len(items)).",
+      "replacement": "    for i in range(len(items)):",
+      "verification": "confirmed",
+      "confidence": 0.9,
+      "level": "medium"
+     },
+     {
+      "file": "calc.py",
+      "line": 3,
+      "severity": "major",
+      "category": "correctness",
+      "claim": "total() skips the last item.",
+      "why": "range(len(items) - 1) stops one short.",
+      "suggestedFix": "Use range(len(items)).",
+      "replacement": "    for i in range(len(items)):",
+      "verification": "confirmed",
+      "confidence": 0.9,
+      "level": "high",
+      "strength": "test"
+     }
+    ],
+    "alsoRaised": [],
+    "earlier": [],
+    "dropped": {
+     "rejected": 0,
+     "duplicates": 0
+    },
+    "timing": {
+     "totalMs": 9950,
+     "scopeMs": 0,
+     "findMs": 0,
+     "verifyMs": 0
+    },
+    "usage": {
+     "inputTokens": 1,
+     "outputTokens": 1,
+     "costUsd": 0.125,
+     "frames": 1,
+     "tokens": 1500,
+     "budget": null
+    },
+    "model": "stub/frames",
+    "verifyModel": "stub/frames",
+    "notChecked": [],
+    "incomplete": [],
+    "diffLines": {
+     "calc.py": [
+      [
+       1,
+       6
+      ]
+     ]
+    },
+    "assurance": [
+     "The cache   key holds.",
+     "word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word ",
+     "c",
+     "d",
+     "e"
+    ]
+   },
+   "options": {
+    "selfAuthored": false,
+    "state": "open",
+    "headSha": "abcdef0123456789",
+    "signature": true,
+    "sinceSha": "0011223344",
+    "maxComments": 0
+   },
+   "verdict": {
+    "verdict": "request_changes",
+    "reason": "6 confirmed findings at medium or above"
+   },
+   "ranked": [
+    3,
+    5,
+    0,
+    1,
+    2,
+    4
+   ],
+   "plan": {
+    "verdict": "request_changes",
+    "event": "REQUEST_CHANGES",
+    "body": "Re-review of the changes since `0011223`. The cache key holds. word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word… c d\n\n**Request changes.** To resolve before merge: (1) `calc.py:1` total() skips the last item. (2) `calc.py:3` total() skips the last item. (3) `calc.py:4` total() skips the last item. (4) `calc.py:5` total() skips the last item. And 2 more at medium or above.\n\nReviewed in 9.9 s: 1 model calls, 2k tokens, $0.13.\n\nAutomated review by Ultron",
+    "comments": [],
+    "inSummary": [
+     3,
+     5,
+     0,
+     1,
+     2,
+     4
+    ],
+    "overCap": []
+   },
+   "withoutInline": {
+    "verdict": "request_changes",
+    "event": "REQUEST_CHANGES",
+    "body": "Re-review of the changes since `0011223`. The cache key holds. word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word… c d\n\n**Request changes.** To resolve before merge: (1) `calc.py:1` total() skips the last item. (2) `calc.py:3` total() skips the last item. (3) `calc.py:4` total() skips the last item. (4) `calc.py:5` total() skips the last item. And 2 more at medium or above.\n\nReviewed in 9.9 s: 1 model calls, 2k tokens, $0.13.\n\nAutomated review by Ultron",
+    "comments": [],
+    "inSummary": [
+     3,
+     5,
+     0,
+     1,
+     2,
+     4
+    ],
+    "overCap": []
+   },
+   "comments": [
+    "[high] total() skips the last item. range(len(items) - 1) stops one short.",
+    "[high] total() skips the last item. range(len(items) - 1) stops one short.",
+    "[medium] total() skips the last item. range(len(items) - 1) stops one short.",
+    "[critical] total() skips the last item. range(len(items) - 1) stops one short.",
+    "[medium] total() skips the last item. range(len(items) - 1) stops one short.",
+    "[high] total() skips the last item. range(len(items) - 1) stops one short. Proven by a test run the reviewer made."
+   ],
+   "cost": "Reviewed in 9.9 s: 1 model calls, 2k tokens, $0.13."
+  },
+  {
+   "result": {
+    "complete": true,
+    "label": "o/r#1",
+    "files": 1,
+    "added": 1,
+    "removed": 1,
+    "findings": [
+     {
+      "file": "calc.py",
+      "line": 4,
+      "severity": "major",
+      "category": "correctness",
+      "claim": "Weirdspace﻿ and café 😀xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "why": "",
+      "suggestedFix": "Use range(len(items)).",
+      "replacement": "    for i in range(len(items)):",
+      "verification": "confirmed",
+      "confidence": 0.9,
+      "scenario": "   "
+     }
+    ],
+    "alsoRaised": [],
+    "earlier": [],
+    "dropped": {
+     "rejected": 0,
+     "duplicates": 0
+    },
+    "timing": {
+     "totalMs": 10500,
+     "scopeMs": 0,
+     "findMs": 0,
+     "verifyMs": 0
+    },
+    "usage": {
+     "inputTokens": 1,
+     "outputTokens": 1,
+     "costUsd": 1.005,
+     "frames": 1,
+     "tokens": 0,
+     "budget": null
+    },
+    "model": "stub/frames",
+    "verifyModel": "stub/frames",
+    "notChecked": [],
+    "incomplete": [],
+    "diffLines": {
+     "calc.py": [
+      [
+       1,
+       6
+      ]
+     ]
+    }
+   },
+   "options": {
+    "selfAuthored": false,
+    "state": "closed",
+    "headSha": "abcdef0123456789",
+    "signature": true,
+    "sinceSha": "0011223344"
+   },
+   "verdict": {
+    "verdict": "comment",
+    "reason": "the pull request is closed"
+   },
+   "ranked": [
+    0
+   ],
+   "plan": {
+    "verdict": "comment",
+    "event": "COMMENT",
+    "body": "Read the changes from `0011223` to `abcdef0` (1 file, +1 -1) with the code around it; every finding below was checked against the source by a second pass.\n\n**Comment.** Worth resolving: `calc.py:4` (inline) Weirdspace and café 😀xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx… The pull request is closed.\n\nReviewed in 11 s: 1 model calls, 0 tokens, $1.00.\n\nAutomated review by Ultron",
+    "comments": [
+     {
+      "finding": 0,
+      "marker": "<!-- ultron-autoreview:abcdef0-1 -->",
+      "relocated": false,
+      "suggestion": true,
+      "path": "calc.py",
+      "line": 4,
+      "side": "RIGHT",
+      "body": "[high] Weirdspace and café 😀xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.\n\n```suggestion\n    for i in range(len(items)):\n```\n\n<!-- ultron-autoreview:abcdef0-1 -->"
+     }
+    ],
+    "inSummary": [],
+    "overCap": []
+   },
+   "withoutInline": {
+    "verdict": "comment",
+    "event": "COMMENT",
+    "body": "Read the changes from `0011223` to `abcdef0` (1 file, +1 -1) with the code around it; every finding below was checked against the source by a second pass.\n\n**Comment.** Worth resolving: `calc.py:4` (inline) Weirdspace and café 😀xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx… The pull request is closed.\n\nReviewed in 11 s: 1 model calls, 0 tokens, $1.00.\n\nThese could not be attached to the diff: `calc.py:4` [high] Weirdspace and café 😀xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.\n\nAutomated review by Ultron",
+    "comments": [],
+    "inSummary": [
+     0
+    ],
+    "overCap": []
+   },
+   "comments": [
+    "[high] Weirdspace and café 😀xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx."
+   ],
+   "cost": "Reviewed in 11 s: 1 model calls, 0 tokens, $1.00."
+  },
+  {
+   "result": {
+    "complete": true,
+    "label": "o/r#1",
+    "files": 1,
+    "added": 1,
+    "removed": 1,
+    "findings": [
+     {
+      "file": "c.py",
+      "line": 40,
+      "severity": "major",
+      "category": "correctness",
+      "claim": "total() skips the last item.",
+      "why": "range(len(items) - 1) stops one short.",
+      "suggestedFix": "Use range(len(items)).",
+      "replacement": "    for i in range(len(items)):",
+      "verification": "confirmed",
+      "confidence": 0.9,
+      "level": "low",
+      "alsoAt": [
+       {
+        "file": "calc.py",
+        "line": 50
+       }
+      ]
+     },
+     {
+      "file": "calc.py",
+      "line": 2,
+      "severity": "major",
+      "category": "correctness",
+      "claim": "",
+      "why": "ends with colon:",
+      "suggestedFix": "fix it!",
+      "replacement": "    for i in range(len(items)):",
+      "verification": "confirmed",
+      "confidence": 0.9,
+      "level": "low"
+     }
+    ],
+    "alsoRaised": [],
+    "earlier": [],
+    "dropped": {
+     "rejected": 0,
+     "duplicates": 0
+    },
+    "timing": {
+     "totalMs": 42000,
+     "scopeMs": 100,
+     "findMs": 30000,
+     "verifyMs": 11000
+    },
+    "usage": {
+     "inputTokens": 1,
+     "outputTokens": 1,
+     "costUsd": 2.5,
+     "frames": 1,
+     "tokens": 2500,
+     "budget": null
+    },
+    "model": "stub/frames",
+    "verifyModel": "stub/frames",
+    "notChecked": [],
+    "incomplete": [],
+    "diffLines": {
+     "calc.py": [
+      [
+       1,
+       6
+      ]
+     ]
+    }
+   },
+   "options": {
+    "selfAuthored": false,
+    "state": "open",
+    "headSha": "abcdef0123456789",
+    "signature": true,
+    "blockAt": "critical"
+   },
+   "verdict": {
+    "verdict": "approve",
+    "reason": "no confirmed finding at critical or above"
+   },
+   "ranked": [
+    0,
+    1
+   ],
+   "plan": {
+    "verdict": "approve",
+    "event": "APPROVE",
+    "body": "Read the diff of `abcdef0` (1 file, +1 -1) with the code around it; every finding below was checked against the source by a second pass.\n\n**Approve.** No confirmed finding at critical or above.\n\n1 non-blocking note inline. Outside the diff: `c.py:40` [low] total() skips the last item.\n\nReviewed in 42 s: 1 model calls, 3k tokens, $2.50.\n\nAutomated review by Ultron",
+    "comments": [
+     {
+      "finding": 1,
+      "marker": "<!-- ultron-autoreview:abcdef0-2 -->",
+      "relocated": false,
+      "suggestion": true,
+      "path": "calc.py",
+      "line": 2,
+      "side": "RIGHT",
+      "body": "[low]  ends with colon:\n\n```suggestion\n    for i in range(len(items)):\n```\n\n<!-- ultron-autoreview:abcdef0-2 -->"
+     }
+    ],
+    "inSummary": [
+     0
+    ],
+    "overCap": []
+   },
+   "withoutInline": {
+    "verdict": "approve",
+    "event": "APPROVE",
+    "body": "Read the diff of `abcdef0` (1 file, +1 -1) with the code around it; every finding below was checked against the source by a second pass.\n\n**Approve.** No confirmed finding at critical or above.\n\n1 non-blocking note inline. Outside the diff: `c.py:40` [low] total() skips the last item.\n\nReviewed in 42 s: 1 model calls, 3k tokens, $2.50.\n\nThese could not be attached to the diff: `calc.py:2` [low]  ends with colon:\n\nAutomated review by Ultron",
+    "comments": [],
+    "inSummary": [
+     0,
+     1
+    ],
+    "overCap": []
+   },
+   "comments": [
+    "[low] total() skips the last item. range(len(items) - 1) stops one short.",
+    "[low]  ends with colon:"
+   ],
+   "cost": "Reviewed in 42 s: 1 model calls, 3k tokens, $2.50."
+  },
+  {
+   "result": {
+    "complete": true,
+    "label": "o/r#1",
+    "files": 1,
+    "added": 1,
+    "removed": 1,
+    "findings": [
+     {
+      "file": "calc.py",
+      "line": 4,
+      "severity": "major",
+      "category": "correctness",
+      "claim": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "why": "range(len(items) - 1) stops one short.",
+      "suggestedFix": "Use range(len(items)).",
+      "replacement": "    for i in range(len(items)):",
+      "verification": "confirmed",
+      "confidence": 0.9
+     }
+    ],
+    "alsoRaised": [],
+    "earlier": [],
+    "dropped": {
+     "rejected": 0,
+     "duplicates": 0
+    },
+    "timing": {
+     "totalMs": 42000,
+     "scopeMs": 100,
+     "findMs": 30000,
+     "verifyMs": 11000
+    },
+    "usage": {
+     "inputTokens": 90000,
+     "outputTokens": 4000,
+     "costUsd": 0.31,
+     "frames": 12,
+     "tokens": 94000,
+     "budget": 300000
+    },
+    "model": "stub/frames",
+    "verifyModel": "stub/frames",
+    "notChecked": [],
+    "incomplete": [],
+    "diffLines": {
+     "calc.py": [
+      [
+       1,
+       6
+      ]
+     ]
+    }
+   },
+   "options": {
+    "selfAuthored": false,
+    "state": "open",
+    "headSha": "abcdef0123456789",
+    "signature": true
+   },
+   "verdict": {
+    "verdict": "request_changes",
+    "reason": "1 confirmed finding at medium or above"
+   },
+   "ranked": [
+    0
+   ],
+   "plan": {
+    "verdict": "request_changes",
+    "event": "REQUEST_CHANGES",
+    "body": "Read the diff of `abcdef0` (1 file, +1 -1) with the code around it; every finding below was checked against the source by a second pass.\n\n**Request changes.** To resolve before merge: `calc.py:4` (inline) aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa…\n\nReviewed in 42 s: 12 model calls, 94k tokens, $0.31.\n\nAutomated review by Ultron",
+    "comments": [
+     {
+      "finding": 0,
+      "marker": "<!-- ultron-autoreview:abcdef0-1 -->",
+      "relocated": false,
+      "suggestion": true,
+      "path": "calc.py",
+      "line": 4,
+      "side": "RIGHT",
+      "body": "[high] aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb. range(len(items) - 1) stops one short.\n\n```suggestion\n    for i in range(len(items)):\n```\n\n<!-- ultron-autoreview:abcdef0-1 -->"
+     }
+    ],
+    "inSummary": [],
+    "overCap": []
+   },
+   "withoutInline": {
+    "verdict": "request_changes",
+    "event": "REQUEST_CHANGES",
+    "body": "Read the diff of `abcdef0` (1 file, +1 -1) with the code around it; every finding below was checked against the source by a second pass.\n\n**Request changes.** To resolve before merge: `calc.py:4` (inline) aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa…\n\nReviewed in 42 s: 12 model calls, 94k tokens, $0.31.\n\nThese could not be attached to the diff: `calc.py:4` [high] aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb. range(len(items) - 1) stops one short.\n\nAutomated review by Ultron",
+    "comments": [],
+    "inSummary": [
+     0
+    ],
+    "overCap": []
+   },
+   "comments": [
+    "[high] aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb. range(len(items) - 1) stops one short."
+   ],
+   "cost": "Reviewed in 42 s: 12 model calls, 94k tokens, $0.31."
+  }
+ ],
+ "places": [
+  [
+   12,
+   {
+    "line": 12,
+    "relocated": false,
+    "range": [
+     10,
+     20
+    ]
+   }
+  ],
+  [
+   22,
+   {
+    "line": 20,
+    "relocated": true,
+    "range": [
+     10,
+     20
+    ]
+   }
+  ],
+  [
+   37,
+   {
+    "line": 40,
+    "relocated": true,
+    "range": [
+     40,
+     45
+    ]
+   }
+  ],
+  [
+   30,
+   null
+  ],
+  [
+   9,
+   {
+    "line": 10,
+    "relocated": true,
+    "range": [
+     10,
+     20
+    ]
+   }
+  ],
+  [
+   6,
+   null
+  ],
+  [
+   48,
+   {
+    "line": 45,
+    "relocated": true,
+    "range": [
+     40,
+     45
+    ]
+   }
+  ],
+  [
+   49,
+   null
+  ],
+  [
+   23,
+   {
+    "line": 20,
+    "relocated": true,
+    "range": [
+     10,
+     20
+    ]
+   }
+  ],
+  [
+   24,
+   null
+  ],
+  [
+   7,
+   {
+    "line": 10,
+    "relocated": true,
+    "range": [
+     10,
+     20
+    ]
+   }
+  ],
+  [
+   42,
+   {
+    "line": 42,
+    "relocated": false,
+    "range": [
+     40,
+     45
+    ]
+   }
+  ]
+ ],
+ "emptyPlace": null,
+ "levels": [
+  [
+   {},
+   "low"
+  ],
+  [
+   {
+    "severity": "blocker"
+   },
+   "critical"
+  ],
+  [
+   {
+    "severity": "major"
+   },
+   "high"
+  ],
+  [
+   {
+    "severity": "minor"
+   },
+   "low"
+  ],
+  [
+   {
+    "severity": "nit"
+   },
+   "nit"
+  ],
+  [
+   {
+    "severity": "medium"
+   },
+   "medium"
+  ],
+  [
+   {
+    "level": "medium",
+    "severity": "minor"
+   },
+   "medium"
+  ],
+  [
+   {
+    "level": "bogus",
+    "severity": "major"
+   },
+   "high"
+  ],
+  [
+   {
+    "level": "high",
+    "severity": "nit"
+   },
+   "high"
+  ],
+  [
+   {
+    "severity": "bogus"
+   },
+   "low"
+  ]
+ ],
+ "severities": [
+  "blocker",
+  "major",
+  "minor",
+  "minor",
+  "nit"
+ ],
+ "marker": "<!-- ultron-autoreview:k-1 -->"
+}

@@ -1,0 +1,41 @@
+#!/bin/sh
+# A stand-in for the `claude` CLI in the claude-code-cli fixtures: never the real one.
+# FAKE_CLAUDE_REPLY: stream-json lines to print for a request (FAKE_CLAUDE_REPLY.N for the N-th request, from 1).
+# FAKE_CLAUDE_LOG: argv, selected env and the stdin line of each request are appended here.
+# FAKE_CLAUDE_NO_FLAGS: flags left out of --help; FAKE_CLAUDE_AUTH: `auth status --json` output.
+# FAKE_CLAUDE_EXIT / FAKE_CLAUDE_STDERR: exit code and stderr of a request that prints no result.
+case "$1" in
+--version)
+	echo "2.1.99 (Claude Code)"
+	exit 0
+	;;
+--help)
+	for flag in --print --output-format --input-format --verbose --include-partial-messages --tools \
+		--strict-mcp-config --mcp-config --setting-sources --permission-prompts --disable-slash-commands \
+		--no-session-persistence --model --system-prompt --settings --json-schema --effort; do
+		case " $FAKE_CLAUDE_NO_FLAGS " in
+		*" $flag "*) ;;
+		*) echo "  $flag <value>  description" ;;
+		esac
+	done
+	exit 0
+	;;
+auth)
+	echo "${FAKE_CLAUDE_AUTH:-{\"loggedIn\":true,\"authMethod\":\"claude.ai\",\"apiProvider\":\"firstParty\"\}}"
+	exit 0
+	;;
+esac
+{
+	printf 'argv:'
+	for arg in "$@"; do printf ' [%s]' "$arg"; done
+	echo
+	echo "max_tokens=${CLAUDE_CODE_MAX_OUTPUT_TOKENS-unset} claudecode=${CLAUDECODE-unset} extra=${FAKE_EXTRA-unset}"
+} >>"$FAKE_CLAUDE_LOG"
+IFS= read -r line
+echo "stdin:$line" >>"$FAKE_CLAUDE_LOG"
+n=$(grep -c '^stdin:' "$FAKE_CLAUDE_LOG")
+reply="$FAKE_CLAUDE_REPLY"
+[ -f "$FAKE_CLAUDE_REPLY.$n" ] && reply="$FAKE_CLAUDE_REPLY.$n"
+[ -n "$reply" ] && [ -f "$reply" ] && cat "$reply"
+[ -n "$FAKE_CLAUDE_STDERR" ] && printf '%s\n' "$FAKE_CLAUDE_STDERR" >&2
+exit "${FAKE_CLAUDE_EXIT:-0}"

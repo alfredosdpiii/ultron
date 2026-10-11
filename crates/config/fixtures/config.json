@@ -1,0 +1,2973 @@
+{
+	"source": "packages/coding-agent/src (config.ts, core/settings-manager.ts, core/auth-storage.ts, core/resolve-config-value.ts, core/trust-manager.ts)",
+	"envAgentDir": "ULTRON_CODING_AGENT_DIR",
+	"settings": [
+		{
+			"name": "autoreview keys from two stale workers both survive (port of the bcdf2bbea test)",
+			"steps": [
+				{
+					"op": "write",
+					"file": "global",
+					"text": "{\"autoreview\":{\"model\":\"p/m\"}}",
+					"result": null,
+					"files": {
+						"global": "{\"autoreview\":{\"model\":\"p/m\"}}",
+						"project": null
+					}
+				},
+				{
+					"op": "create",
+					"name": "picker",
+					"result": null,
+					"files": {
+						"global": "{\"autoreview\":{\"model\":\"p/m\"}}",
+						"project": null
+					}
+				},
+				{
+					"op": "create",
+					"name": "stale",
+					"result": null,
+					"files": {
+						"global": "{\"autoreview\":{\"model\":\"p/m\"}}",
+						"project": null
+					}
+				},
+				{
+					"op": "setAutoreviewSettings",
+					"name": "picker",
+					"patch": [
+						[
+							"enabled",
+							true
+						],
+						[
+							"accounts",
+							[
+								"github.com/me"
+							]
+						]
+					],
+					"result": null,
+					"files": {
+						"global": "{\n  \"autoreview\": {\n    \"model\": \"p/m\",\n    \"enabled\": true,\n    \"accounts\": [\n      \"github.com/me\"\n    ]\n  }\n}",
+						"project": null
+					}
+				},
+				{
+					"op": "setAutoreviewSettings",
+					"name": "stale",
+					"patch": [
+						[
+							"ack",
+							false
+						]
+					],
+					"result": null,
+					"files": {
+						"global": "{\n  \"autoreview\": {\n    \"model\": \"p/m\",\n    \"enabled\": true,\n    \"accounts\": [\n      \"github.com/me\"\n    ],\n    \"ack\": false\n  }\n}",
+						"project": null
+					}
+				},
+				{
+					"op": "setAutoreviewSettings",
+					"name": "picker",
+					"patch": [
+						[
+							"accounts"
+						]
+					],
+					"result": null,
+					"files": {
+						"global": "{\n  \"autoreview\": {\n    \"model\": \"p/m\",\n    \"enabled\": true,\n    \"ack\": false\n  }\n}",
+						"project": null
+					}
+				},
+				{
+					"op": "view",
+					"name": "picker",
+					"result": {
+						"settings": {
+							"autoreview": {
+								"model": "p/m",
+								"enabled": true
+							}
+						},
+						"global": {
+							"autoreview": {
+								"model": "p/m",
+								"enabled": true
+							}
+						},
+						"project": {},
+						"trusted": true,
+						"theme": null,
+						"themeSetting": null,
+						"steeringMode": "one-at-a-time",
+						"followUpMode": "one-at-a-time",
+						"transport": "auto",
+						"compactionEnabled": true,
+						"retry": {
+							"enabled": true,
+							"maxRetries": 3,
+							"baseDelayMs": 2000,
+							"maxAgentDelayMs": 60000
+						},
+						"branchSummary": {
+							"reserveTokens": 16384,
+							"skipPrompt": false
+						},
+						"sessionDir": null,
+						"defaultProjectTrust": "ask",
+						"autoreview": {
+							"enabled": true,
+							"model": "p/m"
+						},
+						"loki": {},
+						"defaultProvider": null,
+						"defaultModel": null,
+						"errors": [],
+						"projectDirExists": false
+					},
+					"files": {
+						"global": "{\n  \"autoreview\": {\n    \"model\": \"p/m\",\n    \"enabled\": true,\n    \"ack\": false\n  }\n}",
+						"project": null
+					}
+				},
+				{
+					"op": "view",
+					"name": "stale",
+					"result": {
+						"settings": {
+							"autoreview": {
+								"model": "p/m",
+								"ack": false
+							}
+						},
+						"global": {
+							"autoreview": {
+								"model": "p/m",
+								"ack": false
+							}
+						},
+						"project": {},
+						"trusted": true,
+						"theme": null,
+						"themeSetting": null,
+						"steeringMode": "one-at-a-time",
+						"followUpMode": "one-at-a-time",
+						"transport": "auto",
+						"compactionEnabled": true,
+						"retry": {
+							"enabled": true,
+							"maxRetries": 3,
+							"baseDelayMs": 2000,
+							"maxAgentDelayMs": 60000
+						},
+						"branchSummary": {
+							"reserveTokens": 16384,
+							"skipPrompt": false
+						},
+						"sessionDir": null,
+						"defaultProjectTrust": "ask",
+						"autoreview": {
+							"model": "p/m",
+							"ack": false
+						},
+						"loki": {},
+						"defaultProvider": null,
+						"defaultModel": null,
+						"errors": [],
+						"projectDirExists": false
+					},
+					"files": {
+						"global": "{\n  \"autoreview\": {\n    \"model\": \"p/m\",\n    \"enabled\": true,\n    \"ack\": false\n  }\n}",
+						"project": null
+					}
+				},
+				{
+					"op": "reload",
+					"name": "stale",
+					"result": null,
+					"files": {
+						"global": "{\n  \"autoreview\": {\n    \"model\": \"p/m\",\n    \"enabled\": true,\n    \"ack\": false\n  }\n}",
+						"project": null
+					}
+				},
+				{
+					"op": "view",
+					"name": "stale",
+					"result": {
+						"settings": {
+							"autoreview": {
+								"model": "p/m",
+								"enabled": true,
+								"ack": false
+							}
+						},
+						"global": {
+							"autoreview": {
+								"model": "p/m",
+								"enabled": true,
+								"ack": false
+							}
+						},
+						"project": {},
+						"trusted": true,
+						"theme": null,
+						"themeSetting": null,
+						"steeringMode": "one-at-a-time",
+						"followUpMode": "one-at-a-time",
+						"transport": "auto",
+						"compactionEnabled": true,
+						"retry": {
+							"enabled": true,
+							"maxRetries": 3,
+							"baseDelayMs": 2000,
+							"maxAgentDelayMs": 60000
+						},
+						"branchSummary": {
+							"reserveTokens": 16384,
+							"skipPrompt": false
+						},
+						"sessionDir": null,
+						"defaultProjectTrust": "ask",
+						"autoreview": {
+							"enabled": true,
+							"model": "p/m",
+							"ack": false
+						},
+						"loki": {},
+						"defaultProvider": null,
+						"defaultModel": null,
+						"errors": [],
+						"projectDirExists": false
+					},
+					"files": {
+						"global": "{\n  \"autoreview\": {\n    \"model\": \"p/m\",\n    \"enabled\": true,\n    \"ack\": false\n  }\n}",
+						"project": null
+					}
+				}
+			]
+		},
+		{
+			"name": "legacy keys migrate on load and the migrated form is written back",
+			"steps": [
+				{
+					"op": "write",
+					"file": "global",
+					"text": "{\"queueMode\":\"all\",\"websockets\":true,\"skills\":{\"enableSkillCommands\":false,\"customDirectories\":[\"~/s\"]},\"retry\":{\"maxDelayMs\":5000,\"maxRetries\":7},\"theme\":\"light\"}",
+					"result": null,
+					"files": {
+						"global": "{\"queueMode\":\"all\",\"websockets\":true,\"skills\":{\"enableSkillCommands\":false,\"customDirectories\":[\"~/s\"]},\"retry\":{\"maxDelayMs\":5000,\"maxRetries\":7},\"theme\":\"light\"}",
+						"project": null
+					}
+				},
+				{
+					"op": "create",
+					"name": "a",
+					"result": null,
+					"files": {
+						"global": "{\"queueMode\":\"all\",\"websockets\":true,\"skills\":{\"enableSkillCommands\":false,\"customDirectories\":[\"~/s\"]},\"retry\":{\"maxDelayMs\":5000,\"maxRetries\":7},\"theme\":\"light\"}",
+						"project": null
+					}
+				},
+				{
+					"op": "view",
+					"name": "a",
+					"result": {
+						"settings": {
+							"skills": [
+								"~/s"
+							],
+							"retry": {
+								"maxRetries": 7,
+								"provider": {
+									"maxRetryDelayMs": 5000
+								}
+							},
+							"theme": "light",
+							"steeringMode": "all",
+							"transport": "websocket",
+							"enableSkillCommands": false
+						},
+						"global": {
+							"skills": [
+								"~/s"
+							],
+							"retry": {
+								"maxRetries": 7,
+								"provider": {
+									"maxRetryDelayMs": 5000
+								}
+							},
+							"theme": "light",
+							"steeringMode": "all",
+							"transport": "websocket",
+							"enableSkillCommands": false
+						},
+						"project": {},
+						"trusted": true,
+						"theme": "light",
+						"themeSetting": "light",
+						"steeringMode": "all",
+						"followUpMode": "one-at-a-time",
+						"transport": "websocket",
+						"compactionEnabled": true,
+						"retry": {
+							"enabled": true,
+							"maxRetries": 7,
+							"baseDelayMs": 2000,
+							"maxAgentDelayMs": 60000
+						},
+						"branchSummary": {
+							"reserveTokens": 16384,
+							"skipPrompt": false
+						},
+						"sessionDir": null,
+						"defaultProjectTrust": "ask",
+						"autoreview": {},
+						"loki": {},
+						"defaultProvider": null,
+						"defaultModel": null,
+						"errors": [],
+						"projectDirExists": false
+					},
+					"files": {
+						"global": "{\"queueMode\":\"all\",\"websockets\":true,\"skills\":{\"enableSkillCommands\":false,\"customDirectories\":[\"~/s\"]},\"retry\":{\"maxDelayMs\":5000,\"maxRetries\":7},\"theme\":\"light\"}",
+						"project": null
+					}
+				},
+				{
+					"op": "setTheme",
+					"name": "a",
+					"value": "dark",
+					"result": null,
+					"files": {
+						"global": "{\n  \"skills\": [\n    \"~/s\"\n  ],\n  \"retry\": {\n    \"maxRetries\": 7,\n    \"provider\": {\n      \"maxRetryDelayMs\": 5000\n    }\n  },\n  \"theme\": \"dark\",\n  \"steeringMode\": \"all\",\n  \"transport\": \"websocket\",\n  \"enableSkillCommands\": false\n}",
+						"project": null
+					}
+				},
+				{
+					"op": "view",
+					"name": "a",
+					"result": {
+						"settings": {
+							"skills": [
+								"~/s"
+							],
+							"retry": {
+								"maxRetries": 7,
+								"provider": {
+									"maxRetryDelayMs": 5000
+								}
+							},
+							"theme": "dark",
+							"steeringMode": "all",
+							"transport": "websocket",
+							"enableSkillCommands": false
+						},
+						"global": {
+							"skills": [
+								"~/s"
+							],
+							"retry": {
+								"maxRetries": 7,
+								"provider": {
+									"maxRetryDelayMs": 5000
+								}
+							},
+							"theme": "dark",
+							"steeringMode": "all",
+							"transport": "websocket",
+							"enableSkillCommands": false
+						},
+						"project": {},
+						"trusted": true,
+						"theme": "dark",
+						"themeSetting": "dark",
+						"steeringMode": "all",
+						"followUpMode": "one-at-a-time",
+						"transport": "websocket",
+						"compactionEnabled": true,
+						"retry": {
+							"enabled": true,
+							"maxRetries": 7,
+							"baseDelayMs": 2000,
+							"maxAgentDelayMs": 60000
+						},
+						"branchSummary": {
+							"reserveTokens": 16384,
+							"skipPrompt": false
+						},
+						"sessionDir": null,
+						"defaultProjectTrust": "ask",
+						"autoreview": {},
+						"loki": {},
+						"defaultProvider": null,
+						"defaultModel": null,
+						"errors": [],
+						"projectDirExists": false
+					},
+					"files": {
+						"global": "{\n  \"skills\": [\n    \"~/s\"\n  ],\n  \"retry\": {\n    \"maxRetries\": 7,\n    \"provider\": {\n      \"maxRetryDelayMs\": 5000\n    }\n  },\n  \"theme\": \"dark\",\n  \"steeringMode\": \"all\",\n  \"transport\": \"websocket\",\n  \"enableSkillCommands\": false\n}",
+						"project": null
+					}
+				}
+			]
+		},
+		{
+			"name": "legacy migration edge cases",
+			"steps": [
+				{
+					"op": "write",
+					"file": "global",
+					"text": "{\"queueMode\":\"all\",\"steeringMode\":\"one-at-a-time\",\"websockets\":false,\"transport\":\"sse\",\"skills\":{\"customDirectories\":[]},\"retry\":{\"maxDelayMs\":9,\"provider\":{\"maxRetryDelayMs\":1}}}",
+					"result": null,
+					"files": {
+						"global": "{\"queueMode\":\"all\",\"steeringMode\":\"one-at-a-time\",\"websockets\":false,\"transport\":\"sse\",\"skills\":{\"customDirectories\":[]},\"retry\":{\"maxDelayMs\":9,\"provider\":{\"maxRetryDelayMs\":1}}}",
+						"project": null
+					}
+				},
+				{
+					"op": "create",
+					"name": "a",
+					"result": null,
+					"files": {
+						"global": "{\"queueMode\":\"all\",\"steeringMode\":\"one-at-a-time\",\"websockets\":false,\"transport\":\"sse\",\"skills\":{\"customDirectories\":[]},\"retry\":{\"maxDelayMs\":9,\"provider\":{\"maxRetryDelayMs\":1}}}",
+						"project": null
+					}
+				},
+				{
+					"op": "setSteeringMode",
+					"name": "a",
+					"value": "all",
+					"result": null,
+					"files": {
+						"global": "{\n  \"queueMode\": \"all\",\n  \"steeringMode\": \"all\",\n  \"websockets\": false,\n  \"transport\": \"sse\",\n  \"retry\": {\n    \"provider\": {\n      \"maxRetryDelayMs\": 1\n    }\n  }\n}",
+						"project": null
+					}
+				},
+				{
+					"op": "view",
+					"name": "a",
+					"result": {
+						"settings": {
+							"queueMode": "all",
+							"steeringMode": "all",
+							"websockets": false,
+							"transport": "sse",
+							"retry": {
+								"provider": {
+									"maxRetryDelayMs": 1
+								}
+							}
+						},
+						"global": {
+							"queueMode": "all",
+							"steeringMode": "all",
+							"websockets": false,
+							"transport": "sse",
+							"retry": {
+								"provider": {
+									"maxRetryDelayMs": 1
+								}
+							}
+						},
+						"project": {},
+						"trusted": true,
+						"theme": null,
+						"themeSetting": null,
+						"steeringMode": "all",
+						"followUpMode": "one-at-a-time",
+						"transport": "sse",
+						"compactionEnabled": true,
+						"retry": {
+							"enabled": true,
+							"maxRetries": 3,
+							"baseDelayMs": 2000,
+							"maxAgentDelayMs": 60000
+						},
+						"branchSummary": {
+							"reserveTokens": 16384,
+							"skipPrompt": false
+						},
+						"sessionDir": null,
+						"defaultProjectTrust": "ask",
+						"autoreview": {},
+						"loki": {},
+						"defaultProvider": null,
+						"defaultModel": null,
+						"errors": [],
+						"projectDirExists": false
+					},
+					"files": {
+						"global": "{\n  \"queueMode\": \"all\",\n  \"steeringMode\": \"all\",\n  \"websockets\": false,\n  \"transport\": \"sse\",\n  \"retry\": {\n    \"provider\": {\n      \"maxRetryDelayMs\": 1\n    }\n  }\n}",
+						"project": null
+					}
+				}
+			]
+		},
+		{
+			"name": "unrelated external edits survive and in-memory wins for the same key",
+			"steps": [
+				{
+					"op": "write",
+					"file": "global",
+					"text": "{\"theme\":\"dark\",\"enabledModels\":[\"a/b\"]}",
+					"result": null,
+					"files": {
+						"global": "{\"theme\":\"dark\",\"enabledModels\":[\"a/b\"]}",
+						"project": null
+					}
+				},
+				{
+					"op": "create",
+					"name": "a",
+					"result": null,
+					"files": {
+						"global": "{\"theme\":\"dark\",\"enabledModels\":[\"a/b\"]}",
+						"project": null
+					}
+				},
+				{
+					"op": "write",
+					"file": "global",
+					"text": "{\"theme\":\"light\",\"enabledModels\":[\"a/b\"],\"packages\":[\"npm:x\",{\"source\":\"git:y\",\"skills\":[]}],\"extensions\":[\"./ext\"]}",
+					"result": null,
+					"files": {
+						"global": "{\"theme\":\"light\",\"enabledModels\":[\"a/b\"],\"packages\":[\"npm:x\",{\"source\":\"git:y\",\"skills\":[]}],\"extensions\":[\"./ext\"]}",
+						"project": null
+					}
+				},
+				{
+					"op": "setDefaultThinkingLevel",
+					"name": "a",
+					"value": "high",
+					"result": null,
+					"files": {
+						"global": "{\n  \"theme\": \"light\",\n  \"enabledModels\": [\n    \"a/b\"\n  ],\n  \"packages\": [\n    \"npm:x\",\n    {\n      \"source\": \"git:y\",\n      \"skills\": []\n    }\n  ],\n  \"extensions\": [\n    \"./ext\"\n  ],\n  \"defaultThinkingLevel\": \"high\"\n}",
+						"project": null
+					}
+				},
+				{
+					"op": "setTheme",
+					"name": "a",
+					"value": "solarized",
+					"result": null,
+					"files": {
+						"global": "{\n  \"theme\": \"solarized\",\n  \"enabledModels\": [\n    \"a/b\"\n  ],\n  \"packages\": [\n    \"npm:x\",\n    {\n      \"source\": \"git:y\",\n      \"skills\": []\n    }\n  ],\n  \"extensions\": [\n    \"./ext\"\n  ],\n  \"defaultThinkingLevel\": \"high\"\n}",
+						"project": null
+					}
+				},
+				{
+					"op": "setDefaultModelAndProvider",
+					"name": "a",
+					"provider": "anthropic",
+					"model": "claude",
+					"result": null,
+					"files": {
+						"global": "{\n  \"theme\": \"solarized\",\n  \"enabledModels\": [\n    \"a/b\"\n  ],\n  \"packages\": [\n    \"npm:x\",\n    {\n      \"source\": \"git:y\",\n      \"skills\": []\n    }\n  ],\n  \"extensions\": [\n    \"./ext\"\n  ],\n  \"defaultThinkingLevel\": \"high\",\n  \"defaultProvider\": \"anthropic\",\n  \"defaultModel\": \"claude\"\n}",
+						"project": null
+					}
+				},
+				{
+					"op": "view",
+					"name": "a",
+					"result": {
+						"settings": {
+							"theme": "solarized",
+							"enabledModels": [
+								"a/b"
+							],
+							"defaultThinkingLevel": "high",
+							"defaultProvider": "anthropic",
+							"defaultModel": "claude"
+						},
+						"global": {
+							"theme": "solarized",
+							"enabledModels": [
+								"a/b"
+							],
+							"defaultThinkingLevel": "high",
+							"defaultProvider": "anthropic",
+							"defaultModel": "claude"
+						},
+						"project": {},
+						"trusted": true,
+						"theme": "solarized",
+						"themeSetting": "solarized",
+						"steeringMode": "one-at-a-time",
+						"followUpMode": "one-at-a-time",
+						"transport": "auto",
+						"compactionEnabled": true,
+						"retry": {
+							"enabled": true,
+							"maxRetries": 3,
+							"baseDelayMs": 2000,
+							"maxAgentDelayMs": 60000
+						},
+						"branchSummary": {
+							"reserveTokens": 16384,
+							"skipPrompt": false
+						},
+						"sessionDir": null,
+						"defaultProjectTrust": "ask",
+						"autoreview": {},
+						"loki": {},
+						"defaultProvider": "anthropic",
+						"defaultModel": "claude",
+						"errors": [],
+						"projectDirExists": false
+					},
+					"files": {
+						"global": "{\n  \"theme\": \"solarized\",\n  \"enabledModels\": [\n    \"a/b\"\n  ],\n  \"packages\": [\n    \"npm:x\",\n    {\n      \"source\": \"git:y\",\n      \"skills\": []\n    }\n  ],\n  \"extensions\": [\n    \"./ext\"\n  ],\n  \"defaultThinkingLevel\": \"high\",\n  \"defaultProvider\": \"anthropic\",\n  \"defaultModel\": \"claude\"\n}",
+						"project": null
+					}
+				},
+				{
+					"op": "write",
+					"file": "global",
+					"text": "{\"theme\":\"external\",\"defaultModel\":\"ext-model\",\"extra\":1}",
+					"result": null,
+					"files": {
+						"global": "{\"theme\":\"external\",\"defaultModel\":\"ext-model\",\"extra\":1}",
+						"project": null
+					}
+				},
+				{
+					"op": "setSteeringMode",
+					"name": "a",
+					"value": "all",
+					"result": null,
+					"files": {
+						"global": "{\n  \"theme\": \"external\",\n  \"defaultModel\": \"ext-model\",\n  \"extra\": 1,\n  \"steeringMode\": \"all\"\n}",
+						"project": null
+					}
+				},
+				{
+					"op": "view",
+					"name": "a",
+					"result": {
+						"settings": {
+							"theme": "solarized",
+							"enabledModels": [
+								"a/b"
+							],
+							"defaultThinkingLevel": "high",
+							"defaultProvider": "anthropic",
+							"defaultModel": "claude",
+							"steeringMode": "all"
+						},
+						"global": {
+							"theme": "solarized",
+							"enabledModels": [
+								"a/b"
+							],
+							"defaultThinkingLevel": "high",
+							"defaultProvider": "anthropic",
+							"defaultModel": "claude",
+							"steeringMode": "all"
+						},
+						"project": {},
+						"trusted": true,
+						"theme": "solarized",
+						"themeSetting": "solarized",
+						"steeringMode": "all",
+						"followUpMode": "one-at-a-time",
+						"transport": "auto",
+						"compactionEnabled": true,
+						"retry": {
+							"enabled": true,
+							"maxRetries": 3,
+							"baseDelayMs": 2000,
+							"maxAgentDelayMs": 60000
+						},
+						"branchSummary": {
+							"reserveTokens": 16384,
+							"skipPrompt": false
+						},
+						"sessionDir": null,
+						"defaultProjectTrust": "ask",
+						"autoreview": {},
+						"loki": {},
+						"defaultProvider": "anthropic",
+						"defaultModel": "claude",
+						"errors": [],
+						"projectDirExists": false
+					},
+					"files": {
+						"global": "{\n  \"theme\": \"external\",\n  \"defaultModel\": \"ext-model\",\n  \"extra\": 1,\n  \"steeringMode\": \"all\"\n}",
+						"project": null
+					}
+				}
+			]
+		},
+		{
+			"name": "an invalid file keeps previous settings, reports its path and is never overwritten",
+			"steps": [
+				{
+					"op": "write",
+					"file": "global",
+					"text": "{\"theme\":\"dark\"}",
+					"result": null,
+					"files": {
+						"global": "{\"theme\":\"dark\"}",
+						"project": null
+					}
+				},
+				{
+					"op": "create",
+					"name": "a",
+					"result": null,
+					"files": {
+						"global": "{\"theme\":\"dark\"}",
+						"project": null
+					}
+				},
+				{
+					"op": "write",
+					"file": "global",
+					"text": "{ invalid json",
+					"result": null,
+					"files": {
+						"global": "{ invalid json",
+						"project": null
+					}
+				},
+				{
+					"op": "reload",
+					"name": "a",
+					"result": null,
+					"files": {
+						"global": "{ invalid json",
+						"project": null
+					}
+				},
+				{
+					"op": "view",
+					"name": "a",
+					"result": {
+						"settings": {
+							"theme": "dark"
+						},
+						"global": {
+							"theme": "dark"
+						},
+						"project": {},
+						"trusted": true,
+						"theme": "dark",
+						"themeSetting": "dark",
+						"steeringMode": "one-at-a-time",
+						"followUpMode": "one-at-a-time",
+						"transport": "auto",
+						"compactionEnabled": true,
+						"retry": {
+							"enabled": true,
+							"maxRetries": 3,
+							"baseDelayMs": 2000,
+							"maxAgentDelayMs": 60000
+						},
+						"branchSummary": {
+							"reserveTokens": 16384,
+							"skipPrompt": false
+						},
+						"sessionDir": null,
+						"defaultProjectTrust": "ask",
+						"autoreview": {},
+						"loki": {},
+						"defaultProvider": null,
+						"defaultModel": null,
+						"errors": [
+							{
+								"scope": "global",
+								"path": "<root>/settings-4/agent/settings.json"
+							}
+						],
+						"projectDirExists": false
+					},
+					"files": {
+						"global": "{ invalid json",
+						"project": null
+					}
+				},
+				{
+					"op": "setTheme",
+					"name": "a",
+					"value": "light",
+					"result": null,
+					"files": {
+						"global": "{ invalid json",
+						"project": null
+					}
+				},
+				{
+					"op": "view",
+					"name": "a",
+					"result": {
+						"settings": {
+							"theme": "light"
+						},
+						"global": {
+							"theme": "light"
+						},
+						"project": {},
+						"trusted": true,
+						"theme": "light",
+						"themeSetting": "light",
+						"steeringMode": "one-at-a-time",
+						"followUpMode": "one-at-a-time",
+						"transport": "auto",
+						"compactionEnabled": true,
+						"retry": {
+							"enabled": true,
+							"maxRetries": 3,
+							"baseDelayMs": 2000,
+							"maxAgentDelayMs": 60000
+						},
+						"branchSummary": {
+							"reserveTokens": 16384,
+							"skipPrompt": false
+						},
+						"sessionDir": null,
+						"defaultProjectTrust": "ask",
+						"autoreview": {},
+						"loki": {},
+						"defaultProvider": null,
+						"defaultModel": null,
+						"errors": [],
+						"projectDirExists": false
+					},
+					"files": {
+						"global": "{ invalid json",
+						"project": null
+					}
+				},
+				{
+					"op": "create",
+					"name": "b",
+					"result": null,
+					"files": {
+						"global": "{ invalid json",
+						"project": null
+					}
+				},
+				{
+					"op": "view",
+					"name": "b",
+					"result": {
+						"settings": {},
+						"global": {},
+						"project": {},
+						"trusted": true,
+						"theme": null,
+						"themeSetting": null,
+						"steeringMode": "one-at-a-time",
+						"followUpMode": "one-at-a-time",
+						"transport": "auto",
+						"compactionEnabled": true,
+						"retry": {
+							"enabled": true,
+							"maxRetries": 3,
+							"baseDelayMs": 2000,
+							"maxAgentDelayMs": 60000
+						},
+						"branchSummary": {
+							"reserveTokens": 16384,
+							"skipPrompt": false
+						},
+						"sessionDir": null,
+						"defaultProjectTrust": "ask",
+						"autoreview": {},
+						"loki": {},
+						"defaultProvider": null,
+						"defaultModel": null,
+						"errors": [
+							{
+								"scope": "global",
+								"path": "<root>/settings-4/agent/settings.json"
+							}
+						],
+						"projectDirExists": false
+					},
+					"files": {
+						"global": "{ invalid json",
+						"project": null
+					}
+				}
+			]
+		},
+		{
+			"name": "untrusted projects are skipped, refuse writes, and load once trusted",
+			"steps": [
+				{
+					"op": "write",
+					"file": "global",
+					"text": "{\"theme\":\"dark\",\"compaction\":{\"enabled\":true,\"reserveTokens\":1}}",
+					"result": null,
+					"files": {
+						"global": "{\"theme\":\"dark\",\"compaction\":{\"enabled\":true,\"reserveTokens\":1}}",
+						"project": null
+					}
+				},
+				{
+					"op": "write",
+					"file": "project",
+					"text": "{\"theme\":\"project\",\"compaction\":{\"keepRecentTokens\":2}}",
+					"result": null,
+					"files": {
+						"global": "{\"theme\":\"dark\",\"compaction\":{\"enabled\":true,\"reserveTokens\":1}}",
+						"project": "{\"theme\":\"project\",\"compaction\":{\"keepRecentTokens\":2}}"
+					}
+				},
+				{
+					"op": "create",
+					"name": "a",
+					"trusted": false,
+					"result": null,
+					"files": {
+						"global": "{\"theme\":\"dark\",\"compaction\":{\"enabled\":true,\"reserveTokens\":1}}",
+						"project": "{\"theme\":\"project\",\"compaction\":{\"keepRecentTokens\":2}}"
+					}
+				},
+				{
+					"op": "view",
+					"name": "a",
+					"result": {
+						"settings": {
+							"theme": "dark",
+							"compaction": {
+								"enabled": true,
+								"reserveTokens": 1
+							}
+						},
+						"global": {
+							"theme": "dark",
+							"compaction": {
+								"enabled": true,
+								"reserveTokens": 1
+							}
+						},
+						"project": {},
+						"trusted": false,
+						"theme": "dark",
+						"themeSetting": "dark",
+						"steeringMode": "one-at-a-time",
+						"followUpMode": "one-at-a-time",
+						"transport": "auto",
+						"compactionEnabled": true,
+						"retry": {
+							"enabled": true,
+							"maxRetries": 3,
+							"baseDelayMs": 2000,
+							"maxAgentDelayMs": 60000
+						},
+						"branchSummary": {
+							"reserveTokens": 16384,
+							"skipPrompt": false
+						},
+						"sessionDir": null,
+						"defaultProjectTrust": "ask",
+						"autoreview": {},
+						"loki": {},
+						"defaultProvider": null,
+						"defaultModel": null,
+						"errors": [],
+						"projectDirExists": true
+					},
+					"files": {
+						"global": "{\"theme\":\"dark\",\"compaction\":{\"enabled\":true,\"reserveTokens\":1}}",
+						"project": "{\"theme\":\"project\",\"compaction\":{\"keepRecentTokens\":2}}"
+					}
+				},
+				{
+					"op": "setProjectPackages",
+					"name": "a",
+					"value": [
+						"npm:p"
+					],
+					"result": {
+						"error": "Project is not trusted; refusing to write project settings"
+					},
+					"files": {
+						"global": "{\"theme\":\"dark\",\"compaction\":{\"enabled\":true,\"reserveTokens\":1}}",
+						"project": "{\"theme\":\"project\",\"compaction\":{\"keepRecentTokens\":2}}"
+					}
+				},
+				{
+					"op": "setProjectTrusted",
+					"name": "a",
+					"value": true,
+					"result": null,
+					"files": {
+						"global": "{\"theme\":\"dark\",\"compaction\":{\"enabled\":true,\"reserveTokens\":1}}",
+						"project": "{\"theme\":\"project\",\"compaction\":{\"keepRecentTokens\":2}}"
+					}
+				},
+				{
+					"op": "view",
+					"name": "a",
+					"result": {
+						"settings": {
+							"theme": "project",
+							"compaction": {
+								"enabled": true,
+								"reserveTokens": 1,
+								"keepRecentTokens": 2
+							}
+						},
+						"global": {
+							"theme": "dark",
+							"compaction": {
+								"enabled": true,
+								"reserveTokens": 1
+							}
+						},
+						"project": {
+							"theme": "project",
+							"compaction": {
+								"keepRecentTokens": 2
+							}
+						},
+						"trusted": true,
+						"theme": "project",
+						"themeSetting": "project",
+						"steeringMode": "one-at-a-time",
+						"followUpMode": "one-at-a-time",
+						"transport": "auto",
+						"compactionEnabled": true,
+						"retry": {
+							"enabled": true,
+							"maxRetries": 3,
+							"baseDelayMs": 2000,
+							"maxAgentDelayMs": 60000
+						},
+						"branchSummary": {
+							"reserveTokens": 16384,
+							"skipPrompt": false
+						},
+						"sessionDir": null,
+						"defaultProjectTrust": "ask",
+						"autoreview": {},
+						"loki": {},
+						"defaultProvider": null,
+						"defaultModel": null,
+						"errors": [],
+						"projectDirExists": true
+					},
+					"files": {
+						"global": "{\"theme\":\"dark\",\"compaction\":{\"enabled\":true,\"reserveTokens\":1}}",
+						"project": "{\"theme\":\"project\",\"compaction\":{\"keepRecentTokens\":2}}"
+					}
+				},
+				{
+					"op": "setProjectPackages",
+					"name": "a",
+					"value": [
+						"npm:p"
+					],
+					"result": null,
+					"files": {
+						"global": "{\"theme\":\"dark\",\"compaction\":{\"enabled\":true,\"reserveTokens\":1}}",
+						"project": "{\n  \"theme\": \"project\",\n  \"compaction\": {\n    \"keepRecentTokens\": 2\n  },\n  \"packages\": [\n    \"npm:p\"\n  ]\n}"
+					}
+				},
+				{
+					"op": "view",
+					"name": "a",
+					"result": {
+						"settings": {
+							"theme": "project",
+							"compaction": {
+								"enabled": true,
+								"reserveTokens": 1,
+								"keepRecentTokens": 2
+							},
+							"packages": [
+								"npm:p"
+							]
+						},
+						"global": {
+							"theme": "dark",
+							"compaction": {
+								"enabled": true,
+								"reserveTokens": 1
+							}
+						},
+						"project": {
+							"theme": "project",
+							"compaction": {
+								"keepRecentTokens": 2
+							},
+							"packages": [
+								"npm:p"
+							]
+						},
+						"trusted": true,
+						"theme": "project",
+						"themeSetting": "project",
+						"steeringMode": "one-at-a-time",
+						"followUpMode": "one-at-a-time",
+						"transport": "auto",
+						"compactionEnabled": true,
+						"retry": {
+							"enabled": true,
+							"maxRetries": 3,
+							"baseDelayMs": 2000,
+							"maxAgentDelayMs": 60000
+						},
+						"branchSummary": {
+							"reserveTokens": 16384,
+							"skipPrompt": false
+						},
+						"sessionDir": null,
+						"defaultProjectTrust": "ask",
+						"autoreview": {},
+						"loki": {},
+						"defaultProvider": null,
+						"defaultModel": null,
+						"errors": [],
+						"projectDirExists": true
+					},
+					"files": {
+						"global": "{\"theme\":\"dark\",\"compaction\":{\"enabled\":true,\"reserveTokens\":1}}",
+						"project": "{\n  \"theme\": \"project\",\n  \"compaction\": {\n    \"keepRecentTokens\": 2\n  },\n  \"packages\": [\n    \"npm:p\"\n  ]\n}"
+					}
+				},
+				{
+					"op": "setProjectTrusted",
+					"name": "a",
+					"value": false,
+					"result": null,
+					"files": {
+						"global": "{\"theme\":\"dark\",\"compaction\":{\"enabled\":true,\"reserveTokens\":1}}",
+						"project": "{\n  \"theme\": \"project\",\n  \"compaction\": {\n    \"keepRecentTokens\": 2\n  },\n  \"packages\": [\n    \"npm:p\"\n  ]\n}"
+					}
+				},
+				{
+					"op": "view",
+					"name": "a",
+					"result": {
+						"settings": {
+							"theme": "dark",
+							"compaction": {
+								"enabled": true,
+								"reserveTokens": 1
+							}
+						},
+						"global": {
+							"theme": "dark",
+							"compaction": {
+								"enabled": true,
+								"reserveTokens": 1
+							}
+						},
+						"project": {},
+						"trusted": false,
+						"theme": "dark",
+						"themeSetting": "dark",
+						"steeringMode": "one-at-a-time",
+						"followUpMode": "one-at-a-time",
+						"transport": "auto",
+						"compactionEnabled": true,
+						"retry": {
+							"enabled": true,
+							"maxRetries": 3,
+							"baseDelayMs": 2000,
+							"maxAgentDelayMs": 60000
+						},
+						"branchSummary": {
+							"reserveTokens": 16384,
+							"skipPrompt": false
+						},
+						"sessionDir": null,
+						"defaultProjectTrust": "ask",
+						"autoreview": {},
+						"loki": {},
+						"defaultProvider": null,
+						"defaultModel": null,
+						"errors": [],
+						"projectDirExists": true
+					},
+					"files": {
+						"global": "{\"theme\":\"dark\",\"compaction\":{\"enabled\":true,\"reserveTokens\":1}}",
+						"project": "{\n  \"theme\": \"project\",\n  \"compaction\": {\n    \"keepRecentTokens\": 2\n  },\n  \"packages\": [\n    \"npm:p\"\n  ]\n}"
+					}
+				}
+			]
+		},
+		{
+			"name": "reading project settings does not create .pi; writing does",
+			"steps": [
+				{
+					"op": "create",
+					"name": "a",
+					"result": null,
+					"files": {
+						"global": null,
+						"project": null
+					}
+				},
+				{
+					"op": "view",
+					"name": "a",
+					"result": {
+						"settings": {},
+						"global": {},
+						"project": {},
+						"trusted": true,
+						"theme": null,
+						"themeSetting": null,
+						"steeringMode": "one-at-a-time",
+						"followUpMode": "one-at-a-time",
+						"transport": "auto",
+						"compactionEnabled": true,
+						"retry": {
+							"enabled": true,
+							"maxRetries": 3,
+							"baseDelayMs": 2000,
+							"maxAgentDelayMs": 60000
+						},
+						"branchSummary": {
+							"reserveTokens": 16384,
+							"skipPrompt": false
+						},
+						"sessionDir": null,
+						"defaultProjectTrust": "ask",
+						"autoreview": {},
+						"loki": {},
+						"defaultProvider": null,
+						"defaultModel": null,
+						"errors": [],
+						"projectDirExists": false
+					},
+					"files": {
+						"global": null,
+						"project": null
+					}
+				},
+				{
+					"op": "setProjectPackages",
+					"name": "a",
+					"value": [],
+					"result": null,
+					"files": {
+						"global": null,
+						"project": "{\n  \"packages\": []\n}"
+					}
+				},
+				{
+					"op": "view",
+					"name": "a",
+					"result": {
+						"settings": {
+							"packages": []
+						},
+						"global": {},
+						"project": {
+							"packages": []
+						},
+						"trusted": true,
+						"theme": null,
+						"themeSetting": null,
+						"steeringMode": "one-at-a-time",
+						"followUpMode": "one-at-a-time",
+						"transport": "auto",
+						"compactionEnabled": true,
+						"retry": {
+							"enabled": true,
+							"maxRetries": 3,
+							"baseDelayMs": 2000,
+							"maxAgentDelayMs": 60000
+						},
+						"branchSummary": {
+							"reserveTokens": 16384,
+							"skipPrompt": false
+						},
+						"sessionDir": null,
+						"defaultProjectTrust": "ask",
+						"autoreview": {},
+						"loki": {},
+						"defaultProvider": null,
+						"defaultModel": null,
+						"errors": [],
+						"projectDirExists": true
+					},
+					"files": {
+						"global": null,
+						"project": "{\n  \"packages\": []\n}"
+					}
+				}
+			]
+		},
+		{
+			"name": "nested setters merge one key into the file's current object",
+			"steps": [
+				{
+					"op": "create",
+					"name": "a",
+					"result": null,
+					"files": {
+						"global": null,
+						"project": null
+					}
+				},
+				{
+					"op": "write",
+					"file": "global",
+					"text": "{\"compaction\":{\"reserveTokens\":100},\"retry\":{\"maxRetries\":9}}",
+					"result": null,
+					"files": {
+						"global": "{\"compaction\":{\"reserveTokens\":100},\"retry\":{\"maxRetries\":9}}",
+						"project": null
+					}
+				},
+				{
+					"op": "setCompactionEnabled",
+					"name": "a",
+					"value": false,
+					"result": null,
+					"files": {
+						"global": "{\n  \"compaction\": {\n    \"reserveTokens\": 100,\n    \"enabled\": false\n  },\n  \"retry\": {\n    \"maxRetries\": 9\n  }\n}",
+						"project": null
+					}
+				},
+				{
+					"op": "setRetryEnabled",
+					"name": "a",
+					"value": false,
+					"result": null,
+					"files": {
+						"global": "{\n  \"compaction\": {\n    \"reserveTokens\": 100,\n    \"enabled\": false\n  },\n  \"retry\": {\n    \"maxRetries\": 9,\n    \"enabled\": false\n  }\n}",
+						"project": null
+					}
+				},
+				{
+					"op": "view",
+					"name": "a",
+					"result": {
+						"settings": {
+							"compaction": {
+								"enabled": false
+							},
+							"retry": {
+								"enabled": false
+							}
+						},
+						"global": {
+							"compaction": {
+								"enabled": false
+							},
+							"retry": {
+								"enabled": false
+							}
+						},
+						"project": {},
+						"trusted": true,
+						"theme": null,
+						"themeSetting": null,
+						"steeringMode": "one-at-a-time",
+						"followUpMode": "one-at-a-time",
+						"transport": "auto",
+						"compactionEnabled": false,
+						"retry": {
+							"enabled": false,
+							"maxRetries": 3,
+							"baseDelayMs": 2000,
+							"maxAgentDelayMs": 60000
+						},
+						"branchSummary": {
+							"reserveTokens": 16384,
+							"skipPrompt": false
+						},
+						"sessionDir": null,
+						"defaultProjectTrust": "ask",
+						"autoreview": {},
+						"loki": {},
+						"defaultProvider": null,
+						"defaultModel": null,
+						"errors": [],
+						"projectDirExists": false
+					},
+					"files": {
+						"global": "{\n  \"compaction\": {\n    \"reserveTokens\": 100,\n    \"enabled\": false\n  },\n  \"retry\": {\n    \"maxRetries\": 9,\n    \"enabled\": false\n  }\n}",
+						"project": null
+					}
+				}
+			]
+		},
+		{
+			"name": "model thinking levels, loki, extensions and default trust",
+			"steps": [
+				{
+					"op": "write",
+					"file": "global",
+					"text": "{\"loki\":{\"mode\":\"bogus\",\"autoInit\":true,\"ignoreRepos\":[\"a\",\" \",3]},\"defaultProjectTrust\":\"bogus\"}",
+					"result": null,
+					"files": {
+						"global": "{\"loki\":{\"mode\":\"bogus\",\"autoInit\":true,\"ignoreRepos\":[\"a\",\" \",3]},\"defaultProjectTrust\":\"bogus\"}",
+						"project": null
+					}
+				},
+				{
+					"op": "create",
+					"name": "a",
+					"result": null,
+					"files": {
+						"global": "{\"loki\":{\"mode\":\"bogus\",\"autoInit\":true,\"ignoreRepos\":[\"a\",\" \",3]},\"defaultProjectTrust\":\"bogus\"}",
+						"project": null
+					}
+				},
+				{
+					"op": "view",
+					"name": "a",
+					"result": {
+						"settings": {
+							"loki": {
+								"mode": "bogus",
+								"autoInit": true,
+								"ignoreRepos": [
+									"a",
+									" ",
+									3
+								]
+							},
+							"defaultProjectTrust": "bogus"
+						},
+						"global": {
+							"loki": {
+								"mode": "bogus",
+								"autoInit": true,
+								"ignoreRepos": [
+									"a",
+									" ",
+									3
+								]
+							},
+							"defaultProjectTrust": "bogus"
+						},
+						"project": {},
+						"trusted": true,
+						"theme": null,
+						"themeSetting": null,
+						"steeringMode": "one-at-a-time",
+						"followUpMode": "one-at-a-time",
+						"transport": "auto",
+						"compactionEnabled": true,
+						"retry": {
+							"enabled": true,
+							"maxRetries": 3,
+							"baseDelayMs": 2000,
+							"maxAgentDelayMs": 60000
+						},
+						"branchSummary": {
+							"reserveTokens": 16384,
+							"skipPrompt": false
+						},
+						"sessionDir": null,
+						"defaultProjectTrust": "ask",
+						"autoreview": {},
+						"loki": {
+							"autoInit": true,
+							"ignoreRepos": [
+								"a"
+							]
+						},
+						"defaultProvider": null,
+						"defaultModel": null,
+						"errors": [],
+						"projectDirExists": false
+					},
+					"files": {
+						"global": "{\"loki\":{\"mode\":\"bogus\",\"autoInit\":true,\"ignoreRepos\":[\"a\",\" \",3]},\"defaultProjectTrust\":\"bogus\"}",
+						"project": null
+					}
+				},
+				{
+					"op": "setModelThinkingLevel",
+					"name": "a",
+					"provider": "openai",
+					"model": "gpt",
+					"value": "high",
+					"result": null,
+					"files": {
+						"global": "{\n  \"loki\": {\n    \"mode\": \"bogus\",\n    \"autoInit\": true,\n    \"ignoreRepos\": [\n      \"a\",\n      \" \",\n      3\n    ]\n  },\n  \"defaultProjectTrust\": \"bogus\",\n  \"modelThinkingLevels\": {\n    \"openai/gpt\": \"high\"\n  }\n}",
+						"project": null
+					}
+				},
+				{
+					"op": "setModelThinkingLevel",
+					"name": "a",
+					"provider": "x",
+					"model": "y",
+					"value": "low",
+					"result": null,
+					"files": {
+						"global": "{\n  \"loki\": {\n    \"mode\": \"bogus\",\n    \"autoInit\": true,\n    \"ignoreRepos\": [\n      \"a\",\n      \" \",\n      3\n    ]\n  },\n  \"defaultProjectTrust\": \"bogus\",\n  \"modelThinkingLevels\": {\n    \"openai/gpt\": \"high\",\n    \"x/y\": \"low\"\n  }\n}",
+						"project": null
+					}
+				},
+				{
+					"op": "removeModelThinkingLevel",
+					"name": "a",
+					"provider": "openai",
+					"model": "gpt",
+					"result": null,
+					"files": {
+						"global": "{\n  \"loki\": {\n    \"mode\": \"bogus\",\n    \"autoInit\": true,\n    \"ignoreRepos\": [\n      \"a\",\n      \" \",\n      3\n    ]\n  },\n  \"defaultProjectTrust\": \"bogus\",\n  \"modelThinkingLevels\": {\n    \"x/y\": \"low\"\n  }\n}",
+						"project": null
+					}
+				},
+				{
+					"op": "removeModelThinkingLevel",
+					"name": "a",
+					"provider": "x",
+					"model": "y",
+					"result": null,
+					"files": {
+						"global": "{\n  \"loki\": {\n    \"mode\": \"bogus\",\n    \"autoInit\": true,\n    \"ignoreRepos\": [\n      \"a\",\n      \" \",\n      3\n    ]\n  },\n  \"defaultProjectTrust\": \"bogus\"\n}",
+						"project": null
+					}
+				},
+				{
+					"op": "setLokiSettings",
+					"name": "a",
+					"patch": [
+						[
+							"mode",
+							"advise"
+						],
+						[
+							"autoCommit",
+							false
+						]
+					],
+					"result": null,
+					"files": {
+						"global": "{\n  \"loki\": {\n    \"autoInit\": true,\n    \"ignoreRepos\": [\n      \"a\"\n    ],\n    \"mode\": \"advise\",\n    \"autoCommit\": false\n  },\n  \"defaultProjectTrust\": \"bogus\"\n}",
+						"project": null
+					}
+				},
+				{
+					"op": "setExtensionPaths",
+					"name": "a",
+					"value": [
+						"./e1",
+						"./e2"
+					],
+					"result": null,
+					"files": {
+						"global": "{\n  \"loki\": {\n    \"autoInit\": true,\n    \"ignoreRepos\": [\n      \"a\"\n    ],\n    \"mode\": \"advise\",\n    \"autoCommit\": false\n  },\n  \"defaultProjectTrust\": \"bogus\",\n  \"extensions\": [\n    \"./e1\",\n    \"./e2\"\n  ]\n}",
+						"project": null
+					}
+				},
+				{
+					"op": "setDefaultProjectTrust",
+					"name": "a",
+					"value": "never",
+					"result": null,
+					"files": {
+						"global": "{\n  \"loki\": {\n    \"autoInit\": true,\n    \"ignoreRepos\": [\n      \"a\"\n    ],\n    \"mode\": \"advise\",\n    \"autoCommit\": false\n  },\n  \"defaultProjectTrust\": \"never\",\n  \"extensions\": [\n    \"./e1\",\n    \"./e2\"\n  ]\n}",
+						"project": null
+					}
+				},
+				{
+					"op": "view",
+					"name": "a",
+					"result": {
+						"settings": {
+							"loki": {
+								"autoInit": true,
+								"ignoreRepos": [
+									"a"
+								],
+								"mode": "advise",
+								"autoCommit": false
+							},
+							"defaultProjectTrust": "never",
+							"extensions": [
+								"./e1",
+								"./e2"
+							]
+						},
+						"global": {
+							"loki": {
+								"autoInit": true,
+								"ignoreRepos": [
+									"a"
+								],
+								"mode": "advise",
+								"autoCommit": false
+							},
+							"defaultProjectTrust": "never",
+							"extensions": [
+								"./e1",
+								"./e2"
+							]
+						},
+						"project": {},
+						"trusted": true,
+						"theme": null,
+						"themeSetting": null,
+						"steeringMode": "one-at-a-time",
+						"followUpMode": "one-at-a-time",
+						"transport": "auto",
+						"compactionEnabled": true,
+						"retry": {
+							"enabled": true,
+							"maxRetries": 3,
+							"baseDelayMs": 2000,
+							"maxAgentDelayMs": 60000
+						},
+						"branchSummary": {
+							"reserveTokens": 16384,
+							"skipPrompt": false
+						},
+						"sessionDir": null,
+						"defaultProjectTrust": "never",
+						"autoreview": {},
+						"loki": {
+							"mode": "advise",
+							"autoInit": true,
+							"autoCommit": false,
+							"ignoreRepos": [
+								"a"
+							]
+						},
+						"defaultProvider": null,
+						"defaultModel": null,
+						"errors": [],
+						"projectDirExists": false
+					},
+					"files": {
+						"global": "{\n  \"loki\": {\n    \"autoInit\": true,\n    \"ignoreRepos\": [\n      \"a\"\n    ],\n    \"mode\": \"advise\",\n    \"autoCommit\": false\n  },\n  \"defaultProjectTrust\": \"never\",\n  \"extensions\": [\n    \"./e1\",\n    \"./e2\"\n  ]\n}",
+						"project": null
+					}
+				}
+			]
+		},
+		{
+			"name": "typed reads validate and default",
+			"steps": [
+				{
+					"op": "write",
+					"file": "global",
+					"text": "{\"steeringMode\":\"\",\"followUpMode\":\"all\",\"transport\":null,\"theme\":\"light/dark\",\"sessionDir\":\"~/sessions\",\"defaultProjectTrust\":\"always\",\"branchSummary\":{\"reserveTokens\":5},\"retry\":\"nope\",\"autoreview\":{\"enabled\":\"yes\",\"accounts\":[\" a \",\"\",3,\"b\"],\"pollSeconds\":2.7,\"concurrency\":-1,\"budget\":null,\"model\":\" p/m \",\"verifyModel\":\"bad\",\"deepModel\":\"a/b c\",\"planModel\":\"a/b/c\",\"thinking\":\"max\",\"verifyThinking\":\"huge\",\"deadlineSeconds\":0,\"frameTimeoutSeconds\":\"5\",\"mode\":\"hybrid\",\"modelConcurrency\":{\"a/b\":2.5,\"c\":3,\"d/e\":0},\"testEnv\":{\"Org/Repo\":\" /x \",\"other\":\"\",\"org/repo\":\"/y\"},\"testImage\":\" img \",\"mise\":\"  \",\"ackArt\":\"  art  \",\"maxComments\":0,\"blockAt\":\"nit\",\"planStyle\":\"cell\",\"referenceView\":\"none\",\"skipBots\":false,\"ackLines\":[]}}",
+					"result": null,
+					"files": {
+						"global": "{\"steeringMode\":\"\",\"followUpMode\":\"all\",\"transport\":null,\"theme\":\"light/dark\",\"sessionDir\":\"~/sessions\",\"defaultProjectTrust\":\"always\",\"branchSummary\":{\"reserveTokens\":5},\"retry\":\"nope\",\"autoreview\":{\"enabled\":\"yes\",\"accounts\":[\" a \",\"\",3,\"b\"],\"pollSeconds\":2.7,\"concurrency\":-1,\"budget\":null,\"model\":\" p/m \",\"verifyModel\":\"bad\",\"deepModel\":\"a/b c\",\"planModel\":\"a/b/c\",\"thinking\":\"max\",\"verifyThinking\":\"huge\",\"deadlineSeconds\":0,\"frameTimeoutSeconds\":\"5\",\"mode\":\"hybrid\",\"modelConcurrency\":{\"a/b\":2.5,\"c\":3,\"d/e\":0},\"testEnv\":{\"Org/Repo\":\" /x \",\"other\":\"\",\"org/repo\":\"/y\"},\"testImage\":\" img \",\"mise\":\"  \",\"ackArt\":\"  art  \",\"maxComments\":0,\"blockAt\":\"nit\",\"planStyle\":\"cell\",\"referenceView\":\"none\",\"skipBots\":false,\"ackLines\":[]}}",
+						"project": null
+					}
+				},
+				{
+					"op": "write",
+					"file": "project",
+					"text": "{\"theme\":\"proj\",\"defaultProjectTrust\":\"never\",\"autoreview\":{\"enabled\":true},\"loki\":{\"mode\":\"off\"}}",
+					"result": null,
+					"files": {
+						"global": "{\"steeringMode\":\"\",\"followUpMode\":\"all\",\"transport\":null,\"theme\":\"light/dark\",\"sessionDir\":\"~/sessions\",\"defaultProjectTrust\":\"always\",\"branchSummary\":{\"reserveTokens\":5},\"retry\":\"nope\",\"autoreview\":{\"enabled\":\"yes\",\"accounts\":[\" a \",\"\",3,\"b\"],\"pollSeconds\":2.7,\"concurrency\":-1,\"budget\":null,\"model\":\" p/m \",\"verifyModel\":\"bad\",\"deepModel\":\"a/b c\",\"planModel\":\"a/b/c\",\"thinking\":\"max\",\"verifyThinking\":\"huge\",\"deadlineSeconds\":0,\"frameTimeoutSeconds\":\"5\",\"mode\":\"hybrid\",\"modelConcurrency\":{\"a/b\":2.5,\"c\":3,\"d/e\":0},\"testEnv\":{\"Org/Repo\":\" /x \",\"other\":\"\",\"org/repo\":\"/y\"},\"testImage\":\" img \",\"mise\":\"  \",\"ackArt\":\"  art  \",\"maxComments\":0,\"blockAt\":\"nit\",\"planStyle\":\"cell\",\"referenceView\":\"none\",\"skipBots\":false,\"ackLines\":[]}}",
+						"project": "{\"theme\":\"proj\",\"defaultProjectTrust\":\"never\",\"autoreview\":{\"enabled\":true},\"loki\":{\"mode\":\"off\"}}"
+					}
+				},
+				{
+					"op": "create",
+					"name": "a",
+					"result": null,
+					"files": {
+						"global": "{\"steeringMode\":\"\",\"followUpMode\":\"all\",\"transport\":null,\"theme\":\"light/dark\",\"sessionDir\":\"~/sessions\",\"defaultProjectTrust\":\"always\",\"branchSummary\":{\"reserveTokens\":5},\"retry\":\"nope\",\"autoreview\":{\"enabled\":\"yes\",\"accounts\":[\" a \",\"\",3,\"b\"],\"pollSeconds\":2.7,\"concurrency\":-1,\"budget\":null,\"model\":\" p/m \",\"verifyModel\":\"bad\",\"deepModel\":\"a/b c\",\"planModel\":\"a/b/c\",\"thinking\":\"max\",\"verifyThinking\":\"huge\",\"deadlineSeconds\":0,\"frameTimeoutSeconds\":\"5\",\"mode\":\"hybrid\",\"modelConcurrency\":{\"a/b\":2.5,\"c\":3,\"d/e\":0},\"testEnv\":{\"Org/Repo\":\" /x \",\"other\":\"\",\"org/repo\":\"/y\"},\"testImage\":\" img \",\"mise\":\"  \",\"ackArt\":\"  art  \",\"maxComments\":0,\"blockAt\":\"nit\",\"planStyle\":\"cell\",\"referenceView\":\"none\",\"skipBots\":false,\"ackLines\":[]}}",
+						"project": "{\"theme\":\"proj\",\"defaultProjectTrust\":\"never\",\"autoreview\":{\"enabled\":true},\"loki\":{\"mode\":\"off\"}}"
+					}
+				},
+				{
+					"op": "view",
+					"name": "a",
+					"result": {
+						"settings": {
+							"steeringMode": "",
+							"followUpMode": "all",
+							"transport": null,
+							"theme": "proj",
+							"sessionDir": "~/sessions",
+							"defaultProjectTrust": "never",
+							"branchSummary": {
+								"reserveTokens": 5
+							},
+							"retry": "nope",
+							"autoreview": {
+								"enabled": true,
+								"accounts": [
+									" a ",
+									"",
+									3,
+									"b"
+								],
+								"pollSeconds": 2.7,
+								"concurrency": -1,
+								"budget": null,
+								"model": " p/m ",
+								"verifyModel": "bad",
+								"deepModel": "a/b c",
+								"planModel": "a/b/c",
+								"thinking": "max",
+								"verifyThinking": "huge",
+								"deadlineSeconds": 0,
+								"frameTimeoutSeconds": "5",
+								"mode": "hybrid",
+								"modelConcurrency": {
+									"a/b": 2.5,
+									"c": 3,
+									"d/e": 0
+								},
+								"testEnv": {
+									"Org/Repo": " /x ",
+									"other": "",
+									"org/repo": "/y"
+								},
+								"testImage": " img ",
+								"mise": "  ",
+								"ackArt": "  art  ",
+								"maxComments": 0,
+								"blockAt": "nit",
+								"planStyle": "cell",
+								"referenceView": "none",
+								"skipBots": false,
+								"ackLines": []
+							},
+							"loki": {
+								"mode": "off"
+							}
+						},
+						"global": {
+							"steeringMode": "",
+							"followUpMode": "all",
+							"transport": null,
+							"theme": "light/dark",
+							"sessionDir": "~/sessions",
+							"defaultProjectTrust": "always",
+							"branchSummary": {
+								"reserveTokens": 5
+							},
+							"retry": "nope",
+							"autoreview": {
+								"enabled": "yes",
+								"accounts": [
+									" a ",
+									"",
+									3,
+									"b"
+								],
+								"pollSeconds": 2.7,
+								"concurrency": -1,
+								"budget": null,
+								"model": " p/m ",
+								"verifyModel": "bad",
+								"deepModel": "a/b c",
+								"planModel": "a/b/c",
+								"thinking": "max",
+								"verifyThinking": "huge",
+								"deadlineSeconds": 0,
+								"frameTimeoutSeconds": "5",
+								"mode": "hybrid",
+								"modelConcurrency": {
+									"a/b": 2.5,
+									"c": 3,
+									"d/e": 0
+								},
+								"testEnv": {
+									"Org/Repo": " /x ",
+									"other": "",
+									"org/repo": "/y"
+								},
+								"testImage": " img ",
+								"mise": "  ",
+								"ackArt": "  art  ",
+								"maxComments": 0,
+								"blockAt": "nit",
+								"planStyle": "cell",
+								"referenceView": "none",
+								"skipBots": false,
+								"ackLines": []
+							}
+						},
+						"project": {
+							"theme": "proj",
+							"defaultProjectTrust": "never",
+							"autoreview": {
+								"enabled": true
+							},
+							"loki": {
+								"mode": "off"
+							}
+						},
+						"trusted": true,
+						"theme": "proj",
+						"themeSetting": "proj",
+						"steeringMode": "one-at-a-time",
+						"followUpMode": "all",
+						"transport": "auto",
+						"compactionEnabled": true,
+						"retry": {
+							"enabled": true,
+							"maxRetries": 3,
+							"baseDelayMs": 2000,
+							"maxAgentDelayMs": 60000
+						},
+						"branchSummary": {
+							"reserveTokens": 5,
+							"skipPrompt": false
+						},
+						"sessionDir": "<root>/home/sessions",
+						"defaultProjectTrust": "always",
+						"autoreview": {
+							"accounts": [
+								"a",
+								"b"
+							],
+							"pollSeconds": 2,
+							"model": "p/m",
+							"thinking": "max",
+							"deadlineSeconds": 0,
+							"mode": "hybrid",
+							"modelConcurrency": {
+								"a/b": 2
+							},
+							"planModel": "a/b/c",
+							"planStyle": "cell",
+							"referenceView": "none",
+							"blockAt": "nit",
+							"maxComments": 0,
+							"testEnv": {
+								"org/repo": "/y"
+							},
+							"testImage": "img",
+							"ackArt": "  art  ",
+							"skipBots": false
+						},
+						"loki": {},
+						"defaultProvider": null,
+						"defaultModel": null,
+						"errors": [],
+						"projectDirExists": true
+					},
+					"files": {
+						"global": "{\"steeringMode\":\"\",\"followUpMode\":\"all\",\"transport\":null,\"theme\":\"light/dark\",\"sessionDir\":\"~/sessions\",\"defaultProjectTrust\":\"always\",\"branchSummary\":{\"reserveTokens\":5},\"retry\":\"nope\",\"autoreview\":{\"enabled\":\"yes\",\"accounts\":[\" a \",\"\",3,\"b\"],\"pollSeconds\":2.7,\"concurrency\":-1,\"budget\":null,\"model\":\" p/m \",\"verifyModel\":\"bad\",\"deepModel\":\"a/b c\",\"planModel\":\"a/b/c\",\"thinking\":\"max\",\"verifyThinking\":\"huge\",\"deadlineSeconds\":0,\"frameTimeoutSeconds\":\"5\",\"mode\":\"hybrid\",\"modelConcurrency\":{\"a/b\":2.5,\"c\":3,\"d/e\":0},\"testEnv\":{\"Org/Repo\":\" /x \",\"other\":\"\",\"org/repo\":\"/y\"},\"testImage\":\" img \",\"mise\":\"  \",\"ackArt\":\"  art  \",\"maxComments\":0,\"blockAt\":\"nit\",\"planStyle\":\"cell\",\"referenceView\":\"none\",\"skipBots\":false,\"ackLines\":[]}}",
+						"project": "{\"theme\":\"proj\",\"defaultProjectTrust\":\"never\",\"autoreview\":{\"enabled\":true},\"loki\":{\"mode\":\"off\"}}"
+					}
+				}
+			]
+		},
+		{
+			"name": "numbers and integer-like keys are written as JavaScript writes them",
+			"steps": [
+				{
+					"op": "write",
+					"file": "global",
+					"text": "{\"z\":1.0,\"big\":1.5e300,\"small\":1e-7,\"tenth\":0.1,\"neg\":-0.0,\"exp\":1e21,\"keys\":{\"10\":1,\"2\":2,\"b\":3,\"a\":4,\"01\":5},\"s\":\"\\u001b\\t\\u2028/\\\"\",\"empty\":{},\"list\":[]}",
+					"result": null,
+					"files": {
+						"global": "{\"z\":1.0,\"big\":1.5e300,\"small\":1e-7,\"tenth\":0.1,\"neg\":-0.0,\"exp\":1e21,\"keys\":{\"10\":1,\"2\":2,\"b\":3,\"a\":4,\"01\":5},\"s\":\"\\u001b\\t\\u2028/\\\"\",\"empty\":{},\"list\":[]}",
+						"project": null
+					}
+				},
+				{
+					"op": "create",
+					"name": "a",
+					"result": null,
+					"files": {
+						"global": "{\"z\":1.0,\"big\":1.5e300,\"small\":1e-7,\"tenth\":0.1,\"neg\":-0.0,\"exp\":1e21,\"keys\":{\"10\":1,\"2\":2,\"b\":3,\"a\":4,\"01\":5},\"s\":\"\\u001b\\t\\u2028/\\\"\",\"empty\":{},\"list\":[]}",
+						"project": null
+					}
+				},
+				{
+					"op": "setTheme",
+					"name": "a",
+					"value": "dark",
+					"result": null,
+					"files": {
+						"global": "{\n  \"z\": 1,\n  \"big\": 1.5e+300,\n  \"small\": 1e-7,\n  \"tenth\": 0.1,\n  \"neg\": 0,\n  \"exp\": 1e+21,\n  \"keys\": {\n    \"2\": 2,\n    \"10\": 1,\n    \"b\": 3,\n    \"a\": 4,\n    \"01\": 5\n  },\n  \"s\": \"\\u001b\\t /\\\"\",\n  \"empty\": {},\n  \"list\": [],\n  \"theme\": \"dark\"\n}",
+						"project": null
+					}
+				}
+			]
+		},
+		{
+			"name": "a BOM and an empty file load",
+			"steps": [
+				{
+					"op": "write",
+					"file": "global",
+					"text": "﻿{\"theme\":\"bom\"}",
+					"result": null,
+					"files": {
+						"global": "﻿{\"theme\":\"bom\"}",
+						"project": null
+					}
+				},
+				{
+					"op": "write",
+					"file": "project",
+					"text": "",
+					"result": null,
+					"files": {
+						"global": "﻿{\"theme\":\"bom\"}",
+						"project": ""
+					}
+				},
+				{
+					"op": "create",
+					"name": "a",
+					"result": null,
+					"files": {
+						"global": "﻿{\"theme\":\"bom\"}",
+						"project": ""
+					}
+				},
+				{
+					"op": "view",
+					"name": "a",
+					"result": {
+						"settings": {
+							"theme": "bom"
+						},
+						"global": {
+							"theme": "bom"
+						},
+						"project": {},
+						"trusted": true,
+						"theme": "bom",
+						"themeSetting": "bom",
+						"steeringMode": "one-at-a-time",
+						"followUpMode": "one-at-a-time",
+						"transport": "auto",
+						"compactionEnabled": true,
+						"retry": {
+							"enabled": true,
+							"maxRetries": 3,
+							"baseDelayMs": 2000,
+							"maxAgentDelayMs": 60000
+						},
+						"branchSummary": {
+							"reserveTokens": 16384,
+							"skipPrompt": false
+						},
+						"sessionDir": null,
+						"defaultProjectTrust": "ask",
+						"autoreview": {},
+						"loki": {},
+						"defaultProvider": null,
+						"defaultModel": null,
+						"errors": [],
+						"projectDirExists": true
+					},
+					"files": {
+						"global": "﻿{\"theme\":\"bom\"}",
+						"project": ""
+					}
+				},
+				{
+					"op": "setProjectPackages",
+					"name": "a",
+					"value": [
+						"x"
+					],
+					"result": null,
+					"files": {
+						"global": "﻿{\"theme\":\"bom\"}",
+						"project": "{\n  \"packages\": [\n    \"x\"\n  ]\n}"
+					}
+				}
+			]
+		}
+	],
+	"race": {
+		"writes": 15,
+		"keys": [
+			"a0",
+			"a1",
+			"a10",
+			"a11",
+			"a12",
+			"a13",
+			"a14",
+			"a2",
+			"a3",
+			"a4",
+			"a5",
+			"a6",
+			"a7",
+			"a8",
+			"a9",
+			"b0",
+			"b1",
+			"b10",
+			"b11",
+			"b12",
+			"b13",
+			"b14",
+			"b2",
+			"b3",
+			"b4",
+			"b5",
+			"b6",
+			"b7",
+			"b8",
+			"b9",
+			"model"
+		],
+		"lockLeft": false
+	},
+	"auth": {
+		"steps": [
+			{
+				"op": "list",
+				"result": [],
+				"file": "{}",
+				"lockLeft": false
+			},
+			{
+				"op": "modify",
+				"provider": "anthropic",
+				"value": {
+					"type": "oauth",
+					"access": "acc",
+					"refresh": "ref",
+					"expires": 1700000000000,
+					"extra": {
+						"a": 1
+					}
+				},
+				"result": {
+					"type": "oauth",
+					"access": "acc",
+					"refresh": "ref",
+					"expires": 1700000000000,
+					"extra": {
+						"a": 1
+					}
+				},
+				"file": "{\n  \"anthropic\": {\n    \"type\": \"oauth\",\n    \"access\": \"acc\",\n    \"refresh\": \"ref\",\n    \"expires\": 1700000000000,\n    \"extra\": {\n      \"a\": 1\n    }\n  }\n}",
+				"lockLeft": false
+			},
+			{
+				"op": "write",
+				"text": "{\"anthropic\":{\"type\":\"oauth\",\"access\":\"acc\",\"refresh\":\"ref\",\"expires\":1700000000000},\"external\":{\"type\":\"api_key\",\"key\":\"ext\"}}",
+				"result": null,
+				"file": "{\"anthropic\":{\"type\":\"oauth\",\"access\":\"acc\",\"refresh\":\"ref\",\"expires\":1700000000000},\"external\":{\"type\":\"api_key\",\"key\":\"ext\"}}",
+				"lockLeft": false
+			},
+			{
+				"op": "modify",
+				"provider": "openai",
+				"value": {
+					"type": "api_key",
+					"key": "sk-${FOO}-$BAR_X",
+					"env": {
+						"FOO": "foo",
+						"BAR_X": "bar"
+					}
+				},
+				"result": {
+					"type": "api_key",
+					"key": "sk-${FOO}-$BAR_X",
+					"env": {
+						"FOO": "foo",
+						"BAR_X": "bar"
+					}
+				},
+				"file": "{\n  \"anthropic\": {\n    \"type\": \"oauth\",\n    \"access\": \"acc\",\n    \"refresh\": \"ref\",\n    \"expires\": 1700000000000\n  },\n  \"external\": {\n    \"type\": \"api_key\",\n    \"key\": \"ext\"\n  },\n  \"openai\": {\n    \"type\": \"api_key\",\n    \"key\": \"sk-${FOO}-$BAR_X\",\n    \"env\": {\n      \"FOO\": \"foo\",\n      \"BAR_X\": \"bar\"\n    }\n  }\n}",
+				"lockLeft": false
+			},
+			{
+				"op": "read",
+				"provider": "openai",
+				"result": {
+					"type": "api_key",
+					"key": "sk-foo-bar",
+					"env": {
+						"FOO": "foo",
+						"BAR_X": "bar"
+					}
+				},
+				"file": "{\n  \"anthropic\": {\n    \"type\": \"oauth\",\n    \"access\": \"acc\",\n    \"refresh\": \"ref\",\n    \"expires\": 1700000000000\n  },\n  \"external\": {\n    \"type\": \"api_key\",\n    \"key\": \"ext\"\n  },\n  \"openai\": {\n    \"type\": \"api_key\",\n    \"key\": \"sk-${FOO}-$BAR_X\",\n    \"env\": {\n      \"FOO\": \"foo\",\n      \"BAR_X\": \"bar\"\n    }\n  }\n}",
+				"lockLeft": false
+			},
+			{
+				"op": "read",
+				"provider": "anthropic",
+				"result": {
+					"type": "oauth",
+					"access": "acc",
+					"refresh": "ref",
+					"expires": 1700000000000
+				},
+				"file": "{\n  \"anthropic\": {\n    \"type\": \"oauth\",\n    \"access\": \"acc\",\n    \"refresh\": \"ref\",\n    \"expires\": 1700000000000\n  },\n  \"external\": {\n    \"type\": \"api_key\",\n    \"key\": \"ext\"\n  },\n  \"openai\": {\n    \"type\": \"api_key\",\n    \"key\": \"sk-${FOO}-$BAR_X\",\n    \"env\": {\n      \"FOO\": \"foo\",\n      \"BAR_X\": \"bar\"\n    }\n  }\n}",
+				"lockLeft": false
+			},
+			{
+				"op": "read",
+				"provider": "missing",
+				"result": null,
+				"file": "{\n  \"anthropic\": {\n    \"type\": \"oauth\",\n    \"access\": \"acc\",\n    \"refresh\": \"ref\",\n    \"expires\": 1700000000000\n  },\n  \"external\": {\n    \"type\": \"api_key\",\n    \"key\": \"ext\"\n  },\n  \"openai\": {\n    \"type\": \"api_key\",\n    \"key\": \"sk-${FOO}-$BAR_X\",\n    \"env\": {\n      \"FOO\": \"foo\",\n      \"BAR_X\": \"bar\"\n    }\n  }\n}",
+				"lockLeft": false
+			},
+			{
+				"op": "modify",
+				"provider": "openai",
+				"result": {
+					"type": "api_key",
+					"key": "sk-${FOO}-$BAR_X",
+					"env": {
+						"FOO": "foo",
+						"BAR_X": "bar"
+					}
+				},
+				"file": "{\n  \"anthropic\": {\n    \"type\": \"oauth\",\n    \"access\": \"acc\",\n    \"refresh\": \"ref\",\n    \"expires\": 1700000000000\n  },\n  \"external\": {\n    \"type\": \"api_key\",\n    \"key\": \"ext\"\n  },\n  \"openai\": {\n    \"type\": \"api_key\",\n    \"key\": \"sk-${FOO}-$BAR_X\",\n    \"env\": {\n      \"FOO\": \"foo\",\n      \"BAR_X\": \"bar\"\n    }\n  }\n}",
+				"lockLeft": false
+			},
+			{
+				"op": "modify",
+				"provider": "unset",
+				"value": {
+					"type": "api_key",
+					"key": "$ULTRON_CONFIG_FIXTURE_UNSET"
+				},
+				"result": {
+					"type": "api_key",
+					"key": "$ULTRON_CONFIG_FIXTURE_UNSET"
+				},
+				"file": "{\n  \"anthropic\": {\n    \"type\": \"oauth\",\n    \"access\": \"acc\",\n    \"refresh\": \"ref\",\n    \"expires\": 1700000000000\n  },\n  \"external\": {\n    \"type\": \"api_key\",\n    \"key\": \"ext\"\n  },\n  \"openai\": {\n    \"type\": \"api_key\",\n    \"key\": \"sk-${FOO}-$BAR_X\",\n    \"env\": {\n      \"FOO\": \"foo\",\n      \"BAR_X\": \"bar\"\n    }\n  },\n  \"unset\": {\n    \"type\": \"api_key\",\n    \"key\": \"$ULTRON_CONFIG_FIXTURE_UNSET\"\n  }\n}",
+				"lockLeft": false
+			},
+			{
+				"op": "read",
+				"provider": "unset",
+				"result": {
+					"type": "api_key"
+				},
+				"file": "{\n  \"anthropic\": {\n    \"type\": \"oauth\",\n    \"access\": \"acc\",\n    \"refresh\": \"ref\",\n    \"expires\": 1700000000000\n  },\n  \"external\": {\n    \"type\": \"api_key\",\n    \"key\": \"ext\"\n  },\n  \"openai\": {\n    \"type\": \"api_key\",\n    \"key\": \"sk-${FOO}-$BAR_X\",\n    \"env\": {\n      \"FOO\": \"foo\",\n      \"BAR_X\": \"bar\"\n    }\n  },\n  \"unset\": {\n    \"type\": \"api_key\",\n    \"key\": \"$ULTRON_CONFIG_FIXTURE_UNSET\"\n  }\n}",
+				"lockLeft": false
+			},
+			{
+				"op": "modify",
+				"provider": "nokey",
+				"value": {
+					"type": "api_key",
+					"env": {
+						"A": "b"
+					}
+				},
+				"result": {
+					"type": "api_key",
+					"env": {
+						"A": "b"
+					}
+				},
+				"file": "{\n  \"anthropic\": {\n    \"type\": \"oauth\",\n    \"access\": \"acc\",\n    \"refresh\": \"ref\",\n    \"expires\": 1700000000000\n  },\n  \"external\": {\n    \"type\": \"api_key\",\n    \"key\": \"ext\"\n  },\n  \"openai\": {\n    \"type\": \"api_key\",\n    \"key\": \"sk-${FOO}-$BAR_X\",\n    \"env\": {\n      \"FOO\": \"foo\",\n      \"BAR_X\": \"bar\"\n    }\n  },\n  \"unset\": {\n    \"type\": \"api_key\",\n    \"key\": \"$ULTRON_CONFIG_FIXTURE_UNSET\"\n  },\n  \"nokey\": {\n    \"type\": \"api_key\",\n    \"env\": {\n      \"A\": \"b\"\n    }\n  }\n}",
+				"lockLeft": false
+			},
+			{
+				"op": "read",
+				"provider": "nokey",
+				"result": {
+					"type": "api_key",
+					"env": {
+						"A": "b"
+					}
+				},
+				"file": "{\n  \"anthropic\": {\n    \"type\": \"oauth\",\n    \"access\": \"acc\",\n    \"refresh\": \"ref\",\n    \"expires\": 1700000000000\n  },\n  \"external\": {\n    \"type\": \"api_key\",\n    \"key\": \"ext\"\n  },\n  \"openai\": {\n    \"type\": \"api_key\",\n    \"key\": \"sk-${FOO}-$BAR_X\",\n    \"env\": {\n      \"FOO\": \"foo\",\n      \"BAR_X\": \"bar\"\n    }\n  },\n  \"unset\": {\n    \"type\": \"api_key\",\n    \"key\": \"$ULTRON_CONFIG_FIXTURE_UNSET\"\n  },\n  \"nokey\": {\n    \"type\": \"api_key\",\n    \"env\": {\n      \"A\": \"b\"\n    }\n  }\n}",
+				"lockLeft": false
+			},
+			{
+				"op": "list",
+				"result": [
+					{
+						"providerId": "anthropic",
+						"type": "oauth"
+					},
+					{
+						"providerId": "external",
+						"type": "api_key"
+					},
+					{
+						"providerId": "openai",
+						"type": "api_key"
+					},
+					{
+						"providerId": "unset",
+						"type": "api_key"
+					},
+					{
+						"providerId": "nokey",
+						"type": "api_key"
+					}
+				],
+				"file": "{\n  \"anthropic\": {\n    \"type\": \"oauth\",\n    \"access\": \"acc\",\n    \"refresh\": \"ref\",\n    \"expires\": 1700000000000\n  },\n  \"external\": {\n    \"type\": \"api_key\",\n    \"key\": \"ext\"\n  },\n  \"openai\": {\n    \"type\": \"api_key\",\n    \"key\": \"sk-${FOO}-$BAR_X\",\n    \"env\": {\n      \"FOO\": \"foo\",\n      \"BAR_X\": \"bar\"\n    }\n  },\n  \"unset\": {\n    \"type\": \"api_key\",\n    \"key\": \"$ULTRON_CONFIG_FIXTURE_UNSET\"\n  },\n  \"nokey\": {\n    \"type\": \"api_key\",\n    \"env\": {\n      \"A\": \"b\"\n    }\n  }\n}",
+				"lockLeft": false
+			},
+			{
+				"op": "delete",
+				"provider": "external",
+				"result": null,
+				"file": "{\n  \"anthropic\": {\n    \"type\": \"oauth\",\n    \"access\": \"acc\",\n    \"refresh\": \"ref\",\n    \"expires\": 1700000000000\n  },\n  \"openai\": {\n    \"type\": \"api_key\",\n    \"key\": \"sk-${FOO}-$BAR_X\",\n    \"env\": {\n      \"FOO\": \"foo\",\n      \"BAR_X\": \"bar\"\n    }\n  },\n  \"unset\": {\n    \"type\": \"api_key\",\n    \"key\": \"$ULTRON_CONFIG_FIXTURE_UNSET\"\n  },\n  \"nokey\": {\n    \"type\": \"api_key\",\n    \"env\": {\n      \"A\": \"b\"\n    }\n  }\n}",
+				"lockLeft": false
+			},
+			{
+				"op": "delete",
+				"provider": "never-there",
+				"result": null,
+				"file": "{\n  \"anthropic\": {\n    \"type\": \"oauth\",\n    \"access\": \"acc\",\n    \"refresh\": \"ref\",\n    \"expires\": 1700000000000\n  },\n  \"openai\": {\n    \"type\": \"api_key\",\n    \"key\": \"sk-${FOO}-$BAR_X\",\n    \"env\": {\n      \"FOO\": \"foo\",\n      \"BAR_X\": \"bar\"\n    }\n  },\n  \"unset\": {\n    \"type\": \"api_key\",\n    \"key\": \"$ULTRON_CONFIG_FIXTURE_UNSET\"\n  },\n  \"nokey\": {\n    \"type\": \"api_key\",\n    \"env\": {\n      \"A\": \"b\"\n    }\n  }\n}",
+				"lockLeft": false
+			},
+			{
+				"op": "list",
+				"result": [
+					{
+						"providerId": "anthropic",
+						"type": "oauth"
+					},
+					{
+						"providerId": "openai",
+						"type": "api_key"
+					},
+					{
+						"providerId": "unset",
+						"type": "api_key"
+					},
+					{
+						"providerId": "nokey",
+						"type": "api_key"
+					}
+				],
+				"file": "{\n  \"anthropic\": {\n    \"type\": \"oauth\",\n    \"access\": \"acc\",\n    \"refresh\": \"ref\",\n    \"expires\": 1700000000000\n  },\n  \"openai\": {\n    \"type\": \"api_key\",\n    \"key\": \"sk-${FOO}-$BAR_X\",\n    \"env\": {\n      \"FOO\": \"foo\",\n      \"BAR_X\": \"bar\"\n    }\n  },\n  \"unset\": {\n    \"type\": \"api_key\",\n    \"key\": \"$ULTRON_CONFIG_FIXTURE_UNSET\"\n  },\n  \"nokey\": {\n    \"type\": \"api_key\",\n    \"env\": {\n      \"A\": \"b\"\n    }\n  }\n}",
+				"lockLeft": false
+			},
+			{
+				"op": "write",
+				"text": "{ not json",
+				"result": null,
+				"file": "{ not json",
+				"lockLeft": false
+			},
+			{
+				"op": "modify",
+				"provider": "x",
+				"value": {
+					"type": "api_key",
+					"key": "k"
+				},
+				"result": {
+					"error": true
+				},
+				"file": "{ not json",
+				"lockLeft": false
+			},
+			{
+				"op": "delete",
+				"provider": "anthropic",
+				"result": {
+					"error": true
+				},
+				"file": "{ not json",
+				"lockLeft": false
+			},
+			{
+				"op": "write",
+				"text": "﻿{\"bom\":{\"type\":\"api_key\",\"key\":\"plain\"}}",
+				"result": null,
+				"file": "﻿{\"bom\":{\"type\":\"api_key\",\"key\":\"plain\"}}",
+				"lockLeft": false
+			},
+			{
+				"op": "read",
+				"provider": "bom",
+				"result": {
+					"type": "api_key",
+					"key": "plain"
+				},
+				"file": "﻿{\"bom\":{\"type\":\"api_key\",\"key\":\"plain\"}}",
+				"lockLeft": false
+			},
+			{
+				"op": "modify",
+				"provider": "z",
+				"value": {
+					"type": "api_key",
+					"key": "zz"
+				},
+				"result": {
+					"type": "api_key",
+					"key": "zz"
+				},
+				"file": "{\n  \"bom\": {\n    \"type\": \"api_key\",\n    \"key\": \"plain\"\n  },\n  \"z\": {\n    \"type\": \"api_key\",\n    \"key\": \"zz\"\n  }\n}",
+				"lockLeft": false
+			}
+		],
+		"mode": "600",
+		"dirMode": "700"
+	},
+	"validation": [
+		{
+			"text": "{\"a\":{\"type\":\"api_key\",\"key\":\"k\",\"env\":{\"X\":\"y\"}},\"b\":{\"type\":\"oauth\",\"access\":\"a\",\"refresh\":\"r\",\"expires\":1}}",
+			"result": {
+				"ok": [
+					{
+						"providerId": "a",
+						"type": "api_key"
+					},
+					{
+						"providerId": "b",
+						"type": "oauth"
+					}
+				]
+			},
+			"stored": {
+				"type": "api_key",
+				"key": "k",
+				"env": {
+					"X": "y"
+				}
+			}
+		},
+		{
+			"text": "{\"a\":{\"type\":\"api_key\",\"key\":1}}",
+			"result": {
+				"error": "Invalid auth.json credential for provider \"a\""
+			},
+			"stored": {
+				"type": "api_key",
+				"key": 1
+			}
+		},
+		{
+			"text": "{\"a\":{\"type\":\"api_key\",\"env\":{\"X\":1}}}",
+			"result": {
+				"error": "Invalid auth.json credential for provider \"a\""
+			},
+			"stored": {
+				"type": "api_key",
+				"env": {
+					"X": 1
+				}
+			}
+		},
+		{
+			"text": "{\"a\":{\"type\":\"api_key\",\"env\":[]}}",
+			"result": {
+				"error": "Invalid auth.json credential for provider \"a\""
+			},
+			"stored": {
+				"type": "api_key",
+				"env": []
+			}
+		},
+		{
+			"text": "{\"a\":{\"type\":\"oauth\",\"access\":\"a\",\"refresh\":\"r\"}}",
+			"result": {
+				"error": "Invalid auth.json credential for provider \"a\""
+			},
+			"stored": {
+				"type": "oauth",
+				"access": "a",
+				"refresh": "r"
+			}
+		},
+		{
+			"text": "{\"a\":{\"type\":\"oauth\",\"access\":\"a\",\"refresh\":\"r\",\"expires\":\"1\"}}",
+			"result": {
+				"error": "Invalid auth.json credential for provider \"a\""
+			},
+			"stored": {
+				"type": "oauth",
+				"access": "a",
+				"refresh": "r",
+				"expires": "1"
+			}
+		},
+		{
+			"text": "{\"a\":{\"type\":\"other\"}}",
+			"result": {
+				"error": "Invalid auth.json credential for provider \"a\""
+			},
+			"stored": {
+				"type": "other"
+			}
+		},
+		{
+			"text": "{\"a\":\"string\"}",
+			"result": {
+				"error": "Invalid auth.json credential for provider \"a\""
+			},
+			"stored": "string"
+		},
+		{
+			"text": "{\"a\":null}",
+			"result": {
+				"error": "Invalid auth.json credential for provider \"a\""
+			},
+			"stored": null
+		},
+		{
+			"text": "[]",
+			"result": {
+				"error": "Invalid auth.json: expected an object"
+			},
+			"stored": null
+		},
+		{
+			"text": "3",
+			"result": {
+				"error": "Invalid auth.json: expected an object"
+			},
+			"stored": null
+		}
+	],
+	"modelsStore": [
+		{
+			"op": "read",
+			"provider": "openai",
+			"result": null,
+			"file": "{}"
+		},
+		{
+			"op": "write",
+			"provider": "openai",
+			"entry": {
+				"models": [
+					{
+						"id": "gpt",
+						"contextWindow": 128000,
+						"cost": {
+							"input": 2.5
+						}
+					}
+				],
+				"fetchedAt": 1
+			},
+			"result": null,
+			"file": "{\n  \"openai\": {\n    \"models\": [\n      {\n        \"id\": \"gpt\",\n        \"contextWindow\": 128000,\n        \"cost\": {\n          \"input\": 2.5\n        }\n      }\n    ],\n    \"fetchedAt\": 1\n  }\n}"
+		},
+		{
+			"op": "external",
+			"text": "{\"openai\":{\"models\":[]},\"other\":{\"models\":[{\"id\":\"o\"}]}}",
+			"result": null,
+			"file": "{\"openai\":{\"models\":[]},\"other\":{\"models\":[{\"id\":\"o\"}]}}"
+		},
+		{
+			"op": "write",
+			"provider": "anthropic",
+			"entry": {
+				"models": []
+			},
+			"result": null,
+			"file": "{\n  \"openai\": {\n    \"models\": []\n  },\n  \"other\": {\n    \"models\": [\n      {\n        \"id\": \"o\"\n      }\n    ]\n  },\n  \"anthropic\": {\n    \"models\": []\n  }\n}"
+		},
+		{
+			"op": "read",
+			"provider": "other",
+			"result": {
+				"models": [
+					{
+						"id": "o"
+					}
+				]
+			},
+			"file": "{\n  \"openai\": {\n    \"models\": []\n  },\n  \"other\": {\n    \"models\": [\n      {\n        \"id\": \"o\"\n      }\n    ]\n  },\n  \"anthropic\": {\n    \"models\": []\n  }\n}"
+		},
+		{
+			"op": "delete",
+			"provider": "openai",
+			"result": null,
+			"file": "{\n  \"other\": {\n    \"models\": [\n      {\n        \"id\": \"o\"\n      }\n    ]\n  },\n  \"anthropic\": {\n    \"models\": []\n  }\n}"
+		},
+		{
+			"op": "read",
+			"provider": "openai",
+			"result": null,
+			"file": "{\n  \"other\": {\n    \"models\": [\n      {\n        \"id\": \"o\"\n      }\n    ]\n  },\n  \"anthropic\": {\n    \"models\": []\n  }\n}"
+		},
+		{
+			"op": "external",
+			"text": "{bad",
+			"result": null,
+			"file": "{bad"
+		},
+		{
+			"op": "write",
+			"provider": "x",
+			"entry": {},
+			"result": {
+				"error": true
+			},
+			"file": "{bad"
+		},
+		{
+			"op": "read",
+			"provider": "x",
+			"result": {
+				"error": true
+			},
+			"file": "{bad"
+		}
+	],
+	"templates": [
+		{
+			"template": "plain",
+			"resolved": "plain"
+		},
+		{
+			"template": "$A",
+			"resolved": "1"
+		},
+		{
+			"template": "${A}",
+			"resolved": "1"
+		},
+		{
+			"template": "x-$A-y",
+			"resolved": "x-1-y"
+		},
+		{
+			"template": "$A$B",
+			"resolved": "1two"
+		},
+		{
+			"template": "$$A",
+			"resolved": "$A"
+		},
+		{
+			"template": "$!A",
+			"resolved": "!A"
+		},
+		{
+			"template": "${not valid}",
+			"resolved": "${not valid}"
+		},
+		{
+			"template": "${A",
+			"resolved": "${A"
+		},
+		{
+			"template": "$",
+			"resolved": "$"
+		},
+		{
+			"template": "$1A",
+			"resolved": "$1A"
+		},
+		{
+			"template": "a$",
+			"resolved": "a$"
+		},
+		{
+			"template": "${}",
+			"resolved": "${}"
+		},
+		{
+			"template": "$A_B9",
+			"resolved": "ab"
+		},
+		{
+			"template": "$MISSING",
+			"resolved": null
+		},
+		{
+			"template": "${MISSING}-x",
+			"resolved": null
+		},
+		{
+			"template": "pre$Bpost",
+			"resolved": null
+		},
+		{
+			"template": "${A}${B}",
+			"resolved": "1two"
+		},
+		{
+			"template": "$-x",
+			"resolved": "$-x"
+		}
+	],
+	"paths": [
+		{
+			"env": null,
+			"agentDir": "<root>/home/.ultron/agent",
+			"auth": "<root>/home/.ultron/agent/auth.json",
+			"settings": "<root>/home/.ultron/agent/settings.json",
+			"models": "<root>/home/.ultron/agent/models.json",
+			"themes": "<root>/home/.ultron/agent/themes",
+			"tools": "<root>/home/.ultron/agent/tools",
+			"bin": "<root>/home/.ultron/agent/bin",
+			"prompts": "<root>/home/.ultron/agent/prompts",
+			"sessions": "<root>/home/.ultron/agent/sessions",
+			"debugLog": "<root>/home/.ultron/agent/ultron-debug.log"
+		},
+		{
+			"env": "",
+			"agentDir": "<root>/home/.ultron/agent",
+			"auth": "<root>/home/.ultron/agent/auth.json",
+			"settings": "<root>/home/.ultron/agent/settings.json",
+			"models": "<root>/home/.ultron/agent/models.json",
+			"themes": "<root>/home/.ultron/agent/themes",
+			"tools": "<root>/home/.ultron/agent/tools",
+			"bin": "<root>/home/.ultron/agent/bin",
+			"prompts": "<root>/home/.ultron/agent/prompts",
+			"sessions": "<root>/home/.ultron/agent/sessions",
+			"debugLog": "<root>/home/.ultron/agent/ultron-debug.log"
+		},
+		{
+			"env": "~",
+			"agentDir": "<root>/home",
+			"auth": "<root>/home/auth.json",
+			"settings": "<root>/home/settings.json",
+			"models": "<root>/home/models.json",
+			"themes": "<root>/home/themes",
+			"tools": "<root>/home/tools",
+			"bin": "<root>/home/bin",
+			"prompts": "<root>/home/prompts",
+			"sessions": "<root>/home/sessions",
+			"debugLog": "<root>/home/ultron-debug.log"
+		},
+		{
+			"env": "~/custom/agent",
+			"agentDir": "<root>/home/custom/agent",
+			"auth": "<root>/home/custom/agent/auth.json",
+			"settings": "<root>/home/custom/agent/settings.json",
+			"models": "<root>/home/custom/agent/models.json",
+			"themes": "<root>/home/custom/agent/themes",
+			"tools": "<root>/home/custom/agent/tools",
+			"bin": "<root>/home/custom/agent/bin",
+			"prompts": "<root>/home/custom/agent/prompts",
+			"sessions": "<root>/home/custom/agent/sessions",
+			"debugLog": "<root>/home/custom/agent/ultron-debug.log"
+		},
+		{
+			"env": "/abs/dir/../agent",
+			"agentDir": "/abs/dir/../agent",
+			"auth": "/abs/agent/auth.json",
+			"settings": "/abs/agent/settings.json",
+			"models": "/abs/agent/models.json",
+			"themes": "/abs/agent/themes",
+			"tools": "/abs/agent/tools",
+			"bin": "/abs/agent/bin",
+			"prompts": "/abs/agent/prompts",
+			"sessions": "/abs/agent/sessions",
+			"debugLog": "/abs/agent/ultron-debug.log"
+		},
+		{
+			"env": "relative/agent",
+			"agentDir": "relative/agent",
+			"auth": "relative/agent/auth.json",
+			"settings": "relative/agent/settings.json",
+			"models": "relative/agent/models.json",
+			"themes": "relative/agent/themes",
+			"tools": "relative/agent/tools",
+			"bin": "relative/agent/bin",
+			"prompts": "relative/agent/prompts",
+			"sessions": "relative/agent/sessions",
+			"debugLog": "relative/agent/ultron-debug.log"
+		},
+		{
+			"env": "file:///tmp/a%20b",
+			"agentDir": "/tmp/a b",
+			"auth": "/tmp/a b/auth.json",
+			"settings": "/tmp/a b/settings.json",
+			"models": "/tmp/a b/models.json",
+			"themes": "/tmp/a b/themes",
+			"tools": "/tmp/a b/tools",
+			"bin": "/tmp/a b/bin",
+			"prompts": "/tmp/a b/prompts",
+			"sessions": "/tmp/a b/sessions",
+			"debugLog": "/tmp/a b/ultron-debug.log"
+		}
+	],
+	"trust": {
+		"steps": [
+			{
+				"op": "get",
+				"path": "work/a/b",
+				"result": null,
+				"file": null
+			},
+			{
+				"op": "setMany",
+				"updates": [
+					[
+						"work/a",
+						true
+					],
+					[
+						"work/plain",
+						false
+					]
+				],
+				"result": null,
+				"file": "{\n  \"<root>/trust/work/a\": true,\n  \"<root>/trust/work/plain\": false\n}\n"
+			},
+			{
+				"op": "get",
+				"path": "work/a/b",
+				"result": true,
+				"file": "{\n  \"<root>/trust/work/a\": true,\n  \"<root>/trust/work/plain\": false\n}\n"
+			},
+			{
+				"op": "getEntry",
+				"path": "work/a/b",
+				"result": {
+					"path": "<root>/trust/work/a",
+					"decision": true
+				},
+				"file": "{\n  \"<root>/trust/work/a\": true,\n  \"<root>/trust/work/plain\": false\n}\n"
+			},
+			{
+				"op": "get",
+				"path": "work/plain",
+				"result": false,
+				"file": "{\n  \"<root>/trust/work/a\": true,\n  \"<root>/trust/work/plain\": false\n}\n"
+			},
+			{
+				"op": "get",
+				"path": "work",
+				"result": null,
+				"file": "{\n  \"<root>/trust/work/a\": true,\n  \"<root>/trust/work/plain\": false\n}\n"
+			},
+			{
+				"op": "set",
+				"path": "work/a/b",
+				"decision": false,
+				"result": null,
+				"file": "{\n  \"<root>/trust/work/a\": true,\n  \"<root>/trust/work/a/b\": false,\n  \"<root>/trust/work/plain\": false\n}\n"
+			},
+			{
+				"op": "get",
+				"path": "work/a/b",
+				"result": false,
+				"file": "{\n  \"<root>/trust/work/a\": true,\n  \"<root>/trust/work/a/b\": false,\n  \"<root>/trust/work/plain\": false\n}\n"
+			},
+			{
+				"op": "set",
+				"path": "work/link",
+				"decision": true,
+				"result": null,
+				"file": "{\n  \"<root>/trust/work/a\": true,\n  \"<root>/trust/work/a/b\": false,\n  \"<root>/trust/work/link-target\": true,\n  \"<root>/trust/work/plain\": false\n}\n"
+			},
+			{
+				"op": "getEntry",
+				"path": "work/link-target",
+				"result": {
+					"path": "<root>/trust/work/link-target",
+					"decision": true
+				},
+				"file": "{\n  \"<root>/trust/work/a\": true,\n  \"<root>/trust/work/a/b\": false,\n  \"<root>/trust/work/link-target\": true,\n  \"<root>/trust/work/plain\": false\n}\n"
+			},
+			{
+				"op": "setMany",
+				"updates": [
+					[
+						"work",
+						true
+					],
+					[
+						"work/a",
+						null
+					]
+				],
+				"result": null,
+				"file": "{\n  \"<root>/trust/work\": true,\n  \"<root>/trust/work/a/b\": false,\n  \"<root>/trust/work/link-target\": true,\n  \"<root>/trust/work/plain\": false\n}\n"
+			},
+			{
+				"op": "getEntry",
+				"path": "work/a",
+				"result": {
+					"path": "<root>/trust/work",
+					"decision": true
+				},
+				"file": "{\n  \"<root>/trust/work\": true,\n  \"<root>/trust/work/a/b\": false,\n  \"<root>/trust/work/link-target\": true,\n  \"<root>/trust/work/plain\": false\n}\n"
+			},
+			{
+				"op": "write",
+				"text": "{\"/x\":\"yes\"}",
+				"result": null,
+				"file": "{\"/x\":\"yes\"}"
+			},
+			{
+				"op": "get",
+				"path": "work",
+				"result": {
+					"error": "Invalid trust store <root>/trust/agent/trust.json: value for \"/x\" must be true, false, or null"
+				},
+				"file": "{\"/x\":\"yes\"}"
+			},
+			{
+				"op": "write",
+				"text": "nope",
+				"result": null,
+				"file": "nope"
+			},
+			{
+				"op": "get",
+				"path": "work",
+				"result": {
+					"error": "Failed to read trust store <root>/trust/agent/trust.json: Unexpected token 'o', \"nope\" is not valid JSON"
+				},
+				"file": "nope"
+			},
+			{
+				"op": "write",
+				"text": "{\"/z\":true,\"/a\":null,\"/m\":false}",
+				"result": null,
+				"file": "{\"/z\":true,\"/a\":null,\"/m\":false}"
+			},
+			{
+				"op": "set",
+				"path": "work/plain",
+				"decision": true,
+				"result": null,
+				"file": "{\n  \"/a\": null,\n  \"/m\": false,\n  \"<root>/trust/work/plain\": true,\n  \"/z\": true\n}\n"
+			}
+		],
+		"resources": [
+			{
+				"path": "work/pi",
+				"requires": true
+			},
+			{
+				"path": "work/agents",
+				"requires": true
+			},
+			{
+				"path": "work/agents/.agents",
+				"requires": true
+			},
+			{
+				"path": "work/plain",
+				"requires": false
+			},
+			{
+				"path": "work/settings",
+				"requires": true
+			},
+			{
+				"path": "home",
+				"requires": false
+			},
+			{
+				"path": "work/a/b",
+				"requires": false
+			}
+		],
+		"options": [
+			[
+				{
+					"label": "Trust",
+					"trusted": true,
+					"updates": [
+						{
+							"path": "<root>/trust/work/a",
+							"decision": true
+						}
+					],
+					"savedPath": "<root>/trust/work/a"
+				},
+				{
+					"label": "Trust parent folder (<root>/trust/work)",
+					"trusted": true,
+					"updates": [
+						{
+							"path": "<root>/trust/work",
+							"decision": true
+						},
+						{
+							"path": "<root>/trust/work/a",
+							"decision": null
+						}
+					],
+					"savedPath": "<root>/trust/work"
+				},
+				{
+					"label": "Trust (this session only)",
+					"trusted": true,
+					"updates": []
+				},
+				{
+					"label": "Do not trust",
+					"trusted": false,
+					"updates": [
+						{
+							"path": "<root>/trust/work/a",
+							"decision": false
+						}
+					],
+					"savedPath": "<root>/trust/work/a"
+				},
+				{
+					"label": "Do not trust (this session only)",
+					"trusted": false,
+					"updates": []
+				}
+			],
+			[
+				{
+					"label": "Trust",
+					"trusted": true,
+					"updates": [
+						{
+							"path": "<root>/trust/work/a",
+							"decision": true
+						}
+					],
+					"savedPath": "<root>/trust/work/a"
+				},
+				{
+					"label": "Trust parent folder (<root>/trust/work)",
+					"trusted": true,
+					"updates": [
+						{
+							"path": "<root>/trust/work",
+							"decision": true
+						},
+						{
+							"path": "<root>/trust/work/a",
+							"decision": null
+						}
+					],
+					"savedPath": "<root>/trust/work"
+				},
+				{
+					"label": "Do not trust",
+					"trusted": false,
+					"updates": [
+						{
+							"path": "<root>/trust/work/a",
+							"decision": false
+						}
+					],
+					"savedPath": "<root>/trust/work/a"
+				}
+			]
+		],
+		"rootOptions": [
+			{
+				"label": "Trust",
+				"trusted": true,
+				"updates": [
+					{
+						"path": "/",
+						"decision": true
+					}
+				],
+				"savedPath": "/"
+			},
+			{
+				"label": "Do not trust",
+				"trusted": false,
+				"updates": [
+					{
+						"path": "/",
+						"decision": false
+					}
+				],
+				"savedPath": "/"
+			}
+		]
+	}
+}

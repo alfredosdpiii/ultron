@@ -1,0 +1,18 @@
+[package]
+name = "session-journal"
+version = "0.1.0"
+description = "Ultron's format-4 session journal (harness operation journal JSONL): storage, legacy v3 import, repository, fork, model context, run journal and session names"
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+getrandom = "=0.4.3"
+serde_json = { version = "=1.0.151", features = ["float_roundtrip", "preserve_order"] }
+session-file = { path = "../session-file" }
+
+[dev-dependencies]
+tempfile = "=3.27.0"
+
+[lints]
+workspace = true
